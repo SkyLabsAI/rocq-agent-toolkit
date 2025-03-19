@@ -1,0 +1,5 @@
+(executable
+ (public_name rocq-doc-manager)
+ (name rocq_doc_manager)
+ (package rocq-doc-manager)
+ (libraries coq-core.toplevel jsonrpc-tp rocq-split.api rocq-jsonrpc-repl.api))

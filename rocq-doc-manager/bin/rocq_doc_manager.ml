@@ -1,0 +1,139 @@
+(** Formatter with continuation. *)
+type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
+
+(** [panic fmt ...] interrupts the program with [exit 1], after displaying the
+    error message specified by [fmt] (and subsequent arguments) to [stderr]. A
+    newline character is added to the message, and [stderr] is flushed. *)
+let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
+  Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
+
+let rset = Jsonrpc_tp_loop.create ()
+
+let add_handler name pspec a =
+  Jsonrpc_tp_loop.add rset name pspec a
+
+module P = Jsonrpc_tp_loop.Params
+
+let _ =
+  add_handler "load_file" P.nil @@ fun d () ->
+  match Document.load_file d with
+  | Error(s) -> (d, Error(None, s))
+  | Ok(())   -> (d, Ok(`Null))
+
+let _ =
+  add_handler "insert_blanks" P.(cons string nil) @@ fun d (text, ()) ->
+  Document.insert_blanks d ~text;
+  (d, Ok(`Null))
+
+let _ =
+  add_handler "insert_command" P.(cons string nil) @@ fun d (text, ()) ->
+  match Document.insert_command d ~text with
+  | Error(loc, s) ->
+      let loc =
+        match loc with
+        | None      -> `Null
+        | Some(loc) -> Rocq_loc.to_json loc
+      in
+      (d, Error(Some(`Assoc([("loc", loc)])), s))
+  | Ok(goal)      ->
+      let goal =
+        match goal with
+        | None       -> `Null
+        | Some(goal) -> `String(goal)
+      in
+      (d, Ok(`Assoc([("goal", goal)])))
+
+let _ =
+  add_handler "revert_before" P.(cons int nil) @@ fun d (index, ()) ->
+  Document.revert_before d ~index;
+  (d, Ok(`Null))
+
+let _ =
+  add_handler "clear_suffix" P.nil @@ fun d () ->
+  Document.clear_suffix d;
+  (d, Ok(`Null))
+
+let _ =
+  add_handler "run_step" P.nil @@ fun d () ->
+  match Document.run_step d with
+  | Error(loc, s) ->
+      let loc =
+        match loc with
+        | None      -> `Null
+        | Some(loc) -> Rocq_loc.to_json loc
+      in
+      (d, Error(Some(`Assoc([("loc", loc)])), s))
+  | Ok(goal)      ->
+      let goal =
+        match goal with
+        | None       -> `Null
+        | Some(goal) -> `String(goal)
+      in
+      (d, Ok(`Assoc([("goal", goal)])))
+
+let _ =
+  add_handler "doc_prefix" P.nil @@ fun d () ->
+  let make ~kind ~off ~text =
+    `Assoc([
+      ("kind"  , `String(kind));
+      ("offset", `Int(off));
+      ("text"  , `String(text));
+    ])
+  in
+  let prefix = Document.doc_prefix d make in
+  (d, Ok(`List(prefix)))
+
+let _ =
+  add_handler "doc_suffix" P.nil @@ fun d () ->
+  let make ~kind ~text =
+    `Assoc([
+      ("kind"  , `String(kind));
+      ("text"  , `String(text));
+    ])
+  in
+  let prefix = Document.doc_suffix d make in
+  (d, Ok(`List(prefix)))
+
+let _ =
+  add_handler "commit" P.(cons bool nil) @@ fun d (include_suffix, ()) ->
+  Document.commit ~include_suffix d;
+  (d, Ok(`Null))
+
+let _ =
+  add_handler "compile" P.nil @@ fun d () ->
+  let (ret, out, err) = Document.compile d in
+  let json =
+    let items = [("stdout", `String(out)); ("stderr", `String(err))] in
+    let items =
+      match ret with
+      | Ok(_)    ->
+          ("success", `Bool(true )) :: items
+      | Error(s) ->
+          ("success", `Bool(false)) :: ("error", `String(s)) :: items
+    in
+    `Assoc(items)
+  in
+  (d, Ok(json))
+
+(* We assume a single Rocq source file is passed last. *)
+let parse_args : argv:string array -> string list * string = fun ~argv ->
+  let argc = Array.length argv in
+  if argc < 2 then panic "Usage: %s [ROCQ ARGS] FILE.v" argv.(0);
+  let args =
+    let args = ref [] in
+    for i = argc - 2 downto 1 do args := argv.(i) :: !args done;
+    !args
+  in
+  let file = argv.(argc - 1) in
+  if not (Filename.check_suffix file ".v") then
+    panic "Error: a Rocq source file is expected as last argument.";
+  (args, file)
+
+let _ =
+  let (args, file) = parse_args ~argv:Sys.argv in
+  let state = Document.init ~args ~file in
+  try Jsonrpc_tp_loop.run rset ~ic:stdin ~oc:stdout state with
+  | Jsonrpc_tp_loop.Error(s) ->
+      Printf.eprintf "Error: %s\n%!" s; exit 1
+  | Sys_error(s)             ->
+      Printf.eprintf "Error: %s\n%!" s; exit 1

@@ -1,0 +1,15 @@
+(lang dune 3.17)
+(name rocq-doc-manager)
+(generate_opam_files true)
+
+(source (github SkylabsAI/skylabs-fm))
+(authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  GPL-2.0-or-later)
+
+(package
+ (name rocq-doc-manager)
+ (synopsis "Tool for programatically editing Rocq source files.")
+ (depends
+  jsonrpc-tp
+  rocq-split))
