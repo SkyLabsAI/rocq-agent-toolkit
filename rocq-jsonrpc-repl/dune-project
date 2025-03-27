@@ -1,0 +1,15 @@
+(lang dune 3.17)
+(name rocq-jsonrpc-repl)
+(generate_opam_files true)
+
+(source (github SkylabsAI/skylabs-fm))
+(authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  GPL-2.0-or-later)
+
+(package
+ (name rocq-jsonrpc-repl)
+ (synopsis "Rocq toplevel with a JSON-RPC 2.0 interface.")
+ (depends
+  rocq-core
+  jsonrpc-tp))
