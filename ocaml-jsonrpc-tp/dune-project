@@ -1,0 +1,14 @@
+(lang dune 3.17)
+(name jsonrpc-tp)
+(generate_opam_files true)
+
+(source (github SkylabsAI/skylabs-fm))
+(authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  GPL-2.0-or-later)
+
+(package
+ (name jsonrpc-tp)
+ (synopsis "HTTP-like transfer protocol for JSON-RPC packets.")
+ (depends
+  jsonrpc))

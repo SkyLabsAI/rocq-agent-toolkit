@@ -1,0 +1,5 @@
+(library
+ (name jsonrpc_tp)
+ (public_name jsonrpc-tp)
+ (wrapped false)
+ (libraries yojson jsonrpc))

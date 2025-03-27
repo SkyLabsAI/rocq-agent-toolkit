@@ -1,0 +1,15 @@
+(executable
+ (name tp_wrap)
+ (public_name jsonrpc-tp.tp_wrap)
+ (package jsonrpc-tp))
+
+(executable
+ (name build_requests)
+ (public_name jsonrpc-tp.build_requests)
+ (package jsonrpc-tp))
+
+(executable
+ (name tp_unwrap)
+ (public_name jsonrpc-tp.tp_unwrap)
+ (package jsonrpc-tp)
+ (libraries jsonrpc-tp))
