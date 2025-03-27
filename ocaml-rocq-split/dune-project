@@ -1,21 +1,14 @@
 (lang dune 3.17)
-
-(name rocq_split)
-
+(name rocq-split)
 (generate_opam_files true)
 
-(source
- (github SkylabsAI/skylabs-fm))
-
+(source (github SkylabsAI/skylabs-fm))
 (authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
-
 (maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
-
 (license  GPL-2.0-or-later)
 
 (package
- (name rocq_split)
- (synopsis "Tool for spliting Rocq source files into sentences")
+ (name rocq-split)
+ (synopsis "Tool for spliting Rocq source files into sentences.")
  (depends
-  ocaml
   rocq-core))

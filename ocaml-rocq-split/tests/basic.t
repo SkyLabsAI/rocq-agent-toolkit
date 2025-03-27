@@ -22,38 +22,48 @@
     "dirpath": "test.dir.test",
     "items": [
       {
-        "cmd": "Require Import Stdlib.ZArith.BinInt.",
-        "cat": "synterp",
+        "kind": "synterp:Require",
+        "text": "Require Import Stdlib.ZArith.BinInt.",
         "bp": 0,
         "ep": 36
       },
-      { "blanks": "\n\n", "bp": 36, "ep": 38 },
-      { "cmd": "About nil.", "cat": "synpure", "bp": 38, "ep": 48 },
-      { "blanks": "\n", "bp": 48, "ep": 49 },
-      { "cmd": "Search cons.", "cat": "synpure", "bp": 49, "ep": 61 },
-      { "blanks": "    ", "bp": 61, "ep": 65 },
+      { "kind": "blanks", "text": "\n\n", "bp": 36, "ep": 38 },
+      { "kind": "synpure:Print", "text": "About nil.", "bp": 38, "ep": 48 },
+      { "kind": "blanks", "text": "\n", "bp": 48, "ep": 49 },
+      { "kind": "synpure:Search", "text": "Search cons.", "bp": 49, "ep": 61 },
+      { "kind": "blanks", "text": "    ", "bp": 61, "ep": 65 },
       {
-        "cmd": "Definition junk :=\n\n\nnat.",
-        "cat": "synpure",
+        "kind": "synpure:Definition",
+        "text": "Definition junk :=\n\n\nnat.",
         "bp": 65,
         "ep": 90
       },
-      { "blanks": "\n", "bp": 90, "ep": 91 },
-      { "cmd": "Check 12 < 42 <= 100.", "cat": "synpure", "bp": 91, "ep": 112 },
-      { "blanks": "\n\n\n", "bp": 112, "ep": 115 },
+      { "kind": "blanks", "text": "\n", "bp": 90, "ep": 91 },
       {
-        "cmd": "Theorem test : forall x : nat, x = x.",
-        "cat": "synpure",
+        "kind": "synpure:CheckMayEval",
+        "text": "Check 12 < 42 <= 100.",
+        "bp": 91,
+        "ep": 112
+      },
+      { "kind": "blanks", "text": "\n\n\n", "bp": 112, "ep": 115 },
+      {
+        "kind": "synpure:StartTheoremProof",
+        "text": "Theorem test : forall x : nat, x = x.",
         "bp": 115,
         "ep": 152
       },
-      { "blanks": "\n", "bp": 152, "ep": 153 },
-      { "cmd": "Proof.", "cat": "synpure", "bp": 153, "ep": 159 },
-      { "blanks": "\n  ", "bp": 159, "ep": 162 },
-      { "cmd": "intro x.", "cat": "synterp", "bp": 162, "ep": 170 },
-      { "blanks": "\n  ", "bp": 170, "ep": 173 },
-      { "cmd": "reflexivity.", "cat": "synterp", "bp": 173, "ep": 185 },
-      { "blanks": "\n", "bp": 185, "ep": 186 },
-      { "cmd": "Qed.", "cat": "synpure", "bp": 186, "ep": 190 }
+      { "kind": "blanks", "text": "\n", "bp": 152, "ep": 153 },
+      { "kind": "synpure:Proof", "text": "Proof.", "bp": 153, "ep": 159 },
+      { "kind": "blanks", "text": "\n  ", "bp": 159, "ep": 162 },
+      { "kind": "synterp:Extend", "text": "intro x.", "bp": 162, "ep": 170 },
+      { "kind": "blanks", "text": "\n  ", "bp": 170, "ep": 173 },
+      {
+        "kind": "synterp:Extend",
+        "text": "reflexivity.",
+        "bp": 173,
+        "ep": 185
+      },
+      { "kind": "blanks", "text": "\n", "bp": 185, "ep": 186 },
+      { "kind": "synpure:EndProof", "text": "Qed.", "bp": 186, "ep": 190 }
     ]
   }

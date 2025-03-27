@@ -1,0 +1,4 @@
+(executable
+ (public_name rocq_split)
+ (package rocq-split)
+ (libraries rocq-split))

@@ -3,4 +3,4 @@
  (deps
   (package coq-core)
   (package coq-stdlib)
-  (package rocq_split)))
+  (package rocq-split)))
