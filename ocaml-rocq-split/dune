@@ -1,0 +1,4 @@
+(executable
+ (public_name rocq_split)
+ (name main)
+ (libraries coq-core.toplevel yojson))
