@@ -77,10 +77,10 @@ that don't have a trivial (i.e., `null`) response payload.
 | ---------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `load_file`      |                                                                                                                   |
 | `insert_blanks`  |                                                                                                                   |
-| `insert_command` | Goals (as string) if any.                                                                                         |
+| `insert_command` | Object with `open_subgoals` (null or string), `new_constants` (string list), `new_inductives` (string list).      |
 | `revert_before`  |                                                                                                                   |
 | `clear_suffix`   |                                                                                                                   |
-| `run_step`       | Goals (as string) if any.                                                                                         |
+| `run_step`       | Just `null` if a blank step was run, same as `insert_command` otherwise.                                          |
 | `doc_prefix`     | List of objects with `kind` (string, `"blanks"` for blanks), `offset` (int), and `text` (string).                 |
 | `doc_suffix`     | List of objects with `kind` (string, `"blanks"` for blanks), and `text` (string).                                 |
 | `commit`         |                                                                                                                   |

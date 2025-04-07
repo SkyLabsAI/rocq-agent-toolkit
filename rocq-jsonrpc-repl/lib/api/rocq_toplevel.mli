@@ -58,11 +58,21 @@ val back_to : t -> sid:StateId.t -> (unit, string) result
     [Toplevel_mismatch] exception is raised if [sid] is not valid for [t]. *)
 val show_goal : t -> sid:StateId.t -> gid:int -> (string, string) result
 
+(** Type of data returned by the [run] function. *)
+type run_data = {
+  open_subgoals  : string option;
+  (** String representation of the open subgoals, if in a proof. *)
+  new_constants  : string list;
+  (** Full paths of newly-defined constants. *)
+  new_inductives : string list;
+  (** Full paths of newly-defined inductives. *)
+}
+
 (** [run t ~off ~text] runs the vernacular command from [text] in the toplevel
     [t], assuming its first character is at byte offset [off] in the "file".
-    If there are open goals after the command, they are returned. In case of
-    error, a location and error message is provided. *)
-val run : t -> off:int -> text:string -> (string option, loc * string) result
+    Data regarding the open subgoals and newly-defined symbols is returned. In
+    case of error, a location and error message is provided. *)
+val run : t -> off:int -> text:string -> (run_data, loc * string) result
 
 (** {2 Feedback} *)
 

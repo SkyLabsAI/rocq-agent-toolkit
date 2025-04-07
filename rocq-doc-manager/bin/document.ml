@@ -51,6 +51,15 @@ let load_file : t -> (unit, string) result = fun d ->
 
 type loc = Rocq_loc.t option
 
+type command_data = Rocq_toplevel.run_data = {
+  open_subgoals : string option;
+  new_constants : string list;
+  new_inductives : string list;
+}
+[@@deriving yojson]
+
+let command_data_to_json = command_data_to_yojson
+
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
   let len = String.length text in
   if len = 0 then () else
@@ -66,7 +75,7 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
       d.cursor_off <- d.cursor_off + len
 
 let insert_command : t -> text:string ->
-    (string option, loc * string) result = fun d ~text ->
+    (command_data, loc * string) result = fun d ~text ->
   let off = d.cursor_off in
   let sid_before = d.cursor_sid in
   let res = Rocq_toplevel.run d.toplevel ~off ~text in
@@ -107,14 +116,15 @@ let revert_before : t -> index:int -> unit = fun d ~index:i ->
 let clear_suffix : t -> unit = fun d ->
   d.suffix <- []
 
-let run_step : t -> (string option, loc * string) result = fun d ->
+let run_step : t -> (command_data option, loc * string) result = fun d ->
   match d.suffix with
   | []             -> Error(None, "no step left to run")
   | step :: suffix ->
   d.suffix <- suffix;
   match step with
   | RemBlanks({text})  -> insert_blanks d ~text; Ok(None)
-  | RemCommand({text}) -> insert_command d ~text
+  | RemCommand({text}) ->
+      Result.map (fun d -> Some(d)) (insert_command d ~text)
 
 let doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a)
      -> 'a list = fun d f ->

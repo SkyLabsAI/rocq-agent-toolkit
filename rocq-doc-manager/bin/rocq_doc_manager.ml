@@ -35,13 +35,9 @@ let _ =
         | Some(loc) -> Rocq_loc.to_json loc
       in
       (d, Error(Some(`Assoc([("loc", loc)])), s))
-  | Ok(goal)      ->
-      let goal =
-        match goal with
-        | None       -> `Null
-        | Some(goal) -> `String(goal)
-      in
-      (d, Ok(`Assoc([("goal", goal)])))
+  | Ok(data)      ->
+      let json = Document.command_data_to_json data in
+      (d, Ok(json))
 
 let _ =
   add_handler "revert_before" P.(cons int nil) @@ fun d (index, ()) ->
@@ -56,20 +52,18 @@ let _ =
 let _ =
   add_handler "run_step" P.nil @@ fun d () ->
   match Document.run_step d with
-  | Error(loc, s) ->
+  | Error(loc, s)  ->
       let loc =
         match loc with
         | None      -> `Null
         | Some(loc) -> Rocq_loc.to_json loc
       in
       (d, Error(Some(`Assoc([("loc", loc)])), s))
-  | Ok(goal)      ->
-      let goal =
-        match goal with
-        | None       -> `Null
-        | Some(goal) -> `String(goal)
-      in
-      (d, Ok(`Assoc([("goal", goal)])))
+  | Ok(None)       ->
+      (d, Ok(`Null))
+  | Ok(Some(data)) ->
+      let json = Document.command_data_to_json data in
+      (d, Ok(json))
 
 let _ =
   add_handler "doc_prefix" P.nil @@ fun d () ->

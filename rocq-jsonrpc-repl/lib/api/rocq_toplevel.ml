@@ -203,15 +203,49 @@ let show_goal : t -> sid:StateId.t -> gid:int -> (string, string) result =
   | `String(s) -> Ok(s)
   | _          -> panic "ill-typed payload"
 
+type run_data = {
+  open_subgoals  : string option;
+  new_constants  : string list;
+  new_inductives : string list;
+}
+
+let empty_run_data = {
+  open_subgoals  = None;
+  new_constants  = [];
+  new_inductives = [];
+}
+
 let run : t -> off:int -> text:string ->
-    (string option, loc * string) result = fun t ~off ~text ->
+    (run_data, loc * string) result = fun t ~off ~text ->
   check_not_stopped t;
   match request t ~f:"run" ~params:[`Int(off); `String(text)] with
   | Failure({loc; error})           ->
       let loc = Option.map loc_of_json loc in
       Error(loc, error)
-  | Success({payload = None      }) -> Ok(None)
+  | Success({payload = None      }) -> Ok(empty_run_data)
   | Success({payload = Some(json)}) ->
-  match json with
-  | `String(s) -> Ok(Some(s))
-  | _          -> panic "ill-typed payload"
+  let fields =
+    match json with
+    | `Assoc(fields) -> fields
+    | _              -> panic "ill-typed payload"
+  in
+  let open_subgoals =
+    match List.assoc_opt "open_subgoals" fields with
+    | Some(`String(os)) -> Some(os)
+    | Some(_          ) -> panic "ill-typed payload"
+    | None              -> None
+  in
+  let optional_string_list name =
+    let to_string json =
+      match json with
+      | `String(s) -> s
+      | _          -> panic "ill-typed payload"
+    in
+    match List.assoc_opt name fields with
+    | Some(`List(l)) -> List.map to_string l
+    | Some(_       ) -> panic "ill-typed payload"
+    | None           -> []
+  in
+  let new_constants = optional_string_list "new_constants" in
+  let new_inductives = optional_string_list "new_inductives" in
+  Ok({open_subgoals; new_constants; new_inductives})

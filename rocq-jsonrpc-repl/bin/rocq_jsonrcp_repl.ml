@@ -60,7 +60,7 @@ let feedback_filter : Feed.t -> json option = fun fb ->
     let text = Pp.string_of_ppcmds pp in
     let items = ("text", `String(text)) :: [] in
     let items =
-      match loc with 
+      match loc with
       | None      -> items
       | Some(loc) -> ("loc", Rocq_loc.to_json loc) :: items
     in
@@ -145,6 +145,38 @@ let _ =
   let data = `String(Pp.string_of_ppcmds goal) in
   (Some(data), state)
 
+let is_require : Vernacexpr.vernac_control -> bool = fun vernac ->
+  let open Vernacexpr in
+  match vernac.CAst.v.expr with
+  | VernacSynterp(VernacRequire(_,_,_)) -> true
+  | VernacSynterp(_) -> false
+  | VernacSynPure(_) -> false
+
+type globrefs = {
+  constants : Names.Constant.t list;
+  inductives : Names.MutInd.t list;
+}
+
+let empty_globrefs = {
+  constants = [];
+  inductives = [];
+}
+
+let globrefs_diff : Environ.env -> Environ.env -> globrefs = fun env1 env2 ->
+  let open Environ.Internal.View in
+  let {env_constants = c1; env_inductives = i1; _} = view env1 in
+  let {env_constants = c2; env_inductives = i2; _} = view env2 in
+  let f k v1 v2 cs =
+    match (v1, v2) with
+    | (None   , None   ) -> assert false
+    | (Some(_), None   ) -> assert false
+    | (None   , Some(_)) -> k :: cs
+    | (Some(_), Some(_)) -> assert false
+  in
+  let constants = Names.Cmap_env.symmetric_diff_fold f c1 c2 [] in
+  let inductives = Names.Mindmap_env.symmetric_diff_fold f i1 i2 [] in
+  {constants; inductives}
+
 let _ =
   let pspec = P.(cons int (cons string nil)) in
   add_handler "run" pspec @@ fun state (off, (text, ())) ->
@@ -157,9 +189,29 @@ let _ =
   | None         ->
       CErrors.user_err (Pp.str "End of file, no command found in input.")
   | Some(vernac) ->
+  let env1 = Global.env () in
   let new_state = Vernac.process_expr ~state vernac in
-  let goal = Option.map Printer.pr_open_subgoals new_state.proof in
-  let data = Option.map (fun pp -> `String(Pp.string_of_ppcmds pp)) goal in
+  let env2 = Global.env () in
+  let {constants; inductives} =
+    if is_require vernac then empty_globrefs else globrefs_diff env1 env2
+  in
+  let fields = [] in
+  let fields =
+    if constants = [] then fields else
+    let make c = `String(Names.Constant.to_string c) in
+    ("new_constants", `List(List.map make constants)) :: fields
+  in
+  let fields =
+    if inductives = [] then fields else
+    let make i = `String(Names.MutInd.to_string i) in
+    ("new_inductives", `List(List.map make inductives)) :: fields
+  in
+  let fields =
+    match new_state.proof with None -> fields | Some(proof) ->
+    let data = Pp.string_of_ppcmds (Printer.pr_open_subgoals proof) in
+    ("open_subgoals", `String(data)) :: fields
+  in
+  let data = if fields = [] then None else Some(`Assoc(fields)) in
   (data, new_state)
 
 let loop : state -> unit = fun state ->
