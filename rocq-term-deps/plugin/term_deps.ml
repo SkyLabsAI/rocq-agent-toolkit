@@ -1,0 +1,60 @@
+type t = Names.Cset.t * Names.Mindset.t
+
+let term_deps : Constr.t -> t = fun t ->
+  let constants = ref Names.Cset.empty in
+  let inductives = ref Names.Mindset.empty in
+  let rec term_deps t =
+    let _ =
+      match Constr.kind t with
+      | Constr.Const((c,_))     ->
+          constants := Names.Cset.add c !constants
+      | Constr.Ind((i,_))       ->
+          inductives := Names.Mindset.add (fst i) !inductives
+      | Constr.Construct((c,_)) ->
+          inductives := Names.Mindset.add (fst (fst c)) !inductives
+      | _                       ->
+          ()
+    in
+    Constr.iter term_deps t
+  in
+  term_deps t;
+  (!constants, !inductives)
+
+let print_term_deps : Libnames.qualid -> unit = fun r ->
+  let error pp =CErrors.user_err ?loc:r.CAst.loc pp in
+  let c =
+    let open Names.GlobRef in
+    let error kind =
+      let prefix = "This reference is not a constant, but " in
+      error Pp.(str prefix ++ str kind ++ str ".")
+    in
+    match Nametab.global r with
+    | ConstRef(c)     -> c
+    | VarRef(_)       -> error "a variable"
+    | IndRef(_)       -> error "an inductive"
+    | ConstructRef(_) -> error "a constructor"
+  in
+  let t =
+    let c = Global.lookup_constant c in
+    let open Declarations in
+    let error msg =
+      error Pp.(str "This constant is " ++ str msg ++ str ".")
+    in
+    match c.const_body with
+    | Undef(_)     -> error "undefined"
+    | Def(t)       -> t
+    | OpaqueDef(_) -> error "opaque"
+    | Primitive(_) -> error "a primitive"
+    | Symbol(_)    -> error "a symbol"
+  in
+  let (constants, inductives) = term_deps t in
+  let constants = Names.Cset.elements constants in
+  let inductives = Names.Mindset.elements inductives in
+  let pp_c c = Pp.(str "- " ++ Names.Constant.print c ++ fnl ()) in
+  let pp_i i = Pp.(str "- " ++ Names.MutInd.print i ++ fnl ()) in
+  let pp =
+    let open Pp in
+    str "Constants:" ++ fnl () ++ seq (List.map pp_c constants) ++
+    str "Inductives:" ++ fnl () ++ seq (List.map pp_i inductives)
+  in
+  Feedback.msg_notice pp
