@@ -1,0 +1,4 @@
+(executable
+ (name fake_repl)
+ (public_name rocq-fake-repl)
+ (package rocq-fake-repl))

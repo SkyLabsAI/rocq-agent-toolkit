@@ -1,0 +1,12 @@
+(lang dune 3.17)
+(name rocq-fake-repl)
+(generate_opam_files true)
+
+(source (github SkylabsAI/skylabs-fm))
+(authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  GPL-2.0-or-later)
+
+(package
+ (name rocq-fake-repl)
+ (synopsis "Fake Rocq toplevel meant at extracting command-line args from [dune coq top]."))
