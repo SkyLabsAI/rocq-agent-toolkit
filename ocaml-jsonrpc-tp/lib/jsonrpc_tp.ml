@@ -14,16 +14,16 @@ let recv_json ?(ic=stdin) () =
     try Scanf.sscanf line "Content-Length: %i\r" (fun i -> Some(i))
     with Scanf.Scan_failure(_) | Failure(_) | End_of_file -> None
   in
+  match len with
+  | None      ->
+      Error(Printf.sprintf "ill-formed package header %S" line)
+  | Some(len) ->
   match In_channel.input_line ic with
   | None       -> Error("end of file reached before header end")
   | Some(line) ->
   if line <> "\r" then
     Error(Printf.sprintf "ill-formed package header separator %S" line)
   else
-  match len with
-  | None      ->
-      Error(Printf.sprintf "ill-formed package header %S" line)
-  | Some(len) ->
   let data = Bytes.create len in
   try
     for i = 0 to len - 1 do

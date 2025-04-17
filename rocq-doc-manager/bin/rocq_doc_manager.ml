@@ -128,6 +128,6 @@ let _ =
   let state = Document.init ~args ~file in
   try Jsonrpc_tp_loop.run rset ~ic:stdin ~oc:stdout state with
   | Jsonrpc_tp_loop.Error(s) ->
-      Printf.eprintf "Error: %s\n%!" s; exit 1
+      Printf.eprintf "%s\n%!" s; exit 1
   | Sys_error(s)             ->
       Printf.eprintf "Error: %s\n%!" s; exit 1
