@@ -103,11 +103,14 @@ let run : 'a t -> ic:In_channel.t -> oc:Out_channel.t -> 'a -> 'a =
     | Some(C(spec,a)) ->
     let params =
       match params with
-      | None                -> []
-      | Some(`List([]    )) -> []
-      | Some(`List(params)) -> params
-      | _                   -> error "unexpected parameter shape"
+      | None                -> Some([])
+      | Some(`List([]    )) -> Some([])
+      | Some(`List(params)) -> Some(params)
+      | _                   -> None (* Unexpected shape, invalid. *)
     in
+    match params with
+    | None         -> Response.invalid_params ~oc id f; loop st
+    | Some(params) ->
     match parse_params spec params with
     | None         -> Response.invalid_params ~oc id f; loop st
     | Some(params) ->
