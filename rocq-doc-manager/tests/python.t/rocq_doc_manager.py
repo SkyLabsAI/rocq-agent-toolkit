@@ -1,25 +1,19 @@
 import subprocess
 import json
 from dataclasses import dataclass
-
-class RocqDocManagerError(Exception):
-    pass
-
-@dataclass
-class ErrorResponse:
-    message: str
-    data: any
-
-@dataclass
-class Response:
-    result: any
+from typing import Any
+from typing import Optional
+from typing import List
 
 class RocqDocManager:
-    _process = None
-    _counter = -1
+    _process : Optional[subprocess.Popen] = None
+    _counter : int = -1
 
-    def __init__(self, rocq_args, file_path):
-        args = ["rocq-doc-manager"] + rocq_args + [file_path]
+    class Error(Exception):
+        pass
+
+    def __init__(self, rocq_args, file_path) -> None:
+        args = ["roc-doc-manager"] + rocq_args + [file_path]
         self._counter = -1
         try:
             self._process = subprocess.Popen(
@@ -27,11 +21,22 @@ class RocqDocManager:
             )
         except Exception as e:
             self._process = None
-            raise RocqDocManagerError(f"Failed to start process: {e}") from e
+            raise self.Error(f"Failed to start process: {e}") from e
 
-    def request(self, method, params):
+    @dataclass
+    class Err:
+        message: str
+        data: Any
+
+    @dataclass
+    class Resp:
+        result: Any
+
+    def request(self, method : str, params : List[Any]) -> Resp | Err:
         if self._process is None:
-            raise RocqDocManagerError("Not running anymore.")
+            raise self.Error("Not running anymore.")
+        assert(self._process.stdin is not None)
+        assert(self._process.stdout is not None)
         # Getting a fresh request id.
         self._counter = self._counter + 1
         fresh_id = self._counter
@@ -55,21 +60,25 @@ class RocqDocManager:
         response = json.loads(response)
         if "error" in response:
             error = response.get("error")
-            return ErrorResponse(error.get("message"), error.get("data"))
+            return self.Err(error.get("message"), error.get("data"))
         else:
-            return Response(response.get("result"))
+            return self.Resp(response.get("result"))
 
-    def quit(self):
+    def quit(self) -> None:
         _ = self.request("quit", [])
+        assert(self._process is not None)
         self._process.wait()
         self._process = None
 
 def main():
-    dm = RocqDocManager([], "test.v")
-    print(dm.request("non-existant", []))
-    print(dm.request("load_file", []))
-    print(dm.request("doc_suffix", []))
-    dm.quit()
+    try:
+        dm = RocqDocManager([], "test.v")
+        print(dm.request("non-existant", []))
+        print(dm.request("load_file", []))
+        print(dm.request("doc_suffix", []))
+        dm.quit()
+    except RocqDocManager.Error as e:
+        print(e)
 
 if __name__ == '__main__':
     main()
