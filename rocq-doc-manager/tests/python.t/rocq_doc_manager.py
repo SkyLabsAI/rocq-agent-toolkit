@@ -2,7 +2,7 @@ import subprocess
 import json
 from dataclasses import dataclass
 
-class RocqDocmanagerError(Exception):
+class RocqDocManagerError(Exception):
     pass
 
 @dataclass
@@ -60,9 +60,7 @@ class RocqDocManager:
             return Response(response.get("result"))
 
     def quit(self):
-        if self._process is None:
-            return
-        self.request("quit", [])
+        _ = self.request("quit", [])
         self._process.wait()
         self._process = None
 
