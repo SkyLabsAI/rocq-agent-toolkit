@@ -171,7 +171,7 @@ let globrefs_diff : Environ.env -> Environ.env -> globrefs = fun env1 env2 ->
     | (None   , None   ) -> assert false
     | (Some(_), None   ) -> assert false
     | (None   , Some(_)) -> k :: cs
-    | (Some(_), Some(_)) -> assert false
+    | (Some(_), Some(_)) -> cs (* May occur on, e.g., section closing. *)
   in
   let constants = Names.Cmap_env.symmetric_diff_fold f c1 c2 [] in
   let inductives = Names.Mindmap_env.symmetric_diff_fold f i1 i2 [] in
