@@ -1,8 +1,17 @@
+(library
+ (public_name rocq-doc-manager.lib)
+ (name rocq_doc_manager)
+ (wrapped false)
+ (modules document)
+ (preprocess (pps ppx_deriving_yojson))
+ (libraries
+  rocq-split.api
+  rocq-jsonrpc-repl.api
+  ppx_deriving_yojson.runtime))
+
 (executable
  (public_name rocq-doc-manager)
  (name rocq_doc_manager)
+ (modules rocq_doc_manager)
  (package rocq-doc-manager)
- (preprocess (pps ppx_deriving_yojson))
- (libraries
-  coq-core.toplevel jsonrpc-tp rocq-split.api rocq-jsonrpc-repl.api
-  ppx_deriving_yojson.runtime))
+ (libraries rocq-doc-manager.lib))
