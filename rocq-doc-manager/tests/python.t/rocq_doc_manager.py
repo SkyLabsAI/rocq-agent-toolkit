@@ -13,7 +13,7 @@ class RocqDocManager:
         pass
 
     def __init__(self, rocq_args, file_path) -> None:
-        args = ["roc-doc-manager"] + rocq_args + [file_path]
+        args = ["rocq-doc-manager"] + rocq_args + [file_path]
         self._counter = -1
         try:
             self._process = subprocess.Popen(
