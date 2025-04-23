@@ -1,0 +1,7 @@
+(install
+ (section lib)
+ (files
+  (__init__.py as python/__init__.py)
+  (pyproject.toml as python/pyproject.toml)
+  (README.md as python/README.md)
+  (rocq_doc_manager.py as python/rocq_doc_manager.py)))

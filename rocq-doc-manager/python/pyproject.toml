@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend= "setuptools.build_meta"
+
+[project]
+name = "rocq_doc_manager"
+version = "0.0.1"
+authors = [
+  { name="Rodolphe Lepigre", email="rodolphe.lepigre@skyabs-ai.com" },
+]
+description = "Python API for the Rocq document manager."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "GPL-2.0-or-later"
+
+[project.urls]
+Homepage = "https://github.com/SkylabsAI/skylabs-fm"
+Issues = "https://github.com/SkylabsAI/skylabs-fm/issues"

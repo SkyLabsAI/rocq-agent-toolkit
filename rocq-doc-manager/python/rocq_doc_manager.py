@@ -69,16 +69,3 @@ class RocqDocManager:
         assert(self._process is not None)
         self._process.wait()
         self._process = None
-
-def main():
-    try:
-        dm = RocqDocManager([], "test.v")
-        print(dm.request("non-existant", []))
-        print(dm.request("load_file", []))
-        print(dm.request("doc_suffix", []))
-        dm.quit()
-    except RocqDocManager.Error as e:
-        print(e)
-
-if __name__ == '__main__':
-    main()
