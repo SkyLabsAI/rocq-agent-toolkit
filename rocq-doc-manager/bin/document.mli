@@ -8,6 +8,8 @@ val load_file : t -> (unit, string) result
 
 type loc = Rocq_loc.t option
 
+val loc_to_json : loc -> Yojson.Safe.t
+
 type command_data = {
   open_subgoals : string option;
   new_constants : string list;
@@ -30,6 +32,18 @@ val doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a) -> 'a list
 
 val doc_suffix : t -> (kind:string -> text:string -> 'a) -> 'a list
 
+val has_suffix : t -> bool
+
 val commit : t -> include_suffix:bool -> unit
 
 val compile : t -> (unit, string) result * string * string
+
+type feedback = {
+  kind : [`Debug | `Info | `Notice | `Warning | `Error];
+  text : string;
+  loc  : loc;
+}
+
+val feedback_to_json : feedback -> Yojson.Safe.t
+
+val get_feedback : t -> feedback list

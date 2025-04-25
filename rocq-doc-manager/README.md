@@ -43,8 +43,10 @@ The following table lists the available requests.
 | `run_step`       |                         | Advance the cursor by stepping over an unprocessed command.   |
 | `doc_prefix`     |                         | Give the list of all processed commands (before the cursor).  |
 | `doc_suffix`     |                         | Give the list of all unprocessed commands (after the cursor). |
+| `has_suffix`     |                         | Indicates whether there is a document suffix.                 |
 | `commit`         | `include_suffix` (bool) | Write the current document contents to the file.              |
 | `compile`        |                         | Compile the current contents of the file with `rocq compile`. |
+| `get_feedback`   |                         | Gets Rocq's feedback for the last run command.                |
 | `quit`           |                         | Stop the document manager.                                    |
 
 Requests That Can Fail
@@ -63,8 +65,10 @@ extra failure payload.
 | `run_step`       | Yes       | Object with `loc` field (error location, `null` if none). |
 | `doc_prefix`     | No        |                                                           |
 | `doc_suffix`     | No        |                                                           |
+| `has_suffix`     | No        |                                                           |
 | `commit`         | No        |                                                           |
 | `compile`        | No        |                                                           |
+| `get_feedback`   | No        |                                                           |
 | `quit`           | No        |                                                           |
 
 Response Payload
@@ -83,6 +87,8 @@ that don't have a trivial (i.e., `null`) response payload.
 | `run_step`       | Just `null` if a blank step was run, same as `insert_command` otherwise.                                          |
 | `doc_prefix`     | List of objects with `kind` (string, `"blanks"` for blanks), `offset` (int), and `text` (string).                 |
 | `doc_suffix`     | List of objects with `kind` (string, `"blanks"` for blanks), and `text` (string).                                 |
+| `has_suffix`     | Boolean.                                                                                                          |
 | `commit`         |                                                                                                                   |
 | `compile`        | Object with `success` (bool), `stdout` (string), `stderr` (string), `error` (string, only if success is `false`). |
+| `get_feedback`   | List of objects with `kind` (array with single string), `text` (string), `loc` (location).                        |
 | `quit`           |                                                                                                                   |

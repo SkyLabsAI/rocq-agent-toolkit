@@ -29,11 +29,7 @@ let _ =
   add_handler "insert_command" P.(cons string nil) @@ fun d (text, ()) ->
   match Document.insert_command d ~text with
   | Error(loc, s) ->
-      let loc =
-        match loc with
-        | None      -> `Null
-        | Some(loc) -> Rocq_loc.to_json loc
-      in
+      let loc = Document.loc_to_json loc in
       (d, Error(Some(`Assoc([("loc", loc)])), s))
   | Ok(data)      ->
       let json = Document.command_data_to_json data in
@@ -53,11 +49,7 @@ let _ =
   add_handler "run_step" P.nil @@ fun d () ->
   match Document.run_step d with
   | Error(loc, s)  ->
-      let loc =
-        match loc with
-        | None      -> `Null
-        | Some(loc) -> Rocq_loc.to_json loc
-      in
+      let loc = Document.loc_to_json loc in
       (d, Error(Some(`Assoc([("loc", loc)])), s))
   | Ok(None)       ->
       (d, Ok(`Null))
@@ -89,6 +81,11 @@ let _ =
   (d, Ok(`List(prefix)))
 
 let _ =
+  add_handler "has_suffix" P.nil @@ fun d () ->
+  let b = Document.has_suffix d in
+  (d, Ok(`Bool(b)))
+
+let _ =
   add_handler "commit" P.(cons bool nil) @@ fun d (include_suffix, ()) ->
   Document.commit ~include_suffix d;
   (d, Ok(`Null))
@@ -108,6 +105,11 @@ let _ =
     `Assoc(items)
   in
   (d, Ok(json))
+
+let _ =
+  add_handler "get_feedback" P.nil @@ fun d () ->
+  let feedback = Document.get_feedback d in
+  (d, Ok(`List(List.map Document.feedback_to_json feedback)))
 
 (* We assume a single Rocq source file is passed last. *)
 let parse_args : argv:string array -> string list * string = fun ~argv ->

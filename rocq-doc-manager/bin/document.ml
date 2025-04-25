@@ -51,6 +51,18 @@ let load_file : t -> (unit, string) result = fun d ->
 
 type loc = Rocq_loc.t option
 
+let loc_to_yojson loc =
+  match loc with
+  | None      -> `Null
+  | Some(loc) -> Rocq_loc.to_json loc
+
+let loc_of_yojson json =
+  match json with
+  | `Null -> Ok(None)
+  | _     -> Result.map (fun o -> Some(o)) (Rocq_loc.of_json json)
+
+let loc_to_json = loc_to_yojson
+
 type command_data = Rocq_toplevel.run_data = {
   open_subgoals : string option;
   new_constants : string list;
@@ -150,6 +162,9 @@ let doc_suffix : t -> (kind:string -> text:string -> 'a)
   in
   build d.suffix
 
+let has_suffix : t -> bool = fun d ->
+  d.suffix <> []
+
 let commit : t -> include_suffix:bool -> unit = fun d ~include_suffix ->
   Out_channel.with_open_text d.file @@ fun oc ->
   let output_processed p =
@@ -188,3 +203,16 @@ let compile : t -> (unit, string) result * string * string = fun d ->
   let err = read_file stderr in
   Sys.remove stderr;
   (ret, out, err)
+
+type feedback = Rocq_toplevel.feedback = {
+  kind : [`Debug | `Info | `Notice | `Warning | `Error];
+  text : string;
+  loc  : loc;
+}
+[@@deriving yojson]
+
+let feedback_to_json = feedback_to_yojson
+
+let get_feedback : t -> feedback list = fun d ->
+  try Rocq_toplevel.get_feedback d.toplevel with
+  | Rocq_toplevel.No_feedback -> []
