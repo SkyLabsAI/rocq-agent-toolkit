@@ -2,6 +2,7 @@
  (name plugin)
  (public_name rocq-term-deps.plugin)
  (libraries
-  rocq-runtime.vernac))
+  rocq-runtime.vernac
+  yojson))
 
 (coq.pp (modules g_term_deps))

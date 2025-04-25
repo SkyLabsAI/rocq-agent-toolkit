@@ -10,4 +10,7 @@ VERNAC COMMAND EXTEND TermDeps CLASSIFIED AS QUERY
 | [ "DepsOf" reference(r) ] -> {
     Term_deps.print_term_deps r
   }
+| [ "DepsOfJSON" reference(r) ] -> {
+    Term_deps.print_json_term_deps r
+  }
 END

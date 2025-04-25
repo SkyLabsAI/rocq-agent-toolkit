@@ -20,20 +20,22 @@ let term_deps : Constr.t -> t = fun t ->
   term_deps t;
   (!constants, !inductives)
 
-let print_term_deps : Libnames.qualid -> unit = fun r ->
-  let error pp =CErrors.user_err ?loc:r.CAst.loc pp in
-  let c =
-    let open Names.GlobRef in
-    let error kind =
-      let prefix = "This reference is not a constant, but " in
-      error Pp.(str prefix ++ str kind ++ str ".")
-    in
-    match Nametab.global r with
-    | ConstRef(c)     -> c
-    | VarRef(_)       -> error "a variable"
-    | IndRef(_)       -> error "an inductive"
-    | ConstructRef(_) -> error "a constructor"
+let constant_of_qualid : Libnames.qualid -> Names.Constant.t = fun r ->
+  let error pp = CErrors.user_err ?loc:r.CAst.loc pp in
+  let open Names.GlobRef in
+  let error kind =
+    let prefix = "This reference is not a constant, but " in
+    error Pp.(str prefix ++ str kind ++ str ".")
   in
+  match Nametab.global r with
+  | ConstRef(c)     -> c
+  | VarRef(_)       -> error "a variable"
+  | IndRef(_)       -> error "an inductive"
+  | ConstructRef(_) -> error "a constructor"
+
+let print_term_deps : Libnames.qualid -> unit = fun r ->
+  let error pp = CErrors.user_err ?loc:r.CAst.loc pp in
+  let c = constant_of_qualid r in
   let t =
     let c = Global.lookup_constant c in
     let open Declarations in
@@ -58,3 +60,32 @@ let print_term_deps : Libnames.qualid -> unit = fun r ->
     str "Inductives:" ++ fnl () ++ seq (List.map pp_i inductives)
   in
   Feedback.msg_notice pp
+
+let print_json_term_deps : Libnames.qualid -> unit = fun r ->
+  let c = constant_of_qualid r in
+  let (kind, def) =
+    let c = Global.lookup_constant c in
+    match c.const_body with
+    | Declarations.Undef(_)     -> ("Undef"    , None   )
+    | Declarations.Def(t)       -> ("Def"      , Some(t))
+    | Declarations.OpaqueDef(_) -> ("OpaqueDef", None   )
+    | Declarations.Primitive(_) -> ("Primitive", None   )
+    | Declarations.Symbol(_)    -> ("Symbol"   , None   )
+  in
+  let fields =
+    ("name", `String(Names.Constant.to_string c)) ::
+    ("kind", `String(kind)                      ) ::
+    match def with
+    | None      -> []
+    | Some(def) ->
+    let (constants, inductives) = term_deps def in
+    let constants = Names.Cset.elements constants in
+    let inductives = Names.Mindset.elements inductives in
+    let make_ind i = `String(Names.MutInd.to_string i) in
+    let make_cst c = `String(Names.Constant.to_string c) in
+    ("inductive_deps", `List(List.map make_ind inductives)) ::
+    ("constant_deps" , `List(List.map make_cst constants) ) :: []
+  in
+  let json : Yojson.Safe.t = `Assoc(fields) in
+  let data = Yojson.Safe.pretty_to_string ~std:true json in
+  Feedback.msg_notice (Pp.str data)
