@@ -3,4 +3,5 @@
  (deps
   (package coq-core)
   (package coq-stdlib)
-  (package rocq-doc-manager)))
+  (package rocq-doc-manager)
+  (package rocq-term-deps)))

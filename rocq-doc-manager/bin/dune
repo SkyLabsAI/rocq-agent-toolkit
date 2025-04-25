@@ -15,3 +15,10 @@
  (modules rocq_doc_manager)
  (package rocq-doc-manager)
  (libraries rocq-doc-manager.lib))
+
+(executable
+ (public_name rocq-get-deps)
+ (name rocq_get_deps)
+ (modules rocq_get_deps)
+ (package rocq-doc-manager)
+ (libraries rocq-doc-manager.lib))
