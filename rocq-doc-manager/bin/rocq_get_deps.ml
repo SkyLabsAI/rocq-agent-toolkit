@@ -23,20 +23,24 @@ let main : Document.t -> unit = fun state ->
   end;
   let handle_inductive s =
     let fields = [("name", `String(s)); ("kind", `String("Inductive"))] in
-    json_items := `Assoc(fields) :: !json_items
+    json_items := (Lazy.from_val (`Assoc(fields))) :: !json_items
   in
   let handle_constant s =
-    let text = "DepsOfJSON " ^ s ^ "." in
-    match Document.insert_command state ~text with
-    | Error(_,s) -> panic "Error: %s" s
-    | Ok(_)      ->
-        let open Document in
-        let feedback = Document.get_feedback state in
-        match List.find_opt (fun f -> f.kind = `Notice) feedback with
-        | None    -> assert false
-        | Some(f) ->
-        json_items := Yojson.Safe.from_string f.text :: !json_items;
-        Document.insert_blanks state ~text:"\n"
+    let json () =
+      let text = "DepsOfJSON " ^ s ^ "." in
+      match Document.insert_command state ~text with
+      | Error(_,s) -> panic "Error: %s" s
+      | Ok(_)      ->
+      let open Document in
+      let feedback = Document.get_feedback state in
+      match List.find_opt (fun f -> f.kind = `Notice) feedback with
+      | None    -> assert false
+      | Some(f) ->
+      let json = Yojson.Safe.from_string f.text in
+      Document.insert_blanks state ~text:"\n";
+      json
+    in
+    json_items := Lazy.from_fun json :: !json_items;
   in
   let rec loop () =
     match Document.has_suffix state with
@@ -51,7 +55,7 @@ let main : Document.t -> unit = fun state ->
     loop ()
   in
   loop ();
-  let json = `List(List.rev !json_items) in
+  let json = `List(List.rev_map Lazy.force !json_items) in
   let json = Yojson.Safe.pretty_to_string ~std:true json in
   Printf.printf "%s%!" json
 

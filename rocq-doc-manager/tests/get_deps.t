@@ -10,6 +10,10 @@
   >   intro x.
   >   reflexivity.
   > Qed.
+  > Section junk.
+  >   Context (i j k : nat).
+  >   Definition f := i + j + k.
+  > End junk.
   > EOF
 
   $ rocq-get-deps -Q . test.dir test.v
@@ -21,5 +25,11 @@
       "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
       "constant_deps": [ "Corelib.Init.Nat.mul", "Corelib.Init.Nat.add" ]
     },
-    { "name": "test.dir.test.test", "kind": "OpaqueDef" }
+    { "name": "test.dir.test.test", "kind": "OpaqueDef" },
+    {
+      "name": "test.dir.test.f",
+      "kind": "Def",
+      "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+      "constant_deps": [ "Corelib.Init.Nat.add" ]
+    }
   ]
