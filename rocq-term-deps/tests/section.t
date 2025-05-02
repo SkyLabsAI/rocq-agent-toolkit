@@ -7,20 +7,49 @@
   >   Context (k m n : nat).
   >   Definition f := k + m + n.
   >   DepsOfJSON f.
+  >   DepsOfJSON test.dir.test.junk.f.
+  >   Definition g := f + k.
+  >   DepsOfJSON test.dir.test.junk.g.
   > End junk.
   > DepsOfJSON f.
+  > DepsOfJSON test.dir.test.f.
+  > DepsOfJSON test.dir.test.g.
   > EOF
 
-  $ coqc test.v
+  $ coqc -Q . test.dir test.v
   {
-    "name": "test.f",
+    "name": "test.dir.test.f",
     "kind": "Def",
     "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
     "constant_deps": [ "Corelib.Init.Nat.add" ]
   }
   {
-    "name": "test.f",
+    "name": "test.dir.test.f",
     "kind": "Def",
     "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
     "constant_deps": [ "Corelib.Init.Nat.add" ]
+  }
+  {
+    "name": "test.dir.test.g",
+    "kind": "Def",
+    "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+    "constant_deps": [ "Corelib.Init.Nat.add", "test.dir.test.f" ]
+  }
+  {
+    "name": "test.dir.test.f",
+    "kind": "Def",
+    "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+    "constant_deps": [ "Corelib.Init.Nat.add" ]
+  }
+  {
+    "name": "test.dir.test.f",
+    "kind": "Def",
+    "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+    "constant_deps": [ "Corelib.Init.Nat.add" ]
+  }
+  {
+    "name": "test.dir.test.g",
+    "kind": "Def",
+    "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+    "constant_deps": [ "Corelib.Init.Nat.add", "test.dir.test.f" ]
   }
