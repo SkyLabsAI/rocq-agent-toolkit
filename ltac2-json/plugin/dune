@@ -1,0 +1,6 @@
+(library
+ (name plugin)
+ (public_name ltac2-json.plugin)
+ (libraries
+  coq-core.plugins.ltac2
+  yojson))
