@@ -60,12 +60,16 @@ val show_goal : t -> sid:StateId.t -> gid:int -> (string, string) result
 
 (** Type of data returned by the [run] function. *)
 type run_data = {
-  open_subgoals  : string option;
+  open_subgoals      : string option;
   (** String representation of the open subgoals, if in a proof. *)
-  new_constants  : string list;
-  (** Full paths of newly-defined constants. *)
-  new_inductives : string list;
-  (** Full paths of newly-defined inductives. *)
+  new_constants      : string list;
+  (** Full paths of newly-defined constants in the environment. *)
+  removed_constants  : string list;
+  (** Full paths of removed constants in the environemnt. *)
+  new_inductives     : string list;
+  (** Full paths of newly-defined inductives in the environment. *)
+  removed_inductives : string list;
+  (** Full paths of removed inductives in the environment. *)
 }
 
 (** [run t ~off ~text] runs the vernacular command from [text] in the toplevel

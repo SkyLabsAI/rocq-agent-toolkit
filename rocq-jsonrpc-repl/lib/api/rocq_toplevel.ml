@@ -204,15 +204,19 @@ let show_goal : t -> sid:StateId.t -> gid:int -> (string, string) result =
   | _          -> panic "ill-typed payload"
 
 type run_data = {
-  open_subgoals  : string option;
-  new_constants  : string list;
-  new_inductives : string list;
+  open_subgoals      : string option;
+  new_constants      : string list;
+  removed_constants  : string list;
+  new_inductives     : string list;
+  removed_inductives : string list;
 }
 
 let empty_run_data = {
-  open_subgoals  = None;
-  new_constants  = [];
-  new_inductives = [];
+  open_subgoals      = None;
+  new_constants      = [];
+  removed_constants  = [];
+  new_inductives     = [];
+  removed_inductives = [];
 }
 
 let run : t -> off:int -> text:string ->
@@ -246,6 +250,10 @@ let run : t -> off:int -> text:string ->
     | Some(_       ) -> panic "ill-typed payload"
     | None           -> []
   in
-  let new_constants = optional_string_list "new_constants" in
-  let new_inductives = optional_string_list "new_inductives" in
-  Ok({open_subgoals; new_constants; new_inductives})
+  Ok({
+    open_subgoals;
+    new_constants = optional_string_list "new_constants";
+    removed_constants = optional_string_list "removed_constants";
+    new_inductives = optional_string_list "new_inductives";
+    removed_inductives = optional_string_list "removed_inductives";
+  })

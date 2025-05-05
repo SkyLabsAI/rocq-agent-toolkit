@@ -13,7 +13,9 @@ val loc_to_json : loc -> Yojson.Safe.t
 type command_data = {
   open_subgoals : string option;
   new_constants : string list;
+  removed_constants : string list;
   new_inductives : string list;
+  removed_inductives : string list;
 }
 
 val command_data_to_json : command_data -> Yojson.Safe.t

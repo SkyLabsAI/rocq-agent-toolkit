@@ -12,6 +12,21 @@ let or_panic : ('a, string) result -> 'a = fun res ->
   | Error(s) -> panic "Error: %s" s
   | Ok(v)    -> v
 
+module List = struct
+  include List
+
+  let rev_map_filter : ('a -> 'b option) -> 'a list -> 'b list = fun f xs ->
+    let rec filter acc xs =
+      match xs with
+      | []      -> acc
+      | x :: xs ->
+      match f x with
+      | None    -> filter acc xs
+      | Some(v) -> filter (v :: acc) xs
+    in
+    filter [] xs
+end
+
 let main : Document.t -> unit = fun state ->
   let json_items = ref [] in
   or_panic (Document.load_file state);
@@ -21,12 +36,21 @@ let main : Document.t -> unit = fun state ->
     | Error(_,s) -> panic "Error: %s" s
     | Ok(_)      -> Document.insert_blanks state ~text:"\n"
   end;
+  let removed_inductives = Hashtbl.create 11 in
+  let handle_removed_inductive s = Hashtbl.add removed_inductives s () in
+  let removed_constants = Hashtbl.create 11 in
+  let handle_removed_constant s = Hashtbl.add removed_constants s () in
   let handle_inductive s =
-    let fields = [("name", `String(s)); ("kind", `String("Inductive"))] in
-    json_items := (Lazy.from_val (`Assoc(fields))) :: !json_items
+    let json () =
+      if Hashtbl.mem removed_inductives s then None else
+      let fields = [("name", `String(s)); ("kind", `String("Inductive"))] in
+      Some(`Assoc(fields))
+    in
+    json_items := Lazy.from_fun json :: !json_items
   in
   let handle_constant s =
     let json () =
+      if Hashtbl.mem removed_constants s then None else
       let text = "DepsOfJSON " ^ s ^ "." in
       match Document.insert_command state ~text with
       | Error(_,s) -> panic "Error: %s" s
@@ -38,7 +62,7 @@ let main : Document.t -> unit = fun state ->
       | Some(f) ->
       let json = Yojson.Safe.from_string f.text in
       Document.insert_blanks state ~text:"\n";
-      json
+      Some(json)
     in
     json_items := Lazy.from_fun json :: !json_items;
   in
@@ -50,12 +74,14 @@ let main : Document.t -> unit = fun state ->
     | Error(_,s)  -> panic "Error: %s" s
     | Ok(None)    -> loop ()
     | Ok(Some(d)) ->
+    List.iter handle_removed_inductive d.Document.removed_inductives;
+    List.iter handle_removed_constant d.Document.removed_constants;
     List.iter handle_inductive d.Document.new_inductives;
     List.iter handle_constant d.Document.new_constants;
     loop ()
   in
   loop ();
-  let json = `List(List.rev_map Lazy.force !json_items) in
+  let json = `List(List.rev_map_filter Lazy.force !json_items) in
   let json = Yojson.Safe.pretty_to_string ~std:true json in
   Printf.printf "%s%!" json
 

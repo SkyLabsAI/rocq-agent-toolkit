@@ -10,6 +10,9 @@
   >   intro x.
   >   reflexivity.
   > Qed.
+  > Module Type mt.
+  >   Definition d := 1 + 1.
+  > End mt.
   > Section junk.
   >   Context (i j k : nat).
   >   Definition f := i + j + k.

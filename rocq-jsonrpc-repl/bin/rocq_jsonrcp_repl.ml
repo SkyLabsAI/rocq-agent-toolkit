@@ -154,28 +154,36 @@ let is_require : Vernacexpr.vernac_control -> bool = fun vernac ->
 
 type globrefs = {
   constants : Names.Constant.t list;
+  removed_constants : Names.Constant.t list;
   inductives : Names.MutInd.t list;
+  removed_inductives : Names.MutInd.t list;
 }
 
 let empty_globrefs = {
   constants = [];
+  removed_constants = [];
   inductives = [];
+  removed_inductives = [];
 }
 
 let globrefs_diff : Environ.env -> Environ.env -> globrefs = fun env1 env2 ->
   let open Environ.Internal.View in
   let {env_constants = c1; env_inductives = i1; _} = view env1 in
   let {env_constants = c2; env_inductives = i2; _} = view env2 in
-  let f k v1 v2 cs =
+  let f k v1 v2 ((removed_cs, added_cs) as cs) =
     match (v1, v2) with
     | (None   , None   ) -> assert false
-    | (Some(_), None   ) -> assert false
-    | (None   , Some(_)) -> k :: cs
+    | (Some(_), None   ) -> (k :: removed_cs, added_cs)
+    | (None   , Some(_)) -> (removed_cs, k :: added_cs)
     | (Some(_), Some(_)) -> cs (* May occur on, e.g., section closing. *)
   in
-  let constants = Names.Cmap_env.symmetric_diff_fold f c1 c2 [] in
-  let inductives = Names.Mindmap_env.symmetric_diff_fold f i1 i2 [] in
-  {constants; inductives}
+  let (removed_constants, constants) =
+    Names.Cmap_env.symmetric_diff_fold f c1 c2 ([], [])
+  in
+  let (removed_inductives, inductives) =
+    Names.Mindmap_env.symmetric_diff_fold f i1 i2 ([], [])
+  in
+  {constants; removed_constants; inductives; removed_inductives}
 
 let _ =
   let pspec = P.(cons int (cons string nil)) in
@@ -192,7 +200,7 @@ let _ =
   let env1 = Global.env () in
   let new_state = Vernac.process_expr ~state vernac in
   let env2 = Global.env () in
-  let {constants; inductives} =
+  let {constants; removed_constants; inductives; removed_inductives} =
     if is_require vernac then empty_globrefs else globrefs_diff env1 env2
   in
   let fields = [] in
@@ -202,9 +210,19 @@ let _ =
     ("new_constants", `List(List.map make constants)) :: fields
   in
   let fields =
+    if removed_constants = [] then fields else
+    let make c = `String(Names.Constant.to_string c) in
+    ("removed_constants", `List(List.map make removed_constants)) :: fields
+  in
+  let fields =
     if inductives = [] then fields else
     let make i = `String(Names.MutInd.to_string i) in
     ("new_inductives", `List(List.map make inductives)) :: fields
+  in
+  let fields =
+    if removed_inductives = [] then fields else
+    let make i = `String(Names.MutInd.to_string i) in
+    ("removed_inductives", `List(List.map make removed_inductives)) :: fields
   in
   let fields =
     match new_state.proof with None -> fields | Some(proof) ->

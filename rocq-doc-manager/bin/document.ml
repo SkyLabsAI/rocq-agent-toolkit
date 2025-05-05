@@ -65,8 +65,10 @@ let loc_to_json = loc_to_yojson
 
 type command_data = Rocq_toplevel.run_data = {
   open_subgoals : string option;
-  new_constants : string list;
-  new_inductives : string list;
+  new_constants : (string list [@default []]);
+  removed_constants : (string list [@default []]);
+  new_inductives : (string list [@default []]);
+  removed_inductives : (string list [@default []]);
 }
 [@@deriving yojson]
 
