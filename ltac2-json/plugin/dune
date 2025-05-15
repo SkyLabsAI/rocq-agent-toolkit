@@ -1,5 +1,5 @@
 (library
- (name plugin)
+ (name ltac2_json_plugin)
  (public_name ltac2-json.plugin)
  (libraries
   coq-core.plugins.ltac2
