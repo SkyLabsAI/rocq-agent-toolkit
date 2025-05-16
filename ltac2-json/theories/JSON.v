@@ -25,16 +25,25 @@ Ltac2 @ external of_string : string -> t option :=
   "ltac2-json" "of_string".
 
 Ltac2 json_of_int : int -> json := fun i =>
-  Int(i).
+  Int i.
 
 Ltac2 json_of_bool : bool -> json := fun b =>
-  Bool(b).
+  Bool b.
+
+Ltac2 json_of_string : string -> json := fun s =>
+  String s.
+
+Ltac2 json_of_floag : float -> json := fun f =>
+  Float f.
 
 Ltac2 json_of_option : ('a -> json) -> 'a option -> json := fun f o =>
   match o with
   | None => Null
-  | Some(v) => f v
+  | Some v => f v
   end.
 
 Ltac2 json_of_list : ('a -> json) -> 'a list -> json := fun f l =>
-  List(List.map f l).
+  List (List.map f l).
+
+Ltac2 json_of_array : ('a -> json) -> 'a array -> json := fun f a =>
+  json_of_list f (Array.to_list a).
