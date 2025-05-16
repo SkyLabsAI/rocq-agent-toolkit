@@ -15,8 +15,8 @@ let derive : Derive.deriver = fun ts ->
   let rec build ty arg =
     match ty with
     | GTypVar(i)             ->
-        let ai_to_json = Printf.sprintf "a%i_to_json" i in
-        CAst.make (CTacApp(expr_var ai_to_json, [arg]))
+        let json_of_ai = Printf.sprintf "json_of_a%i" i in
+        CAst.make (CTacApp(expr_var json_of_ai, [arg]))
     | GTypArrow(_,_)         ->
         CErrors.user_err Pp.(str "function types not supported")
     | GTypRef(Tuple(n), tys) ->
@@ -44,7 +44,7 @@ let derive : Derive.deriver = fun ts ->
         let f =
           let c = Tac2env.shortest_qualid_of_type c in
           let c = Names.Id.to_string (Libnames.qualid_basename c) in
-          expr_var (c ^ "_to_json")
+          expr_var ("json_of_" ^ c)
         in
         CAst.make (CTacApp(f, args))
   in
@@ -125,12 +125,12 @@ let derive : Derive.deriver = fun ts ->
     in
     let ps =
       List.init nb_params @@ fun i ->
-      pat_var (Printf.sprintf "a%i_to_json" i)
+      pat_var (Printf.sprintf "json_of_a%i" i)
     in
     let ps = ps @ [pat_var "x"] in
     let lid =
       let base = Names.Id.to_string (Libnames.qualid_basename q) in
-      CAst.make (Names.Name.Name(Names.Id.of_string (base ^ "_to_json")))
+      CAst.make (Names.Name.Name(Names.Id.of_string ("json_of_" ^ base)))
     in
     (lid, CAst.make (CTacCnv(CAst.make (CTacFun(ps, v)), ty)))
   in

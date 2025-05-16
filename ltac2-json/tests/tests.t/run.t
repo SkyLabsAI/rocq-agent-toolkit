@@ -3,10 +3,10 @@
   $ export DUNE_CACHE=disabled
   $ coqc test.v
   Available derivers: json.
-  variant_to_json : variant -> t
-  variant_to_json :=
+  json_of_variant : variant -> t
+  json_of_variant :=
     fun x =>
-    let rec variant_to_json :=
+    let rec json_of_variant :=
               fun x =>
               match x with
               | VariantA => Variant "VariantA" None
@@ -14,27 +14,27 @@
               | VariantC => Variant "VariantC" None
               end
       in
-    variant_to_json x
-  point_to_json : point -> t
-  point_to_json :=
+    json_of_variant x
+  json_of_point : point -> t
+  json_of_point :=
     fun x =>
-    let rec point_to_json :=
+    let rec json_of_point :=
               fun x =>
               Assoc
-                [("x", int_to_json x.(x)); ("y", int_to_json x.(y));
-                  ("z", int_to_json x.(z))]
+                [("x", json_of_int x.(x)); ("y", json_of_int x.(y));
+                  ("z", json_of_int x.(z))]
       in
-    point_to_json x
-  triple_to_json : triple -> t
-  triple_to_json :=
+    json_of_point x
+  json_of_triple : triple -> t
+  json_of_triple :=
     fun x =>
-    let rec triple_to_json :=
+    let rec json_of_triple :=
               fun x =>
               match x with
               | (x0, x1, x2) =>
                   Tuple
-                    [list_to_json (fun x => int_to_json x) x0; 
-                      bool_to_json x1; int_to_json x2]
+                    [json_of_list (fun x => json_of_int x) x0; 
+                      json_of_bool x1; json_of_int x2]
               end
       in
-    triple_to_json x
+    json_of_triple x
