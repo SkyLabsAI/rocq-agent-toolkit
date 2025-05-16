@@ -2,4 +2,4 @@
  (name skylabs_ai.ltac2_json)
  (package ltac2-json)
  (plugins ltac2-json.plugin)
- (theories Ltac2))
+ (theories Ltac2 skylabs_ai.ltac2_derive))

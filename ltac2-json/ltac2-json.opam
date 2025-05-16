@@ -9,6 +9,7 @@ bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
   "dune" {>= "3.17"}
   "rocq-prover"
+  "ltac2-derive"
   "yojson"
   "odoc" {with-doc}
 ]
