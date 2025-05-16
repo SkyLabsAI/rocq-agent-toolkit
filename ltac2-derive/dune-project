@@ -1,0 +1,15 @@
+(lang dune 3.17)
+(using coq 0.10)
+(name ltac2-derive)
+(generate_opam_files true)
+
+(source (github SkylabsAI/skylabs-fm))
+(authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  GPL-2.0-or-later)
+
+(package
+ (name ltac2-derive)
+ (synopsis "Support for deriving standard operations on Ltac2 datatypes.")
+ (depends
+  rocq-prover))

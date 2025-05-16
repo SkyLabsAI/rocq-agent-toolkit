@@ -1,0 +1,23 @@
+DECLARE PLUGIN "ltac2-derive.plugin"
+
+{
+
+[@@@ocaml.warning "-27"]
+
+open Stdarg
+open Attributes
+
+let eff = Vernacextend.classify_as_sideeff
+let query = Vernacextend.classify_as_query
+
+}
+
+VERNAC COMMAND EXTEND Ltac2_derive_extension
+| #[ raw_attributes ] [ "Ltac2" "Derive" ne_ident_list_sep(ids,",") "For"
+  ne_reference_list_sep(r,",") ] => { eff } -> {
+    Derive.derive raw_attributes ids r
+  }
+| [ "Ltac2" "Derive" "List" ] => { query } -> {
+    Derive.list_derivers ()
+  }
+END
