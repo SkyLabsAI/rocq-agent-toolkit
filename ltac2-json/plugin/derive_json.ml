@@ -42,9 +42,15 @@ let derive : Derive.deriver = fun ts ->
           List.fold_right (fun ty args -> make ty :: args) tys [arg]
         in
         let f =
-          let c = Tac2env.shortest_qualid_of_type c in
-          let c = Names.Id.to_string (Libnames.qualid_basename c) in
-          expr_var ("json_of_" ^ c)
+          let q = Tac2env.shortest_qualid_of_type c in
+          let path = Libnames.qualid_path q in
+          let name = Names.Id.to_string (Libnames.qualid_basename q) in
+          let f = "json_of_" ^ name in
+          if name <> "t" || Names.DirPath.is_empty path then
+            expr_var f
+          else
+            let q = Libnames.make_qualid path (Names.Id.of_string f) in
+            CAst.make (CTacRef(RelId(q)))
         in
         CAst.make (CTacApp(f, args))
   in
