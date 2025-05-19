@@ -32,7 +32,7 @@ let derive : Derive.deriver = fun ts ->
         let tuple = Libnames.qualid_of_string tuple in
         let tuple = CAst.make (CTacCst(RelId(tuple))) in
         let v = CAst.make (CTacApp(tuple, [v])) in
-        CAst.make (CTacCse(expr_var "x", [(p, v)]))
+        CAst.make (CTacCse(arg, [(p, v)]))
     | GTypRef(Other(c), tys) ->
         let args =
           let make ty =
