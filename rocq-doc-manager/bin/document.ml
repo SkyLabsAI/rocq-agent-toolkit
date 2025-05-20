@@ -130,6 +130,14 @@ let revert_before : t -> index:int -> unit = fun d ~index:i ->
 let clear_suffix : t -> unit = fun d ->
   d.suffix <- []
 
+type byte_loc = {off : int; len : int}
+
+let byte_loc_of_last_step : t -> byte_loc option = fun d ->
+  match d.rev_prefix with [] -> None
+  | Blanks({off; text; _})  :: _
+  | Command({off; text; _}) :: _ ->
+      Some({off; len = String.length text})
+
 let run_step : t -> (command_data option, loc * string) result = fun d ->
   match d.suffix with
   | []             -> Error(None, "no step left to run")

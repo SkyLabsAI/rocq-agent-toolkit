@@ -30,6 +30,10 @@ val clear_suffix : t -> unit
 
 val run_step : t -> (command_data option, loc * string) result
 
+type byte_loc = {off : int; len : int}
+
+val byte_loc_of_last_step : t -> byte_loc option
+
 val doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a) -> 'a list
 
 val doc_suffix : t -> (kind:string -> text:string -> 'a) -> 'a list

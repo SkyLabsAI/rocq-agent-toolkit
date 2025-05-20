@@ -30,25 +30,34 @@ end
 let main : Document.t -> unit = fun state ->
   let json_items = ref [] in
   or_panic (Document.load_file state);
-  begin
+  let ghost_off =
     let text = "Require Import skylabs_ai.tools.term_deps.plugin." in
+    let len = String.length text in
     match Document.insert_command state ~text with
     | Error(_,s) -> panic "Error: %s" s
-    | Ok(_)      -> Document.insert_blanks state ~text:"\n"
-  end;
+    | Ok(_)      -> Document.insert_blanks state ~text:"\n"; len + 1
+  in
   let removed_inductives = Hashtbl.create 11 in
-  let handle_removed_inductive s = Hashtbl.add removed_inductives s () in
+  let handle_removed_inductive loc s =
+    Hashtbl.add removed_inductives s loc
+  in
   let removed_constants = Hashtbl.create 11 in
-  let handle_removed_constant s = Hashtbl.add removed_constants s () in
-  let handle_inductive s =
+  let handle_removed_constant loc s =
+    Hashtbl.add removed_constants s loc
+  in
+  let handle_inductive Document.{off; len} s =
     let json () =
       if Hashtbl.mem removed_inductives s then None else
-      let fields = [("name", `String(s)); ("kind", `String("Inductive"))] in
-      Some(`Assoc(fields))
+      Some(`Assoc([
+        ("name", `String(s));
+        ("kind", `String("Inductive"));
+        ("off" , `Int(off));
+        ("len" , `Int(len));
+      ]))
     in
     json_items := Lazy.from_fun json :: !json_items
   in
-  let handle_constant s =
+  let handle_constant Document.{off; len} s =
     let json () =
       if Hashtbl.mem removed_constants s then None else
       let text = "DepsOfJSON " ^ s ^ "." in
@@ -60,7 +69,17 @@ let main : Document.t -> unit = fun state ->
       match List.find_opt (fun f -> f.kind = `Notice) feedback with
       | None    -> assert false
       | Some(f) ->
-      let json = Yojson.Safe.from_string f.text in
+      let json =
+        let fields =
+          match Yojson.Safe.from_string f.text with
+          | `Assoc(fields) -> fields
+          | _              -> assert false
+        in
+        `Assoc(fields @ [
+          ("off", `Int(off));
+          ("len", `Int(len));
+        ])
+      in
       Document.insert_blanks state ~text:"\n";
       Some(json)
     in
@@ -74,10 +93,12 @@ let main : Document.t -> unit = fun state ->
     | Error(_,s)  -> panic "Error: %s" s
     | Ok(None)    -> loop ()
     | Ok(Some(d)) ->
-    List.iter handle_removed_inductive d.Document.removed_inductives;
-    List.iter handle_removed_constant d.Document.removed_constants;
-    List.iter handle_inductive d.Document.new_inductives;
-    List.iter handle_constant d.Document.new_constants;
+    let loc = Option.get (Document.byte_loc_of_last_step state) in
+    let loc = {loc with off = loc.off - ghost_off} in
+    List.iter (handle_removed_inductive loc) d.Document.removed_inductives;
+    List.iter (handle_removed_constant loc) d.Document.removed_constants;
+    List.iter (handle_inductive loc) d.Document.new_inductives;
+    List.iter (handle_constant loc) d.Document.new_constants;
     loop ()
   in
   loop ();
