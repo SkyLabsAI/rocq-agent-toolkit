@@ -18,6 +18,9 @@ type t = {
   mutable suffix : unprocessed list;
 }
 
+let file : t -> string = fun d ->
+  d.file
+
 let next_index : t -> int = fun d ->
   match d.rev_prefix with
   | []                       -> 0
@@ -147,6 +150,22 @@ let run_step : t -> (command_data option, loc * string) result = fun d ->
   | RemBlanks({text})  -> insert_blanks d ~text; Ok(None)
   | RemCommand({text}) ->
       Result.map (fun d -> Some(d)) (insert_command d ~text)
+
+type processed_item = {
+  index : int;
+  kind : [`Blanks | `Command];
+  off : int;
+  text : string;
+}
+
+let last_processed_item : t -> processed_item option = fun d ->
+  match d.rev_prefix with
+  | Blanks({index; off; text}) :: _     ->
+      Some({index; kind = `Blanks; off; text})
+  | Command({index; off; text; _}) :: _ ->
+      Some({index; kind = `Command; off; text})
+  | []                                  ->
+      None
 
 let doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a)
      -> 'a list = fun d f ->

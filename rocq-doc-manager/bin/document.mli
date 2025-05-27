@@ -18,6 +18,8 @@ type command_data = {
   removed_inductives : string list;
 }
 
+val file : t -> string
+
 val command_data_to_json : command_data -> Yojson.Safe.t
 
 val insert_blanks : t -> text:string -> unit
@@ -33,6 +35,15 @@ val run_step : t -> (command_data option, loc * string) result
 type byte_loc = {off : int; len : int}
 
 val byte_loc_of_last_step : t -> byte_loc option
+
+type processed_item = {
+  index : int;
+  kind : [`Blanks | `Command];
+  off : int;
+  text : string;
+}
+
+val last_processed_item : t -> processed_item option
 
 val doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a) -> 'a list
 
