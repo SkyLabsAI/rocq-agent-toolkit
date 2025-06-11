@@ -47,6 +47,8 @@ The following table lists the available requests.
 | `commit`         | `include_suffix` (bool) | Write the current document contents to the file.              |
 | `compile`        |                         | Compile the current contents of the file with `rocq compile`. |
 | `get_feedback`   |                         | Gets Rocq's feedback for the last run command.                |
+| `text_query`     | `text` (string)         | Runs the given query at the cursor, not updating the state.   |
+| `json_query`     | `text` (string)         | Runs the given query at the cursor, not updating the state.   |
 | `quit`           |                         | Stop the document manager.                                    |
 
 Requests That Can Fail
@@ -69,6 +71,8 @@ extra failure payload.
 | `commit`         | No        |                                                           |
 | `compile`        | No        |                                                           |
 | `get_feedback`   | No        |                                                           |
+| `text_query`     | Yes       |                                                           |
+| `json_query`     | Yes       |                                                           |
 | `quit`           | No        |                                                           |
 
 Response Payload
@@ -91,4 +95,6 @@ that don't have a trivial (i.e., `null`) response payload.
 | `commit`         |                                                                                                                   |
 | `compile`        | Object with `success` (bool), `stdout` (string), `stderr` (string), `error` (string, only if success is `false`). |
 | `get_feedback`   | List of objects with `kind` (array with single string), `text` (string), `loc` (location).                        |
+| `text_query`     | String with the query's result (as taken from a "notice" feedback item.                                           |
+| `json_query`     | Arbitrary JSON data, as returned by the query (as JSON text, in a notice" feed back item).                        |
 | `quit`           |                                                                                                                   |

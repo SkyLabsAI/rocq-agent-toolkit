@@ -111,6 +111,18 @@ let _ =
   let feedback = Document.get_feedback d in
   (d, Ok(`List(List.map Document.feedback_to_json feedback)))
 
+let _ =
+  add_handler "text_query" P.(cons string nil) @@ fun d (text, ()) ->
+  match Document.text_query d ~text with
+  | Error(s) -> (d, Error(None, s))
+  | Ok(data) -> (d, Ok(`String(data)))
+
+let _ =
+  add_handler "json_query" P.(cons string nil) @@ fun d (text, ()) ->
+  match Document.json_query d ~text with
+  | Error(s) -> (d, Error(None, s))
+  | Ok(json) -> (d, Ok(json))
+
 (* We assume a single Rocq source file is passed last. *)
 let parse_args : argv:string array -> string list * string = fun ~argv ->
   let argc = Array.length argv in

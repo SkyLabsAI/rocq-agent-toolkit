@@ -245,3 +245,26 @@ let feedback_to_json = feedback_to_yojson
 let get_feedback : t -> feedback list = fun d ->
   try Rocq_toplevel.get_feedback d.toplevel with
   | Rocq_toplevel.No_feedback -> []
+
+let query : t -> text:string ->
+    (command_data * feedback list, string) result = fun d ~text ->
+  match Rocq_toplevel.run d.toplevel ~off:0 ~text with
+  | Error(_,s) -> Error(s)
+  | Ok(data)   ->
+  let feedback = get_feedback d in
+  match Rocq_toplevel.back_to d.toplevel ~sid:d.cursor_sid with
+  | Error(s)   -> Error(s)
+  | Ok(_)      -> Ok(data, feedback)
+
+let text_query : t -> text:string -> (string, string) result = fun d ~text ->
+  match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
+  match List.filter (fun f -> f.kind = `Notice) feedback with
+  | [f] -> Ok(f.text)
+  | []  -> Error("the query gave no \"notice\" feedback")
+  | _   -> Error("the query gave more than one \"notice\" feedback")
+
+let json_query : t -> text:string -> (Yojson.Safe.t, string) result =
+    fun d ~text ->
+  match text_query d ~text with Error(s) -> Error(s) | Ok(text) ->
+  try Ok(Yojson.Safe.from_string text) with Yojson.Json_error(s) ->
+  Error("the query result is invalid (" ^ s ^ ")")
