@@ -38,6 +38,7 @@ The following table lists the available requests.
 | `load_file`      |                         | Add the (unprocessed) file contents to the document.          |
 | `insert_blanks`  | `text` (string)         | Insert and process blanks at the cursor.                      |
 | `insert_command` | `text` (string)         | Insert and process a command at the cursor.                   |
+| `run_command`    | `text` (string)         | Process a command, without inserting it in the document.      |
 | `revert_before`  | `index` (int)           | Revert the cursor before the indicated processed item.        |
 | `clear_suffix`   |                         | Remove all unprocessed commands from the document.            |
 | `run_step`       |                         | Advance the cursor by stepping over an unprocessed command.   |
@@ -62,6 +63,7 @@ extra failure payload.
 | `load_file`      | Yes       |                                                           |
 | `insert_blanks`  | No        |                                                           |
 | `insert_command` | Yes       | Object with `loc` field (error location, `null` if none). |
+| `run_command`    | Yes       |                                                           |
 | `revert_before`  | No        |                                                           |
 | `clear_suffix`   | No        |                                                           |
 | `run_step`       | Yes       | Object with `loc` field (error location, `null` if none). |
@@ -86,6 +88,7 @@ that don't have a trivial (i.e., `null`) response payload.
 | `load_file`      |                                                                                                                   |
 | `insert_blanks`  |                                                                                                                   |
 | `insert_command` | Object with `open_subgoals` (null or string), `new_constants` (string list), `new_inductives` (string list).      |
+| `run_command`    | Object with `open_subgoals` (null or string), `new_constants` (string list), `new_inductives` (string list).      |
 | `revert_before`  |                                                                                                                   |
 | `clear_suffix`   |                                                                                                                   |
 | `run_step`       | Just `null` if a blank step was run, same as `insert_command` otherwise.                                          |

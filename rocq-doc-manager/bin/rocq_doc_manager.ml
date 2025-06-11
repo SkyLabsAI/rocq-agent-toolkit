@@ -32,8 +32,13 @@ let _ =
       let loc = Document.loc_to_json loc in
       (d, Error(Some(`Assoc([("loc", loc)])), s))
   | Ok(data)      ->
-      let json = Document.command_data_to_json data in
-      (d, Ok(json))
+      (d, Ok(Document.command_data_to_json data))
+
+let _ =
+  add_handler "run_command" P.(cons string nil) @@ fun d (text, ()) ->
+  match Document.run_command d ~text with
+  | Error(s) -> (d, Error(None, s))
+  | Ok(data) -> (d, Ok(Document.command_data_to_json data))
 
 let _ =
   add_handler "revert_before" P.(cons int nil) @@ fun d (index, ()) ->

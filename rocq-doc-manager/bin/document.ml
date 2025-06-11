@@ -103,6 +103,14 @@ let insert_command : t -> text:string ->
   d.cursor_off <- d.cursor_off + String.length text;
   res
 
+let run_command : t -> text:string -> (command_data, string) result =
+    fun d ~text ->
+  match Rocq_toplevel.run d.toplevel ~off:0 ~text with
+  | Error(_,s) -> Error(s)
+  | Ok(data)   ->
+  d.cursor_sid <- Rocq_toplevel.get_state_id d.toplevel;
+  Ok(data)
+
 let revert_before : t -> index:int -> unit = fun d ~index:i ->
   let cur_index = next_index d in
   if i < 0 || cur_index <= i then invalid_arg "Document.revert_before";

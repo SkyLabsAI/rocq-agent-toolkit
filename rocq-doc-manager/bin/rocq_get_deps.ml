@@ -30,12 +30,9 @@ end
 let main : Document.t -> unit = fun state ->
   let json_items = ref [] in
   or_panic (Document.load_file state);
-  let ghost_off =
+  let _ =
     let text = "Require Import skylabs_ai.tools.term_deps.plugin." in
-    let len = String.length text in
-    match Document.insert_command state ~text with
-    | Error(_,s) -> panic "Error: %s" s
-    | Ok(_)      -> Document.insert_blanks state ~text:"\n"; len + 1
+    or_panic (Document.run_command state ~text)
   in
   let removed_inductives = Hashtbl.create 11 in
   let handle_removed_inductive loc s =
@@ -94,7 +91,6 @@ let main : Document.t -> unit = fun state ->
     | Ok(None)    -> loop ()
     | Ok(Some(d)) ->
     let loc = Option.get (Document.byte_loc_of_last_step state) in
-    let loc = {loc with off = loc.off - ghost_off} in
     List.iter (handle_removed_inductive loc) d.Document.removed_inductives;
     List.iter (handle_removed_constant loc) d.Document.removed_constants;
     List.iter (handle_inductive loc) d.Document.new_inductives;

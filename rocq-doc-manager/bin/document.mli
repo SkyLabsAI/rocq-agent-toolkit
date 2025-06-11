@@ -26,6 +26,12 @@ val insert_blanks : t -> text:string -> unit
 
 val insert_command : t -> text:string -> (command_data, loc * string) result
 
+(** [run_command d ~text] is similar to [insert_command d ~text], but does not
+    record the run command in the document. Note however that any side-effects
+    that the command may have on the Rocq state is preserved. Note that in the
+    [Error] case, no location is provided. *)
+val run_command : t -> text:string -> (command_data, string) result
+
 val revert_before : t -> index:int -> unit
 
 val clear_suffix : t -> unit
