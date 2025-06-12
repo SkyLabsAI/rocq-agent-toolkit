@@ -8,7 +8,9 @@ val load_file : t -> (unit, string) result
 
 type loc = Rocq_loc.t option
 
-val loc_to_json : loc -> Yojson.Safe.t
+type json = Yojson.Safe.t
+
+val loc_to_json : loc -> json
 
 type command_data = {
   open_subgoals : string option;
@@ -20,7 +22,7 @@ type command_data = {
 
 val file : t -> string
 
-val command_data_to_json : command_data -> Yojson.Safe.t
+val command_data_to_json : command_data -> json
 
 val insert_blanks : t -> text:string -> unit
 
@@ -67,7 +69,7 @@ type feedback = {
   loc  : loc;
 }
 
-val feedback_to_json : feedback -> Yojson.Safe.t
+val feedback_to_json : feedback -> json
 
 val get_feedback : t -> feedback list
 
@@ -80,14 +82,15 @@ val get_feedback : t -> feedback list
     an error occurs (queries are not part of the document). *)
 val query : t -> text:string -> (command_data * feedback list, string) result
 
-(** [text_query d ~text] is similar to [query d ~text], but the command result
-    is extracted from the feedback, and returned as a string upon success. For
-    that reason, the command [text] is assumed to produce exactly one "notice"
-    feedback item, and its contents is taken as the query's result. An [Error]
-    is returned if no such item is found. *)
-val text_query : t -> text:string -> (string, string) result
+(** [text_query ?index d ~text] is similar to [query d ~text], but the command
+    result is extracted from the feedback, and returned as a string in case of
+    success. If [index] is not given, the command [text] is assumed to produce
+    exactly one "notice" feedback item, and its contents is taken as result of
+    the query. Otherwise, the [index] identifies the "notice" feedback item to
+    use as result. An [Error] is given if no valid feedback item is found. *)
+val text_query : ?index:int -> t -> text:string -> (string, string) result
 
-(** [json_query d ~text] is similar to [text_query d ~text], but the result is
-    additionally turned into JSON data. If the command does not return a valid
-    JSON string (through a "notice" feedback item), an [Error] is returned. *)
-val json_query : t -> text:string -> (Yojson.Safe.t, string) result
+(** [json_query ?index d ~text] is similar to [text_query ?index d ~text], but
+    the result is additionally turned into JSON data. If the command result is
+    not a valid JSON string, an [Error] is returned. *)
+val json_query : ?index:int -> t -> text:string -> (json, string) result

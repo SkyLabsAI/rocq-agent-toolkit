@@ -1,3 +1,5 @@
+type json = Yojson.Safe.t
+
 type sid = Rocq_toplevel.StateId.t
 
 type processed =
@@ -264,15 +266,21 @@ let query : t -> text:string ->
   | Error(s)   -> Error(s)
   | Ok(_)      -> Ok(data, feedback)
 
-let text_query : t -> text:string -> (string, string) result = fun d ~text ->
+let text_query : ?index:int -> t -> text:string -> (string, string) result =
+    fun ?index d ~text ->
   match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
-  match List.filter (fun f -> f.kind = `Notice) feedback with
-  | [f] -> Ok(f.text)
-  | []  -> Error("the query gave no \"notice\" feedback")
-  | _   -> Error("the query gave more than one \"notice\" feedback")
+  let notices = List.filter (fun f -> f.kind = `Notice) feedback in
+  match (index, notices) with
+  | (None   , [f]) -> Ok(f.text)
+  | (None   , [] ) -> Error("the query gave no \"notice\" feedback")
+  | (None   , _  ) -> Error("the query gave too much \"notice\" feedback")
+  | (Some(i), _  ) ->
+  match List.nth_opt notices i with
+  | None    -> Error("the query had no \"notice\" feedback at that index")
+  | Some(f) -> Ok(f.text)
 
-let json_query : t -> text:string -> (Yojson.Safe.t, string) result =
-    fun d ~text ->
-  match text_query d ~text with Error(s) -> Error(s) | Ok(text) ->
+let json_query : ?index:int -> t -> text:string -> (json, string) result =
+    fun ?index d ~text ->
+  match text_query ?index d ~text with Error(s) -> Error(s) | Ok(text) ->
   try Ok(Yojson.Safe.from_string text) with Yojson.Json_error(s) ->
   Error("the query result is invalid (" ^ s ^ ")")
