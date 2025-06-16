@@ -1,0 +1,86 @@
+# ====================================================================
+# COMPLETE Requirements for Observability and PSI Logging Packages
+# This includes ALL dependencies for full-featured usage
+# ====================================================================
+
+# Core Python version requirement
+# python>=3.9
+
+# ====================================================================
+# PSI_LOGGING PACKAGE DEPENDENCIES
+# ====================================================================
+# Core dependencies: NONE (uses only Python stdlib)
+# - json, logging, time, typing, os, socket are all stdlib
+
+# For trace correlation with OpenTelemetry:
+opentelemetry-api>=1.33.0
+
+# ====================================================================
+# OBSERVABILITY PACKAGE DEPENDENCIES  
+# ====================================================================
+
+# OpenTelemetry Core
+opentelemetry-api>=1.33.0
+opentelemetry-sdk>=1.33.0
+
+# OpenTelemetry Auto-instrumentation
+opentelemetry-distro>=0.54b0
+opentelemetry-instrumentation>=0.54b0
+
+# OpenTelemetry Instrumentation Packages
+opentelemetry-instrumentation-grpc>=0.54b0
+opentelemetry-instrumentation-logging>=0.54b0
+opentelemetry-instrumentation-requests>=0.54b0
+opentelemetry-instrumentation-urllib3>=0.54b0
+
+# OTLP Exporters
+opentelemetry-exporter-otlp>=1.33.0
+opentelemetry-exporter-otlp-proto-grpc>=1.33.0
+opentelemetry-exporter-otlp-proto-http>=1.33.0
+
+# OpenTelemetry Additional Components
+opentelemetry-propagator-b3>=1.33.0
+opentelemetry-semantic-conventions>=0.54b0
+
+# ====================================================================
+# GRPC AND COMMUNICATION DEPENDENCIES (OPTIONAL)
+# Only needed if you're building gRPC services
+# ====================================================================
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+grpcio-reflection>=1.60.0
+protobuf>=5.28.0
+
+# ====================================================================
+# UTILITY AND FRAMEWORK DEPENDENCIES
+# ====================================================================
+# Data validation and modeling
+pydantic>=2.9.0
+
+# Enhanced logging and formatting
+structlog>=24.4.0
+rich>=13.8.0
+
+# CLI tools
+click>=8.1.7
+
+# ====================================================================
+# LANGSMITH INTEGRATION (OPTIONAL)
+# ====================================================================
+# LangChain ecosystem for AI/LLM observability
+langgraph>=0.2.45
+langchain>=0.3.7
+langchain-core>=0.3.15
+langsmith[otel]>=0.3.45
+
+# ====================================================================
+# DEVELOPMENT DEPENDENCIES (OPTIONAL)
+# ====================================================================
+# Uncomment if you want to install development tools as well
+# black>=23.7.0
+# isort>=5.12.0
+# flake8>=7.1.0
+# mypy>=1.5.0
+# pytest>=8.2.0
+# pytest-asyncio>=0.24.0
+# pytest-cov>=5.0.0 
