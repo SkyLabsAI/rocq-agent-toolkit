@@ -297,5 +297,5 @@ let text_query : ?index:int -> t -> text:string -> (string, string) result =
 let json_query : ?index:int -> t -> text:string -> (json, string) result =
     fun ?index d ~text ->
   match text_query ?index d ~text with Error(s) -> Error(s) | Ok(text) ->
-  try Ok(Yojson.Safe.from_string text) with Yojson.Json_error(s) ->
-  Error("the query result is invalid (" ^ s ^ ")")
+  try Ok(Yojson.Safe.from_string text) with Yojson.Json_error(_) ->
+  Error("the query result does not contain valid JSON")

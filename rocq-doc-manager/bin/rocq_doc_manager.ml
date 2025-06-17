@@ -120,14 +120,16 @@ let _ =
   (d, Ok(`List(List.map Document.feedback_to_json feedback)))
 
 let _ =
-  add_handler "text_query" P.(cons string nil) @@ fun d (text, ()) ->
-  match Document.text_query d ~text with
+  add_handler "text_query" P.(cons string (cons int nil)) @@
+  fun d (text, (index, ())) ->
+  match Document.text_query d ~text ~index with
   | Error(s) -> (d, Error(None, s))
   | Ok(data) -> (d, Ok(`String(data)))
 
 let _ =
-  add_handler "json_query" P.(cons string nil) @@ fun d (text, ()) ->
-  match Document.json_query d ~text with
+  add_handler "json_query" P.(cons string (cons int nil)) @@
+  fun d (text, (index, ())) ->
+  match Document.json_query d ~text ~index with
   | Error(s) -> (d, Error(None, s))
   | Ok(json) -> (d, Ok(json))
 

@@ -145,21 +145,21 @@ Supported Requests
 
 ### `text_query`
 
-- Arguments: `text` (string).
+- Arguments: `text` (string), `index` (integer).
 - Description: runs the given query at the cursor, not updating the state.
 - Failure mode: recoverable failure.
 - Failure payload: none.
-- Response payload: string with the query's result (as taken from a single
-  "notice" feedback item.
+- Response payload: string with the query's result (as taken from the "notice"
+  feedback with the given index).
 
 ### `json_query`
 
-- Arguments: `text` (string).
+- Arguments: `text` (string), `index` (integer).
 - Description: runs the given query at the cursor, not updating the state.
 - Failure mode: recoverable failure.
 - Failure payload: none.
 - Response payload: arbitrary JSON data, as returned by the query (as JSON
-  text, in a single "notice" feed back item).
+  text, take from the "notice" feedback with the given index).
 
 ### `quit`
 
