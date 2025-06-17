@@ -42,7 +42,9 @@ type 'a t
     requests manipulate. *)
 val create : unit -> 'a t
 
-(** Type of the implementation of a request. *)
+(** Type of the implementation of a request. A request implementation can rely
+    on the [Invalid_arguments] exception to signal failed parameter validation
+    (e.g., index out of bounds). Other exceptions are not caught. *)
 type ('a, 'b) action =
   'a -> 'b -> 'a * (Yojson.Safe.t, Yojson.Safe.t option * string) result
 

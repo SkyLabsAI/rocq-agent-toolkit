@@ -75,7 +75,7 @@ Supported Requests
 - Arguments: `erase` (boolean), `index` (integer).
 - Description: revert the cursor before the indicated processed item, erasing
   the reverted commands as instructed.
-- Failure mode: never fails, panic on invalid `index`.
+- Failure mode: argument validation.
 - Response payload: `null`.
 
 ### `advance_to`
@@ -83,7 +83,7 @@ Supported Requests
 - Arguments: `index` (integer).
 - Description: advance the cursor before the indicated unprocessed item
   (one-past-the-end index allowed).
-- Failure mode: recoverable failure, panic on invalid `index`.
+- Failure mode: recoverable failure, argument validation.
 - Failure payload: object with `loc` field (error location, `null` if none).
 - Response payload: `null`.
 

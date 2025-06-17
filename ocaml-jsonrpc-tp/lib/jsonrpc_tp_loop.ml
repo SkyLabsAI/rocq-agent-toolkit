@@ -51,8 +51,11 @@ module Response = struct
     let message = Printf.sprintf "Method %s not found." f in
     error ~oc id J.Response.Error.Code.MethodNotFound message
 
-  let invalid_params ~oc id f =
-    let message = Printf.sprintf "Invalid parameters for method %s." f in
+  let invalid_params ~oc id ?msg f =
+    let message =
+      let msg = match msg with None -> "" | Some(msg) -> ": " ^ msg in
+      Printf.sprintf "Invalid parameters for method %s%s." f msg
+    in
     error ~oc id J.Response.Error.Code.InvalidParams message
 
   let reply ~oc id payload =
@@ -114,15 +117,21 @@ let run : 'a t -> ic:In_channel.t -> oc:Out_channel.t -> 'a -> 'a =
     match parse_params spec params with
     | None         -> Response.invalid_params ~oc id f; loop st
     | Some(params) ->
-    let (st, res) = a st params in
-    let response =
-      match res with
-      | Ok(data)             -> J.Response.ok id data
-      | Error(data, message) ->
-          let code = J.Response.Error.Code.RequestFailed in
-          J.Response.error id (J.Response.Error.make ?data ~code ~message ())
+    let st =
+      try
+        let (st, res) = a st params in
+        let response =
+          match res with
+          | Ok(data)             -> J.Response.ok id data
+          | Error(data, message) ->
+              let code = J.Response.Error.Code.RequestFailed in
+              let err = J.Response.Error.make ?data ~code ~message () in
+              J.Response.error id err
+        in
+        Jsonrpc_tp.send ~oc (J.Packet.Response(response)); st
+      with Invalid_argument(msg) ->
+        Response.invalid_params ~oc id f ~msg; st
     in
-    Jsonrpc_tp.send ~oc (J.Packet.Response(response));
     loop st
   in
   loop st

@@ -116,7 +116,7 @@ let run_command : t -> text:string -> (command_data, string) result =
 let revert_before : ?erase:bool -> t -> index:int -> unit =
     fun ?(erase=false) d ~index:i ->
   let cur_index = cursor_index d in
-  if i < 0 || cur_index <= i then invalid_arg "Document.revert_before";
+  if i < 0 || cur_index <= i then invalid_arg "index out of bounds";
   let rec revert rev_prefix suffix sid =
     match rev_prefix with
     | Blanks({index; text; _})              :: rev_prefix ->
@@ -167,7 +167,7 @@ let advance_to : t -> index:int -> (unit, loc * string) result =
   let cur = cursor_index d in
   let len_suffix = List.length d.suffix in
   let one_past = cur + len_suffix in
-  if index < cur || one_past < index then invalid_arg "Document.advance_to";
+  if index < cur || one_past < index then invalid_arg "index out of bounds";
   let rec loop cur =
     if cur = index then Ok(()) else
     match run_step d with
