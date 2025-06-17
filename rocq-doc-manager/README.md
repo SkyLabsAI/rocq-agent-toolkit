@@ -40,6 +40,7 @@ The following table lists the available requests.
 | `insert_command` | `text` (string)               | Insert and process a command at the cursor.                                                         |
 | `run_command`    | `text` (string)               | Process a command, without inserting it in the document.                                            |
 | `revert_before`  | `erase` (bool), `index` (int) | Revert the cursor before the indicated processed item, erasing the reverted commands as instructed. |
+| `advance_to`     | `index` (int)                 | Advance the cursor before the indicated unprocessed item (one-past index allowed).                  |
 | `clear_suffix`   |                               | Remove all unprocessed commands from the document.                                                  |
 | `run_step`       |                               | Advance the cursor by stepping over an unprocessed command.                                         |
 | `doc_prefix`     |                               | Give the list of all processed commands (before the cursor).                                        |
@@ -65,6 +66,7 @@ extra failure payload.
 | `insert_command` | Yes       | Object with `loc` field (error location, `null` if none). |
 | `run_command`    | Yes       |                                                           |
 | `revert_before`  | No        |                                                           |
+| `advance_to`     | Yes       | Object with `loc` field (error location, `null` if none). |
 | `clear_suffix`   | No        |                                                           |
 | `run_step`       | Yes       | Object with `loc` field (error location, `null` if none). |
 | `doc_prefix`     | No        |                                                           |
@@ -90,6 +92,7 @@ that don't have a trivial (i.e., `null`) response payload.
 | `insert_command` | Object with `open_subgoals` (null or string), `new_constants` (string list), `new_inductives` (string list).      |
 | `run_command`    | Object with `open_subgoals` (null or string), `new_constants` (string list), `new_inductives` (string list).      |
 | `revert_before`  |                                                                                                                   |
+| `advance_to`     |                                                                                                                   |
 | `clear_suffix`   |                                                                                                                   |
 | `run_step`       | Just `null` if a blank step was run, same as `insert_command` otherwise.                                          |
 | `doc_prefix`     | List of objects with `kind` (string, `"blanks"` for blanks), `offset` (int), and `text` (string).                 |

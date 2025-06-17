@@ -162,6 +162,20 @@ let run_step : t -> (command_data option, loc * string) result = fun d ->
   | RemCommand({text}) ->
       Result.map (fun d -> Some(d)) (insert_command d ~text)
 
+let advance_to : t -> index:int -> (unit, loc * string) result =
+    fun d ~index ->
+  let cur = next_index d in
+  let len_suffix = List.length d.suffix in
+  let one_past = cur + len_suffix in
+  if index < cur || one_past < index then invalid_arg "Document.advance_to";
+  let rec loop cur =
+    if cur = index then Ok(()) else
+    match run_step d with
+    | Ok(_)    -> loop (cur + 1)
+    | Error(e) -> Error(e)
+  in
+  loop cur
+
 type processed_item = {
   index : int;
   kind : [`Blanks | `Command];

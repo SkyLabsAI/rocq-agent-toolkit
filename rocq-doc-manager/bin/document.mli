@@ -45,6 +45,15 @@ val clear_suffix : t -> unit
 
 val run_step : t -> (command_data option, loc * string) result
 
+(** [advance_to d ~index] advances the cursor of document [d] to place it just
+    before the item with the given [index]. If [index] is invalid, which means
+    that it does not point to a valid item index (or one past the index of the
+    last item), or that it points to an already processed item, then exception
+    [Invalid_argument] is raised. In case of error while processing a command,
+    the cursor is left at the reached position, and [Error (loc,msg)] is given
+    similarly to what [insert_command] or [run_step] do. *)
+val advance_to : t -> index:int -> (unit, loc * string) result
+
 type byte_loc = {off : int; len : int}
 
 val byte_loc_of_last_step : t -> byte_loc option

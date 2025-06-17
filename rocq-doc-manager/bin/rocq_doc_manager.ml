@@ -12,6 +12,10 @@ let rset = Jsonrpc_tp_loop.create ()
 let add_handler name pspec a =
   Jsonrpc_tp_loop.add rset name pspec a
 
+let located_error ~loc s =
+  let loc = Document.loc_to_json loc in
+  Error(Some(`Assoc([("loc", loc)])), s)
+
 module P = Jsonrpc_tp_loop.Params
 
 let _ =
@@ -28,11 +32,8 @@ let _ =
 let _ =
   add_handler "insert_command" P.(cons string nil) @@ fun d (text, ()) ->
   match Document.insert_command d ~text with
-  | Error(loc, s) ->
-      let loc = Document.loc_to_json loc in
-      (d, Error(Some(`Assoc([("loc", loc)])), s))
-  | Ok(data)      ->
-      (d, Ok(Document.command_data_to_json data))
+  | Error(loc, s) -> (d, located_error ~loc s)
+  | Ok(data)      -> (d, Ok(Document.command_data_to_json data))
 
 let _ =
   add_handler "run_command" P.(cons string nil) @@ fun d (text, ()) ->
@@ -47,6 +48,12 @@ let _ =
   (d, Ok(`Null))
 
 let _ =
+  add_handler "advance_to" P.(cons int nil) @@ fun d (index, ()) ->
+  match Document.advance_to d ~index with
+  | Ok(())        -> (d, Ok(`Null))
+  | Error(loc, s) -> (d, located_error ~loc s)
+
+let _ =
   add_handler "clear_suffix" P.nil @@ fun d () ->
   Document.clear_suffix d;
   (d, Ok(`Null))
@@ -54,14 +61,9 @@ let _ =
 let _ =
   add_handler "run_step" P.nil @@ fun d () ->
   match Document.run_step d with
-  | Error(loc, s)  ->
-      let loc = Document.loc_to_json loc in
-      (d, Error(Some(`Assoc([("loc", loc)])), s))
-  | Ok(None)       ->
-      (d, Ok(`Null))
-  | Ok(Some(data)) ->
-      let json = Document.command_data_to_json data in
-      (d, Ok(json))
+  | Error(loc, s)  -> (d, located_error ~loc s)
+  | Ok(None)       -> (d, Ok(`Null))
+  | Ok(Some(data)) -> (d, Ok(Document.command_data_to_json data))
 
 let _ =
   add_handler "doc_prefix" P.nil @@ fun d () ->
