@@ -113,7 +113,8 @@ let run_command : t -> text:string -> (command_data, string) result =
   d.cursor_sid <- Rocq_toplevel.get_state_id d.toplevel;
   Ok(data)
 
-let revert_before : t -> index:int -> unit = fun d ~index:i ->
+let revert_before : ?erase:bool -> t -> index:int -> unit =
+    fun ?(erase=false) d ~index:i ->
   let cur_index = next_index d in
   if i < 0 || cur_index <= i then invalid_arg "Document.revert_before";
   let rec revert rev_prefix suffix sid =
@@ -135,7 +136,7 @@ let revert_before : t -> index:int -> unit = fun d ~index:i ->
   in
   let (rev_prefix, suffix, sid) = revert d.rev_prefix d.suffix d.cursor_sid in
   d.rev_prefix <- rev_prefix;
-  d.suffix <- suffix;
+  if not erase then d.suffix <- suffix;
   match Rocq_toplevel.back_to d.toplevel ~sid with
   | Ok(())   -> ()
   | Error(_) -> assert false (* Unreachable. *)

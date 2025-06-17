@@ -41,8 +41,9 @@ let _ =
   | Ok(data) -> (d, Ok(Document.command_data_to_json data))
 
 let _ =
-  add_handler "revert_before" P.(cons int nil) @@ fun d (index, ()) ->
-  Document.revert_before d ~index;
+  add_handler "revert_before" P.(cons bool (cons int nil)) @@
+    fun d (erase, (index, ())) ->
+  Document.revert_before d ~erase ~index;
   (d, Ok(`Null))
 
 let _ =

@@ -34,7 +34,12 @@ val insert_command : t -> text:string -> (command_data, loc * string) result
     [Error] case, no location is provided. *)
 val run_command : t -> text:string -> (command_data, string) result
 
-val revert_before : t -> index:int -> unit
+(** [revert_before ?erase d ~index] reverts the cursor of document [d] back to
+    before the processed item at the given [index]. If [index] is invalid, the
+    [Invalid_argument] exception is raised. The [erase] boolean (defaulting to
+    [false]) indicates whether the reverted items must be erased or added back
+    to the suffix of unprocessed commands. *)
+val revert_before : ?erase:bool -> t -> index:int -> unit
 
 val clear_suffix : t -> unit
 

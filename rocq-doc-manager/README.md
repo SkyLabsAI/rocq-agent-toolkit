@@ -33,24 +33,24 @@ Supported Requests
 
 The following table lists the available requests.
 
-| Method Name      | Argument Types          | Description                                                   |
-| ---------------- | ----------------------- | ------------------------------------------------------------- |
-| `load_file`      |                         | Add the (unprocessed) file contents to the document.          |
-| `insert_blanks`  | `text` (string)         | Insert and process blanks at the cursor.                      |
-| `insert_command` | `text` (string)         | Insert and process a command at the cursor.                   |
-| `run_command`    | `text` (string)         | Process a command, without inserting it in the document.      |
-| `revert_before`  | `index` (int)           | Revert the cursor before the indicated processed item.        |
-| `clear_suffix`   |                         | Remove all unprocessed commands from the document.            |
-| `run_step`       |                         | Advance the cursor by stepping over an unprocessed command.   |
-| `doc_prefix`     |                         | Give the list of all processed commands (before the cursor).  |
-| `doc_suffix`     |                         | Give the list of all unprocessed commands (after the cursor). |
-| `has_suffix`     |                         | Indicates whether there is a document suffix.                 |
-| `commit`         | `include_suffix` (bool) | Write the current document contents to the file.              |
-| `compile`        |                         | Compile the current contents of the file with `rocq compile`. |
-| `get_feedback`   |                         | Gets Rocq's feedback for the last run command.                |
-| `text_query`     | `text` (string)         | Runs the given query at the cursor, not updating the state.   |
-| `json_query`     | `text` (string)         | Runs the given query at the cursor, not updating the state.   |
-| `quit`           |                         | Stop the document manager.                                    |
+| Method Name      | Argument Types                | Description                                                                                         |
+| ---------------- | ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `load_file`      |                               | Add the (unprocessed) file contents to the document.                                                |
+| `insert_blanks`  | `text` (string)               | Insert and process blanks at the cursor.                                                            |
+| `insert_command` | `text` (string)               | Insert and process a command at the cursor.                                                         |
+| `run_command`    | `text` (string)               | Process a command, without inserting it in the document.                                            |
+| `revert_before`  | `erase` (bool), `index` (int) | Revert the cursor before the indicated processed item, erasing the reverted commands as instructed. |
+| `clear_suffix`   |                               | Remove all unprocessed commands from the document.                                                  |
+| `run_step`       |                               | Advance the cursor by stepping over an unprocessed command.                                         |
+| `doc_prefix`     |                               | Give the list of all processed commands (before the cursor).                                        |
+| `doc_suffix`     |                               | Give the list of all unprocessed commands (after the cursor).                                       |
+| `has_suffix`     |                               | Indicates whether there is a document suffix.                                                       |
+| `commit`         | `include_suffix` (bool)       | Write the current document contents to the file.                                                    |
+| `compile`        |                               | Compile the current contents of the file with `rocq compile`.                                       |
+| `get_feedback`   |                               | Gets Rocq's feedback for the last run command.                                                      |
+| `text_query`     | `text` (string)               | Runs the given query at the cursor, not updating the state.                                         |
+| `json_query`     | `text` (string)               | Runs the given query at the cursor, not updating the state.                                         |
+| `quit`           |                               | Stop the document manager.                                                                          |
 
 Requests That Can Fail
 ----------------------
