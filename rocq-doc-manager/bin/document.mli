@@ -1,5 +1,22 @@
+(** Rocq document API.
+
+    A Rocq document can be understood as an in-memory Rocq source file. It may
+    of may not correspond to an existing source file, and may or may not be in
+    sync with such a source file when it exists.
+
+    A document is represented as a list of items, which can be of two kinds: a
+    Rocq command, or a sequence of blanks (i.e., insignificant characters like
+    spaces, or comments). A document additionally has a cursor splitting items
+    into the prefix of already processed items, and the suffix of what remains
+    to be processed. Said otherwise, the cursor is the index of the first item
+    of the document's suffix. *)
+
+(** Imperative state for a Rocq document. *)
 type t
 
+(** [init ~args ~file] initialises a Rocq document for the given [file], using
+    the given Rocq command line arguments [args]. Regardless of whether [file]
+    exists on the file system or not, the document starts empty. *)
 val init : args:string list -> file:string -> t
 
 val stop : t -> unit
@@ -33,6 +50,11 @@ val insert_command : t -> text:string -> (command_data, loc * string) result
     that the command may have on the Rocq state is preserved. Note that in the
     [Error] case, no location is provided. *)
 val run_command : t -> text:string -> (command_data, string) result
+
+(** [cursor_index d] returns the index currently at the cursor in the document
+    [d]. Note that this corresponds to the index of the first unprocessed item
+    (if any). *)
+val cursor_index : t -> int
 
 (** [revert_before ?erase d ~index] reverts the cursor of document [d] back to
     before the processed item at the given [index]. If [index] is invalid, the

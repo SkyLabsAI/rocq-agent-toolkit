@@ -63,6 +63,13 @@ Supported Requests
 - Response payload: object with `open_subgoals` (null or string),
   `new_constants` (string list), `new_inductives` (string list).
 
+### `cursor_index`
+
+- Arguments: none.
+- Description: gives the index at the cursor.
+- Failure mode: never fails.
+- Response payload: integer.
+
 ### `revert_before`
 
 - Arguments: `erase` (boolean), `index` (integer).

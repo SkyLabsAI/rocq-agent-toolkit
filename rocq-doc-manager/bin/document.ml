@@ -23,7 +23,7 @@ type t = {
 let file : t -> string = fun d ->
   d.file
 
-let next_index : t -> int = fun d ->
+let cursor_index : t -> int = fun d ->
   match d.rev_prefix with
   | []                       -> 0
   | Blanks({index; _})  :: _ -> index + 1
@@ -88,7 +88,7 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
       d.rev_prefix <- Blanks({index; off; text}) :: rev_prefix;
       d.cursor_off <- d.cursor_off + len
   | _                                                 ->
-      let index = next_index d in
+      let index = cursor_index d in
       let off = d.cursor_off in
       d.rev_prefix <- Blanks({index; off; text}) :: d.rev_prefix;
       d.cursor_off <- d.cursor_off + len
@@ -99,7 +99,7 @@ let insert_command : t -> text:string ->
   let sid_before = d.cursor_sid in
   let res = Rocq_toplevel.run d.toplevel ~off ~text in
   match res with Error(_) -> res | _ ->
-  let index = next_index d in
+  let index = cursor_index d in
   d.rev_prefix <- Command({index; off; sid_before; text}) :: d.rev_prefix;
   d.cursor_sid <- Rocq_toplevel.get_state_id d.toplevel;
   d.cursor_off <- d.cursor_off + String.length text;
@@ -115,7 +115,7 @@ let run_command : t -> text:string -> (command_data, string) result =
 
 let revert_before : ?erase:bool -> t -> index:int -> unit =
     fun ?(erase=false) d ~index:i ->
-  let cur_index = next_index d in
+  let cur_index = cursor_index d in
   if i < 0 || cur_index <= i then invalid_arg "Document.revert_before";
   let rec revert rev_prefix suffix sid =
     match rev_prefix with
@@ -164,7 +164,7 @@ let run_step : t -> (command_data option, loc * string) result = fun d ->
 
 let advance_to : t -> index:int -> (unit, loc * string) result =
     fun d ~index ->
-  let cur = next_index d in
+  let cur = cursor_index d in
   let len_suffix = List.length d.suffix in
   let one_past = cur + len_suffix in
   if index < cur || one_past < index then invalid_arg "Document.advance_to";
