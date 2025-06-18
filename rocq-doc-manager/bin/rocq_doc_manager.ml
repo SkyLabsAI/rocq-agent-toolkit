@@ -132,6 +132,13 @@ let _ =
   | Ok(data) -> (d, Ok(`String(data)))
 
 let _ =
+  add_handler "text_query_all" P.(cons string (cons (option (list int)) nil))
+  @@ fun d (text, (indices, ())) ->
+  match Document.text_query_all d ~text ?indices with
+  | Error(s) -> (d, Error(None, s))
+  | Ok(data) -> (d, Ok(`List(List.map (fun s -> `String(s)) data)))
+
+let _ =
   add_handler "json_query" P.(cons string (cons int nil)) @@
   fun d (text, (index, ())) ->
   match Document.json_query d ~text ~index with

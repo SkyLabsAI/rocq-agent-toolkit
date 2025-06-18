@@ -294,6 +294,26 @@ let text_query : ?index:int -> t -> text:string -> (string, string) result =
   | None    -> Error("the query had no \"notice\" feedback at that index")
   | Some(f) -> Ok(f.text)
 
+let text_query_all : ?indices:int list -> t -> text:string ->
+    (string list, string) result = fun ?indices d ~text ->
+  match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
+  let notices = List.filter (fun f -> f.kind = `Notice) feedback in
+  match indices with
+  | None          -> Ok(List.map (fun f -> f.text) notices)
+  | Some(indices) ->
+  let notices = Array.of_list notices in
+  let rec build_res rev_items indices =
+    match indices with
+    | []               -> Ok(List.rev_map (fun f -> f.text) rev_items)
+    | index :: indices ->
+    try
+      let item = Array.get notices index in
+      build_res (item :: rev_items) indices
+    with Invalid_argument(_) ->
+      Error("the query had no \"notice\" feedback at a given index")
+  in
+  build_res [] indices
+
 let json_query : ?index:int -> t -> text:string -> (json, string) result =
     fun ?index d ~text ->
   match text_query ?index d ~text with Error(s) -> Error(s) | Ok(text) ->

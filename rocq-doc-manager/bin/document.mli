@@ -126,6 +126,14 @@ val query : t -> text:string -> (command_data * feedback list, string) result
     use as result. An [Error] is given if no valid feedback item is found. *)
 val text_query : ?index:int -> t -> text:string -> (string, string) result
 
+(** [text_query_all ?indices d ~text] is like [text_query d ~text], but it can
+    retrieve several "notice" feedback items at the same time. If [indices] is
+    not given, then the list of all "notice" items is returned. When [indices]
+    is given, then a list of same size with the items at corresponding indices
+    are returned. If any such index is invalid, an [Error] is returned. *)
+val text_query_all : ?indices:int list -> t -> text:string
+  -> (string list, string) result
+
 (** [json_query ?index d ~text] is similar to [text_query ?index d ~text], but
     the result is additionally turned into JSON data. If the command result is
     not a valid JSON string, an [Error] is returned. *)

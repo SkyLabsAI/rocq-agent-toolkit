@@ -7,6 +7,9 @@
   > text_query ["About nil.",0]
   > text_query ["About nil.",1]
   > json_query ["About nil.",0]
+  > text_query_all ["Eval lazy in I.",[]]
+  > text_query_all ["Eval lazy in I.",[0]]
+  > text_query_all ["Eval lazy in I.",[0,0]]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -15,3 +18,6 @@
   {"id":1,"jsonrpc":"2.0","result":"nil : forall {A : Type}, list A\n\nnil is template universe polymorphic\nArguments nil {A}%_type_scope\nExpands to: Constructor Corelib.Init.Datatypes.nil\nDeclared in library Corelib.Init.Datatypes, line 310, characters 3-6"}
   {"id":2,"jsonrpc":"2.0","error":{"code":-32803,"message":"the query had no \"notice\" feedback at that index"}}
   {"id":3,"jsonrpc":"2.0","error":{"code":-32803,"message":"the query result does not contain valid JSON"}}
+  {"id":4,"jsonrpc":"2.0","result":[]}
+  {"id":5,"jsonrpc":"2.0","result":["     = I\n     : True"]}
+  {"id":6,"jsonrpc":"2.0","result":["     = I\n     : True","     = I\n     : True"]}

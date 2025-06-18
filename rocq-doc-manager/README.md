@@ -159,6 +159,15 @@ Supported Requests
 - Response payload: string with the query's result (as taken from the "notice"
   feedback with the given index).
 
+### `text_query_all`
+
+- Arguments: `text` (string), `indices` (`null` or integer).
+- Description: runs the given query at the cursor, not updating the state.
+- Failure mode: recoverable failure.
+- Failure payload: none.
+- Response payload: list of strings with the query's result (as taken from the
+  "notice" feedback with the given indices, or all notice feedback if `null`).
+
 ### `json_query`
 
 - Arguments: `text` (string), `index` (integer).
