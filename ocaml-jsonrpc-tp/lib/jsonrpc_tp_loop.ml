@@ -3,10 +3,15 @@ module Params = struct
     | Int    : int    tag
     | Bool   : bool   tag
     | String : string tag
+    | Option : 'a tag -> 'a option tag
+    | List   : 'a tag -> 'a list tag
 
   let int    : int    tag = Int 
   let bool   : bool   tag = Bool
   let string : string tag = String
+
+  let option : 'a tag -> 'a option tag = fun t -> Option(t)
+  let list : 'a tag -> 'a list tag = fun t -> List(t)
 
   type 'a t =
     | Nil : unit t
@@ -68,21 +73,47 @@ end
 
 type json = Yojson.Safe.t
 
+type 'a tag = 'a Params.tag
+
+let rec parse_param : type a. a tag -> json -> a option = fun t p ->
+  match (t, p) with
+  | (Int      , `Int(i)   ) -> Some(i)
+  | (Bool     , `Bool(b)  ) -> Some(b)
+  | (String   , `String(s)) -> Some(s)
+  | (Option(t), _         ) -> parse_option t p
+  | (List(t)  , `List(l)  ) -> parse_list t l
+  | (_        , _         ) -> None
+
+and parse_option : type a. a tag -> json -> a option option = fun t p ->
+  match p with
+  | `Null -> Some(None)
+  | _     -> Option.map (fun o -> Some(o)) (parse_param t p)
+
+and parse_list : type a. a tag -> json list -> a list option = fun t l ->
+  let rec parse_list rev_acc xs =
+    match xs with
+    | []      -> Some(List.rev rev_acc)
+    | x :: xs ->
+    match parse_param t x with
+    | None    -> None
+    | Some(p) -> parse_list (p :: rev_acc) xs
+  in
+  parse_list [] l
+
 let rec parse_params : type a. a Params.t -> json list -> a option =
     fun spec params ->
   let open Params in
   match (spec, params) with
-  | (Nil             , []                  ) -> Some(())
-  | (Cns(Int   ,spec), `Int(i)    :: params) ->
-      let args = parse_params spec params in
-      Option.map (fun args -> (i, args)) args
-  | (Cns(Bool  ,spec), `Bool(b)   :: params) ->
-      let args = parse_params spec params in
-      Option.map (fun args -> (b, args)) args
-  | (Cns(String,spec), `String(s) :: params) ->
-      let args = parse_params spec params in
-      Option.map (fun args -> (s, args)) args
-  | (_               , _                   ) -> None
+  | (Nil         , []             ) -> Some(())
+  | (Nil         , _     :: _     ) -> None
+  | (Cns(_, _   ), []             ) -> None
+  | (Cns(t, spec), param :: params) ->
+  match parse_param t param with
+  | None         -> None
+  | Some(param)  ->
+  match parse_params spec params with
+  | None         -> None
+  | Some(params) -> Some((param, params))
 
 let run : 'a t -> ic:In_channel.t -> oc:Out_channel.t -> 'a -> 'a =
     fun rset ~ic ~oc st ->

@@ -20,6 +20,13 @@ module Params : sig
   (** [string] is a tag specifying a string argument. *)
   val string : string tag
 
+  (** [option t] specifies an optional argument whose type has tag [t]. *)
+  val option : 'a tag -> 'a option tag
+
+  (** [list t] is a tag specifying a list argument. Argument [t] specifies the
+      uniform type of the contained arguments. *)
+  val list : 'a tag -> 'a list tag
+
   (** Specification of a list of parameters. *)
   type 'a t
 
