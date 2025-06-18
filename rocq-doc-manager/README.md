@@ -156,8 +156,8 @@ Supported Requests
 - Description: runs the given query at the cursor, not updating the state.
 - Failure mode: recoverable failure.
 - Failure payload: none.
-- Response payload: string with the query's result (as taken from the "notice"
-  feedback with the given index).
+- Response payload: string with the query's result (as taken from the "info" /
+  "notice" feedback with the given index).
 
 ### `text_query_all`
 
@@ -166,7 +166,8 @@ Supported Requests
 - Failure mode: recoverable failure.
 - Failure payload: none.
 - Response payload: list of strings with the query's result (as taken from the
-  "notice" feedback with the given indices, or all notice feedback if `null`).
+  "info" / "notice" feedback with the given indices, or all "info" / "notice"
+  feedback if `null`).
 
 ### `json_query`
 
@@ -175,7 +176,7 @@ Supported Requests
 - Failure mode: recoverable failure.
 - Failure payload: none.
 - Response payload: arbitrary JSON data, as returned by the query (as JSON
-  text, take from the "notice" feedback with the given index).
+  text, take from the "info" / "notice" feedback with the given index).
 
 ### `quit`
 

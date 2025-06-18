@@ -284,20 +284,22 @@ let query : t -> text:string ->
 let text_query : ?index:int -> t -> text:string -> (string, string) result =
     fun ?index d ~text ->
   match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
-  let notices = List.filter (fun f -> f.kind = `Notice) feedback in
+  let pred {kind; _} = kind = `Notice || kind = `Info in
+  let notices = List.filter pred feedback in
   match (index, notices) with
   | (None   , [f]) -> Ok(f.text)
-  | (None   , [] ) -> Error("the query gave no \"notice\" feedback")
-  | (None   , _  ) -> Error("the query gave too much \"notice\" feedback")
+  | (None   , [] ) -> Error("no \"info\" / \"notice\" feedback")
+  | (None   , _  ) -> Error("too much \"info\" / \"notice\" feedback")
   | (Some(i), _  ) ->
   match List.nth_opt notices i with
-  | None    -> Error("the query had no \"notice\" feedback at that index")
+  | None    -> Error("no \"info\" / \"notice\" feedback at the given index")
   | Some(f) -> Ok(f.text)
 
 let text_query_all : ?indices:int list -> t -> text:string ->
     (string list, string) result = fun ?indices d ~text ->
   match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
-  let notices = List.filter (fun f -> f.kind = `Notice) feedback in
+  let pred {kind; _} = kind = `Notice || kind = `Info in
+  let notices = List.filter pred feedback in
   match indices with
   | None          -> Ok(List.map (fun f -> f.text) notices)
   | Some(indices) ->
@@ -310,7 +312,7 @@ let text_query_all : ?indices:int list -> t -> text:string ->
       let item = Array.get notices index in
       build_res (item :: rev_items) indices
     with Invalid_argument(_) ->
-      Error("the query had no \"notice\" feedback at a given index")
+      Error("no \"info\" / \"notice\" feedback at one of the given indices")
   in
   build_res [] indices
 

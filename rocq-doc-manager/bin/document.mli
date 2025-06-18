@@ -121,16 +121,18 @@ val query : t -> text:string -> (command_data * feedback list, string) result
 (** [text_query ?index d ~text] is similar to [query d ~text], but the command
     result is extracted from the feedback, and returned as a string in case of
     success. If [index] is not given, the command [text] is assumed to produce
-    exactly one "notice" feedback item, and its contents is taken as result of
-    the query. Otherwise, the [index] identifies the "notice" feedback item to
-    use as result. An [Error] is given if no valid feedback item is found. *)
+    exactly one "info" or "notice" feedback item, and its contents is taken as
+    result of the query. Otherwise, the [index] identifies the "info"/"notice"
+    feedback item to use as result. An [Error] is given when no valid feedback
+    item is found. *)
 val text_query : ?index:int -> t -> text:string -> (string, string) result
 
 (** [text_query_all ?indices d ~text] is like [text_query d ~text], but it can
-    retrieve several "notice" feedback items at the same time. If [indices] is
-    not given, then the list of all "notice" items is returned. When [indices]
-    is given, then a list of same size with the items at corresponding indices
-    are returned. If any such index is invalid, an [Error] is returned. *)
+    retrieve several "info"/"notice" feedback items at once. When [indices] is
+    not given, then the list of all "info"/"notice" items is returned. When an
+    [indices] value is given, then a list of same size containing the items at
+    corresponding indices is returned. In the case where any of the indices is
+    invalid, [Error] is returned. *)
 val text_query_all : ?indices:int list -> t -> text:string
   -> (string list, string) result
 
