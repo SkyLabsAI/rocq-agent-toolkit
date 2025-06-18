@@ -192,6 +192,17 @@ let last_processed_item : t -> processed_item option = fun d ->
   | []                                  ->
       None
 
+type unprocessed_item = {
+  kind : [`Blanks | `Command];
+  text : string;
+}
+
+let first_unprocessed_item : t -> unprocessed_item option = fun d ->
+  match d.suffix with
+  | []                      -> None
+  | RemBlanks({text})  :: _ -> Some({kind = `Blanks; text})
+  | RemCommand({text}) :: _ -> Some({kind = `Command; text})
+
 let doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a)
      -> 'a list = fun d f ->
   let rec build acc rev_prefix =

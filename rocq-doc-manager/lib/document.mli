@@ -89,6 +89,13 @@ type processed_item = {
 
 val last_processed_item : t -> processed_item option
 
+type unprocessed_item = {
+  kind : [`Blanks | `Command];
+  text : string;
+}
+
+val first_unprocessed_item : t -> unprocessed_item option
+
 val doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a) -> 'a list
 
 val doc_suffix : t -> (kind:string -> text:string -> 'a) -> 'a list
