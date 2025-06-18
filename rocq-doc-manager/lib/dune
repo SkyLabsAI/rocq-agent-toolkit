@@ -1,0 +1,9 @@
+(library
+ (public_name rocq-doc-manager.lib)
+ (name rocq_doc_manager)
+ (wrapped false)
+ (preprocess (pps ppx_deriving_yojson))
+ (libraries
+  rocq-split.api
+  rocq-jsonrpc-repl.api
+  ppx_deriving_yojson.runtime))
