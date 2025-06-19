@@ -33,7 +33,7 @@ let recv_json ?(ic=stdin) () =
     let json = JSON.from_string data in
     Ok(Some(json))
   with
-  | Yojson.Json_error(_) -> Error("JSON parse error")
+  | Yojson.Json_error(s) -> Error("JSON parse error.\n" ^ s)
   | End_of_file          -> Error("end of file reached before packet end")
 
 type packet = Jsonrpc.Packet.t
