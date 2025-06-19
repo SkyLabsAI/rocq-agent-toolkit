@@ -59,6 +59,12 @@ let _ =
   | Error(loc, s) -> (d, located_error ~loc s)
 
 let _ =
+  add_handler "go_to" P.(cons int nil) @@ fun d (index, ()) ->
+  match Document.advance_to d ~index with
+  | Ok(())        -> (d, Ok(`Null))
+  | Error(loc, s) -> (d, located_error ~loc s)
+
+let _ =
   add_handler "clear_suffix" P.nil @@ fun d () ->
   Document.clear_suffix d;
   (d, Ok(`Null))

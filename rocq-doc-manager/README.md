@@ -87,6 +87,15 @@ Supported Requests
 - Failure payload: object with `loc` field (error location, `null` if none).
 - Response payload: `null`.
 
+### `go_to`
+
+- Arguments: `index` (integer).
+- Description: move the cursor right before the indicated item (whether it is
+  processed or not, one-past-the-end index allowed).
+- Failure mode: recoverable failure, argument validation.
+- Failure payload: object with `loc` field (error location, `null` if none).
+- Response payload: `null`.
+
 ### `clear_suffix`
 
 - Arguments: none.

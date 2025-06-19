@@ -196,6 +196,12 @@ let advance_to : t -> index:int -> (unit, loc * string) result =
   in
   loop cur
 
+let go_to : t -> index:int -> (unit, loc * string) result = fun d ~index ->
+  let cur = cursor_index d in
+  match index < cur with
+  | true  -> revert_before d ~index ~erase:false; Ok(())
+  | false -> advance_to d ~index
+
 type processed_item = {
   index : int;
   kind : [`Blanks | `Command];

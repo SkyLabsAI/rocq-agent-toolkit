@@ -81,6 +81,13 @@ val run_step : t -> (command_data option, loc * string) result
     similarly to what [insert_command] or [run_step] do. *)
 val advance_to : t -> index:int -> (unit, loc * string) result
 
+(** [go_to d ~index] is the same as [advance_to d ~index], but it additionally
+    allows to revert to an earlier index like [revert_before d ~index]. In any
+    case, no item is erased from the document. If the [index] is invalid, then
+    [Invalid_argument] is raised. Valid indices range from [0] to one past the
+    index of the last item in the document's suffix. *)
+val go_to : t -> index:int -> (unit, loc * string) result
+
 type byte_loc = {off : int; len : int}
 
 val byte_loc_of_last_step : t -> byte_loc option
