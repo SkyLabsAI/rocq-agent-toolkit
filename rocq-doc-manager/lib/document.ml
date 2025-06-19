@@ -304,13 +304,10 @@ let get_feedback : t -> feedback list = fun d ->
 
 let query : t -> text:string ->
     (command_data * feedback list, string) result = fun d ~text ->
-  match Rocq_toplevel.run d.toplevel ~off:0 ~text with
-  | Error(_,s) -> Error(s)
-  | Ok(data)   ->
-  let feedback = get_feedback d in
-  match Rocq_toplevel.back_to d.toplevel ~sid:d.cursor_sid with
-  | Error(s)   -> Error(s)
-  | Ok(_)      -> Ok(data, feedback)
+  with_rollback d @@ fun () ->
+  match run_command d ~text with
+  | Error(s) -> Error(s)
+  | Ok(data) -> Ok(data, get_feedback d)
 
 let text_query : ?index:int -> t -> text:string -> (string, string) result =
     fun ?index d ~text ->
