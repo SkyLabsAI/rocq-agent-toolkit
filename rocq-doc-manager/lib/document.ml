@@ -141,15 +141,25 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
   in
   let (rev_prefix, suffix, sid) = revert d.rev_prefix d.suffix d.cursor_sid in
   match Rocq_toplevel.back_to d.toplevel ~sid with
-  | Ok(())   ->
-      d.rev_prefix <- rev_prefix;
-      if not erase then d.suffix <- suffix;
-      d.cursor_sid <- sid
   | Error(_) -> assert false (* Unreachable. *)
+  | Ok(())   ->
+  d.rev_prefix <- rev_prefix;
+  if not erase then d.suffix <- suffix;
+  d.cursor_sid <- sid
 
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
-  let index = cursor_index d in
-  let v = f () in revert_before d ~index ~erase:true; v
+  let rev_prefix = d.rev_prefix in
+  let cursor_sid = d.cursor_sid in
+  let cursor_off = d.cursor_off in
+  let suffix = d.suffix in
+  let v = f () in
+  match Rocq_toplevel.back_to d.toplevel ~sid:cursor_sid with
+  | Error(_) -> assert false (* Unreachable. *)
+  | Ok(())   ->
+  d.rev_prefix <- rev_prefix;
+  d.cursor_sid <- cursor_sid;
+  d.cursor_off <- cursor_off;
+  d.suffix <- suffix; v
 
 let clear_suffix : t -> unit = fun d ->
   d.suffix <- []
