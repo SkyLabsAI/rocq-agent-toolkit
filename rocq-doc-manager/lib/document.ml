@@ -141,6 +141,10 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
   | Ok(())   -> ()
   | Error(_) -> assert false (* Unreachable. *)
 
+let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
+  let index = cursor_index d in
+  let v = f () in revert_before d ~index ~erase:true; v
+
 let clear_suffix : t -> unit = fun d ->
   d.suffix <- []
 

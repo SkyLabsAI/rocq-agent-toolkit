@@ -63,6 +63,11 @@ val cursor_index : t -> int
     to the suffix of unprocessed commands. *)
 val revert_before : ?erase:bool -> t -> index:int -> unit
 
+(** [with_rollback d f] runs [f ()], and then rolls back the document state so
+    that the effects of the call to [f] are reverted. Note that [f] should not
+    raise exceptions. *)
+val with_rollback : t -> (unit -> 'a) -> 'a
+
 val clear_suffix : t -> unit
 
 val run_step : t -> (command_data option, loc * string) result
