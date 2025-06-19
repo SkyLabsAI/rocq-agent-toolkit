@@ -14,12 +14,15 @@
   > run_step
   > run_step
   > revert_before [false,2]
+  > revert_before [false,2]
   > revert_before [true,0]
   > doc_prefix
   > doc_suffix
   > run_step
   > run_step
   > run_step
+  > revert_before [false,0]
+  > revert_before [false,0]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -32,8 +35,11 @@
   {"id":5,"jsonrpc":"2.0","result":{"open_subgoals":null}}
   {"id":6,"jsonrpc":"2.0","result":null}
   {"id":7,"jsonrpc":"2.0","result":null}
-  {"id":8,"jsonrpc":"2.0","result":[]}
-  {"id":9,"jsonrpc":"2.0","result":[{"kind":"command","text":"About nat."},{"kind":"blanks","text":"\n"},{"kind":"command","text":"Check test."}]}
-  {"id":10,"jsonrpc":"2.0","result":{"open_subgoals":null}}
-  {"id":11,"jsonrpc":"2.0","result":null}
-  {"id":12,"jsonrpc":"2.0","error":{"data":{"loc":{"fname":["ToplevelInput"],"line_nb":1,"bol_pos":0,"line_nb_last":1,"bol_pos_last":0,"bp":51,"ep":55}},"code":-32803,"message":"The reference test was not found in the current environment."}}
+  {"id":8,"jsonrpc":"2.0","result":null}
+  {"id":9,"jsonrpc":"2.0","result":[]}
+  {"id":10,"jsonrpc":"2.0","result":[{"kind":"command","text":"About nat."},{"kind":"blanks","text":"\n"},{"kind":"command","text":"Check test."}]}
+  {"id":11,"jsonrpc":"2.0","result":{"open_subgoals":null}}
+  {"id":12,"jsonrpc":"2.0","result":null}
+  {"id":13,"jsonrpc":"2.0","error":{"data":{"loc":{"fname":["ToplevelInput"],"line_nb":1,"bol_pos":0,"line_nb_last":1,"bol_pos_last":0,"bp":51,"ep":55}},"code":-32803,"message":"The reference test was not found in the current environment."}}
+  {"id":14,"jsonrpc":"2.0","result":null}
+  {"id":15,"jsonrpc":"2.0","result":null}

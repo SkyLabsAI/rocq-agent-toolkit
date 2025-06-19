@@ -14,6 +14,7 @@ type t = {
   args : string list;
   file : string;
   toplevel : Rocq_toplevel.t;
+  initial_sid : sid;
   mutable rev_prefix : processed list;
   mutable cursor_sid : sid;
   mutable cursor_off : int;
@@ -31,10 +32,12 @@ let cursor_index : t -> int = fun d ->
 
 let init : args:string list -> file:string -> t = fun ~args ~file ->
   let toplevel = Rocq_toplevel.init ~args ~file in
-  let cursor_sid = Rocq_toplevel.get_state_id toplevel in
+  let initial_sid = Rocq_toplevel.get_state_id toplevel in
+  let cursor_sid = initial_sid in
   let cursor_off = 0 in
   let (rev_prefix, suffix) = ([], []) in
-  {args; file; toplevel; rev_prefix; cursor_sid; cursor_off; suffix}
+  { args; file; toplevel; initial_sid;
+    rev_prefix; cursor_sid; cursor_off; suffix }
 
 let stop : t -> unit = fun d ->
   Rocq_toplevel.stop d.toplevel
@@ -116,7 +119,8 @@ let run_command : t -> text:string -> (command_data, string) result =
 let revert_before : ?erase:bool -> t -> index:int -> unit =
     fun ?(erase=false) d ~index:i ->
   let cur_index = cursor_index d in
-  if i < 0 || cur_index <= i then invalid_arg "index out of bounds";
+  if i < 0 || cur_index < i then invalid_arg "index out of bounds";
+  if i = cur_index then () else
   let rec revert rev_prefix suffix sid =
     match rev_prefix with
     | Blanks({index; text; _})              :: rev_prefix ->
@@ -132,13 +136,15 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
         else
           revert rev_prefix suffix sid_before
     | []                                                  ->
-        assert false (* Unreachable. *)
+        assert (i = 0);
+        (rev_prefix, suffix, d.initial_sid)
   in
   let (rev_prefix, suffix, sid) = revert d.rev_prefix d.suffix d.cursor_sid in
-  d.rev_prefix <- rev_prefix;
-  if not erase then d.suffix <- suffix;
   match Rocq_toplevel.back_to d.toplevel ~sid with
-  | Ok(())   -> ()
+  | Ok(())   ->
+      d.rev_prefix <- rev_prefix;
+      if not erase then d.suffix <- suffix;
+      d.cursor_sid <- sid
   | Error(_) -> assert false (* Unreachable. *)
 
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
