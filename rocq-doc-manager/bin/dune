@@ -11,3 +11,10 @@
  (modules rocq_get_deps)
  (package rocq-doc-manager)
  (libraries rocq-doc-manager.lib))
+
+(executable
+ (public_name rocq-diagnose)
+ (name rocq_diagnose)
+ (modules rocq_diagnose)
+ (package rocq-doc-manager)
+ (libraries rocq-doc-manager.lib))
