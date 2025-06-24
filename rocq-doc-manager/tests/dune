@@ -1,6 +1,7 @@
 (cram
  (applies_to :whole_subtree)
  (deps
+  (package jsonrpc-tp)
   (package coq-core)
   (package coq-stdlib)
   (package rocq-doc-manager)
