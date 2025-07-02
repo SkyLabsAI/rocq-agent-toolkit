@@ -3,7 +3,7 @@
   $ export DUNE_CACHE=disabled
 
   $ dune build
-  $ dune coq top --toplevel rocq-fake-repl theories/file.v
+  $ dune coq top --toplevel rocq-fake-repl theories/file.v | sed 's/\/.*\/\(_build\/\)/$TESTCASE_ROOT\/\1/'
   -w
   -deprecated-native-compiler-option
   -w
@@ -12,59 +12,59 @@
   ondemand
   -boot
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/btauto
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/btauto
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/cc
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/cc
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/cc_core
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/cc_core
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/derive
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/derive
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/extraction
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/extraction
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/firstorder
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/firstorder
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/firstorder_core
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/firstorder_core
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/funind
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/funind
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac2
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac2
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac2_ltac1
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac2_ltac1
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/micromega
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/micromega
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/micromega_core
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/micromega_core
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/nsatz
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/nsatz
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/nsatz_core
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/nsatz_core
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/number_string_notation
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/number_string_notation
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/ring
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ring
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/rtauto
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/rtauto
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/ssreflect
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ssreflect
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/ssrmatching
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ssrmatching
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/tauto
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tauto
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p0
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p0
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p1
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p1
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p2
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p2
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p3
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p3
   -I
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/../rocq-runtime/plugins/zify
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/zify
   -R
-  /home/rodolphe/dev/skylabs-fm/_build/install/default/lib/coq/theories
+  $TESTCASE_ROOT/_build/install/default/lib/coq/theories
   Coq
   -R
   $TESTCASE_ROOT/_build/default/theories
