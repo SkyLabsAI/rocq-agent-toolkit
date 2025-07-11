@@ -234,8 +234,6 @@ class FixedLoggingHandler(LoggingHandler):
         # Fix the caller information by looking deeper in the stack
         # Skip frames related to logging infrastructure
         import inspect
-        import json
-        import sys
         
         # Get the current stack
         stack = inspect.stack()
@@ -266,23 +264,6 @@ class FixedLoggingHandler(LoggingHandler):
             record.funcName = caller_frame.function
             record.lineno = caller_frame.lineno
             record.module = caller_frame.filename.split('/')[-1].replace('.py', '')
-        
-        # # Print the structured log to stdout for inspection before it's exported.
-        # print("--- LOG RECORD TO BE EXPORTED ---", file=sys.stdout)
-        # try:
-        #     # The message from psi-logging is often a JSON string.
-        #     # We load and dump it here for pretty-printing.
-        #     log_data = json.loads(record.msg)
-        #     #save the json logs to a file
-        #     with open("log_data_loki_workflow_logs_new_full_entries.jsonl", "a") as f:
-        #         f.write(json.dumps(log_data) + "\n")
-        #     #print the json logs to stdout
-        #     print(json.dumps(log_data, indent=2), file=sys.stdout)
-        # except (json.JSONDecodeError, TypeError):
-        #     # If it's not a JSON string, print the raw message.
-        #     print(f"Raw message: {record.msg}", file=sys.stdout)
-        # print("-----------------------------------", file=sys.stdout)
-        # sys.stdout.flush()
         
         # Call the parent emit method
         super().emit(record)
