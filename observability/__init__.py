@@ -13,16 +13,24 @@ from .core.context import trace_context, get_current_span, add_span_event, set_s
 from .core.metrics import metrics, set_service_name
 
 # Logging is now a separate package (can be used independently)
-from psi_logging import (
-    get_logger, 
-    setup_logging as configure_logging, 
+from psi_verifier.psi_logging import (
+    get_logger,
+    setup_logging,
+    configure_logging,
     set_global_service_name,
+    set_global_event_context,
+    get_global_event_context,
+    configure_event_schemas,
+    add_log_context,
+    clear_log_context,
+    get_log_context,
     log_operation_start,
     log_operation_success,
     log_operation_error,
     log_business_event,
     log_security_event,
     log_performance_metric,
+    is_otel_available,
 )
 
 # Configuration and setup
@@ -58,9 +66,16 @@ __all__ = [
     # Setup and configuration
     "ObservabilityConfig",
     "setup_observability",
+    "setup_logging",
     "configure_logging",
     "set_service_name",
     "set_global_service_name",
+    "set_global_event_context",
+    "get_global_event_context",
+    "configure_event_schemas",
+    "add_log_context",
+    "clear_log_context",
+    "get_log_context",
     
     # Convenience decorators
     "trace_http",
@@ -68,14 +83,6 @@ __all__ = [
     "trace_database",
     "trace_workflow",
     "trace_langchain",
-    
-    # Event logging (from psi_logging package)
-    "log_operation_start",
-    "log_operation_success", 
-    "log_operation_error",
-    "log_business_event",
-    "log_security_event",
-    "log_performance_metric",
     
     # Extractors (for advanced usage)
     "AttributeExtractor",
@@ -87,4 +94,12 @@ __all__ = [
     "CustomExtractor",
     "BusinessOperationExtractor",
     "MLOperationExtractor",
+
+    # Event logging (from psi_logging package)
+    "log_operation_start",
+    "log_operation_success", 
+    "log_operation_error",
+    "log_business_event",
+    "log_security_event",
+    "log_performance_metric",
 ] 

@@ -6,7 +6,8 @@ instrumentation with all the necessary components.
 """
 
 import logging
-from typing import Optional
+import uuid
+from typing import Optional, Dict, List, Any
 
 from opentelemetry import trace, metrics, _logs
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -23,6 +24,9 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry._logs import set_logger_provider as _set_logger_provider
+from opentelemetry.util.types import AttributeValue
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
 from .config import ObservabilityConfig
 
@@ -57,7 +61,7 @@ def setup_observability(config: ObservabilityConfig) -> None:
         logger.warning("Observability already initialized, skipping setup")
         return
     
-    logger.info(f"Setting up observability for service: {config.service_name}")
+    logger.debug(f"Setting up observability for service: {config.service_name}")
     
     # Create resource with service information
     resource = Resource.create(config.effective_resource_attributes)
@@ -74,16 +78,30 @@ def setup_observability(config: ObservabilityConfig) -> None:
     if config.enable_logging:
         _setup_psi_logging(config)
     
+        # Add a unique run_id to all logs for this session
+        from psi_verifier.psi_logging import add_log_context
+        run_id = str(uuid.uuid4())
+        add_log_context("run_id", run_id)
+        logger.debug(f"Added unique run_id to log context: {run_id}")
+        
+        # Add user_id and session_id to log context if provided
+        if config.user_id:
+            add_log_context("user_id", config.user_id)
+            logger.debug(f"Added user_id to log context: {config.user_id}")
+        
+        if config.session_id:
+            add_log_context("session_id", config.session_id)
+            logger.debug(f"Added session_id to log context: {config.session_id}")
     # Setup automatic instrumentation
     _setup_auto_instrumentation(config)
     
     _initialized = True
     _current_config = config
     
-    logger.info("OpenTelemetry observability setup completed successfully")
-    logger.info(f"Service: {config.service_name}")
-    logger.info(f"OTLP Endpoint: {config.otlp_endpoint}")
-    logger.info(f"Features - Tracing: {config.enable_tracing}, Metrics: {config.enable_metrics}, Logging: {config.enable_logging}")
+    logger.debug("OpenTelemetry observability setup completed successfully")
+    logger.debug(f"Service: {config.service_name}")
+    logger.debug(f"OTLP Endpoint: {config.otlp_endpoint}")
+    logger.debug(f"Features - Tracing: {config.enable_tracing}, Metrics: {config.enable_metrics}, Logging: {config.enable_logging}")
 
 
 def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
@@ -143,7 +161,8 @@ def _setup_psi_logging(config: ObservabilityConfig) -> None:
     logger.debug("Setting up structured logging...")
     
     # 1. Setup structured logging for console output and formatting
-    from psi_logging import setup_logging
+    from psi_verifier.psi_logging import setup_logging
+    from psi_verifier.psi_logging.core import configure_event_schemas  # local import to avoid circular deps
     setup_logging(
         service_name=config.service_name,
         level=config.log_level,
@@ -151,10 +170,122 @@ def _setup_psi_logging(config: ObservabilityConfig) -> None:
         environment=config.environment
     )
     
+    # 1b. Populate event schemas so loggers can filter payloads appropriately
+    schema_dict: Dict[str, List[str]] = {}
+    if config.training_event_config and config.training_event_config.enabled:
+        schema_dict["training"] = config.training_event_config.allowed_fields()
+    if config.workflow_event_config and config.workflow_event_config.enabled:
+        schema_dict["workflow"] = config.workflow_event_config.allowed_fields()
+    if config.evaluation_event_config and config.evaluation_event_config.enabled:
+        schema_dict["evaluation"] = config.evaluation_event_config.allowed_fields()
+    if config.langgraph_event_config and config.langgraph_event_config.enabled:
+        schema_dict["langgraph"] = config.langgraph_event_config.allowed_fields()
+
+    if schema_dict:
+        configure_event_schemas(schema_dict)
+    
+    # 1c. Configure contextual logging if a specific event context is preferred
+    # This allows users to set a default event context for all new loggers
+    _setup_contextual_logging(config)
+    
     # 2. Setup OTLP log export for shipping to Loki/collectors
     _setup_otlp_log_export(config)
     
     logger.debug("Structured logging setup completed")
+
+
+def _setup_contextual_logging(config: ObservabilityConfig) -> None:
+    """Setup contextual logging based on configuration."""
+    from psi_verifier.psi_logging import set_global_event_context
+    
+    # Check if any event config is enabled and should be used as default context
+    # Priority: langgraph -> training -> workflow -> evaluation
+    default_context = None
+    
+    if config.langgraph_event_config and config.langgraph_event_config.enabled:
+        default_context = "langgraph"
+    elif config.training_event_config and config.training_event_config.enabled:
+        default_context = "training"
+    elif config.workflow_event_config and config.workflow_event_config.enabled:
+        default_context = "workflow"
+    elif config.evaluation_event_config and config.evaluation_event_config.enabled:
+        default_context = "evaluation"
+    
+    if default_context:
+        set_global_event_context(default_context)
+        logger.debug(f"Set global event context to: {default_context}")
+    
+
+class FixedLoggingHandler(LoggingHandler):
+    """
+    Custom LoggingHandler that captures correct caller information.
+    
+    This handler fixes the issue where code_file_path, code_function_name,
+    and code_line_number point to logger internals instead of the actual caller.
+    """
+    
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Emit a log record with correct caller information.
+        
+        Args:
+            record: The log record to emit
+        """
+        # Fix the caller information by looking deeper in the stack
+        # Skip frames related to logging infrastructure
+        import inspect
+        import json
+        import sys
+        
+        # Get the current stack
+        stack = inspect.stack()
+        
+        # Find the first frame that's not part of the logging infrastructure
+        caller_frame = None
+        for frame_info in stack:
+            frame_filename = frame_info.filename
+            frame_function = frame_info.function
+            
+            # Skip frames from logging infrastructure
+            if (
+                'logging' in frame_filename or
+                'psi_logging' in frame_filename or
+                'opentelemetry' in frame_filename or
+                frame_function in ['_log', 'log', 'emit', 'handle', 'callHandlers']
+            ):
+                continue
+            
+            # This is likely the actual caller
+            caller_frame = frame_info
+            break
+        
+        # Update the record with correct caller information
+        if caller_frame:
+            record.pathname = caller_frame.filename
+            record.filename = caller_frame.filename.split('/')[-1]
+            record.funcName = caller_frame.function
+            record.lineno = caller_frame.lineno
+            record.module = caller_frame.filename.split('/')[-1].replace('.py', '')
+        
+        # # Print the structured log to stdout for inspection before it's exported.
+        # print("--- LOG RECORD TO BE EXPORTED ---", file=sys.stdout)
+        # try:
+        #     # The message from psi-logging is often a JSON string.
+        #     # We load and dump it here for pretty-printing.
+        #     log_data = json.loads(record.msg)
+        #     #save the json logs to a file
+        #     with open("log_data_loki_workflow_logs_new_full_entries.jsonl", "a") as f:
+        #         f.write(json.dumps(log_data) + "\n")
+        #     #print the json logs to stdout
+        #     print(json.dumps(log_data, indent=2), file=sys.stdout)
+        # except (json.JSONDecodeError, TypeError):
+        #     # If it's not a JSON string, print the raw message.
+        #     print(f"Raw message: {record.msg}", file=sys.stdout)
+        # print("-----------------------------------", file=sys.stdout)
+        # sys.stdout.flush()
+        
+        # Call the parent emit method
+        super().emit(record)
 
 
 def _setup_otlp_log_export(config: ObservabilityConfig) -> None:
@@ -166,7 +297,7 @@ def _setup_otlp_log_export(config: ObservabilityConfig) -> None:
     
     # Set up logger provider
     logger_provider = LoggerProvider(resource=resource)
-    _logs.set_logger_provider(logger_provider)
+    _set_logger_provider(logger_provider)
     
     # Configure OTLP Log Exporter
     log_exporter = OTLPLogExporter(
@@ -184,9 +315,9 @@ def _setup_otlp_log_export(config: ObservabilityConfig) -> None:
         )
     )
     
-    # Create OTLP logging handler and add to root logger
-    otlp_handler = LoggingHandler(
-        level=getattr(logging, config.log_level.upper()),
+    # Create custom OTLP logging handler with fixed caller information
+    otlp_handler = FixedLoggingHandler(
+        # level=getattr(logging, config.log_level.upper()),
         logger_provider=logger_provider
     )
     
@@ -209,9 +340,9 @@ def _setup_auto_instrumentation(config: ObservabilityConfig) -> None:
     except Exception as e:
         logger.warning(f"Failed to instrument gRPC: {e}")
     
-    # Instrument logging
+    # Instrument logging without format override to avoid duplicate fields
     try:
-        LoggingInstrumentor().instrument(set_logging_format=True)
+        LoggingInstrumentor().instrument(set_logging_format=False)
         logger.debug("Logging instrumentation enabled") 
     except Exception as e:
         logger.warning(f"Failed to instrument logging: {e}")

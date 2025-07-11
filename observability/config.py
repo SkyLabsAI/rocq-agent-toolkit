@@ -6,8 +6,9 @@ It supports both environment-based and programmatic configuration with the
 new framework-agnostic approach.
 """
 
+from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 import os
 
 
@@ -25,6 +26,10 @@ class ObservabilityConfig:
     service_version: str = "unknown"
     service_namespace: str = "default"
     environment: Optional[str] = None  # Add environment field
+    
+    # User/Session identification (optional)
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
     
     # OpenTelemetry endpoints
     otlp_endpoint: str = "http://localhost:4317"
@@ -59,8 +64,17 @@ class ObservabilityConfig:
     # Custom headers for OTLP export
     custom_headers: Dict[str, str] = field(default_factory=dict)
     
+    # ---------------------------------------------------------------------
+    # Event-specific logging schemas (optional)
+    # ---------------------------------------------------------------------
+
+    training_event_config: Optional['TrainingEventConfig'] = None
+    workflow_event_config: Optional['WorkflowEventConfig'] = None
+    evaluation_event_config: Optional['EvaluationEventConfig'] = None
+    langgraph_event_config: Optional['LangGraphEventConfig'] = None
+    
     @classmethod
-    def from_environment(cls, **overrides) -> 'ObservabilityConfig':
+    def from_environment(cls, **overrides: Any) -> "ObservabilityConfig":
         """
         Create configuration from environment variables.
         
@@ -70,6 +84,8 @@ class ObservabilityConfig:
         - OTEL_SERVICE_VERSION → service_version
         - OTEL_SERVICE_NAMESPACE → service_namespace
         - OTEL_ENVIRONMENT → environment
+        - OTEL_USER_ID → user_id
+        - OTEL_SESSION_ID → session_id
         - OTEL_LOG_LEVEL → log_level
         - OTEL_ENABLE_TRACING → enable_tracing
         - OTEL_ENABLE_METRICS → enable_metrics
@@ -92,11 +108,13 @@ class ObservabilityConfig:
                 log_level="DEBUG"
             )
         """
-        env_config = {
+        env_config: Dict[str, Any] = {
             'service_name': os.getenv('OTEL_SERVICE_NAME', 'unknown-service'),
             'service_version': os.getenv('OTEL_SERVICE_VERSION', 'unknown'),
             'service_namespace': os.getenv('OTEL_SERVICE_NAMESPACE', 'default'),
             'environment': os.getenv('OTEL_ENVIRONMENT'),
+            'user_id': os.getenv('OTEL_USER_ID'),
+            'session_id': os.getenv('OTEL_SESSION_ID'),
             'otlp_endpoint': os.getenv('OTEL_ENDPOINT', 'http://localhost:4317'),
             'log_level': os.getenv('OTEL_LOG_LEVEL', 'INFO'),
             'enable_tracing': os.getenv('OTEL_ENABLE_TRACING', 'true').lower() == 'true',
@@ -189,7 +207,7 @@ class HttpExtractorConfig(ExtractorConfig):
     """Configuration for HTTP extractor."""
     include_headers: bool = False
     include_query_params: bool = True
-    sensitive_headers: list = field(default_factory=lambda: [
+    sensitive_headers: List[str] = field(default_factory=lambda: [
         'authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token'
     ])
 
@@ -228,3 +246,74 @@ class LangChainExtractorConfig(ExtractorConfig):
     include_model_info: bool = True
     max_input_length: int = 1000
     max_output_length: int = 1000 
+
+
+# ---------------------------------------------------------------------------
+# Event-specific structured-logging configuration
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class EventLogConfig:
+    """Base configuration for event-specific structured logs."""
+
+    enabled: bool = True
+    # Additional field names (without the ``include_`` prefix) that should be
+    # passed through even if no dedicated *include_* flag exists.
+    extra_fields: List[str] = field(default_factory=list)
+
+    def allowed_fields(self) -> List[str]:
+        """Return the list of payload keys that are allowed for this event."""
+        allowed: List[str] = []
+        for attr_name, value in vars(self).items():
+            if attr_name.startswith("include_") and value is True:
+                # Example: include_metrics -> "metrics"
+                allowed.append(attr_name[len("include_"):])
+        # Merge with *extra_fields*
+        allowed.extend(self.extra_fields)
+        # Return unique list while preserving order
+        seen: set[str] = set()
+        return [x for x in allowed if not (x in seen or seen.add(x))]
+
+
+@dataclass
+class TrainingEventConfig(EventLogConfig):
+    include_hyperparams: bool = True
+    include_dataset_info: bool = True
+    include_metrics: bool = True
+    include_reward_type: bool = True
+    include_reward_value: bool = True
+
+
+@dataclass
+class WorkflowEventConfig(EventLogConfig):
+    include_cpp_code: bool = True
+    include_gallina_model: bool = True
+    include_rep_pred: bool = True
+    include_spec: bool = True
+    include_node_name: bool = True
+    include_raw_llm_response: bool = True
+    include_node_count: bool = True
+    include_transition_to: bool = True 
+    include_status: bool = True 
+    include_user_feedback: bool = True
+    include_command_execution_result: bool = True 
+    include_model_version: bool = True
+
+@dataclass
+class EvaluationEventConfig(EventLogConfig):
+    include_dataset_info: bool = True
+    include_scores: bool = True
+    include_brick_server_result: bool = True
+    include_generation_kc: bool = True
+    include_sample_predictions: bool = False
+    max_sample_predictions: int = 5  # not part of allowed_fields but useful
+
+
+@dataclass
+class LangGraphEventConfig(EventLogConfig):
+    include_graph_state: bool = False
+    include_node_name: bool = True
+    include_transition_to: bool = True 
+    include_status: bool = True 
+    include_error: bool = True 
