@@ -37,7 +37,7 @@ class ObservabilityConfig:
     
     # Feature toggles
     enable_tracing: bool = True
-    enable_metrics: bool = True
+    enable_metrics: bool = False
     enable_logging: bool = True
     
     # LangSmith/LangChain integration
