@@ -42,14 +42,6 @@ opentelemetry-exporter-otlp-proto-http>=1.33.0
 opentelemetry-propagator-b3>=1.33.0
 opentelemetry-semantic-conventions>=0.54b0
 
-# ====================================================================
-# GRPC AND COMMUNICATION DEPENDENCIES (OPTIONAL)
-# Only needed if you're building gRPC services
-# ====================================================================
-grpcio>=1.60.0
-grpcio-tools>=1.60.0
-grpcio-reflection>=1.60.0
-protobuf>=5.28.0
 
 # ====================================================================
 # UTILITY AND FRAMEWORK DEPENDENCIES
@@ -63,15 +55,6 @@ rich>=13.8.0
 
 # CLI tools
 click>=8.1.7
-
-# ====================================================================
-# LANGSMITH INTEGRATION (OPTIONAL)
-# ====================================================================
-# LangChain ecosystem for AI/LLM observability
-langgraph>=0.2.45
-langchain>=0.3.7
-langchain-core>=0.3.15
-langsmith[otel]>=0.3.45
 
 # ====================================================================
 # DEVELOPMENT DEPENDENCIES (OPTIONAL)
