@@ -12,6 +12,8 @@ from .core.decorators import trace, trace_http, trace_rpc, trace_database, trace
 from .core.context import trace_context, get_current_span, add_span_event, set_span_attribute
 from .core.metrics import metrics, set_service_name
 
+from opentelemetry import propagate
+
 # Logging is now a separate package (can be used independently)
 from psi_verifier.psi_logging import (
     get_logger,
@@ -84,6 +86,9 @@ __all__ = [
     "trace_workflow",
     "trace_langchain",
     
+    # OTel Passthrough
+    "propagate",
+
     # Extractors (for advanced usage)
     "AttributeExtractor",
     "HttpExtractor",

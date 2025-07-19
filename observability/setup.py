@@ -11,6 +11,7 @@ from typing import Optional, Dict, List, Any
 
 from opentelemetry import trace, metrics, _logs
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorServer, GrpcInstrumentorClient
@@ -18,7 +19,7 @@ from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -27,8 +28,10 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry._logs import set_logger_provider as _set_logger_provider
 from opentelemetry.util.types import AttributeValue
 from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from .config import ObservabilityConfig
+from opentelemetry import propagate
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +128,14 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
         max_export_batch_size=config.max_export_batch_size
     )
     trace.get_tracer_provider().add_span_processor(span_processor)
+
+    # Also add a console exporter for local debugging
+    console_exporter = ConsoleSpanExporter()
+    span_processor_console = SimpleSpanProcessor(console_exporter)
+    trace.get_tracer_provider().add_span_processor(span_processor_console)
+
+    # Propagate context
+    propagate.set_global_textmap(TraceContextTextMapPropagator())
     
     logger.debug("Tracing setup completed")
 
