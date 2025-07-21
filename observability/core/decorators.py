@@ -117,13 +117,11 @@ def trace(
             tracer = otel_trace.get_tracer(__name__)
             start_time = time.time()
             
-            # Extract parent context from state if available
-            state = args[0] if args and isinstance(args[0], dict) else {}
-            carrier = state.get('trace_context', {})
-            parent_context = propagate.extract(carrier)
+            # Extract parent context using the extractor
+            parent_context = operation_extractor.extract_context(args, kwargs)
             
             # Activate the extracted context and run the function
-            token = otel_context.attach(parent_context)
+            token = otel_context.attach(parent_context) if parent_context else None
             try:
                 with tracer.start_as_current_span(span_name) as span:
                     try:
@@ -139,17 +137,8 @@ def trace(
                         result = func(*args, **kwargs)
                         
                         # --- CONTEXT INJECTION FOR NEXT NODE ---
-                        # Inject the new context from the current span into the *returned* updates
-                        if LANGGRAPH_AVAILABLE:
-                            new_carrier = {}
-                            propagate.inject(new_carrier)
-                            
-                            if isinstance(result, Command) and result.update is not None:
-                                # Command has a mutable 'update' dict
-                                result.update['trace_context'] = new_carrier
-                            elif isinstance(result, dict):
-                                # The result is the update dict itself
-                                result['trace_context'] = new_carrier
+                        # Inject the new context using the extractor
+                        result = operation_extractor.inject_context(result)
 
                         # Process result and metrics
                         if include_result:
@@ -178,7 +167,8 @@ def trace(
                         raise
             finally:
                 # Restore the previous context
-                otel_context.detach(token)
+                if token:
+                    otel_context.detach(token)
 
         return wrapper
     return decorator

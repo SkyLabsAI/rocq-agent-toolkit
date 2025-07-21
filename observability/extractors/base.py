@@ -9,6 +9,8 @@ extracting relevant telemetry attributes from function calls.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Callable, Tuple, Optional
 
+from opentelemetry.context import Context
+
 
 class AttributeExtractor(ABC):
     """
@@ -105,6 +107,37 @@ class AttributeExtractor(ABC):
             "error.type": type(exception).__name__,
             "error.message": str(exception),
         }
+
+    def extract_context(self, args: Tuple, kwargs: Dict[str, Any]) -> Optional[Context]:
+        """
+        Extract a parent OpenTelemetry context from the function arguments.
+
+        This is used for context propagation in systems like workflows or messaging,
+        where context is passed as part of the data.
+
+        Args:
+            args: Positional arguments passed to the function
+            kwargs: Keyword arguments passed to the function
+
+        Returns:
+            An OpenTelemetry Context object, or None if no context is found.
+        """
+        return None
+
+    def inject_context(self, result: Any) -> Any:
+        """
+        Inject the current OpenTelemetry context into the function's result.
+
+        This is the counterpart to `extract_context` and is used to propagate
+        the trace context to the next step in a workflow or message consumer.
+
+        Args:
+            result: The return value of the traced function.
+
+        Returns:
+            The (potentially modified) result with the context injected.
+        """
+        return result
 
 
 class NoOpExtractor(AttributeExtractor):
