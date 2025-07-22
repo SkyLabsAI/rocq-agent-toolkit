@@ -7,17 +7,7 @@ application including custom chains and workflows.
 """
 
 from typing import Any, Dict, Callable, Tuple, Optional
-
-from opentelemetry import propagate
-from opentelemetry.context import Context
-
 from .base import AttributeExtractor
-
-try:
-    from langgraph.types import Command
-    LANGGRAPH_AVAILABLE = True
-except ImportError:
-    LANGGRAPH_AVAILABLE = False
 
 
 class LangChainExtractor(AttributeExtractor):
@@ -264,31 +254,6 @@ class LangChainExtractor(AttributeExtractor):
                 attrs["langchain.next_step"] = str(state['next'])
         
         return attrs
-    
-    def extract_context(self, args: Tuple, kwargs: Dict[str, Any]) -> Optional[Context]:
-        """Extract parent context from LangGraph state."""
-        if args and isinstance(args[0], dict):
-            state = args[0]
-            carrier = state.get('trace_context', {})
-            return propagate.extract(carrier)
-        return None
-
-    def inject_context(self, result: Any) -> Any:
-        """Inject current context into LangGraph state or Command."""
-        if not LANGGRAPH_AVAILABLE:
-            return result
-
-        new_carrier = {}
-        propagate.inject(new_carrier)
-
-        if isinstance(result, Command) and result.update is not None:
-            # Command has a mutable 'update' dict
-            result.update['trace_context'] = new_carrier
-        elif isinstance(result, dict):
-            # The result is the update dict itself
-            result['trace_context'] = new_carrier
-
-        return result
     
     def _truncate_string(self, value: str, max_length: int) -> str:
         """Truncate string to maximum length."""
