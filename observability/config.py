@@ -42,6 +42,7 @@ class ObservabilityConfig:
     
     # LangSmith/LangChain integration
     enable_langsmith: bool = True
+    langchain_tracing_v2: bool = True  # Added for V2 tracing
     langsmith_service_suffix: str = "langsmith"
     
     # Performance tuning
@@ -72,6 +73,33 @@ class ObservabilityConfig:
     workflow_event_config: Optional['WorkflowEventConfig'] = None
     evaluation_event_config: Optional['EvaluationEventConfig'] = None
     langgraph_event_config: Optional['LangGraphEventConfig'] = None
+
+    def __post_init__(self) -> None:
+        """
+        Sets environment variables for LangSmith integration based on config.
+
+        This ensures that when LangSmith is enabled, it correctly routes its
+        traces through the standard OpenTelemetry pipeline, rather than its
+        own cloud endpoint. This is crucial for unified tracing.
+        """
+        if self.enable_langsmith:
+            # LangChain V2 tracing is controlled by this config.
+            os.environ["LANGCHAIN_TRACING_V2"] = "true" if self.langchain_tracing_v2 else "false"
+            
+            # When using LangSmith with a local OTLP endpoint, clear the
+            # cloud-specific endpoints and API keys.
+            os.environ["LANGCHAIN_ENDPOINT"] = ""
+            os.environ["LANGCHAIN_API_KEY"] = ""
+            os.environ["LANGSMITH_API_URL"] = ""
+            os.environ["LANGSMITH_API_KEY"] = ""
+
+            # Force LangSmith to use the OTLP exporter and point it to our
+            # configured OTLP endpoint (e.g., a local Tempo/Alloy instance).
+            os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
+            os.environ["LANGSMITH_OTEL_ENDPOINT"] = self.otlp_endpoint
+        else:
+            # If LangSmith integration is disabled, ensure tracing is turned off.
+            os.environ["LANGCHAIN_TRACING_V2"] = "false"
     
     @classmethod
     def from_environment(cls, **overrides: Any) -> "ObservabilityConfig":
@@ -93,6 +121,7 @@ class ObservabilityConfig:
         - OTEL_TRACE_SAMPLING_RATE → trace_sampling_rate
         - OTEL_DEFAULT_EXTRACTOR → default_extractor
         - OTEL_ENABLE_LANGSMITH → enable_langsmith
+        - LANGCHAIN_TRACING_V2 → langchain_tracing_v2
         - OTEL_LANGSMITH_SERVICE_SUFFIX → langsmith_service_suffix
         
         Args:
@@ -123,6 +152,7 @@ class ObservabilityConfig:
             'default_extractor': os.getenv('OTEL_DEFAULT_EXTRACTOR'),
             'trace_sampling_rate': float(os.getenv('OTEL_TRACE_SAMPLING_RATE', '1.0')),
             'enable_langsmith': os.getenv('OTEL_ENABLE_LANGSMITH', 'true').lower() == 'true',
+            'langchain_tracing_v2': os.getenv('LANGCHAIN_TRACING_V2', 'true').lower() == 'true',
             'langsmith_service_suffix': os.getenv('OTEL_LANGSMITH_SERVICE_SUFFIX', 'langsmith'),
         }
         

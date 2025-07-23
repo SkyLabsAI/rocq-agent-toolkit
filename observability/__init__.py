@@ -12,6 +12,9 @@ from .core.decorators import trace, trace_http, trace_rpc, trace_database, trace
 from .core.context import trace_context, get_current_span, add_span_event, set_span_attribute
 from .core.metrics import metrics, set_service_name
 
+# gRPC interceptors for distributed tracing - now handled by opentelemetry-instrumentation-grpc
+from opentelemetry.instrumentation.grpc import aio_server_interceptor
+
 from opentelemetry import propagate
 
 # Logging is now a separate package (can be used independently)
@@ -86,6 +89,9 @@ __all__ = [
     "trace_workflow",
     "trace_langchain",
     
+    # gRPC interceptors are now handled by the official library
+    "aio_server_interceptor",
+
     # OTel Passthrough
     "propagate",
 

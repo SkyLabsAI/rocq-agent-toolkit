@@ -11,15 +11,8 @@ import time
 import logging
 from typing import Any, Callable, Dict, Optional, Union, Type
 
-from opentelemetry import trace as otel_trace, metrics, propagate, context as otel_context
-from opentelemetry.trace import Status, StatusCode, get_current_span
-
-try:
-    from langgraph.types import Command
-    LANGGRAPH_AVAILABLE = True
-except ImportError:
-    LANGGRAPH_AVAILABLE = False
-
+from opentelemetry import trace as otel_trace, metrics
+from opentelemetry.trace import Status, StatusCode
 
 from ..extractors import get_extractor
 from ..extractors.base import AttributeExtractor, NoOpExtractor
@@ -117,69 +110,59 @@ def trace(
             tracer = otel_trace.get_tracer(__name__)
             start_time = time.time()
             
-            # Extract parent context from state if available
-            state = args[0] if args and isinstance(args[0], dict) else {}
-            carrier = state.get('trace_context', {})
-            parent_context = propagate.extract(carrier)
-            
-            # Activate the extracted context and run the function
-            token = otel_context.attach(parent_context)
-            try:
-                with tracer.start_as_current_span(span_name) as span:
-                    try:
-                        # --- Original observability logic ---
-                        _set_basic_attributes(span, func, args, kwargs, include_args)
-                        if attributes:
-                            _set_custom_attributes(span, attributes)
-                        _set_extractor_attributes(span, operation_extractor, func, args, kwargs)
-                        if metrics_enabled:
-                            _record_start_metrics(operation_extractor, func, args, kwargs)
+            with tracer.start_as_current_span(span_name) as span:
+                try:
+                    # Extract and set basic attributes
+                    _set_basic_attributes(span, func, args, kwargs, include_args)
+                    
+                    # Add custom attributes
+                    if attributes:
+                        _set_custom_attributes(span, attributes)
+                    
+                    # Use extractor for framework-specific attributes
+                    _set_extractor_attributes(span, operation_extractor, func, args, kwargs)
+                    
+                    # Record metrics start
+                    if metrics_enabled:
+                        _record_start_metrics(operation_extractor, func, args, kwargs)
+                    
+                    # Execute the function
+                    result = func(*args, **kwargs)
+                    
+                    # Record result if requested
+                    if include_result:
+                        _set_result_attributes(span, result)
+                    
+                    # Record success metrics
+                    duration = time.time() - start_time
+                    if metrics_enabled:
+                        _record_success_metrics(operation_extractor, func, args, kwargs, duration)
+                    
+                    # Mark span as successful
+                    span.set_status(Status(StatusCode.OK))
+                    return result
+                    
+                except Exception as e:
+                    # Record exception
+                    duration = time.time() - start_time
+                    
+                    if record_exception:
+                        span.record_exception(e)
+                        span.set_status(Status(StatusCode.ERROR, str(e)))
                         
-                        # Execute the original function
-                        result = func(*args, **kwargs)
-                        
-                        # --- CONTEXT INJECTION FOR NEXT NODE ---
-                        # Inject the new context from the current span into the *returned* updates
-                        if LANGGRAPH_AVAILABLE:
-                            new_carrier = {}
-                            propagate.inject(new_carrier)
-                            
-                            if isinstance(result, Command) and result.update is not None:
-                                # Command has a mutable 'update' dict
-                                result.update['trace_context'] = new_carrier
-                            elif isinstance(result, dict):
-                                # The result is the update dict itself
-                                result['trace_context'] = new_carrier
-
-                        # Process result and metrics
-                        if include_result:
-                            _set_result_attributes(span, result)
-                        duration = time.time() - start_time
-                        if metrics_enabled:
-                            _record_success_metrics(operation_extractor, func, args, kwargs, duration)
-                        
-                        span.set_status(Status(StatusCode.OK))
-                        return result
-
-                    except Exception as e:
-                        duration = time.time() - start_time
-                        if record_exception:
-                            span.record_exception(e)
-                            span.set_status(Status(StatusCode.ERROR, str(e)))
-                            try:
-                                error_attrs = operation_extractor.extract_error_attributes(func, args, kwargs, e)
-                                _set_custom_attributes(span, error_attrs)
-                            except Exception as extractor_error:
-                                logger.warning(f"Failed to extract error attributes: {extractor_error}")
-                        
-                        if metrics_enabled:
-                            _record_error_metrics(operation_extractor, func, args, kwargs, duration, e)
-                        
-                        raise
-            finally:
-                # Restore the previous context
-                otel_context.detach(token)
-
+                        # Add extractor-specific error attributes
+                        try:
+                            error_attrs = operation_extractor.extract_error_attributes(func, args, kwargs, e)
+                            _set_custom_attributes(span, error_attrs)
+                        except Exception as extractor_error:
+                            logger.warning(f"Failed to extract error attributes: {extractor_error}")
+                    
+                    # Record error metrics
+                    if metrics_enabled:
+                        _record_error_metrics(operation_extractor, func, args, kwargs, duration, e)
+                    
+                    raise
+                    
         return wrapper
     return decorator
 
