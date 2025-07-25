@@ -28,6 +28,7 @@ class ObservabilityConfig:
     environment: Optional[str] = None  # Add environment field
     
     # User/Session identification (optional)
+    include_run_id: bool = False
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     

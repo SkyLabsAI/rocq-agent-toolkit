@@ -83,9 +83,10 @@ def setup_observability(config: ObservabilityConfig) -> None:
     
         # Add a unique run_id to all logs for this session
         from psi_verifier.psi_logging import add_log_context
-        run_id = str(uuid.uuid4())
-        add_log_context("run_id", run_id)
-        logger.debug(f"Added unique run_id to log context: {run_id}")
+        if config.include_run_id:
+            run_id = str(uuid.uuid4())
+            add_log_context("run_id", run_id)
+            logger.debug(f"Added unique run_id to log context: {run_id}")
         
         # Add user_id and session_id to log context if provided
         if config.user_id:
