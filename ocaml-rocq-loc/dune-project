@@ -1,5 +1,5 @@
 (lang dune 3.17)
-(name rocq-jsonrpc-repl)
+(name rocq-loc)
 (generate_opam_files true)
 
 (source (github SkylabsAI/skylabs-fm))
@@ -8,9 +8,9 @@
 (license  GPL-2.0-or-later)
 
 (package
- (name rocq-jsonrpc-repl)
- (synopsis "Rocq toplevel with a JSON-RPC 2.0 interface.")
+ (name rocq-loc)
+ (synopsis "Rocq source code location library with JSON serialization.")
  (depends
   rocq-core
-  rocq-loc
-  jsonrpc-tp))
+  yojson
+  ppx_deriving_yojson))
