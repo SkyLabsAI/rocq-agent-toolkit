@@ -11,4 +11,5 @@
  (name rocq-split)
  (synopsis "Tool for spliting Rocq source files into sentences.")
  (depends
-  rocq-core))
+  rocq-core
+  rocq-loc))

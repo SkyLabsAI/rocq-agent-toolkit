@@ -27,8 +27,9 @@ type state
 
 (** [init ~argv] initializes the library. The [args] argument gives the Rocq
     command line arguments with which to run, including the file to split. The
-    function can currently only be called once in a given program. *)
-val init : argv:string array -> state
+    function can currently only be called once in a given program. In case of
+    initialization error, an error message is returned. *)
+val init : argv:string array -> (state, string) result
 
 (** [get_file state] gives the path to the file on which the library has been
     initialized. *)
@@ -38,7 +39,13 @@ val get_file : state -> string
     file on which the library has been initialized. *)
 val get_dirpath : state -> Names.DirPath.t
 
+(** List of Rocq feedback items. *)
+type feedback = Feedback.feedback list
+
+(** Optional Rocq source code location. *)
+type loc = Loc.t option
+
 (** [get state] splits the current contents of the file the library has been
     initialized on into sentences. Feedback from Rocq is also provided, and
-    an error message is given in case of parse error. *)
-val get : state -> (sentence list, string) result * Feedback.feedback list
+    a location and error message is given in case of parse error. *)
+val get : state -> (sentence list, loc * string) result * feedback

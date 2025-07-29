@@ -7,13 +7,18 @@ type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
 
-let or_panic : ('a, string) result -> 'a = fun res ->
-  match res with
-  | Error(s) -> panic "Error: %s" s
-  | Ok(v)    -> v
-
 let main : Document.t -> unit = fun state ->
-  or_panic (Document.load_file state);
+  let json =
+    match Document.load_file state with
+    | Ok(())       -> None
+    | Error(loc,s) ->
+        let fields =
+          ("status" , `String("error")) ::
+          ("message", `String(s)) ::
+          ("loc"    , Document.loc_to_json loc) :: []
+        in
+        Some(`Assoc(fields))
+  in
   let prev_data = ref None in
   let rec loop () =
     match Document.has_suffix state with
@@ -38,7 +43,11 @@ let main : Document.t -> unit = fun state ->
     | Ok(None)     -> loop ()
     | Ok(Some(v))  -> prev_data := Some(v); loop ()
   in
-  let json = loop () in
+  let json =
+    match json with
+    | Some(json) -> json
+    | None       -> loop ()
+  in
   let json = Yojson.Safe.pretty_to_string ~std:true json in
   Printf.printf "%s%!" json
 

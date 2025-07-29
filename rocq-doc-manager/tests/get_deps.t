@@ -73,3 +73,12 @@
       "len": 8
     }
   ]
+
+  $ cat > test.v <<EOF
+  > Definition junk m n := m +
+  > EOF
+
+  $ rocq-get-deps -Q . test.dir test.v
+  File "test.v", line 2, characters 0-1:
+  Error: Syntax error: [term] expected after '+' (in [term]).
+  [1]

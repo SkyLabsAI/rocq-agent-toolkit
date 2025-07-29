@@ -21,13 +21,13 @@ val init : args:string list -> file:string -> t
 
 val stop : t -> unit
 
-val load_file : t -> (unit, string) result
-
 type loc = Rocq_loc.t option
 
 type json = Yojson.Safe.t
 
 val loc_to_json : loc -> json
+
+val load_file : t -> (unit, loc * string) result
 
 type command_data = {
   open_subgoals : string option;

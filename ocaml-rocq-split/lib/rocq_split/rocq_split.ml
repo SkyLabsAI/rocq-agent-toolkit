@@ -8,6 +8,8 @@ type sentence = {
 
 type feedback = Feedback.feedback list
 
+type loc = Loc.t option
+
 let feedbacks : feedback ref = ref []
 
 type state = {
@@ -30,13 +32,13 @@ let dirpath_of_file file =
   let base = Filename.remove_extension (Filename.basename file) in
   Libnames.add_dirpath_suffix log_dir (Names.Id.of_string base)
 
-let init : argv:string array -> state = fun ~argv ->
+let init : argv:string array -> (state, string) result = fun ~argv ->
   Flags.quiet := true;
   System.trust_file_cache := true;
   Coqinit.init_ocaml ();
   let usage =
-    let open Boot.Usage in
-    {executable_name = "rocq_doc_manager"; extra_args = ""; extra_options = ""}
+    let executable_name = "rocq_split" in
+    Boot.Usage.{executable_name; extra_args = ""; extra_options = ""}
   in
   try
     let parse_extra _ files = (files, []) in
@@ -48,25 +50,17 @@ let init : argv:string array -> state = fun ~argv ->
     Coqinit.init_runtime ~usage args;
     Coqinit.init_document args;
     match files with
-    | []          ->
-        Format.eprintf "Error: missing file argument.\n%!";
-        exit 1
-    | _ :: _ :: _ ->
-        Format.eprintf "Error: more than one file argument.\n%!";
-        exit 1
+    | []          -> Error("Missing file argument.")
+    | _ :: _ :: _ -> Error("More than one file argument.")
     | [file]      ->
     let dirpath = dirpath_of_file file in
-    let injections = Coqargs.injection_commands args in
-    Coqinit.start_library ~intern:Vernacinterp.fs_intern ~top:dirpath injections;
+    let injs = Coqargs.injection_commands args in
+    Coqinit.start_library ~intern:Vernacinterp.fs_intern ~top:dirpath injs;
     let root_state = Vernacstate.freeze_full_state () in
-    {root_state; file; dirpath}
+    Ok({root_state; file; dirpath})
   with e ->
-    let (e, info) = Exninfo.capture e in
-    let loc = Loc.get_loc info in
-    let pr_loc loc = Pp.(Loc.pr loc ++ str ":" ++ fnl ()) in
-    Format.eprintf "%a" Pp.pp_with (Pp.pr_opt pr_loc loc);
-    Format.eprintf "Error: @[%a@]@\n%!" Pp.pp_with (CErrors.print e);
-    exit 1
+    Format.(fprintf str_formatter "@[%a@]%!" Pp.pp_with (CErrors.print e));
+    Error(Format.flush_str_formatter ())
 
 let synterp_desc : Synterp.synterp_entry -> string = fun e ->
   let open Synterp in
@@ -223,7 +217,8 @@ let parse stream =
   let cmd = Procq.Entry.parse (Pvernac.main_entry mode) stream in
   Option.map (Synterp.synterp_control ~intern:Vernacinterp.fs_intern) cmd
 
-let get : state -> (sentence list, string) result * feedback = fun state ->
+let get : state -> (sentence list, loc * string) result * feedback =
+    fun state ->
   feedbacks := [];
   try
     Vernacstate.unfreeze_full_state state.root_state;
@@ -241,11 +236,8 @@ let get : state -> (sentence list, string) result * feedback = fun state ->
   with e ->
     let (e, info) = Exninfo.capture e in
     let loc = Loc.get_loc info in
-    let pr_loc loc = Pp.(Loc.pr loc ++ str ":" ++ fnl ()) in
     let err =
-      Format.fprintf Format.str_formatter "%aError: @[%a@]@\n%!"
-        Pp.pp_with (Pp.pr_opt pr_loc loc)
-        Pp.pp_with (CErrors.print e);
+      Format.(fprintf str_formatter "@[%a@]%!" Pp.pp_with (CErrors.print e));
       Format.flush_str_formatter ()
     in
-    (Error err, List.rev !feedbacks)
+    (Error (loc, err), List.rev !feedbacks)

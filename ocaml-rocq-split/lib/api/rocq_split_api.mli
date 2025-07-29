@@ -14,7 +14,7 @@ type json = Yojson.Safe.t
 (** [get_json ~args ~file] calls the sentence splitter on [file], with the
     arguments [args], and returns the parsed JSON output. In case of failure,
     an error message is given. *)
-val get_json : args:string list -> file:string -> (json, string) result
+val get_json : args:string list -> file:string -> (json, json) result
 
 (** Rocq sentence (a vernacular command, or a sequence of blank caracters. *)
 type sentence = {
@@ -28,7 +28,13 @@ type sentence = {
   (** Byte offset of the first character after the sentence in the file. *)
 }
 
+(** Error. *)
+type error = {
+  message : string;
+  loc : Rocq_loc.t option;
+}
+
 (** [get ~args ~file] calls the sentence splitter on [file], with the
     arguments [args], and returns the list of parsed sentences. In case of
-    failure, an error message is given. *)
-val get : args:string list -> file:string -> (sentence list, string) result
+    failure, an error is given. *)
+val get : args:string list -> file:string -> (sentence list, error) result

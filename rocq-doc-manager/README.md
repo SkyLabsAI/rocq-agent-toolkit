@@ -34,8 +34,11 @@ Supported Requests
 ### `load_file`
 
 - Arguments: none.
-- Description: add the (unprocessed) file contents to the document.
-- Failure mode: never fails.
+- Description: add the (unprocessed) file contents to the document. Note that
+  this involves running sentence-splitting, which requires the input file to
+  not have syntax errors.
+- Failure mode: recoverable failure.
+- Failure payload: object with `loc` field (error location, `null` if none).
 - Response payload: `null`.
 
 ### `insert_blanks`

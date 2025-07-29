@@ -7,11 +7,6 @@ type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
 
-let or_panic : ('a, string) result -> 'a = fun res ->
-  match res with
-  | Error(s) -> panic "Error: %s" s
-  | Ok(v)    -> v
-
 module List = struct
   include List
 
@@ -29,10 +24,21 @@ end
 
 let main : Document.t -> unit = fun state ->
   let json_items = ref [] in
-  or_panic (Document.load_file state);
+  let _ =
+    match Document.load_file state with
+    | Ok(())       -> ()
+    | Error(loc,e) ->
+        let loc =
+          match loc with None -> "" | Some(loc) ->
+          Pp.string_of_ppcmds Pp.(Loc.pr loc ++ str ":" ++ fnl ())
+        in
+        panic "%sError: %s" loc e
+  in
   let _ =
     let text = "Require Import skylabs_ai.tools.term_deps.plugin." in
-    or_panic (Document.run_command state ~text)
+    match Document.run_command state ~text with
+    | Ok(_)    -> ()
+    | Error(e) -> panic "Error: %s" e
   in
   let removed_inductives = Hashtbl.create 11 in
   let handle_removed_inductive loc s =

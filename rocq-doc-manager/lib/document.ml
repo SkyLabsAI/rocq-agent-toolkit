@@ -48,15 +48,6 @@ let to_unprocessed : Rocq_split_api.sentence -> unprocessed = fun s ->
   | "blanks" -> RemBlanks({text})
   | _        -> RemCommand({text})
 
-let load_file : t -> (unit, string) result = fun d ->
-  let {file; args; _} = d in
-  match Rocq_split_api.get ~args ~file with
-  | Error(s)      -> Error(s)
-  | Ok(sentences) ->
-  let suffix = List.rev_map to_unprocessed sentences in
-  d.suffix <- List.rev_append suffix d.suffix;
-  Ok(())
-
 type loc = Rocq_loc.t option
 
 let loc_to_yojson loc =
@@ -70,6 +61,15 @@ let loc_of_yojson json =
   | _     -> Result.map (fun o -> Some(o)) (Rocq_loc.of_json json)
 
 let loc_to_json = loc_to_yojson
+
+let load_file : t -> (unit, loc * string) result = fun d ->
+  let {file; args; _} = d in
+  match Rocq_split_api.get ~args ~file with
+  | Error(err)    -> Error(Rocq_split_api.(err.loc, err.message))
+  | Ok(sentences) ->
+  let suffix = List.rev_map to_unprocessed sentences in
+  d.suffix <- List.rev_append suffix d.suffix;
+  Ok(())
 
 type command_data = Rocq_toplevel.run_data = {
   open_subgoals : string option;

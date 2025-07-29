@@ -21,8 +21,8 @@ module P = Jsonrpc_tp_loop.Params
 let _ =
   add_handler "load_file" P.nil @@ fun d () ->
   match Document.load_file d with
-  | Error(s) -> (d, Error(None, s))
-  | Ok(())   -> (d, Ok(`Null))
+  | Error(loc, s) -> (d, located_error ~loc s)
+  | Ok(())        -> (d, Ok(`Null))
 
 let _ =
   add_handler "insert_blanks" P.(cons string nil) @@ fun d (text, ()) ->
