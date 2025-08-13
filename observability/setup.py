@@ -7,10 +7,13 @@ instrumentation with all the necessary components.
 
 import logging
 import uuid
+import queue
+import threading
 from typing import Optional, Dict, List, Any
 
 from opentelemetry import trace, metrics, _logs
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
@@ -20,6 +23,7 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -28,9 +32,11 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry._logs import set_logger_provider as _set_logger_provider
 from opentelemetry.util.types import AttributeValue
 from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+from logging.handlers import QueueHandler, QueueListener
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from .config import ObservabilityConfig
+from opentelemetry import propagate
 from opentelemetry import propagate
 
 logger = logging.getLogger(__name__)
@@ -38,6 +44,11 @@ logger = logging.getLogger(__name__)
 # Global state to track initialization
 _initialized = False
 _current_config: Optional[ObservabilityConfig] = None
+
+# Global state for async logging
+_async_queue: Optional[queue.Queue] = None
+_queue_listener: Optional[QueueListener] = None
+_original_handlers: List[logging.Handler] = []
 
 
 def setup_observability(config: ObservabilityConfig) -> None:
@@ -137,6 +148,14 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
 
     # Propagate context
     propagate.set_global_textmap(TraceContextTextMapPropagator())
+
+    # Also add a console exporter for local debugging
+    console_exporter = ConsoleSpanExporter()
+    span_processor_console = SimpleSpanProcessor(console_exporter)
+    trace.get_tracer_provider().add_span_processor(span_processor_console)
+
+    # Propagate context
+    propagate.set_global_textmap(TraceContextTextMapPropagator())
     
     logger.debug("Tracing setup completed")
 
@@ -192,16 +211,41 @@ def _setup_psi_logging(config: ObservabilityConfig) -> None:
         schema_dict["evaluation"] = config.evaluation_event_config.allowed_fields()
     if config.langgraph_event_config and config.langgraph_event_config.enabled:
         schema_dict["langgraph"] = config.langgraph_event_config.allowed_fields()
+    if config.streaming_event_config and config.streaming_event_config.enabled:
+        schema_dict["streaming"] = config.streaming_event_config.allowed_fields()
 
     if schema_dict:
         configure_event_schemas(schema_dict)
     
-    # 1c. Configure contextual logging if a specific event context is preferred
+    # 1c. Configure auto-streaming if enabled
+    if config.enable_auto_streaming:
+        from psi_verifier.psi_logging import configure_auto_streaming
+        configure_auto_streaming(
+            enabled=True,
+            auto_detect_chunk_fields=config.auto_detect_chunk_fields,
+            accumulated_content_field_name=config.accumulated_content_field_name,
+            enable_individual_chunk_logging=config.enable_individual_chunk_logging,
+            streaming_reserved_fields=config.streaming_reserved_fields,
+            field_names=config.streaming_field_names
+        )
+        logger.debug("Auto-streaming configured", 
+                    auto_detect=config.auto_detect_chunk_fields,
+                    accumulated_field=config.accumulated_content_field_name,
+                    individual_chunks=config.enable_individual_chunk_logging)
+    
+    # 1d. Configure contextual logging if a specific event context is preferred
     # This allows users to set a default event context for all new loggers
     _setup_contextual_logging(config)
     
-    # 2. Setup OTLP log export for shipping to Loki/collectors
-    _setup_otlp_log_export(config)
+    # 2. Setup OTLP log export for shipping to Loki/collectors (only if enabled)
+    if config.enable_otlp_log_export:
+        _setup_otlp_log_export(config)
+    else:
+        logger.debug("OTLP log export disabled by configuration")
+    
+    # 3. Setup async logging with QueueHandler if enabled
+    if config.enable_async_logging:
+        _setup_async_logging(config)
     
     logger.debug("Structured logging setup completed")
 
@@ -211,11 +255,13 @@ def _setup_contextual_logging(config: ObservabilityConfig) -> None:
     from psi_verifier.psi_logging import set_global_event_context
     
     # Check if any event config is enabled and should be used as default context
-    # Priority: langgraph -> training -> workflow -> evaluation
+    # Priority: langgraph -> streaming -> training -> workflow -> evaluation
     default_context = None
     
     if config.langgraph_event_config and config.langgraph_event_config.enabled:
         default_context = "langgraph"
+    elif config.streaming_event_config and config.streaming_event_config.enabled:
+        default_context = "streaming"
     elif config.training_event_config and config.training_event_config.enabled:
         default_context = "training"
     elif config.workflow_event_config and config.workflow_event_config.enabled:
@@ -321,6 +367,42 @@ def _setup_otlp_log_export(config: ObservabilityConfig) -> None:
     logger.debug("OTLP log export setup completed")
 
 
+def _setup_async_logging(config: ObservabilityConfig) -> None:
+    """Setup asynchronous logging with QueueHandler and QueueListener."""
+    global _async_queue, _queue_listener, _original_handlers
+    
+    logger.debug("Setting up asynchronous logging...")
+    
+    # Create a queue for async logging
+    _async_queue = queue.Queue(maxsize=config.async_log_queue_size)
+    
+    # Get the root logger
+    root_logger = logging.getLogger()
+    
+    # Store original handlers before replacing them
+    _original_handlers = root_logger.handlers.copy()
+    
+    # Create QueueListener with the original handlers
+    # This will process logs from the queue in a background thread
+    _queue_listener = QueueListener(
+        _async_queue,
+        *_original_handlers,
+        respect_handler_level=True
+    )
+    
+    # Replace root logger handlers with QueueHandler
+    root_logger.handlers.clear()
+    queue_handler = QueueHandler(_async_queue)
+    queue_handler.setLevel(logging.DEBUG)  # Let the original handlers filter levels
+    root_logger.addHandler(queue_handler)
+    
+    # Start the queue listener in background thread
+    _queue_listener.start()
+    
+    logger.debug(f"Async logging setup completed with queue size: {config.async_log_queue_size}")
+    logger.debug(f"QueueListener started with {len(_original_handlers)} handlers")
+
+
 def _setup_auto_instrumentation(config: ObservabilityConfig) -> None:
     """Setup automatic instrumentation for common libraries."""
     logger.debug("Setting up automatic instrumentation...")
@@ -377,6 +459,9 @@ def _setup_langsmith_instrumentation(config: ObservabilityConfig) -> None:
 
         if config.langchain_tracing_v2:
             os.environ["LANGCHAIN_TRACING_V2"] = "true" 
+
+        if config.langchain_tracing_v2:
+            os.environ["LANGCHAIN_TRACING_V2"] = "true" 
         
         logger.debug(f"LangSmith instrumentation configured")
         logger.debug(f"LangSmith service name: {os.environ.get('LANGSMITH_OTEL_SERVICE_NAME')}")
@@ -397,6 +482,31 @@ def get_current_config() -> Optional[ObservabilityConfig]:
     return _current_config
 
 
+def cleanup_async_logging() -> None:
+    """
+    Cleanup async logging components.
+    
+    This should be called on application shutdown to properly stop
+    the QueueListener and restore original handlers.
+    """
+    global _async_queue, _queue_listener, _original_handlers
+    
+    if _queue_listener:
+        logger.debug("Stopping async logging QueueListener...")
+        _queue_listener.stop()
+        _queue_listener = None
+    
+    if _original_handlers:
+        # Restore original handlers to root logger
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
+        root_logger.handlers.extend(_original_handlers)
+        _original_handlers.clear()
+        logger.debug("Restored original logging handlers")
+    
+    _async_queue = None
+
+
 def reset_observability() -> None:
     """
     Reset observability state. 
@@ -405,6 +515,10 @@ def reset_observability() -> None:
     In production, observability should be initialized once at startup.
     """
     global _initialized, _current_config
+    
+    # Cleanup async logging first
+    cleanup_async_logging()
+    
     _initialized = False
     _current_config = None
     logger.warning("Observability state has been reset") 

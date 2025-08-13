@@ -2,6 +2,9 @@ from psi_verifier.observability import get_logger, ObservabilityConfig, setup_ob
 obs_config = ObservabilityConfig(
     service_name="basic_logs",
     log_level="INFO",
+    enable_logging=True,
+    otlp_endpoint="http://localhost:4317",
+    enable_otlp_log_export=False,
 )
 setup_observability(obs_config)
 logger = get_logger(__name__)

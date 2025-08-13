@@ -40,6 +40,7 @@ class ObservabilityConfig:
     enable_tracing: bool = True
     enable_metrics: bool = False
     enable_logging: bool = True
+    enable_otlp_log_export: bool = True  # New flag to control OTLP log export specifically
     
     # LangSmith/LangChain integration
     enable_langsmith: bool = True
@@ -54,6 +55,37 @@ class ObservabilityConfig:
     # Logging configuration
     log_level: str = "INFO"
     log_format_json: bool = True
+    
+    # Asynchronous logging configuration
+    enable_async_logging: bool = False
+    async_log_queue_size: int = 1000
+    async_log_queue_timeout: float = 1.0
+    
+    # Auto-streaming configuration
+    enable_auto_streaming: bool = False
+    
+    # Generic streaming behavior
+    auto_detect_chunk_fields: bool = True  # Automatically detect any field as chunk content
+    accumulated_content_field_name: str = "accumulated_content"  # Output field name for final content
+    enable_individual_chunk_logging: bool = False  # Flag to enable/disable individual chunk logs
+    
+    # Reserved field names (these won't be treated as chunk content)
+    streaming_reserved_fields: List[str] = field(default_factory=lambda: [
+        "streaming_session_id", "streaming_mode", "streaming_complete", "stream_end",
+        "user_input", "model", "chunk_number", "chunk_length", "timestamp",
+        "level", "message", "logger", "service", "environment", "hostname",
+        "run_id", "event_type", "exc_info", "total_chunks", "duration_ms",
+        "accumulated_length"
+    ])
+    
+    # Backward compatibility - specific field name mappings (optional)
+    streaming_field_names: Dict[str, str] = field(default_factory=lambda: {
+        "user_input": "user_input",
+        "model": "model",
+        "streaming_mode": "streaming_mode",
+        "streaming_session_id": "streaming_session_id",
+        "total_chunks": "total_chunks"
+    })
     
     # Global defaults for @trace decorator
     default_extractor: Optional[str] = None
@@ -74,6 +106,7 @@ class ObservabilityConfig:
     workflow_event_config: Optional['WorkflowEventConfig'] = None
     evaluation_event_config: Optional['EvaluationEventConfig'] = None
     langgraph_event_config: Optional['LangGraphEventConfig'] = None
+    streaming_event_config: Optional['StreamingEventConfig'] = None
 
     def __post_init__(self) -> None:
         """
@@ -119,11 +152,20 @@ class ObservabilityConfig:
         - OTEL_ENABLE_TRACING → enable_tracing
         - OTEL_ENABLE_METRICS → enable_metrics
         - OTEL_ENABLE_LOGGING → enable_logging
+        - OTEL_ENABLE_OTLP_LOG_EXPORT → enable_otlp_log_export
         - OTEL_TRACE_SAMPLING_RATE → trace_sampling_rate
         - OTEL_DEFAULT_EXTRACTOR → default_extractor
         - OTEL_ENABLE_LANGSMITH → enable_langsmith
         - LANGCHAIN_TRACING_V2 → langchain_tracing_v2
+        - LANGCHAIN_TRACING_V2 → langchain_tracing_v2
         - OTEL_LANGSMITH_SERVICE_SUFFIX → langsmith_service_suffix
+        - OTEL_ENABLE_ASYNC_LOGGING → enable_async_logging
+        - OTEL_ASYNC_LOG_QUEUE_SIZE → async_log_queue_size
+        - OTEL_ASYNC_LOG_QUEUE_TIMEOUT → async_log_queue_timeout
+        - OTEL_ENABLE_AUTO_STREAMING → enable_auto_streaming
+        - OTEL_AUTO_DETECT_CHUNK_FIELDS → auto_detect_chunk_fields
+        - OTEL_ACCUMULATED_CONTENT_FIELD_NAME → accumulated_content_field_name
+        - OTEL_ENABLE_INDIVIDUAL_CHUNK_LOGGING → enable_individual_chunk_logging
         
         Args:
             **overrides: Values to override environment/defaults
@@ -150,11 +192,20 @@ class ObservabilityConfig:
             'enable_tracing': os.getenv('OTEL_ENABLE_TRACING', 'true').lower() == 'true',
             'enable_metrics': os.getenv('OTEL_ENABLE_METRICS', 'true').lower() == 'true',
             'enable_logging': os.getenv('OTEL_ENABLE_LOGGING', 'true').lower() == 'true',
+            'enable_otlp_log_export': os.getenv('OTEL_ENABLE_OTLP_LOG_EXPORT', 'true').lower() == 'true',
             'default_extractor': os.getenv('OTEL_DEFAULT_EXTRACTOR'),
             'trace_sampling_rate': float(os.getenv('OTEL_TRACE_SAMPLING_RATE', '1.0')),
             'enable_langsmith': os.getenv('OTEL_ENABLE_LANGSMITH', 'true').lower() == 'true',
             'langchain_tracing_v2': os.getenv('LANGCHAIN_TRACING_V2', 'true').lower() == 'true',
+            'langchain_tracing_v2': os.getenv('LANGCHAIN_TRACING_V2', 'true').lower() == 'true',
             'langsmith_service_suffix': os.getenv('OTEL_LANGSMITH_SERVICE_SUFFIX', 'langsmith'),
+            'enable_async_logging': os.getenv('OTEL_ENABLE_ASYNC_LOGGING', 'false').lower() == 'true',
+            'async_log_queue_size': int(os.getenv('OTEL_ASYNC_LOG_QUEUE_SIZE', '1000')),
+            'async_log_queue_timeout': float(os.getenv('OTEL_ASYNC_LOG_QUEUE_TIMEOUT', '1.0')),
+            'enable_auto_streaming': os.getenv('OTEL_ENABLE_AUTO_STREAMING', 'false').lower() == 'true',
+            'auto_detect_chunk_fields': os.getenv('OTEL_AUTO_DETECT_CHUNK_FIELDS', 'true').lower() == 'true',
+            'accumulated_content_field_name': os.getenv('OTEL_ACCUMULATED_CONTENT_FIELD_NAME', 'accumulated_content'),
+            'enable_individual_chunk_logging': os.getenv('OTEL_ENABLE_INDIVIDUAL_CHUNK_LOGGING', 'false').lower() == 'true',
         }
         
         # Parse resource attributes from environment
@@ -207,6 +258,13 @@ class ObservabilityConfig:
         # Validate LangSmith service suffix
         if not self.langsmith_service_suffix:
             raise ValueError("langsmith_service_suffix cannot be empty")
+        
+        # Validate async logging configuration
+        if self.async_log_queue_size <= 0:
+            raise ValueError("async_log_queue_size must be positive")
+        
+        if self.async_log_queue_timeout <= 0:
+            raise ValueError("async_log_queue_timeout must be positive")
     
     @property
     def effective_resource_attributes(self) -> Dict[str, str]:
@@ -347,4 +405,19 @@ class LangGraphEventConfig(EventLogConfig):
     include_node_name: bool = True
     include_transition_to: bool = True 
     include_status: bool = True 
-    include_error: bool = True 
+    include_error: bool = True
+
+
+@dataclass  
+class StreamingEventConfig(EventLogConfig):
+    include_user_input: bool = True
+    include_accumulated_content: bool = True
+    include_total_chunks: bool = True
+    include_model: bool = True
+    include_streaming_mode: bool = True
+    include_session_id: bool = True
+    include_chunk_content: bool = False  # Individual chunks, usually too verbose
+    include_chunk_number: bool = True
+    include_chunk_length: bool = True
+    include_accumulated_length: bool = True
+    include_duration_ms: bool = True 

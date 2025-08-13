@@ -1,0 +1,47 @@
+[
+    {
+        "trace_id": "a889bc63642ba27642494d0a0060ba86",
+        "function_mangled_name": "_Z20addTenToDoubleSquarei",
+        "timestamp": "1754316958122973440",
+        "cpp_code": "int addTenToDoubleSquare(int number) {\n    // func3 depends on func4\n    int doubledSquare = doubleTheSquare(number);\n    return doubledSquare + 10;\n}",
+        "structured_il_spec": "{\n  \"version\": \"alpha-0\",\n  \"name\": \"addTenToDoubleSquare_spec\",\n  \"title\": \"Add ten to double the square\",\n  \"summary\": \"### Summary:\\nAdds ten to the result of `doubleTheSquare(number)`, effectively computing `2 * number * number + 10`.\\n\\n### Precondition:\\n- `number` must be a valid 32-bit signed integer.\\n- The square `number * number` must not overflow.\\n- Doubling the square `(number * number) * 2` must not overflow.\\n- Adding 10 to the doubled square `(number * number) * 2 + 10` must not overflow.\\n\\n### Postcondition:\\n- Returns `2 * number * number + 10` as a 32-bit signed integer.\\n- No memory is modified, allocated, or freed.\",\n  \"params\": [\n    { \"name\": \"number\", \"rocq_type\": \"Z\", \"informal_type\": \"integer\" }\n  ],\n  \"args\": [\n    { \"var\": \"number\" }\n  ],\n  \"pres\": [\n    {\n      \"rocq\": \"emp\",\n      \"pure\": false,\n      \"informal\": \"No heap ownership needed.\"\n    },\n    {\n      \"rocq\": \"valid<\\\"int\\\"> (number * number)\",\n      \"pure\": true,\n      \"informal\": \"Square of number fits in int.\"\n    },\n    {\n      \"rocq\": \"valid<\\\"int\\\"> ((number * number) * 2)\",\n      \"pure\": true,\n      \"informal\": \"Double of square fits in int.\"\n    },\n    {\n      \"rocq\": \"valid<\\\"int\\\"> (((number * number) * 2) + 10)\",\n      \"pure\": true,\n      \"informal\": \"Doubled square plus ten fits in int.\"\n    }\n  ],\n  \"exists\": [\n    { \"name\": \"r\", \"rocq_type\": \"Z\", \"informal_type\": \"integer\" }\n  ],\n  \"ret\": { \"var\": \"r\" },\n  \"posts\": [\n    {\n      \"rocq\": \"r = ((number * number) * 2) + 10\",\n      \"pure\": true,\n      \"informal\": \"Return value equals twice the square plus ten.\"\n    }\n  ]\n}",
+        "full_nl_spec": "### Summary:\nAdds ten to the result of `doubleTheSquare(number)`, effectively computing `2 * number * number + 10`.\n\n### Precondition:\n- `number` must be a valid 32-bit signed integer.\n- The square `number * number` must not overflow.\n- Doubling the square `(number * number) * 2` must not overflow.\n- Adding 10 to the doubled square `(number * number) * 2 + 10` must not overflow.\n\n### Postcondition:\n- Returns `2 * number * number + 10` as a 32-bit signed integer.\n- No memory is modified, allocated, or freed.",
+        "spec": "Require Import bluerock.auto.cpp.spec.\nRequire Import STLProject.code.src.add_cpp.\n#[local] Open Scope Z_scope.\n\ncpp.spec \"addTenToDoubleSquare(int)\"\n  as addTenToDoubleSquare_spec from module with (\n    \\with (number : Z)\n    \\arg \"number\" (Vint number)\n    \\pre emp\n    \\require valid<\"int\"> (number * number)\n    \\require valid<\"int\"> ((number * number) * 2)\n    \\require valid<\"int\"> (((number * number) * 2) + 10)\n    \\post{(r : Z)}[Vint r] emp\n      ** [|r = ((number * number) * 2) + 10|]\n  ).\n",
+        "command_execution_results": {
+            "return_code": 0,
+            "stdout": "",
+            "stderr": "",
+            "is_ok": true
+        }
+    },
+    {
+        "trace_id": "a889bc63642ba27642494d0a0060ba86",
+        "function_mangled_name": "_Z15doubleTheSquarei",
+        "timestamp": "1754316919625061888",
+        "cpp_code": "int doubleTheSquare(int number) {\n    int square = calculateSquare(number);\n    return square * 2;\n}",
+        "structured_il_spec": "{\n  \"version\": \"alpha-0\",\n  \"name\": \"doubleTheSquare_spec\",\n  \"title\": \"Double the square of an integer.\",\n  \"summary\": \"### Summary:\\nComputes the square of the input integer and returns twice that value.\\n\\n### Precondition:\\n- `number` must be a valid 32-bit signed integer.\\n- The square `number * number` must not overflow.\\n- Doubling the square `(number * number) * 2` must not overflow.\\n\\n### Postcondition:\\n- Returns `2 * number * number` as a 32-bit signed integer.\\n- No memory is modified, allocated, or freed.\",\n  \"params\": [\n    {\n      \"name\": \"number\",\n      \"rocq_type\": \"Z\",\n      \"informal_type\": \"integer\"\n    }\n  ],\n  \"args\": [\n    { \"var\": \"number\" }\n  ],\n  \"pres\": [\n    {\n      \"rocq\": \"emp\",\n      \"pure\": false,\n      \"informal\": \"No heap ownership needed.\"\n    },\n    {\n      \"rocq\": \"valid<\\\"int\\\"> (number * number)\",\n      \"pure\": true,\n      \"informal\": \"Square of number fits in int.\"\n    },\n    {\n      \"rocq\": \"valid<\\\"int\\\"> ((number * number) * 2)\",\n      \"pure\": true,\n      \"informal\": \"Double of square fits in int.\"\n    }\n  ],\n  \"exists\": [\n    {\n      \"name\": \"r\",\n      \"rocq_type\": \"Z\",\n      \"informal_type\": \"integer\"\n    }\n  ],\n  \"ret\": { \"var\": \"r\" },\n  \"posts\": [\n    {\n      \"rocq\": \"r = (number * number) * 2\",\n      \"pure\": true,\n      \"informal\": \"Return value is twice the square of number.\"\n    }\n  ]\n}",
+        "full_nl_spec": "### Summary:\nComputes the square of the input integer and returns twice that value.\n\n### Precondition:\n- `number` must be a valid 32-bit signed integer.\n- The square `number * number` must not overflow.\n- Doubling the square `(number * number) * 2` must not overflow.\n\n### Postcondition:\n- Returns `2 * number * number` as a 32-bit signed integer.\n- No memory is modified, allocated, or freed.",
+        "spec": "Require Import bluerock.auto.cpp.spec.\nRequire Import STLProject.code.src.add_cpp.\n#[local] Open Scope Z_scope.\n\ncpp.spec \"doubleTheSquare(int)\"\n  as doubleTheSquare_spec from module with (\n    \\with (number : Z)\n    \\arg \"number\" (Vint number)\n    \\pre emp\n    \\require valid<\"int\"> (number * number)\n    \\require valid<\"int\"> ((number * number) * 2)\n    \\post{(r : Z)}[Vint r] emp\n      ** [|r = (number * number) * 2|]\n  ).\n",
+        "command_execution_results": {
+            "return_code": 0,
+            "stdout": "",
+            "stderr": "",
+            "is_ok": true
+        }
+    },
+    {
+        "trace_id": "a889bc63642ba27642494d0a0060ba86",
+        "function_mangled_name": "_Z15calculateSquarei",
+        "timestamp": "1754316851394941184",
+        "cpp_code": "int calculateSquare(int number) {\n    return number * number;\n}",
+        "structured_il_spec": "{\n  \"version\": \"alpha-0\",\n  \"name\": \"calculateSquare_spec\",\n  \"title\": \"Compute square of an integer\",\n  \"summary\": \"### Summary:\\nCalculates the square of an integer by multiplying `number` by itself.\\n\\n### Precondition:\\n- `number` is a valid 32-bit signed integer.\\n- Multiplying `number` by itself does not overflow.\\n\\n### Postcondition:\\n- Returns `number * number` as a 32-bit signed integer.\\n- No heap memory is accessed or modified.\",\n  \"params\": [\n    {\n      \"name\": \"number\",\n      \"rocq_type\": \"Z\",\n      \"informal_type\": \"integer\"\n    }\n  ],\n  \"args\": [\n    { \"var\": \"number\" }\n  ],\n  \"pres\": [\n    {\n      \"rocq\": \"emp\",\n      \"pure\": false,\n      \"informal\": \"No heap ownership needed.\"\n    },\n    {\n      \"rocq\": \"valid<\\\"int\\\"> (number * number)\",\n      \"pure\": true,\n      \"informal\": \"Final multiplication result fits in int.\"\n    }\n  ],\n  \"exists\": [\n    {\n      \"name\": \"r\",\n      \"rocq_type\": \"Z\",\n      \"informal_type\": \"integer\"\n    }\n  ],\n  \"ret\": { \"var\": \"r\" },\n  \"posts\": [\n    {\n      \"rocq\": \"r = number * number\",\n      \"pure\": true,\n      \"informal\": \"Return value equals number squared.\"\n    }\n  ]\n}",
+        "full_nl_spec": "### Summary:\nCalculates the square of an integer by multiplying `number` by itself.\n\n### Precondition:\n- `number` is a valid 32-bit signed integer.\n- Multiplying `number` by itself does not overflow.\n\n### Postcondition:\n- Returns `number * number` as a 32-bit signed integer.\n- No heap memory is accessed or modified.",
+        "spec": "Require Import bluerock.auto.cpp.spec.\nRequire Import STLProject.code.src.add_cpp.\n#[local] Open Scope Z_scope.\n\ncpp.spec \"calculateSquare(int)\"\n  as calculateSquare_spec from module with (\n    \\with (number : Z)\n    \\arg \"number\" (Vint number)\n    \\pre emp\n    \\require valid<\"int\"> (number * number)\n    \\post{(r : Z)}[Vint r] emp\n      ** [|r = number * number|]\n  ).\n",
+        "command_execution_results": {
+            "return_code": 0,
+            "stdout": "",
+            "stderr": "",
+            "is_ok": true
+        }
+    },
+]

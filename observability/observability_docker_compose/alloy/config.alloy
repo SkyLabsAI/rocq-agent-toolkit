@@ -1,0 +1,64 @@
+// OpenTelemetry Receiver - receives traces, metrics, and logs from applications
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Batch processor - batches telemetry data for efficient export
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+    traces  = [otelcol.exporter.otlp.tempo.input]
+    logs    = [otelcol.exporter.otlphttp.loki.input]
+  }
+}
+
+// Prometheus exporter - exports metrics to Prometheus
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+// Tempo exporter - exports traces to Tempo
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "http://tempo:4317"
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// OTLP HTTP exporter for logs - exports logs to Loki's native OTLP endpoint
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://loki:3100/otlp"
+  }
+}
+
+// Prometheus remote write - writes metrics to Prometheus
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+// Prometheus scraping configuration for self-metrics
+prometheus.scrape "alloy" {
+  targets = [{"__address__" = "localhost:12345"}]
+  
+  forward_to = [prometheus.remote_write.default.receiver]
+  
+  scrape_interval = "15s"
+  metrics_path = "/metrics"
+} 

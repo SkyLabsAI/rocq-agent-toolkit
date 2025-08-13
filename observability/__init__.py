@@ -26,6 +26,8 @@ from psi_verifier.psi_logging import (
     set_global_event_context,
     get_global_event_context,
     configure_event_schemas,
+    configure_auto_streaming,
+    is_auto_streaming_enabled,
     add_log_context,
     clear_log_context,
     get_log_context,
@@ -39,8 +41,8 @@ from psi_verifier.psi_logging import (
 )
 
 # Configuration and setup
-from .config import ObservabilityConfig
-from .setup import setup_observability
+from .config import ObservabilityConfig, StreamingEventConfig
+from .setup import setup_observability, cleanup_async_logging
 
 # Extractors - for advanced usage and custom extractors
 from .extractors import (
@@ -70,7 +72,9 @@ __all__ = [
     
     # Setup and configuration
     "ObservabilityConfig",
+    "StreamingEventConfig", 
     "setup_observability",
+    "cleanup_async_logging",
     "setup_logging",
     "configure_logging",
     "set_service_name",
@@ -78,6 +82,8 @@ __all__ = [
     "set_global_event_context",
     "get_global_event_context",
     "configure_event_schemas",
+    "configure_auto_streaming",
+    "is_auto_streaming_enabled",
     "add_log_context",
     "clear_log_context",
     "get_log_context",
