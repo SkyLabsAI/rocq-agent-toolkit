@@ -15,7 +15,7 @@ ingester:
 
 compactor:
   compaction:
-    block_retention: 1h
+    block_retention: 720h
 
 metrics_generator:
   registry:
@@ -39,4 +39,4 @@ storage:
 overrides:
   defaults:
     metrics_generator:
-      processors: [service-graphs, span-metrics] 
+      processors: [service-graphs, span-metrics, local-blocks] 

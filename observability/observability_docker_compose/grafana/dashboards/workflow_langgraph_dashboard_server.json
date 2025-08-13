@@ -1,0 +1,1139 @@
+{
+  "id": null,
+  "title": "🧠 Structured Full NL Brick Spec Generation Workflow",
+  "description": "Complete monitoring dashboard for structured full NL brick spec generation workflow with node execution tracking, user decision analysis, and verification success rates",
+  "tags": ["psi-verifier", "langgraph", "workflow", "brick-spec", "monitoring", "observability"],
+  "style": "dark",
+  "timezone": "browser",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "definition": "label_values(service_name)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Service/Workflow",
+        "multi": true,
+        "name": "service_name",
+        "options": [],
+        "query": "label_values(service_name)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "name": "node_name",
+        "type": "custom",
+        "label": "Node Name",
+        "options": [
+          {"text": "All Nodes", "value": ".*", "selected": true},
+          {"text": "identify_dependency_abstraction", "value": "identify_dependency_abstraction", "selected": true},
+          {"text": "structured_nl_spec_generator", "value": "structured_nl_spec_generator", "selected": true},
+          {"text": "full_nl_spec_generator", "value": "full_nl_spec_generator", "selected": true},
+          {"text": "convert_json_specs_to_nl", "value": "convert_json_specs_to_nl", "selected": true},
+          {"text": "brick_spec_generator", "value": "brick_spec_generator", "selected": true},
+          {"text": "tool_node_brick_spec_check", "value": "tool_node_brick_spec_check", "selected": true}
+        ],
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All Nodes",
+          "value": ".*"
+        },
+        "hide": 0
+      },
+      {
+        "name": "run_id",
+        "type": "custom",
+        "label": "Run ID",
+        "options": [
+          {"text": "All Runs", "value": ".*", "selected": true}
+        ],
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All Runs",
+          "value": ".*"
+        },
+        "hide": 0
+      },
+      {
+        "name": "log_level",
+        "type": "custom",
+        "label": "Log Level",
+        "options": [
+          {"text": "All", "value": ".*", "selected": true},
+          {"text": "ERROR", "value": "ERROR", "selected": true},
+          {"text": "WARNING", "value": "WARNING", "selected": true},
+          {"text": "INFO", "value": "INFO", "selected": true},
+          {"text": "DEBUG", "value": "DEBUG", "selected": true}
+        ],
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": ".*"
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "🚀 WORKFLOW OVERVIEW - Key Performance Indicators",
+      "type": "row",
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "🔄 Total Workflow Runs",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "count(count by (run_id) (count_over_time({service_name=~\"$service_name\"} | json | event_type=\"workflow\" [$__range])))",
+          "legendFormat": "Total Runs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "id": 3,
+      "title": "✅ Successfully Verified Examples",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "count(count by (run_id) (count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | command_execution_result_return_code=0 [$__range])))",
+          "legendFormat": "Successful Runs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 1
+      }
+    },
+    {
+      "id": 4,
+      "title": "🎯 Node Invocation Count/Percentage",
+      "type": "piechart",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "sum by (node_name) (count_over_time({service_name=~\"$service_name\"} | json | event_type=\"workflow\" | node_name!=\"\" [$__range]))",
+          "legendFormat": "{{node_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": [],
+          "unit": "short"
+        }
+      },
+      "options": {
+        "pieType": "pie",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": ["percent", "value"]
+        },
+        "displayLabels": ["percent"],
+        "sizeByValue": true
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      }
+    },
+    {
+      "id": 5,
+      "title": "👤 USER DECISION ANALYTICS",
+      "type": "row",
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      }
+    },
+    {
+      "id": 6,
+      "title": "📊 User Decisions Overall Count",
+      "type": "bargauge",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | status=\"accepted\" [$__range])) or vector(0)",
+          "legendFormat": "Accept",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | status=\"accepted_with_changes\" [$__range])) or vector(0)",
+          "legendFormat": "Accept with Changes",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | status=\"reject_for_feedback\" [$__range])) or vector(0)",
+          "legendFormat": "Reject for Feedback",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Count",
+            "axisPlacement": "left",
+            "axisWidth": 60,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisGridShow": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accept"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Accept with Changes"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reject for Feedback"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "values": [
+            "value"
+          ]
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      }
+    },
+    {
+      "id": 7,
+      "title": "🎯 User Decision Success/Failure Flow Analysis",
+      "type": "bargauge",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | previous_node=\"brick_spec_generator\" | command_execution_result_return_code=0 [$__range])) or vector(0)",
+          "legendFormat": "Case 1: LLM Success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | previous_node=\"brick_spec_generator\" | command_execution_result_return_code!=0 [$__range])) or vector(0)",
+          "legendFormat": "Case 2: LLM Failure",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | previous_node=\"human_audit_node\" | command_execution_result_return_code=0 [$__range])) or vector(0)",
+          "legendFormat": "Case 3: Human Audit Success",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | previous_node=\"human_audit_node\" | command_execution_result_return_code!=0 [$__range])) or vector(0)",
+          "legendFormat": "Case 4: Human Audit Failure",
+          "refId": "D"
+        },
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | message=~\"MAX LLM ATTEMPTS reached\" [$__range])) or vector(0)",
+          "legendFormat": "Case 5: Max LLM Attempts Reached",
+          "refId": "E"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Count",
+            "axisPlacement": "left",
+            "axisWidth": 60,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisGridShow": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Case 1: LLM Success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Case 2: LLM Failure"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Case 3: Human Audit Success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Case 4: Human Audit Failure"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Case 5: Max LLM Attempts Reached"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "values": ["value"]
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 8,
+        "y": 8
+      }
+    },
+    {
+      "id": 8,
+      "title": "🔧 TOOL VERIFICATION ANALYTICS",
+      "type": "row",
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      }
+    },
+    {
+      "id": 10,
+      "title": "🔄 Tool Verification Success vs Failure",
+      "type": "piechart",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "count(count by (run_id) (count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | command_execution_result_return_code=0 [$__range])))",
+          "legendFormat": "Success",
+          "refId": "A"
+        },
+        {
+          "expr": "count(count by (run_id) (count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | command_execution_result_return_code!=0 [$__range])))",
+          "legendFormat": "Failure",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failure"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "pie",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "values": ["value", "percent"]
+        },
+        "displayLabels": ["percent"]
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      }
+    },
+    {
+      "id": 11,
+      "title": "📈 Tool Verification Over Time",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | message=~\".*success.*\" [$__interval]))",
+          "legendFormat": "Success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(count_over_time({service_name=~\"$service_name\"} | json | node_name=\"tool_node_brick_spec_check\" | message=~\".*error.*|.*fail.*\" [$__interval]))",
+          "legendFormat": "Failure",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "Count",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failure"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": ["last", "max", "mean"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      }
+    },
+    {
+      "id": 12,
+      "title": "🔄 WORKFLOW EXECUTION FLOW",
+      "type": "row",
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      }
+    },
+    {
+      "id": 13,
+      "title": "⏰ Total Time Per Node (s)",
+      "type": "barchart",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "sum by (node_name) ( (max_over_time( ({service_name=~\"$service_name\"} | json | node_name!=\"\" | node_name=~\"$node_name\" | unwrap timestamp) [$__range] ) - min_over_time( ({service_name=~\"$service_name\"} | json | node_name!=\"\" | node_name=~\"$node_name\" | unwrap timestamp) [$__range] ) ) / 1000000000 )",
+          "legendFormat": "{{node_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Total Duration (s)",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "s",
+          "min": 0
+        }
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      }
+    },
+    {
+      "id": 14,
+      "title": "🔍 DETAILED LOGS & DEBUGGING",
+      "type": "row",
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      }
+    },
+    {
+      "id": 15,
+      "title": "📝 Workflow Event Logs",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "{service_name=~\"$service_name\"} | json | event_type=\"workflow\" | level=~\"$log_level\"",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": true,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      }
+    },
+    {
+      "id": 16,
+      "title": "🚨 Error Logs",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "{service_name=~\"$service_name\"} | json | command_execution_result_return_code!=0",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": true,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "pluginVersion": "9.0.0",
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      }
+    },
+    {
+      "id": 17,
+      "title": "🔍 Top Error Messages",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (command_execution_result_stderr) (count_over_time({service_name=~\"$service_name\"} | json | command_execution_result_stderr != \"\" [$__range])))",
+          "legendFormat": "{{command_execution_result_stderr}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": []
+        }
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Value"
+          }
+        ]
+      },
+      "pluginVersion": "9.0.0",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "command_execution_result_stderr": "Error Message",
+              "Value": "Count"
+            }
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      }
+    },
+    {
+      "id": 18,
+      "title": "💡 WORKFLOW INSIGHTS",
+      "type": "row",
+      "collapsed": true,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "panels": [
+        {
+          "id": 19,
+          "title": "🧠 Workflow Performance Insights",
+          "type": "text",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 70
+          },
+          "options": {
+            "content": "## 🧠 Workflow Performance Insights\n\n### Key Metrics to Monitor:\n\n#### 🎯 **Node Performance**\n- **identify_dependency_abstraction**: Entry point for workflow execution\n- **structured_nl_spec_generator**: First LLM generation step\n- **full_nl_spec_generator**: Natural language conversion\n- **brick_spec_generator**: Final spec generation\n- **tool_node_brick_spec_check**: Critical type cheking step\n\n#### 👤 **User Decision Patterns**\n- **Accept Rate**: Higher acceptance indicates better initial generations\n- **Reject for Feedback**: Indicates need for LLM improvement\n- **Accept with Changes**: Shows partial success requiring refinement by Human intervention\n\n#### 🔧 **Tool Verification Analysis**\n- **Success Rate**: Overall verification success percentage\n- **Failure Patterns**: Common failure points in spec verification\n- **Retry Patterns**: How often verification needs multiple attempts\n\n#### 📊 **Optimization Opportunities**\n- Monitor nodes with highest failure rates\n- Track user decision patterns to improve prompts\n- Identify bottlenecks in the verification process\n- Analyze correlation between node execution times and success rates\n\n*This dashboard provides comprehensive monitoring for the structured full NL brick spec generation workflow, enabling data-driven optimization.*",
+            "mode": "markdown"
+          },
+          "pluginVersion": "9.0.0"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "refresh": "30s",
+  "schemaVersion": 35,
+  "version": 1
+}
+
+
