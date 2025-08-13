@@ -459,9 +459,6 @@ def _setup_langsmith_instrumentation(config: ObservabilityConfig) -> None:
 
         if config.langchain_tracing_v2:
             os.environ["LANGCHAIN_TRACING_V2"] = "true" 
-
-        if config.langchain_tracing_v2:
-            os.environ["LANGCHAIN_TRACING_V2"] = "true" 
         
         logger.debug(f"LangSmith instrumentation configured")
         logger.debug(f"LangSmith service name: {os.environ.get('LANGSMITH_OTEL_SERVICE_NAME')}")
