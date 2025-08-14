@@ -1,0 +1,19 @@
+DECLARE PLUGIN "rocq-get-env.plugin"
+
+{
+
+open Stdarg
+
+let wit_dirpath : (Names.DirPath.t, unit, unit) Genarg.genarg_type =
+  let wit = Genarg.make0 "dirpath" in
+  let () = Geninterp.register_val0 wit None in
+  let () = Procq.register_grammar wit Procq.Prim.dirpath in
+  wit
+
+}
+
+VERNAC COMMAND EXTEND TermDeps CLASSIFIED AS QUERY
+| [ "Print" "JSON" "Environment" dirpath_list(ds) ] -> {
+    Get_env.print_env ds
+  }
+END

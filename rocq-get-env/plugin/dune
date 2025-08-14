@@ -1,0 +1,7 @@
+(library
+ (name rocq_get_env_plugin)
+ (public_name rocq-get-env.plugin)
+ (preprocess (pps ppx_deriving_yojson))
+ (libraries rocq-runtime.vernac yojson ppx_deriving_yojson.runtime))
+
+(coq.pp (modules g_get_env))
