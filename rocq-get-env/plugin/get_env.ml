@@ -19,6 +19,15 @@ let is_prefix : Names.Id.t list -> Names.ModPath.t -> bool = fun pfx mp ->
   in
   is_prefix pfx ids
 
+let is_dp_prefix : Names.Id.t list -> Names.Id.t list -> bool = fun pfx dp ->
+  let rec is_prefix pfx dp =
+    match (pfx, dp) with
+    | ([]      , _      ) -> true
+    | (_       , []     ) -> false
+    | (p :: pfx, d :: dp) -> Names.Id.equal p d && is_prefix pfx dp
+  in
+  is_prefix pfx dp
+
 module Constant = struct
   type t = {
     kername : string; (** Kernel name. *)
@@ -30,7 +39,6 @@ module Constant = struct
 end
 
 module Inductive = struct
-  (* TODO add block info, including constructor and projections *)
   type t = {
     kername : string; (** Kernel name (for the mutual block). *)
     print : string; (** Printed mutual block (includes args info). *)
@@ -41,10 +49,19 @@ module Inductive = struct
   type body = Declarations.mutual_inductive_body
 end
 
+module Abbrev = struct
+  type t = {
+    full_path : string;
+    print : string;
+  }
+  [@@deriving yojson]
+end
+
 module Data = struct
   type t = {
     constants : Constant.t list;
     inductives : Inductive.t list;
+    abbrevs : Abbrev.t list;
   }
   [@@deriving yojson]
 end
@@ -90,6 +107,17 @@ let build_inductive : (Names.MutInd.t, Inductive.body, Inductive.t) maker =
   in
   Inductive.{kername; print; about}
 
+let build_abbrev env sigma fp interp =
+  let q = Libnames.qualid_of_path fp in
+  let full_path = Libnames.string_of_qualid q in
+  let print =
+    let q = CAst.make (Constrexpr.AN q) in
+    let access = Global.{access_proof = fun _ -> None} in 
+    let print = Prettyp.print_name access env sigma q None in
+    Pp.(string_of_ppcmds (hov 2 print))
+  in
+  Abbrev.{full_path; print}
+
 let build_data : Names.DirPath.t list -> Data.t = fun ds ->
   let ds = List.map (fun d -> List.rev (Names.DirPath.repr d)) ds in
   let env = Global.env () in
@@ -112,7 +140,22 @@ let build_data : Names.DirPath.t list -> Data.t = fun ds ->
       | true  -> build_inductive env sigma kn m body :: acc
     ) env []
   in
-  Data.{constants; inductives}
+  let abbrevs =
+    let fold_abbrevs f acc =
+      let acc = ref acc in
+      let use = Notationextern.ParsingAndPrinting in
+      let f fp interp = acc := f fp interp !acc; false in
+      Abbreviation.toggle_abbreviations ~on:false ~use f;
+      !acc
+    in
+    fold_abbrevs (fun fp interp acc ->
+      let dp = List.rev (Names.DirPath.repr (Libnames.dirpath fp)) in
+      match List.exists (fun d -> is_dp_prefix d dp) ds || ds = [] with
+      | false -> acc
+      | true  -> build_abbrev env sigma fp interp :: acc
+    ) []
+  in
+  Data.{constants; inductives; abbrevs}
 
 let print_env : Names.DirPath.t list -> unit = fun ds ->
   let data = Data.to_yojson (build_data ds) in

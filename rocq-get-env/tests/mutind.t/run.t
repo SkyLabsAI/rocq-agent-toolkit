@@ -48,5 +48,6 @@
           "forest : Type -> Type -> Type\n\nforest is not universe polymorphic\nArguments forest (A B)%_type_scope\nExpands to: Inductive test.mutind.forest\nDeclared in library test.mutind, line 3, characters 5-11"
         ]
       }
-    ]
+    ],
+    "abbrevs": []
   }
