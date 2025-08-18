@@ -21,9 +21,8 @@ let is_prefix : Names.Id.t list -> Names.ModPath.t -> bool = fun pfx mp ->
 
 module Constant = struct
   type t = {
-    kn : string; (** Kernel name. *)
-    sn : string; (** Shortest name. *)
-    ty : string; (** Type. *)
+    kername : string; (** Kernel name. *)
+    about : string; (** About information. *)
   }
   [@@deriving yojson]
 
@@ -31,8 +30,11 @@ module Constant = struct
 end
 
 module Inductive = struct
+  (* TODO add block info, including constructor and projections *)
   type t = {
-    kn : string; (** Kernel name (for the mutual block). *)
+    kername : string; (** Kernel name (for the mutual block). *)
+    print : string; (** Printed mutual block (includes args info). *)
+    about : string list; (* About info for each type in the mutual block. *)
   }
   [@@deriving yojson]
 
@@ -51,24 +53,42 @@ type ('a, 'b, 'c) maker =
   Environ.env -> Evd.evar_map -> Names.KerName.t -> 'a -> 'b -> 'c
 
 let build_constant : (Names.Constant.t, Constant.body, Constant.t) maker =
-    fun env sigma kn c body ->
-  let sn =
-    let gr = Names.GlobRef.ConstRef(c) in
-    let sn = Nametab.shortest_qualid_of_global Names.Id.Set.empty gr in
-    Libnames.string_of_qualid sn
+    fun env sigma kn c _ ->
+  let about =
+    let q =
+      let gr = Names.GlobRef.ConstRef(c) in
+      let q = Nametab.shortest_qualid_of_global Names.Id.Set.empty gr in
+      CAst.make (Constrexpr.AN q)
+    in
+    let about = Prettyp.print_about env sigma q None in
+    Pp.(string_of_ppcmds (hov 2 about))
   in
-  let kn = Names.KerName.to_string kn in
-  let ty =
-    let ty = body.Declarations.const_type in
-    Pp.(string_of_ppcmds (hov 2 (Printer.pr_type_env env sigma ty)))
-  in
-  Constant.{kn; sn; ty}
+  Constant.{kername = Names.KerName.to_string kn; about}
 
 let build_inductive : (Names.MutInd.t, Inductive.body, Inductive.t) maker =
     fun env sigma kn m body ->
-  let kn = Names.KerName.to_string kn in
-  ignore body; (* TODO *)
-  Inductive.{kn}
+  let kername = Names.KerName.to_string kn in
+  let print =
+    let q =
+      let gr = Names.GlobRef.IndRef(m, 0) in
+      let q = Nametab.shortest_qualid_of_global Names.Id.Set.empty gr in
+      CAst.make (Constrexpr.AN q)
+    in
+    let access = Global.{access_proof = fun _ -> None} in 
+    let print = Prettyp.print_name access env sigma q None in
+    Pp.(string_of_ppcmds (hov 2 print))
+  in
+  let about =
+    List.init body.Declarations.mind_ntypes @@ fun i ->
+    let q =
+      let gr = Names.GlobRef.IndRef(m, i) in
+      let q = Nametab.shortest_qualid_of_global Names.Id.Set.empty gr in
+      CAst.make (Constrexpr.AN q)
+    in
+    let about = Prettyp.print_about env sigma q None in
+    Pp.(string_of_ppcmds (hov 2 about))
+  in
+  Inductive.{kername; print; about}
 
 let build_data : Names.DirPath.t list -> Data.t = fun ds ->
   let ds = List.map (fun d -> List.rev (Names.DirPath.repr d)) ds in
