@@ -2,7 +2,7 @@ DECLARE PLUGIN "rocq-get-env.plugin"
 
 {
 
-open Stdarg
+[@@@ocaml.warning "-27"]
 
 let wit_dirpath : (Names.DirPath.t, unit, unit) Genarg.genarg_type =
   let wit = Genarg.make0 "dirpath" in

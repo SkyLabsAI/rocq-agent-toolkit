@@ -107,7 +107,7 @@ let build_inductive : (Names.MutInd.t, Inductive.body, Inductive.t) maker =
   in
   Inductive.{kername; print; about}
 
-let build_abbrev env sigma fp interp =
+let build_abbrev env sigma fp _ =
   let q = Libnames.qualid_of_path fp in
   let full_path = Libnames.string_of_qualid q in
   let print =
