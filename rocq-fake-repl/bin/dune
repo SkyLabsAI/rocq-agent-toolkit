@@ -1,4 +1,11 @@
 (executable
  (name fake_repl)
  (public_name rocq-fake-repl)
+ (modules fake_repl)
+ (package rocq-fake-repl))
+
+(executable
+ (name nop_repl)
+ (public_name rocq-nop-repl)
+ (modules nop_repl)
  (package rocq-fake-repl))
