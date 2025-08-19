@@ -1,0 +1,42 @@
+  $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
+  $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
+  $ export DUNE_CACHE=disabled
+
+  $ cat > test.v <<EOF
+  > Variant i := Test.
+  > Definition junk m n := m + n * n.
+  > Theorem test : forall x : nat, x = x.
+  > Proof.
+  >   intro x.
+  >   reflexivity.
+  > Qed.
+  > Module Type mt.
+  >   Definition d := 1 + 1.
+  > End mt.
+  > Section junk.
+  >   Context (i j k : nat).
+  >   Definition f := i + j + k.
+  > End junk.
+  > 
+  > #[program]
+  > Definition p : nat * nat := (_, _).
+  > Next Obligation. exact 42. Defined.
+  > Next Obligation. exact 73. Defined.
+  > Locate nat.
+  > EOF
+
+The following command obtains the result of the last command in the file. This
+last command must be a query.
+
+  $ rocq-query -Q . test.dir test.v
+  Inductive Corelib.Init.Datatypes.nat
+
+It fails otherwise.
+
+  $ cat > test.v <<EOF
+  > Variant i := Test.
+  > Definition junk m n := m + n * n.
+  > EOF
+  $ rocq-query -Q . test.dir test.v
+  Error: the last command gave no feedback.
+  [1]

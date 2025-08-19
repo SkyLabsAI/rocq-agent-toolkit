@@ -18,3 +18,10 @@
  (modules rocq_diagnose)
  (package rocq-doc-manager)
  (libraries rocq-doc-manager.lib))
+
+(executable
+ (public_name rocq-query)
+ (name rocq_query)
+ (modules rocq_query)
+ (package rocq-doc-manager)
+ (libraries rocq-doc-manager.lib))
