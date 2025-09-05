@@ -88,12 +88,12 @@ def setup_observability(config: ObservabilityConfig) -> None:
     if config.enable_metrics:
         _setup_metrics(config, resource)
     
-    # Setup logging if enabled (using psi_logging package)
+    # Setup logging if enabled (using integrated logging module)
     if config.enable_logging:
-        _setup_psi_logging(config)
+        _setup_logging_module(config)
     
         # Add a unique run_id to all logs for this session
-        from psi_verifier.psi_logging import add_log_context
+        from .logging import add_log_context
         if config.include_run_id:
             run_id = str(uuid.uuid4())
             add_log_context("run_id", run_id)
@@ -187,13 +187,13 @@ def _setup_metrics(config: ObservabilityConfig, resource: Resource) -> None:
     logger.debug("Metrics setup completed")
 
 
-def _setup_psi_logging(config: ObservabilityConfig) -> None:
+def _setup_logging_module(config: ObservabilityConfig) -> None:
     """Setup structured logging with OTLP export."""
     logger.debug("Setting up structured logging...")
     
     # 1. Setup structured logging for console output and formatting
-    from psi_verifier.psi_logging import setup_logging
-    from psi_verifier.psi_logging.core import configure_event_schemas  # local import to avoid circular deps
+    from .logging import setup_logging
+    from .logging.core import configure_event_schemas  # local import to avoid circular deps
     setup_logging(
         service_name=config.service_name,
         level=config.log_level,
@@ -219,7 +219,7 @@ def _setup_psi_logging(config: ObservabilityConfig) -> None:
     
     # 1c. Configure auto-streaming if enabled
     if config.enable_auto_streaming:
-        from psi_verifier.psi_logging import configure_auto_streaming
+        from .logging import configure_auto_streaming
         configure_auto_streaming(
             enabled=True,
             auto_detect_chunk_fields=config.auto_detect_chunk_fields,
@@ -252,7 +252,7 @@ def _setup_psi_logging(config: ObservabilityConfig) -> None:
 
 def _setup_contextual_logging(config: ObservabilityConfig) -> None:
     """Setup contextual logging based on configuration."""
-    from psi_verifier.psi_logging import set_global_event_context
+    from .logging import set_global_event_context
     
     # Check if any event config is enabled and should be used as default context
     # Priority: langgraph -> streaming -> training -> workflow -> evaluation
@@ -305,7 +305,7 @@ class FixedLoggingHandler(LoggingHandler):
             # Skip frames from logging infrastructure
             if (
                 'logging' in frame_filename or
-                'psi_logging' in frame_filename or
+                'logging' in frame_filename or
                 'opentelemetry' in frame_filename or
                 frame_function in ['_log', 'log', 'emit', 'handle', 'callHandlers']
             ):

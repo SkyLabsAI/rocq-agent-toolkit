@@ -17,8 +17,8 @@ from opentelemetry.instrumentation.grpc import aio_server_interceptor
 
 from opentelemetry import propagate
 
-# Logging is now a separate package (can be used independently)
-from psi_verifier.psi_logging import (
+# Logging is now integrated as a submodule
+from .logging import (
     get_logger,
     setup_logging,
     configure_logging,
@@ -112,7 +112,7 @@ __all__ = [
     "BusinessOperationExtractor",
     "MLOperationExtractor",
 
-    # Event logging (from psi_logging package)
+    # Event logging (from integrated logging module)
     "log_operation_start",
     "log_operation_success", 
     "log_operation_error",

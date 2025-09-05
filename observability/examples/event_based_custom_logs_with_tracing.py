@@ -1,4 +1,4 @@
-from psi_verifier.observability import (
+from observability import (
     get_logger, 
     ObservabilityConfig, 
     setup_observability,
@@ -8,7 +8,7 @@ from psi_verifier.observability import (
     set_span_attribute,  # For setting span attributes
     add_span_event,  # For adding events to spans
 )
-from psi_verifier.observability.config import WorkflowEventConfig
+from observability.config import WorkflowEventConfig
 import time
 import json
 

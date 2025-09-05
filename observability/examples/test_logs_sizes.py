@@ -14,7 +14,7 @@ import random
 import time
 import uuid
 
-from psi_verifier.observability import get_logger, ObservabilityConfig, setup_observability
+from observability import get_logger, ObservabilityConfig, setup_observability
 
 # Sample data for realistic log generation
 USERS = [f"user_{i:04d}" for i in range(1, 101)]

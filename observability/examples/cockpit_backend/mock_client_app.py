@@ -26,7 +26,7 @@ from pydantic import ValidationError
 
 
 
-from psi_verifier.observability import (
+from observability import (
     ObservabilityConfig,
     setup_observability,
     get_logger,
