@@ -16,7 +16,7 @@ Tracing creates a "trace tree" of your workflow execution, showing:
 ### 1. Enable Tracing in Configuration
 
 ```python
-from psi_verifier.observability import ObservabilityConfig, setup_observability
+from observability import ObservabilityConfig, setup_observability
 
 obs_config = ObservabilityConfig(
     service_name="my_workflow_service",
@@ -30,7 +30,7 @@ setup_observability(obs_config)
 ### 2. Import Tracing Functions
 
 ```python
-from psi_verifier.observability import (
+from observability import (
     trace,              # Main decorator
     get_current_span,   # Get current span
     set_span_attribute, # Add attributes to span

@@ -8,7 +8,7 @@ from observability import (
     set_span_attribute,  # For setting span attributes
     add_span_event,  # For adding events to spans
 )
-from observability.config import WorkflowEventConfig
+from observability import WorkflowEventConfig
 import time
 import json
 

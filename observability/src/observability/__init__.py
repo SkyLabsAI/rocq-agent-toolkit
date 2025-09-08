@@ -41,7 +41,7 @@ from .logging import (
 )
 
 # Configuration and setup
-from .config import ObservabilityConfig, StreamingEventConfig
+from .config import ObservabilityConfig, StreamingEventConfig, WorkflowEventConfig, LangGraphEventConfig, EvaluationEventConfig, TrainingEventConfig
 from .setup import setup_observability, cleanup_async_logging
 
 # Extractors - for advanced usage and custom extractors
@@ -119,4 +119,10 @@ __all__ = [
     "log_business_event",
     "log_security_event",
     "log_performance_metric",
+
+    # Configuration
+    "WorkflowEventConfig",
+    "LangGraphEventConfig",
+    "EvaluationEventConfig",
+    "TrainingEventConfig",
 ] 

@@ -3,7 +3,7 @@ Tests for observability.config module
 """
 import pytest
 import os
-from observability.config import ObservabilityConfig, StreamingEventConfig
+from observability import ObservabilityConfig, StreamingEventConfig
 
 
 class TestObservabilityConfig:

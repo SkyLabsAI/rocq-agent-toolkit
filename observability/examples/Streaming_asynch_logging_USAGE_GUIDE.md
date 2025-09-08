@@ -9,7 +9,7 @@ The observability package now supports **automatic streaming log accumulation** 
 ### 1. Enable Auto-Streaming in Configuration
 
 ```python
-from psi_verifier.observability import ObservabilityConfig, setup_observability, get_logger
+from observability import ObservabilityConfig, setup_observability, get_logger
 
 # Configure with auto-streaming enabled
 config = ObservabilityConfig(
@@ -178,7 +178,7 @@ streaming_field_names={
 Remember to cleanup on application shutdown:
 
 ```python
-from psi_verifier.observability import cleanup_async_logging
+from observability import cleanup_async_logging
 
 # Call this in your shutdown handler
 cleanup_async_logging()

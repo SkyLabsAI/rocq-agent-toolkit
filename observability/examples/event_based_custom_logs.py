@@ -1,5 +1,5 @@
 from observability import get_logger, ObservabilityConfig, setup_observability
-from observability.config import WorkflowEventConfig
+from observability import WorkflowEventConfig
 
 # --- Observability Setup ---
 workflow_cfg = WorkflowEventConfig(
