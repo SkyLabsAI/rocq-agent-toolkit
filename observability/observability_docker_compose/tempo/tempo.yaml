@@ -15,28 +15,19 @@ ingester:
 
 compactor:
   compaction:
-    block_retention: 720h
+    block_retention: 4380h
 
-metrics_generator:
-  registry:
-    external_labels:
-      source: tempo
-      cluster: docker-compose
-  storage:
-    path: /var/tempo/generator/wal
-    remote_write:
-      - url: http://prometheus:9090/api/v1/write
-        send_exemplars: true
+# REMOVED: The entire metrics_generator and its related overrides section are gone,
+# as they were only configured to send data to Prometheus.
 
 storage:
   trace:
-    backend: local
+    backend: s3
     wal:
       path: /var/tempo/wal
-    local:
-      path: /var/tempo/blocks
+    s3:
+      bucket: "tempo-logs-prod-skylabs" 
+      endpoint: "s3.us-east-2.amazonaws.com" 
 
-overrides:
-  defaults:
-    metrics_generator:
-      processors: [service-graphs, span-metrics, local-blocks] 
+# The 'overrides' section is no longer needed as it only contained
+# configuration for the removed metrics_generator.
