@@ -15,19 +15,12 @@ ingester:
 
 compactor:
   compaction:
-    block_retention: 4380h
-
-# REMOVED: The entire metrics_generator and its related overrides section are gone,
-# as they were only configured to send data to Prometheus.
+    block_retention: 720h
 
 storage:
   trace:
-    backend: s3
+    backend: local
     wal:
       path: /var/tempo/wal
-    s3:
-      bucket: "tempo-logs-prod-skylabs" 
-      endpoint: "s3.us-east-2.amazonaws.com" 
-
-# The 'overrides' section is no longer needed as it only contained
-# configuration for the removed metrics_generator.
+    local:
+      path: /var/tempo/blocks

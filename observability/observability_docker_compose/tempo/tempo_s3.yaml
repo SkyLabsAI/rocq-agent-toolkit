@@ -1,0 +1,33 @@
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 4380h
+
+# REMOVED: The entire metrics_generator and its related overrides section are gone,
+# as they were only configured to send data to Prometheus.
+
+storage:
+  trace:
+    backend: s3
+    wal:
+      path: /var/tempo/wal
+    s3:
+      bucket: "tempo-logs-prod-skylabs" 
+      endpoint: "s3.us-east-2.amazonaws.com" 
+
+# The 'overrides' section is no longer needed as it only contained
+# configuration for the removed metrics_generator.
