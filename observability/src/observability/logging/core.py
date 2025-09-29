@@ -647,7 +647,8 @@ def configure_logging(level: str = "INFO", format_json: bool = True):
     logging.basicConfig(
         level=log_level,
         format='%(message)s' if format_json else '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        datefmt='%Y-%m-%d %H:%M:%S',
+        force=True  # Ensure reconfiguration even if handlers exist
     )
     
     # Disable some noisy loggers
