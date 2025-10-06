@@ -1,0 +1,12 @@
+services:
+  alloy:
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy
+
+  tempo:
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
+
+  loki:
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yaml

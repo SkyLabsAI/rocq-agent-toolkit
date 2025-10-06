@@ -1,3 +1,6 @@
+# For local development (DEV): docker-compose -f docker-compose.yml -f docker-compose.local.yml up
+# For S3-based deployment: docker-compose -f docker-compose.yml -f docker-compose.s3.yml up
+
 services:
   # Observability Stack
   
@@ -11,7 +14,6 @@ services:
       - "4318:4318"   # OTLP HTTP
       - "12345:12345" # Alloy HTTP
     volumes:
-      - ./alloy/config.alloy:/etc/alloy/config.alloy
       - /var/run/docker.sock:/var/run/docker.sock
     command: 
       - run
@@ -31,7 +33,6 @@ services:
       - "3200:3200"   # Tempo HTTP
       - "14268:14268" # Jaeger ingest
     volumes:
-      - ./tempo/tempo.yaml:/etc/tempo.yaml
       - tempo-data:/var/tempo
     command: 
       - -config.file=/etc/tempo.yaml
@@ -44,9 +45,8 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./loki/loki.yml:/etc/loki/local-config.yaml
       - loki-data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/loki.yaml
 
   # Grafana - Visualization and dashboards
   grafana:
