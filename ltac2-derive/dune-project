@@ -13,3 +13,5 @@
  (synopsis "Support for deriving standard operations on Ltac2 datatypes.")
  (depends
   rocq-prover))
+
+(subst disabled)

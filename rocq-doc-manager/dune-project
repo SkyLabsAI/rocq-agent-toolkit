@@ -13,3 +13,5 @@
  (depends
   jsonrpc-tp
   rocq-split))
+
+(subst disabled)

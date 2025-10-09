@@ -12,3 +12,5 @@
  (synopsis "HTTP-like transfer protocol for JSON-RPC packets.")
  (depends
   jsonrpc))
+
+(subst disabled)

@@ -14,3 +14,5 @@
   rocq-core
   yojson
   ppx_deriving_yojson))
+
+(subst disabled)

@@ -13,3 +13,5 @@
  (synopsis "Rocq plugin for computing the dependencies of a constant.")
  (depends
   rocq-core))
+
+(subst disabled)

@@ -13,3 +13,5 @@
  (synopsis "Rocq plugin for extracting the contents of the environment.")
  (depends
   rocq-core))
+
+(subst disabled)

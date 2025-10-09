@@ -13,3 +13,5 @@
  (depends
   rocq-core
   rocq-loc))
+
+(subst disabled)

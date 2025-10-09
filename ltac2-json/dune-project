@@ -15,3 +15,5 @@
   rocq-prover
   ltac2-derive
   yojson))
+
+(subst disabled)
