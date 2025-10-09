@@ -9,7 +9,7 @@
 
 (package
  (name jsonrpc-tp)
- (synopsis "HTTP-like transfer protocol for JSON-RPC packets.")
+ (synopsis "HTTP-like transfer protocol for JSON-RPC packets")
  (depends
   jsonrpc))
 

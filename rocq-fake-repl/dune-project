@@ -9,6 +9,6 @@
 
 (package
  (name rocq-fake-repl)
- (synopsis "Fake Rocq toplevel meant at extracting command-line args from [dune coq top]."))
+ (synopsis "Fake Rocq toplevel meant at extracting command-line args from [dune coq top]"))
 
 (subst disabled)

@@ -10,7 +10,7 @@
 
 (package
  (name rocq-term-deps)
- (synopsis "Rocq plugin for computing the dependencies of a constant.")
+ (synopsis "Rocq plugin for computing the dependencies of a constant")
  (depends
   rocq-core))
 

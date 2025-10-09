@@ -9,7 +9,7 @@
 
 (package
  (name rocq-loc)
- (synopsis "Rocq source code location library with JSON serialization.")
+ (synopsis "Rocq source code location library with JSON serialization")
  (depends
   rocq-core
   yojson

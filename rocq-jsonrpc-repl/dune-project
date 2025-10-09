@@ -9,7 +9,7 @@
 
 (package
  (name rocq-jsonrpc-repl)
- (synopsis "Rocq toplevel with a JSON-RPC 2.0 interface.")
+ (synopsis "Rocq toplevel with a JSON-RPC 2.0 interface")
  (depends
   rocq-core
   rocq-loc

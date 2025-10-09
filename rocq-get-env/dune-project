@@ -10,7 +10,7 @@
 
 (package
  (name rocq-get-env)
- (synopsis "Rocq plugin for extracting the contents of the environment.")
+ (synopsis "Rocq plugin for extracting the contents of the environment")
  (depends
   rocq-core))
 

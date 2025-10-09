@@ -9,7 +9,7 @@
 
 (package
  (name rocq-split)
- (synopsis "Tool for spliting Rocq source files into sentences.")
+ (synopsis "Tool for spliting Rocq source files into sentences")
  (depends
   rocq-core
   rocq-loc))

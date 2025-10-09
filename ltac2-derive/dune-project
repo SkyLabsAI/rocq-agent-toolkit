@@ -10,7 +10,7 @@
 
 (package
  (name ltac2-derive)
- (synopsis "Support for deriving standard operations on Ltac2 datatypes.")
+ (synopsis "Support for deriving standard operations on Ltac2 datatypes")
  (depends
   rocq-prover))
 

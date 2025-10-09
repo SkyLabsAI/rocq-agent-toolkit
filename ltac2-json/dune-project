@@ -10,7 +10,7 @@
 
 (package
  (name ltac2-json)
- (synopsis "Ltac2 library providing JSON primitives in Ltac2.")
+ (synopsis "Ltac2 library providing JSON primitives in Ltac2")
  (depends
   rocq-prover
   ltac2-derive
