@@ -12,12 +12,20 @@ class RocqDocManager:
     class Error(Exception):
         pass
 
-    def __init__(self, rocq_args :List[str], file_path) -> None:
-        args = ["rocq-doc-manager", file_path, "--"] + rocq_args
+    def __init__(self, rocq_args: list[str], file_path, chdir: str | None =None, dune: bool=False) -> None:
         self._counter = -1
         try:
+            args: list[str] = []
+            if dune:
+                # TODO: this pattern should probably be exposed separately
+                dune_args = subprocess.Popen(["dune","coq","top","--toplevel=rocq-fake-repl",file_path], stdout=subprocess.PIPE).stdout.readlines()
+                args = ["rocq-doc-manager",file_path,"--"] + [x.strip() for x in dune_args]
+                assert chdir is None
+            else:
+                args = ["rocq-doc-manager",file_path,"--"] + rocq_args
             self._process = subprocess.Popen(
-              args, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+                args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                cwd=chdir
             )
         except Exception as e:
             self._process = None
@@ -32,7 +40,7 @@ class RocqDocManager:
     class Resp:
         result: Any
 
-    def request(self, method : str, params : List[Any]) -> Resp | Err:
+    def request(self, method : str, params: List[Any]) -> Resp | Err:
         if self._process is None:
             raise self.Error("Not running anymore.")
         assert(self._process.stdin is not None)
@@ -63,6 +71,36 @@ class RocqDocManager:
             return self.Err(error.get("message"), error.get("data"))
         else:
             return self.Resp(response.get("result"))
+
+    def load_file(self):
+        return self.request("load_file", [])
+
+    def doc_suffix(self) -> List[Any]:
+        result = self.request("doc_suffix", [])
+        assert isinstance(result, self.Resp)
+        return result.result
+
+    def cursor_index(self) -> int:
+        result = self.request("cursor_index", [])
+        assert isinstance(result, self.Resp)
+        assert isinstance(result.result, int)
+        return result.result
+
+    def run_step(self):
+        return self.request("run_step", [])
+
+    def run_command(self, cmd: str):
+        return self.request("run_command", [cmd])
+
+    def revert_before(self, erase: bool, index: int):
+        return self.request("revert_before", [erase, index])
+
+    def current_goal(self):
+        result = self.run_command('idtac.')
+        index = self.cursor_index()
+        if isinstance(result, self.Err):
+            _ = self.revert_before(True, index)
+        return result
 
     def quit(self) -> None:
         _ = self.request("quit", [])

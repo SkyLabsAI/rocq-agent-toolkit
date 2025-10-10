@@ -1,0 +1,19 @@
+; Copyright © 2022-2025 BlueRock Security, Inc.
+;
+; This file is CONFIDENTIAL AND PROPRIETARY to BlueRock. All rights reserved.
+;
+; Use of this file is only permitted subject to a separate written license agreement with BlueRock.
+
+(include_subdirs qualified)
+(coq.theory
+ (name skylabs.psi_agents.test)
+ (theories
+  ; bluerock.cpp.stdlib ; omitted for now
+  ; bluerock deps
+  Stdlib Ltac2
+  Lens Lens.Elpi
+  stdpp iris
+  Equations Equations.Prop Equations.Type
+  elpi elpi_elpi elpi.apps.locker elpi.apps.NES
+  ExtLib
+  bluerock))

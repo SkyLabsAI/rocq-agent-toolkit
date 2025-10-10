@@ -1,0 +1,29 @@
+[project]
+name = "rocq-pipeline"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Gregory Malecha",email = "gregory@skylabs-ai.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+]
+
+[tool.poetry]
+packages = [{include = "rocq_pipeline", from = "src"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+rocq-doc-manager = { path = "./../rocq-doc-manager/python", develop = true }
+
+[tool.poetry.scripts]
+auto-agent = "rocq_pipeline.task_runner:auto_main"
+
+[dependency-groups]
+dev = [
+    "pytest (>=8.4.2,<9.0.0)"
+]

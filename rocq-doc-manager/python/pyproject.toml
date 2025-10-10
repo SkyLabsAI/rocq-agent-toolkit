@@ -12,6 +12,7 @@ description = "Python API for the Rocq document manager."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "GPL-2.0-or-later"
+dependencies = ["pyyaml","pyjson"]
 
 [project.urls]
 Homepage = "https://github.com/SkylabsAI/skylabs-fm"

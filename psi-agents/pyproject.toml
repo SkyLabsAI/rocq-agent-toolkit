@@ -1,0 +1,21 @@
+[project]
+name = "psi-agents"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Gregory Malecha",email = "gregory@bluerock.io"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+]
+
+[tool.poetry]
+packages = [{include = "psi_agents", from = "src"}]
+
+[tool.poetry.dependencies]
+rocq-pipeline = { path = "./../rocq-pipeline", develop = true }
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
