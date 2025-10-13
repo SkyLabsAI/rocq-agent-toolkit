@@ -51,7 +51,7 @@
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
 
-  $ cat commands.txt | rocq-doc-manager -Q . test.dir test.v | jsonrpc-tp.tp_unwrap
+  $ cat commands.txt | rocq-doc-manager test.v -- -Q . test.dir | jsonrpc-tp.tp_unwrap
   { "id": 1, "jsonrpc": "2.0", "result": null }
   { "id": 2, "jsonrpc": "2.0", "result": { "open_subgoals": null } }
   { "id": 3, "jsonrpc": "2.0", "result": null }

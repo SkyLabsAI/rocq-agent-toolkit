@@ -10,7 +10,7 @@
   >   intro x
   > EOF
 
-  $ rocq-diagnose -Q . test.dir test.v
+  $ rocq-diagnose test.v -- -Q . test.dir
   {
     "status": "error",
     "message": "Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command]).",

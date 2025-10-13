@@ -1,8 +1,9 @@
 (library
  (public_name rocq-doc-manager.lib)
  (name rocq_doc_manager)
+ (inline_tests)
  (wrapped false)
- (preprocess (pps ppx_deriving_yojson))
+ (preprocess (pps ppx_deriving_yojson ppx_inline_test))
  (libraries
   rocq-split.api
   rocq-jsonrpc-repl.api

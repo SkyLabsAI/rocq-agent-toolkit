@@ -12,7 +12,7 @@
   > Qed.
   > EOF
 
-  $ rocq-diagnose -Q . test.dir test.v
+  $ rocq-diagnose test.v -- -Q . test.dir
   {
     "status": "error",
     "message": " (in proof test): Attempt to save an incomplete proof\n(there are remaining open goals).",

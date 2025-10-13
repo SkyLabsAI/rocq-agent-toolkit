@@ -12,8 +12,8 @@ class RocqDocManager:
     class Error(Exception):
         pass
 
-    def __init__(self, rocq_args, file_path) -> None:
-        args = ["rocq-doc-manager"] + rocq_args + [file_path]
+    def __init__(self, rocq_args :List[str], file_path) -> None:
+        args = ["rocq-doc-manager", file_path, "--"] + rocq_args
         self._counter = -1
         try:
             self._process = subprocess.Popen(

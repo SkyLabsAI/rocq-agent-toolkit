@@ -28,7 +28,7 @@
 The following command obtains the result of the last command in the file. This
 last command must be a query.
 
-  $ rocq-query -Q . test.dir test.v
+  $ rocq-query test.v -- -Q . test.dir
   Inductive Corelib.Init.Datatypes.nat
 
 It fails otherwise.
@@ -37,6 +37,6 @@ It fails otherwise.
   > Variant i := Test.
   > Definition junk m n := m + n * n.
   > EOF
-  $ rocq-query -Q . test.dir test.v
+  $ rocq-query test.v -- -Q . test.dir
   Error: the last command gave no feedback.
   [1]

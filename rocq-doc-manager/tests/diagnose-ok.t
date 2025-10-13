@@ -24,5 +24,5 @@
   > Next Obligation. exact 73. Defined.
   > EOF
 
-  $ rocq-diagnose -Q . test.dir test.v
+  $ rocq-diagnose test.v -- -Q . test.dir
   { "status": "success" }

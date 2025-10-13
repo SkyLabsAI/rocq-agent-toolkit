@@ -24,7 +24,7 @@
   > Next Obligation. exact 73. Defined.
   > EOF
 
-  $ rocq-get-deps -Q . test.dir test.v
+  $ rocq-get-deps test.v -- -Q . test.dir
   [
     { "name": "test.dir.test.i", "kind": "Inductive", "off": 0, "len": 18 },
     {
@@ -78,7 +78,7 @@
   > Definition junk m n := m +
   > EOF
 
-  $ rocq-get-deps -Q . test.dir test.v
+  $ rocq-get-deps test.v -- -Q . test.dir
   File "test.v", line 2, characters 0-1:
   Error: Syntax error: [term] expected after '+' (in [term]).
   [1]
