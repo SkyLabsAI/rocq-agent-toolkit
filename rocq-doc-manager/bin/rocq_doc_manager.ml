@@ -151,22 +151,19 @@ let _ =
   | Error(s) -> (d, Error(None, s))
   | Ok(json) -> (d, Ok(json))
 
-(* We assume a single Rocq source file is passed last. *)
-let parse_args : argv:string array -> string list * string = fun ~argv ->
-  let (argv, rocq_args) = Rocq_args.get_args ~argv in
-
-  let argc = Array.length argv in
-  (* TODO: change the argument order here to use: %s file.v [-- rocq-args]
-     This makes it easier to pass arguments to the program
-   *)
-  if argc < 2 then panic "Usage: %s FILE.v [-- ROCQ ARGS]" argv.(0);
-  let file = argv.(1) in
+let parse_args : argv:string array -> string * string list = fun ~argv ->
+  let (argv, rocq_args) = Rocq_args.split ~argv in
+  let file =
+    match argv with
+    | [|_; file|] -> file
+    | _           -> panic "Usage: %s FILE.v [-- ROCQ ARGS]" argv.(0)
+  in
   if not (Filename.check_suffix file ".v") then
-    panic "Error: a Rocq source file is expected as last argument.";
-  (rocq_args, file)
+    panic "Error: a Rocq source file was expected as argument.";
+  (file, rocq_args)
 
 let _ =
-  let (args, file) = parse_args ~argv:Sys.argv in
+  let (file, args) = parse_args ~argv:Sys.argv in
   let state = Document.init ~args ~file in
   try Jsonrpc_tp_loop.run rset ~ic:stdin ~oc:stdout state with
   | Jsonrpc_tp_loop.Error(s) ->

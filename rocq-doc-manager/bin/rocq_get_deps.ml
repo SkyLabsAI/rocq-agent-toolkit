@@ -110,7 +110,7 @@ let main : Document.t -> unit = fun state ->
 
 (* We assume a single Rocq source file is passed last. *)
 let parse_args : argv:string array -> string list * string = fun ~argv ->
-  let (argv, rocq_args) = Rocq_args.get_args ~argv in
+  let (argv, rocq_args) = Rocq_args.split ~argv in
   let argc = Array.length argv in
   if argc < 2 then panic "Usage: %s FILE.v [-- ROCQ ARGS]" argv.(0);
   let file = argv.(argc - 1) in
