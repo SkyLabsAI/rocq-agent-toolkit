@@ -2,7 +2,7 @@
  (applies_to :whole_subtree)
  (deps
   (package jsonrpc-tp)
-  (package coq-core)
-  (package coq-stdlib)
+  (package rocq-core)
+  (package rocq-stdlib)
   (package rocq-doc-manager)
   (package rocq-term-deps)))
