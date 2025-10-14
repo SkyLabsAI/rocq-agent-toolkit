@@ -103,6 +103,7 @@ let synpure_desc : Vernacexpr.synpure_vernac_expr -> string = fun e ->
   | VernacSchemeEquality(_,_)        -> "SchemeEquality"
   | VernacCombinedScheme(_,_)        -> "CombinedScheme"
   | VernacUniverse(_)                -> "Universe"
+  | VernacSort(_)                    -> "Sort"
   | VernacConstraint(_)              -> "Constraint"
   | VernacAddRewRule(_,_)            -> "AddRewRule"
 
