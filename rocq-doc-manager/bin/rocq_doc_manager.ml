@@ -7,149 +7,322 @@ type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
 
-let rset = Jsonrpc_tp_loop.create ()
+module API = Jsonrpc_tp_api
+module S = API.Schema
 
-let add_handler name pspec a =
-  Jsonrpc_tp_loop.add rset name pspec a
+let api = API.create ()
 
-let located_error ~loc s =
-  let loc = Document.loc_to_json loc in
-  Error(Some(`Assoc([("loc", loc)])), s)
-
-module P = Jsonrpc_tp_loop.Params
-
-let _ =
-  add_handler "load_file" P.nil @@ fun d () ->
-  match Document.load_file d with
-  | Error(loc, s) -> (d, located_error ~loc s)
-  | Ok(())        -> (d, Ok(`Null))
-
-let _ =
-  add_handler "insert_blanks" P.(cons string nil) @@ fun d (text, ()) ->
-  Document.insert_blanks d ~text;
-  (d, Ok(`Null))
-
-let _ =
-  add_handler "insert_command" P.(cons string nil) @@ fun d (text, ()) ->
-  match Document.insert_command d ~text with
-  | Error(loc, s) -> (d, located_error ~loc s)
-  | Ok(data)      -> (d, Ok(Document.command_data_to_json data))
-
-let _ =
-  add_handler "run_command" P.(cons string nil) @@ fun d (text, ()) ->
-  match Document.run_command d ~text with
-  | Error(s) -> (d, Error(None, s))
-  | Ok(data) -> (d, Ok(Document.command_data_to_json data))
-
-let _ =
-  add_handler "cursor_index" P.nil @@ fun d () ->
-  let index = Document.cursor_index d in
-  (d, Ok(`Int(index)))
-
-let _ =
-  add_handler "revert_before" P.(cons bool (cons int nil)) @@
-    fun d (erase, (index, ())) ->
-  Document.revert_before d ~erase ~index;
-  (d, Ok(`Null))
-
-let _ =
-  add_handler "advance_to" P.(cons int nil) @@ fun d (index, ()) ->
-  match Document.advance_to d ~index with
-  | Ok(())        -> (d, Ok(`Null))
-  | Error(loc, s) -> (d, located_error ~loc s)
-
-let _ =
-  add_handler "go_to" P.(cons int nil) @@ fun d (index, ()) ->
-  match Document.advance_to d ~index with
-  | Ok(())        -> (d, Ok(`Null))
-  | Error(loc, s) -> (d, located_error ~loc s)
-
-let _ =
-  add_handler "clear_suffix" P.nil @@ fun d () ->
-  Document.clear_suffix d;
-  (d, Ok(`Null))
-
-let _ =
-  add_handler "run_step" P.nil @@ fun d () ->
-  match Document.run_step d with
-  | Error(loc, s)  -> (d, located_error ~loc s)
-  | Ok(None)       -> (d, Ok(`Null))
-  | Ok(Some(data)) -> (d, Ok(Document.command_data_to_json data))
-
-let _ =
-  add_handler "doc_prefix" P.nil @@ fun d () ->
-  let make ~kind ~off ~text =
-    `Assoc([
-      ("kind"  , `String(kind));
-      ("offset", `Int(off));
-      ("text"  , `String(text));
-    ])
-  in
-  let prefix = Document.doc_prefix d make in
-  (d, Ok(`List(prefix)))
-
-let _ =
-  add_handler "doc_suffix" P.nil @@ fun d () ->
-  let make ~kind ~text =
-    `Assoc([
-      ("kind"  , `String(kind));
-      ("text"  , `String(text));
-    ])
-  in
-  let prefix = Document.doc_suffix d make in
-  (d, Ok(`List(prefix)))
-
-let _ =
-  add_handler "has_suffix" P.nil @@ fun d () ->
-  let b = Document.has_suffix d in
-  (d, Ok(`Bool(b)))
-
-let _ =
-  add_handler "commit" P.(cons bool nil) @@ fun d (include_suffix, ()) ->
-  Document.commit ~include_suffix d;
-  (d, Ok(`Null))
-
-let _ =
-  add_handler "compile" P.nil @@ fun d () ->
-  let (ret, out, err) = Document.compile d in
-  let json =
-    let items = [("stdout", `String(out)); ("stderr", `String(err))] in
-    let items =
-      match ret with
-      | Ok(_)    ->
-          ("success", `Bool(true )) :: items
-      | Error(s) ->
-          ("success", `Bool(false)) :: ("error", `String(s)) :: items
+let rocq_loc =
+  let rocq_source =
+    let fields =
+      API.Fields.add ~name:"dirpath" S.(nullable string) @@
+      API.Fields.add ~name:"file" S.string @@
+      API.Fields.nil
     in
-    `Assoc(items)
+    API.declare_object api ~name:"rocq_source"
+      ~descr:"Rocq source file information"
+      ~encode:Fun.id ~decode:Fun.id fields
   in
-  (d, Ok(json))
+  let fields =
+    API.Fields.add ~name:"fname"
+      ~descr:"source file identification if not run as a toplevel"
+      S.(nullable (obj rocq_source)) @@
+    API.Fields.add ~name:"line_nb" ~descr:"start line number" S.int @@
+    API.Fields.add ~name:"bol_pos"
+      ~descr:"position of the beginning of start line" S.int @@
+    API.Fields.add ~name:"line_nb_last" ~descr:"end line number" S.int @@
+    API.Fields.add ~name:"bol_pos_last"
+      ~descr:"position of the beginning of end line" S.int @@
+    API.Fields.add ~name:"bp" ~descr:"start position" S.int @@
+    API.Fields.add ~name:"ep" ~descr:"end position" S.int @@
+    API.Fields.nil
+  in
+  let encode arg =
+    let (fname, (line_nb, (bol_pos, arg))) = arg in
+    let (line_nb_last, (bol_pos_last, (bp, (ep, ())))) = arg in
+    let fname =
+      match fname with
+      | None                        -> Rocq_loc.ToplevelInput
+      | Some((dirpath, (file, ()))) -> Rocq_loc.InFile({dirpath; file})
+    in
+    Rocq_loc.{fname; line_nb; bol_pos; line_nb_last; bol_pos_last; bp; ep}
+  in
+  let decode loc =
+    let Rocq_loc.{fname; line_nb; bol_pos; _} = loc in
+    let Rocq_loc.{line_nb_last; bol_pos_last; bp; ep; _} = loc in
+    let fname =
+      match fname with
+      | Rocq_loc.ToplevelInput           -> None
+      | Rocq_loc.InFile({dirpath; file}) -> Some((dirpath, (file, ())))
+    in
+    let ret = (line_nb_last, (bol_pos_last, (bp, (ep, ())))) in
+    (fname, (line_nb, (bol_pos, ret)))
+  in
+  API.declare_object api ~name:"rocq_loc"
+    ~descr:"Rocq source code location" ~encode ~decode fields
 
 let _ =
-  add_handler "get_feedback" P.nil @@ fun d () ->
+  API.declare_full api ~name:"load_file"
+    ~descr:"adds the (unprocessed) file contents to the document (note that \
+      this requires running sentence-splitting, which requires the input \
+      file not to have syntax errors)"
+    ~arg:S.null ~ret:S.null ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error" @@ fun d () ->
+  (d, Document.load_file d)
+
+let _ =
+  API.declare api ~name:"insert_blanks"
+    ~descr:"insert and process blanks at the cursor"
+    ~arg:S.string ~ret:S.null @@ fun d text ->
+  (d, Document.insert_blanks d ~text)
+
+let command_data =
+  let fields =
+    API.Fields.add ~name:"open_subgoals"
+      ~descr:"open sub-goals, if in a proof" S.(nullable string) @@
+    API.Fields.add ~name:"new_constants"
+      ~descr:"constants introduced by the command" S.(list string) @@
+    API.Fields.add ~name:"removed_constants"
+      ~descr:"constants removed by the command" S.(list string) @@
+    API.Fields.add ~name:"new_inductives"
+      ~descr:"inductives introduced by the command" S.(list string) @@
+    API.Fields.add ~name:"removed_inductives"
+      ~descr:"inductives removed by the command" S.(list string) @@
+    API.Fields.nil
+  in
+  let encode arg =
+    let (open_subgoals, (new_constants, (removed_constants, arg))) = arg in
+    let (new_inductives, (removed_inductives, ())) = arg in
+    Document.{
+      open_subgoals; new_constants; removed_constants;
+      new_inductives; removed_inductives
+    }
+  in
+  let decode data =
+    let Document.{open_subgoals; _} = data in
+    let Document.{new_constants; removed_constants; _} = data in
+    let Document.{new_inductives; removed_inductives; _} = data in
+    let ret = (new_inductives, (removed_inductives, ())) in
+    (open_subgoals, (new_constants, (removed_constants, ret)))
+  in
+  API.declare_object api ~name:"command_data"
+    ~descr:"data gathered while running a Rocq command" ~encode ~decode fields
+ 
+let _ =
+  API.declare_full api ~name:"insert_command"
+    ~descr:"insert and process a command at the cursor"
+    ~arg:S.string ~ret:S.(obj command_data) ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error" @@ fun d text ->
+  (d, Document.insert_command d ~text)
+
+let _ =
+  API.declare_full api ~name:"run_command"
+    ~descr:"process a command at the cursor without inserting it in the \
+      document"
+    ~arg:S.string ~ret:S.(obj command_data) ~err:S.null @@ fun d text ->
+  (d, Result.map_error (fun s -> ((), s)) (Document.run_command d ~text))
+
+let _ =
+  API.declare api ~name:"cursor_index"
+    ~descr:"gives the index at the cursor"
+    ~arg:S.null ~ret:S.int @@ fun d () ->
+  (d, Document.cursor_index d)
+
+let revert_config =
+  let fields =
+    API.Fields.add ~name:"erase"
+      ~descr:"boolean indicating whether reverted items should be erased"
+      S.bool @@
+    API.Fields.add ~name:"index"
+      ~descr:"index of the item before which the cursor should be revered \
+        (one-past-the-end index allowed)" S.int @@
+    API.Fields.nil
+  in
+  API.declare_object api ~name:"revert_config"
+    ~descr:"input configuration for the `revert_before` method"
+    ~encode:(fun (erase, (index, ())) -> (erase, index))
+    ~decode:(fun (erase, index) -> (erase, (index, ()))) fields
+
+let _ =
+  (* FIXME can fail? *)
+  API.declare api ~name:"revert_before"
+    ~descr:"revert the cursor to an earlier point in the document"
+    ~arg:(S.obj revert_config) ~ret:S.null @@ fun d (erase, index) ->
+  (d, Document.revert_before d ~erase ~index)
+
+let _ =
+  API.declare_full api ~name:"advance_to"
+    ~descr:"advance the cursor before the indicated unprocessed item"
+    ~arg:S.int ~arg_descr:"integer index before which to advance the cursor \
+      (one-past-the-end index allowed)"
+    ~ret:S.null ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error" @@ fun d index ->
+  (d, Document.advance_to d ~index)
+
+let _ =
+  API.declare_full api ~name:"go_to"
+    ~descr:"move the cursor right before the indicated item (whether it is \
+      already processed or not)"
+    ~arg:S.int ~arg_descr:"integer index before which to advance the cursor \
+      (one-past-the-end index allowed)"
+    ~ret:S.null ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error" @@ fun d index ->
+  (d, Document.go_to d ~index)
+
+let _ =
+  API.declare api ~name:"clear_suffix"
+    ~descr:"remove all unprocessed commands from the document"
+    ~arg:S.null ~ret:S.null @@ fun d () ->
+  (d, Document.clear_suffix d)
+
+let _ =
+  API.declare_full api ~name:"run_step"
+    ~descr:"advance the cursor by stepping over an unprocessed item"
+    ~arg:S.null ~ret:S.(nullable (obj command_data))
+    ~ret_descr:"data for the command that was run, if any"
+    ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error" @@ fun d () ->
+  (d, Document.run_step d)
+
+let prefix_item =
+  let fields =
+    API.Fields.add ~name:"kind" S.string @@
+    API.Fields.add ~name:"offset" S.int @@
+    API.Fields.add ~name:"text" S.string @@
+    API.Fields.nil
+  in
+  API.declare_object api ~name:"prefix_item"
+    ~descr:"document prefix item, appearing before the cursor"
+    ~encode:Fun.id ~decode:Fun.id fields
+
+let _ =
+  API.declare api ~name:"doc_prefix" ~descr:"gives the list of all processed \
+    commands, appearing before the cursor"
+    ~arg:S.null ~ret:S.(list (obj prefix_item)) @@ fun d () ->
+  let make ~kind ~off ~text = (kind, (off, (text, ()))) in
+  (d, Document.doc_prefix d make)
+
+let suffix_item =
+  let fields =
+    API.Fields.add ~name:"kind" S.string @@
+    API.Fields.add ~name:"text" S.string @@
+    API.Fields.nil
+  in
+  API.declare_object api ~name:"suffix_item"
+    ~descr:"document suffix item, appearing after the cursor"
+    ~encode:Fun.id ~decode:Fun.id fields
+
+let _ =
+  API.declare api ~name:"doc_suffix" ~descr:"gives the list of all \
+    unprocessed commands, appearing after the cursor"
+    ~arg:S.null ~ret:S.(list (obj suffix_item)) @@ fun d () ->
+  let make ~kind ~text = (kind, (text, ())) in
+  (d, Document.doc_suffix d make)
+
+let _ =
+  API.declare api ~name:"has_suffix"
+    ~descr:"indicates whether the document has a suffix (unprocessed items)"
+    ~arg:S.null ~ret:S.bool @@ fun d () ->
+  (d, Document.has_suffix d)
+
+let _ =
+  API.declare api ~name:"commit"
+    ~descr:"write the current document contents to the file"
+    ~arg:S.bool ~arg_descr:"indicate whether he suffix should be included"
+    ~ret:S.null @@ fun d include_suffix ->
+  (d, Document.commit ~include_suffix d)
+
+let compile_result =
+  let fields =
+    API.Fields.add ~name:"stdout" S.string @@
+    API.Fields.add ~name:"stderr" S.string @@
+    API.Fields.add ~name:"success" S.bool @@
+    API.Fields.add ~name:"error" ~descr:"non-null if success is false"
+      S.(nullable string) @@
+    API.Fields.nil
+  in
+  let encode (stdout, (stderr, (success, (error, ())))) =
+    let ret =
+      match (success, error) with
+      | (true , None   ) -> Ok(())
+      | (true , Some(_)) -> assert false
+      | (false, Some(e)) -> Error(e)
+      | (false, None   ) -> assert false
+    in
+    (ret, stdout, stderr)
+  in
+  let decode (ret, stdout, stderr) =
+    match ret with
+    | Ok(())       -> (stdout, (stderr, (true, (None, ()))))
+    | Error(error) -> (stdout, (stderr, (false, (Some(error), ()))))
+  in
+  API.declare_object api ~name:"compile_result"
+    ~descr:"result of the `compile` method" ~encode ~decode fields
+
+let _ =
+  API.declare api ~name:"compile"
+    ~descr:"compile the current contents of the file with `rocq compile`"
+    ~arg:S.null ~ret:S.(obj compile_result) @@ fun d () ->
+  (d, Document.compile d)
+
+let _ =
+  (* FIXME specify return object precisely. *)
+  API.declare api ~name:"get_feedback"
+    ~descr:"gets Rocq's feedback for the last run command (if any)"
+    ~arg:S.null ~ret:S.(list any)
+    ~ret_descr:"list of objects with `kind` (array with single string), \
+      `text` (string), `loc` (location)" @@ fun d () ->
   let feedback = Document.get_feedback d in
-  (d, Ok(`List(List.map Document.feedback_to_json feedback)))
+  (d, List.map Document.feedback_to_json feedback)
+
+let query_config =
+  let fields =
+    API.Fields.add ~name:"text" S.string @@
+    API.Fields.add ~name:"index" S.int @@
+    API.Fields.nil
+  in
+  let encode (text, (index, ())) = (text, index) in
+  let decode (text, index) = (text, (index, ())) in
+  API.declare_object api ~name:"query_config"
+    ~descr:"input config for queries" ~encode ~decode fields
 
 let _ =
-  add_handler "text_query" P.(cons string (cons int nil)) @@
-  fun d (text, (index, ())) ->
-  match Document.text_query d ~text ~index with
-  | Error(s) -> (d, Error(None, s))
-  | Ok(data) -> (d, Ok(`String(data)))
+  API.declare_full api ~name:"text_query"
+    ~descr:"runs the given query at the cursor, not updating the state"
+    ~arg:S.(obj query_config) ~ret:S.string ~ret_descr:"query's result, as \
+      taken from the \"info\" \ \"notice\" feedback at the given index"
+    ~err:S.null @@ fun d (text, index) ->
+  let res = Document.text_query d ~text ~index in
+  (d, Result.map_error (fun s -> ((), s)) res)
+
+let query_all_config =
+  let fields =
+    API.Fields.add ~name:"text" S.string @@
+    API.Fields.add ~name:"indices" S.(nullable (list int)) @@
+    API.Fields.nil
+  in
+  let encode (text, (indices, ())) = (text, indices) in
+  let decode (text, indices) = (text, (indices, ())) in
+  API.declare_object api ~name:"query_all_config"
+    ~descr:"input config for multi-result queries" ~encode ~decode fields
 
 let _ =
-  add_handler "text_query_all" P.(cons string (cons (option (list int)) nil))
-  @@ fun d (text, (indices, ())) ->
-  match Document.text_query_all d ~text ?indices with
-  | Error(s) -> (d, Error(None, s))
-  | Ok(data) -> (d, Ok(`List(List.map (fun s -> `String(s)) data)))
+  API.declare_full api ~name:"text_query_all"
+    ~descr:"runs the given query at the cursor, not updating the state"
+    ~arg:S.(obj query_all_config) ~ret:S.(list string)
+    ~err:S.null @@ fun d (text, indices) ->
+  let res = Document.text_query_all d ~text ?indices in
+  (d, Result.map_error (fun s -> ((), s)) res)
 
 let _ =
-  add_handler "json_query" P.(cons string (cons int nil)) @@
-  fun d (text, (index, ())) ->
-  match Document.json_query d ~text ~index with
-  | Error(s) -> (d, Error(None, s))
-  | Ok(json) -> (d, Ok(json))
+  API.declare_full api ~name:"json_query"
+    ~descr:"runs the given query at the cursor, not updating the state"
+    ~arg:S.(obj query_config) ~ret:S.any ~ret_descr:"arbitrary JSON data, as \
+      returned by the query as JSON text, taken from the \"info\" / \
+      \"notice\" feedback with the given index"
+    ~err:S.null @@ fun d (text, index) ->
+  let res = Document.json_query d ~text ~index in
+  (d, Result.map_error (fun s -> ((), s)) res)
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in
@@ -163,10 +336,17 @@ let parse_args : argv:string array -> string * string list = fun ~argv ->
   (file, rocq_args)
 
 let _ =
+  match Sys.argv with
+  | [|_; "--api-docs"  |] ->
+      Printf.printf "%a%!" API.output_docs api;
+      exit 0
+  | [|_; "--python-api"|] ->
+      Printf.printf "%a%!" API.output_python_api api;
+      exit 0
+  | _                     ->
   let (file, args) = parse_args ~argv:Sys.argv in
   let state = Document.init ~args ~file in
-  try Jsonrpc_tp_loop.run rset ~ic:stdin ~oc:stdout state with
-  | Jsonrpc_tp_loop.Error(s) ->
-      Printf.eprintf "%s\n%!" s; exit 1
-  | Sys_error(s)             ->
-      Printf.eprintf "Error: %s\n%!" s; exit 1
+  match API.run api ~ic:stdin ~oc:stdout state with
+  | Ok(_)                    -> exit 0
+  | Error(s)                 -> Printf.eprintf "%s\n%!" s; exit 1
+  | exception Sys_error(s)   -> Printf.eprintf "Error: %s\n%!" s; exit 1
