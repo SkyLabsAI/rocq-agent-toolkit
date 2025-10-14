@@ -149,7 +149,7 @@ let build_data : Names.DirPath.t list -> Data.t = fun ds ->
       !acc
     in
     fold_abbrevs (fun fp interp acc ->
-      let dp = List.rev (Names.DirPath.repr (Libnames.dirpath fp)) in
+      let dp = List.rev (Names.DirPath.repr (Libnames.pop_dirpath (Libnames.dirpath_of_path fp))) in
       match List.exists (fun d -> is_dp_prefix d dp) ds || ds = [] with
       | false -> acc
       | true  -> build_abbrev env sigma fp interp :: acc
