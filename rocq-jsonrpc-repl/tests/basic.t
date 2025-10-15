@@ -66,7 +66,7 @@
     "result": {
       "success": false,
       "state": 3,
-      "error": "Cannot find a physical path bound to logical path Stdlib.ZArith.BinInk.",
+      "error": "Unable to locate library Stdlib.ZArith.BinInk.",
       "loc": {
         "fname": [ "ToplevelInput" ],
         "line_nb": 1,
@@ -88,7 +88,7 @@
             "bp": 15,
             "ep": 35
           },
-          "text": "Cannot find a physical path bound to logical path Stdlib.ZArith.BinInk."
+          "text": "Unable to locate library Stdlib.ZArith.BinInk."
         }
       ]
     }

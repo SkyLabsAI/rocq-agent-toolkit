@@ -62,6 +62,8 @@
   -I
   $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p3
   -I
+  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p4
+  -I
   $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/zify
   -R
   $TESTCASE_ROOT/_build/install/default/lib/coq/theories

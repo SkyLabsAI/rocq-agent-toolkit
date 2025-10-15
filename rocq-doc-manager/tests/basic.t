@@ -183,7 +183,7 @@
     "jsonrpc": "2.0",
     "result": {
       "success": true,
-      "stdout": "nil : forall {A : Type}, list A\n\nnil is template universe polymorphic\nArguments nil {A}%_type_scope\nExpands to: Constructor Corelib.Init.Datatypes.nil\nDeclared in library Corelib.Init.Datatypes, line 310, characters 3-6\n12 < 42 <= 100\n     : Prop\n",
+      "stdout": "nil : forall {A : Type}, list A\n\nnil is template universe polymorphic\nArguments nil {A}%_type_scope\nExpands to: Constructor Corelib.Init.Datatypes.nil\nDeclared in library Corelib.Init.Datatypes, line 319, characters 3-6\n12 < 42 <= 100\n     : Prop\n",
       "stderr": ""
     }
   }
