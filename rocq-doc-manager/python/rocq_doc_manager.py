@@ -75,6 +75,11 @@ class RocqDocManager:
     def load_file(self):
         return self.request("load_file", [])
 
+    def doc_prefix(self) -> List[Any]:
+        result = self.request("doc_prefix", [])
+        assert isinstance(result, self.Resp)
+        return result.result
+
     def doc_suffix(self) -> List[Any]:
         result = self.request("doc_suffix", [])
         assert isinstance(result, self.Resp)
