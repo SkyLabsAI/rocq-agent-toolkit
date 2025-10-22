@@ -12,14 +12,14 @@ class RocqDocManager:
     class Error(Exception):
         pass
 
-    def __init__(self, rocq_args: list[str], file_path, chdir: str | None =None, dune: bool=False) -> None:
+    def __init__(self, rocq_args: list[str], file_path: str, chdir: str | None =None, dune: bool=False) -> None:
         self._counter = -1
         try:
             args: list[str] = []
             if dune:
                 # TODO: this pattern should probably be exposed separately
-                dune_args = subprocess.Popen(["dune","coq","top","--toplevel=rocq-fake-repl",file_path], stdout=subprocess.PIPE).stdout.readlines()
-                args = ["rocq-doc-manager",file_path,"--"] + [x.strip() for x in dune_args]
+                dune_args = subprocess.Popen(["dune","coq","top","--toplevel=rocq-fake-repl",file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.readlines()
+                args = ["dune","exec", "rocq-doc-manager","--",file_path,"--"] + [x.strip() for x in dune_args]
                 assert chdir is None
             else:
                 args = ["rocq-doc-manager",file_path,"--"] + rocq_args
