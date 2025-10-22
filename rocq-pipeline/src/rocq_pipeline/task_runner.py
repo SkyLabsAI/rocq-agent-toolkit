@@ -1,14 +1,15 @@
 import argparse
-from typing import override
 import json
+import os.path
 from rocq_doc_manager import RocqDocManager
 from rocq_pipeline.agent import GiveUp, Finished
 from rocq_pipeline import locator
+from rocq_pipeline.auto_agent import AutoAgent
 import rocq_pipeline.tasks as Tasks
 
 import sys
 
-def task_main(agent_type, args = None) -> bool:
+def main(agent_type, args = None) -> bool:
     """
     Run the given agent on the task.
     `agent_type` is the type of the agent, i.e. the class to instantiate.
@@ -25,7 +26,7 @@ def task_main(agent_type, args = None) -> bool:
     # Add the single required positional argument
     parser.add_argument(
         '--task-json',
-        type=str,
+        type=json.loads,
         help='The task descriptor, as JSON.'
     )
     parser.add_argument(
@@ -48,18 +49,19 @@ def task_main(agent_type, args = None) -> bool:
 
     arguments = parser.parse_args(args)
 
-    tasks = []
+    wdir = '.'
+    tasks: list[dict] = []
     if not arguments.task_json is None:
         assert arguments.task_file is None
-        tasks = [json.loads(arguments.task_json)]
+        tasks = [arguments.task_json]
     elif not arguments.task_file is None:
-        tasks = Tasks.load_tasks(arguments.task_file)
+        (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
     else:
         print("unspecified task")
         return False
 
     for task in tasks:
-        rdm = RocqDocManager([], task['file'], dune=True)
+        rdm = RocqDocManager([], os.path.join(wdir, task['file']), dune=True)
         rdm.load_file()
         if not locator.parse_locator(task['locator'])(rdm):
             print("locator returned false")
@@ -67,7 +69,7 @@ def task_main(agent_type, args = None) -> bool:
 
         if hasattr(agent_type, "build"):
             # TODO: should we remove any attributes from the task
-            agent = agent_type.build(prompt=task['prompt'] if 'prompt' in task else None)
+            agent = agent_type.build(prompt=task['prompt'] if 'prompt' in task else None, args=args)
         else:
             agent = agent_type()
 
@@ -78,3 +80,6 @@ def task_main(agent_type, args = None) -> bool:
             print(f"task completed: {result.message}")
 
     return True
+
+def auto_main():
+    main(AutoAgent)

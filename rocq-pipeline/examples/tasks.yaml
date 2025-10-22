@@ -1,0 +1,27 @@
+- file: theories/test_simple.v
+  locator: lemma:is_true
+  tags:
+    - proof-0
+- file: theories/test_simple.v
+  locator: lemma:not_false
+  tags:
+    - proof-0
+- file: theories/my_nat.v
+  locator: lemma:zero_add
+  tags:
+    - proof-0
+- file: theories/my_nat.v
+  locator: lemma:add_S
+  tags:
+    - proof-1
+    - requires-induction
+- file: theories/my_nat.v
+  locator: lemma:add_zero
+  tags:
+    - proof-1
+    - requires-induction
+- file: theories/with_dep.v
+  locator: lemma:add_comm
+  tags:
+    - proof-1
+    - requires-induction

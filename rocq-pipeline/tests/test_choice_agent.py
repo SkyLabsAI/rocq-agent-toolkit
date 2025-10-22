@@ -1,6 +1,6 @@
 import json
 from rocq_pipeline.agent import ChoiceAgent
-from rocq_pipeline.task_runner import task_main
+import rocq_pipeline.task_runner
 
 def make_task(f: str, l: str):
     return json.dumps({ 'file': f, 'locator': l })
@@ -10,5 +10,5 @@ class SimpleTactics(ChoiceAgent):
         super().__init__(['solve [ trivial ]', 'tauto', 'solve [ auto ]', 'lia', 'split'])
 
 def test_choice_agent():
-    result = task_main(SimpleTactics, ['--task-json', make_task('examples/theories/test_simple.v', 'lemma:is_true') ])
+    result = task_runner.main(SimpleTactics, ['--task-json', make_task('examples/theories/test_simple.v', 'lemma:is_true') ])
     assert result
