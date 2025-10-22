@@ -3,7 +3,9 @@ Agents
 """
 
 from dataclasses import dataclass
-from typing import override, Self
+import pprint
+from typing import override, Any, Self
+
 from rocq_doc_manager import RocqDocManager
 
 def close_proof(rdm: RocqDocManager):
@@ -63,9 +65,11 @@ class TraceAgent(Agent):
     @override
     def run(self, rdm: RocqDocManager) -> GiveUp | bool | None:
         should_trace = True
-        def trace(f):
+        def trace(msg, data: Any | None = None):
             if should_trace:
-                print(f)
+                print(msg)
+                if data:
+                    pprint.pprint(data, width=200)
 
         # Start trying to verify the code
         while True:
@@ -74,10 +78,10 @@ class TraceAgent(Agent):
 
             if should_trace:
                 goal = rdm.current_goal()
-                trace(f"Current Goal:\r\n{goal}")
+                trace("Current Goal:", data=goal)
 
             tactic: Tactic | GiveUp = self.next(rdm)
-            trace(f"Tactic: {tactic}")
+            trace("Tactic:", data=tactic)
 
             if isinstance(tactic, GiveUp):
                 return tactic
@@ -90,7 +94,7 @@ class TraceAgent(Agent):
                     return True
             elif isinstance(result, rdm.Err):
                 self.update_history(tactic, success=False)
-                trace("failed")
+                trace("Failed", data=result)
                 self.failed(result)
 
     def next(self, rdm : RocqDocManager) -> Tactic | GiveUp:
