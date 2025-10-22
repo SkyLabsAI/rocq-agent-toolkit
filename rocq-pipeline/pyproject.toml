@@ -8,6 +8,8 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "pyyaml (>=6.0.3,<7.0.0)",
+    "jmespath (>=1.0.1,<2.0.0)"
 ]
 
 [tool.poetry]
@@ -25,5 +27,8 @@ auto-agent = "rocq_pipeline.task_runner:auto_main"
 
 [dependency-groups]
 dev = [
-    "pytest (>=8.4.2,<9.0.0)"
+    "pytest (>=8.4.2,<9.0.0)",
+    "mypy (>=1.18.2,<2.0.0)",
+    "types-pyyaml (>=6.0.12.20250915,<7.0.0.0)",
+    "types-jmespath (>=1.0.2.20250809,<2.0.0.0)"
 ]

@@ -1,38 +1,12 @@
 import argparse
 from typing import override
-from rocq_pipeline.agent import GiveUp
-from rocq_pipeline.auto_agent import AutoAgent
 import json
-from rocq_pipeline import locator
 from rocq_doc_manager import RocqDocManager
+from rocq_pipeline.agent import GiveUp, Finished
+from rocq_pipeline import locator
+import rocq_pipeline.tasks as Tasks
 
 import sys
-
-# def dune_rule(filename: str):
-#     result = subprocess.run(["dune", "rule", f"{filename}o"], capture_output=True, text=True)
-#     rule = sexpdata.loads(result.stdout)
-#     action = None
-#     for x in rule:
-#         if x[0] == sexpdata.Symbol('action'):
-#             action = x[1]
-#             break
-#     to_dir = '/home/gmalecha/skylabs/main' # workspace directory
-#     args = []
-#     if action[0] == sexpdata.Symbol('chdir'):
-#         to_dir = f"{to_dir}/{action[1]}"
-#         action = action[2]
-#     if action[0] == sexpdata.Symbol('run'):
-#         args = ["" + x for x in action[2:-1]]
-#     filename = os.path.relpath(filename, to_dir)
-#     print(f"filename = {filename}\nto_dir={to_dir}")
-#     # args.remove("-boot") # rocq-doc-manager does not work with -boot
-#     return RocqDocManager(args, filename, to_dir)
-
-def build_rdm(filename: str):
-    return RocqDocManager([], filename, dune=True)
-
-# def doc_manager_for_task(task):
-#     if
 
 def task_main(agent_type, args = None) -> bool:
     """
@@ -74,42 +48,33 @@ def task_main(agent_type, args = None) -> bool:
 
     arguments = parser.parse_args(args)
 
-    task = None
+    tasks = []
     if not arguments.task_json is None:
         assert arguments.task_file is None
-        task = json.loads(arguments.task_json)
+        tasks = [json.loads(arguments.task_json)]
     elif not arguments.task_file is None:
-        if arguments.task_file.endswith('.yml') or arguments.task_file.endswith('.yaml'):
-            print("yaml files not yet supported")
-            return False
-        elif arguments.task_file.endswith('.json'):
-            with open(arguments.task_file, 'r') as tf:
-                task = json.load(tf)
-        else:
-            print("unrecognized task descriptor")
-            return False
+        tasks = Tasks.load_tasks(arguments.task_file)
     else:
         print("unspecified task")
         return False
 
-    rdm = build_rdm(task['file'])
-    rdm.load_file()
-    if not locator.parse_locator(task['locator'])(rdm):
-        print("locator returned false")
-        return False
+    for task in tasks:
+        rdm = RocqDocManager([], task['file'], dune=True)
+        rdm.load_file()
+        if not locator.parse_locator(task['locator'])(rdm):
+            print("locator returned false")
+            continue
 
-    if hasattr(agent_type, "build"):
-        # TODO: should we remove any attributes from the task
-        agent = agent_type.build(prompt=task['prompt'] if 'prompt' in task else None)
-    else:
-        agent = agent_type()
+        if hasattr(agent_type, "build"):
+            # TODO: should we remove any attributes from the task
+            agent = agent_type.build(prompt=task['prompt'] if 'prompt' in task else None)
+        else:
+            agent = agent_type()
 
-    try:
-        agent.run(rdm)
-        print("task completed")
-    except GiveUp as e:
-        print(f"agent gave up with message: {e.message}")
+        result = agent.run(rdm)
+        if isinstance(result, GiveUp):
+            print(f"agent gave up with message: {result.message}")
+        elif isinstance(result, Finished):
+            print(f"task completed: {result.message}")
+
     return True
-
-if __name__ == '__main__':
-    task_main(AutoAgent)

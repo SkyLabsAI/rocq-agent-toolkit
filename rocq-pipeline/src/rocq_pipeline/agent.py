@@ -13,8 +13,12 @@ def close_proof(rdm: RocqDocManager):
 
 
 @dataclass
-class GiveUp(BaseException):
+class GiveUp:
     message: str
+
+@dataclass
+class Finished:
+    message: str | None
 
 @dataclass
 class Tactic:
@@ -24,7 +28,7 @@ class Agent:
     """A proof agent"""
 
     # TODO: tighten up the return type of [run]
-    def run(self, rdm: RocqDocManager) -> GiveUp | bool | None:
+    def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         return GiveUp("not implemented")
 
 class OneShotAgent(Agent):
@@ -33,21 +37,22 @@ class OneShotAgent(Agent):
         self._tactic = tactic
 
     @override
-    def run(self, rdm: RocqDocManager) -> GiveUp | bool | None:
-        print("running oneshot")
+    def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         if isinstance(rdm.run_command(f"solve [ {self._tactic} ]."), RocqDocManager.Err):
-            raise GiveUp(f"failed to solve the goal using: {self._tactic}")
-        close_proof(rdm)
-        return True
+            return GiveUp(f"failed to solve the goal using: {self._tactic}")
+        return Finished("proof complete")
+
 
 # NOTE: this agent does not support backtracking
 class TraceAgent(Agent):
+    """
+    A next-tactic agent that can accumulate history to make the next decision.
+    """
     def __init__(self, stop_on_failure: bool = False) -> None:
         self._stop_on_failure = stop_on_failure
         # Each element of [_history] is a tactic and a boolean indicating whether
         # the its application succeeded.
         self._history: list[tuple[Tactic, bool]] = list()
-        print("Started agent!")
 
     def last_failed(self) -> bool:
         if not self._history:
@@ -63,7 +68,7 @@ class TraceAgent(Agent):
         return self._history[:]
 
     @override
-    def run(self, rdm: RocqDocManager) -> GiveUp | bool | None:
+    def run(self, rdm: RocqDocManager) -> GiveUp | Finished:
         should_trace = True
         def trace(msg, data: Any | None = None):
             if should_trace:
@@ -90,8 +95,7 @@ class TraceAgent(Agent):
             if isinstance(result, rdm.Resp):
                 self.update_history(tactic)
                 if result.result['open_subgoals'] == 'No more goals.':
-                    close_proof(rdm)
-                    return True
+                    return Finished(None)
             elif isinstance(result, rdm.Err):
                 self.update_history(tactic, success=False)
                 trace("Failed", data=result)
@@ -135,4 +139,4 @@ class ChoiceAgent(MarkovAgent):
             self._check_index = 0
         if self._check_index >= len(self._all_choices):
             return GiveUp("i give up")
-        return self.Tactic(self._all_choices[self._check_index])
+        return Tactic(self._all_choices[self._check_index])
