@@ -12,6 +12,12 @@ dependencies = [
     "jmespath (>=1.0.1,<2.0.0)"
 ]
 
+# cf. https://peps.python.org/pep-0561/
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-data]
+"rocq_pipeline" = ["py.typed"]
+
 [tool.poetry]
 packages = [{include = "rocq_pipeline", from = "src"}]
 
