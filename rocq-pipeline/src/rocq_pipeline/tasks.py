@@ -7,11 +7,11 @@ and filter them based on tags or other criteria.
 import yaml
 import json
 import jmespath
-import os.path
+from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 
-def load_tasks(filename: str) -> Tuple[str, List[Dict[str, Any]]]:
+def load_tasks(filename: str | Path) -> Tuple[Path, List[Dict[str, Any]]]:
     """Load tasks from a task file and return the working directory and task list.
 
     This function supports loading tasks from YAML and JSON files. The working
@@ -29,11 +29,12 @@ def load_tasks(filename: str) -> Tuple[str, List[Dict[str, Any]]]:
         ValueError: If the file extension is not supported.
         FileNotFoundError: If the task file does not exist.
     """
-    wdir = os.path.dirname(filename)
+    filename = Path(filename)
+    wdir = filename.parent
     with open(filename, "r", encoding="utf-8") as f:
-        if filename.endswith(".yaml") or filename.endswith(".yml"):
+        if filename.suffix in [".yaml", ".yml"]:
             return (wdir, yaml.safe_load(f))
-        elif filename.endswith(".json"):
+        elif filename.suffix in [".json"]:
             return (wdir, json.load(f))
 
     raise ValueError(

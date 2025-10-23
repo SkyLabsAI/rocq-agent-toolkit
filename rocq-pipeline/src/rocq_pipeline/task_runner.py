@@ -6,7 +6,7 @@ including argument parsing, task loading, and result reporting.
 
 import argparse
 import json
-import os.path
+from pathlib import Path
 import sys
 from typing import Type, Optional
 
@@ -43,7 +43,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         "--task-json", type=json.loads, help="The task descriptor, as JSON."
     )
     parser.add_argument(
-        "--task-file", type=str, help="The task descriptor in a file, JSON or YAML"
+        "--task-file", type=Path, help="The task descriptor in a file, JSON or YAML"
     )
     # Add the optional --trace flag
     parser.add_argument("--trace", action="store_true", help="Enable tracing.")
@@ -56,7 +56,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
     arguments = parser.parse_args(args)
 
-    wdir = "."
+    wdir = Path(".")
     tasks: list[dict] = []
     if not arguments.task_json is None:
         assert arguments.task_file is None
@@ -68,7 +68,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         return False
 
     for task in tasks:
-        rdm = RocqDocManager([], os.path.join(wdir, task["file"]), dune=True)
+        rdm = RocqDocManager([], str(wdir / task["file"]), dune=True)
         rdm.load_file()
         if not locator.parse_locator(task["locator"])(rdm):
             print("locator returned false")
