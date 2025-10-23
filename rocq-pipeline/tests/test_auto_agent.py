@@ -11,7 +11,7 @@ from rocq_pipeline.auto_agent import AutoAgent
 from .util import make_task
 
 
-def test_auto():
+def test_auto() -> None:
     """Test AutoAgent with a simple lemma.
 
     This test verifies that the AutoAgent can successfully process
@@ -24,7 +24,7 @@ def test_auto():
     assert result
 
 
-def test_failure():
+def test_failure() -> None:
     """Test Agent with a simple lemma.
 
     This test verifies that the base Agent can successfully process

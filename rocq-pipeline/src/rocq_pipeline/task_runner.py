@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Type
 
-from rocq_doc_manager import RocqDocManager  # type: ignore
+from rocq_doc_manager import RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
@@ -40,9 +40,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         epilog="Example usage:\n  python proof_driver.py [--trace] proof.v [-- Rocq parameters]",
     )
     # Add the single required positional argument
-    parser.add_argument(
-        "--task-json", type=json.loads, help="The task descriptor, as JSON."
-    )
+    parser.add_argument("--task-json", type=json.loads, help="The task descriptor, as JSON.")
     parser.add_argument(
         "--task-file", type=Path, help="The task descriptor in a file, JSON or YAML"
     )
@@ -77,9 +75,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
         if hasattr(agent_type, "build"):
             # TODO: should we remove any attributes from the task
-            agent = agent_type.build(
-                prompt=task["prompt"] if "prompt" in task else None, args=args
-            )
+            agent = agent_type.build(prompt=task["prompt"] if "prompt" in task else None, args=args)
         else:
             agent = agent_type()
 

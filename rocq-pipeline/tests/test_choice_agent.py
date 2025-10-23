@@ -17,18 +17,16 @@ class SimpleTactics(ChoiceAgent):
     for automated theorem proving.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the SimpleTactics agent with basic Coq tactics.
 
         Sets up the agent with a collection of common Coq tactics including
         trivial, tauto, auto, lia, and split.
         """
-        super().__init__(
-            ["solve [ trivial ]", "tauto", "solve [ auto ]", "lia", "split"]
-        )
+        super().__init__(["solve [ trivial ]", "tauto", "solve [ auto ]", "lia", "split"])
 
 
-def test_choice_agent():
+def test_choice_agent() -> None:
     """Test ChoiceAgent with a simple lemma.
 
     This test verifies that the ChoiceAgent can successfully process

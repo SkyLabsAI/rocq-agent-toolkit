@@ -15,6 +15,6 @@ class AutoAgent(OneShotAgent):
     automatically using a database of hints.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the auto agent with the 'auto' tactic."""
         super().__init__("auto")

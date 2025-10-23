@@ -15,7 +15,7 @@ import pprint
 from dataclasses import dataclass
 from typing import Any, override
 
-from rocq_doc_manager import RocqDocManager  # type: ignore
+from rocq_doc_manager import RocqDocManager
 
 
 def close_proof(rdm: RocqDocManager) -> None:
@@ -113,9 +113,7 @@ class OneShotAgent(Agent):
         Returns:
             Finished if the tactic succeeds, GiveUp if it fails.
         """
-        if isinstance(
-            rdm.run_command(f"solve [ {self._tactic} ]."), RocqDocManager.Err
-        ):
+        if isinstance(rdm.run_command(f"solve [ {self._tactic} ]."), RocqDocManager.Err):
             return GiveUp(f"failed to solve the goal using: {self._tactic}")
         return Finished("proof complete")
 
@@ -187,7 +185,7 @@ class TraceAgent(Agent):
         """
         should_trace = True
 
-        def trace(msg, data: Any | None = None):
+        def trace(msg: str, data: Any | None = None) -> None:
             if should_trace:
                 print(msg)
                 if data:

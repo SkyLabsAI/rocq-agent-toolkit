@@ -6,7 +6,7 @@ and filter them based on tags or other criteria.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 
 import jmespath
 import yaml
@@ -38,9 +38,7 @@ def load_tasks(filename: str | Path) -> Tuple[Path, List[Dict[str, Any]]]:
         elif filename.suffix in [".json"]:
             return (wdir, json.load(f))
 
-    raise ValueError(
-        "Invalid tasks file extension. Expected `.json`, `.yaml`, or `.yml`"
-    )
+    raise ValueError("Invalid tasks file extension. Expected `.json`, `.yaml`, or `.yml`")
 
 
 def filter_tags(tasks: List[Dict[str, Any]], tag: str) -> List[Dict[str, Any]]:
@@ -57,4 +55,4 @@ def filter_tags(tasks: List[Dict[str, Any]], tag: str) -> List[Dict[str, Any]]:
         A list of tasks that contain the specified tag.
     """
     escaped = tag.replace("'", r"\'")
-    return jmespath.search(f"[? contains(tags, '{escaped}')]", tasks)
+    return cast(List[Dict[str, Any]], jmespath.search(f"[? contains(tags, '{escaped}')]", tasks))

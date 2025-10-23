@@ -7,7 +7,7 @@ Coq documents and position the cursor at specific tasks or locations.
 import re
 from typing import Callable, override
 
-from rocq_doc_manager import RocqDocManager  # type: ignore
+from rocq_doc_manager import RocqDocManager
 
 
 def scan_to(rdm: RocqDocManager, fn: Callable[[str], bool]) -> bool:

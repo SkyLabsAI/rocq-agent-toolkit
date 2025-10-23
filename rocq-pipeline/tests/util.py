@@ -7,7 +7,7 @@ in the rocq_pipeline test suite.
 import json
 
 
-def make_task(file_path: str, locator: str):
+def make_task(file_path: str, locator: str) -> str:
     """Create a JSON task configuration.
 
     Args:
