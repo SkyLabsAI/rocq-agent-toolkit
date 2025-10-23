@@ -3,7 +3,7 @@ Fixed tests for observability.extractors module
 Focus on functional behavior rather than internal implementation details
 """
 import pytest
-from observability.extractors import (
+from observability.tracing.extractors import (
     HttpExtractor,
     RpcExtractor,
     DatabaseExtractor,
@@ -12,11 +12,11 @@ from observability.extractors import (
     CustomExtractor,
     get_extractor
 )
-from observability.extractors.custom import (
+from observability.tracing.extractors.custom import (
     BusinessOperationExtractor,
     MLOperationExtractor
 )
-from observability.extractors.base import AttributeExtractor
+from observability.tracing.extractors.base import AttributeExtractor
 
 
 class TestExtractorInstantiation:

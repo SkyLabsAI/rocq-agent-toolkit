@@ -1,11 +1,11 @@
 """
-Fixed tests for observability.core.decorators module
+Fixed tests for observability.tracing.decorators module
 Focus on functional behavior rather than internal implementation details
 """
 import pytest
 import asyncio
 from unittest.mock import patch, MagicMock
-from observability.core.decorators import (
+from observability.tracing.decorators import (
     trace, 
     trace_http, 
     trace_rpc, 
@@ -18,7 +18,7 @@ from observability.core.decorators import (
 class TestTraceDecorator:
     """Test the main trace decorator functionality"""
 
-    @patch('observability.core.decorators.otel_trace.get_tracer')
+    @patch('observability.tracing.decorators.otel_trace.get_tracer')
     def test_trace_decorator_basic_functionality(self, mock_get_tracer):
         """Test basic trace decorator functionality"""
         mock_tracer = MagicMock()
@@ -37,7 +37,7 @@ class TestTraceDecorator:
         mock_get_tracer.assert_called()
         mock_tracer.start_as_current_span.assert_called()
 
-    @patch('observability.core.decorators.otel_trace.get_tracer')
+    @patch('observability.tracing.decorators.otel_trace.get_tracer')
     @pytest.mark.asyncio
     async def test_trace_decorator_async_function(self, mock_get_tracer):
         """Test trace decorator on asynchronous function"""
@@ -56,7 +56,7 @@ class TestTraceDecorator:
         assert result == 7
         mock_get_tracer.assert_called()
 
-    @patch('observability.core.decorators.otel_trace.get_tracer')
+    @patch('observability.tracing.decorators.otel_trace.get_tracer')
     def test_trace_decorator_with_custom_attributes(self, mock_get_tracer):
         """Test trace decorator with custom attributes"""
         mock_tracer = MagicMock()
@@ -76,7 +76,7 @@ class TestTraceDecorator:
         # Verify span attributes were set (may be called multiple times)
         mock_span.set_attribute.assert_called()
 
-    @patch('observability.core.decorators.otel_trace.get_tracer')
+    @patch('observability.tracing.decorators.otel_trace.get_tracer')
     def test_trace_decorator_handles_exceptions(self, mock_get_tracer):
         """Test trace decorator exception handling"""
         mock_tracer = MagicMock()
@@ -124,7 +124,7 @@ class TestSpecializedDecorators:
         decorator = trace_langchain(name="llm_test")
         assert callable(decorator)
 
-    @patch('observability.core.decorators.otel_trace.get_tracer')
+    @patch('observability.tracing.decorators.otel_trace.get_tracer')
     def test_specialized_decorators_work(self, mock_get_tracer):
         """Test that specialized decorators actually work"""
         mock_tracer = MagicMock()
@@ -208,7 +208,7 @@ class TestDecoratorEdgeCases:
         result = param_function(1, 2, c=3)
         assert result == {"a": 1, "b": 2, "c": 3}
 
-    @patch('observability.core.decorators.otel_trace.get_tracer')
+    @patch('observability.tracing.decorators.otel_trace.get_tracer')
     @pytest.mark.asyncio 
     async def test_trace_async_with_exception(self, mock_get_tracer):
         """Test trace decorator with async function that raises exception"""
