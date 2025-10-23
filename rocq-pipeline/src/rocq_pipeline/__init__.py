@@ -5,14 +5,10 @@ theorem proving workflows with Coq documents.
 """
 
 # Import modules for organized access
-from . import agent
-from . import auto_agent
-from . import locator
-from . import task_runner
-from . import tasks
+from . import agent, auto_agent, locator, task_runner, tasks
 
 # Expose core result types and common agents at top level
-from .agent import Agent, GiveUp, Finished, Tactic
+from .agent import Agent, Finished, GiveUp, Tactic
 from .auto_agent import AutoAgent
 from .locator import parse_locator
 

@@ -11,9 +11,9 @@ Note: currently, no agent supports backtracking and the proof state is exposed i
 a relatively shallow way.
 """
 
-from dataclasses import dataclass
 import pprint
-from typing import override, Any
+from dataclasses import dataclass
+from typing import Any, override
 
 from rocq_doc_manager import RocqDocManager  # type: ignore
 

@@ -1,7 +1,8 @@
 import json
+
+import rocq_pipeline.task_runner
 from rocq_pipeline.agent import Agent
 from rocq_pipeline.auto_agent import AutoAgent
-import rocq_pipeline.task_runner
 
 
 def make_task(file_path: str, locator: str):

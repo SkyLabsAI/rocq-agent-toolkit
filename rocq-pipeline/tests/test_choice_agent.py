@@ -1,6 +1,7 @@
 import json
-from rocq_pipeline.agent import ChoiceAgent
+
 import rocq_pipeline.task_runner
+from rocq_pipeline.agent import ChoiceAgent
 
 
 def make_task(f: str, l: str):

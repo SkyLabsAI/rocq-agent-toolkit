@@ -6,15 +6,16 @@ including argument parsing, task loading, and result reporting.
 
 import argparse
 import json
-from pathlib import Path
 import sys
-from typing import Type, Optional
+from pathlib import Path
+from typing import Optional, Type
 
 from rocq_doc_manager import RocqDocManager  # type: ignore
-from rocq_pipeline.agent import GiveUp, Finished, Agent
-from rocq_pipeline import locator
-from rocq_pipeline.auto_agent import AutoAgent
+
 import rocq_pipeline.tasks as Tasks
+from rocq_pipeline import locator
+from rocq_pipeline.agent import Agent, Finished, GiveUp
+from rocq_pipeline.auto_agent import AutoAgent
 
 
 def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:

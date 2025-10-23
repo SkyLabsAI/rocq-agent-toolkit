@@ -5,7 +5,8 @@ Coq documents and position the cursor at specific tasks or locations.
 """
 
 import re
-from typing import override, Callable
+from typing import Callable, override
+
 from rocq_doc_manager import RocqDocManager  # type: ignore
 
 
