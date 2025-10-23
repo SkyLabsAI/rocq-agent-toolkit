@@ -1,25 +1,58 @@
+"""Task management utilities for loading and filtering proof tasks.
+
+This module provides functionality to load tasks from various file formats
+and filter them based on tags or other criteria.
+"""
+
 import yaml
 import json
 import jmespath
 import os.path
+from typing import List, Dict, Any, Tuple
 
-def load_tasks(filename: str) -> tuple[str, list[dict]]:
-    """
-    Load tasks from a task file and returns the working directory
-    path and the map of tasks.
 
-    Supported file formats: Yaml (.yaml or .yml), Json (.json)
+def load_tasks(filename: str) -> Tuple[str, List[Dict[str, Any]]]:
+    """Load tasks from a task file and return the working directory and task list.
+
+    This function supports loading tasks from YAML and JSON files. The working
+    directory is set to the directory containing the task file.
+
+    Args:
+        filename: Path to the task file to load.
+
+    Returns:
+        A tuple containing:
+        - The working directory path (directory of the task file)
+        - A list of task dictionaries
+
+    Raises:
+        ValueError: If the file extension is not supported.
+        FileNotFoundError: If the task file does not exist.
     """
     wdir = os.path.dirname(filename)
-    with open(filename, 'r') as f:
-        if filename.endswith('.yaml') or filename.endswith('.yml'):
+    with open(filename, "r", encoding="utf-8") as f:
+        if filename.endswith(".yaml") or filename.endswith(".yml"):
             return (wdir, yaml.safe_load(f))
-        elif filename.endswith('.json'):
+        elif filename.endswith(".json"):
             return (wdir, json.load(f))
 
-    raise ValueError("Invalid tasks file extension. Expected `.json`, `.yaml`, or `.yml`")
+    raise ValueError(
+        "Invalid tasks file extension. Expected `.json`, `.yaml`, or `.yml`"
+    )
 
-def filter_tags(tasks : list[dict], tag : str) -> list[dict]:
-    """Get all the tasks that contain the given tag"""
+
+def filter_tags(tasks: List[Dict[str, Any]], tag: str) -> List[Dict[str, Any]]:
+    """Filter tasks that contain the specified tag.
+
+    This function uses JMESPath to search for tasks that contain the given tag
+    in their tags list.
+
+    Args:
+        tasks: List of task dictionaries to filter.
+        tag: The tag to search for in the tasks.
+
+    Returns:
+        A list of tasks that contain the specified tag.
+    """
     escaped = tag.replace("'", r"\'")
     return jmespath.search(f"[? contains(tags, '{escaped}')]", tasks)
