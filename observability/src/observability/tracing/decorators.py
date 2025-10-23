@@ -14,8 +14,8 @@ from typing import Any, Callable, Dict, Optional, Union, Type
 from opentelemetry import trace as otel_trace, metrics
 from opentelemetry.trace import Status, StatusCode
 
-from ..extractors import get_extractor
-from ..extractors.base import AttributeExtractor, NoOpExtractor
+from .extractors import get_extractor
+from .extractors.base import AttributeExtractor, NoOpExtractor
 
 logger = logging.getLogger(__name__)
 

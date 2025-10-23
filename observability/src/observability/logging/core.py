@@ -24,32 +24,6 @@ try:
 except ImportError:
     OTEL_AVAILABLE = False
 
-
-@dataclass
-class AutoStreamingSession:
-    """Lightweight streaming session for automatic handling."""
-    session_id: str
-    user_input: str
-    model: str
-    start_time: float = field(default_factory=time.time)
-    chunks: List[str] = field(default_factory=list)
-    chunk_count: int = 0
-    
-    def add_chunk(self, content: str) -> None:
-        """Add a chunk to this session."""
-        if content:
-            self.chunks.append(content)
-            self.chunk_count += 1
-    
-    def get_accumulated_content(self) -> str:
-        """Get the full accumulated content."""
-        return ''.join(self.chunks)
-    
-    def get_duration_ms(self) -> float:
-        """Get the session duration in milliseconds."""
-        return (time.time() - self.start_time) * 1000
-
-
 class StructuredLogger:
     """
     Structured logger with automatic trace correlation.
@@ -73,10 +47,6 @@ class StructuredLogger:
         self.name = name
         self.event_context = event_context
         
-        # Auto-streaming support
-        self._streaming_sessions: Dict[str, AutoStreamingSession] = {}
-        self._streaming_lock = threading.RLock()
-    
     def debug(self, message: str, *args: Any, **kwargs: Any):
         """Log debug message with structured data."""
         self._log(logging.DEBUG, message, *args, **kwargs)
@@ -118,24 +88,6 @@ class StructuredLogger:
         else:
             formatted_message = message
         
-        # Handle auto-streaming if enabled
-        should_try_streaming = _auto_streaming_enabled and self._should_handle_streaming(kwargs)
-        streaming_handled = False
-        
-        if should_try_streaming:
-            streaming_handled = self._handle_auto_streaming(level, message, kwargs)
-            # For user-initiated streaming logs, check if they should go to Loki
-            # For internal auto-generated logs, stop here to avoid duplicates
-            is_internal_log = kwargs.get("_internal_streaming_log", False)
-            if streaming_handled:
-                if is_internal_log:
-                    return  # Internal streaming log, don't send to Loki
-                
-                # For user chunk logs, respect the enable_individual_chunk_logging flag
-                if self._is_chunk_log(kwargs) and not _enable_individual_chunk_logging:
-                    return  # User chunk log but individual logging disabled, don't send to Loki
-        
-        # Process as regular log (user logs or streaming failures)
         
         # Apply event context if configured
         if self.event_context:
@@ -264,240 +216,10 @@ class StructuredLogger:
         """
         self.event_context = event_type
     
-    def _is_chunk_log(self, kwargs: Dict[str, Any]) -> bool:
-        """Check if this log is a chunk log (has chunk content but no session start indicators)."""
-        # Not a chunk if it has session start indicators
-        if "user_input" in kwargs and "model" in kwargs:
-            return False
-        
-        # Not a chunk if it's a completion signal
-        if "streaming_complete" in kwargs or "stream_end" in kwargs:
-            return False
-        
-        # Check if it has potential chunk content
-        if _auto_detect_chunk_fields:
-            # Find fields that could be chunk content (not in reserved list)
-            potential_chunk_fields = [
-                key for key in kwargs.keys()
-                if key not in _streaming_reserved_fields and key not in ["streaming_session_id", "streaming_mode"]
-            ]
-            return len(potential_chunk_fields) > 0
-        else:
-            # Fallback to traditional field name checking
-            field_names = _streaming_field_names
-            has_chunk_content = field_names.get("chunk_content", "chunk_content") in kwargs
-            return has_chunk_content
-
-    def _should_handle_streaming(self, kwargs: Dict[str, Any]) -> bool:
-        """Check if this log should be handled as streaming."""
-        # Always handle if streaming completion is signaled
-        if "streaming_complete" in kwargs or "stream_end" in kwargs:
-            return "streaming_session_id" in kwargs
-        
-        # Check for explicit streaming mode
-        streaming_mode = kwargs.get("streaming_mode", False)
-        has_session_id = "streaming_session_id" in kwargs
-        
-        if not (streaming_mode and has_session_id):
-            return False
-        
-        # Handle session start (has user_input and model)
-        if "user_input" in kwargs and "model" in kwargs:
-            return True
-        
-        # If auto-detection is enabled, look for potential chunk content
-        if _auto_detect_chunk_fields:
-            # Find fields that could be chunk content (not in reserved list)
-            potential_chunk_fields = [
-                key for key in kwargs.keys()
-                if key not in _streaming_reserved_fields and key not in ["streaming_session_id", "streaming_mode"]
-            ]
-            # If we have potential chunk content, this is a streaming log
-            return len(potential_chunk_fields) > 0
-        else:
-            # Fallback to traditional field name checking
-            field_names = _streaming_field_names
-            has_chunk_content = field_names.get("chunk_content", "chunk_content") in kwargs
-            return has_chunk_content
-    
-    def _handle_auto_streaming(self, level: int, message: str, kwargs: Dict[str, Any]) -> bool:
-        """Handle auto-streaming logic. Returns True if streaming was handled."""
-        session_id = kwargs.get("streaming_session_id")
-        
-        if not session_id:
-            return False
-        
-        with self._streaming_lock:
-            # Check if this is a streaming completion signal
-            if "streaming_complete" in kwargs or "stream_end" in kwargs:
-                return self._finish_streaming_session(session_id, level, message, kwargs)
-            
-            # Check if this is session start (has user_input and model)
-            user_input = kwargs.get("user_input")
-            model = kwargs.get("model")
-            
-            if user_input and model:
-                return self._start_streaming_session(session_id, user_input, model, kwargs)
-            
-            # Find potential chunk content (any field not in reserved list)
-            chunk_content = None
-            chunk_field_name = None
-            
-            if _auto_detect_chunk_fields:
-                for key, value in kwargs.items():
-                    if (key not in _streaming_reserved_fields and 
-                        key not in ["streaming_session_id", "streaming_mode"] and
-                        isinstance(value, str) and value):  # Only consider non-empty strings
-                        chunk_content = value
-                        chunk_field_name = key
-                        break
-            else:
-                # Fallback to traditional field name checking
-                field_names = _streaming_field_names
-                chunk_content = kwargs.get(field_names.get("chunk_content", "chunk_content"))
-                chunk_field_name = "chunk_content"
-            
-            if chunk_content:
-                return self._handle_streaming_chunk(session_id, chunk_content, chunk_field_name, kwargs)
-        
-        return False
-    
-    def _start_streaming_session(self, session_id: str, user_input: str, model: str, kwargs: Dict[str, Any]) -> bool:
-        """Start a new streaming session."""
-        if session_id in self._streaming_sessions:
-            # Session already exists - log warning using direct logger to avoid recursion
-            self.logger.debug(f"Streaming session {session_id} already exists - allowing fallback to regular logging")
-            return False  # Session already exists, let original log go through as regular log
-        
-        session = AutoStreamingSession(
-            session_id=session_id,
-            user_input=user_input,
-            model=model
-        )
-        self._streaming_sessions[session_id] = session
-        
-        # Log session start (optional, can be disabled)
-        self.debug(f"Auto-streaming session started: {session_id}",
-                  session_id=session_id,
-                  user_input=user_input,
-                  model=model,
-                  streaming_mode=True,
-                  event_type="streaming_start",
-                  _internal_streaming_log=True)
-        
-        return True
-    
-    def _handle_streaming_chunk(self, session_id: str, chunk_content: str, chunk_field_name: str, kwargs: Dict[str, Any]) -> bool:
-        """Handle a streaming chunk."""
-        session = self._streaming_sessions.get(session_id)
-        if not session:
-            # Session should have been created by start_streaming_session first
-            # If no session exists, log a warning and skip this chunk
-            self.warning(f"Received chunk for unknown session: {session_id}",
-                        session_id=session_id,
-                        chunk_field_used=chunk_field_name,
-                        chunk_content=chunk_content[:50])  # Only show first 50 chars
-            return False
-        
-        session.add_chunk(chunk_content)
-        
-        # Log individual chunk only if enabled
-        if _enable_individual_chunk_logging:
-            self.debug(f"Streaming chunk received",
-                      session_id=session_id,
-                      chunk_number=session.chunk_count,
-                      chunk_field_used=chunk_field_name,  # Show which field was detected as chunk content
-                      chunk_content=chunk_content,
-                      chunk_length=len(chunk_content),
-                      accumulated_length=len(session.get_accumulated_content()),
-                      model=session.model,
-                      streaming_mode=True,
-                      event_type="streaming_chunk",
-                      _internal_streaming_log=True)
-        
-        return True
-    
-    def _finish_streaming_session(self, session_id: str, level: int, message: str, kwargs: Dict[str, Any]) -> bool:
-        """Finish a streaming session and send aggregated log."""
-        session = self._streaming_sessions.pop(session_id, None)
-        if not session:
-            return False
-        
-        accumulated_content = session.get_accumulated_content()
-        duration_ms = session.get_duration_ms()
-        
-        # Build final aggregated log with configurable field names
-        final_log_data = {
-            "streaming_session_id": session_id,
-            "user_input": session.user_input,
-            _accumulated_content_field_name: accumulated_content,  # Use configurable field name
-            "total_chunks": session.chunk_count,
-            "model": session.model,
-            "streaming_mode": True,
-            "accumulated_length": len(accumulated_content),
-            "duration_ms": duration_ms,
-            "event_type": "streaming_complete"
-        }
-        
-        # Add any additional fields from the completion kwargs
-        for key, value in kwargs.items():
-            if key not in ["streaming_complete", "stream_end", "streaming_session_id"]:
-                final_log_data[key] = value
-        
-        # Send final aggregated log
-        self._log_final_streaming_result(level, f"Streaming session completed: {session_id}", final_log_data)
-        
-        return True
-    
-    def _log_final_streaming_result(self, level: int, message: str, log_data: Dict[str, Any]):
-        """Log the final streaming result without triggering streaming logic again."""
-        # Apply event context if configured
-        if self.event_context:
-            log_data = self._apply_event_context(self.event_context, log_data)
-        
-        # Build structured log entry
-        log_entry = {
-            'timestamp': time.time(),
-            'level': logging.getLevelName(level),
-            'message': message,
-            'logger': self.name,
-        }
-        
-        # Add service name if available
-        if self.service_name:
-            log_entry['service'] = self.service_name
-        
-        # Add trace correlation if OpenTelemetry is available
-        if OTEL_AVAILABLE:
-            self._add_trace_correlation(log_entry)
-        
-        # Add any global context
-        global_context = get_log_context()
-        if global_context:
-            log_entry.update(global_context)
-        
-        # Add streaming data
-        log_entry.update(log_data)
-        
-        # Log the structured entry
-        self.logger.log(level, json.dumps(log_entry))
-
 
 # Global state
 _loggers: Dict[str, StructuredLogger] = {}
 _global_service_name: Optional[str] = None
-
-# ---------------------------------------------------------------------------
-# Async-safe, per-task log context
-# ---------------------------------------------------------------------------
-# A single mutable dict (`_log_context`) is unsafe when multiple threads or
-# asyncio tasks mutate it concurrently.  We replace it with a ContextVar that
-# delivers an *independent* copy for every logical execution context.
-# ---------------------------------------------------------------------------
-
-_log_context_var: ContextVar[Dict[str, Any]] = ContextVar(
-    "_log_context_var", default={}
-)
 
 # ---------------------------------------------------------------------------
 # Async-safe, per-task log context
@@ -516,14 +238,6 @@ _event_schemas: Dict[str, List[str]] = {}
 
 # Global event context configuration
 _global_event_context: Optional[str] = None
-
-# Global auto-streaming configuration
-_auto_streaming_enabled: bool = False
-_streaming_field_names: Dict[str, str] = {}
-_auto_detect_chunk_fields: bool = True
-_accumulated_content_field_name: str = "accumulated_content"
-_enable_individual_chunk_logging: bool = False
-_streaming_reserved_fields: List[str] = []
 
 
 def get_logger(name: str, service_name: Optional[str] = None, event_context: Optional[str] = None) -> StructuredLogger:
@@ -719,90 +433,3 @@ def configure_event_schemas(schema_dict: Dict[str, List[str]]) -> None:
     """
     global _event_schemas
     _event_schemas = schema_dict.copy()
-
-
-def configure_auto_streaming(
-    enabled: bool, 
-    auto_detect_chunk_fields: bool = True,
-    accumulated_content_field_name: str = "accumulated_content",
-    enable_individual_chunk_logging: bool = False,
-    streaming_reserved_fields: Optional[List[str]] = None,
-    field_names: Optional[Dict[str, str]] = None
-) -> None:
-    """Configure auto-streaming behavior for all loggers.
-    
-    Args:
-        enabled: Whether to enable auto-streaming
-        auto_detect_chunk_fields: Whether to automatically detect any field as chunk content
-        accumulated_content_field_name: Field name for the final accumulated content
-        enable_individual_chunk_logging: Whether to log individual chunks
-        streaming_reserved_fields: List of field names that won't be treated as chunk content
-        field_names: Optional mapping of field names for streaming logs (backward compatibility)
-    """
-    global _auto_streaming_enabled, _streaming_field_names, _auto_detect_chunk_fields
-    global _accumulated_content_field_name, _enable_individual_chunk_logging, _streaming_reserved_fields
-    
-    _auto_streaming_enabled = enabled
-    _auto_detect_chunk_fields = auto_detect_chunk_fields
-    _accumulated_content_field_name = accumulated_content_field_name
-    _enable_individual_chunk_logging = enable_individual_chunk_logging
-    
-    if streaming_reserved_fields:
-        _streaming_reserved_fields = streaming_reserved_fields.copy()
-    else:
-        # Set default reserved fields
-        _streaming_reserved_fields = [
-            "streaming_session_id", "streaming_mode", "streaming_complete", "stream_end",
-            "user_input", "model", "chunk_number", "chunk_length", "timestamp",
-            "level", "message", "logger", "service", "environment", "hostname", 
-            "run_id", "event_type", "exc_info", "total_chunks", "duration_ms",
-            "accumulated_length"
-        ]
-    
-    if field_names:
-        _streaming_field_names = field_names.copy()
-    else:
-        # Set default field names (for backward compatibility)
-        _streaming_field_names = {
-            "user_input": "user_input",
-            "model": "model",
-            "streaming_mode": "streaming_mode",
-            "streaming_session_id": "streaming_session_id",
-            "total_chunks": "total_chunks"
-        }
-
-
-def is_auto_streaming_enabled() -> bool:
-    """Check if auto-streaming is enabled."""
-    return _auto_streaming_enabled
-
-
-def get_accumulated_content_for_session(session_id: str) -> Optional[str]:
-    """
-    Get the accumulated content for a specific streaming session.
-    
-    This is useful when you want to access the accumulated content
-    before the session is automatically completed.
-    
-    Args:
-        session_id: The session ID to get content for
-        
-    Returns:
-        The accumulated content as a string, or None if session doesn't exist
-    """
-    # Find the logger instance that has this session
-    # We'll iterate through all active StructuredLogger instances
-    for logger_instance in _get_all_logger_instances():
-        if hasattr(logger_instance, '_streaming_sessions'):
-            session = logger_instance._streaming_sessions.get(session_id)
-            if session:
-                return session.get_accumulated_content()
-    return None
-
-
-def _get_all_logger_instances():
-    """Helper to get all active StructuredLogger instances."""
-    # This is a simple approach - in a more complex system, you might want
-    # to maintain a registry of logger instances
-    import gc
-    return [obj for obj in gc.get_objects() if isinstance(obj, StructuredLogger)] 

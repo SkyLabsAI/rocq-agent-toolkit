@@ -1,68 +1,26 @@
-[tool.poetry]
+[project]
 name = "observability"
-version = "2.0.0"
-description = "Framework-Agnostic Observability Package with integrated structured logging"
-authors = ["PSI Team <team@psi.ai>"]
+version = "0.1.0"
+description = "A comprehensive, production-ready observability solution that works with any Python application."
+authors = [
+    {name = "SkyLabs Team", email = "support@skylabs-ai.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "opentelemetry-api>=1.12.0",
+    "opentelemetry-sdk>=1.12.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.12.0",
+    "opentelemetry-instrumentation-grpc>=0.39b0",
+    "opentelemetry-instrumentation-requests>=0.39b0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+    "python-logstash-async>=2.5.0",
+]
+
+[tool.poetry]
 packages = [{include = "observability", from = "src"}]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-
-# Core OpenTelemetry dependencies
-opentelemetry-api = "^1.33.0"
-opentelemetry-sdk = "^1.33.0"
-
-# OpenTelemetry Auto-instrumentation
-opentelemetry-distro = ">=0.54b0"
-opentelemetry-instrumentation = ">=0.54b0"
-
-# OpenTelemetry Instrumentation Packages
-opentelemetry-instrumentation-grpc = ">=0.54b0"
-opentelemetry-instrumentation-logging = ">=0.54b0"
-opentelemetry-instrumentation-requests = ">=0.54b0"
-opentelemetry-instrumentation-urllib3 = ">=0.54b0"
-
-# OTLP Exporters
-opentelemetry-exporter-otlp = "^1.33.0"
-opentelemetry-exporter-otlp-proto-grpc = "^1.33.0"
-opentelemetry-exporter-otlp-proto-http = "^1.33.0"
-
-# OpenTelemetry Additional Components
-opentelemetry-propagator-b3 = ">=1.33.0"
-opentelemetry-semantic-conventions = ">=0.54b0"
-
-# Data validation and modeling
-pydantic = "^2.9.0"
-
-# Enhanced logging and formatting
-structlog = "^24.4.0"
-rich = "^13.8.0"
-
-# CLI tools
-click = "^8.1.7"
-
-[tool.poetry.group.dev.dependencies]
-black = "^23.7.0"
-isort = "^5.12.0"
-flake8 = "^7.1.0"
-mypy = "^1.5.0"
-pytest = "^8.2.0"
-pytest-asyncio = "^0.24.0"
-pytest-cov = "^5.0.0"
-coverage = "^7.3.0"
-
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.black]
-line-length = 100
-target-version = ['py39']
-
-[tool.isort]
-profile = "black"
-line_length = 100
-
-[tool.mypy]
-python_version = "3.9"
-strict = true
