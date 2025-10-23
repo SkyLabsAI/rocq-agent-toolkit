@@ -1,7 +1,9 @@
 (install
  (section lib)
  (files
-  (__init__.py as python/__init__.py)
-  (pyproject.toml as python/pyproject.toml)
   (README.md as python/README.md)
-  (rocq_doc_manager.py as python/rocq_doc_manager.py)))
+  (pyproject.toml as python/pyproject.toml)
+  (poetry.lock as python/poetry.lock)
+  (src/rocq_doc_manager/py.typed as python/src/rocq_doc_manager/py.typed)
+  (src/rocq_doc_manager/__init__.py as python/src/rocq_doc_manager/__init__.py)
+  (src/rocq_doc_manager/rocq_doc_manager.py as python/src/rocq_doc_manager/rocq_doc_manager.py)))

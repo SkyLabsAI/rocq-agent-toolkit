@@ -1,19 +1,92 @@
 [build-system]
-requires = ["setuptools"]
-build-backend= "setuptools.build_meta"
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
-name = "rocq_doc_manager"
+name = "rocq-doc-manager"
 version = "0.0.1"
 authors = [
-  { name="Rodolphe Lepigre", email="rodolphe.lepigre@skyabs-ai.com" },
+    {name="Rodolphe Lepigre", email="rodolphe.lepigre@skyabs-ai.com"}
 ]
 description = "Python API for the Rocq document manager."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 license = "GPL-2.0-or-later"
-dependencies = ["pyyaml","pyjson"]
+# Rely fully on poetry for dependency management; we may want to
+# revisit this choice later.
+dynamic = ["dependencies"]
 
 [project.urls]
-Homepage = "https://github.com/SkylabsAI/skylabs-fm"
+Repository = "https://github.com/SkylabsAI/skylabs-fm"
 Issues = "https://github.com/SkylabsAI/skylabs-fm/issues"
+Changelog = "https://github.com/SkylabsAI/skylabs-fm/tree/main/changes"
+
+[tool.poetry]
+packages = [{include = "rocq_doc_manager", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.13"
+pyyaml = "^6.0.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+# pytest-cov = "^4.1.0"
+# pytest-asyncio = "^0.21.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
+mypy = "^1.18.2"
+# pre-commit = "^3.3.0"
+# type stubs
+types-pyyaml = "^6.0.12.20250915"
+
+# cf. https://peps.python.org/pep-0561/
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-data]
+"rocq_pipeline" = ["py.typed"]
+
+## NOTE: black/isort/mypy configs copied from
+## `psi-verifier/psi_verifier/cognition_engine`
+
+[tool.black]
+line-length = 100
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
