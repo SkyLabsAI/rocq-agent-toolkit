@@ -33,4 +33,11 @@ handle_request(request=Request)
 
 workflow_logger = get_logger(__name__, event_context="workflow")
 
-workflow_logger.info("Node executed", node_name="process_input", status="success")
+workflow_logger.info(
+    "Node executed",
+    node_name="process_input",
+    status="success",
+    specification_goals="12345",
+    structured_nl_spec="test",
+    key_not_defined="value"
+    )

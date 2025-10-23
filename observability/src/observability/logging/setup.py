@@ -39,15 +39,17 @@ def setup_logging(config: LoggingConfig) -> None:
     )
     
     # 1b. Populate event schemas so loggers can filter payloads appropriately
-    schema_dict: Dict[str, List[str]] = {}
-    if config.training_event_config and config.training_event_config.enabled:
-        schema_dict["training"] = config.training_event_config.allowed_fields()
-    if config.workflow_event_config and config.workflow_event_config.enabled:
-        schema_dict["workflow"] = config.workflow_event_config.allowed_fields()
-    if config.evaluation_event_config and config.evaluation_event_config.enabled:
-        schema_dict["evaluation"] = config.evaluation_event_config.allowed_fields()
-    if config.langgraph_event_config and config.langgraph_event_config.enabled:
-        schema_dict["langgraph"] = config.langgraph_event_config.allowed_fields()
+    event_configs = {
+        "training": config.training_event_config,
+        "workflow": config.workflow_event_config,
+        "evaluation": config.evaluation_event_config,
+        "langgraph": config.langgraph_event_config,
+    }
+    schema_dict = {
+        name: event_config.allowed_fields()
+        for name, event_config in event_configs.items()
+        if event_config and event_config.enabled
+    }
 
     if schema_dict:
         configure_event_schemas(schema_dict)
