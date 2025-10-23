@@ -34,11 +34,26 @@ def load_tasks(filename: str | Path) -> Tuple[Path, List[Dict[str, Any]]]:
     wdir = filename.parent
     with open(filename, "r", encoding="utf-8") as f:
         if filename.suffix in [".yaml", ".yml"]:
-            return (wdir, yaml.safe_load(f))
+            data = yaml.safe_load(f)
         elif filename.suffix in [".json"]:
-            return (wdir, json.load(f))
+            data = json.load(f)
+        else:
+            raise ValueError(" ".join([
+                "Invalid tasks file extension.",
+                "Expected `.json`, `.yaml`, or `.yml`",
+            ]))
 
-    raise ValueError("Invalid tasks file extension. Expected `.json`, `.yaml`, or `.yml`")
+        # in case someone has a single task in a file
+        if isinstance(data, dict):
+            data = [data]
+
+        if not isinstance(data, list):
+            raise ValueError(" ".join([
+                "Invalid task contents.",
+                "Expected a (list of) tasks.",
+            ]))
+
+        return (wdir, data)
 
 
 def filter_tags(tasks: List[Dict[str, Any]], tag: str) -> List[Dict[str, Any]]:
@@ -55,4 +70,7 @@ def filter_tags(tasks: List[Dict[str, Any]], tag: str) -> List[Dict[str, Any]]:
         A list of tasks that contain the specified tag.
     """
     escaped = tag.replace("'", r"\'")
-    return cast(List[Dict[str, Any]], jmespath.search(f"[? contains(tags, '{escaped}')]", tasks))
+    return cast(
+        List[Dict[str, Any]],
+        jmespath.search(f"[? contains(tags, '{escaped}')]", tasks)
+    )
