@@ -1,9 +1,3 @@
-"""Task runner for executing automated theorem proving tasks.
-
-This module provides functionality to run agents on Coq proof tasks,
-including argument parsing, task loading, and result reporting.
-"""
-
 import argparse
 import json
 import sys
@@ -19,18 +13,6 @@ from rocq_pipeline.auto_agent import AutoAgent
 
 
 def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
-    """Run the given agent on the specified tasks.
-
-    This function parses command-line arguments, loads tasks from files or JSON,
-    and runs the specified agent on each task.
-
-    Args:
-        agent_type: The type of agent to instantiate and run.
-        args: Optional list of command-line arguments. If None, uses sys.argv[1:].
-
-    Returns:
-        True if all tasks were processed successfully, False otherwise.
-    """
     if args is None:
         args = sys.argv[1:]
 
@@ -89,12 +71,4 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
 
 def auto_main() -> bool:
-    """Run the AutoAgent on tasks specified via command line.
-
-    This is a convenience function that runs the AutoAgent using
-    the main task runner function.
-
-    Returns:
-        True if all tasks were processed successfully, False otherwise.
-    """
     return main(AutoAgent)

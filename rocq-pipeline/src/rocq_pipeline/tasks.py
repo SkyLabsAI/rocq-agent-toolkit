@@ -1,9 +1,3 @@
-"""Task management utilities for loading and filtering proof tasks.
-
-This module provides functionality to load tasks from various file formats
-and filter them based on tags or other criteria.
-"""
-
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, cast
@@ -12,24 +6,7 @@ import jmespath
 import yaml
 
 
-def load_tasks(filename: str | Path) -> Tuple[Path, List[Dict[str, Any]]]:
-    """Load tasks from a task file and return the working directory and task list.
-
-    This function supports loading tasks from YAML and JSON files. The working
-    directory is set to the directory containing the task file.
-
-    Args:
-        filename: Path to the task file to load.
-
-    Returns:
-        A tuple containing:
-        - The working directory path (directory of the task file)
-        - A list of task dictionaries
-
-    Raises:
-        ValueError: If the file extension is not supported.
-        FileNotFoundError: If the task file does not exist.
-    """
+def load_tasks(filename: str | Path) -> tuple[Path, list[dict[str, Any]]]:
     filename = Path(filename)
     wdir = filename.parent
     with open(filename, "r", encoding="utf-8") as f:
@@ -56,21 +33,9 @@ def load_tasks(filename: str | Path) -> Tuple[Path, List[Dict[str, Any]]]:
         return (wdir, data)
 
 
-def filter_tags(tasks: List[Dict[str, Any]], tag: str) -> List[Dict[str, Any]]:
-    """Filter tasks that contain the specified tag.
-
-    This function uses JMESPath to search for tasks that contain the given tag
-    in their tags list.
-
-    Args:
-        tasks: List of task dictionaries to filter.
-        tag: The tag to search for in the tasks.
-
-    Returns:
-        A list of tasks that contain the specified tag.
-    """
+def filter_tags(tasks: list[dict[str, Any]], tag: str) -> list[dict[str, Any]]:
     escaped = tag.replace("'", r"\'")
     return cast(
-        List[Dict[str, Any]],
+        list[Dict[str, Any]],
         jmespath.search(f"[? contains(tags, '{escaped}')]", tasks)
     )
