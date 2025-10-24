@@ -17,7 +17,7 @@ class ObservabilityConfig(LoggingConfig):
 
     # LangSmith/LangChain integration features
     enable_langsmith: bool = True
-    langchain_tracing_v2: bool = True
+    langchain_tracing_v2: bool = False
     langsmith_service_suffix: str = "langsmith"
     
     # Performance tuning
@@ -30,34 +30,6 @@ class ObservabilityConfig(LoggingConfig):
     auto_metrics: bool = True
     trace_sampling_rate: float = 1.0
 
-    def __post_init__(self) -> None:
-        """
-        Sets environment variables for LangSmith integration based on config.
-
-        This ensures that when LangSmith is enabled, it correctly routes its
-        traces through the standard OpenTelemetry pipeline, rather than its
-        own cloud endpoint. This is crucial for unified tracing.
-        """
-        if self.enable_langsmith:
-            # LangChain V2 tracing is controlled by this config.
-            os.environ["LANGCHAIN_TRACING_V2"] = "false"
-            
-            # When using LangSmith with a local OTLP endpoint, unset the
-            # cloud-specific endpoints and API keys to prevent validation errors.
-            os.environ.pop("LANGCHAIN_ENDPOINT", None)
-            os.environ.pop("LANGCHAIN_API_KEY", None)
-            os.environ.pop("LANGSMITH_ENDPOINT", None) # Also pop LANGSMITH_ENDPOINT
-            os.environ.pop("LANGSMITH_API_KEY", None)
-
-            # Force LangSmith to use the OTLP exporter and point it to our
-            # configured OTLP endpoint (e.g., a local Tempo/Alloy instance).
-            os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
-            os.environ["LANGSMITH_OTEL_ENDPOINT"] = self.otlp_endpoint
-            os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = self.otlp_endpoint
-            os.environ["LANGSMITH_OTEL_ENABLED"] = "false"
-        else:
-            # If LangSmith integration is disabled, ensure tracing is turned off.
-            os.environ["LANGCHAIN_TRACING_V2"] = "false"
             
     @classmethod
     def from_environment(cls, **overrides: Any) -> "ObservabilityConfig":

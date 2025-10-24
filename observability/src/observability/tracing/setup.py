@@ -155,6 +155,7 @@ def _setup_langsmith_instrumentation(config: ObservabilityConfig) -> None:
         import os
 
         os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
+        os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = config.otlp_endpoint
 
         if config.langsmith_service_suffix:
             langsmith_service_name = (
