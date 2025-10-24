@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Any
+import os
 from ..logging.config import LoggingConfig
 
 
@@ -28,6 +29,33 @@ class ObservabilityConfig(LoggingConfig):
     default_extractor: Optional[str] = None
     auto_metrics: bool = True
     trace_sampling_rate: float = 1.0
+
+    def __post_init__(self) -> None:
+        """
+        Sets environment variables for LangSmith integration based on config.
+
+        This ensures that when LangSmith is enabled, it correctly routes its
+        traces through the standard OpenTelemetry pipeline, rather than its
+        own cloud endpoint. This is crucial for unified tracing.
+        """
+        if self.enable_langsmith:
+            # LangChain V2 tracing is controlled by this config.
+            os.environ["LANGCHAIN_TRACING_V2"] = "true" if self.langchain_tracing_v2 else "false"
+            
+            # When using LangSmith with a local OTLP endpoint, clear the
+            # cloud-specific endpoints and API keys.
+            os.environ["LANGCHAIN_ENDPOINT"] = ""
+            os.environ["LANGCHAIN_API_KEY"] = ""
+            os.environ["LANGSMITH_API_URL"] = ""
+            os.environ["LANGSMITH_API_KEY"] = ""
+
+            # Force LangSmith to use the OTLP exporter and point it to our
+            # configured OTLP endpoint (e.g., a local Tempo/Alloy instance).
+            os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
+            os.environ["LANGSMITH_OTEL_ENDPOINT"] = self.otlp_endpoint
+        else:
+            # If LangSmith integration is disabled, ensure tracing is turned off.
+            os.environ["LANGCHAIN_TRACING_V2"] = "false"
             
     @classmethod
     def from_environment(cls, **overrides: Any) -> "ObservabilityConfig":
