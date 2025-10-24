@@ -34,35 +34,41 @@ EXTRACTOR_REGISTRY = {
     "custom": CustomExtractor,
 }
 
+
 def get_extractor(name_or_extractor, **kwargs):
     """
     Get an extractor instance from name or return the extractor if already instantiated.
-    
+
     Args:
         name_or_extractor: String name, extractor class, or extractor instance
         **kwargs: Arguments to pass to extractor constructor
-        
+
     Returns:
         AttributeExtractor instance
     """
     if isinstance(name_or_extractor, str):
         if name_or_extractor not in EXTRACTOR_REGISTRY:
-            raise ValueError(f"Unknown extractor: {name_or_extractor}. Available: {list(EXTRACTOR_REGISTRY.keys())}")
+            raise ValueError(
+                f"Unknown extractor: {name_or_extractor}. Available: {list(EXTRACTOR_REGISTRY.keys())}"
+            )
         return EXTRACTOR_REGISTRY[name_or_extractor](**kwargs)
-    elif isinstance(name_or_extractor, type) and issubclass(name_or_extractor, AttributeExtractor):
+    elif isinstance(name_or_extractor, type) and issubclass(
+        name_or_extractor, AttributeExtractor
+    ):
         return name_or_extractor(**kwargs)
     elif isinstance(name_or_extractor, AttributeExtractor):
         return name_or_extractor
     else:
         raise ValueError(f"Invalid extractor type: {type(name_or_extractor)}")
 
+
 __all__ = [
     "AttributeExtractor",
     "HttpExtractor",
-    "RpcExtractor", 
+    "RpcExtractor",
     "DatabaseExtractor",
     "WorkflowExtractor",
     "LangChainExtractor",
     "CustomExtractor",
     "get_extractor",
-] 
+]

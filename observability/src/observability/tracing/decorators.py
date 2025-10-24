@@ -23,23 +23,25 @@ logger = logging.getLogger(__name__)
 def trace(
     name: Optional[str] = None,
     *,
-    extractor: Optional[Union[str, Type[AttributeExtractor], AttributeExtractor]] = None,
+    extractor: Optional[
+        Union[str, Type[AttributeExtractor], AttributeExtractor]
+    ] = None,
     attributes: Optional[Dict[str, Any]] = None,
     metrics_enabled: bool = True,
     include_args: bool = False,
     include_result: bool = False,
     record_exception: bool = True,
-    **extractor_kwargs
+    **extractor_kwargs,
 ):
     """
     Universal tracing decorator for any operation.
-    
+
     This decorator provides comprehensive observability for any Python function by:
     - Creating distributed tracing spans
     - Recording metrics automatically
     - Using extractors for framework-specific intelligence
     - Supporting custom attributes and labels
-    
+
     Args:
         name: Custom span name (defaults to extractor's name generation)
         extractor: Attribute extractor to use:
@@ -52,37 +54,37 @@ def trace(
         include_result: Include function result in span (be careful with sensitive data)
         record_exception: Whether to record exceptions in spans
         **extractor_kwargs: Arguments passed to extractor constructor
-        
+
     Returns:
         Decorated function with observability
-        
+
     Examples:
         # Basic tracing
         @trace()
         def my_function():
             return "result"
-            
+
         # HTTP endpoint
         @trace(extractor="http")
         def create_user(request):
             return {"user_id": "123"}
-            
+
         # Database operation
         @trace(extractor="database", system="postgresql", table="users")
         def get_user(user_id):
             return db.query("SELECT * FROM users WHERE id = %s", user_id)
-            
+
         # RPC method
         @trace("CreateUser", extractor="rpc", system="grpc")
         def CreateUser(self, request, context):
             return user_pb2.UserResponse(user_id="123")
-            
+
         # Workflow step
         @trace(extractor="workflow", workflow_type="user_onboarding")
         def validate_email(state):
             state['email_valid'] = validate(state['email'])
             return state
-            
+
         # Custom operation with business context
         @trace(extractor=CustomExtractor(
             operation_type="payment_processing",
@@ -91,12 +93,15 @@ def trace(
         def process_payment(amount, currency):
             return stripe.charge(amount, currency)
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Initialize extractor
-            operation_extractor = _get_operation_extractor(extractor, **extractor_kwargs)
-            
+            operation_extractor = _get_operation_extractor(
+                extractor, **extractor_kwargs
+            )
+
             # Generate span name
             span_name = name
             if not span_name:
@@ -105,65 +110,76 @@ def trace(
                 except Exception as e:
                     logger.warning(f"Failed to generate span name: {e}")
                     span_name = func.__name__
-            
+
             # Get tracer and start timing
             tracer = otel_trace.get_tracer(__name__)
             start_time = time.time()
-            
+
             with tracer.start_as_current_span(span_name) as span:
                 try:
                     # Extract and set basic attributes
                     _set_basic_attributes(span, func, args, kwargs, include_args)
-                    
+
                     # Add custom attributes
                     if attributes:
                         _set_custom_attributes(span, attributes)
-                    
+
                     # Use extractor for framework-specific attributes
-                    _set_extractor_attributes(span, operation_extractor, func, args, kwargs)
-                    
+                    _set_extractor_attributes(
+                        span, operation_extractor, func, args, kwargs
+                    )
+
                     # Record metrics start
                     if metrics_enabled:
                         _record_start_metrics(operation_extractor, func, args, kwargs)
-                    
+
                     # Execute the function
                     result = func(*args, **kwargs)
-                    
+
                     # Record result if requested
                     if include_result:
                         _set_result_attributes(span, result)
-                    
+
                     # Record success metrics
                     duration = time.time() - start_time
                     if metrics_enabled:
-                        _record_success_metrics(operation_extractor, func, args, kwargs, duration)
-                    
+                        _record_success_metrics(
+                            operation_extractor, func, args, kwargs, duration
+                        )
+
                     # Mark span as successful
                     span.set_status(Status(StatusCode.OK))
                     return result
-                    
+
                 except Exception as e:
                     # Record exception
                     duration = time.time() - start_time
-                    
+
                     if record_exception:
                         span.record_exception(e)
                         span.set_status(Status(StatusCode.ERROR, str(e)))
-                        
+
                         # Add extractor-specific error attributes
                         try:
-                            error_attrs = operation_extractor.extract_error_attributes(func, args, kwargs, e)
+                            error_attrs = operation_extractor.extract_error_attributes(
+                                func, args, kwargs, e
+                            )
                             _set_custom_attributes(span, error_attrs)
                         except Exception as extractor_error:
-                            logger.warning(f"Failed to extract error attributes: {extractor_error}")
-                    
+                            logger.warning(
+                                f"Failed to extract error attributes: {extractor_error}"
+                            )
+
                     # Record error metrics
                     if metrics_enabled:
-                        _record_error_metrics(operation_extractor, func, args, kwargs, duration, e)
-                    
+                        _record_error_metrics(
+                            operation_extractor, func, args, kwargs, duration, e
+                        )
+
                     raise
-                    
+
         return wrapper
+
     return decorator
 
 
@@ -171,27 +187,31 @@ def _get_operation_extractor(extractor_spec, **kwargs) -> AttributeExtractor:
     """Get the appropriate extractor instance."""
     if extractor_spec is None:
         return NoOpExtractor()
-    
+
     try:
         return get_extractor(extractor_spec, **kwargs)
     except Exception as e:
-        logger.warning(f"Failed to create extractor {extractor_spec}: {e}. Using NoOpExtractor.")
+        logger.warning(
+            f"Failed to create extractor {extractor_spec}: {e}. Using NoOpExtractor."
+        )
         return NoOpExtractor()
 
 
-def _set_basic_attributes(span, func: Callable, args: tuple, kwargs: dict, include_args: bool):
+def _set_basic_attributes(
+    span, func: Callable, args: tuple, kwargs: dict, include_args: bool
+):
     """Set basic function attributes on the span."""
     span.set_attribute("function.name", func.__name__)
     span.set_attribute("function.module", func.__module__ or "unknown")
-    
+
     # Add argument information if requested
     if include_args:
         span.set_attribute("function.args.count", len(args))
         span.set_attribute("function.kwargs.count", len(kwargs))
-        
+
         # Add argument names (be careful not to include values for security)
-        if hasattr(func, '__code__'):
-            arg_names = func.__code__.co_varnames[:func.__code__.co_argcount]
+        if hasattr(func, "__code__"):
+            arg_names = func.__code__.co_varnames[: func.__code__.co_argcount]
             if arg_names:
                 span.set_attribute("function.args.names", ",".join(arg_names))
 
@@ -207,7 +227,9 @@ def _set_custom_attributes(span, attributes: Dict[str, Any]):
             span.set_attribute(key, str_value)
 
 
-def _set_extractor_attributes(span, extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict):
+def _set_extractor_attributes(
+    span, extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict
+):
     """Extract and set attributes using the operation extractor."""
     try:
         extracted_attrs = extractor.extract_attributes(func, args, kwargs)
@@ -220,14 +242,14 @@ def _set_extractor_attributes(span, extractor: AttributeExtractor, func: Callabl
 def _set_result_attributes(span, result: Any):
     """Set attributes based on function result."""
     span.set_attribute("function.result.type", type(result).__name__)
-    
+
     # Add result size if possible
-    if hasattr(result, '__len__'):
+    if hasattr(result, "__len__"):
         try:
             span.set_attribute("function.result.size", len(result))
         except Exception:
             pass
-    
+
     # Add result value (be very careful with this)
     if result is not None:
         result_str = str(result)
@@ -235,80 +257,92 @@ def _set_result_attributes(span, result: Any):
             span.set_attribute("function.result.value", result_str)
 
 
-def _record_start_metrics(extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict):
+def _record_start_metrics(
+    extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict
+):
     """Record metrics when operation starts."""
     try:
         meter = metrics.get_meter(__name__)
-        
+
         # Get labels from extractor
         labels = extractor.get_metrics_labels(func, args, kwargs)
-        
+
         # Increment operation counter
         operation_counter = meter.create_counter(
-            name="operation_total",
-            description="Total number of operations",
-            unit="1"
+            name="operation_total", description="Total number of operations", unit="1"
         )
         operation_counter.add(1, {**labels, "status": "started"})
-        
+
     except Exception as e:
         logger.warning(f"Failed to record start metrics: {e}")
 
 
-def _record_success_metrics(extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict, duration: float):
+def _record_success_metrics(
+    extractor: AttributeExtractor,
+    func: Callable,
+    args: tuple,
+    kwargs: dict,
+    duration: float,
+):
     """Record metrics for successful operations."""
     try:
         meter = metrics.get_meter(__name__)
-        
+
         # Get labels from extractor
         labels = extractor.get_metrics_labels(func, args, kwargs)
-        
+
         # Record success counter
         operation_counter = meter.create_counter(
-            name="operation_total", 
-            description="Total number of operations",
-            unit="1"
+            name="operation_total", description="Total number of operations", unit="1"
         )
         operation_counter.add(1, {**labels, "status": "success"})
-        
+
         # Record duration
         operation_duration = meter.create_histogram(
             name="operation_duration_seconds",
             description="Duration of operations in seconds",
-            unit="s"
+            unit="s",
         )
         operation_duration.record(duration, {**labels, "status": "success"})
-        
+
     except Exception as e:
         logger.warning(f"Failed to record success metrics: {e}")
 
 
-def _record_error_metrics(extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict, 
-                         duration: float, exception: Exception):
+def _record_error_metrics(
+    extractor: AttributeExtractor,
+    func: Callable,
+    args: tuple,
+    kwargs: dict,
+    duration: float,
+    exception: Exception,
+):
     """Record metrics for failed operations."""
     try:
         meter = metrics.get_meter(__name__)
-        
+
         # Get labels from extractor
         labels = extractor.get_metrics_labels(func, args, kwargs)
-        error_labels = {**labels, "status": "error", "error_type": type(exception).__name__}
-        
+        error_labels = {
+            **labels,
+            "status": "error",
+            "error_type": type(exception).__name__,
+        }
+
         # Record error counter
         operation_counter = meter.create_counter(
-            name="operation_total",
-            description="Total number of operations", 
-            unit="1"
+            name="operation_total", description="Total number of operations", unit="1"
         )
         operation_counter.add(1, error_labels)
-        
+
         # Record duration for failed operations too
         operation_duration = meter.create_histogram(
             name="operation_duration_seconds",
             description="Duration of operations in seconds",
-            unit="s"  
+            unit="s",
         )
         operation_duration.record(duration, error_labels)
-        
+
     except Exception as e:
         logger.warning(f"Failed to record error metrics: {e}")
 
@@ -320,7 +354,7 @@ def trace_http(**kwargs):
 
 
 def trace_rpc(**kwargs):
-    """Convenience decorator for RPC operations.""" 
+    """Convenience decorator for RPC operations."""
     return trace(extractor="rpc", **kwargs)
 
 
@@ -336,4 +370,4 @@ def trace_workflow(**kwargs):
 
 def trace_langchain(**kwargs):
     """Convenience decorator for LangChain/LangGraph operations."""
-    return trace(extractor="langchain", **kwargs) 
+    return trace(extractor="langchain", **kwargs)

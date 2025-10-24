@@ -63,7 +63,7 @@ from .tracing.extractors import (
     DatabaseExtractor,
     WorkflowExtractor,
     LangChainExtractor,
-    CustomExtractor
+    CustomExtractor,
 )
 
 # Specialized extractors
@@ -79,7 +79,6 @@ __all__ = [
     "add_span_event",
     "set_span_attribute",
     "get_logger",
-
     # Setup and configuration
     "ObservabilityConfig",
     "CoreConfig",
@@ -95,20 +94,16 @@ __all__ = [
     "clear_log_context",
     "get_log_context",
     "is_otel_available",
-
     # Convenience decorators
     "trace_http",
     "trace_rpc",
     "trace_database",
     "trace_workflow",
     "trace_langchain",
-
     # gRPC interceptors are now handled by the official library
     "aio_server_interceptor",
-
     # OTel Passthrough
     "propagate",
-
     # Extractors (for advanced usage)
     "AttributeExtractor",
     "HttpExtractor",
@@ -119,8 +114,6 @@ __all__ = [
     "CustomExtractor",
     "BusinessOperationExtractor",
     "MLOperationExtractor",
-
-
     # Configuration
     "WorkflowEventConfig",
     "LangGraphEventConfig",

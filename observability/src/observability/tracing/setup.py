@@ -9,7 +9,10 @@ import logging
 from opentelemetry import trace, metrics, propagate
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.instrumentation.grpc import GrpcInstrumentorServer, GrpcInstrumentorClient
+from opentelemetry.instrumentation.grpc import (
+    GrpcInstrumentorServer,
+    GrpcInstrumentorClient,
+)
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
@@ -32,7 +35,7 @@ _initialized = False
 def setup_observability(config: ObservabilityConfig) -> None:
     """
     Setup OpenTelemetry logging, tracing, and metrics with the provided configuration.
-    
+
     Args:
         config: ObservabilityConfig instance with desired settings
     """
@@ -78,13 +81,13 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
     otlp_exporter = OTLPSpanExporter(
         endpoint=config.otlp_endpoint,
         insecure=config.otlp_insecure,
-        headers=config.custom_headers
+        headers=config.custom_headers,
     )
 
     span_processor = BatchSpanProcessor(
         otlp_exporter,
         export_timeout_millis=config.batch_export_timeout_ms,
-        max_export_batch_size=config.max_export_batch_size
+        max_export_batch_size=config.max_export_batch_size,
     )
     trace.get_tracer_provider().add_span_processor(span_processor)
 
@@ -100,19 +103,18 @@ def _setup_metrics(config: ObservabilityConfig, resource: Resource) -> None:
     metric_exporter = OTLPMetricExporter(
         endpoint=config.otlp_endpoint,
         insecure=config.otlp_insecure,
-        headers=config.custom_headers
+        headers=config.custom_headers,
     )
 
     metric_reader = PeriodicExportingMetricReader(
         exporter=metric_exporter,
         export_interval_millis=config.metric_export_interval_ms,
-        export_timeout_millis=config.batch_export_timeout_ms
+        export_timeout_millis=config.batch_export_timeout_ms,
     )
 
-    metrics.set_meter_provider(MeterProvider(
-        resource=resource,
-        metric_readers=[metric_reader]
-    ))
+    metrics.set_meter_provider(
+        MeterProvider(resource=resource, metric_readers=[metric_reader])
+    )
 
     logger.debug("Metrics setup completed")
 

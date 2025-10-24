@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Optional
 from ..config import CoreConfig
 
 
@@ -9,6 +9,7 @@ class LoggingConfig(CoreConfig):
     """
     Configuration for logging features.
     """
+
     # Logging configuration
     enable_logging: bool = True
     enable_otlp_log_export: bool = True
@@ -16,15 +17,16 @@ class LoggingConfig(CoreConfig):
     log_format_json: bool = True
 
     # Event-specific logging schemas (optional)
-    training_event_config: Optional['TrainingEventConfig'] = None
-    workflow_event_config: Optional['WorkflowEventConfig'] = None
-    evaluation_event_config: Optional['EvaluationEventConfig'] = None
-    langgraph_event_config: Optional['LangGraphEventConfig'] = None
+    training_event_config: Optional["TrainingEventConfig"] = None
+    workflow_event_config: Optional["WorkflowEventConfig"] = None
+    evaluation_event_config: Optional["EvaluationEventConfig"] = None
+    langgraph_event_config: Optional["LangGraphEventConfig"] = None
 
 
 @dataclass
 class EventLogConfig:
     """Base configuration for event-specific structured logs."""
+
     enabled: bool = True
     extra_fields: List[str] = field(default_factory=list)
 
@@ -33,7 +35,7 @@ class EventLogConfig:
         allowed: List[str] = []
         for attr_name, value in vars(self).items():
             if attr_name.startswith("include_") and value is True:
-                allowed.append(attr_name[len("include_"):])
+                allowed.append(attr_name[len("include_") :])
         allowed.extend(self.extra_fields)
         seen: set[str] = set()
         return [x for x in allowed if not (x in seen or seen.add(x))]
