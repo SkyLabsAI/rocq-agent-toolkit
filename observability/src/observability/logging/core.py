@@ -104,10 +104,6 @@ class StructuredLogger:
             'logger': self.name,
         }
         
-        # Add caller information to JSON logs
-        if caller_info:
-            log_entry.update(caller_info)
-        
         # Add service name if available
         if self.service_name:
             log_entry['service'] = self.service_name
@@ -133,10 +129,15 @@ class StructuredLogger:
         
         # Log the structured entry
         try:
+            # Pass caller info to handler via extra to avoid double stack walk
+            extra_data = {}
+            if caller_info:
+                extra_data['_caller_info'] = caller_info
+            
             if kwargs.get('exc_info'):
-                self.logger.log(level, json.dumps(log_entry), exc_info=True)
+                self.logger.log(level, json.dumps(log_entry), exc_info=True, extra=extra_data)
             else:
-                self.logger.log(level, json.dumps(log_entry))
+                self.logger.log(level, json.dumps(log_entry), extra=extra_data)
         except json.JSONDecodeError as e:
             self.logger.error(f"Failed to log message: {e}")
             self.logger.info(f"Log entry as message string: \n{log_entry}")

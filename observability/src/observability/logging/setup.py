@@ -78,38 +78,20 @@ class FixedLoggingHandler(LoggingHandler):
         Args:
             record: The log record to emit
         """
-        # Fix the caller information by looking deeper in the stack
-        # Skip frames related to logging infrastructure
-        import inspect
-        
-        # Get the current stack
-        stack = inspect.stack()
-        
-        # Find the first frame that's not part of the logging infrastructure
-        caller_frame = None
-        for frame_info in stack:
-            frame_filename = frame_info.filename
-            frame_function = frame_info.function
-            
-            # Skip frames from logging infrastructure
-            if (
-                'logging' in frame_filename or
-                'opentelemetry' in frame_filename or
-                frame_function in ['_log', 'log', 'emit', 'handle', 'callHandlers']
-            ):
-                continue
-            
-            # This is likely the actual caller
-            caller_frame = frame_info
-            break
-        
-        # Update the record with correct caller information
-        if caller_frame:
-            record.pathname = caller_frame.filename
-            record.filename = caller_frame.filename.split('/')[-1]
-            record.funcName = caller_frame.function
-            record.lineno = caller_frame.lineno
-            record.module = caller_frame.filename.split('/')[-1].replace('.py', '')
+        # Check if caller info was already provided by StructuredLogger
+        if hasattr(record, '_caller_info') and record._caller_info:
+            # Use the pre-computed caller info to avoid double stack walk
+            caller_info = record._caller_info
+            # Convert the dict format to LogRecord fields
+            if 'file' in caller_info:
+                record.filename = caller_info['file']
+                record.pathname = caller_info['file']  # Will be overridden below if we have full path
+            if 'function' in caller_info:
+                record.funcName = caller_info['function']
+            if 'line' in caller_info:
+                record.lineno = caller_info['line']
+            if 'file' in caller_info:
+                record.module = caller_info['file'].replace('.py', '')
         
         # Call the parent emit method
         super().emit(record)
@@ -148,3 +130,4 @@ def _setup_otlp_log_export(config: LoggingConfig) -> None:
     root_logger.addHandler(otlp_handler)
     
     logger.debug("OTLP log export setup completed")
+

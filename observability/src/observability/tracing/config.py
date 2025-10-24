@@ -40,19 +40,21 @@ class ObservabilityConfig(LoggingConfig):
         """
         if self.enable_langsmith:
             # LangChain V2 tracing is controlled by this config.
-            os.environ["LANGCHAIN_TRACING_V2"] = "true" if self.langchain_tracing_v2 else "false"
+            os.environ["LANGCHAIN_TRACING_V2"] = "false"
             
-            # When using LangSmith with a local OTLP endpoint, clear the
-            # cloud-specific endpoints and API keys.
-            os.environ["LANGCHAIN_ENDPOINT"] = ""
-            os.environ["LANGCHAIN_API_KEY"] = ""
-            os.environ["LANGSMITH_API_URL"] = ""
-            os.environ["LANGSMITH_API_KEY"] = ""
+            # When using LangSmith with a local OTLP endpoint, unset the
+            # cloud-specific endpoints and API keys to prevent validation errors.
+            os.environ.pop("LANGCHAIN_ENDPOINT", None)
+            os.environ.pop("LANGCHAIN_API_KEY", None)
+            os.environ.pop("LANGSMITH_ENDPOINT", None) # Also pop LANGSMITH_ENDPOINT
+            os.environ.pop("LANGSMITH_API_KEY", None)
 
             # Force LangSmith to use the OTLP exporter and point it to our
             # configured OTLP endpoint (e.g., a local Tempo/Alloy instance).
             os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
             os.environ["LANGSMITH_OTEL_ENDPOINT"] = self.otlp_endpoint
+            os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = self.otlp_endpoint
+            os.environ["LANGSMITH_OTEL_ENABLED"] = "false"
         else:
             # If LangSmith integration is disabled, ensure tracing is turned off.
             os.environ["LANGCHAIN_TRACING_V2"] = "false"
@@ -78,16 +80,10 @@ class ObservabilityConfig(LoggingConfig):
             'default_extractor': os.getenv('OTEL_DEFAULT_EXTRACTOR'),
             'trace_sampling_rate': float(os.getenv('OTEL_TRACE_SAMPLING_RATE', '1.0')),
             'enable_langsmith': os.getenv('OTEL_ENABLE_LANGSMITH', 'true').lower() == 'true',
-            'langchain_tracing_v2': os.getenv('LANGCHAIN_TRACING_V2', 'true').lower() == 'true',
+            'langchain_tracing_v2': os.getenv('LANGCHAIN_TRACING_V2', 'false').lower() == 'false',
             'langsmith_service_suffix': os.getenv('OTEL_LANGSMITH_SERVICE_SUFFIX', 'langsmith'),
-            'enable_async_logging': os.getenv('OTEL_ENABLE_ASYNC_LOGGING', 'false').lower() == 'true',
-            'async_log_queue_size': int(os.getenv('OTEL_ASYNC_LOG_QUEUE_SIZE', '1000')),
-            'async_log_queue_timeout': float(os.getenv('OTEL_ASYNC_LOG_QUEUE_TIMEOUT', '1.0')),
-            'enable_auto_streaming': os.getenv('OTEL_ENABLE_AUTO_STREAMING', 'false').lower() == 'true',
-            'auto_detect_chunk_fields': os.getenv('OTEL_AUTO_DETECT_CHUNK_FIELDS', 'true').lower() == 'true',
-            'accumulated_content_field_name': os.getenv('OTEL_ACCUMULATED_CONTENT_FIELD_NAME', 'accumulated_content'),
-            'enable_individual_chunk_logging': os.getenv('OTEL_ENABLE_INDIVIDUAL_CHUNK_LOGGING', 'false').lower() == 'true',
-        }
+            
+            }
         resource_attrs = {}
         for key, value in os.environ.items():
             if key.startswith('OTEL_RESOURCE_ATTR_'):
