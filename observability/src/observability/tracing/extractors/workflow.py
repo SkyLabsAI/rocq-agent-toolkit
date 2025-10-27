@@ -5,7 +5,8 @@ This extractor understands workflow steps and pipeline operations, extracting
 workflow-specific attributes for tracing. It works with any workflow system.
 """
 
-from typing import Any, Dict, Callable, Tuple, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
+
 from .base import AttributeExtractor
 
 
@@ -26,7 +27,8 @@ class WorkflowExtractor(AttributeExtractor):
             state['email_valid'] = validate(state['email'])
             return state
 
-        @trace(extractor=WorkflowExtractor(step_name="process_payment", workflow_type="checkout"))
+        @trace(extractor=WorkflowExtractor(step_name="process_payment",
+                    workflow_type="checkout"))
         def process_payment_step(order_data):
             return payment_service.charge(order_data)
     """
@@ -46,7 +48,8 @@ class WorkflowExtractor(AttributeExtractor):
 
         Args:
             workflow_type: Type of workflow ("user_onboarding", "data_pipeline", etc.)
-            step_name: Override step name (auto-detected from function name if not provided)
+            step_name:
+                Override step name (auto-detected from function name if not provided)
             include_state: Whether to include full state data in spans
             include_input: Whether to include input data
             include_output: Whether to include output data

@@ -7,11 +7,12 @@ a single, unified, generic approach.
 """
 
 import functools
-import time
 import logging
-from typing import Any, Callable, Dict, Optional, Union, Type
+import time
+from typing import Any, Callable, Dict, Optional, Type, Union
 
-from opentelemetry import trace as otel_trace, metrics
+from opentelemetry import metrics
+from opentelemetry import trace as otel_trace
 from opentelemetry.trace import Status, StatusCode
 
 from .extractors import get_extractor
@@ -50,7 +51,7 @@ def trace(
                   - Instance: Pre-configured extractor instance
         attributes: Static attributes to add to all spans
         metrics_enabled: Whether to record operation metrics
-        include_args: Include function arguments in span (be careful with sensitive data)
+        include_args: Include function arguments in span(be careful with sensitive data)
         include_result: Include function result in span (be careful with sensitive data)
         record_exception: Whether to record exceptions in spans
         **extractor_kwargs: Arguments passed to extractor constructor

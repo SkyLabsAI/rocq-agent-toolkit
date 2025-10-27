@@ -6,7 +6,8 @@ extracting standard AI/ML attributes for tracing. It works with any LangChain-ba
 application including custom chains and workflows.
 """
 
-from typing import Any, Dict, Callable, Tuple, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
+
 from .base import AttributeExtractor
 
 
@@ -26,7 +27,8 @@ class LangChainExtractor(AttributeExtractor):
         def chat_with_llm(prompt):
             return llm.invoke(prompt)
 
-        @trace(extractor=LangChainExtractor(chain_type="conversation", include_token_usage=True))
+        @trace(extractor=LangChainExtractor(chain_type="conversation",
+                include_token_usage=True))
         def conversation_chain(user_input):
             return chain.invoke({"input": user_input})
 
@@ -51,7 +53,8 @@ class LangChainExtractor(AttributeExtractor):
         Initialize LangChain extractor.
 
         Args:
-            chain_type: Type of LangChain operation ("conversation", "retrieval", "agent", etc.)
+            chain_type:
+                Type of LangChain operation ("conversation", "retrieval", "agent", etc.)
             workflow_type: Type of workflow for LangGraph operations
             include_inputs: Whether to include input data in spans
             include_outputs: Whether to include output data in spans
@@ -87,9 +90,9 @@ class LangChainExtractor(AttributeExtractor):
         # Add workflow type if specified
         if self.workflow_type:
             attrs["langchain.workflow_type"] = self.workflow_type
-            attrs["workflow.type"] = (
-                self.workflow_type
-            )  # Also use standard workflow attribute
+            attrs[
+                "workflow.type"
+            ] = self.workflow_type  # Also use standard workflow attribute
 
         # Extract component information
         component_info = self._extract_component_info(func, args, kwargs)

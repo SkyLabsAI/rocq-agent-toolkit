@@ -5,13 +5,13 @@ This module provides context managers for cases where decorators are not appropr
 such as instrumenting parts of functions, dynamic operations, or complex control flow.
 """
 
-import time
 import logging
+import time
 from contextlib import contextmanager
-from typing import Any, Dict, Optional, Union, Type
+from typing import Any, Dict, Optional, Type, Union
 
-from opentelemetry import trace, metrics
-from opentelemetry.trace import Status, StatusCode, Span
+from opentelemetry import metrics, trace
+from opentelemetry.trace import Span, Status, StatusCode
 
 from .extractors import get_extractor
 from .extractors.base import AttributeExtractor, NoOpExtractor
@@ -55,7 +55,8 @@ def trace_context(
             span.set_attribute("processed_records", len(results))
 
         # With extractor
-        with trace_context("db_transaction", extractor="database", system="postgresql") as span:
+        with trace_context("db_transaction", extractor="database", system="postgresql")
+        as span:
             user = create_user(user_data)
             span.set_attribute("user.id", user.id)
 
@@ -226,7 +227,7 @@ def suppress_tracing():
             return process_request(request, user)
     """
     # Get the current tracer
-    tracer = trace.get_tracer(__name__)
+    _ = trace.get_tracer(__name__)  # noqa: F841
 
     # Create a no-op tracer context
     with trace.use_span(trace.INVALID_SPAN):

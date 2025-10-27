@@ -5,7 +5,8 @@ This extractor understands RPC calls and extracts standard RPC attributes for tr
 It supports gRPC and can be extended for other RPC systems.
 """
 
-from typing import Any, Dict, Callable, Tuple, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
+
 from .base import AttributeExtractor
 
 
@@ -41,7 +42,8 @@ class RpcExtractor(AttributeExtractor):
 
         Args:
             system: RPC system type ("grpc", "internal", "jsonrpc", etc.)
-            service_name: Override service name (auto-detected from class name if not provided)
+            service_name:
+                Override service name (auto-detected from class name if not provided)
             include_request_data: Whether to include request data in spans
             include_response_data: Whether to include response data in spans
             max_data_length: Maximum length for data attributes

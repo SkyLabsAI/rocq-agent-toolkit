@@ -5,7 +5,8 @@ This extractor provides a flexible way to create custom observability patterns
 for specific business operations or domain-specific functionality.
 """
 
-from typing import Any, Dict, Callable, Tuple, Optional, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
 from .base import AttributeExtractor
 
 
@@ -21,8 +22,12 @@ class CustomExtractor(AttributeExtractor):
             operation_type="ml_inference",
             attributes={"model.name": "recommendation_v2"},
             attribute_extractors={
-                "input.shape": lambda func, args, kwargs: str(args[0].shape) if args else None,
-                "batch.size": lambda func, args, kwargs: len(args[0]) if args else None
+                "input.shape": lambda func, args, kwargs: (
+                    str(args[0].shape) if args else None
+                ),
+                "batch.size": lambda func, args, kwargs: (
+                    len(args[0]) if args else None
+                ),
             }
         ))
         def predict(features):
@@ -44,8 +49,10 @@ class CustomExtractor(AttributeExtractor):
             operation_type: Type of operation for categorization
             attributes: Static attributes to add to all spans
             attribute_extractors: Functions to extract dynamic attributes
-                                 Format: {attribute_name: function(func, args, kwargs) -> value}
-            span_name_template: Template for span names (supports {operation_type}, {func_name})
+                                 Format:
+                                 {attribute_name: function(func, args, kwargs) -> value}
+            span_name_template:
+            Template for span names (supports {operation_type}, {func_name})
             metrics_labels: Labels for metrics (static values or functions)
         """
         self.operation_type = operation_type
@@ -160,17 +167,17 @@ class BusinessOperationExtractor(CustomExtractor):
             if user_id_extractor:
                 attribute_extractors["business.user_id"] = user_id_extractor
             else:
-                attribute_extractors["business.user_id"] = (
-                    self._default_user_id_extractor
-                )
+                attribute_extractors[
+                    "business.user_id"
+                ] = self._default_user_id_extractor
 
         if include_tenant_id:
             if tenant_id_extractor:
                 attribute_extractors["business.tenant_id"] = tenant_id_extractor
             else:
-                attribute_extractors["business.tenant_id"] = (
-                    self._default_tenant_id_extractor
-                )
+                attribute_extractors[
+                    "business.tenant_id"
+                ] = self._default_tenant_id_extractor
 
         # Merge with user-provided extractors
         if "attribute_extractors" in kwargs:

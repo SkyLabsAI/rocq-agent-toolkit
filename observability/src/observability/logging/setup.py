@@ -15,7 +15,8 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 
 from .config import LoggingConfig
-from .core import setup_logging as core_setup_logging, configure_event_schemas
+from .core import configure_event_schemas
+from .core import setup_logging as core_setup_logging
 
 logger = logging.getLogger(__name__)
 

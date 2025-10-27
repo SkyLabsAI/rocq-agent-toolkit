@@ -1,5 +1,11 @@
-from observability import LoggingConfig, setup_logging, get_logger, add_log_context, WorkflowEventConfig
-from collections import namedtuple
+from observability import (
+    LoggingConfig,
+    WorkflowEventConfig,
+    add_log_context,
+    get_logger,
+    setup_logging,
+)
+
 workflow_cfg = WorkflowEventConfig(
     extra_fields=[
         "specification_goals",
@@ -39,5 +45,5 @@ workflow_logger.info(
     status="success",
     specification_goals="12345",
     structured_nl_spec="test",
-    key_not_defined="value"
-    )
+    key_not_defined="value",
+)

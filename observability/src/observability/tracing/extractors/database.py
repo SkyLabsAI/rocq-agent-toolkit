@@ -5,7 +5,8 @@ This extractor understands database operations and extracts standard database
 attributes for tracing. It works with any database-related function.
 """
 
-from typing import Any, Dict, Callable, Tuple, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
+
 from .base import AttributeExtractor
 
 
@@ -43,12 +44,15 @@ class DatabaseExtractor(AttributeExtractor):
         Initialize database extractor.
 
         Args:
-            system: Database system ("sql", "postgresql", "mysql", "mongodb", "redis", etc.)
+            system:
+                Database system ("sql", "postgresql", "mysql", "mongodb", "redis", etc.)
             table: Table name for SQL operations
             collection: Collection name for NoSQL operations
-            operation: Database operation ("select", "insert", "update", "delete", "find", etc.)
+            operation:
+                Database operation ("select", "insert", "update", "delete", "find", etc)
             database_name: Name of the database
-            include_query: Whether to include query text in spans (be careful with sensitive data)
+            include_query:
+                Whether to include query text in spans (be careful with sensitive data)
             max_query_length: Maximum length for query text
         """
         self.system = system
@@ -170,7 +174,7 @@ class DatabaseExtractor(AttributeExtractor):
             if param in kwargs:
                 query_value = kwargs[param]
                 if isinstance(query_value, str):
-                    attrs[f"db.statement"] = self._truncate_query(query_value)
+                    attrs["db.statement"] = self._truncate_query(query_value)
                 break
 
         # If no named parameter found, check positional arguments
@@ -196,9 +200,9 @@ class DatabaseExtractor(AttributeExtractor):
                 try:
                     dsn_params = arg.get_dsn_parameters()
                     if "host" in dsn_params:
-                        attrs["db.connection_string"] = (
-                            f"postgresql://{dsn_params['host']}"
-                        )
+                        attrs[
+                            "db.connection_string"
+                        ] = f"postgresql://{dsn_params['host']}"
                     if "dbname" in dsn_params:
                         attrs["db.name"] = dsn_params["dbname"]
                 except Exception:

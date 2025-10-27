@@ -5,14 +5,14 @@ This module provides the main logging infrastructure with optional
 OpenTelemetry integration for trace correlation.
 """
 
+import inspect
 import json
 import logging
-import time
-from typing import Any, Dict, Optional, List
 import os
-from contextvars import ContextVar  # Async-safe per-task storage
 import socket
-import inspect
+import time
+from contextvars import ContextVar  # Async-safe per-task storage
+from typing import Any, Dict, List, Optional
 
 # Optional OpenTelemetry integration
 try:
@@ -88,9 +88,9 @@ class StructuredLogger:
             except (TypeError, ValueError):
                 # If formatting fails, just use the original message and log the error
                 formatted_message = message
-                kwargs["_format_error"] = (
-                    f"Failed to format message '{message}' with args {args}"
-                )
+                kwargs[
+                    "_format_error"
+                ] = f"Failed to format message '{message}' with args {args}"
         else:
             formatted_message = message
 
@@ -108,6 +108,10 @@ class StructuredLogger:
             "message": formatted_message,
             "logger": self.name,
         }
+
+        # Add caller information to JSON logs
+        if caller_info:
+            log_entry.update(caller_info)
 
         # Add service name if available
         if self.service_name:

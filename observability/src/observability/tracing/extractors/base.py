@@ -7,7 +7,7 @@ extracting relevant telemetry attributes from function calls.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Callable, Tuple, Optional
+from typing import Any, Callable, Dict, Tuple
 
 
 class AttributeExtractor(ABC):
@@ -18,7 +18,8 @@ class AttributeExtractor(ABC):
     (HTTP requests, database queries, RPC calls, etc.) without coupling the core
     observability functionality to specific frameworks.
 
-    To create a custom extractor, inherit from this class and implement the abstract methods.
+    To create a custom extractor, inherit from this class and implement the abstract
+    methods.
     """
 
     @abstractmethod

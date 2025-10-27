@@ -2,21 +2,21 @@
 Fixed tests for observability.extractors module
 Focus on functional behavior rather than internal implementation details
 """
-import pytest
+
 from observability.tracing.extractors import (
-    HttpExtractor,
-    RpcExtractor,
-    DatabaseExtractor,
-    WorkflowExtractor,
-    LangChainExtractor,
     CustomExtractor,
-    get_extractor
-)
-from observability.tracing.extractors.custom import (
-    BusinessOperationExtractor,
-    MLOperationExtractor
+    DatabaseExtractor,
+    HttpExtractor,
+    LangChainExtractor,
+    RpcExtractor,
+    WorkflowExtractor,
+    get_extractor,
 )
 from observability.tracing.extractors.base import AttributeExtractor
+from observability.tracing.extractors.custom import (
+    BusinessOperationExtractor,
+    MLOperationExtractor,
+)
 
 
 class TestExtractorInstantiation:
@@ -79,17 +79,17 @@ class TestExtractorFunctionality:
     def test_http_extractor_extract_attributes(self):
         """Test HttpExtractor extract_attributes method"""
         extractor = HttpExtractor()
-        
+
         def mock_func():
             pass
-        
+
         args = ()
         kwargs = {
             "method": "GET",
             "url": "https://api.example.com/users",
-            "status_code": 200
+            "status_code": 200,
         }
-        
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
         # Should not crash and should return a dict
@@ -97,13 +97,13 @@ class TestExtractorFunctionality:
     def test_http_extractor_get_span_name(self):
         """Test HttpExtractor get_span_name method"""
         extractor = HttpExtractor()
-        
+
         def mock_func():
             pass
-        
+
         args = ()
         kwargs = {"method": "POST", "url": "/api/users"}
-        
+
         span_name = extractor.get_span_name(mock_func, args, kwargs)
         assert isinstance(span_name, str)
         assert len(span_name) > 0
@@ -111,118 +111,91 @@ class TestExtractorFunctionality:
     def test_rpc_extractor_extract_attributes(self):
         """Test RpcExtractor extract_attributes method"""
         extractor = RpcExtractor()
-        
+
         def mock_func():
             pass
-        
+
         args = ()
-        kwargs = {
-            "service": "UserService",
-            "method": "GetUser",
-            "grpc_status_code": 0
-        }
-        
+        kwargs = {"service": "UserService", "method": "GetUser", "grpc_status_code": 0}
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
 
     def test_database_extractor_extract_attributes(self):
         """Test DatabaseExtractor extract_attributes method"""
         extractor = DatabaseExtractor()
-        
+
         def mock_func():
             pass
-        
+
         args = ("SELECT * FROM users WHERE id = ?",)
-        kwargs = {
-            "system": "postgresql",
-            "database": "myapp"
-        }
-        
+        kwargs = {"system": "postgresql", "database": "myapp"}
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
 
     def test_workflow_extractor_extract_attributes(self):
         """Test WorkflowExtractor extract_attributes method"""
         extractor = WorkflowExtractor()
-        
+
         def mock_func():
             pass
-        
+
         args = ()
-        kwargs = {
-            "workflow_id": "wf_123",
-            "step": "process_data",
-            "step_index": 2
-        }
-        
+        kwargs = {"workflow_id": "wf_123", "step": "process_data", "step_index": 2}
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
 
     def test_langchain_extractor_extract_attributes(self):
         """Test LangChainExtractor extract_attributes method"""
         extractor = LangChainExtractor()
-        
+
         def mock_func():
             pass
-        
+
         args = ("What is the weather?",)
-        kwargs = {
-            "model": "gpt-4",
-            "temperature": 0.7,
-            "chain_type": "llm"
-        }
-        
+        kwargs = {"model": "gpt-4", "temperature": 0.7, "chain_type": "llm"}
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
 
     def test_custom_extractor_extract_attributes(self):
         """Test CustomExtractor extract_attributes method"""
         extractor = CustomExtractor("test")
-        
+
         def mock_func():
             pass
-        
+
         args = ()
-        kwargs = {
-            "custom_field1": "value1",
-            "custom_field2": 42,
-            "custom_field3": True
-        }
-        
+        kwargs = {"custom_field1": "value1", "custom_field2": 42, "custom_field3": True}
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
 
     def test_business_operation_extractor_extract_attributes(self):
         """Test BusinessOperationExtractor extract_attributes method"""
         extractor = BusinessOperationExtractor("user_signup")
-        
+
         def mock_func():
             pass
-        
+
         args = ()
-        kwargs = {
-            "user_id": "123",
-            "plan": "premium",
-            "revenue": 99.99
-        }
-        
+        kwargs = {"user_id": "123", "plan": "premium", "revenue": 99.99}
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
 
     def test_ml_operation_extractor_extract_attributes(self):
         """Test MLOperationExtractor extract_attributes method"""
         extractor = MLOperationExtractor("bert-base")
-        
+
         def mock_func():
             pass
-        
+
         args = (["input text 1", "input text 2"],)
-        kwargs = {
-            "batch_size": 32,
-            "latency_ms": 150,
-            "accuracy": 0.95
-        }
-        
+        kwargs = {"batch_size": 32, "latency_ms": 150, "accuracy": 0.95}
+
         attributes = extractor.extract_attributes(mock_func, args, kwargs)
         assert isinstance(attributes, dict)
 
@@ -238,16 +211,16 @@ class TestGetExtractorFunction:
             "database": DatabaseExtractor,
             "workflow": WorkflowExtractor,
             "langchain": LangChainExtractor,
-            "custom": CustomExtractor
+            "custom": CustomExtractor,
         }
-        
+
         for name, expected_class in extractors.items():
             if name == "custom":
                 # Skip custom extractor in factory test due to constructor requirements
                 continue
             else:
                 extractor = get_extractor(name)
-            
+
             assert isinstance(extractor, expected_class)
 
     def test_get_extractor_with_invalid_name(self):
@@ -285,33 +258,29 @@ class TestExtractorEdgeCases:
             LangChainExtractor(),
             CustomExtractor("empty"),
             BusinessOperationExtractor("empty_op"),
-            MLOperationExtractor("empty_model")
+            MLOperationExtractor("empty_model"),
         ]
-        
+
         def mock_func():
             pass
-        
+
         for extractor in extractors:
             # Should not crash with empty kwargs
             attributes = extractor.extract_attributes(mock_func, (), {})
             assert isinstance(attributes, dict)
-            
+
             span_name = extractor.get_span_name(mock_func, (), {})
             assert isinstance(span_name, str)
 
     def test_extractors_with_none_values(self):
         """Test extractors handle None values gracefully"""
         extractor = HttpExtractor()
-        
+
         def mock_func():
             pass
-        
-        kwargs = {
-            "method": None,
-            "url": None,
-            "status_code": None
-        }
-        
+
+        kwargs = {"method": None, "url": None, "status_code": None}
+
         # Should not crash with None values
         attributes = extractor.extract_attributes(mock_func, (), kwargs)
         assert isinstance(attributes, dict)
@@ -319,10 +288,10 @@ class TestExtractorEdgeCases:
     def test_extractors_with_mixed_data_types(self):
         """Test extractors with various data types"""
         extractor = CustomExtractor("mixed")
-        
+
         def mock_func():
             pass
-        
+
         kwargs = {
             "string_field": "test",
             "int_field": 42,
@@ -330,9 +299,9 @@ class TestExtractorEdgeCases:
             "bool_field": True,
             "list_field": [1, 2, 3],
             "dict_field": {"nested": "value"},
-            "none_field": None
+            "none_field": None,
         }
-        
+
         attributes = extractor.extract_attributes(mock_func, (), kwargs)
         assert isinstance(attributes, dict)
 
@@ -342,12 +311,12 @@ class TestExtractorEdgeCases:
             HttpExtractor(),
             RpcExtractor(),
             DatabaseExtractor(),
-            CustomExtractor("metrics_test")
+            CustomExtractor("metrics_test"),
         ]
-        
+
         def mock_func():
             pass
-        
+
         for extractor in extractors:
             labels = extractor.get_metrics_labels(mock_func, (), {"test": "value"})
             assert isinstance(labels, dict)
@@ -359,53 +328,53 @@ class TestExtractorWithRealFunctions:
     def test_http_extractor_with_realistic_data(self):
         """Test HTTP extractor with realistic HTTP data"""
         extractor = HttpExtractor()
-        
+
         def make_api_request(method, url, headers=None, data=None):
             return {"status": "success"}
-        
+
         args = ("POST", "https://api.example.com/users")
         kwargs = {
             "headers": {"Content-Type": "application/json"},
             "data": {"name": "John", "email": "john@example.com"},
             "status_code": 201,
-            "response_time_ms": 150
+            "response_time_ms": 150,
         }
-        
+
         attributes = extractor.extract_attributes(make_api_request, args, kwargs)
         assert isinstance(attributes, dict)
-        
+
         span_name = extractor.get_span_name(make_api_request, args, kwargs)
         assert isinstance(span_name, str)
 
     def test_database_extractor_with_realistic_data(self):
         """Test database extractor with realistic database data"""
         extractor = DatabaseExtractor()
-        
+
         def execute_query(query, params=None):
             return [{"id": 1, "name": "John"}]
-        
+
         args = ("SELECT * FROM users WHERE active = ?", [True])
         kwargs = {
             "database": "myapp_prod",
             "table": "users",
             "operation": "SELECT",
             "rows_affected": 5,
-            "query_time_ms": 45
+            "query_time_ms": 45,
         }
-        
+
         attributes = extractor.extract_attributes(execute_query, args, kwargs)
         assert isinstance(attributes, dict)
-        
+
         span_name = extractor.get_span_name(execute_query, args, kwargs)
         assert isinstance(span_name, str)
 
     def test_workflow_extractor_with_realistic_data(self):
         """Test workflow extractor with realistic workflow data"""
         extractor = WorkflowExtractor()
-        
+
         def process_workflow_step(data):
             return {"processed": True, "output": data}
-        
+
         args = ({"input_data": "test"},)
         kwargs = {
             "workflow_id": "data_processing_v2",
@@ -414,12 +383,12 @@ class TestExtractorWithRealFunctions:
             "total_steps": 10,
             "retry_count": 0,
             "input_size": 1024,
-            "expected_output_size": 950
+            "expected_output_size": 950,
         }
-        
+
         attributes = extractor.extract_attributes(process_workflow_step, args, kwargs)
         assert isinstance(attributes, dict)
-        
+
         span_name = extractor.get_span_name(process_workflow_step, args, kwargs)
         assert isinstance(span_name, str)
 
@@ -427,47 +396,47 @@ class TestExtractorWithRealFunctions:
         """Test that multiple extractors can be used together"""
         extractors = [
             HttpExtractor(),
-            RpcExtractor(), 
+            RpcExtractor(),
             DatabaseExtractor(),
             WorkflowExtractor(),
-            CustomExtractor("multi_test")
+            CustomExtractor("multi_test"),
         ]
-        
+
         def multi_purpose_function():
             return "success"
-        
+
         # All extractors should work with the same function
         for extractor in extractors:
             attributes = extractor.extract_attributes(multi_purpose_function, (), {})
             assert isinstance(attributes, dict)
-            
+
             span_name = extractor.get_span_name(multi_purpose_function, (), {})
             assert isinstance(span_name, str)
-            
+
             labels = extractor.get_metrics_labels(multi_purpose_function, (), {})
             assert isinstance(labels, dict)
 
     def test_extractor_resilience(self):
         """Test that extractors are resilient to various inputs"""
         extractor = HttpExtractor()
-        
+
         def test_function():
             return "test"
-        
+
         # Test with various argument patterns
         test_cases = [
             ((), {}),
             (("arg1",), {}),
             ((), {"key": "value"}),
             (("arg1", "arg2"), {"key1": "value1", "key2": "value2"}),
-            (("complex", {"nested": "data"}), {"status": 200, "items": [1, 2, 3]})
+            (("complex", {"nested": "data"}), {"status": 200, "items": [1, 2, 3]}),
         ]
-        
+
         for args, kwargs in test_cases:
             # Should not crash with any of these inputs
             attributes = extractor.extract_attributes(test_function, args, kwargs)
             assert isinstance(attributes, dict)
-            
+
             span_name = extractor.get_span_name(test_function, args, kwargs)
             assert isinstance(span_name, str)
             assert len(span_name) > 0

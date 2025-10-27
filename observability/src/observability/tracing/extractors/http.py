@@ -1,11 +1,13 @@
 """
 HTTP request extractor for web frameworks.
 
-This extractor understands HTTP requests and responses from popular Python web frameworks
-like Flask, FastAPI, Django, etc. It extracts standard HTTP attributes for tracing.
+This extractor understands HTTP requests and responses from popular
+Python web frameworks like Flask, FastAPI, Django, etc.
+It extracts standard HTTP attributes for tracing.
 """
 
-from typing import Any, Dict, Callable, Tuple, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
+
 from .base import AttributeExtractor
 
 
