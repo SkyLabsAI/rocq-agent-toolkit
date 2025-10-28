@@ -156,23 +156,28 @@ def _setup_langsmith_instrumentation(config: ObservabilityConfig) -> None:
     try:
         import os
 
-        os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
-        os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = config.otlp_endpoint
+        if config.enable_langsmith:
+            os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
+            os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = config.otlp_endpoint
+            os.environ["LANGSMITH_TRACING"] = "true"
 
-        if config.langsmith_service_suffix:
-            langsmith_service_name = (
-                f"{config.service_name}-{config.langsmith_service_suffix}"
-            )
-            os.environ["LANGSMITH_OTEL_SERVICE_NAME"] = langsmith_service_name
+            if config.langsmith_service_suffix:
+                langsmith_service_name = (
+                    f"{config.service_name}-{config.langsmith_service_suffix}"
+                )
+                os.environ["LANGSMITH_OTEL_SERVICE_NAME"] = langsmith_service_name
+            else:
+                os.environ["LANGSMITH_OTEL_SERVICE_NAME"] = config.service_name
+
+            os.environ["LANGSMITH_OTEL_ENDPOINT"] = config.otlp_endpoint
+
+            if config.langchain_tracing_v2:
+                os.environ["LANGCHAIN_TRACING_V2"] = "true"
+
+            logger.debug("LangSmith instrumentation configured")
         else:
-            os.environ["LANGSMITH_OTEL_SERVICE_NAME"] = config.service_name
-
-        os.environ["LANGSMITH_OTEL_ENDPOINT"] = config.otlp_endpoint
-
-        if config.langchain_tracing_v2:
-            os.environ["LANGCHAIN_TRACING_V2"] = "true"
-
-        logger.debug("LangSmith instrumentation configured")
+            os.environ["LANGSMITH_TRACING"] = "false"
+            logger.debug("LangSmith instrumentation disabled")
 
     except ImportError:
         logger.warning(

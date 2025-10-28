@@ -200,9 +200,9 @@ class DatabaseExtractor(AttributeExtractor):
                 try:
                     dsn_params = arg.get_dsn_parameters()
                     if "host" in dsn_params:
-                        attrs[
-                            "db.connection_string"
-                        ] = f"postgresql://{dsn_params['host']}"
+                        attrs["db.connection_string"] = (
+                            f"postgresql://{dsn_params['host']}"
+                        )
                     if "dbname" in dsn_params:
                         attrs["db.name"] = dsn_params["dbname"]
                 except Exception:

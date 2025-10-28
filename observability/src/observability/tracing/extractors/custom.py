@@ -167,17 +167,17 @@ class BusinessOperationExtractor(CustomExtractor):
             if user_id_extractor:
                 attribute_extractors["business.user_id"] = user_id_extractor
             else:
-                attribute_extractors[
-                    "business.user_id"
-                ] = self._default_user_id_extractor
+                attribute_extractors["business.user_id"] = (
+                    self._default_user_id_extractor
+                )
 
         if include_tenant_id:
             if tenant_id_extractor:
                 attribute_extractors["business.tenant_id"] = tenant_id_extractor
             else:
-                attribute_extractors[
-                    "business.tenant_id"
-                ] = self._default_tenant_id_extractor
+                attribute_extractors["business.tenant_id"] = (
+                    self._default_tenant_id_extractor
+                )
 
         # Merge with user-provided extractors
         if "attribute_extractors" in kwargs:

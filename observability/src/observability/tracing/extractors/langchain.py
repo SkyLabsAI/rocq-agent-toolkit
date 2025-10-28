@@ -90,9 +90,9 @@ class LangChainExtractor(AttributeExtractor):
         # Add workflow type if specified
         if self.workflow_type:
             attrs["langchain.workflow_type"] = self.workflow_type
-            attrs[
-                "workflow.type"
-            ] = self.workflow_type  # Also use standard workflow attribute
+            attrs["workflow.type"] = (
+                self.workflow_type
+            )  # Also use standard workflow attribute
 
         # Extract component information
         component_info = self._extract_component_info(func, args, kwargs)

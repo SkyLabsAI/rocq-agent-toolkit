@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import socket
+import sys
 import time
 from contextvars import ContextVar  # Async-safe per-task storage
 from typing import Any, Dict, List, Optional
@@ -88,9 +89,9 @@ class StructuredLogger:
             except (TypeError, ValueError):
                 # If formatting fails, just use the original message and log the error
                 formatted_message = message
-                kwargs[
-                    "_format_error"
-                ] = f"Failed to format message '{message}' with args {args}"
+                kwargs["_format_error"] = (
+                    f"Failed to format message '{message}' with args {args}"
+                )
         else:
             formatted_message = message
 
@@ -136,24 +137,53 @@ class StructuredLogger:
                 else:
                     log_entry[key] = value
 
-        # Log the structured entry
-        try:
-            # Pass caller info to handler via extra to avoid double stack walk
-            extra_data = {}
-            if caller_info:
-                extra_data["_caller_info"] = caller_info
+        # ------------------------------------------------------------------
+        # Safe serialization (avoid crashes on non-JSON-serializable objects)
+        # ------------------------------------------------------------------
 
-            if kwargs.get("exc_info"):
-                self.logger.log(
-                    level, json.dumps(log_entry), exc_info=True, extra=extra_data
+        try:
+            log_json = json.dumps(log_entry)
+        except (TypeError, OverflowError) as e:
+            # Log serialization error once without raising (no exc_info to avoid loops)
+            self.logger.error(
+                f"Failed to serialize log entry: {e}. Retrying with safe fallback.",
+                exc_info=False,
+            )
+
+            try:
+                # Fallback: convert problematic objects to strings
+                log_json = json.dumps(log_entry, default=str)
+            except Exception as final_e:
+                # Final fallback: minimal JSON payload to ensure log emission
+                log_json = json.dumps(
+                    {
+                        "timestamp": time.time(),
+                        "level": "CRITICAL",
+                        "message": "Log serialization failed completely",
+                        "logger": self.name,
+                        "error": str(final_e),
+                    }
                 )
+
+        # Pass caller info to handler via extra to avoid double stack walk
+        extra_data = {}
+        if caller_info:
+            extra_data["_caller_info"] = caller_info
+
+        try:
+            if kwargs.get("exc_info"):
+                self.logger.log(level, log_json, exc_info=True, extra=extra_data)
             else:
-                self.logger.log(level, json.dumps(log_entry), extra=extra_data)
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to log message: {e}")
-            self.logger.info(f"Log entry as message string: \n{log_entry}")
+                self.logger.log(level, log_json, extra=extra_data)
         except Exception as e:
-            self.logger.error(f"Failed to log message: {e}")
+            # Last-ditch effort: write to stderr to avoid infinite recursion
+            try:
+                self.logger.error(f"Failed to emit log entry: {e}", exc_info=False)
+            except Exception:
+                print(
+                    f"Logging failure: {e} | Original log: {log_json}",
+                    file=sys.stderr,
+                )
 
     def _apply_event_context(
         self, event_type: str, kwargs: Dict[str, Any]
