@@ -5,4 +5,4 @@ Proof.
   induction a; simpl; intros.
   { rewrite add_zero; auto. }
   { rewrite IHa; simpl. reflexivity. }
-Qed.
+Admitted.

@@ -23,6 +23,7 @@ Changelog = "https://github.com/SkylabsAI/skylabs-fm/tree/main/changes"
 
 [project.scripts]
 auto-agent = "rocq_pipeline.task_runner:auto_main"
+ingest = "rocq_pipeline.find_tasks:main"
 
 [tool.poetry]
 packages = [{include = "rocq_pipeline", from = "src"}]
