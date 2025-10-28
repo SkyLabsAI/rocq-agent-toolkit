@@ -6,7 +6,6 @@ Focus on functional behavior rather than internal implementation details
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from observability.tracing.decorators import (
     trace,
     trace_database,

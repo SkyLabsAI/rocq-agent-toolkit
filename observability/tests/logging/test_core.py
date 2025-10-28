@@ -4,7 +4,6 @@ import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from observability.logging.core import (
     _event_schemas,
     _get_hostname,
