@@ -150,9 +150,8 @@ class TraceAgent(Agent):
         # and never succeed.
         while True:
             if self._stop_on_failure and self.last_failed():
-                return GiveUp(
-                    final_doc_interaction=self.final_doc_interaction(),
-                    reason=FailureReason(ExecutionError()),
+                return self.give_up(
+                    FailureReason(ExecutionError()),
                 )
 
             if should_trace:
@@ -169,9 +168,7 @@ class TraceAgent(Agent):
             if isinstance(result, rdm.Resp):
                 self.update_history(tactic)
                 if result.result["open_subgoals"] == "No more goals.":
-                    return Finished(
-                        final_doc_interaction=self.final_doc_interaction()
-                    )
+                    return self.finished()
             elif isinstance(result, rdm.Err):
                 self.update_history(tactic, success=False)
                 trace("Failed", data=result)
@@ -180,14 +177,31 @@ class TraceAgent(Agent):
     def next(self, rdm: RocqDocManager) -> Tactic | GiveUp:
         # Suppress unused argument warning for base class
         _ = rdm
-        return GiveUp(
-            final_doc_interaction=self.final_doc_interaction(),
-            reason=FailureReason(task_output.Other("not implemented"))
+        return self.give_up(
+            FailureReason(task_output.Other("not implemented"))
         )
 
     def failed(self, err: RocqDocManager.Err) -> None:
         # Base implementation does nothing - subclasses can override
         _ = err
+
+    def finished(self, message: str | None = None) -> Finished:
+        final_doc_interaction = self.final_doc_interaction()
+        if message:
+            return Finished(
+                message=message,
+                final_doc_interaction=final_doc_interaction
+            )
+        else:
+            return Finished(
+                final_doc_interaction=final_doc_interaction
+            )
+
+    def give_up(self, reason: FailureReason) -> GiveUp:
+        return GiveUp(
+            final_doc_interaction=self.final_doc_interaction(),
+            reason=reason
+        )
 
 
 class MarkovAgent(TraceAgent):
@@ -215,9 +229,8 @@ class ChoiceAgent(MarkovAgent):
             self._check_index = 0
 
         if self._check_index >= len(self._all_choices):
-            return GiveUp(
-                final_doc_interaction=self.final_doc_interaction(),
-                reason=FailureReason(ProofVerificationFailed())
+            return self.give_up(
+                FailureReason(ProofVerificationFailed())
             )
 
         return Tactic(self._all_choices[self._check_index])
