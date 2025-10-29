@@ -310,18 +310,6 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
-name = "pyjson"
-version = "1.4.1"
-description = "Compare the similarities between two JSONs."
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "pyjson-1.4.1-py3-none-any.whl", hash = "sha256:625ee332ca09056216595e232b562a8d42e1cba8b6695fc169b0a0c61587d56d"},
-    {file = "pyjson-1.4.1.tar.gz", hash = "sha256:79ebe55cccb6224302baca9f7119927c73dcb1c18c3fed193db80cfb320d0ca6"},
-]
-
-[[package]]
 name = "pytest"
 version = "8.4.2"
 description = "pytest: simple powerful testing with Python"
@@ -437,8 +425,7 @@ files = []
 develop = true
 
 [package.dependencies]
-pyjson = "*"
-pyyaml = ">=6.0.3,<7.0.0"
+pyyaml = "^6.0.3"
 
 [package.source]
 type = "directory"
