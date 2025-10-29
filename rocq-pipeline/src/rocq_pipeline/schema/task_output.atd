@@ -10,6 +10,11 @@ type failure_reason = [
   | Other of string
 ]
 
+type model_info = {
+  model_name: string;
+  model_config: (string * string) list <python repr="dict">; (* key-value pairs for model configuration *)
+}
+
 type code_info = {
   git_repo: string;
   git_sha: string;
@@ -19,10 +24,9 @@ type code_info = {
 }
 
 type agent_metadata = {
-  model_name: string;
-  model_config: (string * string) list <python repr="dict">; (* key-value pairs for model configuration *)
-  sub_agents: agent_metadata list;
   code_info: code_info;
+  sub_agents: agent_metadata list;
+  model_info: model_info option;
 }
 
 type token_counts = {
@@ -43,22 +47,16 @@ type metrics = {
   resource_usage: resource_usage;
 }
 
-type telemetry_entry = {
-  timestamp_utc: string; (* ISO 8601 format *)
-  event_type: string;
-  data: (string * string) list <python repr="dict">; (* key-value pairs for event data *)
-}
-
 type proof_outputs = {
   generated_proof: string;
-  telemetry_trace: telemetry_entry list;
 }
 
 type task_output = {
   run_id: string;
-  agent_metadata: agent_metadata;
   task_id: string;
+  trace_id: string option;
   timestamp_utc: string; (* ISO 8601 format *)
+  agent_metadata: agent_metadata;
   status: task_status;
   failure_reason: failure_reason option;
   metrics: metrics option;
