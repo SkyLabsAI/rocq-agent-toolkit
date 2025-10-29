@@ -1,15 +1,18 @@
 import argparse
+from datetime import datetime
 import json
 import sys
 from pathlib import Path
 from typing import Optional, Type
+import uuid
 
 from rocq_doc_manager import RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
-from rocq_pipeline.agent import Agent, Finished, GiveUp
+from rocq_pipeline.agent import Agent, Finished, GiveUp, TaskResult
 from rocq_pipeline.auto_agent import AutoAgent
+from rocq_pipeline.schema import task_output
 
 
 def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
@@ -28,6 +31,12 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
     )
     # Add the optional --trace flag
     parser.add_argument("--trace", action="store_true", help="Enable tracing.")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("."),
+        help="The directory to output task results, as JSONL."
+    )
 
     # Allow the agent to set up additional arguments
     # TODO: if this function is not defined, then it shouldn't
@@ -39,16 +48,26 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
     wdir = Path(".")
     tasks: list[dict] = []
+    tasks_name: str = "tasks"
     if not arguments.task_json is None:
         assert arguments.task_file is None
         tasks = [arguments.task_json]
     elif not arguments.task_file is None:
         (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
+        tasks_name = arguments.task_file.stem
     else:
         print("unspecified task")
         return False
 
+    now_str = datetime.now().strftime("%Y%m%d_%H%M")
+    tasks_result_file: Path = (
+        arguments.output_dir / f"{tasks_name}_results_{now_str}.jsonl"
+    )
+    run_id: str = str(uuid.uuid4())
+
     for task in tasks:
+        # NOTE: we could use a context manager here, and automatically call
+        # quit when the scope is closed.
         rdm = RocqDocManager([], str(wdir / task["file"]), dune=True)
         rdm.load_file()
         if not locator.parse_locator(task["locator"])(rdm):
@@ -61,12 +80,49 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         else:
             agent = agent_type()
 
-        result = agent.run(rdm)
-        if isinstance(result, GiveUp):
-            print(f"agent gave up with message: {result.message}")
-        elif isinstance(result, Finished):
-            print(f"task completed: {result.message}")
+        agent_metadata: task_output.AgentMetadata = agent.get_metadata()
+
+        # TODO: find a better ID for tasks
+        task_id: str = f"{task['file']}#{task['locator']}"
+        # TODO: integrate with opentelemetry, properly instrument the agent framework
+        # and derived agents
+        trace_id: str | None = None
+        timestamp_utc = ""
+
+        task_result: TaskResult = agent.run(rdm)
         rdm.quit()
+
+        # TODO: integrate with opentelemetry, properly instrument the agent framework
+        # and derived agents
+        task_metrics: task_output.Metrics | None = None
+
+        task_failure_reason: task_output.FailureReason | None = None
+        if isinstance(task_result, GiveUp):
+            task_status = task_output.TaskStatus(task_output.Failure())
+            task_failure_reason = task_output.FailureReason(
+                task_output.Other(task_result.message)
+            )
+            print(f"agent gave up with message: {task_result.message}")
+        elif isinstance(task_result, Finished):
+            task_status = task_output.TaskStatus(task_output.Success())
+            print(f"task completed: {task_result.message}")
+
+        data = task_output.TaskOutput(
+            run_id=run_id,
+            task_id=task_id,
+            trace_id=trace_id,
+            timestamp_utc=timestamp_utc,
+            agent_metadata=agent_metadata,
+            status=task_status,
+            failure_reason=task_failure_reason,
+            metrics=task_metrics,
+            outputs=task_output.ProofOutputs(
+                generated_proof=task_result.final_doc_interaction
+            )
+        )
+
+        with open(tasks_result_file, "a", encoding="utf8") as jsonl_file:
+            json.dump(data.to_json(), jsonl_file)
 
     return True
 

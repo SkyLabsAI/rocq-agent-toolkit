@@ -1,8 +1,15 @@
 import pprint
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import inspect
 from typing import Any, override
 
 from rocq_doc_manager import RocqDocManager
+from rocq_pipeline.schema import task_output
+from rocq_pipeline.schema.task_output import (
+    ExecutionError,
+    FailureReason,
+    ProofVerificationFailed
+)
 
 
 def close_proof(rdm: RocqDocManager) -> None:
@@ -10,13 +17,24 @@ def close_proof(rdm: RocqDocManager) -> None:
 
 
 @dataclass
-class GiveUp:
+class TaskResult:
+    """The final doc interaction that yielded the result."""
+    final_doc_interaction: str
     message: str
 
 
 @dataclass
-class Finished:
-    message: str | None
+class GiveUp(TaskResult):
+    message: str = field(init=False)
+    reason: task_output.FailureReason
+
+    def __post_init__(self) -> None:
+        self.message = f"failure: {str(self.reason)}"
+
+
+@dataclass
+class Finished(TaskResult):
+    message: str = "success"
 
 
 @dataclass
@@ -25,10 +43,47 @@ class Tactic:
 
 
 class Agent:
+    def get_code_info(self) -> task_output.CodeInfo:
+        # Get code info using inspection
+        try:
+            file_path = inspect.getfile(self.__class__)
+            _, start_line = inspect.getsourcelines(self.__class__)
+        except (OSError, TypeError):
+            file_path = "unknown"
+            start_line = 0
+
+        # Try to get git info (TODO: implement actual git detection)
+        git_repo = "unknown"
+        git_sha = "unknown"
+
+        return task_output.CodeInfo(
+            git_repo=git_repo,
+            git_sha=git_sha,
+            file_path=file_path,
+            class_name=self.__class__.__name__,
+            start_line=start_line,
+        )
+
+    def get_subagent_metadata(self) -> list[task_output.AgentMetadata]:
+        return []
+
+    def get_model_info(self) -> task_output.ModelInfo | None:
+        return None
+
+    def get_metadata(self) -> task_output.AgentMetadata:
+        return task_output.AgentMetadata(
+            code_info=self.get_code_info(),
+            sub_agents=self.get_subagent_metadata(),
+            model_info=self.get_model_info(),
+        )
+
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         # Suppress unused argument warning for base class
         _ = rdm
-        return GiveUp("not implemented")
+        return GiveUp(
+            final_doc_interaction="",
+            reason=FailureReason(task_output.Other("not implemented"))
+        )
 
 
 class OneShotAgent(Agent):
@@ -39,18 +94,25 @@ class OneShotAgent(Agent):
 
     @override
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
-        if isinstance(rdm.run_command(f"solve [ {self._tactic} ]."), RocqDocManager.Err):
-            return GiveUp(f"failed to solve the goal using: {self._tactic}")
-        return Finished("proof complete")
+        solve_tac = f"solve [ {self._tactic} ]."
+        final_doc_interaction: str = solve_tac
+        if isinstance(rdm.run_command(solve_tac), RocqDocManager.Err):
+            return GiveUp(
+                final_doc_interaction,
+                reason=FailureReason(ProofVerificationFailed())
+            )
+        return Finished(final_doc_interaction)
 
 
 # NOTE: this agent does not support backtracking
 class TraceAgent(Agent):
+    _stop_on_failure: bool = False
+    # Each element of [_history] is a tactic and a boolean indicating
+    # whether its application succeeded.
+    _history: list[tuple[Tactic, bool]] = []
+
     def __init__(self, stop_on_failure: bool = False) -> None:
         self._stop_on_failure = stop_on_failure
-        # Each element of [_history] is a tactic and a boolean indicating whether
-        # the its application succeeded.
-        self._history: list[tuple[Tactic, bool]] = []
 
     def last_failed(self) -> bool:
         if not self._history:
@@ -65,8 +127,15 @@ class TraceAgent(Agent):
         # Note: return a shallow copy of the history
         return self._history[:]
 
+    def final_doc_interaction(self) -> str:
+        return "\n".join([
+            f"{tactic}."
+            for tactic, success in self._history
+            if success
+        ])
+
     @override
-    def run(self, rdm: RocqDocManager) -> GiveUp | Finished:
+    def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         should_trace = True
 
         def trace(msg: str, data: Any | None = None) -> None:
@@ -76,9 +145,15 @@ class TraceAgent(Agent):
                     pprint.pprint(data, width=200)
 
         # Start trying to verify the code
+        #
+        # TODO: add fuel to guard against agents that never give up
+        # and never succeed.
         while True:
             if self._stop_on_failure and self.last_failed():
-                return GiveUp("I give up")
+                return GiveUp(
+                    final_doc_interaction=self.final_doc_interaction(),
+                    reason=FailureReason(ExecutionError()),
+                )
 
             if should_trace:
                 goal = rdm.current_goal()
@@ -90,11 +165,13 @@ class TraceAgent(Agent):
             if isinstance(tactic, GiveUp):
                 return tactic
 
-            result = rdm.run_command(f"{tactic.tactic}.")  # pylint: disable=no-member
+            result = rdm.run_command(f"{tactic.tactic}.")
             if isinstance(result, rdm.Resp):
                 self.update_history(tactic)
                 if result.result["open_subgoals"] == "No more goals.":
-                    return Finished(None)
+                    return Finished(
+                        final_doc_interaction=self.final_doc_interaction()
+                    )
             elif isinstance(result, rdm.Err):
                 self.update_history(tactic, success=False)
                 trace("Failed", data=result)
@@ -103,7 +180,10 @@ class TraceAgent(Agent):
     def next(self, rdm: RocqDocManager) -> Tactic | GiveUp:
         # Suppress unused argument warning for base class
         _ = rdm
-        return GiveUp("not implemented")
+        return GiveUp(
+            final_doc_interaction=self.final_doc_interaction(),
+            reason=FailureReason(task_output.Other("not implemented"))
+        )
 
     def failed(self, err: RocqDocManager.Err) -> None:
         # Base implementation does nothing - subclasses can override
@@ -115,14 +195,14 @@ class MarkovAgent(TraceAgent):
         super().__init__(stop_on_failure=True)
 
     @override
-    def update_history(self, tactic: Tactic, success: bool = True) -> None:
-        self._history = [(tactic, success)]
+    def history(self) -> list[tuple[Tactic, bool]]:
+        history_copy = super().history()
+        return [history_copy[-1]] if history_copy else []
 
 
 class ChoiceAgent(MarkovAgent):
     _all_choices: list[str]
     _check_index: int = 0
-    _last_failed: bool = False
 
     def __init__(self, choices: list[str]):
         super().__init__()
@@ -133,6 +213,11 @@ class ChoiceAgent(MarkovAgent):
             self._check_index += 1
         else:
             self._check_index = 0
+
         if self._check_index >= len(self._all_choices):
-            return GiveUp("I give up")
+            return GiveUp(
+                final_doc_interaction=self.final_doc_interaction(),
+                reason=FailureReason(ProofVerificationFailed())
+            )
+
         return Tactic(self._all_choices[self._check_index])
