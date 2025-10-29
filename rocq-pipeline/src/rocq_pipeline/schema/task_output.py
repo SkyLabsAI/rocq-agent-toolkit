@@ -305,14 +305,14 @@ class ModelInfo:
     """Original type: model_info = { ... }"""
 
     model_name: str
-    model_config: Dict[str, str]
+    model_config: Dict[str, Any]
 
     @classmethod
     def from_json(cls, x: Any) -> 'ModelInfo':
         if isinstance(x, dict):
             return cls(
                 model_name=_atd_read_string(x['model_name']) if 'model_name' in x else _atd_missing_json_field('ModelInfo', 'model_name'),
-                model_config=_atd_read_assoc_array_into_dict(_atd_read_string, _atd_read_string)(x['model_config']) if 'model_config' in x else _atd_missing_json_field('ModelInfo', 'model_config'),
+                model_config=_atd_read_assoc_array_into_dict(_atd_read_string, (lambda x: x))(x['model_config']) if 'model_config' in x else _atd_missing_json_field('ModelInfo', 'model_config'),
             )
         else:
             _atd_bad_json('ModelInfo', x)
@@ -320,7 +320,7 @@ class ModelInfo:
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
         res['model_name'] = _atd_write_string(self.model_name)
-        res['model_config'] = _atd_write_assoc_dict_to_array(_atd_write_string, _atd_write_string)(self.model_config)
+        res['model_config'] = _atd_write_assoc_dict_to_array(_atd_write_string, (lambda x: x))(self.model_config)
         return res
 
     @classmethod

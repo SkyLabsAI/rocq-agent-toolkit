@@ -12,7 +12,7 @@ type failure_reason = [
 
 type model_info = {
   model_name: string;
-  model_config: (string * string) list <python repr="dict">; (* key-value pairs for model configuration *)
+  model_config: (string * abstract) list <python repr="dict">; (* key-value pairs for model configuration *)
 }
 
 type code_info = {
