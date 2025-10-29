@@ -1,0 +1,66 @@
+(* ATD schema for task output in the Rocq pipeline *)
+
+type task_status = [ Success | Failure ]
+
+type failure_reason = [
+  | Timeout
+  | ProofVerificationFailed
+  | MaxLLMCallsReached
+  | ExecutionError
+  | Other of string
+]
+
+type code_info = {
+  git_repo: string;
+  git_sha: string;
+  file_path: string;
+  class_name: string;
+  start_line: int;
+}
+
+type agent_metadata = {
+  model_name: string;
+  model_config: (string * string) list <python repr="dict">; (* key-value pairs for model configuration *)
+  sub_agents: agent_metadata list;
+  code_info: code_info;
+}
+
+type token_counts = {
+  input_tokens: int;
+  output_tokens: int;
+  total_tokens: int;
+}
+
+type resource_usage = {
+  execution_time_sec: float;
+  cpu_time_sec: float;
+  gpu_time_sec: float;
+}
+
+type metrics = {
+  llm_invocation_count: int;
+  token_counts: token_counts;
+  resource_usage: resource_usage;
+}
+
+type telemetry_entry = {
+  timestamp_utc: string; (* ISO 8601 format *)
+  event_type: string;
+  data: (string * string) list <python repr="dict">; (* key-value pairs for event data *)
+}
+
+type proof_outputs = {
+  generated_proof: string;
+  telemetry_trace: telemetry_entry list;
+}
+
+type task_output = {
+  run_id: string;
+  agent_metadata: agent_metadata;
+  task_id: string;
+  timestamp_utc: string; (* ISO 8601 format *)
+  status: task_status;
+  failure_reason: failure_reason option;
+  metrics: metrics option;
+  outputs: proof_outputs;
+}
