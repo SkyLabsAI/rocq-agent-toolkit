@@ -106,13 +106,11 @@ class OneShotAgent(Agent):
 
 # NOTE: this agent does not support backtracking
 class TraceAgent(Agent):
-    _stop_on_failure: bool = False
-    # Each element of [_history] is a tactic and a boolean indicating
-    # whether its application succeeded.
-    _history: list[tuple[Tactic, bool]] = []
-
     def __init__(self, stop_on_failure: bool = False) -> None:
         self._stop_on_failure = stop_on_failure
+        # Each element of [_history] is a tactic and a boolean indicating
+        # whether its application succeeded.
+        self._history: list[tuple[Tactic, bool]] = list()
 
     def last_failed(self) -> bool:
         if not self._history:
@@ -129,7 +127,7 @@ class TraceAgent(Agent):
 
     def final_doc_interaction(self) -> str:
         return "\n".join([
-            f"{tactic}."
+            f"{tactic.tactic}."
             for tactic, success in self._history
             if success
         ])
