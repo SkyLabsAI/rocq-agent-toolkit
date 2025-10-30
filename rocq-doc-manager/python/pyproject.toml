@@ -41,6 +41,7 @@ mypy = "^1.18.2"
 types-pyyaml = "^6.0.12.20250915"
 
 # cf. https://peps.python.org/pep-0561/
+cram = "^0.7"
 [tool.setuptools.packages.find]
 where = ["src"]
 [tool.setuptools.package-data]
