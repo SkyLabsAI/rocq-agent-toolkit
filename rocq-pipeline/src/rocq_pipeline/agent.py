@@ -154,13 +154,14 @@ class TraceAgent(Agent):
 
             if should_trace:
                 goal = rdm.current_goal()
-                trace("Current Goal:", data=goal)
+                trace("Current Goal:", data=goal.result["open_subgoals"])
 
             tactic: Tactic | GiveUp = self.next(rdm)
-            trace("Tactic:", data=tactic)
 
             if isinstance(tactic, GiveUp):
                 return tactic
+
+            trace("Tactic:", data=tactic.tactic)
 
             result = rdm.run_command(f"{tactic.tactic}.")
             if isinstance(result, rdm.Resp):
