@@ -1,9 +1,10 @@
 import argparse
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 import json
 import sys
 from pathlib import Path
-from typing import Optional, Type
+from typing import Any, Optional, Type
 import uuid
 
 from rocq_doc_manager import RocqDocManager
@@ -37,6 +38,12 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         default=Path("."),
         help="The directory to output task results, as JSONL."
     )
+    parser.add_argument(
+        "-j", "--jobs",
+        type=int,
+        default=1,
+        help="The number of parallel workers."
+    )
 
     # Allow the agent to set up additional arguments
     # TODO: if this function is not defined, then it shouldn't
@@ -46,13 +53,20 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
     arguments = parser.parse_args(args)
 
+    num_workers: int = 1  # max(1, arguments.jobs)
+    if arguments.jobs != 1:
+        print(" ".join([
+            "WARNING: limitations with dune build lock and RocqDocManager",
+            "bindings prevent us from parallel execution"
+        ]))
+
     wdir = Path(".")
     tasks: list[dict] = []
     tasks_name: str = "tasks"
-    if not arguments.task_json is None:
+    if arguments.task_json is not None:
         assert arguments.task_file is None
         tasks = [arguments.task_json]
-    elif not arguments.task_file is None:
+    elif arguments.task_file is not None:
         (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
         tasks_name = arguments.task_file.stem
     else:
@@ -65,35 +79,38 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
     )
     run_id: str = str(uuid.uuid4())
 
-    for task in tasks:
+    def run_task(task: dict[str, Any]) -> task_output.TaskOutput | None:
+        # TODO: find a better ID for tasks
+        task_id: str = f"{task['file']}#{task['locator']}"
+        # TODO: integrate with opentelemetry, properly instrument the agent
+        # framework and derived agents
+        trace_id: str | None = None
+        timestamp_utc = datetime.now(timezone.utc).timestamp()
+
         # NOTE: we could use a context manager here, and automatically call
         # quit when the scope is closed.
         rdm = RocqDocManager([], str(wdir / task["file"]), dune=True)
         rdm.load_file()
         if not locator.parse_locator(task["locator"])(rdm):
-            print("locator returned false")
-            continue
+            print(f"{task_id}: locator returned false")
+            return None
 
         if hasattr(agent_type, "build"):
             # TODO: should we remove any attributes from the task
-            agent = agent_type.build(prompt=task["prompt"] if "prompt" in task else None, args=args)
+            agent = agent_type.build(
+                prompt=task["prompt"] if "prompt" in task else None,
+                args=args
+            )
         else:
             agent = agent_type()
 
         agent_metadata: task_output.AgentMetadata = agent.get_metadata()
 
-        # TODO: find a better ID for tasks
-        task_id: str = f"{task['file']}#{task['locator']}"
-        # TODO: integrate with opentelemetry, properly instrument the agent framework
-        # and derived agents
-        trace_id: str | None = None
-        timestamp_utc = ""
-
         task_result: TaskResult = agent.run(rdm)
         rdm.quit()
 
-        # TODO: integrate with opentelemetry, properly instrument the agent framework
-        # and derived agents
+        # TODO: integrate with opentelemetry, properly instrument the agent
+        # framework and derived agents
         task_metrics: task_output.Metrics | None = None
 
         task_failure_reason: task_output.FailureReason | None = None
@@ -107,11 +124,11 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             task_status = task_output.TaskStatus(task_output.Success())
             print(f"task completed: {task_result.message}")
 
-        data = task_output.TaskOutput(
+        return task_output.TaskOutput(
             run_id=run_id,
             task_id=task_id,
             trace_id=trace_id,
-            timestamp_utc=timestamp_utc,
+            timestamp_utc=str(timestamp_utc),
             agent_metadata=agent_metadata,
             status=task_status,
             failure_reason=task_failure_reason,
@@ -121,8 +138,11 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             )
         )
 
-        with open(tasks_result_file, "a", encoding="utf8") as jsonl_file:
-            json.dump(data.to_json(), jsonl_file)
+    with ThreadPoolExecutor(num_workers) as tpe:
+        for result in tpe.map(run_task, tasks):
+            if result is not None:
+                with open(tasks_result_file, "a", encoding="utf8") as f:
+                    json.dump(result.to_json(), f)
 
     return True
 
