@@ -143,6 +143,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             if result is not None:
                 with open(tasks_result_file, "a", encoding="utf8") as f:
                     json.dump(result.to_json(), f)
+                    f.write("\n")
 
     return True
 
