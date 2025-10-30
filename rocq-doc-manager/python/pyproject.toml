@@ -16,6 +16,9 @@ license = "GPL-2.0-or-later"
 # revisit this choice later.
 dynamic = ["dependencies"]
 
+[tool.poetry.scripts]
+cram_test1 = "rocq_doc_manager.tester:cram_test1"
+
 [project.urls]
 Repository = "https://github.com/SkylabsAI/skylabs-fm"
 Issues = "https://github.com/SkylabsAI/skylabs-fm/issues"
