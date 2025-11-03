@@ -261,111 +261,6 @@ def _atd_write_option(write_elt: Callable[[Any], Any]) \
 
 
 @dataclass
-class CodeInfo:
-    """Original type: code_info = { ... }"""
-
-    git_repo: str
-    git_sha: str
-    file_path: str
-    class_name: str
-    start_line: int
-
-    @classmethod
-    def from_json(cls, x: Any) -> 'CodeInfo':
-        if isinstance(x, dict):
-            return cls(
-                git_repo=_atd_read_string(x['git_repo']) if 'git_repo' in x else _atd_missing_json_field('CodeInfo', 'git_repo'),
-                git_sha=_atd_read_string(x['git_sha']) if 'git_sha' in x else _atd_missing_json_field('CodeInfo', 'git_sha'),
-                file_path=_atd_read_string(x['file_path']) if 'file_path' in x else _atd_missing_json_field('CodeInfo', 'file_path'),
-                class_name=_atd_read_string(x['class_name']) if 'class_name' in x else _atd_missing_json_field('CodeInfo', 'class_name'),
-                start_line=_atd_read_int(x['start_line']) if 'start_line' in x else _atd_missing_json_field('CodeInfo', 'start_line'),
-            )
-        else:
-            _atd_bad_json('CodeInfo', x)
-
-    def to_json(self) -> Any:
-        res: Dict[str, Any] = {}
-        res['git_repo'] = _atd_write_string(self.git_repo)
-        res['git_sha'] = _atd_write_string(self.git_sha)
-        res['file_path'] = _atd_write_string(self.file_path)
-        res['class_name'] = _atd_write_string(self.class_name)
-        res['start_line'] = _atd_write_int(self.start_line)
-        return res
-
-    @classmethod
-    def from_json_string(cls, x: str) -> 'CodeInfo':
-        return cls.from_json(json.loads(x))
-
-    def to_json_string(self, **kw: Any) -> str:
-        return json.dumps(self.to_json(), **kw)
-
-
-@dataclass
-class ModelInfo:
-    """Original type: model_info = { ... }"""
-
-    model_name: str
-    model_config: Dict[str, Any]
-
-    @classmethod
-    def from_json(cls, x: Any) -> 'ModelInfo':
-        if isinstance(x, dict):
-            return cls(
-                model_name=_atd_read_string(x['model_name']) if 'model_name' in x else _atd_missing_json_field('ModelInfo', 'model_name'),
-                model_config=_atd_read_assoc_array_into_dict(_atd_read_string, (lambda x: x))(x['model_config']) if 'model_config' in x else _atd_missing_json_field('ModelInfo', 'model_config'),
-            )
-        else:
-            _atd_bad_json('ModelInfo', x)
-
-    def to_json(self) -> Any:
-        res: Dict[str, Any] = {}
-        res['model_name'] = _atd_write_string(self.model_name)
-        res['model_config'] = _atd_write_assoc_dict_to_array(_atd_write_string, (lambda x: x))(self.model_config)
-        return res
-
-    @classmethod
-    def from_json_string(cls, x: str) -> 'ModelInfo':
-        return cls.from_json(json.loads(x))
-
-    def to_json_string(self, **kw: Any) -> str:
-        return json.dumps(self.to_json(), **kw)
-
-
-@dataclass
-class AgentMetadata:
-    """Original type: agent_metadata = { ... }"""
-
-    code_info: CodeInfo
-    sub_agents: List[AgentMetadata]
-    model_info: Optional[ModelInfo]
-
-    @classmethod
-    def from_json(cls, x: Any) -> 'AgentMetadata':
-        if isinstance(x, dict):
-            return cls(
-                code_info=CodeInfo.from_json(x['code_info']) if 'code_info' in x else _atd_missing_json_field('AgentMetadata', 'code_info'),
-                sub_agents=_atd_read_list(AgentMetadata.from_json)(x['sub_agents']) if 'sub_agents' in x else _atd_missing_json_field('AgentMetadata', 'sub_agents'),
-                model_info=_atd_read_option(ModelInfo.from_json)(x['model_info']) if 'model_info' in x else _atd_missing_json_field('AgentMetadata', 'model_info'),
-            )
-        else:
-            _atd_bad_json('AgentMetadata', x)
-
-    def to_json(self) -> Any:
-        res: Dict[str, Any] = {}
-        res['code_info'] = (lambda x: x.to_json())(self.code_info)
-        res['sub_agents'] = _atd_write_list((lambda x: x.to_json()))(self.sub_agents)
-        res['model_info'] = _atd_write_option((lambda x: x.to_json()))(self.model_info)
-        return res
-
-    @classmethod
-    def from_json_string(cls, x: str) -> 'AgentMetadata':
-        return cls.from_json(json.loads(x))
-
-    def to_json_string(self, **kw: Any) -> str:
-        return json.dumps(self.to_json(), **kw)
-
-
-@dataclass
 class TokenCounts:
     """Original type: token_counts = { ... }"""
 
@@ -696,7 +591,7 @@ class TaskOutput:
     task_id: str
     trace_id: Optional[str]
     timestamp_utc: str
-    agent_metadata: AgentMetadata
+    agent_name: str
     status: TaskStatus
     failure_reason: Optional[FailureReason]
     metrics: Optional[Metrics]
@@ -710,7 +605,7 @@ class TaskOutput:
                 task_id=_atd_read_string(x['task_id']) if 'task_id' in x else _atd_missing_json_field('TaskOutput', 'task_id'),
                 trace_id=_atd_read_option(_atd_read_string)(x['trace_id']) if 'trace_id' in x else _atd_missing_json_field('TaskOutput', 'trace_id'),
                 timestamp_utc=_atd_read_string(x['timestamp_utc']) if 'timestamp_utc' in x else _atd_missing_json_field('TaskOutput', 'timestamp_utc'),
-                agent_metadata=AgentMetadata.from_json(x['agent_metadata']) if 'agent_metadata' in x else _atd_missing_json_field('TaskOutput', 'agent_metadata'),
+                agent_name=_atd_read_string(x['agent_name']) if 'agent_name' in x else _atd_missing_json_field('TaskOutput', 'agent_name'),
                 status=TaskStatus.from_json(x['status']) if 'status' in x else _atd_missing_json_field('TaskOutput', 'status'),
                 failure_reason=_atd_read_option(FailureReason.from_json)(x['failure_reason']) if 'failure_reason' in x else _atd_missing_json_field('TaskOutput', 'failure_reason'),
                 metrics=_atd_read_option(Metrics.from_json)(x['metrics']) if 'metrics' in x else _atd_missing_json_field('TaskOutput', 'metrics'),
@@ -725,7 +620,7 @@ class TaskOutput:
         res['task_id'] = _atd_write_string(self.task_id)
         res['trace_id'] = _atd_write_option(_atd_write_string)(self.trace_id)
         res['timestamp_utc'] = _atd_write_string(self.timestamp_utc)
-        res['agent_metadata'] = (lambda x: x.to_json())(self.agent_metadata)
+        res['agent_name'] = _atd_write_string(self.agent_name)
         res['status'] = (lambda x: x.to_json())(self.status)
         res['failure_reason'] = _atd_write_option((lambda x: x.to_json()))(self.failure_reason)
         res['metrics'] = _atd_write_option((lambda x: x.to_json()))(self.metrics)

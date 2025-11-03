@@ -10,25 +10,6 @@ type failure_reason = [
   | Other of string
 ]
 
-type model_info = {
-  model_name: string;
-  model_config: (string * abstract) list <python repr="dict">; (* key-value pairs for model configuration *)
-}
-
-type code_info = {
-  git_repo: string;
-  git_sha: string;
-  file_path: string;
-  class_name: string;
-  start_line: int;
-}
-
-type agent_metadata = {
-  code_info: code_info;
-  sub_agents: agent_metadata list;
-  model_info: model_info option;
-}
-
 type token_counts = {
   input_tokens: int;
   output_tokens: int;
@@ -56,7 +37,10 @@ type task_output = {
   task_id: string;
   trace_id: string option;
   timestamp_utc: string; (* ISO 8601 format *)
-  agent_metadata: agent_metadata;
+  (* NOTE: in the future we may want to store additional metadata
+     for reproducibility/comparison purposes
+   *)
+  agent_name: string;
   status: task_status;
   failure_reason: failure_reason option;
   metrics: metrics option;

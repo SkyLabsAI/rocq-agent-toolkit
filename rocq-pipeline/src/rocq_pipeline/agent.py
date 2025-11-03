@@ -43,39 +43,11 @@ class Tactic:
 
 
 class Agent:
-    def get_code_info(self) -> task_output.CodeInfo:
-        # Get code info using inspection
-        try:
-            file_path = inspect.getfile(self.__class__)
-            _, start_line = inspect.getsourcelines(self.__class__)
-        except (OSError, TypeError):
-            file_path = "unknown"
-            start_line = 0
-
-        # Try to get git info (TODO: implement actual git detection)
-        git_repo = "unknown"
-        git_sha = "unknown"
-
-        return task_output.CodeInfo(
-            git_repo=git_repo,
-            git_sha=git_sha,
-            file_path=file_path,
-            class_name=self.__class__.__name__,
-            start_line=start_line,
-        )
-
-    def get_subagent_metadata(self) -> list[task_output.AgentMetadata]:
-        return []
-
-    def get_model_info(self) -> task_output.ModelInfo | None:
-        return None
-
-    def get_metadata(self) -> task_output.AgentMetadata:
-        return task_output.AgentMetadata(
-            code_info=self.get_code_info(),
-            sub_agents=self.get_subagent_metadata(),
-            model_info=self.get_model_info(),
-        )
+    def name(self) -> str:
+        """Return the unique name of the agent."""
+        # NOTE: derivers will automatically get a reasonable name based on
+        # (nested) class name
+        return self.__class__.__qualname__
 
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         # Suppress unused argument warning for base class

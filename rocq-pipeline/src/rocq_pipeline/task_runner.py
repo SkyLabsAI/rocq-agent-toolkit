@@ -104,8 +104,6 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         else:
             agent = agent_type()
 
-        agent_metadata: task_output.AgentMetadata = agent.get_metadata()
-
         task_result: TaskResult = agent.run(rdm)
         rdm.quit()
 
@@ -129,7 +127,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             task_id=task_id,
             trace_id=trace_id,
             timestamp_utc=str(timestamp_utc),
-            agent_metadata=agent_metadata,
+            agent_name=agent.name(),
             status=task_status,
             failure_reason=task_failure_reason,
             metrics=task_metrics,
