@@ -8,7 +8,6 @@ from rocq_pipeline.schema import task_output
 from rocq_pipeline.schema.task_output import (
     ExecutionError,
     FailureReason,
-    ProofVerificationFailed
 )
 
 
@@ -71,7 +70,7 @@ class OneShotAgent(Agent):
         if isinstance(rdm.run_command(solve_tac), RocqDocManager.Err):
             return GiveUp(
                 final_doc_interaction,
-                reason=FailureReason(ProofVerificationFailed())
+                reason=FailureReason(ExecutionError(solve_tac))
             )
         return Finished(final_doc_interaction)
 
@@ -121,7 +120,7 @@ class TraceAgent(Agent):
         while True:
             if self._stop_on_failure and self.last_failed():
                 return self.give_up(
-                    FailureReason(ExecutionError()),
+                    FailureReason(ExecutionError("Tactic failure.")),
                 )
 
             if should_trace:
@@ -201,7 +200,7 @@ class ChoiceAgent(MarkovAgent):
 
         if self._check_index >= len(self._all_choices):
             return self.give_up(
-                FailureReason(ProofVerificationFailed())
+                FailureReason(ExecutionError("No more tactics to choose from."))
             )
 
         return Tactic(self._all_choices[self._check_index])

@@ -1,15 +1,18 @@
-(* ATD schema for task output in the Rocq pipeline *)
+<doc text="Per-task output format of the Rocq pipeline.">
 
 type task_status <doc text="Task status upon completion."> = [
   | Success <doc text="Task completed successfully.">
   | Failure <doc text="Task failed.">
 ]
 
+type resource_exhaustion_kind <doc text="Kind of resource exhaustion."> = [
+  | Timeout of int <doc text="Exceeded timelimit in seconds.">
+  | MaxLLMCalls of int <doc text="Exceeded LLM call limit.">
+]
+
 type failure_reason <doc text="Reason for task failure."> = [
-  | Timeout <doc text="Resource exhaustion: time.">
-  | ProofVerificationFailed <doc text="Agent unable to complete proof.">
-  | MaxLLMCallsReached <doc text="Resource exhaustion: LLM calls.">
-  | ExecutionError <doc text="Agent crash.">
+  | ResourceExhaustion of resource_exhaustion_kind <doc text="Resource exhaustion.">
+  | ExecutionError of string <doc text="Unrecoverable error.">
   | Other of string <doc text="User defined failure reason.">
 ]
 

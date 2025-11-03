@@ -395,6 +395,75 @@ class ResourceUsage:
 
 
 @dataclass
+class Timeout:
+    """Original type: resource_exhaustion_kind = [ ... | Timeout of ... | ... ]"""
+
+    value: int
+
+    @property
+    def kind(self) -> str:
+        """Name of the class representing this variant."""
+        return 'Timeout'
+
+    def to_json(self) -> Any:
+        return ['Timeout', _atd_write_int(self.value)]
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
+class MaxLLMCalls:
+    """Original type: resource_exhaustion_kind = [ ... | MaxLLMCalls of ... | ... ]"""
+
+    value: int
+
+    @property
+    def kind(self) -> str:
+        """Name of the class representing this variant."""
+        return 'MaxLLMCalls'
+
+    def to_json(self) -> Any:
+        return ['MaxLLMCalls', _atd_write_int(self.value)]
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
+class ResourceExhaustionKind:
+    """Original type: resource_exhaustion_kind = [ ... ]"""
+
+    value: Union[Timeout, MaxLLMCalls]
+
+    @property
+    def kind(self) -> str:
+        """Name of the class representing this variant."""
+        return self.value.kind
+
+    @classmethod
+    def from_json(cls, x: Any) -> 'ResourceExhaustionKind':
+        if isinstance(x, List) and len(x) == 2:
+            cons = x[0]
+            if cons == 'Timeout':
+                return cls(Timeout(_atd_read_int(x[1])))
+            if cons == 'MaxLLMCalls':
+                return cls(MaxLLMCalls(_atd_read_int(x[1])))
+            _atd_bad_json('ResourceExhaustionKind', x)
+        _atd_bad_json('ResourceExhaustionKind', x)
+
+    def to_json(self) -> Any:
+        return self.value.to_json()
+
+    @classmethod
+    def from_json_string(cls, x: str) -> 'ResourceExhaustionKind':
+        return cls.from_json(json.loads(x))
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
 class ProofOutputs:
     """Original type: proof_outputs = { ... }"""
 
@@ -457,51 +526,18 @@ class Metrics:
 
 
 @dataclass
-class Timeout:
-    """Original type: failure_reason = [ ... | Timeout | ... ]"""
+class ResourceExhaustion:
+    """Original type: failure_reason = [ ... | ResourceExhaustion of ... | ... ]"""
+
+    value: ResourceExhaustionKind
 
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'Timeout'
+        return 'ResourceExhaustion'
 
-    @staticmethod
-    def to_json() -> Any:
-        return 'Timeout'
-
-    def to_json_string(self, **kw: Any) -> str:
-        return json.dumps(self.to_json(), **kw)
-
-
-@dataclass
-class ProofVerificationFailed:
-    """Original type: failure_reason = [ ... | ProofVerificationFailed | ... ]"""
-
-    @property
-    def kind(self) -> str:
-        """Name of the class representing this variant."""
-        return 'ProofVerificationFailed'
-
-    @staticmethod
-    def to_json() -> Any:
-        return 'ProofVerificationFailed'
-
-    def to_json_string(self, **kw: Any) -> str:
-        return json.dumps(self.to_json(), **kw)
-
-
-@dataclass
-class MaxLLMCallsReached:
-    """Original type: failure_reason = [ ... | MaxLLMCallsReached | ... ]"""
-
-    @property
-    def kind(self) -> str:
-        """Name of the class representing this variant."""
-        return 'MaxLLMCallsReached'
-
-    @staticmethod
-    def to_json() -> Any:
-        return 'MaxLLMCallsReached'
+    def to_json(self) -> Any:
+        return ['ResourceExhaustion', (lambda x: x.to_json())(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -509,16 +545,17 @@ class MaxLLMCallsReached:
 
 @dataclass
 class ExecutionError:
-    """Original type: failure_reason = [ ... | ExecutionError | ... ]"""
+    """Original type: failure_reason = [ ... | ExecutionError of ... | ... ]"""
+
+    value: str
 
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
         return 'ExecutionError'
 
-    @staticmethod
-    def to_json() -> Any:
-        return 'ExecutionError'
+    def to_json(self) -> Any:
+        return ['ExecutionError', _atd_write_string(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -546,7 +583,7 @@ class Other:
 class FailureReason:
     """Original type: failure_reason = [ ... ]"""
 
-    value: Union[Timeout, ProofVerificationFailed, MaxLLMCallsReached, ExecutionError, Other]
+    value: Union[ResourceExhaustion, ExecutionError, Other]
 
     @property
     def kind(self) -> str:
@@ -555,18 +592,12 @@ class FailureReason:
 
     @classmethod
     def from_json(cls, x: Any) -> 'FailureReason':
-        if isinstance(x, str):
-            if x == 'Timeout':
-                return cls(Timeout())
-            if x == 'ProofVerificationFailed':
-                return cls(ProofVerificationFailed())
-            if x == 'MaxLLMCallsReached':
-                return cls(MaxLLMCallsReached())
-            if x == 'ExecutionError':
-                return cls(ExecutionError())
-            _atd_bad_json('FailureReason', x)
         if isinstance(x, List) and len(x) == 2:
             cons = x[0]
+            if cons == 'ResourceExhaustion':
+                return cls(ResourceExhaustion(ResourceExhaustionKind.from_json(x[1])))
+            if cons == 'ExecutionError':
+                return cls(ExecutionError(_atd_read_string(x[1])))
             if cons == 'Other':
                 return cls(Other(_atd_read_string(x[1])))
             _atd_bad_json('FailureReason', x)
