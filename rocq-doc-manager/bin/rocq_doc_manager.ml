@@ -144,7 +144,6 @@ let revert_config =
     ~decode:(fun (erase, index) -> (erase, (index, ()))) fields
 
 let _ =
-  (* FIXME can fail? *)
   API.declare api ~name:"revert_before"
     ~descr:"revert the cursor to an earlier point in the document"
     ~arg:(S.obj revert_config) ~ret:S.null @@ fun d (erase, index) ->

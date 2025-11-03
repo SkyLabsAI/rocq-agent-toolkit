@@ -266,38 +266,47 @@ let run api ~ic ~oc s =
     match SMap.find_opt f api.api_methods with
     | None       -> Response.method_not_found ~oc id f; loop s
     | Some(spec) ->
-    match spec with
-    | Pure(spec) ->
-        begin
-          match parse_params api spec.arg params with
-          | None         -> Response.invalid_params ~oc id f; loop s
-          | Some(params) ->
-          let (s, ret) = spec.impl s params in
-          let ret = to_json api spec.ret ret in
-          let response = J.Response.ok id ret in
-          Jsonrpc_tp.send ~oc (J.Packet.Response(response));
-          loop s
-        end
-    | Rslt(spec) ->
-        begin
-          match parse_params api spec.arg params with
-          | None         -> Response.invalid_params ~oc id f; loop s
-          | Some(params) ->
-          let (s, ret_or_err) = spec.impl s params in
-          let response =
-            match ret_or_err with
-            | Ok(ret)             ->
-                let ret = to_json api spec.ret ret in
-                J.Response.ok id ret
-            | Error(err, message) ->
-                let err = to_json api spec.err err in
-                let code = J.Response.Error.Code.RequestFailed in
-                let err = J.Response.Error.make ~data:err ~code ~message () in
-                J.Response.error id err
-          in
-          Jsonrpc_tp.send ~oc (J.Packet.Response(response));
-          loop s
-        end
+    let s =
+      match spec with
+      | Pure(spec) ->
+          begin
+            match parse_params api spec.arg params with
+            | None         -> Response.invalid_params ~oc id f; s
+            | Some(params) ->
+            match spec.impl s params with
+            | exception Invalid_argument(msg) ->
+                Response.invalid_params ~oc id ~msg f; s
+            | (s, ret)                        ->
+            let ret = to_json api spec.ret ret in
+            let response = J.Response.ok id ret in
+            Jsonrpc_tp.send ~oc (J.Packet.Response(response)); s
+          end
+      | Rslt(spec) ->
+          begin
+            match parse_params api spec.arg params with
+            | None         -> Response.invalid_params ~oc id f; s
+            | Some(params) ->
+            match spec.impl s params with
+            | exception Invalid_argument(msg) ->
+                Response.invalid_params ~oc id ~msg f; s
+            | (s, ret_or_err)                 ->
+            let response =
+              match ret_or_err with
+              | Ok(ret)             ->
+                  let ret = to_json api spec.ret ret in
+                  J.Response.ok id ret
+              | Error(err, message) ->
+                  let err = to_json api spec.err err in
+                  let code = J.Response.Error.Code.RequestFailed in
+                  let err =
+                    J.Response.Error.make ~data:err ~code ~message ()
+                  in
+                  J.Response.error id err
+            in
+            Jsonrpc_tp.send ~oc (J.Packet.Response(response)); s
+          end
+    in
+    loop s
   in
   loop s
 
