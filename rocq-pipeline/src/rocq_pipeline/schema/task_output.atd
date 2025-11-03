@@ -32,6 +32,7 @@ type metrics <doc text="Aggregated metrics for task."> = {
   ~llm_invocation_count <doc text="Total LLM calls for task."> : int;
   token_counts <doc text="Aggregated LLM token metrics for task."> : token_counts;
   resource_usage <doc text="Aggregated execution time metrics for task."> : resource_usage;
+  ~custom <python default="None"> : abstract;
 }
 
 type proof_outputs <doc text="Final proof script for completed proof task."> = {
