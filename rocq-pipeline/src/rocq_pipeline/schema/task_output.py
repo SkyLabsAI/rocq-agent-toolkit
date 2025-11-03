@@ -264,17 +264,17 @@ def _atd_write_option(write_elt: Callable[[Any], Any]) \
 class TokenCounts:
     """Original type: token_counts = { ... }"""
 
-    input_tokens: int
-    output_tokens: int
-    total_tokens: int
+    input_tokens: int = field(default_factory=lambda: 0)
+    output_tokens: int = field(default_factory=lambda: 0)
+    total_tokens: int = field(default_factory=lambda: 0)
 
     @classmethod
     def from_json(cls, x: Any) -> 'TokenCounts':
         if isinstance(x, dict):
             return cls(
-                input_tokens=_atd_read_int(x['input_tokens']) if 'input_tokens' in x else _atd_missing_json_field('TokenCounts', 'input_tokens'),
-                output_tokens=_atd_read_int(x['output_tokens']) if 'output_tokens' in x else _atd_missing_json_field('TokenCounts', 'output_tokens'),
-                total_tokens=_atd_read_int(x['total_tokens']) if 'total_tokens' in x else _atd_missing_json_field('TokenCounts', 'total_tokens'),
+                input_tokens=_atd_read_int(x['input_tokens']) if 'input_tokens' in x else 0,
+                output_tokens=_atd_read_int(x['output_tokens']) if 'output_tokens' in x else 0,
+                total_tokens=_atd_read_int(x['total_tokens']) if 'total_tokens' in x else 0,
             )
         else:
             _atd_bad_json('TokenCounts', x)
@@ -364,17 +364,17 @@ class TaskStatus:
 class ResourceUsage:
     """Original type: resource_usage = { ... }"""
 
-    execution_time_sec: float
-    cpu_time_sec: float
-    gpu_time_sec: float
+    execution_time_sec: float = field(default_factory=lambda: 0.0)
+    cpu_time_sec: float = field(default_factory=lambda: 0.0)
+    gpu_time_sec: float = field(default_factory=lambda: 0.0)
 
     @classmethod
     def from_json(cls, x: Any) -> 'ResourceUsage':
         if isinstance(x, dict):
             return cls(
-                execution_time_sec=_atd_read_float(x['execution_time_sec']) if 'execution_time_sec' in x else _atd_missing_json_field('ResourceUsage', 'execution_time_sec'),
-                cpu_time_sec=_atd_read_float(x['cpu_time_sec']) if 'cpu_time_sec' in x else _atd_missing_json_field('ResourceUsage', 'cpu_time_sec'),
-                gpu_time_sec=_atd_read_float(x['gpu_time_sec']) if 'gpu_time_sec' in x else _atd_missing_json_field('ResourceUsage', 'gpu_time_sec'),
+                execution_time_sec=_atd_read_float(x['execution_time_sec']) if 'execution_time_sec' in x else 0.0,
+                cpu_time_sec=_atd_read_float(x['cpu_time_sec']) if 'cpu_time_sec' in x else 0.0,
+                gpu_time_sec=_atd_read_float(x['gpu_time_sec']) if 'gpu_time_sec' in x else 0.0,
             )
         else:
             _atd_bad_json('ResourceUsage', x)
@@ -495,26 +495,26 @@ class ProofOutputs:
 class Metrics:
     """Original type: metrics = { ... }"""
 
-    llm_invocation_count: int
     token_counts: TokenCounts
     resource_usage: ResourceUsage
+    llm_invocation_count: int = field(default_factory=lambda: 0)
 
     @classmethod
     def from_json(cls, x: Any) -> 'Metrics':
         if isinstance(x, dict):
             return cls(
-                llm_invocation_count=_atd_read_int(x['llm_invocation_count']) if 'llm_invocation_count' in x else _atd_missing_json_field('Metrics', 'llm_invocation_count'),
                 token_counts=TokenCounts.from_json(x['token_counts']) if 'token_counts' in x else _atd_missing_json_field('Metrics', 'token_counts'),
                 resource_usage=ResourceUsage.from_json(x['resource_usage']) if 'resource_usage' in x else _atd_missing_json_field('Metrics', 'resource_usage'),
+                llm_invocation_count=_atd_read_int(x['llm_invocation_count']) if 'llm_invocation_count' in x else 0,
             )
         else:
             _atd_bad_json('Metrics', x)
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
-        res['llm_invocation_count'] = _atd_write_int(self.llm_invocation_count)
         res['token_counts'] = (lambda x: x.to_json())(self.token_counts)
         res['resource_usage'] = (lambda x: x.to_json())(self.resource_usage)
+        res['llm_invocation_count'] = _atd_write_int(self.llm_invocation_count)
         return res
 
     @classmethod
@@ -620,13 +620,13 @@ class TaskOutput:
 
     run_id: str
     task_id: str
-    trace_id: Optional[str]
     timestamp_utc: str
     agent_name: str
     status: TaskStatus
-    failure_reason: Optional[FailureReason]
-    metrics: Optional[Metrics]
+    metrics: Metrics
     outputs: ProofOutputs
+    trace_id: Optional[str] = None
+    failure_reason: Optional[FailureReason] = None
 
     @classmethod
     def from_json(cls, x: Any) -> 'TaskOutput':
@@ -634,13 +634,13 @@ class TaskOutput:
             return cls(
                 run_id=_atd_read_string(x['run_id']) if 'run_id' in x else _atd_missing_json_field('TaskOutput', 'run_id'),
                 task_id=_atd_read_string(x['task_id']) if 'task_id' in x else _atd_missing_json_field('TaskOutput', 'task_id'),
-                trace_id=_atd_read_option(_atd_read_string)(x['trace_id']) if 'trace_id' in x else _atd_missing_json_field('TaskOutput', 'trace_id'),
                 timestamp_utc=_atd_read_string(x['timestamp_utc']) if 'timestamp_utc' in x else _atd_missing_json_field('TaskOutput', 'timestamp_utc'),
                 agent_name=_atd_read_string(x['agent_name']) if 'agent_name' in x else _atd_missing_json_field('TaskOutput', 'agent_name'),
                 status=TaskStatus.from_json(x['status']) if 'status' in x else _atd_missing_json_field('TaskOutput', 'status'),
-                failure_reason=_atd_read_option(FailureReason.from_json)(x['failure_reason']) if 'failure_reason' in x else _atd_missing_json_field('TaskOutput', 'failure_reason'),
-                metrics=_atd_read_option(Metrics.from_json)(x['metrics']) if 'metrics' in x else _atd_missing_json_field('TaskOutput', 'metrics'),
+                metrics=Metrics.from_json(x['metrics']) if 'metrics' in x else _atd_missing_json_field('TaskOutput', 'metrics'),
                 outputs=ProofOutputs.from_json(x['outputs']) if 'outputs' in x else _atd_missing_json_field('TaskOutput', 'outputs'),
+                trace_id=_atd_read_string(x['trace_id']) if 'trace_id' in x else None,
+                failure_reason=FailureReason.from_json(x['failure_reason']) if 'failure_reason' in x else None,
             )
         else:
             _atd_bad_json('TaskOutput', x)
@@ -649,13 +649,15 @@ class TaskOutput:
         res: Dict[str, Any] = {}
         res['run_id'] = _atd_write_string(self.run_id)
         res['task_id'] = _atd_write_string(self.task_id)
-        res['trace_id'] = _atd_write_option(_atd_write_string)(self.trace_id)
         res['timestamp_utc'] = _atd_write_string(self.timestamp_utc)
         res['agent_name'] = _atd_write_string(self.agent_name)
         res['status'] = (lambda x: x.to_json())(self.status)
-        res['failure_reason'] = _atd_write_option((lambda x: x.to_json()))(self.failure_reason)
-        res['metrics'] = _atd_write_option((lambda x: x.to_json()))(self.metrics)
+        res['metrics'] = (lambda x: x.to_json())(self.metrics)
         res['outputs'] = (lambda x: x.to_json())(self.outputs)
+        if self.trace_id is not None:
+            res['trace_id'] = _atd_write_string(self.trace_id)
+        if self.failure_reason is not None:
+            res['failure_reason'] = (lambda x: x.to_json())(self.failure_reason)
         return res
 
     @classmethod

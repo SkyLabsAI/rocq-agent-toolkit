@@ -109,7 +109,11 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
         # TODO: integrate with opentelemetry, properly instrument the agent
         # framework and derived agents
-        task_metrics: task_output.Metrics | None = None
+        task_metrics: task_output.Metrics = task_output.Metrics(
+            llm_invocation_count=0,
+            token_counts=task_output.TokenCounts(),
+            resource_usage=task_output.ResourceUsage(),
+        )
 
         task_failure_reason: task_output.FailureReason | None = None
         if isinstance(task_result, GiveUp):
