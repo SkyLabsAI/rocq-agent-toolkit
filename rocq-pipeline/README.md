@@ -50,5 +50,23 @@ class MyRunnerAgent(MyAgent):
 
 If you do not specify a `build` method, then the default constructor is used to construct an instance of your agent.
 
+### Task Output
+
+Currently, the results for each task are persisted (in order) in a single `.jsonl` file.
+The name of this file is of the form `<name>_results_<timestamp>.jsonl`.
+
+If `--task-file` is used then the name is the stem of the task file; if `--task-json` is used then the name is `"tasks"`.
+The `--output-dir` flag can be used to specify where the result file should be created; the working directory is used by default.
+
+#### Schema
+
+cf. [src/rocq_pipeline/schema/task_output.atd](./src/rocq_pipeline/schema/task_output.atd)
+
+#### TODO: Opentelemetry
+
+We aspire to instrument the framework with `opentelemetry` so that rich metrics/logs/telemetry may be correlated with specific (summary) task results.
+
+**Note**: it should be easy for custom agents to instrument additional metrics/logs/telemetry.
+
 ## Analysis
 Forthcoming.
