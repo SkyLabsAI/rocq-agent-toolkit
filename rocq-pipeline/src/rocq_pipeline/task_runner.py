@@ -85,7 +85,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         # TODO: integrate with opentelemetry, properly instrument the agent
         # framework and derived agents
         trace_id: str | None = None
-        timestamp_utc = datetime.now(timezone.utc).timestamp()
+        timestamp_iso_8601 = datetime.now(timezone.utc).isoformat()
 
         # NOTE: we could use a context manager here, and automatically call
         # quit when the scope is closed.
@@ -126,7 +126,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             run_id=run_id,
             task_id=task_id,
             trace_id=trace_id,
-            timestamp_utc=str(timestamp_utc),
+            timestamp_utc=timestamp_iso_8601,
             agent_name=agent.name(),
             status=task_status,
             failure_reason=task_failure_reason,
