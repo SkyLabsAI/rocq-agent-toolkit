@@ -1,0 +1,29 @@
+Rocq Document Manager
+=====================
+
+This utility can be used to programmatically edit a Rocq source file.
+
+Usage Summary
+-------------
+
+The document manager can be started by running with the following command.
+```sh
+rocq-doc-manager [ROCQ_ARGS] FILE
+```
+In effect, the document manager expects the same command-line arguments as the
+`rocq compile` command does.
+
+Once the document manager is running, it can be interacted with using JSON-RPC
+2.0 requests wrapped in a simple transfer protocol layer. The document manager
+waits for request packages on its `stdin`, and sends the corresponding replies
+to its `stdout`. Request are handled sequentially, and in order.
+
+Transfer Protocol
+-----------------
+
+Packets sent to / received from the document manager have the following shape.
+```
+Content-Length: <size>\r\n\r\n<data>
+```
+The data part is a JSON string complying to the JSON-RPC 2.0 protocol, and the
+size part gives the size of the JSON string in bytes.

@@ -30,171 +30,215 @@ Content-Length: <size>\r\n\r\n<data>
 The data part is a JSON string complying to the JSON-RPC 2.0 protocol, and the
 size part gives the size of the JSON string in bytes.
 
-Supported Requests
-------------------
+API Objects
+-----------
 
-### `load_file`
+### `rocq_source`
 
-- Arguments: none.
-- Description: add the (unprocessed) file contents to the document. Note that
-  this involves running sentence-splitting, which requires the input file to
-  not have syntax errors.
-- Failure mode: recoverable failure.
-- Failure payload: object with `loc` field (error location, `null` if none).
-- Response payload: `null`.
+- Description: Rocq source file information.
+- Field `file`: a string.
+- Field `dirpath`: either `null` or a string.
 
-### `insert_blanks`
+### `rocq_loc`
 
-- Arguments: `text` (string).
-- Description: insert and process blanks at the cursor.
-- Failure mode: never fails.
-- Response payload: `null`.
+- Description: Rocq source code location.
+- Field `ep`: end position (as an integer).
+- Field `bp`: start position (as an integer).
+- Field `bol_pos_last`: position of the beginning of end line (as an integer).
+- Field `line_nb_last`: end line number (as an integer).
+- Field `bol_pos`: position of the beginning of start line (as an integer).
+- Field `line_nb`: start line number (as an integer).
+- Field `fname`: source file identification if not run as a toplevel (as either `null` or an instance of the `rocq_source` object).
 
-### `insert_command`
+### `command_data`
 
-- Arguments: `text` (string)
-- Description: insert and process a command at the cursor.
-- Failure mode: recoverable failure.
-- Failure payload: object with `loc` field (error location, `null` if none).
-- Response payload: object with `open_subgoals` (null or string),
-  `new_constants` (string list), `new_inductives` (string list).
+- Description: data gathered while running a Rocq command.
+- Field `removed_inductives`: inductives removed by the command (as a list where each element is a string).
+- Field `new_inductives`: inductives introduced by the command (as a list where each element is a string).
+- Field `removed_constants`: constants removed by the command (as a list where each element is a string).
+- Field `new_constants`: constants introduced by the command (as a list where each element is a string).
+- Field `open_subgoals`: open sub-goals, if in a proof (as either `null` or a string).
 
-### `run_command`
+### `revert_config`
 
-- Arguments: `text` (string)
-- Description: process a command, without inserting it in the document.
-- Failure mode: recoverable failure.
-- Failure payload: object with `loc` field (error location, `null` if none).
-- Response payload: object with `open_subgoals` (null or string),
-  `new_constants` (string list), `new_inductives` (string list).
+- Description: input configuration for the `revert_before` method.
+- Field `index`: index of the item before which the cursor should be revered (one-past-the-end index allowed) (as an integer).
+- Field `erase`: boolean indicating whether reverted items should be erased (as a boolean).
 
-### `cursor_index`
+### `prefix_item`
 
-- Arguments: none.
-- Description: gives the index at the cursor.
-- Failure mode: never fails.
-- Response payload: integer.
+- Description: document prefix item, appearing before the cursor.
+- Field `text`: a string.
+- Field `offset`: an integer.
+- Field `kind`: a string.
 
-### `revert_before`
+### `suffix_item`
 
-- Arguments: `erase` (boolean), `index` (integer).
-- Description: revert the cursor before the indicated processed item, erasing
-  the reverted commands as instructed.
-- Failure mode: argument validation.
-- Response payload: `null`.
+- Description: document suffix item, appearing after the cursor.
+- Field `text`: a string.
+- Field `kind`: a string.
+
+### `compile_result`
+
+- Description: result of the `compile` method.
+- Field `error`: non-null if success is false (as either `null` or a string).
+- Field `success`: a boolean.
+- Field `stderr`: a string.
+- Field `stdout`: a string.
+
+### `query_config`
+
+- Description: input config for queries.
+- Field `index`: an integer.
+- Field `text`: a string.
+
+### `query_all_config`
+
+- Description: input config for multi-result queries.
+- Field `indices`: either `null` or a list where each element is an integer.
+- Field `text`: a string.
+
+API Methods
+------------
 
 ### `advance_to`
 
-- Arguments: `index` (integer).
-- Description: advance the cursor before the indicated unprocessed item
-  (one-past-the-end index allowed).
-- Failure mode: recoverable failure, argument validation.
-- Failure payload: object with `loc` field (error location, `null` if none).
-- Response payload: `null`.
-
-### `go_to`
-
-- Arguments: `index` (integer).
-- Description: move the cursor right before the indicated item (whether it is
-  processed or not, one-past-the-end index allowed).
-- Failure mode: recoverable failure, argument validation.
-- Failure payload: object with `loc` field (error location, `null` if none).
-- Response payload: `null`.
+- Description: advance the cursor before the indicated unprocessed item.
+- Argument: integer index before which to advance the cursor (one-past-the-end index allowed) (as an integer).
+- Response payload: a `null` value.
+- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Failure mode: recoverable failure.
 
 ### `clear_suffix`
 
-- Arguments: none.
 - Description: remove all unprocessed commands from the document.
+- Argument: a `null` value.
+- Response payload: a `null` value.
 - Failure mode: never fails.
-- Response payload: `null`.
-
-### `run_step`
-
-- Arguments: none.
-- Description: advance the cursor by stepping over an unprocessed item.
-- Failure mode: recoverable failure.
-- Failure payload: object with `loc` field (error location, `null` if none).
-- Response payload: `null` if a blank step was run, same as `insert_command`
-  otherwise.
-
-### `doc_prefix`
-
-- Arguments: none.
-- Description: give the list of all processed commands (before the cursor).
-- Failure mode: never fails.
-- Response payload: list of objects with `kind` (string, using `"blanks"` for
-  blanks), `offset` (integer), and `text` (string).
-
-### `doc_suffix`
-
-- Arguments: none.
-- Description: give the list of all unprocessed commands (after the cursor).
-- Failure mode: never fails.
-- Response payload: list of objects with `kind` (string, using `"blanks"` for
-  blanks), and `text` (string).
-
-### `has_suffix`
-
-- Arguments: none.
-- Description: indicates whether there is a document suffix.
-- Failure mode: never fails.
-- Response payload: boolean.
 
 ### `commit`
 
-- Arguments: `include_suffix` (boolean).
-- Description: write the current document contents to the file, including the
-  unprocessed suffix as instructed.
+- Description: write the current document contents to the file.
+- Argument: indicate whether he suffix should be included (as a boolean).
+- Response payload: a `null` value.
 - Failure mode: never fails.
-- Response payload: `null`.
 
 ### `compile`
 
-- Arguments: none.
 - Description: compile the current contents of the file with `rocq compile`.
+- Argument: a `null` value.
+- Response payload: an instance of the `compile_result` object.
 - Failure mode: never fails.
-- Response payload: object with `success` (boolean), `stdout` (string),
-  `stderr` (string), `error` (string, only if success is `false`).
+
+### `cursor_index`
+
+- Description: gives the index at the cursor.
+- Argument: a `null` value.
+- Response payload: an integer.
+- Failure mode: never fails.
+
+### `doc_prefix`
+
+- Description: gives the list of all processed commands, appearing before the cursor.
+- Argument: a `null` value.
+- Response payload: a list where each element is an instance of the `prefix_item` object.
+- Failure mode: never fails.
+
+### `doc_suffix`
+
+- Description: gives the list of all unprocessed commands, appearing after the cursor.
+- Argument: a `null` value.
+- Response payload: a list where each element is an instance of the `suffix_item` object.
+- Failure mode: never fails.
 
 ### `get_feedback`
 
-- Arguments: none.
-- Description: gets Rocq's feedback for the last run command.
+- Description: gets Rocq's feedback for the last run command (if any).
+- Argument: a `null` value.
+- Response payload: list of objects with `kind` (array with single string), `text` (string), `loc` (location) (as a list where each element is a JSON value).
 - Failure mode: never fails.
-- Response payload: list of objects with `kind` (array with single string),
-  `text` (string), `loc` (location).
 
-### `text_query`
+### `go_to`
 
-- Arguments: `text` (string), `index` (integer).
-- Description: runs the given query at the cursor, not updating the state.
+- Description: move the cursor right before the indicated item (whether it is already processed or not).
+- Argument: integer index before which to advance the cursor (one-past-the-end index allowed) (as an integer).
+- Response payload: a `null` value.
+- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
 - Failure mode: recoverable failure.
-- Failure payload: none.
-- Response payload: string with the query's result (as taken from the "info" /
-  "notice" feedback with the given index).
 
-### `text_query_all`
+### `has_suffix`
 
-- Arguments: `text` (string), `indices` (`null` or integer).
-- Description: runs the given query at the cursor, not updating the state.
+- Description: indicates whether the document has a suffix (unprocessed items).
+- Argument: a `null` value.
+- Response payload: a boolean.
+- Failure mode: never fails.
+
+### `insert_blanks`
+
+- Description: insert and process blanks at the cursor.
+- Argument: a string.
+- Response payload: a `null` value.
+- Failure mode: never fails.
+
+### `insert_command`
+
+- Description: insert and process a command at the cursor.
+- Argument: a string.
+- Response payload: an instance of the `command_data` object.
+- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
 - Failure mode: recoverable failure.
-- Failure payload: none.
-- Response payload: list of strings with the query's result (as taken from the
-  "info" / "notice" feedback with the given indices, or all "info" / "notice"
-  feedback if `null`).
 
 ### `json_query`
 
-- Arguments: `text` (string), `index` (integer).
 - Description: runs the given query at the cursor, not updating the state.
+- Argument: an instance of the `query_config` object.
+- Response payload: arbitrary JSON data, as returned by the query as JSON text, taken from the "info" / "notice" feedback with the given index (as a JSON value).
+- Error payload: a `null` value.
 - Failure mode: recoverable failure.
-- Failure payload: none.
-- Response payload: arbitrary JSON data, as returned by the query (as JSON
-  text, take from the "info" / "notice" feedback with the given index).
 
-### `quit`
+### `load_file`
 
-- Arguments: none.
-- Description: stop the document manager (sub-process terminated).
+- Description: adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors).
+- Argument: a `null` value.
+- Response payload: a `null` value.
+- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Failure mode: recoverable failure.
+
+### `revert_before`
+
+- Description: revert the cursor to an earlier point in the document.
+- Argument: an instance of the `revert_config` object.
+- Response payload: a `null` value.
 - Failure mode: never fails.
-- Response payload: `null`.
+
+### `run_command`
+
+- Description: process a command at the cursor without inserting it in the document.
+- Argument: a string.
+- Response payload: an instance of the `command_data` object.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
+### `run_step`
+
+- Description: advance the cursor by stepping over an unprocessed item.
+- Argument: a `null` value.
+- Response payload: data for the command that was run, if any (as either `null` or an instance of the `command_data` object).
+- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Failure mode: recoverable failure.
+
+### `text_query`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Argument: an instance of the `query_config` object.
+- Response payload: query's result, as taken from the "info"  "notice" feedback at the given index (as a string).
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
+### `text_query_all`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Argument: an instance of the `query_all_config` object.
+- Response payload: a list where each element is a string.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.

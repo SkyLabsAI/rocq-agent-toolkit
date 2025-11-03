@@ -4,3 +4,12 @@
 (env
  (_
   (flags :standard -warn-error +A -w +A-4-29-40..45-48-58..59-63..65-68-70)))
+
+(rule
+ (mode promote)
+ (action
+  (with-stdout-to README.md
+   (progn
+    (cat README.md.prefix)
+    (echo "\n")
+    (run rocq-doc-manager --api-docs)))))
