@@ -64,7 +64,10 @@ class RocqDocManager:
         # Reading the response.
         header = self._process.stdout.readline().decode()
         _ = self._process.stdout.readline()
-        nb_bytes = int(header[len(prefix):-2])
+        try:
+            nb_bytes = int(header[len(prefix):-2])
+        except:
+            raise self.Error(f"Failed to parse response: {header}")
         response = self._process.stdout.read(nb_bytes).decode()
         response = json.loads(response)
         if "error" in response:
