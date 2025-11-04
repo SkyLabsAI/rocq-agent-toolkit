@@ -75,8 +75,17 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
     tasks: list[dict] = []
     tasks_name: str = "tasks"
     if arguments.task_json is not None:
+        # TODO: if we had a schema we could automatically validate that the
+        # task JSON has the expected shape.
         assert arguments.task_file is None
-        tasks = [arguments.task_json]
+        if isinstance(arguments.task_json, dict):
+            assert({"file", "locator"} <= arguments.task_json.keys())
+            tasks = [arguments.task_json]
+        elif isinstance(arguments.task_json, list):
+            for task in arguments.task_json:
+                assert isinstance(task, dict)
+                assert({"file", "locator"} <= task.keys())
+            tasks = arguments.task_json
     elif arguments.task_file is not None:
         (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
         tasks_name = arguments.task_file.stem
