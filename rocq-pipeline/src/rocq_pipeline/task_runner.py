@@ -108,14 +108,6 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         task_result: TaskResult = agent.run(rdm)
         rdm.quit()
 
-        # TODO: integrate with opentelemetry, properly instrument the agent
-        # framework and derived agents
-        task_metrics: task_output.Metrics = task_output.Metrics(
-            llm_invocation_count=0,
-            token_counts=task_output.TokenCounts(),
-            resource_usage=task_output.ResourceUsage(),
-        )
-
         task_failure_reason: task_output.FailureReason | None = None
         if isinstance(task_result, GiveUp):
             task_status = task_output.TaskStatus(task_output.Failure())
@@ -137,7 +129,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             status=task_status,
             results=task_result.final_doc_interaction,
             failure_reason=task_failure_reason,
-            metrics=task_metrics,
+            metrics=task_result.metrics,
         )
 
     with ThreadPoolExecutor(num_workers) as tpe:

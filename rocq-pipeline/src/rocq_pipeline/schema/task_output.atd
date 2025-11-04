@@ -35,8 +35,8 @@ type resource_usage <doc text="Aggregated execution time metrics for task."> = {
 
 type metrics <doc text="Aggregated metrics for task."> = {
   ~llm_invocation_count <doc text="Total LLM calls for task."> : int;
-  token_counts <doc text="Aggregated LLM token metrics for task."> : token_counts;
-  resource_usage <doc text="Aggregated execution time metrics for task."> : resource_usage;
+  ~token_counts <doc text="Aggregated LLM token metrics for task."> <python default="TokenCounts()"> : token_counts;
+  ~resource_usage <doc text="Aggregated execution time metrics for task."> <python default="ResourceUsage()"> : resource_usage;
   ~custom <doc text="Additional user defined metrics."> <python default="None"> : abstract;
 }
 

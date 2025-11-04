@@ -537,18 +537,18 @@ class ResourceExhaustionKind:
 class Metrics:
     """Original type: metrics = { ... }"""
 
-    token_counts: TokenCounts
-    resource_usage: ResourceUsage
     llm_invocation_count: int = field(default_factory=lambda: 0)
+    token_counts: TokenCounts = field(default_factory=lambda: TokenCounts())
+    resource_usage: ResourceUsage = field(default_factory=lambda: ResourceUsage())
     custom: Any = field(default_factory=lambda: None)
 
     @classmethod
     def from_json(cls, x: Any) -> 'Metrics':
         if isinstance(x, dict):
             return cls(
-                token_counts=TokenCounts.from_json(x['token_counts']) if 'token_counts' in x else _atd_missing_json_field('Metrics', 'token_counts'),
-                resource_usage=ResourceUsage.from_json(x['resource_usage']) if 'resource_usage' in x else _atd_missing_json_field('Metrics', 'resource_usage'),
                 llm_invocation_count=_atd_read_int(x['llm_invocation_count']) if 'llm_invocation_count' in x else 0,
+                token_counts=TokenCounts.from_json(x['token_counts']) if 'token_counts' in x else TokenCounts(),
+                resource_usage=ResourceUsage.from_json(x['resource_usage']) if 'resource_usage' in x else ResourceUsage(),
                 custom=(lambda x: x)(x['custom']) if 'custom' in x else None,
             )
         else:
@@ -556,9 +556,9 @@ class Metrics:
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
+        res['llm_invocation_count'] = _atd_write_int(self.llm_invocation_count)
         res['token_counts'] = (lambda x: x.to_json())(self.token_counts)
         res['resource_usage'] = (lambda x: x.to_json())(self.resource_usage)
-        res['llm_invocation_count'] = _atd_write_int(self.llm_invocation_count)
         res['custom'] = (lambda x: x)(self.custom)
         return res
 

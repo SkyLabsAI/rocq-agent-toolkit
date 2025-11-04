@@ -18,6 +18,7 @@ def close_proof(rdm: RocqDocManager) -> None:
 @dataclass
 class TaskResult:
     """The final doc interaction that yielded the result."""
+    metrics: task_output.Metrics
     final_doc_interaction: str
     message: str
 
@@ -52,6 +53,7 @@ class Agent:
         # Suppress unused argument warning for base class
         _ = rdm
         return GiveUp(
+            metrics=task_output.Metrics(),
             final_doc_interaction="",
             reason=FailureReason(task_output.Other("not implemented"))
         )
@@ -69,10 +71,14 @@ class OneShotAgent(Agent):
         final_doc_interaction: str = solve_tac
         if isinstance(rdm.run_command(solve_tac), RocqDocManager.Err):
             return GiveUp(
-                final_doc_interaction,
+                metrics=task_output.Metrics(),
+                final_doc_interaction=final_doc_interaction,
                 reason=FailureReason(ExecutionError(solve_tac))
             )
-        return Finished(final_doc_interaction)
+        return Finished(
+            metrics=task_output.Metrics(),
+            final_doc_interaction=final_doc_interaction
+        )
 
 
 # NOTE: this agent does not support backtracking
@@ -155,20 +161,23 @@ class TraceAgent(Agent):
         # Base implementation does nothing - subclasses can override
         _ = err
 
-    def finished(self, message: str | None = None) -> Finished:
+    def finished(self, message: str | None = None, metrics: task_output.Metrics = task_output.Metrics()) -> Finished:
         final_doc_interaction = self.final_doc_interaction()
         if message:
             return Finished(
+                metrics=metrics,
                 message=message,
                 final_doc_interaction=final_doc_interaction
             )
         else:
             return Finished(
+                metrics=metrics,
                 final_doc_interaction=final_doc_interaction
             )
 
-    def give_up(self, reason: FailureReason) -> GiveUp:
+    def give_up(self, reason: FailureReason, metrics: task_output.Metrics = task_output.Metrics()) -> GiveUp:
         return GiveUp(
+            metrics=metrics,
             final_doc_interaction=self.final_doc_interaction(),
             reason=reason
         )
