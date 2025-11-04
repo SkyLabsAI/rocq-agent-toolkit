@@ -2,6 +2,7 @@ import re
 from typing import Callable, override
 
 from rocq_doc_manager import RocqDocManager
+from rocq_pipeline.schema import task_output
 
 
 def scan_to(rdm: RocqDocManager, fn: Callable[[str], bool]) -> bool:
@@ -17,9 +18,15 @@ def scan_to(rdm: RocqDocManager, fn: Callable[[str], bool]) -> bool:
 class NotFound(Exception):
     pass
 
+
 class Locator:
     def __call__(self, rdm: RocqDocManager) -> bool:
         return False
+
+    def task_kind(self) -> task_output.TaskKind:
+        return task_output.TaskKind(
+            task_output.OtherTask("unknown")
+        )
 
 
 class FirstAdmit(Locator):
@@ -29,6 +36,11 @@ class FirstAdmit(Locator):
             return tac.startswith("admit")
 
         return scan_to(rdm, is_admit)
+
+    def task_kind(self) -> task_output.TaskKind:
+        return task_output.TaskKind(
+            task_output.OtherTask("admit")
+        )
 
 
 class FirstLemma(Locator):
@@ -63,6 +75,11 @@ class FirstLemma(Locator):
 
         print("failed to find lemma")
         return False
+
+    def task_kind(self) -> task_output.TaskKind:
+        return task_output.TaskKind(
+            task_output.FullProofTask()
+        )
 
 
 def parse_locator(s: str) -> Locator:

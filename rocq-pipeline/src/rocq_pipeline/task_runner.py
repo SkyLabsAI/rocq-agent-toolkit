@@ -13,6 +13,7 @@ import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
 from rocq_pipeline.agent import Agent, Finished, GiveUp, TaskResult
 from rocq_pipeline.auto_agent import AutoAgent
+from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
 
 
@@ -128,6 +129,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
         return task_output.TaskOutput(
             run_id=run_id,
+            task_kind=parse_locator(task["locator"]).task_kind(),
             task_id=task_id,
             trace_id=trace_id,
             timestamp_utc=timestamp_iso_8601,

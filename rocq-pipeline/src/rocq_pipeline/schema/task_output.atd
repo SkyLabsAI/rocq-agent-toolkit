@@ -1,5 +1,10 @@
 <doc text="Per-task output format of the Rocq pipeline.">
 
+type task_kind <doc text="Kind of task."> = [
+  | FullProofTask <doc text="Fully proving a Rocq goal.">
+  | OtherTask of string <doc text="User defined task kind.">
+]
+
 type task_status <doc text="Task status upon completion."> = [
   | Success <doc text="Task completed successfully.">
   | Failure <doc text="Task failed.">
@@ -41,6 +46,7 @@ type proof_outputs <doc text="Final proof script for completed proof task."> = {
 
 type task_output <doc text="Agent output for a single task."> = {
   run_id <doc text="Unique identifier for the run (UUID)."> : string;
+  task_kind <doc text="Kind of task."> : task_kind;
   task_id <doc text="Unique task identifier (file+task locator)."> : string;
   ?trace_id <doc text="Unique trace identifier for corresponding opentelemetry output."> : string option;
   timestamp_utc <doc text="Timestamp when task began (ISO 8601)."> : string;

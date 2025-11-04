@@ -361,6 +361,76 @@ class TaskStatus:
 
 
 @dataclass
+class FullProofTask:
+    """Original type: task_kind = [ ... | FullProofTask | ... ]"""
+
+    @property
+    def kind(self) -> str:
+        """Name of the class representing this variant."""
+        return 'FullProofTask'
+
+    @staticmethod
+    def to_json() -> Any:
+        return 'FullProofTask'
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
+class OtherTask:
+    """Original type: task_kind = [ ... | OtherTask of ... | ... ]"""
+
+    value: str
+
+    @property
+    def kind(self) -> str:
+        """Name of the class representing this variant."""
+        return 'OtherTask'
+
+    def to_json(self) -> Any:
+        return ['OtherTask', _atd_write_string(self.value)]
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
+class TaskKind:
+    """Original type: task_kind = [ ... ]"""
+
+    value: Union[FullProofTask, OtherTask]
+
+    @property
+    def kind(self) -> str:
+        """Name of the class representing this variant."""
+        return self.value.kind
+
+    @classmethod
+    def from_json(cls, x: Any) -> 'TaskKind':
+        if isinstance(x, str):
+            if x == 'FullProofTask':
+                return cls(FullProofTask())
+            _atd_bad_json('TaskKind', x)
+        if isinstance(x, List) and len(x) == 2:
+            cons = x[0]
+            if cons == 'OtherTask':
+                return cls(OtherTask(_atd_read_string(x[1])))
+            _atd_bad_json('TaskKind', x)
+        _atd_bad_json('TaskKind', x)
+
+    def to_json(self) -> Any:
+        return self.value.to_json()
+
+    @classmethod
+    def from_json_string(cls, x: str) -> 'TaskKind':
+        return cls.from_json(json.loads(x))
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
 class ResourceUsage:
     """Original type: resource_usage = { ... }"""
 
@@ -622,6 +692,7 @@ class TaskOutput:
     """Original type: task_output = { ... }"""
 
     run_id: str
+    task_kind: TaskKind
     task_id: str
     timestamp_utc: str
     agent_name: str
@@ -636,6 +707,7 @@ class TaskOutput:
         if isinstance(x, dict):
             return cls(
                 run_id=_atd_read_string(x['run_id']) if 'run_id' in x else _atd_missing_json_field('TaskOutput', 'run_id'),
+                task_kind=TaskKind.from_json(x['task_kind']) if 'task_kind' in x else _atd_missing_json_field('TaskOutput', 'task_kind'),
                 task_id=_atd_read_string(x['task_id']) if 'task_id' in x else _atd_missing_json_field('TaskOutput', 'task_id'),
                 timestamp_utc=_atd_read_string(x['timestamp_utc']) if 'timestamp_utc' in x else _atd_missing_json_field('TaskOutput', 'timestamp_utc'),
                 agent_name=_atd_read_string(x['agent_name']) if 'agent_name' in x else _atd_missing_json_field('TaskOutput', 'agent_name'),
@@ -651,6 +723,7 @@ class TaskOutput:
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
         res['run_id'] = _atd_write_string(self.run_id)
+        res['task_kind'] = (lambda x: x.to_json())(self.task_kind)
         res['task_id'] = _atd_write_string(self.task_id)
         res['timestamp_utc'] = _atd_write_string(self.timestamp_utc)
         res['agent_name'] = _atd_write_string(self.agent_name)
