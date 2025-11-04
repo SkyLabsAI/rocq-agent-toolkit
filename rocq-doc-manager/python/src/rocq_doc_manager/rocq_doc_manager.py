@@ -1,18 +1,31 @@
+from contextlib import contextmanager
 import subprocess
 import json
 from dataclasses import dataclass
-from typing import Any
-from typing import Optional
-from typing import List
+import threading
+from types import TracebackType
+from typing import Any, Iterator, Optional, List, Self
+
 
 class RocqDocManager:
-    _process : Optional[subprocess.Popen] = None
-    _counter : int = -1
+    # NOTES:
+    # - class-variables, not instance variables
+    # - a class-level lock is used to ensure that parallel calls to
+    #   RocqDocManager.built_and_loaded will be sequenced
+    _dune_build_lock: threading.Lock = threading.Lock()
+    _process: Optional[subprocess.Popen] = None
+    _counter: int = -1
 
     class Error(Exception):
         pass
 
-    def __init__(self, rocq_args: list[str], file_path: str, chdir: str | None =None, dune: bool=False) -> None:
+    def __init__(
+            self,
+            rocq_args: list[str],
+            file_path: str,
+            chdir: str | None = None,
+            dune: bool = False
+    ) -> None:
         self._counter = -1
         try:
             args: list[str] = []
@@ -32,8 +45,46 @@ class RocqDocManager:
             self._process = None
             raise self.Error(f"Failed to start process: {e}") from e
 
-    def __del__(self):
+    # NOTE: a RocqDocManager instance can be used with a context manager;
+    # __enter__ is a no-op, and __exit__ calls RocqDocManager.quit
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_value: BaseException | None,
+            traceback: TracebackType | None,
+    ) -> bool | None:
         self.quit()
+        return None
+
+    # NOTE: important to use @contextmanager inside @classmethod
+    @classmethod
+    @contextmanager
+    def built_and_loaded(
+            cls,
+            rocq_args: list[str],
+            file_path: str,
+            chdir: str | None = None,
+            dune: bool = False,
+    ) -> Iterator[Self]:
+        """Context manager for working with built/loaded doc-mgrs; thread safe/blocking."""
+        rdm = None
+        # NOTE: [rdm.load_file()] seems to cause contention on the underlying
+        # dune build lock. This might be due to how it invokes the sentence
+        # splitter internally.
+        with cls._dune_build_lock:
+            rdm = cls(rocq_args, file_path, chdir=chdir, dune=dune)
+            load_reply = rdm.load_file()
+            if not isinstance(load_reply, RocqDocManager.Resp):
+                raise IOError(f"Failed to load {file_path}: {load_reply}")
+        try:
+            yield rdm
+        finally:
+            if rdm is not None:
+                rdm.quit()
 
     @dataclass
     class Err:

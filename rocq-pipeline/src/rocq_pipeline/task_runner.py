@@ -18,18 +18,6 @@ from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
 
 
-__mk_rdm_lock = threading.Lock()
-def SEQUENCED_mk_loaded_rdm(filename: str) -> RocqDocManager:
-    """Serialize doc mgr construction; avoid contention on the dune lock."""
-    with __mk_rdm_lock:
-        rdm = RocqDocManager([], filename, dune=True)
-        # NOTE: [rdm.load_file()] seems to cause contention on the dune build
-        # lock. This might be due to how it invokes the sentence splitter
-        # internally.
-        assert isinstance(rdm.load_file(), RocqDocManager.Resp)
-    return rdm
-
-
 def mk_argparser(agent_type: Type[Agent]) -> argparse.ArgumentParser:
     # Set up the argument parser
     parser = argparse.ArgumentParser(
@@ -100,26 +88,25 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         trace_id: str | None = None
         timestamp_iso_8601 = datetime.now(timezone.utc).isoformat()
 
-        # NOTE: we could use a context manager here, and automatically call
-        # quit when the scope is closed.
-        # TODO: figure out a more robust way to parallelize doc manager
-        # construction/loading
-        loaded_rdm = SEQUENCED_mk_loaded_rdm(str(wdir / task["file"]))
-        if not locator.parse_locator(task["locator"])(loaded_rdm):
-            print(f"{task_id}: locator returned false")
-            return None
+        with RocqDocManager.built_and_loaded(
+                [],
+                str(wdir / task["file"]),
+                dune=True,
+        ) as loaded_rdm:
+            if not locator.parse_locator(task["locator"])(loaded_rdm):
+                print(f"{task_id}: locator returned false")
+                return None
 
-        if hasattr(agent_type, "build"):
-            # TODO: should we remove any attributes from the task
-            agent = agent_type.build(
-                prompt=task["prompt"] if "prompt" in task else None,
-                args=args
-            )
-        else:
-            agent = agent_type()
+            if hasattr(agent_type, "build"):
+                # TODO: should we remove any attributes from the task
+                agent = agent_type.build(
+                    prompt=task["prompt"] if "prompt" in task else None,
+                    args=args
+                )
+            else:
+                agent = agent_type()
 
-        task_result: TaskResult = agent.run(loaded_rdm)
-        loaded_rdm.quit()
+            task_result: TaskResult = agent.run(loaded_rdm)
 
         task_failure_reason: task_output.FailureReason | None = None
         if isinstance(task_result, GiveUp):
