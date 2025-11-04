@@ -534,34 +534,6 @@ class ResourceExhaustionKind:
 
 
 @dataclass
-class ProofOutputs:
-    """Original type: proof_outputs = { ... }"""
-
-    generated_proof: str
-
-    @classmethod
-    def from_json(cls, x: Any) -> 'ProofOutputs':
-        if isinstance(x, dict):
-            return cls(
-                generated_proof=_atd_read_string(x['generated_proof']) if 'generated_proof' in x else _atd_missing_json_field('ProofOutputs', 'generated_proof'),
-            )
-        else:
-            _atd_bad_json('ProofOutputs', x)
-
-    def to_json(self) -> Any:
-        res: Dict[str, Any] = {}
-        res['generated_proof'] = _atd_write_string(self.generated_proof)
-        return res
-
-    @classmethod
-    def from_json_string(cls, x: str) -> 'ProofOutputs':
-        return cls.from_json(json.loads(x))
-
-    def to_json_string(self, **kw: Any) -> str:
-        return json.dumps(self.to_json(), **kw)
-
-
-@dataclass
 class Metrics:
     """Original type: metrics = { ... }"""
 
@@ -698,9 +670,9 @@ class TaskOutput:
     agent_name: str
     status: TaskStatus
     metrics: Metrics
-    outputs: ProofOutputs
     trace_id: Optional[str] = None
     failure_reason: Optional[FailureReason] = None
+    results: Any = field(default_factory=lambda: None)
 
     @classmethod
     def from_json(cls, x: Any) -> 'TaskOutput':
@@ -713,9 +685,9 @@ class TaskOutput:
                 agent_name=_atd_read_string(x['agent_name']) if 'agent_name' in x else _atd_missing_json_field('TaskOutput', 'agent_name'),
                 status=TaskStatus.from_json(x['status']) if 'status' in x else _atd_missing_json_field('TaskOutput', 'status'),
                 metrics=Metrics.from_json(x['metrics']) if 'metrics' in x else _atd_missing_json_field('TaskOutput', 'metrics'),
-                outputs=ProofOutputs.from_json(x['outputs']) if 'outputs' in x else _atd_missing_json_field('TaskOutput', 'outputs'),
                 trace_id=_atd_read_string(x['trace_id']) if 'trace_id' in x else None,
                 failure_reason=FailureReason.from_json(x['failure_reason']) if 'failure_reason' in x else None,
+                results=(lambda x: x)(x['results']) if 'results' in x else None,
             )
         else:
             _atd_bad_json('TaskOutput', x)
@@ -729,11 +701,11 @@ class TaskOutput:
         res['agent_name'] = _atd_write_string(self.agent_name)
         res['status'] = (lambda x: x.to_json())(self.status)
         res['metrics'] = (lambda x: x.to_json())(self.metrics)
-        res['outputs'] = (lambda x: x.to_json())(self.outputs)
         if self.trace_id is not None:
             res['trace_id'] = _atd_write_string(self.trace_id)
         if self.failure_reason is not None:
             res['failure_reason'] = (lambda x: x.to_json())(self.failure_reason)
+        res['results'] = (lambda x: x)(self.results)
         return res
 
     @classmethod

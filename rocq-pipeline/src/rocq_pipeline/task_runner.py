@@ -135,11 +135,9 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             timestamp_utc=timestamp_iso_8601,
             agent_name=agent.name(),
             status=task_status,
+            results=task_result.final_doc_interaction,
             failure_reason=task_failure_reason,
             metrics=task_metrics,
-            outputs=task_output.ProofOutputs(
-                generated_proof=task_result.final_doc_interaction
-            )
         )
 
     with ThreadPoolExecutor(num_workers) as tpe:

@@ -37,11 +37,7 @@ type metrics <doc text="Aggregated metrics for task."> = {
   ~llm_invocation_count <doc text="Total LLM calls for task."> : int;
   token_counts <doc text="Aggregated LLM token metrics for task."> : token_counts;
   resource_usage <doc text="Aggregated execution time metrics for task."> : resource_usage;
-  ~custom <python default="None"> : abstract;
-}
-
-type proof_outputs <doc text="Final proof script for completed proof task."> = {
-  generated_proof <doc text="Final proof script for completed proof task."> : string;
+  ~custom <doc text="Additional user defined metrics."> <python default="None"> : abstract;
 }
 
 type task_output <doc text="Agent output for a single task."> = {
@@ -56,6 +52,6 @@ type task_output <doc text="Agent output for a single task."> = {
   agent_name <doc text="Unique name of the agent that attempted the task."> : string;
   status <doc text="Task status upon completion."> : task_status;
   ?failure_reason <doc text="Reason for task failure."> : failure_reason option;
+  ~results <doc text="Agent results after task completion."> <python default="None"> : abstract;
   metrics <doc text="Aggregated metrics for task."> : metrics;
-  outputs <doc text="Final proof script for completed task."> : proof_outputs;
 }
