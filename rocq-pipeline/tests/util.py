@@ -1,10 +1,43 @@
 import json
+from typing import Any
 
 
-def make_repeated_tasks(file_path: str, locator: str, num_tasks: int = 1) -> str:
-    tasks = [{"file": file_path, "locator": locator}] * num_tasks
-    return json.dumps(tasks)
+def make_task(
+        file_path: str,
+        locator: str,
+        tags: list[str] | None = None,
+) -> dict[str, Any]:
+    if tags is None:
+        tags = list()
+    return {"file": file_path, "locator": locator, "tags": tags}
 
 
-def make_task(file_path: str, locator: str) -> str:
-    return json.dumps({"file": file_path, "locator": locator})
+def make_task_str(
+        file_path: str,
+        locator: str,
+        tags: list[str] | None = None,
+) -> str:
+    return json.dumps(make_task(file_path, locator, tags=tags))
+
+
+def make_repeated_tasks(
+        file_path: str,
+        locator: str,
+        tags: list[str] | None = None,
+        num_tasks: int = 1,
+) -> list[dict[str, Any]]:
+    return [make_task(file_path, locator, tags=tags)] * num_tasks
+
+
+def make_repeated_tasks_str(
+        file_path: str,
+        locator: str,
+        tags: list[str] | None = None,
+        num_tasks: int = 1,
+) -> str:
+    return json.dumps(make_repeated_tasks(
+        file_path,
+        locator,
+        tags=tags,
+        num_tasks=num_tasks
+    ))
