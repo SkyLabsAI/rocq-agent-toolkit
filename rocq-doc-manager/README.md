@@ -82,9 +82,9 @@ API Objects
 
 - Description: result of the `compile` method.
 - Field `error`: non-null if success is false (as either `null` or a string).
-- Field `success`: a boolean.
 - Field `stderr`: a string.
 - Field `stdout`: a string.
+- Field `success`: a boolean.
 
 ### `query_config`
 

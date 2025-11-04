@@ -4,14 +4,14 @@
   $ cat > test.v
 
   $ cat > calls.txt <<EOF
-  > text_query ["About nil.",0]
-  > text_query ["About nil.",1]
-  > json_query ["About nil.",0]
-  > text_query_all ["Eval lazy in I.",[]]
-  > text_query_all ["Eval lazy in I.",[0]]
-  > text_query_all ["Eval lazy in I.",[0,0]]
+  > text_query {text:"About nil.",index:0}
+  > text_query {text:"About nil.",index:1}
+  > json_query {text:"About nil.",index:0}
+  > text_query_all {text:"Eval lazy in I.",indices:[]}
+  > text_query_all {text:"Eval lazy in I.",indices:[0]}
+  > text_query_all {text:"Eval lazy in I.",indices:[0,0]}
   > run_command ["Goal True."]
-  > text_query_all ["idtac \"hello,\"; idtac \"world!\".",null]
+  > text_query_all {text:"idtac \"hello,\"; idtac \"world!\".",indices:null}
   > run_command ["Abort."]
   > EOF
 
@@ -54,4 +54,4 @@
     }
   }
   { "id": 8, "jsonrpc": "2.0", "result": [ "hello,", "world!" ] }
-  { "id": 9, "jsonrpc": "2.0", "result": { "open_subgoals": null } }
+  { "id": 9, "jsonrpc": "2.0", "result": {} }

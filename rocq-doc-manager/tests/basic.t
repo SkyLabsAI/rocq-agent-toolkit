@@ -53,30 +53,24 @@
 
   $ cat commands.txt | rocq-doc-manager test.v -- -Q . test.dir | jsonrpc-tp.tp_unwrap
   { "id": 1, "jsonrpc": "2.0", "result": null }
-  { "id": 2, "jsonrpc": "2.0", "result": { "open_subgoals": null } }
+  { "id": 2, "jsonrpc": "2.0", "result": {} }
   { "id": 3, "jsonrpc": "2.0", "result": null }
   { "id": 4, "jsonrpc": "2.0", "result": null }
   {
     "id": 5,
     "jsonrpc": "2.0",
-    "result": {
-      "open_subgoals": null,
-      "new_constants": [ "test.dir.test.inserted" ]
-    }
+    "result": { "new_constants": [ "test.dir.test.inserted" ] }
   }
   { "id": 6, "jsonrpc": "2.0", "result": null }
-  { "id": 7, "jsonrpc": "2.0", "result": { "open_subgoals": null } }
+  { "id": 7, "jsonrpc": "2.0", "result": {} }
   { "id": 8, "jsonrpc": "2.0", "result": null }
   {
     "id": 9,
     "jsonrpc": "2.0",
-    "result": {
-      "open_subgoals": null,
-      "new_constants": [ "test.dir.test.junk" ]
-    }
+    "result": { "new_constants": [ "test.dir.test.junk" ] }
   }
   { "id": 10, "jsonrpc": "2.0", "result": null }
-  { "id": 11, "jsonrpc": "2.0", "result": { "open_subgoals": null } }
+  { "id": 11, "jsonrpc": "2.0", "result": {} }
   {
     "id": 12,
     "jsonrpc": "2.0",
@@ -158,19 +152,12 @@
   {
     "id": 23,
     "jsonrpc": "2.0",
-    "result": {
-      "open_subgoals": null,
-      "new_constants": [ "test.dir.test.test" ]
-    }
+    "result": { "new_constants": [ "test.dir.test.test" ] }
   }
   {
     "id": 24,
     "jsonrpc": "2.0",
-    "error": {
-      "data": { "loc": null },
-      "code": -32803,
-      "message": "no step left to run"
-    }
+    "error": { "data": null, "code": -32803, "message": "no step left to run" }
   }
   {
     "id": 25,

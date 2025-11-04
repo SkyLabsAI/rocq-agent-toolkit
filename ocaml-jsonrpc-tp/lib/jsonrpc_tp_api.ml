@@ -35,6 +35,7 @@ module Schema = struct
 
   let is_default : type a. a t -> a -> bool = fun s v ->
     match (s, v) with
+    | (Null       , ()   ) -> true
     | (Bool       , false) -> true
     | (List(_)    , []   ) -> true
     | (Nullable(_), None ) -> true
@@ -42,6 +43,7 @@ module Schema = struct
 
   let default : type a. a t -> a option = fun s ->
     match s with
+    | Null        -> Some(())
     | Bool        -> Some(false)
     | List(_)     -> Some([])
     | Nullable(_) -> Some(None)
@@ -296,11 +298,13 @@ let run api ~ic ~oc s =
                   let ret = to_json api spec.ret ret in
                   J.Response.ok id ret
               | Error(err, message) ->
-                  let err = to_json api spec.err err in
-                  let code = J.Response.Error.Code.RequestFailed in
-                  let err =
-                    J.Response.Error.make ~data:err ~code ~message ()
+                  let data =
+                    match spec.err with
+                    | Null -> None
+                    | _    -> Some(to_json api spec.err err)
                   in
+                  let code = J.Response.Error.Code.RequestFailed in
+                  let err = J.Response.Error.make ?data ~code ~message () in
                   J.Response.error id err
             in
             Jsonrpc_tp.send ~oc (J.Packet.Response(response)); s

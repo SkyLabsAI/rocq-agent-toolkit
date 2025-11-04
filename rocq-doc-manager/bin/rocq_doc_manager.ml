@@ -233,14 +233,14 @@ let _ =
 
 let compile_result =
   let fields =
+    API.Fields.add ~name:"success" S.bool @@
     API.Fields.add ~name:"stdout" S.string @@
     API.Fields.add ~name:"stderr" S.string @@
-    API.Fields.add ~name:"success" S.bool @@
     API.Fields.add ~name:"error" ~descr:"non-null if success is false"
       S.(nullable string) @@
     API.Fields.nil
   in
-  let encode (stdout, (stderr, (success, (error, ())))) =
+  let encode (success, (stdout, (stderr, (error, ())))) =
     let ret =
       match (success, error) with
       | (true , None   ) -> Ok(())
@@ -252,8 +252,8 @@ let compile_result =
   in
   let decode (ret, stdout, stderr) =
     match ret with
-    | Ok(())       -> (stdout, (stderr, (true, (None, ()))))
-    | Error(error) -> (stdout, (stderr, (false, (Some(error), ()))))
+    | Ok(())       -> (true , (stdout, (stderr, (None, ()))))
+    | Error(error) -> (false, (stdout, (stderr, (Some(error), ()))))
   in
   API.declare_object api ~name:"compile_result"
     ~descr:"result of the `compile` method" ~encode ~decode fields
