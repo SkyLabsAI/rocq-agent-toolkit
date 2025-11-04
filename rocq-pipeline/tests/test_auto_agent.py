@@ -4,7 +4,7 @@ import rocq_pipeline.task_runner
 from rocq_pipeline.agent import Agent
 from rocq_pipeline.auto_agent import AutoAgent
 
-from .util import make_task
+from .util import make_task, make_repeated_tasks
 
 
 def test_auto() -> None:
@@ -23,5 +23,19 @@ def test_failure() -> None:
             Agent,
             ["--task-json", make_task("examples/theories/test_simple.v", "lemma:is_true"),
              "--output-dir", temp_dir],
+        )
+    assert result
+
+def test_parallel_tasks() -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        num_tasks = 5
+        result = rocq_pipeline.task_runner.main(
+            AutoAgent,
+            ["--task-json", make_repeated_tasks(
+                "examples/theories/test_simple.v",
+                "lemma:is_true",
+                num_tasks=num_tasks),
+             "--output-dir", temp_dir,
+             f"-j{num_tasks}"]
         )
     assert result
