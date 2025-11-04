@@ -32,6 +32,9 @@ class RocqDocManager:
             self._process = None
             raise self.Error(f"Failed to start process: {e}") from e
 
+    def __del__(self):
+        self.quit()
+
     @dataclass
     class Err:
         message: str
@@ -112,7 +115,8 @@ class RocqDocManager:
         return result
 
     def quit(self) -> None:
+        if self._process is None:
+            return
         _ = self.request("quit", [])
-        assert(self._process is not None)
         self._process.wait()
         self._process = None
