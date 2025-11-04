@@ -66,6 +66,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             print(f"agent gave up with message: {result.message}")
         elif isinstance(result, Finished):
             print(f"task completed: {result.message}")
+        rdm.quit()
 
     return True
 

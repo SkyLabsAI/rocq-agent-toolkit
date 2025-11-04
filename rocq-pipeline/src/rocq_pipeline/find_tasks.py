@@ -67,6 +67,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
             except NotFound:
                 print(f"Skipping lemma {m.group(2)}", file=sys.stderr)
                 continue
+    rdm.quit()
     return tasks
 
 def my_tagger(task: ProofTask) -> list[str]:
