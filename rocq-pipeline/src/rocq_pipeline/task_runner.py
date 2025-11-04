@@ -29,6 +29,8 @@ def SEQUENCED_mk_loaded_rdm(filename: str) -> RocqDocManager:
         assert isinstance(rdm.load_file(), RocqDocManager.Resp)
     return rdm
 
+
+def mk_argparser(agent_type: Type[Agent]) -> argparse.ArgumentParser:
     # Set up the argument parser
     parser = argparse.ArgumentParser(
         description="Parses a file name, an optional trace flag, and collects all arguments following a '--' separator.",
@@ -49,7 +51,7 @@ def SEQUENCED_mk_loaded_rdm(filename: str) -> RocqDocManager:
     )
     parser.add_argument(
         "-j", "--jobs",
-        type=int,
+        type=lambda N: max(1, int(N)),
         default=1,
         help="The number of parallel workers."
     )
@@ -60,14 +62,14 @@ def SEQUENCED_mk_loaded_rdm(filename: str) -> RocqDocManager:
     if hasattr(agent_type, "arg_parser"):
         agent_type.arg_parser(parser)
 
-    arguments = parser.parse_args(args)
+    return parser
 
-    num_workers: int = 1  # max(1, arguments.jobs)
-    if arguments.jobs != 1:
-        print(" ".join([
-            "WARNING: limitations with dune build lock and RocqDocManager",
-            "bindings prevent us from parallel execution"
-        ]))
+
+def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
+    if args is None:
+        args = sys.argv[1:]
+
+    arguments = mk_argparser(agent_type).parse_args(args)
 
     wdir = Path(".")
     tasks: list[dict] = []
@@ -141,7 +143,8 @@ def SEQUENCED_mk_loaded_rdm(filename: str) -> RocqDocManager:
             metrics=task_result.metrics,
         )
 
-    with ThreadPoolExecutor(num_workers) as tpe:
+    with ThreadPoolExecutor(arguments.jobs) as tpe:
+        # NOTE: iterator blocks if the next result has not been yielded
         for result in tpe.map(run_task, tasks):
             if result is not None:
                 with open(tasks_result_file, "a", encoding="utf8") as f:
