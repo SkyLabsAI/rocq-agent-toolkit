@@ -6,6 +6,26 @@ import jmespath
 import yaml
 
 
+def validate_task_schema(task: dict[str, Any]) -> None:
+    assert isinstance(task, dict)
+    assert {"file", "locator"} <= task.keys()
+
+
+def validate_tasklist_schema(tasks: list[dict[str, Any]]) -> None:
+    assert isinstance(tasks, list)
+    for task in tasks:
+        validate_task_schema(task)
+
+
+def mk_validated_tasklist(
+        data: dict[str, Any] | list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    if isinstance(data, dict):
+        data = [data]
+    validate_tasklist_schema(data)
+    return data
+
+
 def load_tasks(filename: str | Path) -> tuple[Path, list[dict[str, Any]]]:
     filename = Path(filename)
     wdir = filename.parent
@@ -20,17 +40,7 @@ def load_tasks(filename: str | Path) -> tuple[Path, list[dict[str, Any]]]:
                 "Expected `.json`, `.yaml`, or `.yml`",
             ]))
 
-        # in case someone has a single task in a file
-        if isinstance(data, dict):
-            data = [data]
-
-        if not isinstance(data, list):
-            raise ValueError(" ".join([
-                "Invalid task contents.",
-                "Expected a (list of) tasks.",
-            ]))
-
-        return (wdir, data)
+        return (wdir, mk_validated_tasklist(data))
 
 
 def filter_tags(tasks: list[dict[str, Any]], tag: str) -> list[dict[str, Any]]:
