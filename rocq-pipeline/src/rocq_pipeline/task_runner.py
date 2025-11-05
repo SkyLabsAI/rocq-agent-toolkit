@@ -88,12 +88,14 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         trace_id: str | None = None
         timestamp_iso_8601 = datetime.now(timezone.utc).isoformat()
 
-        with RocqDocManager.built_and_loaded(
+        with RocqDocManager(
                 [],
                 str(wdir / task["file"]),
                 dune=True,
-        ) as loaded_rdm:
-            if not locator.parse_locator(task["locator"])(loaded_rdm):
+        ) as rdm:
+            assert isinstance(rdm.load_file(), RocqDocManager.Resp)
+
+            if not locator.parse_locator(task["locator"])(rdm):
                 print(f"{task_id}: locator returned false")
                 return None
 
@@ -106,7 +108,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             else:
                 agent = agent_type()
 
-            task_result: TaskResult = agent.run(loaded_rdm)
+            task_result: TaskResult = agent.run(rdm)
 
         task_failure_reason: task_output.FailureReason | None = None
         if isinstance(task_result, GiveUp):
