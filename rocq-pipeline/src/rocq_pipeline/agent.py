@@ -1,7 +1,7 @@
 import pprint
 from dataclasses import dataclass, field
 import inspect
-from typing import Any, override
+from typing import Any, override, Self
 
 from rocq_doc_manager import RocqDocManager
 from rocq_pipeline.schema import task_output
@@ -30,6 +30,16 @@ class GiveUp(TaskResult):
 
     def __post_init__(self) -> None:
         self.message = f"failure: {str(self.reason)}"
+
+    @classmethod
+    def from_exception(cls, e: Exception) -> Self:
+        return cls(
+            metrics=task_output.Metrics(),
+            final_doc_interaction="",
+            reason=task_output.FailureReason(
+                task_output.ExecutionError(str(e))
+            )
+        )
 
 
 @dataclass

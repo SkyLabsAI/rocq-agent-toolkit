@@ -88,27 +88,32 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         trace_id: str | None = None
         timestamp_iso_8601 = datetime.now(timezone.utc).isoformat()
 
-        with RocqDocManager(
-                [],
-                str(wdir / task["file"]),
-                dune=True,
-        ) as rdm:
-            assert isinstance(rdm.load_file(), RocqDocManager.Resp)
+        task_result: TaskResult | None = None
+        try:
+            with RocqDocManager(
+                    [],
+                    str(wdir / task["file"]),
+                    dune=True,
+            ) as rdm:
+                assert isinstance(rdm.load_file(), RocqDocManager.Resp)
 
-            if not locator.parse_locator(task["locator"])(rdm):
-                print(f"{task_id}: locator returned false")
-                return None
+                if not locator.parse_locator(task["locator"])(rdm):
+                    print(f"{task_id}: locator returned false")
+                    return None
 
-            if hasattr(agent_type, "build"):
-                # TODO: should we remove any attributes from the task
-                agent = agent_type.build(
-                    prompt=task["prompt"] if "prompt" in task else None,
-                    args=args
-                )
-            else:
-                agent = agent_type()
+                if hasattr(agent_type, "build"):
+                    # TODO: should we remove any attributes from the task
+                    agent = agent_type.build(
+                        prompt=task["prompt"] if "prompt" in task else None,
+                        args=args
+                    )
+                else:
+                    agent = agent_type()
 
-            task_result: TaskResult = agent.run(rdm)
+                task_result = agent.run(rdm)
+        except Exception as e:
+            task_result = GiveUp.from_exception(e)
+        assert task_result is not None
 
         task_failure_reason: task_output.FailureReason | None = None
         if isinstance(task_result, GiveUp):
