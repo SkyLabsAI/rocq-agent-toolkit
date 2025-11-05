@@ -1,14 +1,26 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, cast
 
 import jmespath
 import yaml
 
 
 def validate_task_schema(task: dict[str, Any]) -> None:
-    assert isinstance(task, dict)
-    assert {"file", "locator"} <= task.keys()
+    if not isinstance(task, dict):
+        raise ValueError(
+            f"Task should be a dict, but had type {type(task)}: {task}"
+        )
+
+    expected_keys = {"file", "locator"}
+    if not (expected_keys <= task.keys()):
+        raise ValueError(" ".join([
+            f"Task should contain at least ({', '.join(expected_keys)}),",
+            f"but had ({', '.join(task.keys())}): {task}"
+        ]))
+
+    if Path(task["file"]).suffix != ".v":
+        raise ValueError("Task file should be a Rocq file (.v): {task}")
 
 
 def validate_tasklist_schema(tasks: list[dict[str, Any]]) -> None:
