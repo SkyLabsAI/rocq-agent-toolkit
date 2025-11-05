@@ -7,7 +7,7 @@ name = "rocq-doc-manager"
 version = "0.0.1"
 description = "Python API for the Rocq document manager."
 authors = [{ name = "Rodolphe Lepigre", email = "rodolphe.lepigre@skyabs-ai.com" }]
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "GPL-2.0-or-later"
 dependencies = ["pyyaml>=6.0.3,<7"]
@@ -28,7 +28,6 @@ dev = [
     "flake8>=6.0.0,<7",
     "mypy>=1.18.2,<2",
     "types-pyyaml>=6.0.12.20250915,<7",
-    "cram>=0.7,<0.8",
 ]
 
 [tool.hatch.build.targets.sdist]
