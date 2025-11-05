@@ -31,9 +31,9 @@ class RocqDocManager:
             args: list[str] = []
             if dune:
                 # TODO: this pattern should probably be exposed separately
-                dune_args = subprocess.run(["dune","coq","top","--toplevel=rocq-fake-repl",file_path], capture_output=True)
+                dune_args = subprocess.run(["dune","coq","top","--no-build","--toplevel=rocq-fake-repl",file_path], capture_output=True)
                 dune_args = dune_args.stdout.decode(encoding='utf-8')
-                args = ["dune","exec", "rocq-doc-manager","--no-build","--",file_path,"--"] + [x.strip() for x in dune_args.splitlines()]
+                args = ["dune","exec","--no-build","rocq-doc-manager","--",file_path,"--"] + [x.strip() for x in dune_args.splitlines()]
                 assert chdir is None
             else:
                 args = ["rocq-doc-manager",file_path,"--"] + rocq_args
