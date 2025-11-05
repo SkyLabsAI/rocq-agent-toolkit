@@ -1,21 +1,11 @@
-from contextlib import contextmanager
 import subprocess
 import json
 from dataclasses import dataclass
-import threading
 from types import TracebackType
-from typing import Any, Iterator, Optional, List, Self
+from typing import Any, List, Self
 
 
 class RocqDocManager:
-    # NOTES:
-    # - class-variables, not instance variables
-    # - a class-level lock is used to ensure that parallel calls to
-    #   RocqDocManager.built_and_loaded will be sequenced
-    _dune_build_lock: threading.Lock = threading.Lock()
-    _process: Optional[subprocess.Popen] = None
-    _counter: int = -1
-
     class Error(Exception):
         pass
 
@@ -26,17 +16,26 @@ class RocqDocManager:
             chdir: str | None = None,
             dune: bool = False
     ) -> None:
-        self._counter = -1
+        self._process: subprocess.Popen | None = None
+        self._counter: int = -1
+
         try:
             args: list[str] = []
             if dune:
-                # TODO: this pattern should probably be exposed separately
-                dune_args = subprocess.run(["dune","coq","top","--no-build","--toplevel=rocq-fake-repl",file_path], capture_output=True)
-                dune_args = dune_args.stdout.decode(encoding='utf-8')
-                args = ["dune","exec","--no-build","rocq-doc-manager","--",file_path,"--"] + [x.strip() for x in dune_args.splitlines()]
                 assert chdir is None
+                # TODO: this pattern should probably be exposed separately
+                dune_args_result = subprocess.run([
+                    "dune", "coq", "top", "--no-build",
+                    "--toplevel=rocq-fake-repl", file_path
+                ], capture_output=True)
+                dune_args = dune_args_result.stdout.decode(encoding='utf-8')
+                args = [
+                    "dune", "exec", "--no-build",
+                    "rocq-doc-manager", "--", file_path,
+                    "--"
+                ] + [x.strip() for x in dune_args.splitlines()]
             else:
-                args = ["rocq-doc-manager",file_path,"--"] + rocq_args
+                args = ["rocq-doc-manager", file_path, "--"] + rocq_args
             self._process = subprocess.Popen(
                 args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 cwd=chdir
@@ -60,32 +59,6 @@ class RocqDocManager:
         self.quit()
         return None
 
-    # NOTE: important to use @contextmanager inside @classmethod
-    @classmethod
-    @contextmanager
-    def built_and_loaded(
-            cls,
-            rocq_args: list[str],
-            file_path: str,
-            chdir: str | None = None,
-            dune: bool = False,
-    ) -> Iterator[Self]:
-        """Context manager for working with built/loaded doc-mgrs; thread safe/blocking."""
-        rdm = None
-        # NOTE: [rdm.load_file()] seems to cause contention on the underlying
-        # dune build lock. This might be due to how it invokes the sentence
-        # splitter internally.
-        with cls._dune_build_lock:
-            rdm = cls(rocq_args, file_path, chdir=chdir, dune=dune)
-            load_reply = rdm.load_file()
-            if not isinstance(load_reply, RocqDocManager.Resp):
-                raise IOError(f"Failed to load {file_path}: {load_reply}")
-        try:
-            yield rdm
-        finally:
-            if rdm is not None:
-                rdm.quit()
-
     @dataclass
     class Err:
         message: str
@@ -95,11 +68,11 @@ class RocqDocManager:
     class Resp:
         result: Any
 
-    def request(self, method : str, params: List[Any]) -> Resp | Err:
+    def request(self, method: str, params: List[Any]) -> Resp | Err:
         if self._process is None:
             raise self.Error("Not running anymore.")
-        assert(self._process.stdin is not None)
-        assert(self._process.stdout is not None)
+        assert (self._process.stdin is not None)
+        assert (self._process.stdout is not None)
         # Getting a fresh request id.
         self._counter = self._counter + 1
         fresh_id = self._counter
@@ -120,8 +93,8 @@ class RocqDocManager:
         _ = self._process.stdout.readline()
         try:
             nb_bytes = int(header[len(prefix):-2])
-        except:
-            raise self.Error(f"Failed to parse response: {header}")
+        except Exception as e:
+            raise self.Error(f"Failed to parse response: {header}", e)
         response = self._process.stdout.read(nb_bytes).decode()
         response = json.loads(response)
         if "error" in response:
@@ -130,17 +103,19 @@ class RocqDocManager:
         else:
             return self.Resp(response.get("result"))
 
-    def load_file(self):
+    def load_file(self) -> Resp | Err:
         return self.request("load_file", [])
 
     def doc_prefix(self) -> List[Any]:
         result = self.request("doc_prefix", [])
         assert isinstance(result, self.Resp)
+        assert isinstance(result.result, list)
         return result.result
 
     def doc_suffix(self) -> List[Any]:
         result = self.request("doc_suffix", [])
         assert isinstance(result, self.Resp)
+        assert isinstance(result.result, list)
         return result.result
 
     def cursor_index(self) -> int:
@@ -149,16 +124,16 @@ class RocqDocManager:
         assert isinstance(result.result, int)
         return result.result
 
-    def run_step(self):
+    def run_step(self) -> Resp | Err:
         return self.request("run_step", [])
 
-    def run_command(self, cmd: str):
+    def run_command(self, cmd: str) -> Resp | Err:
         return self.request("run_command", [cmd])
 
-    def revert_before(self, erase: bool, index: int):
+    def revert_before(self, erase: bool, index: int) -> Resp | Err:
         return self.request("revert_before", [erase, index])
 
-    def current_goal(self):
+    def current_goal(self) -> Resp | Err:
         result = self.run_command('idtac.')
         index = self.cursor_index()
         if isinstance(result, self.Err):
