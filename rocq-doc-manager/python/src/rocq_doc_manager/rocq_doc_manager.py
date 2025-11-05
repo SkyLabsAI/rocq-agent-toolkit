@@ -1,6 +1,7 @@
-import subprocess
-import json
 from dataclasses import dataclass
+import json
+import os
+import subprocess
 from types import TracebackType
 from typing import Any, List, Self
 
@@ -14,21 +15,30 @@ class RocqDocManager:
             rocq_args: list[str],
             file_path: str,
             chdir: str | None = None,
-            dune: bool = False
+            dune: bool = False,
+            dune_disable_global_lock: bool = True,
     ) -> None:
         self._process: subprocess.Popen | None = None
         self._counter: int = -1
 
         try:
+            env_copy: dict[str, str] = os.environ.copy()
             args: list[str] = []
+
             if dune:
                 assert chdir is None
+
                 # TODO: this pattern should probably be exposed separately
                 dune_args_result = subprocess.run([
                     "dune", "coq", "top", "--no-build",
                     "--toplevel=rocq-fake-repl", file_path
                 ], capture_output=True)
                 dune_args = dune_args_result.stdout.decode(encoding='utf-8')
+
+                # NOTE: workaround issue with [dune exec] not properly handling
+                # the "--no-build" flag.
+                if dune_disable_global_lock:
+                    env_copy["DUNE_CONFIG__GLOBAL_LOCK"] = "disabled"
                 args = [
                     "dune", "exec", "--no-build",
                     "rocq-doc-manager", "--", file_path,
@@ -38,7 +48,7 @@ class RocqDocManager:
                 args = ["rocq-doc-manager", file_path, "--"] + rocq_args
             self._process = subprocess.Popen(
                 args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                cwd=chdir
+                cwd=chdir, env=env_copy,
             )
         except Exception as e:
             self._process = None
