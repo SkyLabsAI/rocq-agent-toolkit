@@ -1,9 +1,27 @@
 from dataclasses import dataclass
 import json
 import os
+from pathlib import Path
 import subprocess
 from types import TracebackType
 from typing import Any, List, Self
+
+
+# TODO: hoist into a separate `rocq-dune-util` package.
+class DuneUtil:
+    @staticmethod
+    def rocq_args_for(file_path: str | Path) -> list[str]:
+        """Compute Rocq args needed to build/process a target Rocq file."""
+        file_path = Path(file_path)
+        if file_path.suffix != ".v":
+            raise ValueError(f"Expected [.v] file: {str(file_path)}")
+
+        dune_args_result = subprocess.run([
+            "dune", "coq", "top", "--no-build",
+            "--toplevel=rocq-fake-repl", file_path
+        ], capture_output=True)
+        dune_args = dune_args_result.stdout.decode(encoding='utf-8')
+        return [x.strip() for x in dune_args.splitlines()]
 
 
 class RocqDocManager:
@@ -28,13 +46,6 @@ class RocqDocManager:
             if dune:
                 assert chdir is None
 
-                # TODO: this pattern should probably be exposed separately
-                dune_args_result = subprocess.run([
-                    "dune", "coq", "top", "--no-build",
-                    "--toplevel=rocq-fake-repl", file_path
-                ], capture_output=True)
-                dune_args = dune_args_result.stdout.decode(encoding='utf-8')
-
                 # NOTE: workaround issue with [dune exec] not properly handling
                 # the "--no-build" flag.
                 if dune_disable_global_lock:
@@ -43,7 +54,7 @@ class RocqDocManager:
                     "dune", "exec", "--no-build",
                     "rocq-doc-manager", "--", file_path,
                     "--"
-                ] + [x.strip() for x in dune_args.splitlines()]
+                ] + DuneUtil.rocq_args_for(file_path)
             else:
                 args = ["rocq-doc-manager", file_path, "--"] + rocq_args
             self._process = subprocess.Popen(
