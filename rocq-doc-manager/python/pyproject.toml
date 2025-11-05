@@ -1,57 +1,50 @@
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "rocq-doc-manager"
 version = "0.0.1"
-authors = [
-    {name="Rodolphe Lepigre", email="rodolphe.lepigre@skyabs-ai.com"}
-]
 description = "Python API for the Rocq document manager."
-readme = "README.md"
+authors = [{ name = "Rodolphe Lepigre", email = "rodolphe.lepigre@skyabs-ai.com" }]
 requires-python = ">=3.13"
+readme = "README.md"
 license = "GPL-2.0-or-later"
-# Rely fully on poetry for dependency management; we may want to
-# revisit this choice later.
-dynamic = ["dependencies"]
-
-[tool.poetry.scripts]
-cram_test1 = "rocq_doc_manager.tester:cram_test1"
+dependencies = ["pyyaml>=6.0.3,<7"]
 
 [project.urls]
 Repository = "https://github.com/SkylabsAI/skylabs-fm"
 Issues = "https://github.com/SkylabsAI/skylabs-fm/issues"
 Changelog = "https://github.com/SkylabsAI/skylabs-fm/tree/main/changes"
 
-[tool.poetry]
-packages = [{include = "rocq_doc_manager", from = "src"}]
+[project.scripts]
+cram_test1 = "rocq_doc_manager.tester:cram_test1"
 
-[tool.poetry.dependencies]
-python = ">=3.13"
-pyyaml = "^6.0.3"
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "black>=23.7.0,<24",
+    "isort>=5.12.0,<6",
+    "flake8>=6.0.0,<7",
+    "mypy>=1.18.2,<2",
+    "types-pyyaml>=6.0.12.20250915,<7",
+    "cram>=0.7,<0.8",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.4.2"
-# pytest-cov = "^4.1.0"
-# pytest-asyncio = "^0.21.0"
-black = "^23.7.0"
-isort = "^5.12.0"
-flake8 = "^6.0.0"
-mypy = "^1.18.2"
-# pre-commit = "^3.3.0"
-# type stubs
-types-pyyaml = "^6.0.12.20250915"
+[tool.hatch.build.targets.sdist]
+include = ["src/rocq_doc_manager"]
 
-# cf. https://peps.python.org/pep-0561/
-cram = "^0.7"
+[tool.hatch.build.targets.wheel]
+include = ["src/rocq_doc_manager"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/rocq_doc_manager" = "rocq_doc_manager"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
 [tool.setuptools.package-data]
 "rocq_pipeline" = ["py.typed"]
-
-## NOTE: black/isort/mypy configs copied from
-## `psi-verifier/psi_verifier/cognition_engine`
 
 [tool.black]
 line-length = 100
