@@ -138,6 +138,7 @@ def main() -> None:
     with ThreadPoolExecutor(args.jobs) as tpe:
         def run_it(path: str):
             file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
+            print(f"Found {len(file_tasks)} tasks in {path}: {[x['locator'] for x in file_tasks]}")
             for y in file_tasks:
                 y["file"] = path
             return file_tasks
