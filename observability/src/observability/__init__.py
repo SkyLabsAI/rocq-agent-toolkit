@@ -14,7 +14,6 @@ from opentelemetry import propagate
 from opentelemetry.instrumentation.grpc import aio_server_interceptor
 
 # Configuration and setup
-from .config import CoreConfig
 from .logging.config import (
     EvaluationEventConfig,
     LangGraphEventConfig,
@@ -80,7 +79,6 @@ __all__ = [
     "get_logger",
     # Setup and configuration
     "ObservabilityConfig",
-    "CoreConfig",
     "LoggingConfig",
     "setup_observability",
     "configure_logging",
