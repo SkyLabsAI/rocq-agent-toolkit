@@ -24,7 +24,7 @@ class DuneUtil:
 
         # The dune environment hack is not needed for [dune coq top].
         dune_args_result = subprocess.run([
-            "dune", "coq", "top", "--no-build",
+            "dune", "coq", "top", "--no-build", "--display=quiet",
             "--toplevel=rocq-fake-repl", file_path
         ], capture_output=True)
         dune_args = dune_args_result.stdout.decode(encoding='utf-8')
@@ -58,7 +58,7 @@ class RocqDocManager:
                 if dune_disable_global_lock:
                     env = dune_env_hack()
                 args = [
-                    "dune", "exec", "--no-build",
+                    "dune", "exec", "--no-build", "--display=quiet",
                     "rocq-doc-manager", "--", file_path,
                     "--"
                 ] + rocq_args
