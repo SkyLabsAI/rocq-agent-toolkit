@@ -22,6 +22,7 @@ class DuneUtil:
         if file_path.suffix != ".v":
             raise ValueError(f"Expected [.v] file: {str(file_path)}")
 
+        # The dune environment hack is not needed for [dune coq top].
         dune_args_result = subprocess.run([
             "dune", "coq", "top", "--no-build",
             "--toplevel=rocq-fake-repl", file_path
