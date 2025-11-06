@@ -89,6 +89,15 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         timestamp_iso_8601 = datetime.now(timezone.utc).isoformat()
 
         task_result: TaskResult | None = None
+        if hasattr(agent_type, "build"):
+            # TODO: should we remove any attributes from the task
+            agent = agent_type.build(
+                prompt=task["prompt"] if "prompt" in task else None,
+                args=args
+            )
+        else:
+            agent = agent_type()
+
         try:
             with RocqDocManager(
                     [],
@@ -100,15 +109,6 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
                 if not locator.parse_locator(task["locator"])(rdm):
                     print(f"{task_id}: locator returned false")
                     return None
-
-                if hasattr(agent_type, "build"):
-                    # TODO: should we remove any attributes from the task
-                    agent = agent_type.build(
-                        prompt=task["prompt"] if "prompt" in task else None,
-                        args=args
-                    )
-                else:
-                    agent = agent_type()
 
                 task_result = agent.run(rdm)
         except Exception as e:
