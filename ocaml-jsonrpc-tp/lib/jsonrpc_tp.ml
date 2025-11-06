@@ -47,4 +47,4 @@ let recv ?ic () =
   | Ok(None)       -> Ok(None)
   | Ok(Some(json)) ->
   try Ok(Some(Packet.t_of_yojson json)) with Jsonrpc.Json.Of_json(_) ->
-    Error("ill-formed JSON-CPC 2.0 packet")
+    Error("ill-formed JSON-RPC 2.0 packet")
