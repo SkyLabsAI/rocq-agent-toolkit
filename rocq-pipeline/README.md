@@ -74,14 +74,16 @@ execute agents on these tasks.
 A data set contains the following:
 
 1. A tasks file (`tasks.json` or `tasks.yaml`) that contains the list of tasks contained within the data set.
-2. An `init.py` file that contains functionality to:
+2. A `build.py` file that contains functionality to:
    - Build the test suite, e.g. by invoking `dune b` or the appropriate `Makefile`.
    - Describe command line arguments used to interpret the Rocq documents.
    - **Optional** Construct additional arguments for agents. This is only
-   necessary if a data set wants to give agents access to additional data
-   sources that are **dataset specific** and not immediately accessible from the
-   Rocq context. For example, for program verification tasks, the agent might
-   get access to the verbatim source code.
+     necessary if a data set wants to give agents access to additional data
+     sources that are **dataset specific** and not immediately accessible from the
+     Rocq context. Some examples,
+     - For program verification tasks, the agent might get access to the source code
+     - For auto-formalization tasks it might get access to domain-specific
+       reference material.
 
 ### Task Output
 
