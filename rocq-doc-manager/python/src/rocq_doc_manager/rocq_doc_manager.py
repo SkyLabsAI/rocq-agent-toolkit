@@ -6,6 +6,12 @@ import subprocess
 from types import TracebackType
 from typing import Any, List, Self
 
+def dune_env_hack() -> dict[str, str]:
+    """Builds an environment that forces the disabling of the build lock"""
+    env_copy: dict[str, str] = os.environ.copy()
+    env_copy["DUNE_CONFIG__GLOBAL_LOCK"] = "disabled"
+    return env_copy
+
 
 # TODO: hoist into a separate `rocq-dune-util` package.
 class DuneUtil:
@@ -40,7 +46,7 @@ class RocqDocManager:
         self._counter: int = -1
 
         try:
-            env_copy: dict[str, str] = os.environ.copy()
+            env: dict[str, str] | None = None
             args: list[str] = []
 
             if dune:
@@ -49,17 +55,17 @@ class RocqDocManager:
                 # NOTE: workaround issue with [dune exec] not properly handling
                 # the "--no-build" flag.
                 if dune_disable_global_lock:
-                    env_copy["DUNE_CONFIG__GLOBAL_LOCK"] = "disabled"
+                    env = dune_env_hack()
                 args = [
                     "dune", "exec", "--no-build",
                     "rocq-doc-manager", "--", file_path,
                     "--"
-                ] + DuneUtil.rocq_args_for(file_path)
+                ] + rocq_args
             else:
                 args = ["rocq-doc-manager", file_path, "--"] + rocq_args
             self._process = subprocess.Popen(
                 args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                cwd=chdir, env=env_copy,
+                cwd=chdir, env=env,
             )
         except Exception as e:
             self._process = None
