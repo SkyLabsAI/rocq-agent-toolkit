@@ -91,10 +91,14 @@ class RocqDocManager:
     class Err:
         message: str
         data: Any
+        def ok(self) -> bool:
+            return False
 
     @dataclass
     class Resp:
         result: Any
+        def ok(self) -> bool:
+            return True
 
     def request(self, method: str, params: List[Any]) -> Resp | Err:
         if self._process is None:
