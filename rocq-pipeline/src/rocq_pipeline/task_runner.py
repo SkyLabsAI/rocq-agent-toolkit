@@ -99,9 +99,10 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             agent = agent_type()
 
         try:
+            task_file = wdir / task["file"]
             with RocqDocManager(
-                    [],
-                    str(wdir / task["file"]),
+                    rocq_doc_manager.DuneUtil.rocq_args_for(task_file),
+                    str(task_file),
                     dune=True,
             ) as rdm:
                 assert isinstance(rdm.load_file(), RocqDocManager.Resp)
