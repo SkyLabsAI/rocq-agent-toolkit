@@ -3,9 +3,9 @@ import argparse
 import re
 from dataclasses import dataclass
 from pathlib import Path
-import rocq_doc_manager
+from concurrent.futures import ThreadPoolExecutor
 from typing_extensions import Callable, Any
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqDocManager, DuneUtil
 import yaml
 import json
 
@@ -40,7 +40,7 @@ def scan_proof(suffix : list[dict[str, Any]]) -> ProofTask:
 
 def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = None) -> list[dict[str, Any]]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
-    rdm = RocqDocManager([], str(path), dune=True)
+    rdm = RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True)
     assert isinstance(rdm.load_file(), rdm.Resp)
 
     tasks = []
@@ -50,7 +50,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
     idx = 0
     mtch = re.compile(f"(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")
     while idx < total_sentences:
-        sentence = suffix[idx]
+        sentence: dict[str,str] = suffix[idx]
         idx += 1
         if sentence["kind"] != "command":
             continue
@@ -109,6 +109,12 @@ def parse_arguments() -> argparse.Namespace:
         default='tasks.yaml', # A default value if the option is not provided
         help='Specify the name of the output file. (e.g., -o tasks.yaml)'
     )
+    parser.add_argument(
+        "-j", "--jobs",
+        type=lambda N: max(1, int(N)),
+        default=1,
+        help="The number of parallel workers."
+    )
 
     # 3. Add the positional arguments
     # 'nargs='+' means one or more positional arguments are required
@@ -129,12 +135,15 @@ def parse_arguments() -> argparse.Namespace:
 def main() -> None:
     all_tasks: list[dict[str, Any]] = []
     args = parse_arguments()
-    for x in args.rocq_files:
-        file_tasks: list[dict[str, Any]] = find_tasks(Path(x), tagger=my_tagger)
-        for y in file_tasks:
-            y['file'] = x
-        print(f"scanning {x} found {len(file_tasks)} tasks: {[x['locator'] for x in file_tasks]}")
-        all_tasks.extend(file_tasks)
+    with ThreadPoolExecutor(args.jobs) as tpe:
+        def run_it(path: str):
+            file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
+            for y in file_tasks:
+                y["file"] = path
+            return file_tasks
+        for result in tpe.map(run_it, args.rocq_files):
+            all_tasks.extend(result)
+
     with open(args.output, 'w') as f:
         if args.output.suffix in [".yml", ".yaml"]:
             yaml.dump(all_tasks, f)
