@@ -26,9 +26,15 @@ export const getRunDetails = async (runIds: string[]): Promise<RunDetailsRespons
 
 export const getObservabilityLogs = async (runId: string, taskId: string): Promise<Record<string, unknown>> => {
     const encodedTaskId = encodeURIComponent(taskId);
-    const response = await axios.get(`http://192.168.68.54:8000/api/observability/logs?run_id=${runId}&task_id=${encodedTaskId}`)
+    const response = await axios.get(`${config.DATA_API}/observability/logs?run_id=${runId}&task_id=${encodedTaskId}`)
     console.log("Fetched observability logs:", response.data)
     return response.data.labels || {};
+}
+
+export const refreshData = async (): Promise<{ success: boolean; message: string; total_tasks: number; total_agents: number }> => {
+    const response = await axios.post(`${config.DATA_API}/refresh`)
+    console.log("Refresh response:", response.data)
+    return response.data
 }
 
 // export const getRunData = async (runId: string): Promise<TaskOutput[]> => {

@@ -1,0 +1,20 @@
+ # Usage : docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
+
+services:
+  alloy:
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy
+    networks:
+      - rocq-agent-network
+
+  loki:
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yaml
+    networks:
+      - rocq-agent-network
+
+networks:
+  rocq-agent-network:
+    driver: bridge
+    name: rocq-agent-network
+
