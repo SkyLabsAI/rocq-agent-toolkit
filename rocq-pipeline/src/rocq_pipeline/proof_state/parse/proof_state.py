@@ -1,0 +1,144 @@
+import re
+from typing import Iterator
+
+from rocq_pipeline.proof_state.parse.rocq import into_RocqGoalParts
+from rocq_pipeline.proof_state.parse.iris import into_IrisGoalParts
+from rocq_pipeline.proof_state.parse.brick import into_BrickGoalParts
+from rocq_pipeline.proof_state.goal import RocqGoal, IrisGoal, BrickGoal
+
+
+_parse_into_GoalParts = {
+    RocqGoal: into_RocqGoalParts,
+    IrisGoal: into_IrisGoalParts,
+    BrickGoal: into_BrickGoalParts,
+}
+
+
+def into_Goals(
+        pf_state_str: str,
+        goal_ty_bound: type[RocqGoal] = RocqGoal,
+) -> dict[int, RocqGoal]:
+    if not issubclass(goal_ty_bound, RocqGoal):
+        raise RuntimeError(f"{goal_ty_bound} not a subclass of RocqGoal")
+
+    goal_parts: dict[int, RocqGoal] = {}
+    for goal in _into_Goals.parse_proof_state(pf_state_str, goal_ty_bound):
+        if goal.wellformed():
+            goal_parts[goal.parts.rocq_rel_goal_num] = goal
+
+    return goal_parts
+
+
+class _into_Goals:
+    # --- Pre-compiled Regexes ---
+    _RE_GOAL_COUNT = re.compile(
+        r"^\s*(\d+)\s+(?:focused\s+)?goal[s]?\s*(?:\(shelved:\s*(\d+)\))?.*$"
+    )
+    _RE_GOAL_IS = re.compile(r"^\s*goal\s+(\d+)\s+\(?(?:ID\s+\d+\))?\s*is:.*$")
+
+    @staticmethod
+    def _parse_goal_string(
+        goal_str: str,
+        goal_ty_bound: type[RocqGoal],
+        rocq_rel_goal_num: int,
+        rocq_shelved_cnt: int | None,
+        is_concl_only: bool,
+    ) -> RocqGoal | None:
+        """
+        Tries to parse a single goal string using the MRO of the goal_ty_bound.
+        Starts with the most specific type and falls back to the most general.
+        """
+        for cls in goal_ty_bound.__mro__:
+            if not issubclass(cls, RocqGoal):
+                continue
+
+            structured_goal = cls(_parse_into_GoalParts[cls](
+                goal_str,
+                rocq_goal_id=None,
+                rocq_rel_goal_num=rocq_rel_goal_num,
+                rocq_shelved_cnt=rocq_shelved_cnt,
+                is_concl_only=is_concl_only,
+                silent=True,  # Silence warnings during fallback
+            ))
+
+            if structured_goal.wellformed():
+                return structured_goal
+
+        # Warning if no parser worked
+        print(
+            "Warning: Could not parse goal "
+            f"{rocq_rel_goal_num}:\n{goal_str[:200]}..."
+        )
+        return None
+
+    @classmethod
+    def parse_proof_state(
+            cls,
+            pf_state_str: str,
+            goal_ty_bound: type[RocqGoal],
+    ) -> Iterator[RocqGoal]:
+        """
+        Parses a proof state string and yields structured goal parts.
+        This is a static generator that manages its own parsing state.
+        """
+        # --- Local state variables (replace instance state) ---
+        current_goal_lines: list[str] = []
+        current_rel_num: int = 1
+        current_shelved_cnt: int | None = None
+        current_is_concl_only: bool = False
+
+        for line in pf_state_str.split("\n"):
+            stripped_line = line.strip()
+
+            # Check for metadata lines
+            m1 = cls._RE_GOAL_COUNT.match(stripped_line)
+            m2 = not m1 and cls._RE_GOAL_IS.match(stripped_line)
+
+            if m1 or m2:
+                # --- Begin "process_current_goal" logic ---
+                # A metadata line signifies the end of the previous goal
+                if current_goal_lines:
+                    goal_str = "\n".join(current_goal_lines).strip()
+                    if goal_str:
+                        structured_goal = cls._parse_goal_string(
+                            goal_str,
+                            goal_ty_bound,
+                            current_rel_num,
+                            current_shelved_cnt,
+                            current_is_concl_only,
+                        )
+                        if structured_goal:
+                            yield structured_goal
+                # --- End "process_current_goal" logic ---
+
+                # --- Reset state for the *new* goal ---
+                current_goal_lines = []
+                if m1:
+                    current_rel_num = int(m1.group(1))
+                    current_shelved_cnt = int(m1.group(2)) if m1.group(2) else None
+                    current_is_concl_only = False
+                elif m2:
+                    current_rel_num = int(m2.group(1))
+                    current_shelved_cnt = None
+                    current_is_concl_only = True
+                continue
+
+            # Skip blank lines between goals
+            if not current_goal_lines and stripped_line == "":
+                continue
+
+            current_goal_lines.append(line)
+
+        # --- Process the very last goal (final "process_current_goal") ---
+        if current_goal_lines:
+            goal_str = "\n".join(current_goal_lines).strip()
+            if goal_str:
+                goal_parts = cls._parse_goal_string(
+                    goal_str,
+                    goal_ty_bound,
+                    current_rel_num,
+                    current_shelved_cnt,
+                    current_is_concl_only,
+                )
+                if goal_parts:
+                    yield goal_parts
