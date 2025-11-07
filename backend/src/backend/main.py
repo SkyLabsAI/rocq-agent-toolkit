@@ -11,9 +11,9 @@ from contextlib import asynccontextmanager
 import httpx
 from datetime import datetime, timedelta
 
-from config import settings
-from data_access import data_store
-from models import (
+from backend.config import settings
+from backend.data_access import data_store
+from backend.models import (
     AgentInfo,
     RunInfo,
     RunDetailsResponse,
@@ -22,7 +22,7 @@ from models import (
     RefreshResponse,
     ObservabilityLabelsResponse,
 )
-from utils import filter_log_labels, get_labels
+from backend.utils import filter_log_labels, get_labels
 
 # Configure logging
 logging.basicConfig(

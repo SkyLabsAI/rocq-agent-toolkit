@@ -2,7 +2,7 @@
 Utility functions for the backend.
 """
 from typing import Dict, Any, List
-from models import LogEntry
+from backend.models import LogEntry
 
 
 # Labels to exclude from log entries

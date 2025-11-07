@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Set
 from collections import defaultdict
-from models import TaskResult, AgentInfo, RunInfo, RunDetailsResponse
+from backend.models import TaskResult, AgentInfo, RunInfo, RunDetailsResponse
 
 
 class DataStore:
