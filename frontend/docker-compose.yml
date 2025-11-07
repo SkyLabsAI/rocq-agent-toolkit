@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  rat-public-dashboard:
+    build: .
+    container_name: rat-public-dashboard
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - rlhfn
+
+networks:
+  rlhfn:
+    driver: bridge
+
+# Optional: Add volume for logs
+volumes:
+  nginx-logs:
+    driver: local
