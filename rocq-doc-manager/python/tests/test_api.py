@@ -1,5 +1,6 @@
 from rocq_doc_manager import RocqDocManager
 
+
 def make() -> RocqDocManager:
     return RocqDocManager([], "./tests/test.v")
 

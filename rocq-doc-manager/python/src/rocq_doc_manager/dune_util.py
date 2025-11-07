@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 
 def dune_env_hack() -> dict[str, str]:

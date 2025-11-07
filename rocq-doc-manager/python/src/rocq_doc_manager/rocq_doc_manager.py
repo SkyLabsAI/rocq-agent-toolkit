@@ -1,8 +1,8 @@
-from dataclasses import dataclass
 import json
 import subprocess
+from dataclasses import dataclass
 from types import TracebackType
-from typing import Any, List, Self
+from typing import Any, Self
 
 from rocq_doc_manager.dune_util import dune_env_hack
 
@@ -78,7 +78,7 @@ class RocqDocManager:
         def ok(self) -> bool:
             return True
 
-    def request(self, method: str, params: List[Any]) -> Resp | Err:
+    def request(self, method: str, params: list[Any]) -> Resp | Err:
         if self._process is None:
             raise self.Error("Not running anymore.")
         assert (self._process.stdin is not None)
@@ -104,7 +104,7 @@ class RocqDocManager:
         try:
             nb_bytes = int(header[len(prefix):-2])
         except Exception as e:
-            raise self.Error(f"Failed to parse response: {header}", e)
+            raise self.Error(f"Failed to parse response: {header}", e) from e
         response = self._process.stdout.read(nb_bytes).decode()
         response = json.loads(response)
         if "error" in response:
@@ -116,13 +116,13 @@ class RocqDocManager:
     def load_file(self) -> Resp | Err:
         return self.request("load_file", [])
 
-    def doc_prefix(self) -> List[Any]:
+    def doc_prefix(self) -> list[Any]:
         result = self.request("doc_prefix", [])
         assert isinstance(result, self.Resp)
         assert isinstance(result.result, list)
         return result.result
 
-    def doc_suffix(self) -> List[Any]:
+    def doc_suffix(self) -> list[Any]:
         result = self.request("doc_suffix", [])
         assert isinstance(result, self.Resp)
         assert isinstance(result.result, list)

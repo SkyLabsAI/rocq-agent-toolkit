@@ -1,5 +1,7 @@
 import sys
+
 from rocq_doc_manager import RocqDocManager
+
 
 def cram_test1() -> None:
     try:

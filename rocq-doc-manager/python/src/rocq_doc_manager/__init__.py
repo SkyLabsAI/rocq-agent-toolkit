@@ -4,7 +4,7 @@ This package provides a Python interface to interact with the Rocq document
 manager.
 """
 
-from .dune_util import dune_env_hack, DuneUtil
+from .dune_util import DuneUtil, dune_env_hack
 from .rocq_doc_manager import RocqDocManager
 
 __all__ = [
