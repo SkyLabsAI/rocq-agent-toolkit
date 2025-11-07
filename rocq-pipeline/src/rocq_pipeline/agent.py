@@ -141,7 +141,10 @@ class TraceAgent(Agent):
 
             if should_trace:
                 goal = rdm.current_goal()
-                trace("Current Goal:", data=goal.result["open_subgoals"])
+                if isinstance(goal, rdm.Resp):
+                    trace("Current Goal:", data=goal.result["open_subgoals"])
+                else:
+                    trace(f"Current Goal returned error: {goal}")
 
             tactic: Tactic | GiveUp = self.next(rdm)
 
