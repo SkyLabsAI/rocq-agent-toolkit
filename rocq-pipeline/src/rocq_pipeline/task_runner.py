@@ -4,11 +4,10 @@ from datetime import datetime, timezone
 import json
 import sys
 from pathlib import Path
-import threading
 from typing import Any, Optional, Type
 import uuid
 
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqDocManager, DuneUtil
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
@@ -101,7 +100,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         try:
             task_file = wdir / task["file"]
             with RocqDocManager(
-                    rocq_doc_manager.DuneUtil.rocq_args_for(task_file),
+                    DuneUtil.rocq_args_for(task_file),
                     str(task_file),
                     dune=True,
             ) as rdm:
