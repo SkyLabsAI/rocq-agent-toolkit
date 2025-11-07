@@ -1,6 +1,5 @@
 import argparse
 import json
-import logging
 import sys
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -17,7 +16,9 @@ from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
 from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
 
-logger = logging.getLogger(__name__)
+from observability import get_logger , add_log_context
+
+logger = get_logger("task_runner")
 
 
 def mk_argparser(agent_type: type[Agent]) -> argparse.ArgumentParser:
@@ -90,10 +91,15 @@ def main(agent_type: type[Agent], args: list[str] | None = None) -> bool:
         arguments.output_dir / f"{tasks_name}_results_{now_str}.jsonl"
     )
     run_id: str = str(uuid.uuid4())
+    # Here log context is not getting passed in the multithreads 
+    # # add_log_context("run_id", run_id)
 
     def run_task(task: dict[str, Any]) -> task_output.TaskOutput | None:
+        # Add run_id to log context for this thread
+        add_log_context("run_id", run_id)
         # TODO: find a better ID for tasks
         task_id: str = f"{task['file']}#{task['locator']}"
+        add_log_context("task_id", task_id)
         # TODO: integrate with opentelemetry, properly instrument the agent
         # framework and derived agents
         trace_id: str | None = None
