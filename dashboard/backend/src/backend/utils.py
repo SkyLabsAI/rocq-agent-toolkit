@@ -50,22 +50,24 @@ def filter_log_labels(labels: Dict[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in labels.items() if key not in EXCLUDED_LABELS}
 
 
-def get_labels(logs: List[LogEntry]) -> Dict[str, str]:
+def get_labels(logs: List[LogEntry]) -> Dict[str, List[str]]:
     """
-    Extract unique labels from a list of log entries.
+    Extract labels from a list of log entries.
 
     Args:
         logs: List of LogEntry objects containing filtered labels
 
     Returns:
-        Dictionary of unique key-value pairs from all log labels
+        Dictionary where each key maps to a list of all values found across all logs
     """
-    unique_labels = {}
+    labels_dict: Dict[str, List[str]] = {}
 
     for log in logs:
         if log.labels:
             for key, value in log.labels.items():
-                # Store unique labels - later occurrences will overwrite
-                unique_labels[key] = str(value)
+                # Add all values, including duplicates
+                if key not in labels_dict:
+                    labels_dict[key] = []
+                labels_dict[key].append(str(value))
 
-    return unique_labels
+    return labels_dict
