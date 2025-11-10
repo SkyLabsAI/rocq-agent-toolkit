@@ -1,0 +1,205 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'rocq_agent_toolkit/frontend/**'
+      - '.github/workflows/playwright.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths: 
+      - 'rocq_agent_toolkit/frontend/**'
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'rocq_agent_toolkit/frontend/package-lock.json'
+        
+    - name: Install frontend dependencies
+      working-directory: rocq_agent_toolkit/frontend
+      run: npm ci
+      
+    - name: Install Playwright Browsers
+      working-directory: rocq_agent_toolkit/frontend
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+      
+    - name: Build frontend application
+      working-directory: rocq_agent_toolkit/frontend
+      run: npm run build
+      
+    - name: Start development server
+      working-directory: rocq_agent_toolkit/frontend
+      run: |
+        npm run dev &
+        npx wait-on http://localhost:3000
+      
+    - name: Run Playwright tests
+      working-directory: rocq_agent_toolkit/frontend
+      run: npx playwright test --project=${{ matrix.browser }}
+      env:
+        CI: true
+        
+    - name: Upload Playwright Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report-${{ matrix.browser }}
+        path: rocq_agent_toolkit/frontend/playwright-report/
+        retention-days: 30
+        
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.browser }}
+        path: rocq_agent_toolkit/frontend/test-results/
+        retention-days: 30
+
+  accessibility-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'rocq_agent_toolkit/frontend/package-lock.json'
+        
+    - name: Install frontend dependencies
+      working-directory: rocq_agent_toolkit/frontend
+      run: npm ci
+      
+    - name: Install Playwright Browsers
+      working-directory: rocq_agent_toolkit/frontend
+      run: npx playwright install chromium
+      
+    - name: Build frontend application
+      working-directory: rocq_agent_toolkit/frontend
+      run: npm run build
+      
+    - name: Start development server
+      working-directory: rocq_agent_toolkit/frontend
+      run: |
+        npm run dev &
+        npx wait-on http://localhost:3000
+      
+    - name: Run accessibility tests
+      working-directory: rocq_agent_toolkit/frontend
+      run: npx playwright test --project=accessibility
+      env:
+        CI: true
+        
+    - name: Upload accessibility report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: accessibility-report
+        path: rocq_agent_toolkit/frontend/playwright-report/
+        retention-days: 30
+
+  visual-regression:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'rocq_agent_toolkit/frontend/package-lock.json'
+        
+    - name: Install frontend dependencies
+      working-directory: rocq_agent_toolkit/frontend
+      run: npm ci
+      
+    - name: Install Playwright Browsers
+      working-directory: rocq_agent_toolkit/frontend
+      run: npx playwright install chromium
+      
+    - name: Build frontend application
+      working-directory: rocq_agent_toolkit/frontend
+      run: npm run build
+      
+    - name: Start development server
+      working-directory: rocq_agent_toolkit/frontend
+      run: |
+        npm run dev &
+        npx wait-on http://localhost:3000
+      
+    - name: Run visual regression tests
+      working-directory: rocq_agent_toolkit/frontend
+      run: npx playwright test --grep="visual|screenshot"
+      env:
+        CI: true
+        
+    - name: Upload visual diff report
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: visual-diff-report
+        path: rocq_agent_toolkit/frontend/test-results/
+        retention-days: 30
+
+  test-summary:
+    if: always()
+    needs: [test, accessibility-tests, visual-regression]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create test summary
+      run: |
+        echo "## 🎭 Playwright Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -d "playwright-report-chromium" ]; then
+          echo "✅ Chromium tests completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -d "playwright-report-firefox" ]; then
+          echo "✅ Firefox tests completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -d "playwright-report-webkit" ]; then
+          echo "✅ WebKit tests completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -d "accessibility-report" ]; then
+          echo "♿ Accessibility tests completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -d "visual-diff-report" ]; then
+          echo "⚠️ Visual regression differences detected" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "🎨 Visual regression tests passed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📊 Test artifacts are available for download from this workflow run." >> $GITHUB_STEP_SUMMARY

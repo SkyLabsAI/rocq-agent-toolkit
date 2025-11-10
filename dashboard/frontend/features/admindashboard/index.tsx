@@ -1,43 +1,11 @@
 "use client";
 
 import Layout from "@/layouts/common";
-import { getData, refreshData } from "@/services/dataservice";
-import { AgentResultsArray, AgentSummary } from "@/types/types";
-import { useEffect, useState } from "react";
 import AgentDetails from "../leaderboard/agentDetails";
+import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 
 const AdminDashboard: React.FC = () => {
-  const [agentData, setAgentData] = useState<AgentSummary[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshMessage, setRefreshMessage] = useState<string>("");
-
-  const fetchData = async () => {
-    const data = await getData();
-    setAgentData(data);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setRefreshMessage("");
-    try {
-      const result = await refreshData();
-      if (result.success) {
-        setRefreshMessage(result.message);
-        await fetchData();
-        // Clear message after 3 seconds
-        setTimeout(() => setRefreshMessage(""), 3000);
-      }
-    } catch (error) {
-      setRefreshMessage("Error refreshing data. Please try again.");
-      setTimeout(() => setRefreshMessage(""), 3000);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  const { agentData, isRefreshing, refreshMessage, handleRefresh } = useAdminDashboard();
 
   return (
     <Layout title="Internal Dashboard">
