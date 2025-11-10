@@ -5,14 +5,14 @@
 1. Start observability:
 ```bash
 cd psi_verifier/observability/observability_docker_compose
-docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
+docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
 ```
 
 2. Start Rocq Agent Toolkit:
 Go to folder rocq_agent_toolkit
 ```bash
 cd ../../../rocq_agent_toolkit
-docker-compose up --build -d
+docker compose up --build -d
 ```
 
 3. Access frontend: `localhost:3005`
