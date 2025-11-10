@@ -24,34 +24,44 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8
+        run_install: false
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'rocq_agent_toolkit/frontend/package-lock.json'
+        cache: 'pnpm'
+        cache-dependency-path: 'rocq_agent_toolkit/frontend/pnpm-lock.yaml'
         
     - name: Install frontend dependencies
       working-directory: rocq_agent_toolkit/frontend
-      run: npm ci
+      run: pnpm install --frozen-lockfile
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
-      run: npx playwright install --with-deps ${{ matrix.browser }}
+      run: pnpx playwright install --with-deps ${{ matrix.browser }}
       
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
-      run: npm run build
+      run: pnpm run build
+      
+    - name: Install wait-on for server startup
+      working-directory: rocq_agent_toolkit/frontend
+      run: pnpm add -D wait-on
       
     - name: Start development server
       working-directory: rocq_agent_toolkit/frontend
       run: |
-        npm run dev &
-        npx wait-on http://localhost:3000
+        pnpm run dev &
+        pnpx wait-on http://localhost:3000
       
     - name: Run Playwright tests
       working-directory: rocq_agent_toolkit/frontend
-      run: npx playwright test --project=${{ matrix.browser }}
+      run: pnpx playwright test --project=${{ matrix.browser }}
       env:
         CI: true
         
@@ -79,34 +89,40 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8
+        run_install: false
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'rocq_agent_toolkit/frontend/package-lock.json'
+        cache: 'pnpm'
+        cache-dependency-path: 'rocq_agent_toolkit/frontend/pnpm-lock.yaml'
         
     - name: Install frontend dependencies
       working-directory: rocq_agent_toolkit/frontend
-      run: npm ci
+      run: pnpm install --frozen-lockfile
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
-      run: npx playwright install chromium
+      run: pnpx playwright install chromium
       
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
-      run: npm run build
+      run: pnpm run build
       
     - name: Start development server
       working-directory: rocq_agent_toolkit/frontend
       run: |
-        npm run dev &
-        npx wait-on http://localhost:3000
+        pnpm run dev &
+        pnpx wait-on http://localhost:3000
       
     - name: Run accessibility tests
       working-directory: rocq_agent_toolkit/frontend
-      run: npx playwright test --project=accessibility
+      run: pnpx playwright test --project=accessibility
       env:
         CI: true
         
@@ -126,34 +142,40 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8
+        run_install: false
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'rocq_agent_toolkit/frontend/package-lock.json'
+        cache: 'pnpm'
+        cache-dependency-path: 'rocq_agent_toolkit/frontend/pnpm-lock.yaml'
         
     - name: Install frontend dependencies
       working-directory: rocq_agent_toolkit/frontend
-      run: npm ci
+      run: pnpm install --frozen-lockfile
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
-      run: npx playwright install chromium
+      run: pnpx playwright install chromium
       
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
-      run: npm run build
+      run: pnpm run build
       
     - name: Start development server
       working-directory: rocq_agent_toolkit/frontend
       run: |
-        npm run dev &
-        npx wait-on http://localhost:3000
+        pnpm run dev &
+        pnpx wait-on http://localhost:3000
       
     - name: Run visual regression tests
       working-directory: rocq_agent_toolkit/frontend
-      run: npx playwright test --grep="visual|screenshot"
+      run: pnpx playwright test --grep="visual|screenshot"
       env:
         CI: true
         
