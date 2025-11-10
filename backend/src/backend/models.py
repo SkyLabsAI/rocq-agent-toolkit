@@ -1,7 +1,7 @@
 """
 Pydantic models for API request/response validation.
 """
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 from pydantic import BaseModel
 
 # Wrtie now defining the Schema Directly
@@ -104,5 +104,5 @@ class ObservabilityLabelsResponse(BaseModel):
     
     run_id: str
     task_id: str
-    labels: Optional[dict] = None
+    labels: Optional[Dict[str, List[str]]] = None
     total_labels: int
