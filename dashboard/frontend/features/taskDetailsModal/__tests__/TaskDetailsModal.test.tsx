@@ -48,6 +48,7 @@ describe('TaskDetailsModal with Tactic Prediction', () => {
         isOpen={true}
         onClose={() => {}}
         details={mockDetails}
+        taskId="test-task-123"
         title="Test Modal"
       />
     );
@@ -63,6 +64,7 @@ describe('TaskDetailsModal with Tactic Prediction', () => {
         onClose={() => {}}
         details={mockDetails}
         title="Test Modal"
+        taskId="test-task-456"
       />
     );
 
@@ -78,6 +80,7 @@ describe('TaskDetailsModal with Tactic Prediction', () => {
         onClose={() => {}}
         details={{ other_data: "just some data" }}
         title="Test Modal"
+        taskId="test-task-789"
       />
     );
 

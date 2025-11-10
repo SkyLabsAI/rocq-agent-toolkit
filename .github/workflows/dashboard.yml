@@ -27,19 +27,19 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
       with:
-        version: 8
+        version: latest
         run_install: false
       
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: 'latest'
         cache: 'pnpm'
         cache-dependency-path: 'rocq_agent_toolkit/frontend/pnpm-lock.yaml'
         
     - name: Install frontend dependencies
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpm install --frozen-lockfile
+      run: pnpm install --no-frozen-lockfile
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
@@ -48,16 +48,6 @@ jobs:
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
       run: pnpm run build
-      
-    - name: Install wait-on for server startup
-      working-directory: rocq_agent_toolkit/frontend
-      run: pnpm add -D wait-on
-      
-    - name: Start development server
-      working-directory: rocq_agent_toolkit/frontend
-      run: |
-        pnpm run dev &
-        pnpx wait-on http://localhost:3000
       
     - name: Run Playwright tests
       working-directory: rocq_agent_toolkit/frontend
@@ -92,19 +82,19 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
       with:
-        version: 8
+        version: latest
         run_install: false
       
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: 'latest'
         cache: 'pnpm'
         cache-dependency-path: 'rocq_agent_toolkit/frontend/pnpm-lock.yaml'
         
     - name: Install frontend dependencies
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpm install --frozen-lockfile
+      run: pnpm install --no-frozen-lockfile
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
@@ -113,12 +103,6 @@ jobs:
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
       run: pnpm run build
-      
-    - name: Start development server
-      working-directory: rocq_agent_toolkit/frontend
-      run: |
-        pnpm run dev &
-        pnpx wait-on http://localhost:3000
       
     - name: Run accessibility tests
       working-directory: rocq_agent_toolkit/frontend
@@ -145,19 +129,19 @@ jobs:
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
       with:
-        version: 8
+        version: latest
         run_install: false
       
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: 'latest'
         cache: 'pnpm'
         cache-dependency-path: 'rocq_agent_toolkit/frontend/pnpm-lock.yaml'
         
     - name: Install frontend dependencies
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpm install --frozen-lockfile
+      run: pnpm install --no-frozen-lockfile
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
@@ -166,12 +150,6 @@ jobs:
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
       run: pnpm run build
-      
-    - name: Start development server
-      working-directory: rocq_agent_toolkit/frontend
-      run: |
-        pnpm run dev &
-        pnpx wait-on http://localhost:3000
       
     - name: Run visual regression tests
       working-directory: rocq_agent_toolkit/frontend
