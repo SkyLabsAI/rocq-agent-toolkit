@@ -33,6 +33,17 @@ module Schema = struct
     | List s -> "a list where each element is " ^ descr s
     | Obj o -> "an instance of the `" ^ o ^ "` object"
 
+  let rec python : type a. a t -> string = fun s ->
+    match s with
+    | Null -> "None"
+    | Any -> "Any"
+    | Int -> "int"
+    | Bool -> "bool"
+    | String -> "str"
+    | Nullable s -> python s ^ " | None"
+    | List s -> "list[" ^ python s ^ "]"
+    | Obj o -> o
+
   let is_default : type a. a t -> a -> bool = fun s v ->
     match (s, v) with
     | (Null       , ()   ) -> true
@@ -393,6 +404,59 @@ let output_docs oc api =
   SMap.iter document_method api.api_methods
 
 let output_python_api oc api =
-  ignore (oc, api);
-  Printf.eprintf "Error: not implemented.\n%!"; exit 1
-
+  let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
+  line "from .rocq_doc_manager_raw import RocqDocManagerRaw, Err";
+  line "from dataclasses import dataclass";
+  line "import json";
+  line "from types import TracebackType";
+  line "from typing import cast, Any, List, Self";
+  let output_object (A(O(o))) =
+    line "";
+    Option.iter (line "# Description: %s.") o.descr;
+    line "@dataclass";
+    line "class %s:" o.name;
+    let rec output_fields : type a. a Fields.t -> unit = fun fields ->
+      match fields with Nil -> () | Cns(f) ->
+      output_fields f.tail;
+      Option.iter (line "    # Description: %s.") f.descr;
+      line "    %s: %s" f.name (Schema.python f.schema)
+    in
+    output_fields o.fields
+  in
+  List.iter output_object (List.rev api.api_objects);
+  line "";
+  line "class RocqDocManagerAPI(RocqDocManagerRaw):";
+  let rec pp_args : type a. _ -> a Args.t -> unit = fun oc args ->
+    match args with
+    | Args.Nil    -> ()
+    | Args.Cns(a) ->
+    Printf.fprintf oc ", %s: %s" a.name (Schema.python a.schema);
+    pp_args oc a.tail
+  in
+  let rec pp_names : type a. _ -> a Args.t -> unit = fun oc args ->
+    match args with
+    | Args.Nil    -> ()
+    | Args.Cns(a) ->
+    let comma = match a.tail with Args.Nil -> "" | _ -> ", " in
+    Printf.fprintf oc "%s%s" a.name comma;
+    pp_names oc a.tail
+  in
+  let output_method _ (M(m)) =
+    line "";
+    Option.iter (line "    # Description: %s.") m.descr;
+    let ret_ty =
+      match m.impl with
+      | Pure(_) -> Schema.python m.ret
+      | Rslt(i) -> Schema.python m.ret ^ " | Err[" ^ Schema.python i.err ^ "]"
+    in
+    line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
+    line "        result = self.request(\"%s\", [%a])" m.name pp_names m.args;
+    let _ =
+      match m.impl with Pure(_) -> () | Rslt(i) ->
+      line "        if isinstance(result, Err):";
+      line "            data = cast(%s, result.data)" (Schema.python i.err);
+      line "            return Err(result.message, data)"
+    in
+    line "        return cast(%s, result)" (Schema.python m.ret)
+  in
+  SMap.iter output_method api.api_methods
