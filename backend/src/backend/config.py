@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Server configuration
     server_host: str = "0.0.0.0"
     server_port: int = 8000
+    log_level: str = "INFO"
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
