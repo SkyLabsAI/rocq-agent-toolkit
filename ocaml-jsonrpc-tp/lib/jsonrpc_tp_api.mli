@@ -53,6 +53,21 @@ module Fields : sig
   val add : name:string -> ?descr:string -> 'a Schema.t -> 'b t -> ('a * 'b) t
 end
 
+(** Method arguments. *)
+module Args : sig
+  (** Description of a method's arguments. *)
+  type 'a t
+
+  (** [nil] denotes the empty list of arguments. *)
+  val nil : unit t
+
+  (** [add ~name ?descr s args] adds a new argument named [name] to [args]. It
+      has a type specified by [s], and is optionally described by [descr]. The
+      [Invalid_argument] exception is raised in the case where [name] was used
+      in [args] already. *)
+  val add : name:string -> ?descr:string -> 'a Schema.t -> 'b t -> ('a * 'b) t
+end
+
 (* Type of an API whose internal state is specified by the type parameter. *)
 type _ api
 
@@ -71,15 +86,16 @@ val declare_object : _ api -> name:string -> ?descr:string
 
 (** [declare api ~name ... impl] declares a new method [name], implemented via
     the [impl] function, in the given [api]. Argument [descr], when specified,
-    documents the action of the method at a high level. The [arg] argument may
-    be used to specify the arguments expected by the method, and documentation
-    for the argument type may be provided with [arg_descr]. The [ret] argument
-    can be used, together with [ret_descr], to specify the return type. If the
-    [name] was previously used in a method declaration in [api], the exception
-    [Invalid_argument] is raised. Moreover, the [impl] function is not allowed
-    to raise exceptions (this is undefined behaviour). *)
-val declare : 's api -> name:string -> ?descr:string
-  -> arg:'a Schema.t -> ?arg_descr:string
+    documents the action of the method at a high level. The [args] argument is
+    used to specify the arguments expected by the method, and [ret] is used to
+    specify the return type.  The [ret_descr] can be used to describe what the
+    return value represents. If [name] collides with the name of a method that
+    was previously declared in [api],  exception [Invalid_argument] is raised.
+    Note that if [impl] raises [Invalid_argument], then the method will return
+    with an error indicating that the passed parameters are invalid (e.g., one
+    argument is not in bounds). Raising any other exception leads to undefined
+    behaviour. *)
+val declare : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ret:'b Schema.t -> ?ret_descr:string
   -> ('s -> 'a -> 's * 'b) -> unit
 
@@ -88,8 +104,7 @@ val declare : 's api -> name:string -> ?descr:string
     [recoverable] argument ([true] by default) indicates whether errors can be
     recovered from (i.e., if subsequent queries are possible). Arguments [err]
     and [err_descr] are used to specify the payload in case of error. *)
-val declare_full : 's api -> name:string -> ?descr:string
-  -> arg:'a Schema.t -> ?arg_descr:string
+val declare_full : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ret:'b Schema.t -> ?ret_descr:string
   -> err:'e Schema.t -> ?err_descr:string
   -> ?recoverable:bool

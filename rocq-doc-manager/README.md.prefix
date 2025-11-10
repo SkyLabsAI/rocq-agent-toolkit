@@ -18,6 +18,8 @@ Once the document manager is running, it can be interacted with using JSON-RPC
 waits for request packages on its `stdin`, and sends the corresponding replies
 to its `stdout`. Request are handled sequentially, and in order.
 
+**Note**: `rocq-doc-manager` expects dependencies of the `FILE` to be built.
+
 Transfer Protocol
 -----------------
 

@@ -8,6 +8,7 @@ let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
 
 module API = Jsonrpc_tp_api
+module A = API.Args
 module S = API.Schema
 
 let api = API.create ()
@@ -66,14 +67,18 @@ let _ =
     ~descr:"adds the (unprocessed) file contents to the document (note that \
       this requires running sentence-splitting, which requires the input \
       file not to have syntax errors)"
-    ~arg:S.null ~ret:S.null ~err:S.(nullable (obj rocq_loc))
+    ~args:A.nil ~ret:S.null ~err:S.(nullable (obj rocq_loc))
     ~err_descr:"optional source code location for the error" @@ fun d () ->
   (d, Document.load_file d)
 
 let _ =
+  let args =
+    A.add ~name:"text" ~descr:"text of the blanks to insert" S.string @@
+    A.nil
+  in
   API.declare api ~name:"insert_blanks"
-    ~descr:"insert and process blanks at the cursor"
-    ~arg:S.string ~ret:S.null @@ fun d text ->
+    ~descr:"insert and process blanks at the cursor" ~args ~ret:S.null
+    @@ fun d (text, ()) ->
   (d, Document.insert_blanks d ~text)
 
 let command_data =
@@ -108,76 +113,72 @@ let command_data =
   API.declare_object api ~name:"command_data"
     ~descr:"data gathered while running a Rocq command" ~encode ~decode fields
  
+let text_args =
+  A.add ~name:"text" ~descr:"text of the command to insert" S.string A.nil
+
 let _ =
   API.declare_full api ~name:"insert_command"
     ~descr:"insert and process a command at the cursor"
-    ~arg:S.string ~ret:S.(obj command_data) ~err:S.(nullable (obj rocq_loc))
-    ~err_descr:"optional source code location for the error" @@ fun d text ->
+    ~args:text_args ~ret:S.(obj command_data) ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error"
+    @@ fun d (text, ()) ->
   (d, Document.insert_command d ~text)
 
 let _ =
   API.declare_full api ~name:"run_command"
     ~descr:"process a command at the cursor without inserting it in the \
-      document"
-    ~arg:S.string ~ret:S.(obj command_data) ~err:S.null @@ fun d text ->
+      document" ~args:text_args ~ret:S.(obj command_data) ~err:S.null
+    @@ fun d (text, ()) ->
   (d, Result.map_error (fun s -> ((), s)) (Document.run_command d ~text))
 
 let _ =
   API.declare api ~name:"cursor_index"
     ~descr:"gives the index at the cursor"
-    ~arg:S.null ~ret:S.int @@ fun d () ->
+    ~args:A.nil ~ret:S.int @@ fun d () ->
   (d, Document.cursor_index d)
 
-let revert_config =
-  let fields =
-    API.Fields.add ~name:"erase"
-      ~descr:"boolean indicating whether reverted items should be erased"
-      S.bool @@
-    API.Fields.add ~name:"index"
-      ~descr:"index of the item before which the cursor should be revered \
-        (one-past-the-end index allowed)" S.int @@
-    API.Fields.nil
-  in
-  API.declare_object api ~name:"revert_config"
-    ~descr:"input configuration for the `revert_before` method"
-    ~encode:(fun (erase, (index, ())) -> (erase, index))
-    ~decode:(fun (erase, index) -> (erase, (index, ()))) fields
-
 let _ =
-  API.declare api ~name:"revert_before"
-    ~descr:"revert the cursor to an earlier point in the document"
-    ~arg:(S.obj revert_config) ~ret:S.null @@ fun d (erase, index) ->
+  let args =
+    A.add ~name:"erase" ~descr:"boolean indicating whether reverted items \
+      should be erased" S.bool @@
+    A.add ~name:"index" ~descr:"index of the item before which the cursor \
+      should be revered (one-past-the-end index allowed)" S.int @@
+    A.nil
+  in
+  API.declare api ~name:"revert_before" ~descr:"revert the cursor to an \
+    earlier point in the document" ~args ~ret:S.null
+    @@ fun d (erase, (index, ())) ->
   (d, Document.revert_before d ~erase ~index)
 
+let index_before_args =
+  A.add ~name:"index" ~descr:"integer index before which to move the cursor \
+    (one-past-the-end index allowed)" S.int A.nil
+
 let _ =
-  API.declare_full api ~name:"advance_to"
-    ~descr:"advance the cursor before the indicated unprocessed item"
-    ~arg:S.int ~arg_descr:"integer index before which to advance the cursor \
-      (one-past-the-end index allowed)"
-    ~ret:S.null ~err:S.(nullable (obj rocq_loc))
-    ~err_descr:"optional source code location for the error" @@ fun d index ->
+  API.declare_full api ~name:"advance_to" ~descr:"advance the cursor before \
+    the indicated unprocessed item" ~args:index_before_args ~ret:S.null
+    ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error"
+    @@ fun d (index, ()) ->
   (d, Document.advance_to d ~index)
 
 let _ =
-  API.declare_full api ~name:"go_to"
-    ~descr:"move the cursor right before the indicated item (whether it is \
-      already processed or not)"
-    ~arg:S.int ~arg_descr:"integer index before which to advance the cursor \
-      (one-past-the-end index allowed)"
-    ~ret:S.null ~err:S.(nullable (obj rocq_loc))
-    ~err_descr:"optional source code location for the error" @@ fun d index ->
+  API.declare_full api ~name:"go_to" ~descr:"move the cursor right before \
+    the indicated item (whether it is already processed or not)"
+    ~args:index_before_args ~ret:S.null ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error"
+    @@ fun d (index, ()) ->
   (d, Document.go_to d ~index)
 
 let _ =
-  API.declare api ~name:"clear_suffix"
-    ~descr:"remove all unprocessed commands from the document"
-    ~arg:S.null ~ret:S.null @@ fun d () ->
+  API.declare api ~name:"clear_suffix" ~descr:"remove all unprocessed \
+    commands from the document" ~args:A.nil ~ret:S.null @@ fun d () ->
   (d, Document.clear_suffix d)
 
 let _ =
-  API.declare_full api ~name:"run_step"
-    ~descr:"advance the cursor by stepping over an unprocessed item"
-    ~arg:S.null ~ret:S.(nullable (obj command_data))
+  API.declare_full api ~name:"run_step" ~descr:"advance the cursor by \
+    stepping over an unprocessed item" ~args:A.nil
+    ~ret:S.(nullable (obj command_data))
     ~ret_descr:"data for the command that was run, if any"
     ~err:S.(nullable (obj rocq_loc))
     ~err_descr:"optional source code location for the error" @@ fun d () ->
@@ -196,8 +197,8 @@ let prefix_item =
 
 let _ =
   API.declare api ~name:"doc_prefix" ~descr:"gives the list of all processed \
-    commands, appearing before the cursor"
-    ~arg:S.null ~ret:S.(list (obj prefix_item)) @@ fun d () ->
+    commands, appearing before the cursor" ~args:A.nil
+    ~ret:S.(list (obj prefix_item)) @@ fun d () ->
   let make ~kind ~off ~text = (kind, (off, (text, ()))) in
   (d, Document.doc_prefix d make)
 
@@ -213,22 +214,23 @@ let suffix_item =
 
 let _ =
   API.declare api ~name:"doc_suffix" ~descr:"gives the list of all \
-    unprocessed commands, appearing after the cursor"
-    ~arg:S.null ~ret:S.(list (obj suffix_item)) @@ fun d () ->
+    unprocessed commands, appearing after the cursor" ~args:A.nil
+    ~ret:S.(list (obj suffix_item)) @@ fun d () ->
   let make ~kind ~text = (kind, (text, ())) in
   (d, Document.doc_suffix d make)
 
 let _ =
-  API.declare api ~name:"has_suffix"
-    ~descr:"indicates whether the document has a suffix (unprocessed items)"
-    ~arg:S.null ~ret:S.bool @@ fun d () ->
+  API.declare api ~name:"has_suffix" ~descr:"indicates whether the document \
+    has a suffix (unprocessed items)" ~args:A.nil ~ret:S.bool @@ fun d () ->
   (d, Document.has_suffix d)
 
 let _ =
-  API.declare api ~name:"commit"
-    ~descr:"write the current document contents to the file"
-    ~arg:S.bool ~arg_descr:"indicate whether he suffix should be included"
-    ~ret:S.null @@ fun d include_suffix ->
+  let args =
+    A.add ~name:"include_suffix" ~descr:"indicate whether he suffix should \
+      be included" S.bool A.nil
+  in
+  API.declare api ~name:"commit" ~descr:"write the current document contents \
+    to the file" ~args ~ret:S.null @@ fun d (include_suffix, ()) ->
   (d, Document.commit ~include_suffix d)
 
 let compile_result =
@@ -259,67 +261,52 @@ let compile_result =
     ~descr:"result of the `compile` method" ~encode ~decode fields
 
 let _ =
-  API.declare api ~name:"compile"
-    ~descr:"compile the current contents of the file with `rocq compile`"
-    ~arg:S.null ~ret:S.(obj compile_result) @@ fun d () ->
+  API.declare api ~name:"compile" ~descr:"compile the current contents of \
+    the file with `rocq compile`" ~args:A.nil
+    ~ret:S.(obj compile_result) @@ fun d () ->
   (d, Document.compile d)
 
 let _ =
   (* FIXME specify return object precisely. *)
-  API.declare api ~name:"get_feedback"
-    ~descr:"gets Rocq's feedback for the last run command (if any)"
-    ~arg:S.null ~ret:S.(list any)
+  API.declare api ~name:"get_feedback" ~descr:"gets Rocq's feedback for the \
+    last run command (if any)" ~args:A.nil ~ret:S.(list any)
     ~ret_descr:"list of objects with `kind` (array with single string), \
       `text` (string), `loc` (location)" @@ fun d () ->
   let feedback = Document.get_feedback d in
   (d, List.map Document.feedback_to_json feedback)
 
-let query_config =
-  let fields =
-    API.Fields.add ~name:"text" S.string @@
-    API.Fields.add ~name:"index" S.int @@
-    API.Fields.nil
-  in
-  let encode (text, (index, ())) = (text, index) in
-  let decode (text, index) = (text, (index, ())) in
-  API.declare_object api ~name:"query_config"
-    ~descr:"input config for queries" ~encode ~decode fields
+let query_args =
+  A.add ~name:"text" ~descr:"text of the query" S.string @@
+  A.add ~name:"index" ~descr:"feedback item index for the result" S.int @@
+  A.nil
 
 let _ =
-  API.declare_full api ~name:"text_query"
-    ~descr:"runs the given query at the cursor, not updating the state"
-    ~arg:S.(obj query_config) ~ret:S.string ~ret_descr:"query's result, as \
-      taken from the \"info\" \ \"notice\" feedback at the given index"
-    ~err:S.null @@ fun d (text, index) ->
+  API.declare_full api ~name:"text_query" ~descr:"runs the given query at \
+    the cursor, not updating the state" ~args:query_args ~ret:S.string
+    ~ret_descr:"query's result, as taken from the \"info\" \ \"notice\" \
+      feedback at the given index" ~err:S.null @@ fun d (text, (index, ())) ->
   let res = Document.text_query d ~text ~index in
   (d, Result.map_error (fun s -> ((), s)) res)
 
-let query_all_config =
-  let fields =
-    API.Fields.add ~name:"text" S.string @@
-    API.Fields.add ~name:"indices" S.(nullable (list int)) @@
-    API.Fields.nil
-  in
-  let encode (text, (indices, ())) = (text, indices) in
-  let decode (text, indices) = (text, (indices, ())) in
-  API.declare_object api ~name:"query_all_config"
-    ~descr:"input config for multi-result queries" ~encode ~decode fields
+let query_all_args =
+  A.add ~name:"text" ~descr:"text of the query" S.string @@
+  A.add ~name:"indices" ~descr:"feedback index indices to collect"
+    S.(nullable (list int)) @@
+  A.nil
 
 let _ =
-  API.declare_full api ~name:"text_query_all"
-    ~descr:"runs the given query at the cursor, not updating the state"
-    ~arg:S.(obj query_all_config) ~ret:S.(list string)
-    ~err:S.null @@ fun d (text, indices) ->
+  API.declare_full api ~name:"text_query_all" ~descr:"runs the given query \
+    at the cursor, not updating the state" ~args:query_all_args
+    ~ret:S.(list string) ~err:S.null @@ fun d (text, (indices, ())) ->
   let res = Document.text_query_all d ~text ?indices in
   (d, Result.map_error (fun s -> ((), s)) res)
 
 let _ =
-  API.declare_full api ~name:"json_query"
-    ~descr:"runs the given query at the cursor, not updating the state"
-    ~arg:S.(obj query_config) ~ret:S.any ~ret_descr:"arbitrary JSON data, as \
-      returned by the query as JSON text, taken from the \"info\" / \
-      \"notice\" feedback with the given index"
-    ~err:S.null @@ fun d (text, index) ->
+  API.declare_full api ~name:"json_query" ~descr:"runs the given query at \
+    the cursor, not updating the state" ~args:query_args ~ret:S.any
+    ~ret_descr:"arbitrary JSON data, as returned by the query as JSON text, \
+    taken from the \"info\" / \"notice\" feedback with the given index"
+    ~err:S.null @@ fun d (text, (index, ())) ->
   let res = Document.json_query d ~text ~index in
   (d, Result.map_error (fun s -> ((), s)) res)
 

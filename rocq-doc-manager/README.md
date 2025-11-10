@@ -59,12 +59,6 @@ API Objects
 - Field `new_constants`: constants introduced by the command (as a list where each element is a string).
 - Field `open_subgoals`: open sub-goals, if in a proof (as either `null` or a string).
 
-### `revert_config`
-
-- Description: input configuration for the `revert_before` method.
-- Field `index`: index of the item before which the cursor should be revered (one-past-the-end index allowed) (as an integer).
-- Field `erase`: boolean indicating whether reverted items should be erased (as a boolean).
-
 ### `prefix_item`
 
 - Description: document prefix item, appearing before the cursor.
@@ -86,25 +80,14 @@ API Objects
 - Field `stdout`: a string.
 - Field `success`: a boolean.
 
-### `query_config`
-
-- Description: input config for queries.
-- Field `index`: an integer.
-- Field `text`: a string.
-
-### `query_all_config`
-
-- Description: input config for multi-result queries.
-- Field `indices`: either `null` or a list where each element is an integer.
-- Field `text`: a string.
-
 API Methods
 ------------
 
 ### `advance_to`
 
 - Description: advance the cursor before the indicated unprocessed item.
-- Argument: integer index before which to advance the cursor (one-past-the-end index allowed) (as an integer).
+- Arguments (in order, or named):
+  - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
 - Failure mode: recoverable failure.
@@ -112,56 +95,52 @@ API Methods
 ### `clear_suffix`
 
 - Description: remove all unprocessed commands from the document.
-- Argument: a `null` value.
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
 ### `commit`
 
 - Description: write the current document contents to the file.
-- Argument: indicate whether he suffix should be included (as a boolean).
+- Arguments (in order, or named):
+  - include_suffix: indicate whether he suffix should be included (as a boolean).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
 ### `compile`
 
 - Description: compile the current contents of the file with `rocq compile`.
-- Argument: a `null` value.
 - Response payload: an instance of the `compile_result` object.
 - Failure mode: never fails.
 
 ### `cursor_index`
 
 - Description: gives the index at the cursor.
-- Argument: a `null` value.
 - Response payload: an integer.
 - Failure mode: never fails.
 
 ### `doc_prefix`
 
 - Description: gives the list of all processed commands, appearing before the cursor.
-- Argument: a `null` value.
 - Response payload: a list where each element is an instance of the `prefix_item` object.
 - Failure mode: never fails.
 
 ### `doc_suffix`
 
 - Description: gives the list of all unprocessed commands, appearing after the cursor.
-- Argument: a `null` value.
 - Response payload: a list where each element is an instance of the `suffix_item` object.
 - Failure mode: never fails.
 
 ### `get_feedback`
 
 - Description: gets Rocq's feedback for the last run command (if any).
-- Argument: a `null` value.
 - Response payload: list of objects with `kind` (array with single string), `text` (string), `loc` (location) (as a list where each element is a JSON value).
 - Failure mode: never fails.
 
 ### `go_to`
 
 - Description: move the cursor right before the indicated item (whether it is already processed or not).
-- Argument: integer index before which to advance the cursor (one-past-the-end index allowed) (as an integer).
+- Arguments (in order, or named):
+  - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
 - Failure mode: recoverable failure.
@@ -169,21 +148,22 @@ API Methods
 ### `has_suffix`
 
 - Description: indicates whether the document has a suffix (unprocessed items).
-- Argument: a `null` value.
 - Response payload: a boolean.
 - Failure mode: never fails.
 
 ### `insert_blanks`
 
 - Description: insert and process blanks at the cursor.
-- Argument: a string.
+- Arguments (in order, or named):
+  - text: text of the blanks to insert (as a string).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
 ### `insert_command`
 
 - Description: insert and process a command at the cursor.
-- Argument: a string.
+- Arguments (in order, or named):
+  - text: text of the command to insert (as a string).
 - Response payload: an instance of the `command_data` object.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
 - Failure mode: recoverable failure.
@@ -191,7 +171,9 @@ API Methods
 ### `json_query`
 
 - Description: runs the given query at the cursor, not updating the state.
-- Argument: an instance of the `query_config` object.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - index: feedback item index for the result (as an integer).
 - Response payload: arbitrary JSON data, as returned by the query as JSON text, taken from the "info" / "notice" feedback with the given index (as a JSON value).
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -199,7 +181,6 @@ API Methods
 ### `load_file`
 
 - Description: adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors).
-- Argument: a `null` value.
 - Response payload: a `null` value.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
 - Failure mode: recoverable failure.
@@ -207,14 +188,17 @@ API Methods
 ### `revert_before`
 
 - Description: revert the cursor to an earlier point in the document.
-- Argument: an instance of the `revert_config` object.
+- Arguments (in order, or named):
+  - erase: boolean indicating whether reverted items should be erased (as a boolean).
+  - index: index of the item before which the cursor should be revered (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
 ### `run_command`
 
 - Description: process a command at the cursor without inserting it in the document.
-- Argument: a string.
+- Arguments (in order, or named):
+  - text: text of the command to insert (as a string).
 - Response payload: an instance of the `command_data` object.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -222,7 +206,6 @@ API Methods
 ### `run_step`
 
 - Description: advance the cursor by stepping over an unprocessed item.
-- Argument: a `null` value.
 - Response payload: data for the command that was run, if any (as either `null` or an instance of the `command_data` object).
 - Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
 - Failure mode: recoverable failure.
@@ -230,7 +213,9 @@ API Methods
 ### `text_query`
 
 - Description: runs the given query at the cursor, not updating the state.
-- Argument: an instance of the `query_config` object.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - index: feedback item index for the result (as an integer).
 - Response payload: query's result, as taken from the "info"  "notice" feedback at the given index (as a string).
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -238,7 +223,9 @@ API Methods
 ### `text_query_all`
 
 - Description: runs the given query at the cursor, not updating the state.
-- Argument: an instance of the `query_all_config` object.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - indices: feedback index indices to collect (as either `null` or a list where each element is an integer).
 - Response payload: a list where each element is a string.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.

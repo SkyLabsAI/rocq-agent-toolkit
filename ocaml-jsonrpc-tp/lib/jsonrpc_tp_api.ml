@@ -50,20 +50,23 @@ module Schema = struct
     | _           -> None
 end
 
-module Fields = struct
+module GenList() = struct
   type _ t =
     | Nil : unit t
     | Cns : {
         name : string;
         descr : string option;
         schema : 'a Schema.t;
-        fields : 'b t
+        tail : 'b t
       } -> ('a * 'b) t
 
   let nil = Nil
-  let add ~name ?descr schema fields =
-    Cns({name; descr; schema; fields})
+  let add ~name ?descr schema tail =
+    Cns({name; descr; schema; tail})
 end
+
+module Fields = GenList()
+module Args = GenList()
 
 type _ obj =
   | O : {
@@ -79,28 +82,25 @@ type any_obj = A : 'a obj -> any_obj
 
 module SMap = Map.Make(String)
 
-type 's api_method =
+type ('s, 'a, 'b) api_method_impl =
   | Pure : {
-      name : string;
-      descr : string option;
-      arg : 'a Schema.t;
-      arg_descr : string option;
-      ret : 'b Schema.t;
-      ret_descr : string option;
       impl : ('s -> 'a -> 's * 'b);
-    } -> 's api_method
+    } -> ('s, 'a, 'b) api_method_impl
   | Rslt : {
-      name : string;
-      descr : string option;
-      arg : 'a Schema.t;
-      arg_descr : string option;
-      ret : 'b Schema.t;
-      ret_descr : string option;
       err : 'e Schema.t;
       err_descr : string option;
       recoverable : bool;
       impl : ('s -> 'a -> 's * ('b, 'e * string) Result.t);
-    } -> 's api_method
+    } -> ('s, 'a, 'b) api_method_impl
+
+type 's api_method = M : {
+  name : string;
+  descr : string option;
+  args : 'a Args.t;
+  ret : 'b Schema.t;
+  ret_descr : string option;
+  impl : ('s, 'a, 'b) api_method_impl;
+} -> 's api_method
 
 type 's api = {
   mutable api_objects : any_obj list;
@@ -125,24 +125,20 @@ let declare_object api ~name ?descr ~encode ~decode fields =
   let o = A(O({name; descr; fields; encode; decode})) in
   api.api_objects <- o :: api.api_objects; name
 
-let declare api ~name ?descr ~arg ?arg_descr ~ret ?ret_descr impl =
+let declare api ~name ?descr ~args ~ret ?ret_descr impl =
   match SMap.mem name api.api_methods with
   | true  -> duplicate "declare"
   | false ->
-  let m = Pure({name; descr; arg; arg_descr; ret; ret_descr; impl}) in
+  let m = M({name; descr; args; ret; ret_descr; impl = Pure({impl})}) in
   api.api_methods <- SMap.add name m (api.api_methods)
 
-let declare_full api ~name ?descr ~arg ?arg_descr ~ret ?ret_descr
+let declare_full api ~name ?descr ~args ~ret ?ret_descr
     ~err ?err_descr ?(recoverable=true) impl =
   match SMap.mem name api.api_methods with
   | true  -> duplicate "declare_full"
   | false ->
-  let m =
-    Rslt({
-      name; descr; arg; arg_descr; ret; ret_descr; err; err_descr;
-      recoverable; impl;
-    })
-  in
+  let impl = Rslt({err; err_descr; recoverable; impl}) in
+  let m = M({name; descr; args; ret; ret_descr; impl}) in
   api.api_methods <- SMap.add name m (api.api_methods)
 
 module J = Jsonrpc
@@ -187,8 +183,8 @@ let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
   let rec make : type a. a Fields.t -> a -> (string * json) list = fun fs v ->
     let open Fields in
     match (fs, v) with
-    | (Nil                              , ()     ) -> []
-    | (Cns({name; schema; fields=fs; _}), (v, vs)) ->
+    | (Nil                            , ()     ) -> []
+    | (Cns({name; schema; tail=fs; _}), (v, vs)) ->
     match Schema.is_default schema v with
     | true  -> make fs vs
     | false -> (name, to_json api schema v) :: make fs vs
@@ -205,8 +201,8 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
       let rec make : type a. a Fields.t -> a = fun fs ->
         let open Fields in
         match fs with
-        | Nil                               -> ()
-        | Cns({name; schema; fields=fs; _}) ->
+        | Nil                             -> ()
+        | Cns({name; schema; tail=fs; _}) ->
         match List.assoc_opt name fields with
         | Some(json) -> (of_json schema json, make fs)
         | None       ->
@@ -237,18 +233,48 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
 
 type params = [`List of json list | `Assoc of (string * json) list] option
 
-let parse_params : type a. _ api -> a Schema.t -> params -> a option =
-    fun api s params ->
-  let of_json s json =
-    match of_json api s json with
-    | Ok(v)    -> Some(v)
+let parse_params : type a. _ api -> a Args.t -> params -> a option =
+    fun api args params ->
+  let rec parse_list : type a. a Args.t -> json list -> a option =
+      fun args js ->
+    match (args, js) with
+    | (Args.Nil   , []     ) -> Some(())
+    | (Args.Nil   , _ :: _ ) -> None
+    | (Args.Cns(_), []     ) -> None
+    | (Args.Cns(a), j :: js) ->
+    match of_json api a.schema j with
     | Error(_) -> None
+    | Ok(v)    ->
+    match parse_list a.tail js with
+    | None     -> None
+    | Some(vs) -> Some((v, vs))
   in
-  match (s, params) with
-  | (Null  , None               ) -> Some(())
-  | (Obj(_), Some(`Assoc(fs)   )) -> of_json s (`Assoc(fs))
-  | (_     , Some(`List([json]))) -> of_json s json
-  | (_     , _                  ) -> None
+  let rec parse_assoc : type a. a Args.t -> (string * json) list -> a option =
+      fun args fs ->
+    match (args, fs) with
+    | (Args.Nil   , []) -> Some(())
+    | (Args.Nil   , _ ) -> None
+    | (Args.Cns(_), []) -> None
+    | (Args.Cns(a), _ ) ->
+    match List.assoc_opt a.name fs with
+    | None    -> None
+    | Some(j) ->
+    match of_json api a.schema j with
+    | Error(_) -> None
+    | Ok(v)    ->
+    let fs = List.remove_assoc a.name fs in
+    match parse_assoc a.tail fs with
+    | None     -> None
+    | Some(vs) -> Some((v, vs))
+  in
+  match (args, params) with
+  | (Args.Nil   , None            ) -> Some(())
+  | (Args.Nil   , Some(`List([])) ) -> Some(())
+  | (Args.Nil   , Some(`Assoc([]))) -> Some(())
+  | (Args.Nil   , Some(_)         ) -> None
+  | (Args.Cns(_), None            ) -> None
+  | (Args.Cns(_), Some(`List(ls)) ) -> parse_list args ls
+  | (Args.Cns(_), Some(`Assoc(fs))) -> parse_assoc args fs
 
 let run api ~ic ~oc s =
   let rec loop s =
@@ -266,16 +292,16 @@ let run api ~ic ~oc s =
     | ("quit", _              ) -> Response.invalid_params ~oc id f; loop s
     | (_     , _              ) ->
     match SMap.find_opt f api.api_methods with
-    | None       -> Response.method_not_found ~oc id f; loop s
-    | Some(spec) ->
+    | None          -> Response.method_not_found ~oc id f; loop s
+    | Some(M(spec)) ->
+    match parse_params api spec.args params with
+    | None         -> Response.invalid_params ~oc id f; loop s
+    | Some(params) ->
     let s =
-      match spec with
-      | Pure(spec) ->
+      match spec.impl with
+      | Pure(impl) ->
           begin
-            match parse_params api spec.arg params with
-            | None         -> Response.invalid_params ~oc id f; s
-            | Some(params) ->
-            match spec.impl s params with
+            match impl.impl s params with
             | exception Invalid_argument(msg) ->
                 Response.invalid_params ~oc id ~msg f; s
             | (s, ret)                        ->
@@ -283,12 +309,9 @@ let run api ~ic ~oc s =
             let response = J.Response.ok id ret in
             Jsonrpc_tp.send ~oc (J.Packet.Response(response)); s
           end
-      | Rslt(spec) ->
+      | Rslt(impl) ->
           begin
-            match parse_params api spec.arg params with
-            | None         -> Response.invalid_params ~oc id f; s
-            | Some(params) ->
-            match spec.impl s params with
+            match impl.impl s params with
             | exception Invalid_argument(msg) ->
                 Response.invalid_params ~oc id ~msg f; s
             | (s, ret_or_err)                 ->
@@ -299,9 +322,9 @@ let run api ~ic ~oc s =
                   J.Response.ok id ret
               | Error(err, message) ->
                   let data =
-                    match spec.err with
+                    match impl.err with
                     | Null -> None
-                    | _    -> Some(to_json api spec.err err)
+                    | _    -> Some(to_json api impl.err err)
                   in
                   let code = J.Response.Error.Code.RequestFailed in
                   let err = J.Response.Error.make ?data ~code ~message () in
@@ -328,25 +351,33 @@ let output_docs oc api =
     Option.iter (line "- Description: %s.") o.descr;
     let rec document_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->
-      document_fields f.fields;
+      document_fields f.tail;
       line "- Field `%s`: %s." f.name (describe_schema f.schema f.descr)
     in
     document_fields o.fields
   in
-  let document_method name m =
+  let document_method name (M(m)) =
     line "";
     line "### `%s`" name;
     line "";
-    match m with
-    | Pure(m) ->
-        Option.iter (line "- Description: %s.") m.descr;
-        line "- Argument: %s." (describe_schema m.arg m.arg_descr);
-        line "- Response payload: %s." (describe_schema m.ret m.ret_descr);
+    Option.iter (line "- Description: %s.") m.descr;
+    begin
+      match m.args with Args.Nil -> () | _ ->
+      line "- Arguments (in order, or named):";
+      let rec print_args : type a. a Args.t -> unit = fun args ->
+        match args with
+        | Args.Nil    -> ()
+        | Args.Cns(a) ->
+        line "  - %s: %s." a.name (describe_schema a.schema a.descr);
+        print_args a.tail
+      in
+      print_args m.args
+    end;
+    line "- Response payload: %s." (describe_schema m.ret m.ret_descr);
+    match m.impl with
+    | Pure(_) ->
         line "- Failure mode: never fails."
     | Rslt(m) ->
-        Option.iter (line "- Description: %s.") m.descr;
-        line "- Argument: %s." (describe_schema m.arg m.arg_descr);
-        line "- Response payload: %s." (describe_schema m.ret m.ret_descr);
         line "- Error payload: %s." (describe_schema m.err m.err_descr);
         line "- Failure mode: %srecoverable failure."
           (if m.recoverable then "" else "un");
