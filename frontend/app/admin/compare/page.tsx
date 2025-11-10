@@ -6,6 +6,7 @@ import Link from "next/link";
 import cn from "classnames";
 import { useSearchParams } from "next/navigation";
 import { getRunDetails } from "@/services/dataservice";
+import ComparisonModal from "@/components/base/comparisonModal";
 
 interface RunStats {
   id: string;
@@ -106,6 +107,7 @@ const ComparePageContent: React.FC = () => {
 
   const [showTasks, setShowTasks] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [comparisonModalTaskId, setComparisonModalTaskId] = useState<string | null>(null);
   const allTaskIds = useMemo(() => Object.keys(taskMap).sort(), [taskMap]);
   
   const selectTask = (taskId: string) => {
@@ -308,17 +310,29 @@ const ComparePageContent: React.FC = () => {
                                   "hover:bg-white/5"
                               )}
                             > 
-                              <td 
-                                className="px-4 py-3 align-top cursor-pointer" 
-                                onClick={() => selectTask(taskId)}
-                              >
+                              <td className="px-4 py-3 align-top">
                                 <div className="space-y-1">
-                                  <p className="font-mono text-xs truncate max-w-56" title={taskId}>
-                                    {taskId}
-                                  </p>
-                                  {selectedTaskId === taskId && (
-                                    <span className="text-[10px] text-purple-300">Split view ↓</span>
-                                  )}
+                                  <div 
+                                    className="cursor-pointer"
+                                    onClick={() => selectTask(taskId)}
+                                  >
+                                    <p className="font-mono text-xs truncate max-w-56" title={taskId}>
+                                      {taskId}
+                                    </p>
+                                    {selectedTaskId === taskId && (
+                                      <span className="text-[10px] text-purple-300">Split view ↓</span>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setComparisonModalTaskId(taskId);
+                                    }}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-200 transition-colors"
+                                    title="Open detailed comparison modal"
+                                  >
+                                    Compare Details
+                                  </button>
                                 </div>
                               </td>
                               {row.map((runCell, idx) => {
@@ -448,12 +462,20 @@ const ComparePageContent: React.FC = () => {
                       <h3 className="text-md font-semibold">
                         Split View: <span className="font-mono text-purple-300">{selectedTaskId}</span>
                       </h3>
-                      <button 
-                        onClick={() => setSelectedTaskId(null)} 
-                        className="text-xs px-2 py-1 rounded-md bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200"
-                      >
-                        Close
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setComparisonModalTaskId(selectedTaskId)} 
+                          className="text-xs px-3 py-1 rounded-md bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-200 transition-colors"
+                        >
+                          Detailed Compare
+                        </button>
+                        <button 
+                          onClick={() => setSelectedTaskId(null)} 
+                          className="text-xs px-2 py-1 rounded-md bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200"
+                        >
+                          Close
+                        </button>
+                      </div>
                     </div>
                     <div 
                       className="grid gap-4" 
@@ -590,6 +612,22 @@ const ComparePageContent: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+        
+        {/* Comparison Modal */}
+        {comparisonModalTaskId && (
+          <ComparisonModal
+            isOpen={!!comparisonModalTaskId}
+            onClose={() => setComparisonModalTaskId(null)}
+            taskId={comparisonModalTaskId}
+            items={selectedRuns.map(run => {
+              const cell = taskMap[comparisonModalTaskId]?.[selectedRuns.indexOf(run)];
+              return {
+                label: run.agent_name,
+                task: cell?.task || null
+              };
+            })}
+          />
         )}
       </div>
     </div>

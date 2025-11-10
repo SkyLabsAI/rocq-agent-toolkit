@@ -35,8 +35,10 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     port: 3000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true, // Always reuse existing server
     timeout: 120 * 1000, // 2 minutes
+    stdout: 'pipe', // Capture server output for debugging
+    stderr: 'pipe',
   },
   
   projects: [

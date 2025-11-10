@@ -2,12 +2,12 @@
 
 import Layout from "@/layouts/common";
 import { getData } from "@/services/dataservice";
-import { AgentResultsArray } from "@/types/types";
+import {  AgentSummary } from "@/types/types";
 import { useEffect, useState } from "react";
 import AgentDetails from "./agentDetails";
 
 const Leaderboard: React.FC = () => {
-  const [agentData, setAgentData] = useState<AgentResultsArray>([]);
+  const [agentData, setAgentData] = useState<AgentSummary[]>([]);
 
 
   useEffect(() => {
@@ -21,7 +21,7 @@ const Leaderboard: React.FC = () => {
   return (
     <Layout title="Leaderboard">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -83,7 +83,7 @@ const Leaderboard: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Main Table */}
       <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
@@ -107,7 +107,7 @@ const Leaderboard: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-white/10">
               {agentData.map((agent) => (
-                <AgentDetails key={agent.name} agent={agent} />
+                <AgentDetails key={agent.agent_name} agent_name={agent.agent_name} />
               ))}
             </tbody>
           </table>

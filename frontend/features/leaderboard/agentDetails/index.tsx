@@ -630,6 +630,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
         onClose={closeModal}
         details={modalState.logs}
         title={modalState.selectedTask ? `Observability Logs - ${modalState.selectedTask.task_id}` : 'Task Logs'}
+        taskId={modalState.selectedTask?.task_id}
       />
     </>
   );
