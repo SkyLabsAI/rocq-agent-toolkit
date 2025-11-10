@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '@/components/base/modal';
 import CodeViewer from '@/components/base/codeViewer';
+import TacticStepsViewer from '@/components/base/tacticSteps';
 import cn from 'classnames';
 
 interface TaskDetailsModalProps {
@@ -15,7 +16,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
 
   // Define which keys should have custom UI
   const customUIKeys = React.useMemo(() => 
-    ['cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent'], []
+    ['cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent', 'tactic_prediction_explanation', 'tactic_prediction_tactic'], []
   );
   
   // Get all available keys from details
@@ -44,14 +45,43 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
 
   // Helper function to render custom UI for specific keys
   const renderCustomContent = (key: string, value: unknown) => {
-    if (typeof value !== 'string') return null;
-
+    // Handle tactic prediction arrays - ONLY these keys should be treated as arrays
+    if (key === 'tactic_prediction_explanation' && Array.isArray(value)) {
+      return (
+        <TacticStepsViewer
+          steps={value.filter((step): step is string => typeof step === 'string')}
+          type="explanation"
+          title="Tactic Prediction Explanation"
+        />
+      );
+    }
+    
+    if (key === 'tactic_prediction_tactic' && Array.isArray(value)) {
+      return (
+        <TacticStepsViewer
+          steps={value.filter((step): step is string => typeof step === 'string')}
+          type="tactic"
+          title="Tactic Prediction Steps"
+        />
+      );
+    }
+    
+    // For all other keys, if it's an array, pick the first index (should be string)
+    let stringValue: string;
+    if (Array.isArray(value)) {
+      stringValue = value[0] as string;
+    } else if (typeof value === 'string') {
+      stringValue = value;
+    } else {
+      return null;
+    }
+    
     const lowerKey = key.toLowerCase();
     
     if (lowerKey.includes('cpp') || lowerKey.includes('code')) {
       return (
         <CodeViewer
-          code={value}
+          code={stringValue}
           language="cpp"
           filename={`${key}.cpp`}
         />
@@ -61,7 +91,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
     if (lowerKey.includes('target') || lowerKey.includes('lemma') || lowerKey.includes('states')) {
       return (
         <CodeViewer
-          code={value}
+          code={stringValue}
           language="text"
           filename={`${key}.txt`}
         />
@@ -73,9 +103,15 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
 
   // Helper function to render JSON content
   const renderJsonContent = (key: string, value: unknown) => {
-    const jsonString = typeof value === 'string' 
-      ? value 
-      : JSON.stringify(value, null, 2);
+    // For all keys except tactic prediction ones, if it's an array, pick the first index
+    let processedValue = value;
+    if (key !== 'tactic_prediction_explanation' && key !== 'tactic_prediction_tactic' && Array.isArray(value)) {
+      processedValue = value[0];
+    }
+    
+    const jsonString = typeof processedValue === 'string' 
+      ? processedValue 
+      : JSON.stringify(processedValue, null, 2);
     
     return (
       <div className="bg-gray-900/50 border border-white/10 rounded-lg p-4 max-h-96 overflow-auto">
@@ -89,6 +125,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
   // Helper function to get tab color based on key
   const getTabColor = (key: string) => {
     const lowerKey = key.toLowerCase();
+    if (key === 'tactic_prediction_explanation') return 'blue';
+    if (key === 'tactic_prediction_tactic') return 'green';
     if (lowerKey.includes('cpp') || lowerKey.includes('code')) return 'blue';
     if (lowerKey.includes('target')) return 'purple';
     if (lowerKey.includes('lemma')) return 'green';
