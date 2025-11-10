@@ -3,7 +3,7 @@ name = "rocq-agent-toolkit-backend"
 version = "0.1.0"
 description = "Backend for Rocq Agent Toolkit"
 authors = [{ name = "SkyLabs Team", email = "support@skylabs-ai.com" }]
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 readme = "README.md"
 dependencies = [
     "fastapi>=0.111.0,<0.117.0",
@@ -26,3 +26,8 @@ include = ["src/backend"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
