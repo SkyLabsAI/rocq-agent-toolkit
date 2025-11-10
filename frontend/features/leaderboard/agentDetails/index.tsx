@@ -1,10 +1,7 @@
 import TaskButton from "@/components/base/taskButton";
 import TaskDetailsModal from "@/features/taskDetailsModal";
-import {  TaskOutput, AgentRun } from "@/types/types";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import cn from "classnames";
-import { getDetails, getRunDetails, getObservabilityLogs } from "@/services/dataservice";
+import { useAgentDetails } from "@/hooks/useAgentDetails";
 
 interface AgentDetailsProps {
   agent_name: string;
@@ -12,131 +9,25 @@ interface AgentDetailsProps {
 }
 
 const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false }) => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
-  const [runDetails, setRunDetails] = useState<AgentRun[]>([]);
-  const [runTaskDetails, setRunTaskDetails] = useState<Map<string, TaskOutput[]>>(new Map());
-  const [loadingRunDetails, setLoadingRunDetails] = useState<Set<string>>(new Set());
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean;
-    selectedTask: TaskOutput | null;
-    logs: Record<string, unknown> | null;
-  }>({
-    isOpen: false,
-    selectedTask: null,
-    logs: null
-  });
-  const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
-  const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
-  const [loadingLogs, setLoadingLogs] = useState<string | null>(null);
-  const router = useRouter();
-
-  const openDetails = async () => {
-    setLoading(true);
-    try {
-      // For now, we'll use the agent data directly since we have the full structure
-      // In a real app, this might be an API call
-     await getDetails(agent_name).then(data => {
-      setRunDetails(data);
-     });
-     setTaskDetails([]);
-    
-
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleDetails = () => {
-    return isOpen
-      ? setIsOpen(false)
-      : openDetails().then(() => setIsOpen(true));
-  };
-
-  const openCodeModal = async (task: TaskOutput) => {
-    const taskKey = `${task.run_id}-${task.task_id}`;
-    setLoadingLogs(taskKey);
-    
-    try {
-      // Fetch observability logs for this specific task
-      const logs = await getObservabilityLogs(task.run_id, task.task_id);
-      
-      setModalState({
-        isOpen: true,
-        selectedTask: task,
-        logs: logs
-      });
-    } catch (error) {
-      console.error('Error fetching observability logs:', error);
-      // Still open modal but with empty logs
-      setModalState({
-        isOpen: true,
-        selectedTask: task,
-        logs: { error: 'Failed to load logs' }
-      });
-    } finally {
-      setLoadingLogs(null);
-    }
-  };
-  const toggleRunSelection = (runId: string) => {
-    setSelectedRuns(prev => prev.includes(runId) ? prev.filter(id => id !== runId) : [...prev, runId]);
-  };
-
-  const toggleRunExpansion = async (runId: string) => {
-    setExpandedRuns(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(runId)) {
-        newSet.delete(runId);
-      } else {
-        newSet.add(runId);
-        // Fetch run details when expanding
-        fetchRunDetails(runId);
-      }
-      return newSet;
-    });
-  };
-
-  const fetchRunDetails = async (runId: string) => {
-    // Check if we already have the data
-    if (runTaskDetails.has(runId)) {
-      return;
-    }
-
-    setLoadingRunDetails(prev => new Set([...prev, runId]));
-    
-    try {
-      const response = await getRunDetails([runId]);
-      if (response && response.length > 0) {
-        const runDetail = response[0];
-        setRunTaskDetails(prev => new Map([...prev, [runId, runDetail.tasks]]));
-      }
-    } catch (error) {
-      console.error('Error fetching run details:', error);
-      // Optionally show an error toast or message
-    } finally {
-      setLoadingRunDetails(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(runId);
-        return newSet;
-      });
-    }
-  };
-
-  const compareSelected = () => {
-    if (selectedRuns.length < 1) return;
-    const query = new URLSearchParams({
-      agent: agent_name,
-      runs: selectedRuns.join(',')
-    }).toString();
-    router.push(`/admin/compare?${query}`);
-  };
-
-  const closeModal = () => {
-    setModalState(prev => ({ ...prev, isOpen: false, selectedTask: null, logs: null }));
-  };
+  const {
+    loading,
+    taskDetails,
+    runDetails,
+    runTaskDetails,
+    loadingRunDetails,
+    isOpen,
+    modalState,
+    selectedRuns,
+    expandedRuns,
+    loadingLogs,
+    toggleDetails,
+    openCodeModal,
+    closeModal,
+    toggleRunExpansion,
+    compareSelected,
+    toggleRunSelection,
+    clearSelectedRuns,
+  } = useAgentDetails(agent_name);
 
   return (
     <>
@@ -491,7 +382,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
                             {selectedRuns.length > 0 && (
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); setSelectedRuns([]); }}
+                                onClick={(e) => { e.stopPropagation(); clearSelectedRuns(); }}
                                 className="px-3 py-2 text-sm rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300"
                               >
                                 Clear Selection

@@ -1,0 +1,111 @@
+<testsuites id="" name="" tests="9" failures="0" skipped="0" errors="0" time="9.335583">
+<testsuite name="adminDashboard/dashboard.spec.ts" timestamp="2025-11-10T08:32:32.168Z" hostname="chromium" tests="2" failures="0" skipped="0" time="10.729" errors="0">
+<testcase name="dashboard table renders with agent rows" classname="adminDashboard/dashboard.spec.ts" time="5.26">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|adminDashboard-dashboard-d-868e9-ble-renders-with-agent-rows-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|adminDashboard-dashboard-d-868e9-ble-renders-with-agent-rows-chromium/video.webm]]
+
+[[ATTACHMENT|adminDashboard-dashboard-d-868e9-ble-renders-with-agent-rows-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="refresh button works" classname="adminDashboard/dashboard.spec.ts" time="5.469">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|adminDashboard-dashboard-refresh-button-works-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|adminDashboard-dashboard-refresh-button-works-chromium/video.webm]]
+
+[[ATTACHMENT|adminDashboard-dashboard-refresh-button-works-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="agentDetails/agentDetails.spec.ts" timestamp="2025-11-10T08:32:32.168Z" hostname="chromium" tests="2" failures="0" skipped="0" time="10.567" errors="0">
+<testcase name="agent row expands to show run/task details" classname="agentDetails/agentDetails.spec.ts" time="5.296">
+<system-out>
+<![CDATA[No agent data available to test expansion
+
+[[ATTACHMENT|agentDetails-agentDetails--0a467-ds-to-show-run-task-details-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|agentDetails-agentDetails--0a467-ds-to-show-run-task-details-chromium/video.webm]]
+
+[[ATTACHMENT|agentDetails-agentDetails--0a467-ds-to-show-run-task-details-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="task details modal opens" classname="agentDetails/agentDetails.spec.ts" time="5.271">
+<system-out>
+<![CDATA[No agent data available to test modal
+
+[[ATTACHMENT|agentDetails-agentDetails-task-details-modal-opens-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|agentDetails-agentDetails-task-details-modal-opens-chromium/video.webm]]
+
+[[ATTACHMENT|agentDetails-agentDetails-task-details-modal-opens-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="errorStates/errorStates.spec.ts" timestamp="2025-11-10T08:32:32.168Z" hostname="chromium" tests="3" failures="0" skipped="0" time="8.188" errors="0">
+<testcase name="shows loading spinner on dashboard" classname="errorStates/errorStates.spec.ts" time="5.26">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|errorStates-errorStates-shows-loading-spinner-on-dashboard-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|errorStates-errorStates-shows-loading-spinner-on-dashboard-chromium/video.webm]]
+
+[[ATTACHMENT|errorStates-errorStates-shows-loading-spinner-on-dashboard-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shows error message on data fetch failure" classname="errorStates/errorStates.spec.ts" time="1.24">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|errorStates-errorStates-sh-e18f8-ssage-on-data-fetch-failure-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|errorStates-errorStates-sh-e18f8-ssage-on-data-fetch-failure-chromium/video.webm]]
+
+[[ATTACHMENT|errorStates-errorStates-sh-e18f8-ssage-on-data-fetch-failure-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shows empty state when no agents" classname="errorStates/errorStates.spec.ts" time="1.688">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|errorStates-errorStates-shows-empty-state-when-no-agents-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|errorStates-errorStates-shows-empty-state-when-no-agents-chromium/video.webm]]
+
+[[ATTACHMENT|errorStates-errorStates-shows-empty-state-when-no-agents-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="hello-world.spec.ts" timestamp="2025-11-10T08:32:32.168Z" hostname="chromium" tests="2" failures="0" skipped="0" time="3.365" errors="0">
+<testcase name="homepage loads and shows dashboard" classname="hello-world.spec.ts" time="1.699">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|hello-world-homepage-loads-and-shows-dashboard-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|hello-world-homepage-loads-and-shows-dashboard-chromium/video.webm]]
+
+[[ATTACHMENT|hello-world-homepage-loads-and-shows-dashboard-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+<testcase name="refresh button is visible and clickable" classname="hello-world.spec.ts" time="1.666">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|hello-world-refresh-button-is-visible-and-clickable-chromium/test-finished-1.png]]
+
+[[ATTACHMENT|hello-world-refresh-button-is-visible-and-clickable-chromium/video.webm]]
+
+[[ATTACHMENT|hello-world-refresh-button-is-visible-and-clickable-chromium/trace.zip]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>
