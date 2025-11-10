@@ -263,7 +263,7 @@ async def get_observability_logs(
     try:
         # Construct LogQL query to filter logs
         # run_id and task_id are JSON fields, not labels, so we need to parse JSON and filter
-        logql_query = f'{{service_name="Rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
+        logql_query = f'{{service_name="rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
 
         # Calculate time range - look back configured number of days to capture logs
         end_time = datetime.utcnow()
