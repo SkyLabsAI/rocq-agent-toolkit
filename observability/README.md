@@ -146,3 +146,43 @@ setup_observability(obs_config)
 ```
 
 This will also setup tracing and the logger can automatically include `trace_id` and `span_id` in your logs. This allows you to easily correlate logs with traces in your observability platform.
+
+
+## Working with the Docker Compose Files
+
+This directory contains multiple Docker Compose files to configure the observability stack for different environments. The setup is modular, using a base configuration file and override files for specific scenarios.
+
+All commands should be run from the `psi/backend/psi_verifier/observability/observability_docker_compose` directory.
+
+### Configuration Files
+
+-   `docker-compose.yml`: The base file that defines all the necessary services.
+-   `docker-compose.s3.yml`: An override file to configure services to send logs and telemetry data to an S3 bucket.
+-   `docker-compose.local.yml`: An override file to configure services to store logs and telemetry data locally.
+-   `docker-compose.rocq.yml`: A specialized configuration for the RoCQ agent. It sets up Loki and Alloy and defines a network to allow communication with other services.
+
+### Usage Examples
+
+#### S3 Deployment
+
+To deploy the stack with S3 storage for logs, use the following command:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.s3.yml up
+```
+
+#### Local Deployment
+
+For a local setup that stores data on the host machine, use this command:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.local.yml up 
+```
+
+#### RoCQ Agent Services
+
+To run only the Loki and Alloy services for the RoCQ agent, use the following command. This will start the services in detached mode and build the images if necessary.
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up  alloy loki
+```

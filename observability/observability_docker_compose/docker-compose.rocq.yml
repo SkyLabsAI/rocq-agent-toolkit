@@ -16,5 +16,6 @@ services:
 networks:
   rocq-agent-network:
     driver: bridge
-    name: rocq-agent-network
+    name: rocq-agent-network # this is the network name that will be used to communicate with the other services ( Rocq Backend)
+
 

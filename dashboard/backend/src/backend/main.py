@@ -1,5 +1,5 @@
 """
-FastAPI backend server for brick_agent task results visualization.
+FastAPI backend server for Rocq_agent task results.
 Phase 1: Local file-based data access with in-memory storage.
 """
 from typing import List
@@ -59,8 +59,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="Brick Agent Toolkit Backend",
-    description="Backend API for visualizing brick_agent task results",
+    title="Rocq Agent Toolkit Backend",
+    description="Backend API for Rocq_agent task results",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -79,7 +79,7 @@ app.add_middleware(
 async def root():
     """Root endpoint - health check."""
     return {
-        "message": "Brick Agent Toolkit Backend API",
+        "message": "Rocq Agent Toolkit Backend API",
         "version": "1.0.0",
         "status": "running",
     }
@@ -244,7 +244,7 @@ async def get_observability_logs(
     Fetch observability log labels from Loki for a specific run and task.
 
     Queries the Loki instance configured in settings to retrieve logs filtered by:
-    - service_name: "brick_agent"
+    - service_name: "Rocq_agent"
     - run_id: provided run ID
     - task_id: provided task ID
 
@@ -263,7 +263,7 @@ async def get_observability_logs(
     try:
         # Construct LogQL query to filter logs
         # run_id and task_id are JSON fields, not labels, so we need to parse JSON and filter
-        logql_query = f'{{service_name="brick_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
+        logql_query = f'{{service_name="Rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
 
         # Calculate time range - look back configured number of days to capture logs
         end_time = datetime.utcnow()
@@ -371,5 +371,5 @@ if __name__ == "__main__":
         host=settings.server_host,
         port=settings.server_port,
         reload=True,
-        log_level="info",
+        log_level=settings.log_level,
     )
