@@ -81,7 +81,7 @@ class OneShotAgent(Agent):
         args.add_argument('--tactic', type=str, required=True, help="The tactic to run")
 
     @staticmethod
-    def build(prompt: str | None, args: Namespace) -> OneShotAgent:
+    def build(prompt: str | None, args: Namespace) -> "OneShotAgent":
         return OneShotAgent(args.tactic)
 
     @override
