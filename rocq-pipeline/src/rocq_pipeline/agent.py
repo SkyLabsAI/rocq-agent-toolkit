@@ -1,3 +1,4 @@
+from argparse import ArgumentParser, Namespace
 import pprint
 from dataclasses import dataclass, field
 import inspect
@@ -74,6 +75,14 @@ class OneShotAgent(Agent):
 
     def __init__(self, tactic: str) -> None:
         self._tactic = tactic
+
+    @staticmethod
+    def arg_parser(args: ArgumentParser):
+        args.add_argument('--tactic', type=str, required=True, help="The tactic to run")
+
+    @staticmethod
+    def build(prompt: str | None, args: Namespace) -> Self:
+        return OneShotAgent(args.tactic)
 
     @override
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:

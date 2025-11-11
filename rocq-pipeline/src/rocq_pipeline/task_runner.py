@@ -13,7 +13,7 @@ from rocq_doc_manager import RocqDocManager, DuneUtil
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
 from rocq_pipeline.agent import Agent, Finished, GiveUp, TaskResult
-from rocq_pipeline.auto_agent import AutoAgent
+from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
 from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
 
@@ -171,3 +171,6 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
 
 def auto_main() -> bool:
     return main(AutoAgent)
+
+def tactic_main() -> bool:
+    return main(OneShotAgent)
