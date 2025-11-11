@@ -2,6 +2,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Optional, Type
@@ -15,6 +16,9 @@ from rocq_pipeline.agent import Agent, Finished, GiveUp, TaskResult
 from rocq_pipeline.auto_agent import AutoAgent
 from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
+
+
+logger = logging.getLogger(__name__)
 
 
 def mk_argparser(agent_type: Type[Agent]) -> argparse.ArgumentParser:
@@ -61,10 +65,16 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
     wdir = Path(".")
     tasks: list[dict] = []
     tasks_name: str = "tasks"
+
+    if arguments.task_json and arguments.task_file:
+        logger.warning(" ".join([
+            "[--task-file ...] and [--task-json ...] shouldn't both be used;",
+            "choosing [--task-json]."
+        ]))
+
     if arguments.task_json is not None:
         # TODO: if we had a schema we could automatically validate that the
         # task JSON has the expected shape.
-        assert arguments.task_file is None
         tasks = Tasks.mk_validated_tasklist(arguments.task_json)
     elif arguments.task_file is not None:
         (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
@@ -104,7 +114,13 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
                     str(task_file),
                     dune=True,
             ) as rdm:
-                assert isinstance(rdm.load_file(), RocqDocManager.Resp)
+                load_reply = rdm.load_file()
+                if isinstance(load_reply, RocqDocManager.Err):
+                    raise RuntimeError(" ".join([
+                        f"rocq-doc-manager failed to load {task_file};",
+                        "is the [rocq-doc-manager] executable available",
+                        "and has the file been built?"
+                    ]))
 
                 if not locator.parse_locator(task["locator"])(rdm):
                     print(f"{task_id}: locator returned false")
@@ -113,7 +129,10 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
                 task_result = agent.run(rdm)
         except Exception as e:
             task_result = GiveUp.from_exception(e)
-        assert task_result is not None
+        if task_result is None:
+            raise RuntimeError(
+                "task_result should be set by the previous try except block"
+            )
 
         task_failure_reason: task_output.FailureReason | None = None
         if isinstance(task_result, GiveUp):
