@@ -16,7 +16,7 @@ from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
 from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
 
-from observability import get_logger , add_log_context
+from observability import get_logger, add_log_context
 
 logger = get_logger("task_runner")
 
