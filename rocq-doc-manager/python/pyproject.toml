@@ -7,7 +7,7 @@ name = "rocq-doc-manager"
 version = "0.0.1"
 description = "Python API for the Rocq document manager."
 authors = [{ name = "Rodolphe Lepigre", email = "rodolphe.lepigre@skyabs-ai.com" }]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 readme = "README.md"
 license = "GPL-2.0-or-later" # Revisit this license
 dependencies = ["pyyaml>=6.0.3,<7"]
@@ -47,7 +47,7 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py313"
 extend-exclude = [
     ".eggs",
     ".git",
