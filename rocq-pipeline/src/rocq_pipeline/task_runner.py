@@ -102,7 +102,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
             # TODO: should we remove any attributes from the task
             agent = agent_type.build(
                 prompt=task["prompt"] if "prompt" in task else None,
-                args=args
+                args=arguments
             )
         else:
             agent = agent_type()
