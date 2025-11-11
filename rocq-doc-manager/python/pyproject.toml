@@ -97,4 +97,4 @@ strict_equality = true
 [tool.taskipy.tasks]
 format_ci = "ruff check"
 typecheck_ci = "mypy ."
-test_ci = "pytest tests/"
+test_ocaml_ci = "pytest tests/"
