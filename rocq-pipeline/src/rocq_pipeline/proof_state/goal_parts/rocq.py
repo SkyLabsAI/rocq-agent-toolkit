@@ -18,11 +18,8 @@ class RocqGoalParts:
     rocq_shelved_cnt: int | None = field(default=0, kw_only=True)
     # Rocq goal ID
     rocq_goal_id: int | None = field(kw_only=True)
-    # Rocq hypotheses, of the form [<NAMES> : <TYPE>] -- where <NAMES>
-    # is a comma-separated list of Rocq identifiers.
-    rocq_hyps: dict[str, str] = field(default_factory=dict, kw_only=True)
-    # Rocq definitions, of the form [<NAME> := <TERM>].
-    rocq_defns: dict[str, str] = field(default_factory=dict, kw_only=True)
+    # Rocq hypotheses: idents map to a type and an optional definition
+    rocq_hyps: dict[str, tuple[str, str | None]] = field(default_factory=dict, kw_only=True)
     # Rocq conclusion.
     rocq_concl: str = field(kw_only=True)
 

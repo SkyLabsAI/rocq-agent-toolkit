@@ -5,7 +5,7 @@ from rocq_pipeline.proof_state.goal_parts.rocq import RocqGoalParts
 
 class RocqPatterns:
     # --- Pre-compiled Regexes ---
-    _RE_DEFN = re.compile(r"(?P<name>.+?)\s*:=\s*(?P<term>.*)$")
+    _RE_DEFN = re.compile(r"(?P<name>.+?)\s*:=\s*(?P<term>.*)\s*:\s*(?P<type>.*)$")
     _RE_HYP = re.compile(r"(?P<name>.+?)\s*:\s*(?P<type>.*)$")
     _RE_SEP = re.compile(r"=+$")
 
@@ -30,8 +30,7 @@ def into_RocqGoalParts(
         is_concl_only: bool = False,
         silent: bool = False,
 ) -> RocqGoalParts:
-    rocq_hyps = dict[str, str]()
-    rocq_defns = dict[str, str]()
+    rocq_hyps = dict[str, tuple[str, str | None]]()
     rocq_concl = ""
     unknown: list[str] = []
 
@@ -51,13 +50,14 @@ def into_RocqGoalParts(
                 separator_found = True
                 break
             if (match := RocqPatterns.rocq_defn_parts(line)):
-                name = match.groupdict()["name"]
-                term = match.groupdict()["term"]
-                rocq_defns[name.strip()] = term
+                name = match.groupdict()["name"].strip()
+                ty = match.groupdict()["type"].strip()
+                term = match.groupdict()["term"].strip()
+                rocq_hyps[name.strip()] = (ty, term)
             elif (match := RocqPatterns.rocq_hyp_parts(line)):
-                ty = match.groupdict()["type"]
+                ty = match.groupdict()["type"].strip()
                 for name in match.groupdict()["name"].split(","):
-                    rocq_hyps[name.strip()] = ty
+                    rocq_hyps[name.strip()] = (ty, None)
             else:
                 unknown.append(line)
 
@@ -74,6 +74,5 @@ def into_RocqGoalParts(
         rocq_rel_goal_num=rocq_rel_goal_num,
         rocq_shelved_cnt=rocq_shelved_cnt,
         rocq_hyps=rocq_hyps,
-        rocq_defns=rocq_defns,
         rocq_concl=rocq_concl,
     )

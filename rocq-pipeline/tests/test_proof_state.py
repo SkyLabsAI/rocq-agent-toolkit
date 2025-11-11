@@ -36,6 +36,7 @@ def proof_state() -> ProofState:
         '  _x_0 : valid<"int"> n\n'
         '  _x_ : valid<"int"> 0%Z\n'
         '  _x_1 : valid<"int"> 1%Z\n'
+        '  my_num := 42 : nat\n'
         '  ============================\n'
         '  _ : denoteModule source\n'
         '  _ : type_ptr "int" n_addr\n'
@@ -93,10 +94,11 @@ def test_goal_1_parsing(proof_state: ProofState) -> None:
     # '1 goal' line has no shelved info, so it should be None
     assert goal1.parts.rocq_shelved_cnt is None
 
-    # Check hypothesis parsing (including the comma-split fix)
-    assert goal1.parts.rocq_hyps["thread_info"] == "biIndex"
-    assert goal1.parts.rocq_hyps["sum_addr"] == "ptr"
-    assert goal1.parts.rocq_hyps["i_addr"] == "ptr"
+    # Check hypothesis parsing
+    assert goal1.parts.rocq_hyps["thread_info"] == ("biIndex", None)
+    assert goal1.parts.rocq_hyps["sum_addr"] == ("ptr", None)
+    assert goal1.parts.rocq_hyps["i_addr"] == ("ptr", None)
+    assert goal1.parts.rocq_hyps["my_num"] == ("nat", "42")
 
     # Check Iris parts
     assert goal1.parts.iris_pers_hyps_anon == {
