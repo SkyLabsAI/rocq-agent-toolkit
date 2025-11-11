@@ -19,6 +19,15 @@ __all__ = [
 
 
 class ProofState:
+    """Structured proof states.
+
+    A proof state is a heterogenous collection of structured goals (Rocq,
+    Iris or Brick).
+
+    NOTE: some proof state (evars, goal IDs) is not currently reflected in
+    in the structured proof state.
+    """
+
     def __init__(
         self,
         pf_state_str: str,
