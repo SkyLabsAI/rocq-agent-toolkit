@@ -1,7 +1,8 @@
-import pprint
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass, field
-from typing import Any, Self, override
+import os
+import pprint
+from typing import Any, override, Self
 
 from rocq_doc_manager import RocqDocManager
 
@@ -10,6 +11,19 @@ from rocq_pipeline.schema.task_output import (
     ExecutionError,
     FailureReason,
 )
+
+
+from observability import setup_logging, LoggingConfig, get_logger
+
+
+log_config = LoggingConfig(
+    service_name="rocq_agent",
+    log_level=os.getenv("LOG_LEVEL", "INFO"),
+    otlp_endpoint=os.getenv("LOG_OTLP_ENDPOINT", "http://0.0.0.0:4317"),
+)
+
+setup_logging(log_config)
+logger = get_logger("rocq_agent")
 
 
 def close_proof(rdm: RocqDocManager) -> None:
@@ -132,6 +146,8 @@ class TraceAgent(Agent):
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         should_trace = True
 
+        # TODO: prefer to use `opentelemetry`, and then conditionally emit
+        # certain logs/traces/events/metrics to the console upon request
         def trace(msg: str, data: Any | None = None) -> None:
             if should_trace:
                 print(msg)
@@ -155,19 +171,38 @@ class TraceAgent(Agent):
                 else:
                     trace(f"Current Goal returned error: {goal}")
 
+            # NOTE: overriders of `next` may emit additional logs
+            # related to tactic prediction; we may want to create a (nested)
+            # span here.
             tactic: Tactic | GiveUp = self.next(rdm)
 
             if isinstance(tactic, GiveUp):
                 return tactic
 
+            # Maybe remove:
             trace("Tactic:", data=tactic.tactic)
+
+            logger.info(
+                "Tactic Prediction",
+                tactic_prediction_tactic=tactic.tactic
+            )
 
             result = rdm.run_command(f"{tactic.tactic}.")
             if isinstance(result, RocqDocManager.CommandData):
+                logger.info(
+                    "Tactic Application Status",
+                    status="Success",
+                )
                 self.update_history(tactic)
                 if result.open_subgoals == "No more goals.":
                     return self.finished()
             elif isinstance(result, RocqDocManager.Err):
+                logger.info(
+                    "Tactic Application Status",
+                    status="Failure",
+                    error_msg=result.message,
+                    # error_data=result.data,
+                )
                 self.update_history(tactic, success=False)
                 trace("Failed", data=result)
                 self.failed(result)
