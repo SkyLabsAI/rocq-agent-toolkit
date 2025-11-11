@@ -1,3 +1,10 @@
+"""Hierarchy of structured goals.
+
+Structured goals form a hierarchy (Rocq -> Iris -> Brick) and consist
+of immutable [goal_parts]. They may contain mutable state and expose
+utilities for interacting with structured goals of a given kind.
+"""
+
 # ---------------------------------------------------------------------
 # GOAL WRAPPER DEFINITIONS
 #

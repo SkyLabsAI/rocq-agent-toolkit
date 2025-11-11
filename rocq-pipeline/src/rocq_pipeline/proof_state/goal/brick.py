@@ -6,6 +6,13 @@ from rocq_pipeline.proof_state.goal_parts import BrickGoalParts
 
 
 class BrickGoal(IrisGoal):
+    """Single Brick goal, consisting of structured goal parts.
+
+    This class may contain mutable state and should collect
+    all utilities that can be expressed at the level of structured
+    Iris goals.
+    """
+
     # Override the PartsDataclass to point to the Brick version
     PartsDataclass: type[BrickGoalParts] = BrickGoalParts
 
