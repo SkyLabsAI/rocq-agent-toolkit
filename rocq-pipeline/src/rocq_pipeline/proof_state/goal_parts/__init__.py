@@ -1,3 +1,9 @@
+"""Hierarchy of immutable structured goal parts.
+
+Goal parts form a hierarchy (Rocq -> Iris -> Brick), and derived
+classes expose additional structural decompositions.
+"""
+
 # ---------------------------------------------------------------------
 # DATACLASS (PARTS) DEFINITIONS
 #

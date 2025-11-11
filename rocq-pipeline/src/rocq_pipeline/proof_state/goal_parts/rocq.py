@@ -4,7 +4,14 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class RocqGoalParts:
+    """Structured parts of a single Rocq goal.
+
+    This is a frozen dataclass; member functions should only be
+    const helpers for working with the structured data.
+    """
+
     # --- Fields ---
+    rocq_goal_raw: str = field(kw_only=True)
     # Relative goal number
     rocq_rel_goal_num: int = field(kw_only=True)
     # Number of Rocq evars

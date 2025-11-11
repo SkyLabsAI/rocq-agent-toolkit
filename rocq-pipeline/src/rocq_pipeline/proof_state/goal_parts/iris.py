@@ -6,6 +6,12 @@ from .rocq import RocqGoalParts
 
 @dataclass(frozen=True)
 class IrisGoalParts(RocqGoalParts):
+    """Structured parts of a single Iris goal.
+
+    This is a frozen dataclass; member functions should only be
+    const helpers for working with the structured data.
+    """
+
     # --- Fields ---
     # Iris persistent hypotheses, of the form ["<NAME>" : <RESOURCE>].
     iris_pers_hyps: dict[str, str] = field(default_factory=dict, kw_only=True)
