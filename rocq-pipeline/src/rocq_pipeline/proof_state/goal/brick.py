@@ -1,6 +1,6 @@
 import re
-
 from typing import cast, override
+
 from rocq_pipeline.proof_state.goal import IrisGoal
 from rocq_pipeline.proof_state.goal_parts import BrickGoalParts
 

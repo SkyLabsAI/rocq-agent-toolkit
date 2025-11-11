@@ -1,11 +1,10 @@
 import re
-from typing import Iterator
+from collections.abc import Iterator
 
-from rocq_pipeline.proof_state.parse.rocq import into_RocqGoalParts
-from rocq_pipeline.proof_state.parse.iris import into_IrisGoalParts
+from rocq_pipeline.proof_state.goal import BrickGoal, IrisGoal, RocqGoal
 from rocq_pipeline.proof_state.parse.brick import into_BrickGoalParts
-from rocq_pipeline.proof_state.goal import RocqGoal, IrisGoal, BrickGoal
-
+from rocq_pipeline.proof_state.parse.iris import into_IrisGoalParts
+from rocq_pipeline.proof_state.parse.rocq import into_RocqGoalParts
 
 _parse_into_GoalParts = {
     RocqGoal: into_RocqGoalParts,

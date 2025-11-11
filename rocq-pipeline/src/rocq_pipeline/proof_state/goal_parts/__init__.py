@@ -14,9 +14,9 @@ classes expose additional structural decompositions.
 # ---------------------------------------------------------------------
 
 
-from .rocq import into_GoalParts, RocqGoalParts
-from .iris import IrisGoalParts
 from .brick import BrickGoalParts
+from .iris import IrisGoalParts
+from .rocq import RocqGoalParts, into_GoalParts
 
 __all__ = [
     "into_GoalParts",

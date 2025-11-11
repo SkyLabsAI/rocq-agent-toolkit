@@ -6,8 +6,8 @@
 import copy
 from typing import overload
 
-from rocq_pipeline.proof_state.goal import RocqGoal, IrisGoal, BrickGoal
 from rocq_pipeline.proof_state import parse
+from rocq_pipeline.proof_state.goal import BrickGoal, IrisGoal, RocqGoal
 
 __all__ = [
     "goal_parts",

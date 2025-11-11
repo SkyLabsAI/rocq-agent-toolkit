@@ -15,9 +15,9 @@ utilities for interacting with structured goals of a given kind.
 # and clients can extend this hierarchy.
 # ---------------------------------------------------------------------
 
-from .rocq import RocqGoal
-from .iris import IrisGoal
 from .brick import BrickGoal
+from .iris import IrisGoal
+from .rocq import RocqGoal
 
 __all__ = [
     "RocqGoal",

@@ -7,15 +7,10 @@ most specific [goal_parts] possible.
 TODO: Replace this string-based parsing with Ltac2 utilities.
 """
 
-from .rocq import into_RocqGoalParts
-from .iris import into_IrisGoalParts, Rocq2IrisGoalParts
-from .brick import (
-    into_BrickGoalParts,
-    Rocq2BrickGoalParts,
-    Iris2BrickGoalParts
-)
+from .brick import Iris2BrickGoalParts, Rocq2BrickGoalParts, into_BrickGoalParts
+from .iris import Rocq2IrisGoalParts, into_IrisGoalParts
 from .proof_state import into_Goals
-
+from .rocq import into_RocqGoalParts
 
 __all__ = [
     "into_Goals",

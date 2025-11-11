@@ -1,14 +1,14 @@
 import argparse
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 import json
 import logging
 import sys
-from pathlib import Path
-from typing import Any, Optional, Type
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
-from rocq_doc_manager import RocqDocManager, DuneUtil
+from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
@@ -17,11 +17,10 @@ from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
 from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
 
-
 logger = logging.getLogger(__name__)
 
 
-def mk_argparser(agent_type: Type[Agent]) -> argparse.ArgumentParser:
+def mk_argparser(agent_type: type[Agent]) -> argparse.ArgumentParser:
     # Set up the argument parser
     parser = argparse.ArgumentParser(
         description="Parses a file name, an optional trace flag, and collects all arguments following a '--' separator.",
@@ -55,8 +54,7 @@ def mk_argparser(agent_type: Type[Agent]) -> argparse.ArgumentParser:
 
     return parser
 
-
-def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
+def main(agent_type: type[Agent], args: list[str] | None = None) -> bool:
     if args is None:
         args = sys.argv[1:]
 
@@ -83,6 +81,10 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         print("unspecified task")
         return False
 
+    def rocq_args(filename: Path) -> list[str]:
+        # TODO: a better default
+        return DuneUtil.rocq_args_for(filename)
+
     now_str = datetime.now().strftime("%Y%m%d_%H%M")
     tasks_result_file: Path = (
         arguments.output_dir / f"{tasks_name}_results_{now_str}.jsonl"
@@ -95,7 +97,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         # TODO: integrate with opentelemetry, properly instrument the agent
         # framework and derived agents
         trace_id: str | None = None
-        timestamp_iso_8601 = datetime.now(timezone.utc).isoformat()
+        timestamp_iso_8601 = datetime.now(UTC).isoformat()
 
         task_result: TaskResult | None = None
         if hasattr(agent_type, "build"):
@@ -110,7 +112,7 @@ def main(agent_type: Type[Agent], args: Optional[list[str]] = None) -> bool:
         try:
             task_file = wdir / task["file"]
             with RocqDocManager(
-                    DuneUtil.rocq_args_for(task_file),
+                    rocq_args(task_file),
                     str(task_file),
                     dune=True,
             ) as rdm:

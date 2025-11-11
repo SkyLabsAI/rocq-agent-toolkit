@@ -4,7 +4,7 @@ import rocq_pipeline.task_runner
 from rocq_pipeline.agent import Agent
 from rocq_pipeline.auto_agent import AutoAgent
 
-from .util import make_task_str, make_repeated_tasks_str
+from .util import make_repeated_tasks_str, make_task_str
 
 
 def test_auto() -> None:

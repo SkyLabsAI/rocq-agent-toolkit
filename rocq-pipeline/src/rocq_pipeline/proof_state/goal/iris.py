@@ -1,4 +1,5 @@
 from typing import cast, override
+
 from rocq_pipeline.proof_state.goal import RocqGoal
 from rocq_pipeline.proof_state.goal_parts import IrisGoalParts
 

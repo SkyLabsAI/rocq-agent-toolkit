@@ -8,7 +8,7 @@ def make_task(
         tags: list[str] | None = None,
 ) -> dict[str, Any]:
     if tags is None:
-        tags = list()
+        tags = []
     return {"file": file_path, "locator": locator, "tags": tags}
 
 

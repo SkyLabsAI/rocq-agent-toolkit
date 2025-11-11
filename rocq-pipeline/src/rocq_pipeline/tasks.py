@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 import jmespath
 import yaml
@@ -41,7 +41,7 @@ def mk_validated_tasklist(
 def load_tasks(filename: str | Path) -> tuple[Path, list[dict[str, Any]]]:
     filename = Path(filename)
     wdir = filename.parent
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
         if filename.suffix in [".yaml", ".yml"]:
             data = yaml.safe_load(f)
         elif filename.suffix in [".json"]:
@@ -58,6 +58,6 @@ def load_tasks(filename: str | Path) -> tuple[Path, list[dict[str, Any]]]:
 def filter_tags(tasks: list[dict[str, Any]], tag: str) -> list[dict[str, Any]]:
     escaped = tag.replace("'", r"\'")
     return cast(
-        list[Dict[str, Any]],
+        list[dict[str, Any]],
         jmespath.search(f"[? contains(tags, '{escaped}')]", tasks)
     )

@@ -3,9 +3,9 @@ import pytest
 # --- Imports from your script ---
 # (Assuming your classes are in 'proof_parser.py')
 from rocq_pipeline.proof_state import (
-    ProofState,
     BrickGoal,
     IrisGoal,
+    ProofState,
     RocqGoal,
 )
 

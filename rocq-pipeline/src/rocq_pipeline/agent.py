@@ -1,10 +1,10 @@
-from argparse import ArgumentParser, Namespace
 import pprint
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass, field
-import inspect
-from typing import Any, override, Self
+from typing import Any, Self, override
 
 from rocq_doc_manager import RocqDocManager
+
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.schema.task_output import (
     ExecutionError,
@@ -77,11 +77,11 @@ class OneShotAgent(Agent):
         self._tactic = tactic
 
     @staticmethod
-    def arg_parser(args: ArgumentParser):
+    def arg_parser(args: ArgumentParser) -> None:
         args.add_argument('--tactic', type=str, required=True, help="The tactic to run")
 
     @staticmethod
-    def build(prompt: str | None, args: Namespace) -> Self:
+    def build(prompt: str | None, args: Namespace) -> OneShotAgent:
         return OneShotAgent(args.tactic)
 
     @override
@@ -106,7 +106,7 @@ class TraceAgent(Agent):
         self._stop_on_failure = stop_on_failure
         # Each element of [_history] is a tactic and a boolean indicating
         # whether its application succeeded.
-        self._history: list[tuple[Tactic, bool]] = list()
+        self._history: list[tuple[Tactic, bool]] = []
 
     def last_failed(self) -> bool:
         if not self._history:
@@ -183,7 +183,9 @@ class TraceAgent(Agent):
         # Base implementation does nothing - subclasses can override
         _ = err
 
-    def finished(self, message: str | None = None, metrics: task_output.Metrics = task_output.Metrics()) -> Finished:
+    def finished(self, message: str | None = None, metrics: task_output.Metrics|None = None) -> Finished:
+        if metrics is None:
+            metrics = task_output.Metrics()
         final_doc_interaction = self.final_doc_interaction()
         if message:
             return Finished(
@@ -197,7 +199,9 @@ class TraceAgent(Agent):
                 final_doc_interaction=final_doc_interaction
             )
 
-    def give_up(self, reason: FailureReason, metrics: task_output.Metrics = task_output.Metrics()) -> GiveUp:
+    def give_up(self, reason: FailureReason, metrics: task_output.Metrics|None = None) -> GiveUp:
+        if metrics is None:
+            metrics = task_output.Metrics()
         return GiveUp(
             metrics=metrics,
             final_doc_interaction=self.final_doc_interaction(),

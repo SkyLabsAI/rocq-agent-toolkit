@@ -1,15 +1,18 @@
-import sys
 import argparse
+import json
 import re
+import sys
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
-from typing_extensions import Callable, Any
-from rocq_doc_manager import RocqDocManager, DuneUtil
+from typing import Any
+
 import yaml
-import json
+from rocq_doc_manager import DuneUtil, RocqDocManager
 
 from rocq_pipeline.locator import NotFound
+
 
 @dataclass
 class ProofTask:
@@ -48,7 +51,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
     suffix = rdm.doc_suffix()
     total_sentences = len(suffix)
     idx = 0
-    mtch = re.compile(f"(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")
+    mtch = re.compile("(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")
     while idx < total_sentences:
         sentence: dict[str,str] = suffix[idx]
         idx += 1
@@ -60,7 +63,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
                 proof: ProofTask = scan_proof(suffix[idx:])
                 idx += proof.end
                 tags = ["proof"]
-                if not tagger is None:
+                if tagger is not None:
                     tags.extend(tagger(proof))
             except NotFound:
                 print(f"Lemma {m.group(2)} does not end", file=sys.stderr)

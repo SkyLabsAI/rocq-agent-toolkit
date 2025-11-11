@@ -1,7 +1,9 @@
 import re
-from typing import Callable, override
+from collections.abc import Callable
+from typing import override
 
 from rocq_doc_manager import RocqDocManager
+
 from rocq_pipeline.schema import task_output
 
 

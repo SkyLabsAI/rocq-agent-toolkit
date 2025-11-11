@@ -1,8 +1,8 @@
-from dataclasses import asdict
 import re
+from dataclasses import asdict
 
-from rocq_pipeline.proof_state.goal_parts.rocq import RocqGoalParts
 from rocq_pipeline.proof_state.goal_parts.iris import IrisGoalParts
+from rocq_pipeline.proof_state.goal_parts.rocq import RocqGoalParts
 from rocq_pipeline.proof_state.parse.rocq import into_RocqGoalParts
 
 
@@ -66,7 +66,7 @@ def Rocq2IrisGoalParts(
     unknown: list[str] = []
 
     lines = rocq_parts.rocq_concl.split("\n")
-    iris_hyps: dict[str, str] = dict()
+    iris_hyps: dict[str, str] = {}
     iris_hyps_anon: set[str] = set()
 
     for i in range(len(lines)):
@@ -77,7 +77,7 @@ def Rocq2IrisGoalParts(
         if IrisGoalPatterns.iris_pers_separator(line):
             iris_pers_hyps = iris_hyps
             iris_pers_hyps_anon = iris_hyps_anon
-            iris_hyps = dict()
+            iris_hyps = {}
             iris_hyps_anon = set()
         elif IrisGoalPatterns.iris_spat_separator(line):
             iris_spat_hyps = iris_hyps

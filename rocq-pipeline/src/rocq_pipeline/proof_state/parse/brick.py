@@ -1,11 +1,11 @@
 from dataclasses import asdict
 
-from rocq_pipeline.proof_state.goal_parts.rocq import RocqGoalParts
-from rocq_pipeline.proof_state.goal_parts.iris import IrisGoalParts
 from rocq_pipeline.proof_state.goal_parts.brick import BrickGoalParts
+from rocq_pipeline.proof_state.goal_parts.iris import IrisGoalParts
+from rocq_pipeline.proof_state.goal_parts.rocq import RocqGoalParts
 from rocq_pipeline.proof_state.parse.iris import (
-    into_IrisGoalParts,
     Rocq2IrisGoalParts,
+    into_IrisGoalParts,
 )
 
 
