@@ -73,19 +73,24 @@ class _into_Goals:
 
     @classmethod
     def parse_proof_state(
-            cls,
-            pf_state_str: str,
-            goal_ty_bound: type[RocqGoal],
+        cls,
+        pf_state_str: str,
+        goal_ty_bound: type[RocqGoal],
     ) -> Iterator[RocqGoal]:
         """
-        Parses a proof state string and yields structured goal parts.
+        Parses a proof state string and yields structured goals.
         This is a static generator that manages its own parsing state.
         """
-        # --- Local state variables (replace instance state) ---
+        # --- Local state variables ---
         current_goal_lines: list[str] = []
-        current_rel_num: int = 1
+        goal_counter: int = 1
         current_shelved_cnt: int | None = None
         current_is_concl_only: bool = False
+
+        # Simple state machine:
+        # 0 = PRE (searching for the first goal's metadata)
+        # 1 = CONTENT (collecting lines for the current goal)
+        state = 0
 
         for line in pf_state_str.split("\n"):
             stripped_line = line.strip()
@@ -95,50 +100,57 @@ class _into_Goals:
             m2 = not m1 and cls._RE_GOAL_IS.match(stripped_line)
 
             if m1 or m2:
-                # --- Begin "process_current_goal" logic ---
-                # A metadata line signifies the end of the previous goal
-                if current_goal_lines:
+                # --- Found a metadata line ---
+                if state == 1:
+                    # We were in CONTENT, so this is the *next* goal.
+                    # Process the goal we just finished collecting.
                     goal_str = "\n".join(current_goal_lines).strip()
                     if goal_str:
                         structured_goal = cls._parse_goal_string(
                             goal_str,
                             goal_ty_bound,
-                            current_rel_num,
+                            goal_counter,  # Use incrementing counter
                             current_shelved_cnt,
                             current_is_concl_only,
                         )
                         if structured_goal:
                             yield structured_goal
-                # --- End "process_current_goal" logic ---
+                            goal_counter += 1  # Increment *after* yielding
 
                 # --- Reset state for the *new* goal ---
+                state = 1  # We are now officially in a goal
                 current_goal_lines = []
                 if m1:
-                    current_rel_num = int(m1.group(1))
+                    # "N goals" line
                     current_shelved_cnt = int(m1.group(2)) if m1.group(2) else None
                     current_is_concl_only = False
                 elif m2:
-                    current_rel_num = int(m2.group(1))
+                    # "goal N is:" line
                     current_shelved_cnt = None
                     current_is_concl_only = True
                 continue
 
-            # Skip blank lines between goals
-            if not current_goal_lines and stripped_line == "":
-                continue
+            # --- Not a metadata line ---
+            if state == 1:
+                # We are in CONTENT, so collect this line
+                # (Skip leading blank lines *within* a goal's content)
+                if not current_goal_lines and stripped_line == "":
+                    continue
+                current_goal_lines.append(line)
 
-            current_goal_lines.append(line)
+            # if state == 0, we're in PRE and this isn't metadata,
+            # so we just discard the line (it's junk before the first goal)
 
-        # --- Process the very last goal (final "process_current_goal") ---
-        if current_goal_lines:
+        # --- Process the very last goal (after the loop ends) ---
+        if state == 1 and current_goal_lines:
             goal_str = "\n".join(current_goal_lines).strip()
             if goal_str:
-                goal_parts = cls._parse_goal_string(
+                structured_goal = cls._parse_goal_string(
                     goal_str,
                     goal_ty_bound,
-                    current_rel_num,
+                    goal_counter,  # Use the final counter value
                     current_shelved_cnt,
                     current_is_concl_only,
                 )
-                if goal_parts:
-                    yield goal_parts
+                if structured_goal:
+                    yield structured_goal
