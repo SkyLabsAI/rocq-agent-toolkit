@@ -8,7 +8,8 @@ homepage: "https://github.com/SkylabsAI/skylabs-fm"
 bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
   "dune" {>= "3.17"}
-  "rocq-prover"
+  "rocq-core"
+  "rocq-stdlib"
   "odoc" {with-doc}
 ]
 build: [
