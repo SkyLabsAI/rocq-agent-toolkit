@@ -5,9 +5,9 @@ manager.
 """
 
 from .dune_util import DuneUtil, dune_env_hack
-from .rocq_doc_manager_raw import RocqDocManagerRaw
-from .rocq_doc_manager_api import RocqDocManagerAPI
 from .rocq_doc_manager import RocqDocManager
+from .rocq_doc_manager_api import RocqDocManagerAPI
+from .rocq_doc_manager_raw import RocqDocManagerRaw
 
 __all__ = [
     "dune_env_hack",

@@ -1,6 +1,6 @@
-from .rocq_doc_manager_raw import RocqDocManagerRaw, Err
 from .rocq_doc_manager_api import RocqDocManagerAPI
-from dataclasses import dataclass
+from .rocq_doc_manager_raw import Err
+
 
 class RocqDocManager(RocqDocManagerAPI):
     def current_goal(self) -> str | Err[None]:

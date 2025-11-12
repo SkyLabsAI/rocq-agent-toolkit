@@ -1,8 +1,8 @@
-from .rocq_doc_manager_raw import RocqDocManagerRaw, Err
 from dataclasses import dataclass
-import json
-from types import TracebackType
-from typing import cast, Any, List, Self
+from typing import Any, cast
+
+from .rocq_doc_manager_raw import Err, RocqDocManagerRaw
+
 
 # Description: Rocq source file information.
 @dataclass

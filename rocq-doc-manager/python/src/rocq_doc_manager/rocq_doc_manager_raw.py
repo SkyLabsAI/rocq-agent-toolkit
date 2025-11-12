@@ -1,17 +1,15 @@
-from dataclasses import dataclass
 import json
-import os
-from pathlib import Path
 import subprocess
+from dataclasses import dataclass
 from types import TracebackType
-from typing import TypeVar, Generic, Any, List, Self
+from typing import Any, Self, TypeVar
 
 from rocq_doc_manager.dune_util import dune_env_hack
 
 E = TypeVar('E')
 
 @dataclass
-class Err(Generic[E]):
+class Err[E]:
     message: str
     data: E
     def ok(self) -> bool:
@@ -20,7 +18,7 @@ class Err(Generic[E]):
 R = TypeVar('R')
 
 @dataclass
-class Resp(Generic[R]):
+class Resp[R]:
     result: R
     def ok(self) -> bool:
         return True
@@ -81,7 +79,7 @@ class RocqDocManagerRaw:
         self.quit()
         return None
 
-    def request(self, method: str, params: List[Any]) -> Resp[Any] | Err[Any]:
+    def request(self, method: str, params: list[Any]) -> Resp[Any] | Err[Any]:
         if self._process is None:
             raise self.Error("Not running anymore.")
         assert (self._process.stdin is not None)
@@ -107,7 +105,7 @@ class RocqDocManagerRaw:
         try:
             nb_bytes = int(header[len(prefix):-2])
         except Exception as e:
-            raise self.Error(f"Failed to parse response: {header}", e)
+            raise self.Error(f"Failed to parse response: {header}", e) from e
         response = self._process.stdout.read(nb_bytes).decode()
         response = json.loads(response)
         if "error" in response:

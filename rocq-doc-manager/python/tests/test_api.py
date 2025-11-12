@@ -1,5 +1,5 @@
-from rocq_doc_manager.rocq_doc_manager_raw import Err, Resp
 from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager.rocq_doc_manager_raw import Err, Resp
 
 
 def make() -> RocqDocManager:
