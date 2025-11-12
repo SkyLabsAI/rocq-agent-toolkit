@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '@/components/base/modal';
 import CodeViewer from '@/components/base/codeViewer';
 import TacticStepsViewer from '@/components/base/tacticSteps';
+import TacticInfoViewer from '@/components/base/tacticInfo';
 import cn from 'classnames';
 import type { TaskOutput } from '@/types/types';
 import { getObservabilityLogs } from '@/services/dataservice';
@@ -68,7 +69,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
 
   // Define which keys should have custom UI
   const customUIKeys = React.useMemo(() => 
-    ['cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent', 'tactic_prediction_explanation', 'tactic_prediction_tactic'], []
+    ['cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent', 'tactic_prediction_explanation', 'tactic_prediction_tactic', 'tactic_info'], []
   );
   
   // Get all available keys from all fetched logs
@@ -108,7 +109,17 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
 
   // Helper function to render custom UI for specific keys
   const renderCustomContent = (key: string, value: unknown) => {
-    // Handle tactic prediction arrays - ONLY these keys should be treated as arrays
+    // Handle new tactic_info array with structured tactic objects
+    if (key === 'tactic_info' && Array.isArray(value)) {
+      return (
+        <TacticInfoViewer
+          tactics={value as Array<{name: string; next_tactic_prediction: string; status: "success" | "failure"; explaination: string; [key: string]: unknown}>}
+          title="Tactic Information"
+        />
+      );
+    }
+
+    // Handle legacy tactic prediction arrays - ONLY these keys should be treated as arrays
     if (key === 'tactic_prediction_explanation' && Array.isArray(value)) {
       return (
         <TacticStepsViewer
@@ -129,35 +140,47 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
       );
     }
     
-    // For all other keys, if it's an array, pick the first index (should be string)
-    let stringValue: string;
+    // For all other keys, handle as string arrays and render all strings
+    let stringValues: string[];
     if (Array.isArray(value)) {
-      stringValue = value[0] as string;
+      stringValues = value.filter((item): item is string => typeof item === 'string');
     } else if (typeof value === 'string') {
-      stringValue = value;
+      stringValues = [value];
     } else {
       return null;
     }
+    
+    if (stringValues.length === 0) return null;
     
     const lowerKey = key.toLowerCase();
     
     if (lowerKey.includes('cpp') || lowerKey.includes('code')) {
       return (
-        <CodeViewer
-          code={stringValue}
-          language="cpp"
-          filename={`${key}.cpp`}
-        />
+        <div className="space-y-4">
+          {stringValues.map((code, index) => (
+            <CodeViewer
+              key={index}
+              code={code}
+              language="cpp"
+              filename={`${key}_${index + 1}.cpp`}
+            />
+          ))}
+        </div>
       );
     }
     
     if (lowerKey.includes('target') || lowerKey.includes('lemma') || lowerKey.includes('states')) {
       return (
-        <CodeViewer
-          code={stringValue}
-          language="text"
-          filename={`${key}.txt`}
-        />
+        <div className="space-y-4">
+          {stringValues.map((text, index) => (
+            <CodeViewer
+              key={index}
+              code={text}
+              language="text"
+              filename={`${key}_${index + 1}.txt`}
+            />
+          ))}
+        </div>
       );
     }
     
@@ -166,15 +189,28 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
 
   // Helper function to render JSON content
   const renderJsonContent = (key: string, value: unknown) => {
-    // For all keys except tactic prediction ones, if it's an array, pick the first index
-    let processedValue = value;
-    if (key !== 'tactic_prediction_explanation' && key !== 'tactic_prediction_tactic' && Array.isArray(value)) {
-      processedValue = value[0];
+    // For all keys except tactic prediction and tactic info ones, handle as string arrays
+    if (key !== 'tactic_prediction_explanation' && key !== 'tactic_prediction_tactic' && key !== 'tactic_info' && Array.isArray(value)) {
+      const stringValues = value.filter((item): item is string => typeof item === 'string');
+      if (stringValues.length > 0) {
+        return (
+          <div className="space-y-4">
+            {stringValues.map((str, index) => (
+              <div key={index} className="bg-gray-900/50 border border-white/10 rounded-lg p-4 max-h-96 overflow-auto">
+                <div className="text-xs text-gray-400 mb-2">Item {index + 1}</div>
+                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+                  {str}
+                </pre>
+              </div>
+            ))}
+          </div>
+        );
+      }
     }
     
-    const jsonString = typeof processedValue === 'string' 
-      ? processedValue 
-      : JSON.stringify(processedValue, null, 2);
+    const jsonString = typeof value === 'string' 
+      ? value 
+      : JSON.stringify(value, null, 2);
     
     return (
       <div className="bg-gray-900/50 border border-white/10 rounded-lg p-4 max-h-96 overflow-auto">
@@ -188,6 +224,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
   // Helper function to get tab color based on key
   const getTabColor = (key: string) => {
     const lowerKey = key.toLowerCase();
+    if (key === 'tactic_info') return 'purple';
     if (key === 'tactic_prediction_explanation') return 'blue';
     if (key === 'tactic_prediction_tactic') return 'green';
     if (lowerKey.includes('cpp') || lowerKey.includes('code')) return 'blue';

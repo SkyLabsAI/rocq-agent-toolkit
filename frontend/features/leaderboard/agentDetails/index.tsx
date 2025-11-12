@@ -582,7 +582,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
                               Failure Reason
                             </label>
                             <p className="text-red-400 text-sm">
-                              {typeof task.failure_reason === "object"
+                              {Array.isArray(task.failure_reason) 
+                                ? task.failure_reason.join(', ') 
+                                : typeof task.failure_reason === "object" && task.failure_reason !== null && 'kind' in task.failure_reason
                                 ? task.failure_reason.kind
                                 : String(task.failure_reason)}
                             </p>
