@@ -30,7 +30,8 @@ def scan_proof(suffix : list[RocqDocManager.SuffixItem]) -> ProofTask:
             continue
         txt: str = sentence.text
         if txt.startswith("Proof"):
-            start = i
+            start = i+1
+            continue
         proof_ended: bool = (
             txt.startswith("Qed") or
             txt.startswith("Admitted") or
