@@ -405,6 +405,7 @@ let output_docs oc api =
 
 let output_python_api oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
+  let pp_capitalized oc s = output_string oc (String.capitalize_ascii s) in
   line "from dataclasses import dataclass";
   line "from typing import Any, cast";
   line "";
@@ -412,13 +413,13 @@ let output_python_api oc api =
   line "";
   let output_object (A(O(o))) =
     line "";
-    Option.iter (line "# Description: %s.") o.descr;
     line "@dataclass";
     line "class %s:" o.name;
+    Option.iter (line "    \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->
       output_fields f.tail;
-      Option.iter (line "    # Description: %s.") f.descr;
+      Option.iter (line "    # %a." pp_capitalized) f.descr;
       line "    %s: %s" f.name (Schema.python f.schema)
     in
     output_fields o.fields
@@ -443,13 +444,13 @@ let output_python_api oc api =
   in
   let output_method _ (M(m)) =
     line "";
-    Option.iter (line "    # Description: %s.") m.descr;
     let ret_ty =
       match m.impl with
       | Pure(_) -> Schema.python m.ret
       | Rslt(i) -> Schema.python m.ret ^ " | Err[" ^ Schema.python i.err ^ "]"
     in
     line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
+    Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
     line "        result = self.request(\"%s\", [%a])" m.name pp_names m.args;
     let _ =
       match m.impl with Pure(_) -> () | Rslt(i) ->

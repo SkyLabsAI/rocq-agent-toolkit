@@ -20,7 +20,7 @@ let rocq_loc =
       API.Fields.add ~name:"file" S.string @@
       API.Fields.nil
     in
-    API.declare_object api ~name:"rocq_source"
+    API.declare_object api ~name:"RocqSource"
       ~descr:"Rocq source file information"
       ~encode:Fun.id ~decode:Fun.id fields
   in
@@ -59,7 +59,7 @@ let rocq_loc =
     let ret = (line_nb_last, (bol_pos_last, (bp, (ep, ())))) in
     (fname, (line_nb, (bol_pos, ret)))
   in
-  API.declare_object api ~name:"rocq_loc"
+  API.declare_object api ~name:"RocqLoc"
     ~descr:"Rocq source code location" ~encode ~decode fields
 
 let _ =
@@ -110,7 +110,7 @@ let command_data =
     let ret = (new_inductives, (removed_inductives, ())) in
     (open_subgoals, (new_constants, (removed_constants, ret)))
   in
-  API.declare_object api ~name:"command_data"
+  API.declare_object api ~name:"CommandData"
     ~descr:"data gathered while running a Rocq command" ~encode ~decode fields
  
 let text_args =
@@ -191,7 +191,7 @@ let prefix_item =
     API.Fields.add ~name:"text" S.string @@
     API.Fields.nil
   in
-  API.declare_object api ~name:"prefix_item"
+  API.declare_object api ~name:"PrefixItem"
     ~descr:"document prefix item, appearing before the cursor"
     ~encode:Fun.id ~decode:Fun.id fields
 
@@ -208,7 +208,7 @@ let suffix_item =
     API.Fields.add ~name:"text" S.string @@
     API.Fields.nil
   in
-  API.declare_object api ~name:"suffix_item"
+  API.declare_object api ~name:"SuffixItem"
     ~descr:"document suffix item, appearing after the cursor"
     ~encode:Fun.id ~decode:Fun.id fields
 
@@ -257,7 +257,7 @@ let compile_result =
     | Ok(())       -> (true , (stdout, (stderr, (None, ()))))
     | Error(error) -> (false, (stdout, (stderr, (Some(error), ()))))
   in
-  API.declare_object api ~name:"compile_result"
+  API.declare_object api ~name:"CompileResult"
     ~descr:"result of the `compile` method" ~encode ~decode fields
 
 let _ =

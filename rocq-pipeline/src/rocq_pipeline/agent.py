@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Self, override
 
 from rocq_doc_manager import RocqDocManager
-from rocq_doc_manager.rocq_doc_manager_api import command_data
+from rocq_doc_manager.rocq_doc_manager_api import CommandData
 from rocq_doc_manager.rocq_doc_manager_raw import Err
 
 from rocq_pipeline.schema import task_output
@@ -15,7 +15,7 @@ from rocq_pipeline.schema.task_output import (
 
 
 def close_proof(rdm: RocqDocManager) -> None:
-    assert isinstance(rdm.run_command("Qed."), command_data)
+    assert isinstance(rdm.run_command("Qed."), CommandData)
 
 
 @dataclass
@@ -165,7 +165,7 @@ class TraceAgent(Agent):
             trace("Tactic:", data=tactic.tactic)
 
             result = rdm.run_command(f"{tactic.tactic}.")
-            if isinstance(result, command_data):
+            if isinstance(result, CommandData):
                 self.update_history(tactic)
                 if result.open_subgoals == "No more goals.":
                     return self.finished()

@@ -33,13 +33,13 @@ size part gives the size of the JSON string in bytes.
 API Objects
 -----------
 
-### `rocq_source`
+### `RocqSource`
 
 - Description: Rocq source file information.
 - Field `file`: a string.
 - Field `dirpath`: either `null` or a string.
 
-### `rocq_loc`
+### `RocqLoc`
 
 - Description: Rocq source code location.
 - Field `ep`: end position (as an integer).
@@ -48,9 +48,9 @@ API Objects
 - Field `line_nb_last`: end line number (as an integer).
 - Field `bol_pos`: position of the beginning of start line (as an integer).
 - Field `line_nb`: start line number (as an integer).
-- Field `fname`: source file identification if not run as a toplevel (as either `null` or an instance of the `rocq_source` object).
+- Field `fname`: source file identification if not run as a toplevel (as either `null` or an instance of the `RocqSource` object).
 
-### `command_data`
+### `CommandData`
 
 - Description: data gathered while running a Rocq command.
 - Field `removed_inductives`: inductives removed by the command (as a list where each element is a string).
@@ -59,20 +59,20 @@ API Objects
 - Field `new_constants`: constants introduced by the command (as a list where each element is a string).
 - Field `open_subgoals`: open sub-goals, if in a proof (as either `null` or a string).
 
-### `prefix_item`
+### `PrefixItem`
 
 - Description: document prefix item, appearing before the cursor.
 - Field `text`: a string.
 - Field `offset`: an integer.
 - Field `kind`: a string.
 
-### `suffix_item`
+### `SuffixItem`
 
 - Description: document suffix item, appearing after the cursor.
 - Field `text`: a string.
 - Field `kind`: a string.
 
-### `compile_result`
+### `CompileResult`
 
 - Description: result of the `compile` method.
 - Field `error`: non-null if success is false (as either `null` or a string).
@@ -89,7 +89,7 @@ API Methods
 - Arguments (in order, or named):
   - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
 
 ### `clear_suffix`
@@ -109,7 +109,7 @@ API Methods
 ### `compile`
 
 - Description: compile the current contents of the file with `rocq compile`.
-- Response payload: an instance of the `compile_result` object.
+- Response payload: an instance of the `CompileResult` object.
 - Failure mode: never fails.
 
 ### `cursor_index`
@@ -121,13 +121,13 @@ API Methods
 ### `doc_prefix`
 
 - Description: gives the list of all processed commands, appearing before the cursor.
-- Response payload: a list where each element is an instance of the `prefix_item` object.
+- Response payload: a list where each element is an instance of the `PrefixItem` object.
 - Failure mode: never fails.
 
 ### `doc_suffix`
 
 - Description: gives the list of all unprocessed commands, appearing after the cursor.
-- Response payload: a list where each element is an instance of the `suffix_item` object.
+- Response payload: a list where each element is an instance of the `SuffixItem` object.
 - Failure mode: never fails.
 
 ### `get_feedback`
@@ -142,7 +142,7 @@ API Methods
 - Arguments (in order, or named):
   - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
 
 ### `has_suffix`
@@ -164,8 +164,8 @@ API Methods
 - Description: insert and process a command at the cursor.
 - Arguments (in order, or named):
   - text: text of the command to insert (as a string).
-- Response payload: an instance of the `command_data` object.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Response payload: an instance of the `CommandData` object.
+- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
 
 ### `json_query`
@@ -182,7 +182,7 @@ API Methods
 
 - Description: adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors).
 - Response payload: a `null` value.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
 
 ### `revert_before`
@@ -199,15 +199,15 @@ API Methods
 - Description: process a command at the cursor without inserting it in the document.
 - Arguments (in order, or named):
   - text: text of the command to insert (as a string).
-- Response payload: an instance of the `command_data` object.
+- Response payload: an instance of the `CommandData` object.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
 ### `run_step`
 
 - Description: advance the cursor by stepping over an unprocessed item.
-- Response payload: data for the command that was run, if any (as either `null` or an instance of the `command_data` object).
-- Error payload: optional source code location for the error (as either `null` or an instance of the `rocq_loc` object).
+- Response payload: data for the command that was run, if any (as either `null` or an instance of the `CommandData` object).
+- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
 
 ### `text_query`

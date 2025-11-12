@@ -11,7 +11,7 @@ from typing import Any
 
 import yaml
 from rocq_doc_manager import DuneUtil, RocqDocManager
-from rocq_doc_manager.rocq_doc_manager_api import suffix_item
+from rocq_doc_manager.rocq_doc_manager_api import SuffixItem
 from rocq_doc_manager.rocq_doc_manager_raw import Err
 
 from rocq_pipeline.locator import NotFound
@@ -24,7 +24,7 @@ class ProofTask:
     admitted: bool
     proof_tactics: list[str]
 
-def scan_proof(suffix : list[suffix_item]) -> ProofTask:
+def scan_proof(suffix : list[SuffixItem]) -> ProofTask:
     tactics: list[str] = []
     start = 0
     for i, sentence in enumerate(suffix):
