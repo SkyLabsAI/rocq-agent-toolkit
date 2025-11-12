@@ -405,11 +405,11 @@ let output_docs oc api =
 
 let output_python_api oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
-  line "from .rocq_doc_manager_raw import RocqDocManagerRaw, Err";
   line "from dataclasses import dataclass";
-  line "import json";
-  line "from types import TracebackType";
-  line "from typing import cast, Any, List, Self";
+  line "from typing import Any, cast";
+  line "";
+  line "from .rocq_doc_manager_raw import Err, RocqDocManagerRaw";
+  line "";
   let output_object (A(O(o))) =
     line "";
     Option.iter (line "# Description: %s.") o.descr;
