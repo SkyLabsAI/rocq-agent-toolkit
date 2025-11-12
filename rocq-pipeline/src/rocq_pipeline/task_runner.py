@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from rocq_doc_manager import DuneUtil, RocqDocManager
+from rocq_doc_manager.rocq_doc_manager_raw import Err
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
@@ -117,7 +118,7 @@ def main(agent_type: type[Agent], args: list[str] | None = None) -> bool:
                     dune=True,
             ) as rdm:
                 load_reply = rdm.load_file()
-                if isinstance(load_reply, RocqDocManager.Err):
+                if isinstance(load_reply, Err):
                     raise RuntimeError(" ".join([
                         f"rocq-doc-manager failed to load {task_file};",
                         "is the [rocq-doc-manager] executable available",

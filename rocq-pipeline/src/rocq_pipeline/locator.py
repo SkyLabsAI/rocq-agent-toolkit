@@ -10,7 +10,7 @@ from rocq_pipeline.schema import task_output
 def scan_to(rdm: RocqDocManager, fn: Callable[[str], bool]) -> bool:
     suffix = rdm.doc_suffix()
     for cmd in suffix:
-        if cmd["kind"] == "command" and fn(cmd["text"]):
+        if cmd.kind == "command" and fn(cmd.text):
             return True
         rdm.run_step()
     return False
@@ -68,8 +68,8 @@ class FirstLemma(Locator):
         if scan_to(rdm, is_lemma):
             rdm.run_step()  # advance past the lemma statement
             for cmd in rdm.doc_suffix():
-                if cmd["kind"] == "blank" or (
-                    cmd["kind"] == "command" and cmd["text"].startswith("Proof")
+                if cmd.kind == "blank" or (
+                    cmd.kind == "command" and cmd.text.startswith("Proof")
                 ):
                     rdm.run_step()
                 else:

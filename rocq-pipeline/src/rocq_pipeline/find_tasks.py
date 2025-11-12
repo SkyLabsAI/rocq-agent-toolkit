@@ -11,6 +11,8 @@ from typing import Any
 
 import yaml
 from rocq_doc_manager import DuneUtil, RocqDocManager
+from rocq_doc_manager.rocq_doc_manager_api import suffix_item
+from rocq_doc_manager.rocq_doc_manager_raw import Err
 
 from rocq_pipeline.locator import NotFound
 
@@ -22,13 +24,13 @@ class ProofTask:
     admitted: bool
     proof_tactics: list[str]
 
-def scan_proof(suffix : list[dict[str, Any]]) -> ProofTask:
+def scan_proof(suffix : list[suffix_item]) -> ProofTask:
     tactics: list[str] = []
     start = 0
     for i, sentence in enumerate(suffix):
-        if sentence["kind"] != "command":
+        if sentence.kind != "command":
             continue
-        txt: str = sentence["text"]
+        txt: str = sentence.text
         if txt.startswith("Proof"):
             start = i
         proof_ended: bool = (
@@ -46,7 +48,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
     rdm = RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True)
     resp = rdm.load_file()
-    if not isinstance(resp, rdm.Resp):
+    if isinstance(resp, Err):
         print(f"Loading file failed with error (pwd={os.curdir}):\n{resp}")
         raise RuntimeError(f"Failed to load file: {resp}")
 
@@ -57,11 +59,11 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
     idx = 0
     mtch = re.compile("(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")
     while idx < total_sentences:
-        sentence: dict[str,str] = suffix[idx]
+        sentence = suffix[idx]
         idx += 1
-        if sentence["kind"] != "command":
+        if sentence.kind != "command":
             continue
-        m = mtch.match(sentence["text"])
+        m = mtch.match(sentence.text)
         if m is not None:
             try:
                 proof: ProofTask = scan_proof(suffix[idx:])

@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from typing import Any, Self, override
 
 from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager.rocq_doc_manager_api import command_data
+from rocq_doc_manager.rocq_doc_manager_raw import Err
 
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.schema.task_output import (
@@ -13,7 +15,7 @@ from rocq_pipeline.schema.task_output import (
 
 
 def close_proof(rdm: RocqDocManager) -> None:
-    assert isinstance(rdm.run_command("Qed."), RocqDocManager.Resp)
+    assert isinstance(rdm.run_command("Qed."), command_data)
 
 
 @dataclass
@@ -88,7 +90,7 @@ class OneShotAgent(Agent):
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         solve_tac = f"solve [ {self._tactic} ]."
         final_doc_interaction: str = solve_tac
-        if isinstance(rdm.run_command(solve_tac), RocqDocManager.Err):
+        if isinstance(rdm.run_command(solve_tac), Err):
             return GiveUp(
                 metrics=task_output.Metrics(),
                 final_doc_interaction=final_doc_interaction,
@@ -150,8 +152,8 @@ class TraceAgent(Agent):
 
             if should_trace:
                 goal = rdm.current_goal()
-                if isinstance(goal, rdm.Resp):
-                    trace("Current Goal:", data=goal.result["open_subgoals"])
+                if isinstance(goal, str):
+                    trace("Current Goal:", data=goal)
                 else:
                     trace(f"Current Goal returned error: {goal}")
 
@@ -163,11 +165,11 @@ class TraceAgent(Agent):
             trace("Tactic:", data=tactic.tactic)
 
             result = rdm.run_command(f"{tactic.tactic}.")
-            if isinstance(result, rdm.Resp):
+            if isinstance(result, command_data):
                 self.update_history(tactic)
-                if result.result["open_subgoals"] == "No more goals.":
+                if result.open_subgoals == "No more goals.":
                     return self.finished()
-            elif isinstance(result, rdm.Err):
+            elif isinstance(result, Err):
                 self.update_history(tactic, success=False)
                 trace("Failed", data=result)
                 self.failed(result)
@@ -179,7 +181,7 @@ class TraceAgent(Agent):
             FailureReason(task_output.Other("not implemented"))
         )
 
-    def failed(self, err: RocqDocManager.Err) -> None:
+    def failed(self, err: Err) -> None:
         # Base implementation does nothing - subclasses can override
         _ = err
 
