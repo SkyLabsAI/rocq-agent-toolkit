@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import sys
 from collections.abc import Callable
@@ -44,7 +45,10 @@ def scan_proof(suffix : list[dict[str, Any]]) -> ProofTask:
 def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = None) -> list[dict[str, Any]]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
     rdm = RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True)
-    assert isinstance(rdm.load_file(), rdm.Resp)
+    resp = rdm.load_file()
+    if not isinstance(resp, rdm.Resp):
+        print(f"Loading file failed with error (pwd={os.curdir}):\n{resp}")
+        raise RuntimeError(f"Failed to load file: {resp}")
 
     tasks = []
 
