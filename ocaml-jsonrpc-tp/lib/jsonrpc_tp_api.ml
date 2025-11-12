@@ -202,12 +202,30 @@ let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
   in
   `Assoc(make o.fields (o.decode v))
 
+type context =
+  | Field of {name : string; field : string}
+  | ListItem of int
+  | NullableItem
+
+let add_context : context list -> string -> string = fun ctxt s ->
+  let add s item =
+    match item with
+    | Field(f)     ->
+        Printf.sprintf "in field %s of class %s, %s" f.field f.name s
+    | ListItem(i)  ->
+        Printf.sprintf "in item %i of the list, %s" i s
+    | NullableItem ->
+        Printf.sprintf "in a non-null value, %s" s
+  in
+  List.fold_left add s ctxt
+
 let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
     fun api s json ->
-  let exception Error of string in
-  let error s = raise (Error(s)) in
-  let rec of_json : type a. a Schema.t -> json -> a = fun s json ->
-    let of_json_obj : type a. a api_obj -> _ = fun o fields ->
+  let exception Error of context list * string in
+  let error ctxt s = raise (Error(ctxt, s)) in
+  let rec of_json : type a. context list -> a Schema.t -> json -> a =
+      fun ctxt s json ->
+    let of_json_obj : type a. _ -> a api_obj -> _ = fun ctxt o fields ->
       let O(o) = get_obj api o in
       let rec make : type a. a Fields.t -> a = fun fs ->
         let open Fields in
@@ -215,32 +233,35 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
         | Nil                             -> ()
         | Cns({name; schema; tail=fs; _}) ->
         match List.assoc_opt name fields with
-        | Some(json) -> (of_json schema json, make fs)
+        | Some(json) -> (of_json (Field({name=o.name; field=name}) :: ctxt) schema json, make fs)
         | None       ->
         match Schema.default schema with
         | Some(v)    -> (v, make fs)
-        | None       -> error ("missing object field \"" ^ name ^ "\"")
+        | None       -> error ctxt ("missing object field \"" ^ name ^ "\"")
       in
       o.encode (make o.fields)
     in
     match (s, json) with
     | (Null       , `Null     ) -> ()
-    | (Null       , _         ) -> error "expected null value"
+    | (Null       , _         ) -> error ctxt "expected null value"
     | (Any        , _         ) -> json
     | (Int        , `Int(i)   ) -> i
-    | (Int        , _         ) -> error "expected integer value"
+    | (Int        , _         ) -> error ctxt "expected integer value"
     | (Bool       , `Bool(b)  ) -> b
-    | (Bool       , _         ) -> error "expected boolean value"
+    | (Bool       , _         ) -> error ctxt "expected boolean value"
     | (String     , `String(s)) -> s
-    | (String     , _         ) -> error "expected string value"
+    | (String     , _         ) -> error ctxt "expected string value"
     | (Nullable(_), `Null     ) -> None
-    | (Nullable(s), _         ) -> Some(of_json s json)
-    | (List(s)    , `List(vs) ) -> List.map (of_json s) vs
-    | (List(_)    , _         ) -> error "expected list value"
-    | (Obj(o)     , `Assoc(fs)) -> of_json_obj o fs
-    | (Obj(_)     , _         ) -> error "expected object value"
+    | (Nullable(s), _         ) ->
+        Some(of_json (NullableItem :: ctxt) s json)
+    | (List(s)    , `List(vs) ) ->
+        List.mapi (fun i v -> of_json (ListItem(i) :: ctxt) s v) vs
+    | (List(_)    , _         ) -> error ctxt "expected list value"
+    | (Obj(o)     , `Assoc(fs)) ->
+        of_json_obj ctxt o fs
+    | (Obj(_)     , _         ) -> error ctxt "expected object value"
   in
-  try Ok(of_json s json) with Error(s) -> Error(s)
+  try Ok(of_json [] s json) with Error(ctxt, s) -> Error(add_context ctxt s)
 
 type params = [`List of json list | `Assoc of (string * json) list] option
 
