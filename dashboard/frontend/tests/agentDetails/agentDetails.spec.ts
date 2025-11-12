@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 
 test('agent row expands to show run/task details', async ({ page }) => {
   await page.goto('/');

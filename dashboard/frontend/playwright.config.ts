@@ -33,12 +33,15 @@ export default defineConfig({
   },
   
   webServer: {
-    command: 'pnpm dev',
+    command: 'NEXT_PUBLIC_USE_MOCK_DATA=false pnpm dev',
     port: 3000,
     reuseExistingServer: true, // Always reuse existing server
     timeout: 120 * 1000, // 2 minutes
     stdout: 'pipe', // Capture server output for debugging
     stderr: 'pipe',
+    env: {
+      NEXT_PUBLIC_USE_MOCK_DATA: 'false',
+    },
   },
   
   projects: [

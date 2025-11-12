@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 
 test('dashboard table renders with agent rows', async ({ page }) => {
   await page.goto('/');

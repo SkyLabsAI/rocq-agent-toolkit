@@ -1,5 +1,5 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test('homepage loads and shows dashboard', async ({ page }) => {
     await page.goto('/');
