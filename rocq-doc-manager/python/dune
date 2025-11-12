@@ -1,9 +1,12 @@
-(install
- (section lib)
- (files
-  (README.md as python/README.md)
-  (pyproject.toml as python/pyproject.toml)
-  (poetry.lock as python/poetry.lock)
-  (src/rocq_doc_manager/py.typed as python/src/rocq_doc_manager/py.typed)
-  (src/rocq_doc_manager/__init__.py as python/src/rocq_doc_manager/__init__.py)
-  (src/rocq_doc_manager/rocq_doc_manager.py as python/src/rocq_doc_manager/rocq_doc_manager.py)))
+(subdir src 
+ (subdir rocq_doc_manager
+  (rule
+   (mode promote)
+   (package rocq-doc-manager)
+   (action
+    (with-stdout-to rocq_doc_manager_api.py
+     (run rocq-doc-manager --python-api))))))
+
+; Ignore the test directory: its tests are driven by python.
+(data_only_dirs tests)
+
