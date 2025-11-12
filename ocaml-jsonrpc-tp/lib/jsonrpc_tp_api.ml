@@ -244,46 +244,45 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
 
 type params = [`List of json list | `Assoc of (string * json) list] option
 
-let parse_params : type a. _ api -> a Args.t -> params -> a option =
+let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
     fun api args params ->
-  let rec parse_list : type a. a Args.t -> json list -> a option =
+  let rec parse_list : type a. a Args.t -> json list -> (a, string) result =
       fun args js ->
     match (args, js) with
-    | (Args.Nil   , []     ) -> Some(())
-    | (Args.Nil   , _ :: _ ) -> None
-    | (Args.Cns(_), []     ) -> None
+    | (Args.Nil   , []     ) -> Ok(())
+    | (Args.Nil   , _ :: _ ) -> Error("Too many arguments.")
+    | (Args.Cns(a), []     ) -> Error("Missing argument '" ^ a.name ^ "'.")
     | (Args.Cns(a), j :: js) ->
     match of_json api a.schema j with
-    | Error(_) -> None
+    | Error(s) -> Error("Ill-typed argument '" ^ a.name ^ "': " ^ s)
     | Ok(v)    ->
     match parse_list a.tail js with
-    | None     -> None
-    | Some(vs) -> Some((v, vs))
+    | Error(s) -> Error(s)
+    | Ok(vs)   -> Ok((v, vs))
   in
-  let rec parse_assoc : type a. a Args.t -> (string * json) list -> a option =
-      fun args fs ->
+  let rec parse_assoc : type a. a Args.t -> (string * json) list
+      -> (a, string) result = fun args fs ->
     match (args, fs) with
-    | (Args.Nil   , []) -> Some(())
-    | (Args.Nil   , _ ) -> None
-    | (Args.Cns(_), []) -> None
+    | (Args.Nil   , []) -> Ok(())
+    | (Args.Nil   , _ ) -> Error("Too many arguments.")
     | (Args.Cns(a), _ ) ->
     match List.assoc_opt a.name fs with
-    | None    -> None
+    | None    -> Error("Missing argument '" ^ a.name ^ "'.")
     | Some(j) ->
     match of_json api a.schema j with
-    | Error(_) -> None
+    | Error(s) -> Error("Ill-typed argument '" ^ a.name ^ "': " ^ s)
     | Ok(v)    ->
     let fs = List.remove_assoc a.name fs in
     match parse_assoc a.tail fs with
-    | None     -> None
-    | Some(vs) -> Some((v, vs))
+    | Error(s) -> Error(s)
+    | Ok(vs)   -> Ok((v, vs))
   in
   match (args, params) with
-  | (Args.Nil   , None            ) -> Some(())
-  | (Args.Nil   , Some(`List([])) ) -> Some(())
-  | (Args.Nil   , Some(`Assoc([]))) -> Some(())
-  | (Args.Nil   , Some(_)         ) -> None
-  | (Args.Cns(_), None            ) -> None
+  | (Args.Nil   , None            ) -> Ok(())
+  | (Args.Nil   , Some(`List([])) ) -> Ok(())
+  | (Args.Nil   , Some(`Assoc([]))) -> Ok(())
+  | (Args.Nil   , Some(_)         ) -> Error("No arguments expected.")
+  | (Args.Cns(_), None            ) -> Error("Arguments expected.")
   | (Args.Cns(_), Some(`List(ls)) ) -> parse_list args ls
   | (Args.Cns(_), Some(`Assoc(fs))) -> parse_assoc args fs
 
@@ -306,8 +305,8 @@ let run api ~ic ~oc s =
     | None          -> Response.method_not_found ~oc id f; loop s
     | Some(M(spec)) ->
     match parse_params api spec.args params with
-    | None         -> Response.invalid_params ~oc id f; loop s
-    | Some(params) ->
+    | Error(msg) -> Response.invalid_params ~oc id ~msg f; loop s
+    | Ok(params) ->
     let s =
       match spec.impl with
       | Pure(impl) ->
