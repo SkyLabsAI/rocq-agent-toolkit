@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 
 test('shows loading spinner on dashboard', async ({ page }) => {
   await page.goto('/');
