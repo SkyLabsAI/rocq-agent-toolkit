@@ -27,6 +27,7 @@ Changelog = "https://github.com/SkylabsAI/skylabs-fm/tree/main/changes"
 
 [project.scripts]
 ingest = "rocq_pipeline.find_tasks:main"
+tracer = "rocq_pipeline.tracer:main"
 auto-agent = "rocq_pipeline.task_runner:auto_main"
 tactic-agent = "rocq_pipeline.task_runner:tactic_main"
 
