@@ -95,6 +95,100 @@ def my_tagger(task: ProofTask) -> list[str]:
        tags.append('while-loop')
     if contains(lambda x: x.startswith('wp_do'), task.proof_tactics):
         tags.append('do-loop')
+    if contains(lambda x: x.startswith('rewrite'), task.proof_tactics):
+        tags.append('rewrite')
+    if contains(lambda x: x.startswith('erewrite'), task.proof_tactics):
+        tags.append('erewrite')
+    if contains(lambda x: x.startswith('by rewrite'), task.proof_tactics):
+        tags.append('rewrite')
+    if contains(lambda x: x.startswith('bind_ren'), task.proof_tactics):
+        tags.append('bind_ren')
+    if contains(lambda x: x.startswith('ren_hyp'), task.proof_tactics):
+        tags.append('ren_hyp')
+    if contains(lambda x: x.startswith('apply'), task.proof_tactics):
+        tags.append('apply')
+    if contains(lambda x: x.startswith('eapply'), task.proof_tactics):
+        tags.append('eapply')
+    if contains(lambda x: x.startswith('by apply'), task.proof_tactics):
+        tags.append('apply')
+    if contains(lambda x: x.startswith('case_decide'), task.proof_tactics):
+        tags.append('case_decide')
+    if contains(lambda x: x.startswith('assert'), task.proof_tactics):
+        tags.append('assert')
+    if contains(lambda x: x.startswith('simpl'), task.proof_tactics):
+        tags.append('simpl')
+    if contains(lambda x: x.startswith('Arith.arith_simpl'), task.proof_tactics):
+        tags.append('Arith.arith_simpl')
+    if contains(lambda x: x.startswith('trivial'), task.proof_tactics):
+        tags.append('trivial')
+    if contains(lambda x: x.startswith('reflexivity'), task.proof_tactics):
+        tags.append('reflexivity')
+    if contains(lambda x: x.startswith('cbn'), task.proof_tactics):
+        tags.append('cbn')
+    if contains(lambda x: x.startswith('subst'), task.proof_tactics):
+        tags.append('subst')
+    if contains(lambda x: x.startswith('clear'), task.proof_tactics):
+        tags.append('clear')
+    if contains(lambda x: x.startswith('replace'), task.proof_tactics):
+        tags.append('replace')
+    if contains(lambda x: x.startswith('specialize'), task.proof_tactics):
+        tags.append('specialize')
+    if contains(lambda x: x.startswith('intro'), task.proof_tactics):
+        tags.append('intro')
+    if contains(lambda x: x.startswith('destruct'), task.proof_tactics):
+        tags.append('destruct')
+    if contains(lambda x: x.startswith('inversion'), task.proof_tactics):
+        tags.append('inversion')
+    if contains(lambda x: x.startswith('exists'), task.proof_tactics):
+        tags.append('exists')
+    if contains(lambda x: x.startswith('exfalso'), task.proof_tactics):
+        tags.append('exfalso')
+    if contains(lambda x: x.startswith('lia'), task.proof_tactics):
+        tags.append('lia')
+    if contains(lambda x: x.startswith('by lia'), task.proof_tactics):
+        tags.append('lia')
+    if contains(lambda x: x.startswith('assumption'), task.proof_tactics):
+        tags.append('assumption')
+    if contains(lambda x: x.startswith('by assumption'), task.proof_tactics):
+        tags.append('assumption')
+    if contains(lambda x: x.startswith('eassumption'), task.proof_tactics):
+        tags.append('eassumption')
+    if contains(lambda x: x.startswith('remember'), task.proof_tactics):
+        tags.append('remember')
+    if contains(lambda x: x.startswith('symmetry'), task.proof_tactics):
+        tags.append('symmetry')
+    if contains(lambda x: x.startswith('unfold'), task.proof_tactics):
+        tags.append('unfold')
+    if contains(lambda x: x.startswith('f_equal'), task.proof_tactics):
+        tags.append('f_equal')
+    if contains(lambda x: x.startswith('constructor'), task.proof_tactics):
+        tags.append('constructor')
+    if contains(lambda x: x.startswith('induction'), task.proof_tactics):
+        tags.append('induction')
+    if contains(lambda x: x.startswith('intuition'), task.proof_tactics):
+        tags.append('intuition')
+    if contains(lambda x: x.startswith('iExists'), task.proof_tactics):
+        tags.append('iExists')
+    if contains(lambda x: x.startswith('iAssert'), task.proof_tactics):
+        tags.append('iAssert')
+    if contains(lambda x: x.startswith('revert'), task.proof_tactics):
+        tags.append('revert')
+    if contains(lambda x: x.startswith('left'), task.proof_tactics):
+        tags.append('left')
+    if contains(lambda x: x.startswith('right'), task.proof_tactics):
+        tags.append('right')
+    if contains(lambda x: x.startswith('Opaque'), task.proof_tactics):
+        tags.append('Opaque')
+    if contains(lambda x: x.startswith('Transparent'), task.proof_tactics):
+        tags.append('Transparent')
+    if contains(lambda x: x.startswith('Search'), task.proof_tactics):
+        tags.append('Search')
+    if contains(lambda x: x.startswith('Print'), task.proof_tactics):
+        tags.append('Print')
+    if contains(lambda x: x.startswith('Check'), task.proof_tactics):
+        tags.append('Check')
+    if contains(lambda x: x.startswith('admit'), task.proof_tactics):
+        tags.append('admit')
     return tags
 
 def mk_parser(parent: Any|None=None) -> Any:
