@@ -39,8 +39,7 @@ export type ResourceExhaustionKind =
 /**
  * Reason for task failure.
  */
-export type FailureReason =
-  | {
+export type FailureReason = string[] | {
       /** Resource exhaustion. */
       kind: "ResourceExhaustion";
       value: ResourceExhaustionKind;
