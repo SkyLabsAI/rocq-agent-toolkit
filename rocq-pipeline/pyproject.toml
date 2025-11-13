@@ -18,6 +18,8 @@ dependencies = [
     "rocq-doc-manager",
     "observability",
     "dotenv>=0.9.9",
+    "rich>=14.2.0",
+    "rich-progress>=0.4.0",
 ]
 
 [project.urls]
@@ -26,10 +28,12 @@ Issues = "https://github.com/SkylabsAI/skylabs-fm/issues"
 Changelog = "https://github.com/SkylabsAI/skylabs-fm/tree/main/changes"
 
 [project.scripts]
+rat = "rocq_pipeline.cli:main"
 ingest = "rocq_pipeline.find_tasks:main"
 tracer = "rocq_pipeline.tracer:main"
 auto-agent = "rocq_pipeline.task_runner:auto_main"
 tactic-agent = "rocq_pipeline.task_runner:tactic_main"
+progress = "rocq_pipeline.util:main"
 
 [dependency-groups]
 dev = [

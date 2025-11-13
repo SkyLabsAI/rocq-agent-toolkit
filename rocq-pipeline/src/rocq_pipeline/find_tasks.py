@@ -141,19 +141,17 @@ def parse_arguments() -> argparse.Namespace:
 
     return args
 
-def main() -> None:
-    all_tasks: list[dict[str, Any]] = []
-    args = parse_arguments()
-    with ThreadPoolExecutor(args.jobs) as tpe:
-        def run_it(path: str) -> list[dict[str,Any]]:
-            file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
-            print(f"Found {len(file_tasks)} tasks in {path}: {[x['locator'] for x in file_tasks]}")
-            for y in file_tasks:
-                y["file"] = path
-            return file_tasks
-        for result in tpe.map(run_it, args.rocq_files):
-            all_tasks.extend(result)
+from rocq_pipeline.util import parallel_runner
 
+def main() -> None:
+    args = parse_arguments()
+    def run_it(path: str, _:Any) -> list[dict[str,Any]]:
+        file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
+        print(f"Found {len(file_tasks)} tasks in {path}: {[x['locator'] for x in file_tasks]}")
+        for y in file_tasks:
+            y["file"] = path
+        return file_tasks
+    all_tasks:list[list[dict[str, Any]]] = parallel_runner(run_it, [(x,x) for x in args.rocq_files], None, jobs=args.jobs, progress=False)
     with open(args.output, 'w') as f:
         if args.output.suffix in [".yml", ".yaml"]:
             yaml.dump(all_tasks, f)
