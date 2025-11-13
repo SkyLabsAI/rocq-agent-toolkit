@@ -5,6 +5,7 @@ from typing import Any
 from rich.progress import (
     BarColumn,
     Progress,
+    TaskID,
     TaskProgressColumn,
     TextColumn,
 )
@@ -13,6 +14,8 @@ from rich.progress import (
 class MockProgress:
     def add_task(self, name:str, **kwargs) -> Any: # type: ignore
         return None
+    def remove_task(self, name:TaskID, **kwargs) -> Any: # type: ignore
+        return None
     def update(self, which:Any, **kwargs) -> Any: # type: ignore
         return None
     def __enter__(self) -> "MockProgress":
@@ -20,7 +23,9 @@ class MockProgress:
     def __exit__(self, a:Any, b:Any, c:Any) -> Any:
         pass
 
-def parallel_runner[T, U](run: Callable[[T, Callable[[(float|None),(str|None)],None]], U], tasks: list[tuple[str, T]], succeeded:Callable[[U],bool]|None =None, jobs:int=1, progress:bool=True) -> list[U]:
+type ProgressCallback = Callable[[(float|None),(str|None)],None]
+
+def parallel_runner[T, U](run: Callable[[T, ProgressCallback], U], tasks: list[tuple[str, T]], succeeded:Callable[[U],bool]|None =None, jobs:int=1, progress:bool=True) -> list[U]:
     total_tasks = len(tasks)
 
     with (Progress(
@@ -42,12 +47,12 @@ def parallel_runner[T, U](run: Callable[[T, Callable[[(float|None),(str|None)],N
             show_name:str = (".." + name[-MAX_NAME_LEN+2:]) if len(name) > MAX_NAME_LEN else name
 
             current_task_id = pb.add_task(
-                            f"[yellow]-> {show_name}",
+                            f"[yellow]-> {show_name}  ",
                             total=PROGRESS_MAX,
                             completed=0
                         )
             def update(value: float|None=None, status: str|None=None) -> None:
-                pb.update(current_task_id, completed=None if value is None else value*PROGRESS_MAX, description=status)
+                pb.update(current_task_id, completed=None if value is None else value*PROGRESS_MAX, description=None if status is None else f"[yellow]-> {show_name} {status}")
 
             result = run(val, update)
             pb.update(

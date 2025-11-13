@@ -69,7 +69,7 @@ class FullTask:
     prompt: str|None
 
 
-def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path) -> task_output.TaskOutput | None:
+def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, progress: util.ProgressCallback) -> task_output.TaskOutput | None:
     """
     Build an agent using [build_agent] and invoke it on the task.
     """
@@ -88,21 +88,27 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path) -
 
     try:
         task_file = task.file
+        progress(0.01, "🔃")
         with RocqDocManager(
                 task.rocq_args,
                 str(task_file),
                 dune=True,
         ) as rdm:
+            progress(0.05, "🔃")
             if not isinstance(rdm.load_file(), RocqDocManager.Resp):
                 return None
+            progress(0.06, "🔎")
 
             if not task.locator(rdm):
                 print(f"{task_id}: locator returned false")
                 return None
+            progress(0.1, "💭")
             task_result = agent.run(rdm)
     except Exception as e:
         print(f"Failure with {e}")
         task_result = GiveUp.from_exception(e)
+    finally:
+        progress(0.95, "🔚")
     assert task_result is not None
 
     task_failure_reason: task_output.FailureReason | None = None
@@ -206,7 +212,7 @@ def run_config(config: RunConfiguration) -> bool:
     # # add_log_context("run_id", run_id)
 
     def run_it(full_task: FullTask, progress:Any) -> task_output.TaskOutput | None:
-        return run_task(config.agent_builder, full_task, run_id, wdir=config.working_dir)
+        return run_task(config.agent_builder, full_task, run_id, wdir=config.working_dir, progress=progress)
 
     # Touch the file early to make sure that it is createable
     Path(tasks_result_file).touch()
