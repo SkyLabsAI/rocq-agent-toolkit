@@ -16,6 +16,7 @@ dependencies = [
     "pyyaml>=6.0.3,<7",
     "jmespath>=1.0.1,<2",
     "rocq-doc-manager",
+    "jsonrpc-tp",
 ]
 
 [project.urls]
@@ -44,6 +45,7 @@ dev = [
 [tool.uv]
 
 [tool.uv.sources]
+jsonrpc-tp = { path = "./../ocaml-jsonrpc-tp/python", editable = true }
 rocq-doc-manager = { path = "./../rocq-doc-manager/python", editable = true }
 
 [tool.hatch.build.targets.sdist]
