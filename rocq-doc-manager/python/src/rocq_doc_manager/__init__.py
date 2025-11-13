@@ -7,11 +7,11 @@ manager.
 from .dune_util import DuneUtil, dune_env_hack
 from .rocq_doc_manager import RocqDocManager
 from .rocq_doc_manager_api import (
-    CompileResult,
     CommandData,
+    CompileResult,
     PrefixItem,
-    RocqSource,
     RocqLoc,
+    RocqSource,
     SuffixItem,
 )
 
