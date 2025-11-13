@@ -60,6 +60,7 @@ def parallel_runner[T, U](run: Callable[[T, ProgressCallback], U], tasks: list[t
                 completed=PROGRESS_MAX,
                 description=f"[yellow]-> {show_name}"
             )
+            pb.remove_task(current_task_id)
 
             return (name, result)
 
