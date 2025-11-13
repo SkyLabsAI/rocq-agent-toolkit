@@ -44,6 +44,9 @@ include = ["src/observability"]
 [tool.hatch.build.targets.wheel.sources]
 "src/observability" = "observability"
 
+[tool.setuptools.package-data]
+"observability" = ["py.typed"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
