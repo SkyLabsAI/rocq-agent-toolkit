@@ -65,7 +65,7 @@ class FullTask:
     id: str
     file: Path
     locator: Locator
-    rocq_args: list[str]
+    rocq_args: list[str]|None
     prompt: str|None
 
 
@@ -90,7 +90,7 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
         task_file = task.file
         progress(0.01, "🔃")
         with RocqDocManager(
-                task.rocq_args,
+                DuneUtil.rocq_args_for(task_file) if task.rocq_args is None else task.rocq_args,
                 str(task_file),
                 dune=True,
         ) as rdm:
@@ -150,7 +150,7 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
         # TODO: find a better name for tasks
         id = f"{raw['file']}#{raw['locator']}"
         file = wdir / raw['file']
-        return FullTask(id, file, locator.parse_locator(raw['locator']), DuneUtil.rocq_args_for(file), raw['prompt'] if 'prompt' in raw else None)
+        return FullTask(id, file, locator.parse_locator(raw['locator']), None, raw['prompt'] if 'prompt' in raw else None)
 
     if arguments.task_json is not None:
         tasks = Tasks.mk_validated_tasklist(arguments.task_json)
