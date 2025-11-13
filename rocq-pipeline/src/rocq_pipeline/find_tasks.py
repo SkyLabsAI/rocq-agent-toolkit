@@ -11,8 +11,7 @@ from typing import Any
 
 import yaml
 from jsonrpc_tp import Err
-from rocq_doc_manager import DuneUtil, RocqDocManager
-from rocq_doc_manager.rocq_doc_manager_api import SuffixItem
+from rocq_doc_manager import DuneUtil, RocqDocManager, SuffixItem
 
 from rocq_pipeline.locator import NotFound
 

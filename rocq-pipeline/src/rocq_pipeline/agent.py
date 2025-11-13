@@ -4,8 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Self, override
 
 from jsonrpc_tp import Err
-from rocq_doc_manager import RocqDocManager
-from rocq_doc_manager.rocq_doc_manager_api import CommandData
+from rocq_doc_manager import RocqDocManager, CommandData
 
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.schema.task_output import (
