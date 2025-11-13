@@ -11,9 +11,9 @@ from rich.progress import (
 
 
 class MockProgress:
-    def add_task(self, name:str, **kwargs) -> Any:
+    def add_task(self, name:str, **kwargs) -> Any: # type: ignore
         return None
-    def update(self, which:Any, **kwargs) -> Any:
+    def update(self, which:Any, **kwargs) -> Any: # type: ignore
         return None
     def __enter__(self) -> "MockProgress":
         return self
@@ -37,7 +37,7 @@ def parallel_runner[T, U](run: Callable[[T, Callable[[(float|None),(str|None)],N
 
         def go(name_val: tuple[str, T]) -> tuple[str, U]:
             [name, val] = name_val
-            MAX_NAME_LEN = 15
+            MAX_NAME_LEN = 35
             PROGRESS_MAX = 100
             show_name:str = (".." + name[-MAX_NAME_LEN+2:]) if len(name) > MAX_NAME_LEN else name
 

@@ -1,10 +1,10 @@
-import argparse
+import itertools
 import json
 import os
 import re
 import sys
+from argparse import ArgumentParser, Namespace
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,6 +13,7 @@ import yaml
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 from rocq_pipeline.locator import NotFound
+from rocq_pipeline.util import parallel_runner
 
 
 @dataclass
@@ -96,11 +97,12 @@ def my_tagger(task: ProofTask) -> list[str]:
         tags.append('do-loop')
     return tags
 
-def parse_arguments() -> argparse.Namespace:
+def mk_parser(parent: Any|None=None) -> Any:
     # 1. Create the parser
-    parser = argparse.ArgumentParser(
-        description="Build task files from Rocq sources."
-    )
+    if parent:
+        parser = parent.add_parser("ingest", help="Build tasks from Rocq files.")
+    else:
+        parser = ArgumentParser(description="Build tasks from Rocq files.")
 
     def check_file_name(file_path: str) -> Path:
         s: Path = Path(file_path)
@@ -135,31 +137,30 @@ def parse_arguments() -> argparse.Namespace:
         help='The Rocq files to parse. (e.g. foo.v test/bar.v)'
     )
 
-    # 4. Parse the arguments from sys.argv
-    # By default, parse_args() uses sys.argv[1:]
-    args = parser.parse_args()
-
-    return args
-
-from rocq_pipeline.util import parallel_runner
+    return parser
 
 def run(output_file: Path, rocq_files: list[Path], jobs:int=1) -> None:
-    def run_it(path: str, _:Any) -> list[dict[str,Any]]:
+    def run_it(path: Path, _:Any) -> list[dict[str,Any]]:
         file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
         print(f"Found {len(file_tasks)} tasks in {path}: {[x['locator'] for x in file_tasks]}")
         for y in file_tasks:
             y["file"] = path
         return file_tasks
 
-    all_tasks:list[list[dict[str, Any]]] = parallel_runner(run_it, [(x,x) for x in rocq_files], None, jobs=jobs, progress=False)
+    all_tasks:list[list[dict[str, Any]]] = parallel_runner(run_it, [(str(x),x) for x in rocq_files], None, jobs=jobs, progress=False)
+    flat_tasks = list(itertools.chain.from_iterable(all_tasks))
     with open(output_file, 'w') as f:
         if output_file.suffix in [".yml", ".yaml"]:
-            yaml.dump(all_tasks, f)
+            yaml.dump(flat_tasks, f)
         elif output_file.suffix == ".json":
-            json.dump(all_tasks, f)
+            json.dump(flat_tasks, f)
         else:
             print(f"unknown file format! {output_file}")
 
+def run_ns(args: Namespace, extra_args:list[str]|None=None) -> None:
+    assert True if extra_args is None else len(extra_args) == 0
+    return run(args.output, args.rocq_files, jobs=args.jobs)
+
 def main() -> None:
-    args = parse_arguments()
-    run(args.output, args.rocq_files, jobs=args.jobs)
+    args = mk_parser().parse_args()
+    run_ns(args)

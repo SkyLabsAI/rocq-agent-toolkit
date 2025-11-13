@@ -1,6 +1,5 @@
 import os
 import pprint
-from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass, field
 from typing import Any, Self, override
 
@@ -82,20 +81,26 @@ class Agent:
             reason=FailureReason(task_output.Other("not implemented"))
         )
 
+class AgentBuilder:
+    """Builder class for agents"""
+    def __init__(self, agent_type: type[Agent] = Agent):
+        self._agent = agent_type
+
+    @staticmethod
+    def of_agent(agent_type: type[Agent]) -> "AgentBuilder":
+        return AgentBuilder(agent_type)
+
+    def add_args(self, args:list[str]) -> None:
+        pass
+
+    def __call__(self, prompt:str|None=None) -> Agent:
+        return self._agent()
 
 class OneShotAgent(Agent):
     _tactic: str = "idtac"
 
     def __init__(self, tactic: str) -> None:
         self._tactic = tactic
-
-    @staticmethod
-    def arg_parser(args: ArgumentParser) -> None:
-        args.add_argument('--tactic', type=str, required=True, help="The tactic to run")
-
-    @staticmethod
-    def build(prompt: str | None, args: Namespace) -> "OneShotAgent":
-        return OneShotAgent(args.tactic)
 
     @override
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:

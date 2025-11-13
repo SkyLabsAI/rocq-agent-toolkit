@@ -1,7 +1,7 @@
 import tempfile
 
 import rocq_pipeline.task_runner
-from rocq_pipeline.agent import ChoiceAgent
+from rocq_pipeline.agent import AgentBuilder, ChoiceAgent
 
 from .util import make_task_str
 
@@ -19,8 +19,8 @@ class SimpleTactics(ChoiceAgent):
 
 def test_choice_agent() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        result = rocq_pipeline.task_runner.main(
-            SimpleTactics,
+        result = rocq_pipeline.task_runner.agent_main(
+            AgentBuilder.of_agent(SimpleTactics),
             ["--task-json", make_task_str(
                 "examples/theories/test_simple.v",
                 "lemma:is_true"),

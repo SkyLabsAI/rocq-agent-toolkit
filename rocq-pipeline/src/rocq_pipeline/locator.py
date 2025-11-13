@@ -32,6 +32,9 @@ class Locator:
 
 
 class FirstAdmit(Locator):
+    def __str__(self) -> str:
+        return 'admit'
+
     @override
     def __call__(self, rdm: RocqDocManager) -> bool:
         def is_admit(tac: str) -> bool:
@@ -46,8 +49,11 @@ class FirstAdmit(Locator):
 
 
 class FirstLemma(Locator):
-    _name: str
-    _style: str | None
+    def __str__(self) -> str:
+        if self._style is None:
+            return f"lemma:{self._name}"
+        else:
+            return f"{self._style.lower()}:{self._name}"
 
     def __init__(self, lemma_name: str, style: str | None = None):
         self._name = lemma_name
@@ -75,7 +81,6 @@ class FirstLemma(Locator):
                 else:
                     return True
 
-        print("failed to find lemma")
         return False
 
     def task_kind(self) -> task_output.TaskKind:
@@ -86,7 +91,7 @@ class FirstLemma(Locator):
 
 def parse_locator(s: str) -> Locator:
     if s.startswith("lemma:"):
-        return FirstLemma(s[len("lemma:"):])
+        return FirstLemma(s[len("lemma:"):],"Lemma")
     if s == "admit":
         return FirstAdmit()
     return Locator()
