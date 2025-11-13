@@ -39,7 +39,7 @@ include = ["src/jsonrpc_tp"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"jsonrpc-tp" = ["py.typed"]
+"jsonrpc_tp" = ["py.typed"]
 
 [tool.ruff]
 line-length = 88
