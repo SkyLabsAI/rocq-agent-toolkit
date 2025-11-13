@@ -71,8 +71,9 @@ end
 (* Type of an API whose internal state is specified by the type parameter. *)
 type _ api
 
-(** [create ()] builds a new, empty API. *)
-val create : unit -> 'a api
+(** [create ~name] builds a new, empty API. The given [name] is used as Python
+    class name when a Python API is generated. *)
+val create : name:string -> 'a api
 
 (** [declare_object api ~name ?descr ~encode ~decode fs] declares a new object
     type in the given [api]. This declared object is given type [name], and it

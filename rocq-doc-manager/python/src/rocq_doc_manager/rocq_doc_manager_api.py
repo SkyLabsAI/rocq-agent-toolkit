@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, cast
 
-from .rocq_doc_manager_raw import Err, RocqDocManagerRaw
+from jsonrpc_tp import Err, JsonRPCTP
 
 
 @dataclass
@@ -64,11 +64,11 @@ class CompileResult:
     stdout: str
     success: bool
 
-class RocqDocManagerAPI(RocqDocManagerRaw):
+class RocqDocManagerAPI(JsonRPCTP):
 
     def advance_to(self, index: int) -> None | Err[RocqLoc | None]:
         """Advance the cursor before the indicated unprocessed item."""
-        result = self.request("advance_to", [index])
+        result = self.raw_request("advance_to", [index])
         if isinstance(result, Err):
             data = cast(RocqLoc | None, result.data)
             return Err(result.message, data)
@@ -76,42 +76,42 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def clear_suffix(self) -> None:
         """Remove all unprocessed commands from the document."""
-        result = self.request("clear_suffix", [])
+        result = self.raw_request("clear_suffix", [])
         return cast(None, result)
 
     def commit(self, include_suffix: bool) -> None:
         """Write the current document contents to the file."""
-        result = self.request("commit", [include_suffix])
+        result = self.raw_request("commit", [include_suffix])
         return cast(None, result)
 
     def compile(self) -> CompileResult:
         """Compile the current contents of the file with `rocq compile`."""
-        result = self.request("compile", [])
+        result = self.raw_request("compile", [])
         return cast(CompileResult, result)
 
     def cursor_index(self) -> int:
         """Gives the index at the cursor."""
-        result = self.request("cursor_index", [])
+        result = self.raw_request("cursor_index", [])
         return cast(int, result)
 
     def doc_prefix(self) -> list[PrefixItem]:
         """Gives the list of all processed commands, appearing before the cursor."""
-        result = self.request("doc_prefix", [])
+        result = self.raw_request("doc_prefix", [])
         return cast(list[PrefixItem], result)
 
     def doc_suffix(self) -> list[SuffixItem]:
         """Gives the list of all unprocessed commands, appearing after the cursor."""
-        result = self.request("doc_suffix", [])
+        result = self.raw_request("doc_suffix", [])
         return cast(list[SuffixItem], result)
 
     def get_feedback(self) -> list[Any]:
         """Gets Rocq's feedback for the last run command (if any)."""
-        result = self.request("get_feedback", [])
+        result = self.raw_request("get_feedback", [])
         return cast(list[Any], result)
 
     def go_to(self, index: int) -> None | Err[RocqLoc | None]:
         """Move the cursor right before the indicated item (whether it is already processed or not)."""
-        result = self.request("go_to", [index])
+        result = self.raw_request("go_to", [index])
         if isinstance(result, Err):
             data = cast(RocqLoc | None, result.data)
             return Err(result.message, data)
@@ -119,17 +119,17 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def has_suffix(self) -> bool:
         """Indicates whether the document has a suffix (unprocessed items)."""
-        result = self.request("has_suffix", [])
+        result = self.raw_request("has_suffix", [])
         return cast(bool, result)
 
     def insert_blanks(self, text: str) -> None:
         """Insert and process blanks at the cursor."""
-        result = self.request("insert_blanks", [text])
+        result = self.raw_request("insert_blanks", [text])
         return cast(None, result)
 
     def insert_command(self, text: str) -> CommandData | Err[RocqLoc | None]:
         """Insert and process a command at the cursor."""
-        result = self.request("insert_command", [text])
+        result = self.raw_request("insert_command", [text])
         if isinstance(result, Err):
             data = cast(RocqLoc | None, result.data)
             return Err(result.message, data)
@@ -137,7 +137,7 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def json_query(self, text: str, index: int) -> Any | Err[None]:
         """Runs the given query at the cursor, not updating the state."""
-        result = self.request("json_query", [text, index])
+        result = self.raw_request("json_query", [text, index])
         if isinstance(result, Err):
             data = cast(None, result.data)
             return Err(result.message, data)
@@ -145,7 +145,7 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def load_file(self) -> None | Err[RocqLoc | None]:
         """Adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors)."""
-        result = self.request("load_file", [])
+        result = self.raw_request("load_file", [])
         if isinstance(result, Err):
             data = cast(RocqLoc | None, result.data)
             return Err(result.message, data)
@@ -153,12 +153,12 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def revert_before(self, erase: bool, index: int) -> None:
         """Revert the cursor to an earlier point in the document."""
-        result = self.request("revert_before", [erase, index])
+        result = self.raw_request("revert_before", [erase, index])
         return cast(None, result)
 
     def run_command(self, text: str) -> CommandData | Err[None]:
         """Process a command at the cursor without inserting it in the document."""
-        result = self.request("run_command", [text])
+        result = self.raw_request("run_command", [text])
         if isinstance(result, Err):
             data = cast(None, result.data)
             return Err(result.message, data)
@@ -166,7 +166,7 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def run_step(self) -> CommandData | None | Err[RocqLoc | None]:
         """Advance the cursor by stepping over an unprocessed item."""
-        result = self.request("run_step", [])
+        result = self.raw_request("run_step", [])
         if isinstance(result, Err):
             data = cast(RocqLoc | None, result.data)
             return Err(result.message, data)
@@ -174,7 +174,7 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def text_query(self, text: str, index: int) -> str | Err[None]:
         """Runs the given query at the cursor, not updating the state."""
-        result = self.request("text_query", [text, index])
+        result = self.raw_request("text_query", [text, index])
         if isinstance(result, Err):
             data = cast(None, result.data)
             return Err(result.message, data)
@@ -182,7 +182,7 @@ class RocqDocManagerAPI(RocqDocManagerRaw):
 
     def text_query_all(self, text: str, indices: list[int] | None) -> list[str] | Err[None]:
         """Runs the given query at the cursor, not updating the state."""
-        result = self.request("text_query_all", [text, indices])
+        result = self.raw_request("text_query_all", [text, indices])
         if isinstance(result, Err):
             data = cast(None, result.data)
             return Err(result.message, data)

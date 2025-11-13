@@ -114,6 +114,7 @@ type 's api_method = M : {
 } -> 's api_method
 
 type 's api = {
+  name : string;
   mutable api_objects : any_obj list;
   mutable api_methods : 's api_method SMap.t;
 }
@@ -123,8 +124,8 @@ let get_obj : type a. _ api -> a api_obj -> a obj = fun api k ->
   | None       -> assert false
   | Some(A(o)) -> Obj.magic o
 
-let create : unit -> _ api = fun _ ->
-  {api_objects = []; api_methods = SMap.empty}
+let create : name:string -> _ api = fun ~name ->
+  {name; api_objects = []; api_methods = SMap.empty}
 
 let duplicate fname =
   raise (Invalid_argument("Jsonrpc_tp_api." ^ fname ^ ": duplicate name"))
@@ -429,7 +430,7 @@ let output_python_api oc api =
   line "from dataclasses import dataclass";
   line "from typing import Any, cast";
   line "";
-  line "from .rocq_doc_manager_raw import Err, RocqDocManagerRaw";
+  line "from jsonrpc_tp import Err, JsonRPCTP";
   line "";
   let output_object (A(O(o))) =
     line "";
@@ -446,7 +447,7 @@ let output_python_api oc api =
   in
   List.iter output_object (List.rev api.api_objects);
   line "";
-  line "class RocqDocManagerAPI(RocqDocManagerRaw):";
+  line "class %s(JsonRPCTP):" api.name;
   let rec pp_args : type a. _ -> a Args.t -> unit = fun oc args ->
     match args with
     | Args.Nil    -> ()
@@ -471,7 +472,8 @@ let output_python_api oc api =
     in
     line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
-    line "        result = self.request(\"%s\", [%a])" m.name pp_names m.args;
+    line "        result = self.raw_request(\"%s\", [%a])"
+      m.name pp_names m.args;
     let _ =
       match m.impl with Pure(_) -> () | Rslt(i) ->
       line "        if isinstance(result, Err):";

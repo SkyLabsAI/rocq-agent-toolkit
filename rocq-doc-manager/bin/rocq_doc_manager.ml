@@ -11,7 +11,7 @@ module API = Jsonrpc_tp_api
 module A = API.Args
 module S = API.Schema
 
-let api = API.create ()
+let api = API.create ~name:"RocqDocManagerAPI"
 
 let rocq_loc =
   let rocq_source =

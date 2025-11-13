@@ -35,6 +35,23 @@ wheels = [
 ]
 
 [[package]]
+name = "jsonrpc-tp"
+version = "0.0.1"
+source = { editable = "../../ocaml-jsonrpc-tp/python" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "flake8", specifier = ">=6.0.0,<7" },
+    { name = "mypy", specifier = ">=1.18.2,<2" },
+    { name = "pytest", specifier = ">=8.4.2,<9" },
+    { name = "ruff", specifier = ">=0.14.4" },
+    { name = "taskipy", specifier = ">=1.14.1" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20250915,<7" },
+]
+
+[[package]]
 name = "mccabe"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -213,6 +230,7 @@ name = "rocq-doc-manager"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "jsonrpc-tp" },
     { name = "pyyaml" },
 ]
 
@@ -227,7 +245,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyyaml", specifier = ">=6.0.3,<7" }]
+requires-dist = [
+    { name = "jsonrpc-tp", editable = "../../ocaml-jsonrpc-tp/python" },
+    { name = "pyyaml", specifier = ">=6.0.3,<7" },
+]
 
 [package.metadata.requires-dev]
 dev = [
