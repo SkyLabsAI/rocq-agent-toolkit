@@ -7,7 +7,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 import yaml
 from rocq_doc_manager import DuneUtil, RocqDocManager
@@ -79,117 +79,143 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
             continue
     rdm.quit()
     return tasks
+def extract_tactics(s: Union[str, list[str]], allowed_prefixes: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Extracts a list of Coq tactic prefixes from a string or list of strings,
+    ensuring no duplicates in the output lists.
+
+    Args:
+        s: The input string (or list of strings) containing Coq tactics.
+        allowed_prefixes: A list of tactic prefix strings to identify.
+
+    Returns:
+        A tuple containing two lists, both sorted and without duplicates:
+        1. identified_tactics: A list of unique tactic prefixes found.
+        2. leftovers: A list of unique processed chunks that did not match.
+    """
+    # Use sets to store results to automatically handle duplicates
+    identified_tactics_set = set()
+    leftovers_set = set()
+    
+    # Sort prefixes by length (longest first)
+    sorted_prefixes = sorted(allowed_prefixes, key=len, reverse=True)
+
+    def split_at_top_level(text: str, separator: str) -> list[str]:
+        """
+        Splits a string by a separator, but only at the top level
+        (i.e., not inside parentheses or brackets).
+        """
+        parts = []
+        balance_paren = 0
+        balance_bracket = 0
+        current_part_start = 0
+        
+        for i, char in enumerate(text):
+            if char == '(':
+                balance_paren += 1
+            elif char == ')':
+                balance_paren = max(0, balance_paren - 1)
+            elif char == '[':
+                balance_bracket += 1
+            elif char == ']':
+                balance_bracket = max(0, balance_bracket - 1)
+            
+            if char == separator and balance_paren == 0 and balance_bracket == 0:
+                parts.append(text[current_part_start:i])
+                current_part_start = i + 1
+        
+        parts.append(text[current_part_start:])
+        return parts
+
+    def process_chunk(chunk: str):
+        """
+        Recursively processes a chunk of the tactic string.
+        """
+        # Step 4: Clean chunk
+        chunk = chunk.strip().strip(';.')
+        chunk = chunk.strip()
+        
+        if not chunk:
+            return
+
+        # Step 3: Handle [ X1 | X2 | ... Xn ]
+        if chunk.startswith('[') and chunk.endswith(']'):
+            content = chunk[1:-1]
+            parts = split_at_top_level(content, '|')
+            for part in parts:
+                process_chunk(part)
+            return
+
+        # Step 2: Handle X1; X2; ... Xn
+        parts = split_at_top_level(chunk, ';')
+        if len(parts) > 1:
+            for part in parts:
+                process_chunk(part)
+            return
+
+        # --- Base Case ---
+        found_prefix = None
+        for prefix in sorted_prefixes:
+            if chunk == prefix:
+                found_prefix = prefix
+                break
+            if chunk.startswith(prefix):
+                next_char_index = len(prefix)
+                if next_char_index < len(chunk) and chunk[next_char_index] in ' .(':
+                    found_prefix = prefix
+                    break
+        
+        # Step 7: Add to the appropriate set (duplicates are ignored)
+        if found_prefix:
+            identified_tactics_set.add(found_prefix)
+        else:
+            leftovers_set.add(chunk)
+
+    # --- Main Function Logic ---
+    
+    if isinstance(s, str):
+        string_list = [s]
+    elif isinstance(s, list):
+        string_list = s
+    else:
+        raise TypeError(f"Input 's' must be a string or a list of strings, but got {type(s)}")
+
+    for input_string in string_list:
+        if not isinstance(input_string, str):
+            print(f"Warning: Skipping non-string item in list: {input_string}")
+            continue
+            
+        s_to_process = input_string.strip()
+        
+        # Step 1: Handle 'by (X).' or 'by X.'
+        if s_to_process.startswith('by ') and s_to_process.endswith('.'):
+            content = s_to_process[3:-1].strip()
+            if content.startswith('(') and content.endswith(')'):
+                 s_to_process = content[1:-1].strip()
+            else:
+                 s_to_process = content
+        
+        process_chunk(s_to_process)
+    
+    # Convert sets to sorted lists for the final output
+    return sorted(list(identified_tactics_set)), sorted(list(leftovers_set))
 
 def my_tagger(task: ProofTask) -> list[str]:
     tags = ["admitted"] if task.admitted else []
-    def contains(pred: Callable[[Any], bool], ls: list[Any]) -> bool:
-        for x in ls:
-            if pred(x):
-                return True
-        return False
-    if contains(lambda x: x.startswith('verify_spec'), task.proof_tactics):
-        tags.append("brick")
-    if contains(lambda x: x.startswith('wp_for'), task.proof_tactics):
-        tags.append('for-loop')
-    if contains(lambda x: x.startswith('wp_while'), task.proof_tactics):
-       tags.append('while-loop')
-    if contains(lambda x: x.startswith('wp_do'), task.proof_tactics):
-        tags.append('do-loop')
-    if contains(lambda x: x.startswith('rewrite'), task.proof_tactics):
-        tags.append('rewrite')
-    if contains(lambda x: x.startswith('erewrite'), task.proof_tactics):
-        tags.append('erewrite')
-    if contains(lambda x: x.startswith('by rewrite'), task.proof_tactics):
-        tags.append('rewrite')
-    if contains(lambda x: x.startswith('bind_ren'), task.proof_tactics):
-        tags.append('bind_ren')
-    if contains(lambda x: x.startswith('ren_hyp'), task.proof_tactics):
-        tags.append('ren_hyp')
-    if contains(lambda x: x.startswith('apply'), task.proof_tactics):
-        tags.append('apply')
-    if contains(lambda x: x.startswith('eapply'), task.proof_tactics):
-        tags.append('eapply')
-    if contains(lambda x: x.startswith('by apply'), task.proof_tactics):
-        tags.append('apply')
-    if contains(lambda x: x.startswith('case_decide'), task.proof_tactics):
-        tags.append('case_decide')
-    if contains(lambda x: x.startswith('assert'), task.proof_tactics):
-        tags.append('assert')
-    if contains(lambda x: x.startswith('simpl'), task.proof_tactics):
-        tags.append('simpl')
-    if contains(lambda x: x.startswith('Arith.arith_simpl'), task.proof_tactics):
-        tags.append('Arith.arith_simpl')
-    if contains(lambda x: x.startswith('trivial'), task.proof_tactics):
-        tags.append('trivial')
-    if contains(lambda x: x.startswith('reflexivity'), task.proof_tactics):
-        tags.append('reflexivity')
-    if contains(lambda x: x.startswith('cbn'), task.proof_tactics):
-        tags.append('cbn')
-    if contains(lambda x: x.startswith('subst'), task.proof_tactics):
-        tags.append('subst')
-    if contains(lambda x: x.startswith('clear'), task.proof_tactics):
-        tags.append('clear')
-    if contains(lambda x: x.startswith('replace'), task.proof_tactics):
-        tags.append('replace')
-    if contains(lambda x: x.startswith('specialize'), task.proof_tactics):
-        tags.append('specialize')
-    if contains(lambda x: x.startswith('intro'), task.proof_tactics):
-        tags.append('intro')
-    if contains(lambda x: x.startswith('destruct'), task.proof_tactics):
-        tags.append('destruct')
-    if contains(lambda x: x.startswith('inversion'), task.proof_tactics):
-        tags.append('inversion')
-    if contains(lambda x: x.startswith('exists'), task.proof_tactics):
-        tags.append('exists')
-    if contains(lambda x: x.startswith('exfalso'), task.proof_tactics):
-        tags.append('exfalso')
-    if contains(lambda x: x.startswith('lia'), task.proof_tactics):
-        tags.append('lia')
-    if contains(lambda x: x.startswith('by lia'), task.proof_tactics):
-        tags.append('lia')
-    if contains(lambda x: x.startswith('assumption'), task.proof_tactics):
-        tags.append('assumption')
-    if contains(lambda x: x.startswith('by assumption'), task.proof_tactics):
-        tags.append('assumption')
-    if contains(lambda x: x.startswith('eassumption'), task.proof_tactics):
-        tags.append('eassumption')
-    if contains(lambda x: x.startswith('remember'), task.proof_tactics):
-        tags.append('remember')
-    if contains(lambda x: x.startswith('symmetry'), task.proof_tactics):
-        tags.append('symmetry')
-    if contains(lambda x: x.startswith('unfold'), task.proof_tactics):
-        tags.append('unfold')
-    if contains(lambda x: x.startswith('f_equal'), task.proof_tactics):
-        tags.append('f_equal')
-    if contains(lambda x: x.startswith('constructor'), task.proof_tactics):
-        tags.append('constructor')
-    if contains(lambda x: x.startswith('induction'), task.proof_tactics):
-        tags.append('induction')
-    if contains(lambda x: x.startswith('intuition'), task.proof_tactics):
-        tags.append('intuition')
-    if contains(lambda x: x.startswith('iExists'), task.proof_tactics):
-        tags.append('iExists')
-    if contains(lambda x: x.startswith('iAssert'), task.proof_tactics):
-        tags.append('iAssert')
-    if contains(lambda x: x.startswith('revert'), task.proof_tactics):
-        tags.append('revert')
-    if contains(lambda x: x.startswith('left'), task.proof_tactics):
-        tags.append('left')
-    if contains(lambda x: x.startswith('right'), task.proof_tactics):
-        tags.append('right')
-    if contains(lambda x: x.startswith('Opaque'), task.proof_tactics):
-        tags.append('Opaque')
-    if contains(lambda x: x.startswith('Transparent'), task.proof_tactics):
-        tags.append('Transparent')
-    if contains(lambda x: x.startswith('Search'), task.proof_tactics):
-        tags.append('Search')
-    if contains(lambda x: x.startswith('Print'), task.proof_tactics):
-        tags.append('Print')
-    if contains(lambda x: x.startswith('Check'), task.proof_tactics):
-        tags.append('Check')
-    if contains(lambda x: x.startswith('admit'), task.proof_tactics):
-        tags.append('admit')
-    return tags
+    allowed_prefixes = ['verify_spec', 'go', 'ego', 'work', 'wp_for', 'wp_while', 'wp_do',
+                         'rewrite', 'erewrite', 'rewrite_all', 'bind_ren', 'ren_hyp',
+                         'apply', 'eapply', 'assumption', 'eassumption',
+                         'case_decide', 'assert', 'simpl', 'Arith.arith_simpl',
+                         'trivial', 'reflexivity', 'cbv', 'cbn', 'subst',
+                         'clear', 'replace', 'specialize', 'generalize',
+                         'intro', 'intros', 'destruct', 'inversion', 'exist', 'exfalso',
+                         'lia', 'remember', 'symmetry', 'unfold', 'f_equal',
+                         'constructor', 'econstructor', 'induction',
+                         'intuition', 'iAssert', 'iExists', 'revert',
+                         'left', 'right', 'Opaque', 'Transparent', 'admit' ]
+    identified_tactics, leftovers = extract_tactics(task.proof_tactics, allowed_prefixes)
+    result = tags + identified_tactics
+    return result
 
 def mk_parser(parent: Any|None=None) -> Any:
     # 1. Create the parser
