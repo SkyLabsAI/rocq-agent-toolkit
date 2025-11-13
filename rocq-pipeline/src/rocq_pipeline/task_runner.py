@@ -8,8 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from jsonrpc_tp import Err
 from rocq_doc_manager import DuneUtil, RocqDocManager
-from rocq_doc_manager.rocq_doc_manager_raw import Err
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import locator
