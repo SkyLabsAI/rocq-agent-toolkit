@@ -40,7 +40,3 @@ class RocqDocManager(RocqDocManagerAPI):
         if isinstance(result.open_subgoals, str):
             return result.open_subgoals
         return Err("No goals available.", None)
-
-
-
-

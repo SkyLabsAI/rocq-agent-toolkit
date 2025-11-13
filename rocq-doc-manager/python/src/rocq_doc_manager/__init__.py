@@ -6,11 +6,23 @@ manager.
 
 from .dune_util import DuneUtil, dune_env_hack
 from .rocq_doc_manager import RocqDocManager
-from .rocq_doc_manager_api import RocqDocManagerAPI
+from .rocq_doc_manager_api import (
+    CompileResult,
+    CommandData,
+    PrefixItem,
+    RocqSource,
+    RocqLoc,
+    SuffixItem,
+)
 
 __all__ = [
     "dune_env_hack",
     "DuneUtil",
-    "RocqDocManagerAPI",
     "RocqDocManager",
+    "CompileResult",
+    "CommandData",
+    "PrefixItem",
+    "RocqSource",
+    "RocqLoc",
+    "SuffixItem",
 ]
