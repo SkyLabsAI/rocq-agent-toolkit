@@ -51,7 +51,7 @@ include = ["src/rocq_doc_manager"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"rocq_pipeline" = ["py.typed"]
+"rocq_doc_manager" = ["py.typed"]
 
 [tool.ruff]
 line-length = 88
