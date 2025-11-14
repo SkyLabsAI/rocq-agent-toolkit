@@ -2,17 +2,18 @@ import json
 import subprocess
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Any, Self, TypeVar
+from typing import Any, Self, TypeAlias, TypeVar
 
+# TODO: remove these once the port to 3.13 is complete, and
+# generics are uniformly available.
 E = TypeVar('E')
+R = TypeVar('R')
 
 @dataclass
 class Err[E]:
     """JSON-RPC error response, with a message and payload."""
     message: str
     data: E
-
-R = TypeVar('R')
 
 @dataclass
 class Resp[R]:
@@ -25,6 +26,13 @@ class Error(Exception):
 
 class JsonRPCTP:
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
+
+    # NOTE: normally [type ... = ...] is preferred, but this cannot be used
+    # with [isinstance].
+    Err: TypeAlias = Err  # noqa: UP040
+    Resp: TypeAlias = Resp  # noqa: UP040
+    Error: TypeAlias = Error  # noqa: UP040
+
     def __init__(
             self,
             args: list[str],
