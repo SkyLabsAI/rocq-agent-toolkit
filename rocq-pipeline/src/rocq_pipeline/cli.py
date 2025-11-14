@@ -9,7 +9,7 @@ def main() -> None:
     parser = ArgumentParser(description="The Rocq Agent Toolkit Driver")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     find_tasks.mk_parser(subparsers)
-    task_runner.mk_argparser(subparsers, with_agent=True)
+    task_runner.mk_parser(subparsers, with_agent=True)
     args = sys.argv[1:]
     extra_args:list[str] = []
     try:

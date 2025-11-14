@@ -21,7 +21,7 @@ from rocq_pipeline.schema import task_output
 logger = get_logger("task_runner")
 
 
-def mk_argparser(parent: Any, with_agent:bool=True) -> Any:
+def mk_parser(parent: Any, with_agent:bool=True) -> Any:
     """
     Extend parent or build a fresh argument parser.
     """
@@ -265,7 +265,7 @@ def agent_main(agent_builder: AgentBuilder, args: list[str]|None=None) -> bool:
     except ValueError:
         agent_args = []
 
-    arguments: Namespace = mk_argparser(parent=None,with_agent=agent_builder is None).parse_args(args)
+    arguments: Namespace = mk_parser(parent=None,with_agent=agent_builder is None).parse_args(args)
     config: RunConfiguration = parse_arguments(arguments, agent_builder=agent_builder)
     if agent_args:
         config.agent_builder.add_args(agent_args)
