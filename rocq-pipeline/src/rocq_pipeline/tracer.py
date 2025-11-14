@@ -11,20 +11,52 @@ import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, locator
 
 
-def get_state(rdm: RocqDocManager) -> str:
-    result = rdm.current_goal()
-    if isinstance(result, rdm.Resp):
-        return result.result # type: ignore
-    return "no goal"
+class StateExtractor[T]:
+    """
+    A StateExtractor extracts state from a Rocq proof.
+    """
+    def __call__(self, rdm: RocqDocManager) -> T | None:
+        """
+        Extract a feature from the current state.
+        """
+        return None
 
-def trace_proof(rdm: RocqDocManager) -> list[tuple[str, str, str]]:
+class AllStateExtractor(StateExtractor[dict[str,Any]]):
+    """
+    Produce an object that contains the results of all of the state extractors
+    """
+    def __init__(self, extractors: dict[str, StateExtractor[Any]]):
+        self._extractors:dict[str, StateExtractor] = extractors
+
+    def __call__(self, rdm: RocqDocManager) -> dict[str,Any]:
+        result: dict[str, Any] = {}
+        for (k,extract) in self._extractors.items():
+            # TODO: for now, we assume that extractors are hygeinic in the sense that they do revert any effects they might have on the document.
+            # In the future, we could use the revert environment to enforce this.
+            try:
+                k_result = extract(rdm)
+                if k_result is not None:
+                    result[k] = k_result
+            except Exception:
+                pass
+        return result
+
+class GoalAsString(StateExtractor[str]):
+    """A simple extractor that just gets the current goal the way it is printed in Rocq."""
+    def __call__(self, rdm: RocqDocManager) -> str:
+        result = rdm.current_goal()
+        if isinstance(result, rdm.Resp):
+            return result.result # type: ignore
+        return ""
+
+def trace_proof[T](extractor: StateExtractor[T], rdm: RocqDocManager) -> list[tuple[(T|None), str, (T|None)]]:
     try:
         tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
-        trace: list[tuple[str,str,str]] = []
+        trace: list[tuple[(T|None),str,(T|None)]] = []
         for tactic in tactics:
-            pre = get_state(rdm)
+            pre = extractor(rdm)
             rdm.run_command(tactic)
-            post = get_state(rdm)
+            post = extractor(rdm)
             trace.append((pre, tactic.strip(".").strip(), post))
         return trace
     except Exception:
@@ -57,6 +89,9 @@ def mk_argparser() -> argparse.ArgumentParser:
     return parser
 
 def main(args: list[str] | None = None) -> bool:
+    """
+    The entry point to the tracer
+    """
     if args is None:
         args = sys.argv[1:]
 
@@ -89,7 +124,7 @@ def main(args: list[str] | None = None) -> bool:
         task_id: str = f"{task['file']}#{task['locator']}"
 
         try:
-            task_file = wdir / task["file"]
+            task_file: Path = wdir / task["file"]
             with RocqDocManager(
                     rocq_args(task_file),
                     str(task_file),
@@ -107,7 +142,7 @@ def main(args: list[str] | None = None) -> bool:
                     print(f"{task_id}: locator returned false")
                     return False
 
-                trace = trace_proof(rdm)
+                trace = trace_proof(GoalAsString(), rdm)
 
             with open(arguments.output_dir / f"{task_id.replace('/','_')}.json", "w") as output:
                 json.dump(trace, output)
