@@ -66,8 +66,7 @@ class CompileResult:
     success: bool = field(kw_only=True, default=False)
 
 class RocqDocManagerAPI(JsonRPCTP):
-    # NOTE: normally [type ... = ...] is preferred, but this cannot be used
-    # with [isinstance].
+    # NOTE: normally [type ... = ...] is preferred, but this cannot be used with [isinstance].
     RocqSource: TypeAlias = RocqSource  # noqa: UP040
     RocqLoc: TypeAlias = RocqLoc  # noqa: UP040
     CommandData: TypeAlias = CommandData  # noqa: UP040
