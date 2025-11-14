@@ -17,6 +17,7 @@ dependencies = [
     "jmespath>=1.0.1,<2",
     "rocq-doc-manager",
     "observability",
+    "dotenv>=0.9.9",
 ]
 
 [project.urls]

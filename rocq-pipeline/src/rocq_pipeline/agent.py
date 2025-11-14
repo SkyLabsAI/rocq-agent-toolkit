@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass, field
 from typing import Any, Self, override
 
+from dotenv import load_dotenv
 from observability import LoggingConfig, get_logger, setup_logging
 from rocq_doc_manager import RocqDocManager
 
@@ -13,6 +14,7 @@ from rocq_pipeline.schema.task_output import (
     FailureReason,
 )
 
+load_dotenv()
 log_config = LoggingConfig(
     service_name="rocq_agent",
     log_level=os.getenv("LOG_LEVEL", "INFO"),
