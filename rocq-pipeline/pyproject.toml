@@ -121,4 +121,4 @@ strict_equality = true
 [tool.taskipy.tasks]
 format_ci = "ruff check src/ tests/"
 typecheck_ci = "mypy src/ tests/"
-test_ocaml_ci = "pytest tests/test_auto_agent.py tests/test_choice_agent.py tests/test_proof_state.py" # temporary. [test_find_task.py] requires pre-building the example
+test_ocaml_ci = "pytest"
