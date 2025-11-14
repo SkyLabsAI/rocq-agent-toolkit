@@ -5,13 +5,14 @@ services:
       dockerfile: rocq_agent_toolkit/backend/Dockerfile
     container_name: rocq-agent-toolkit-backend
     ports:
-      - "8000:8000"
+      # HOST:CONTAINER
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
       - JSONL_RESULTS_PATH=/brick_agents
-      - OBSERVABILITY_URL=http://loki:3100
+      - OBSERVABILITY_URL=${OBSERVABILITY_URL:-http://loki:3100}
     volumes:
       # When setting the env from docker compose set the path of jsonl here 
-      - ../brick_agents:/brick_agents:ro
+      - ${JSONL_VOLUME_PATH:-../brick_agents}:/brick_agents
     networks:
       - rocq-agent-network
 
@@ -21,12 +22,12 @@ services:
       dockerfile: Dockerfile
     container_name: rocq-agent-toolkit-frontend
     ports:
-      - "3005:3005"
+      - "${FRONTEND_PORT:-3005}:3005"
     networks:
       - rocq-agent-network
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_DATA_API=http://localhost:8000/api
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_DATA_API=${NEXT_PUBLIC_DATA_API:-http://localhost:8000/api}
 
 networks:
   rocq-agent-network:
