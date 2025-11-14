@@ -12,6 +12,7 @@
  (synopsis "Tool for programatically editing Rocq source files")
  (depends
   jsonrpc-tp
+  rocq-jsonrpc-repl
   rocq-split))
 
 (subst disabled)
