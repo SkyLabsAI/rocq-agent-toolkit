@@ -311,7 +311,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "jmespath" },
-    { name = "jsonrpc-tp" },
     { name = "pyyaml" },
     { name = "rocq-doc-manager" },
 ]
@@ -332,7 +331,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jmespath", specifier = ">=1.0.1,<2" },
-    { name = "jsonrpc-tp", editable = "../ocaml-jsonrpc-tp/python" },
     { name = "pyyaml", specifier = ">=6.0.3,<7" },
     { name = "rocq-doc-manager", editable = "../rocq-doc-manager/python" },
 ]

@@ -10,8 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jsonrpc_tp import Err
-from rocq_doc_manager import DuneUtil, RocqDocManager, SuffixItem
+from rocq_doc_manager import DuneUtil, RocqDocManager
 
 from rocq_pipeline.locator import NotFound
 
@@ -23,7 +22,7 @@ class ProofTask:
     admitted: bool
     proof_tactics: list[str]
 
-def scan_proof(suffix : list[SuffixItem]) -> ProofTask:
+def scan_proof(suffix : list[RocqDocManager.SuffixItem]) -> ProofTask:
     tactics: list[str] = []
     start = 0
     for i, sentence in enumerate(suffix):
@@ -47,7 +46,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
     rdm = RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True)
     resp = rdm.load_file()
-    if isinstance(resp, Err):
+    if isinstance(resp, RocqDocManager.Err):
         print(f"Loading file failed with error (pwd={os.curdir}):\n{resp}")
         raise RuntimeError(f"Failed to load file: {resp}")
 
