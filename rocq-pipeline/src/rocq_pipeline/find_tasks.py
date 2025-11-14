@@ -79,83 +79,99 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
             continue
     rdm.quit()
     return tasks
-def extract_tactics(s: Union[str, list[str]], allowed_prefixes: list[str]) -> tuple[list[str], list[str]]:
+
+def split_at_top_level(text: str, separator: str) -> list[str]:
     """
-    Extracts a list of Coq tactic prefixes from a string or list of strings,
-    ensuring no duplicates in the output lists.
+    Splits a string by a separator, but only at the top level
+    (i.e., not inside parentheses or brackets).
+    """
+    parts = []
+    balance_paren = 0
+    balance_bracket = 0
+    current_part_start = 0
+    
+    for i, char in enumerate(text):
+        if char == '(':
+            balance_paren += 1
+        elif char == ')':
+            balance_paren = max(0, balance_paren - 1)
+        elif char == '[':
+            balance_bracket += 1
+        elif char == ']':
+            balance_bracket = max(0, balance_bracket - 1)
+        
+        if char == separator and balance_paren == 0 and balance_bracket == 0:
+            parts.append(text[current_part_start:i])
+            current_part_start = i + 1
+    
+    parts.append(text[current_part_start:])
+    return parts
+
+def get_atomic_tactics(chunk: str) -> list[str]:
+    """
+    Recursively parses a Rocq tactic and returns a flat list
+    of all base tactics found within it. This function is
+    self-contained and does not modify any external state.
+    """
+    
+    # Clean chunk
+    chunk = chunk.strip().strip(';.')
+    chunk = chunk.strip()
+        
+    if not chunk:
+        # Base case: empty chunk returns an empty list
+        return []
+
+    # Handle [ X1 | X2 | ... Xn ]
+    if chunk.startswith('['):
+        assert(chunk.endswith(']'))
+        results = []
+        content = chunk[1:-1] # Get content inside brackets
+        parts = split_at_top_level(content, '|')
+            
+        # Recurse on each part and collect the *returned lists*
+        for part in parts:
+            results.extend(get_atomic_tactics(part))
+        return results
+
+    # Remove any outer parentheses
+    if chunk.startswith('('):
+        assert(chunk.endswith(')'))
+        chunk = chunk[1:-1] # Get content inside parentheses
+            
+    # Handle X1; X2; ... Xn
+    parts = split_at_top_level(chunk, ';')
+    if len(parts) > 1:
+        results = []
+        # Recurse on each part and collect the *returned lists*
+        for part in parts:
+            results.extend(get_atomic_tactics(part))
+        return results
+
+    # Base Case: a single tactic is returned as a singleton list.
+    return [chunk]
+    
+def filter_tactics(chunks: list[str], prefixes: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Filters a list of chunks based on a given set of prefixes
 
     Args:
-        s: The input string (or list of strings) containing Coq tactics.
-        allowed_prefixes: A list of tactic prefix strings to identify.
+        chunks: The input list of strings
+        prefixes: A list of tactic prefix strings to identify.
 
     Returns:
         A tuple containing two lists, both sorted and without duplicates:
         1. identified_tactics: A list of unique tactic prefixes found.
         2. leftovers: A list of unique processed chunks that did not match.
     """
+                    
     # Use sets to store results to automatically handle duplicates
     identified_tactics_set = set()
     leftovers_set = set()
-    
-    # Sort prefixes by length (longest first)
-    sorted_prefixes = sorted(allowed_prefixes, key=len, reverse=True)
 
-    def split_at_top_level(text: str, separator: str) -> list[str]:
-        """
-        Splits a string by a separator, but only at the top level
-        (i.e., not inside parentheses or brackets).
-        """
-        parts = []
-        balance_paren = 0
-        balance_bracket = 0
-        current_part_start = 0
-        
-        for i, char in enumerate(text):
-            if char == '(':
-                balance_paren += 1
-            elif char == ')':
-                balance_paren = max(0, balance_paren - 1)
-            elif char == '[':
-                balance_bracket += 1
-            elif char == ']':
-                balance_bracket = max(0, balance_bracket - 1)
-            
-            if char == separator and balance_paren == 0 and balance_bracket == 0:
-                parts.append(text[current_part_start:i])
-                current_part_start = i + 1
-        
-        parts.append(text[current_part_start:])
-        return parts
-
-    def process_chunk(chunk: str):
-        """
-        Recursively processes a chunk of the tactic string.
-        """
-        # Step 4: Clean chunk
-        chunk = chunk.strip().strip(';.')
-        chunk = chunk.strip()
-        
-        if not chunk:
-            return
-
-        # Step 3: Handle [ X1 | X2 | ... Xn ]
-        if chunk.startswith('[') and chunk.endswith(']'):
-            content = chunk[1:-1]
-            parts = split_at_top_level(content, '|')
-            for part in parts:
-                process_chunk(part)
-            return
-
-        # Step 2: Handle X1; X2; ... Xn
-        parts = split_at_top_level(chunk, ';')
-        if len(parts) > 1:
-            for part in parts:
-                process_chunk(part)
-            return
-
-        # --- Base Case ---
+    for chunk in chunks:
         found_prefix = None
-        for prefix in sorted_prefixes:
+        for prefix in prefixes:
             if chunk == prefix:
                 found_prefix = prefix
                 break
@@ -164,44 +180,48 @@ def extract_tactics(s: Union[str, list[str]], allowed_prefixes: list[str]) -> tu
                 if next_char_index < len(chunk) and chunk[next_char_index] in ' .(':
                     found_prefix = prefix
                     break
-        
-        # Step 7: Add to the appropriate set (duplicates are ignored)
         if found_prefix:
             identified_tactics_set.add(found_prefix)
         else:
             leftovers_set.add(chunk)
-
-    # --- Main Function Logic ---
-    
-    if isinstance(s, str):
-        string_list = [s]
-    elif isinstance(s, list):
-        string_list = s
-    else:
-        raise TypeError(f"Input 's' must be a string or a list of strings, but got {type(s)}")
-
-    for input_string in string_list:
-        if not isinstance(input_string, str):
-            print(f"Warning: Skipping non-string item in list: {input_string}")
-            continue
-            
-        s_to_process = input_string.strip()
-        
-        # Step 1: Handle 'by (X).' or 'by X.'
-        if s_to_process.startswith('by ') and s_to_process.endswith('.'):
-            content = s_to_process[3:-1].strip()
-            if content.startswith('(') and content.endswith(')'):
-                 s_to_process = content[1:-1].strip()
-            else:
-                 s_to_process = content
-        
-        process_chunk(s_to_process)
-    
+                    
     # Convert sets to sorted lists for the final output
     return sorted(list(identified_tactics_set)), sorted(list(leftovers_set))
 
+def extract_tactics(s:str , allowed_prefixes: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Extracts a list of Coq tactic prefixes from a string,
+    ensuring no duplicates in the output lists.
+
+    Args:
+        s: The input string containing Coq tactics.
+        allowed_prefixes: A list of tactic prefix strings to identify.
+
+    Returns:
+        A tuple containing two lists, both sorted and without duplicates:
+        1. identified_tactics: A list of unique tactic prefixes found.
+        2. leftovers: A list of unique processed chunks that did not match.
+    """
+    
+    # Sort prefixes by length (longest first)
+    sorted_prefixes = sorted(allowed_prefixes, key=len, reverse=True)
+    
+    s_to_process = s.strip() #remove whitespaces at both ends of the string
+
+    # Handle 'by (X).' or 'by X.
+    if s_to_process.startswith('by ') and s_to_process.endswith('.'):
+        content = s_to_process[3:-1].strip()
+        s_to_process = content[1:-1].strip() if (content.startswith('(') and content.endswith(')')) else content
+    elif s_to_process.startswith('by(') and s_to_process.endswith('.'):
+        content = s_to_process[2:-1].strip()
+        s_to_process = content[1:-1].strip() if (content.startswith('(') and content.endswith(')')) else content
+        
+    chunks = get_atomic_tactics(s_to_process)
+    return filter_tactics(chunks, allowed_prefixes)
+
 def my_tagger(task: ProofTask) -> list[str]:
     tags = ["admitted"] if task.admitted else []
+    omitted = []
     allowed_prefixes = ['verify_spec', 'go', 'ego', 'work', 'wp_for', 'wp_while', 'wp_do',
                          'rewrite', 'erewrite', 'rewrite_all', 'bind_ren', 'ren_hyp',
                          'apply', 'eapply', 'assumption', 'eassumption',
@@ -213,9 +233,13 @@ def my_tagger(task: ProofTask) -> list[str]:
                          'constructor', 'econstructor', 'induction',
                          'intuition', 'iAssert', 'iExists', 'revert',
                          'left', 'right', 'Opaque', 'Transparent', 'admit' ]
-    identified_tactics, leftovers = extract_tactics(task.proof_tactics, allowed_prefixes)
-    result = tags + identified_tactics
-    return result
+    identified = tags
+    
+    for sentence in task.proof_tactics:
+        identified_tactics, leftovers = extract_tactics(sentence, allowed_prefixes)
+        tags = tags + identified_tactics
+        omitted = omitted + leftovers
+    return list(set(tags))
 
 def mk_parser(parent: Any|None=None) -> Any:
     # 1. Create the parser
