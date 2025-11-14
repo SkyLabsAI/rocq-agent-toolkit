@@ -3,8 +3,7 @@ name = "observability"
 version = "0.1.0"
 description = "A comprehensive, production-ready observability solution that works with any Python application."
 authors = [{ name = "SkyLabs Team", email = "support@skylabs-ai.com" }]
-requires-python = ">=3.11"
-readme = "README.md"
+requires-python = ">=3.13"
 dependencies = [
     "opentelemetry-api>=1.33.0,<2",
     "opentelemetry-sdk>=1.33.0,<2",
