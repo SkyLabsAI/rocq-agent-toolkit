@@ -78,10 +78,6 @@ def main(args: list[str] | None = None) -> bool:
         print("unspecified task")
         return False
 
-    def rocq_args(filename: Path) -> list[str]:
-        # TODO: a better default
-        return DuneUtil.rocq_args_for(filename)
-
     def run_task(task: dict[str, Any]) -> bool:
         # TODO: find a better ID for tasks
         task_id: str = f"{task['file']}#{task['locator']}"
@@ -89,7 +85,7 @@ def main(args: list[str] | None = None) -> bool:
         try:
             task_file: Path = wdir / task["file"]
             with RocqDocManager(
-                    rocq_args(task_file),
+                    DuneUtil.rocq_args_for(task_file),
                     str(task_file),
                     dune=True,
             ) as rdm:
@@ -107,7 +103,7 @@ def main(args: list[str] | None = None) -> bool:
 
                 trace = trace_proof(BeforeAndAfter(GoalAsString()), rdm)
 
-            with open(arguments.output_dir / f"{task_id.replace('/','_')}.json", "w") as output:
+            with open(arguments.output_dir / f"{task_id.replace('/','_').replace('#','_')}.json", "w") as output:
                 json.dump(trace, output)
 
             return True
