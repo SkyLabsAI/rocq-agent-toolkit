@@ -33,16 +33,16 @@ module Schema = struct
     | List s -> "a list where each element is " ^ descr s
     | Obj o -> "an instance of the `" ^ o ^ "` object"
 
-  let rec python_type : type a. a t -> string = fun s ->
+  let rec python_type : type a. cls:string -> a t -> string = fun ~cls s ->
     match s with
     | Null -> "None"
     | Any -> "Any"
     | Int -> "int"
     | Bool -> "bool"
     | String -> "str"
-    | Nullable s -> python_type s ^ " | None"
-    | List s -> "list[" ^ python_type s ^ "]"
-    | Obj o -> o
+    | Nullable s -> python_type ~cls s ^ " | None"
+    | List s -> "list[" ^ python_type ~cls s ^ "]"
+    | Obj o -> Printf.sprintf "\"%s.%s\"" cls o
 
   (* Ensure every field has a default; auto-generated methods use dictionary
      unpacking and must handle cases where null/empty fields are elided. *)
@@ -72,7 +72,7 @@ module Schema = struct
       | List s ->
           let fresh = fresh () in
           Printf.sprintf "[%s for %s in %s]" (python_val fresh s) fresh var
-      | Obj o -> Printf.sprintf "%s(**%s)" o var
+      | Obj o -> Printf.sprintf "self.%s(**%s)" o var
     in
     python_val var s
 
@@ -463,38 +463,34 @@ let output_python_api oc api =
   let pp_capitalized oc s = output_string oc (String.capitalize_ascii s) in
   line "# ruff: noqa: C416 -- unnecessary list comprehension";
   line "from dataclasses import dataclass, field";
-  line "from typing import Any, TypeAlias";
+  line "from typing import Any";
   line "";
   line "from jsonrpc_tp import JsonRPCTP";
   line "";
+  line "class %s(JsonRPCTP):" api.name;
+  line "    \"\"\"Main API class.\"\"\"";
   let output_object (A(O(o))) =
     line "";
-    line "@dataclass";
-    line "class %s:" o.name;
-    Option.iter (line "    \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
+    line "    @dataclass";
+    line "    class %s:" o.name;
+    Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->
       output_fields f.tail;
-      Option.iter (line "    # %a." pp_capitalized) f.descr;
-      line "    %s: %s = %s" f.name
-        (Schema.python_type f.schema) (Schema.python_dataclass_field f.schema)
+      Option.iter (line "        # %a." pp_capitalized) f.descr;
+      line "        %s: %s = %s" f.name
+        (Schema.python_type ~cls:api.name f.schema)
+        (Schema.python_dataclass_field f.schema)
     in
     output_fields o.fields
   in
   List.iter output_object (List.rev api.api_objects);
-  line "";
-  line "class %s(JsonRPCTP):" api.name;
-  line "    # NOTE: normally [type ... = ...] is preferred, but this cannot \
-    be used with [isinstance].";
-  let output_object_type_alias (A(O(o))) =
-    line "    %s: TypeAlias = %s  # noqa: UP040" o.name o.name
-  in
-  List.iter output_object_type_alias (List.rev api.api_objects);
   let rec pp_args : type a. _ -> a Args.t -> unit = fun oc args ->
     match args with
     | Args.Nil    -> ()
     | Args.Cns(a) ->
-    Printf.fprintf oc ", %s: %s" a.name (Schema.python_type a.schema);
+    Printf.fprintf oc ", %s: %s" a.name
+      (Schema.python_type ~cls:api.name a.schema);
     pp_args oc a.tail
   in
   let rec pp_names : type a. _ -> a Args.t -> unit = fun oc args ->
@@ -509,10 +505,10 @@ let output_python_api oc api =
     line "";
     let ret_ty =
       match m.impl with
-      | Pure(_) -> Schema.python_type m.ret
+      | Pure(_) -> Schema.python_type ~cls:api.name m.ret
       | Rslt(i) ->
-          let ret = Schema.python_type m.ret in
-          let err = Schema.python_type i.err in
+          let ret = Schema.python_type ~cls:api.name m.ret in
+          let err = Schema.python_type ~cls:api.name i.err in
           Printf.sprintf "%s | JsonRPCTP.Err[%s]" ret err
     in
     line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;

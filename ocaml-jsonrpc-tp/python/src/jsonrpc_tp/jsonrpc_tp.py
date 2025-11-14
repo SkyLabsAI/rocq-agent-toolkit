@@ -2,36 +2,26 @@ import json
 import subprocess
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Any, Self, TypeAlias, TypeVar
+from typing import Any, Self
 
-# TODO: remove these once the port to 3.13 is complete, and
-# generics are uniformly available.
-E = TypeVar('E')
-R = TypeVar('R')
-
-@dataclass
-class Err[E]:
-    """JSON-RPC error response, with a message and payload."""
-    message: str
-    data: E
-
-@dataclass
-class Resp[R]:
-    """JSON-RPC response, with a payload."""
-    result: R
-
-class Error(Exception):
-    """Exception raised in case of protocol error."""
-    pass
 
 class JsonRPCTP:
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
-    # NOTE: normally [type ... = ...] is preferred, but this cannot be used
-    # with [isinstance].
-    Err: TypeAlias = Err  # noqa: UP040
-    Resp: TypeAlias = Resp  # noqa: UP040
-    Error: TypeAlias = Error  # noqa: UP040
+    @dataclass
+    class Err[E]:
+        """JSON-RPC error response, with a message and payload."""
+        message: str
+        data: E
+
+    @dataclass
+    class Resp[R]:
+        """JSON-RPC response, with a payload."""
+        result: R
+
+    class Error(Exception):
+        """Exception raised in case of protocol error."""
+        pass
 
     def __init__(
             self,
@@ -49,7 +39,7 @@ class JsonRPCTP:
             )
         except Exception as e:
             self._process = None
-            raise Error(f"Failed to start process: {e}") from e
+            raise self.Error(f"Failed to start process: {e}") from e
 
     def __enter__(self) -> Self:
         return self
@@ -67,9 +57,9 @@ class JsonRPCTP:
             self,
             method: str,
             params: list[Any],
-    ) -> Resp[Any] | Err[Any]:
+    ) -> "JsonRPCTP.Resp"[Any] | "JsonRPCTP.Err"[Any]:
         if self._process is None:
-            raise Error("Not running anymore.")
+            raise self.Error("Not running anymore.")
         assert (self._process.stdin is not None)
         assert (self._process.stdout is not None)
         # Getting a fresh request id.
@@ -93,14 +83,14 @@ class JsonRPCTP:
         try:
             nb_bytes = int(header[len(prefix):-2])
         except Exception as e:
-            raise Error(f"Failed to parse response: {header}", e) from e
+            raise self.Error(f"Failed to parse response: {header}", e) from e
         response = self._process.stdout.read(nb_bytes).decode()
         response = json.loads(response)
         if "error" in response:
             error = response.get("error")
-            return Err(error.get("message"), error.get("data"))
+            return self.Err(error.get("message"), error.get("data"))
         else:
-            return Resp(response.get("result"))
+            return self.Resp(response.get("result"))
 
     def quit(self) -> None:
         if self._process is None:
