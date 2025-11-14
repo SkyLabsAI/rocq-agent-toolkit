@@ -1,9 +1,10 @@
-from argparse import ArgumentParser, Namespace
-from dataclasses import dataclass, field
 import os
 import pprint
-from typing import Any, override, Self
+from argparse import ArgumentParser, Namespace
+from dataclasses import dataclass, field
+from typing import Any, Self, override
 
+from observability import LoggingConfig, get_logger, setup_logging
 from rocq_doc_manager import RocqDocManager
 
 from rocq_pipeline.schema import task_output
@@ -11,10 +12,6 @@ from rocq_pipeline.schema.task_output import (
     ExecutionError,
     FailureReason,
 )
-
-
-from observability import setup_logging, LoggingConfig, get_logger
-
 
 log_config = LoggingConfig(
     service_name="rocq_agent",

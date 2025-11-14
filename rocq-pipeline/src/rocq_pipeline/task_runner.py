@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from observability import add_log_context, get_logger
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
@@ -15,8 +16,6 @@ from rocq_pipeline.agent import Agent, Finished, GiveUp, TaskResult
 from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
 from rocq_pipeline.locator import parse_locator
 from rocq_pipeline.schema import task_output
-
-from observability import get_logger, add_log_context
 
 logger = get_logger("task_runner")
 
@@ -91,7 +90,7 @@ def main(agent_type: type[Agent], args: list[str] | None = None) -> bool:
         arguments.output_dir / f"{tasks_name}_results_{now_str}.jsonl"
     )
     run_id: str = str(uuid.uuid4())
-    # Here log context is not getting passed in the multithreads 
+    # Here log context is not getting passed in the multithreads
     # # add_log_context("run_id", run_id)
 
     def run_task(task: dict[str, Any]) -> task_output.TaskOutput | None:
