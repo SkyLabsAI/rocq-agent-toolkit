@@ -33,16 +33,47 @@ module Schema = struct
     | List s -> "a list where each element is " ^ descr s
     | Obj o -> "an instance of the `" ^ o ^ "` object"
 
-  let rec python : type a. a t -> string = fun s ->
+  let rec python_ty : type a. a t -> string = fun s ->
     match s with
     | Null -> "None"
     | Any -> "Any"
     | Int -> "int"
     | Bool -> "bool"
     | String -> "str"
-    | Nullable s -> python s ^ " | None"
-    | List s -> "list[" ^ python s ^ "]"
+    | Nullable s -> python_ty s ^ " | None"
+    | List s -> "list[" ^ python_ty s ^ "]"
     | Obj o -> o
+
+  (* Ensure every field has a default; auto-generated methods use dictionary
+     unpacking and must handle cases where null/empty fields are elided. *)
+  let python_dataclass_field : type a. a t -> string = fun s ->
+    Printf.sprintf "field(kw_only=True, %s)"
+    (match s with
+    | Null -> "default=None"
+    | Any -> "default=None"
+    | Int -> "default=0"
+    | Bool -> "default=False"
+    | String -> "default=\"\""
+    | Nullable _ -> "default=None"
+    | List _ -> "default_factory=list"
+    | Obj o -> Printf.sprintf "default_factory=%s" o)
+
+  let python_val : type a. a t -> string -> string =
+    let rec python_val_aux : type a. a t -> string -> int -> string = fun s original_nm i ->
+      let mk_nm i = if i = 0 then original_nm else Printf.sprintf "v%i" i in
+      let nm = mk_nm i in
+      let fresh_nm = mk_nm (i+1) in
+      match s with
+      | Null -> "None"
+      | Any -> nm
+      | Int -> Printf.sprintf "int(%s)" nm
+      | Bool -> Printf.sprintf "bool(%s)" nm
+      | String -> Printf.sprintf "str(%s)" nm
+      | Nullable s -> Printf.sprintf "None if %s is None else %s" nm (python_val_aux s original_nm i)
+      | List s ->
+        Printf.sprintf "[%s for %s in %s]" (python_val_aux s original_nm (i+1)) fresh_nm nm
+      | Obj o -> Printf.sprintf "%s(**%s)" o nm
+    in fun s original_nm -> python_val_aux s original_nm 0
 
   let is_default : type a. a t -> a -> bool = fun s v ->
     match (s, v) with
@@ -427,10 +458,11 @@ let output_docs oc api =
 let output_python_api oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
   let pp_capitalized oc s = output_string oc (String.capitalize_ascii s) in
-  line "from dataclasses import dataclass";
-  line "from typing import Any, cast";
+  line "# ruff: noqa: C416 -- unnecessary list comprehension";
+  line "from dataclasses import dataclass, field";
+  line "from typing import Any, TypeAlias";
   line "";
-  line "from jsonrpc_tp import Err, JsonRPCTP";
+  line "from jsonrpc_tp import JsonRPCTP";
   line "";
   let output_object (A(O(o))) =
     line "";
@@ -441,18 +473,24 @@ let output_python_api oc api =
       match fields with Nil -> () | Cns(f) ->
       output_fields f.tail;
       Option.iter (line "    # %a." pp_capitalized) f.descr;
-      line "    %s: %s" f.name (Schema.python f.schema)
+      line "    %s: %s = %s" f.name (Schema.python_ty f.schema) (Schema.python_dataclass_field f.schema)
     in
     output_fields o.fields
   in
   List.iter output_object (List.rev api.api_objects);
   line "";
   line "class %s(JsonRPCTP):" api.name;
+  line "    # NOTE: normally [type ... = ...] is preferred, but this cannot be used";
+  line "    # with [isinstance].";
+  let output_object_type_alias (A(O(o))) =
+    line "    %s: TypeAlias = %s  # noqa: UP040" o.name o.name
+  in
+  List.iter output_object_type_alias (List.rev api.api_objects);
   let rec pp_args : type a. _ -> a Args.t -> unit = fun oc args ->
     match args with
     | Args.Nil    -> ()
     | Args.Cns(a) ->
-    Printf.fprintf oc ", %s: %s" a.name (Schema.python a.schema);
+    Printf.fprintf oc ", %s: %s" a.name (Schema.python_ty a.schema);
     pp_args oc a.tail
   in
   let rec pp_names : type a. _ -> a Args.t -> unit = fun oc args ->
@@ -467,19 +505,22 @@ let output_python_api oc api =
     line "";
     let ret_ty =
       match m.impl with
-      | Pure(_) -> Schema.python m.ret
-      | Rslt(i) -> Schema.python m.ret ^ " | Err[" ^ Schema.python i.err ^ "]"
+      | Pure(_) -> Schema.python_ty m.ret
+      | Rslt(i) -> Schema.python_ty m.ret ^ " | JsonRPCTP.Err[" ^ Schema.python_ty i.err ^ "]"
     in
     line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
     line "        result = self.raw_request(\"%s\", [%a])"
       m.name pp_names m.args;
     let _ =
-      match m.impl with Pure(_) -> () | Rslt(i) ->
-      line "        if isinstance(result, Err):";
-      line "            data = cast(%s, result.data)" (Schema.python i.err);
-      line "            return Err(result.message, data)"
+      match m.impl with
+      | Pure(_) ->
+      line "        assert not isinstance(result, self.Err)";
+      | Rslt(i) ->
+      line "        if isinstance(result, self.Err):";
+      line "            data = %s" (Schema.python_val i.err "result.data");
+      line "            return self.Err(result.message, data)"
     in
-    line "        return cast(%s, result)" (Schema.python m.ret)
+    line "        return %s" (Schema.python_val m.ret "result.result")
   in
   SMap.iter output_method api.api_methods
