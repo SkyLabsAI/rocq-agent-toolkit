@@ -30,7 +30,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         # Start line number.
         line_nb: int = field(kw_only=True, default=0)
         # Source file identification if not run as a toplevel.
-        fname: "RocqDocManagerAPI.RocqSource" | None = field(kw_only=True, default=None)
+        fname: "RocqDocManagerAPI.RocqSource | None" = field(kw_only=True, default=None)
 
     @dataclass
     class CommandData:
@@ -68,7 +68,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         stdout: str = field(kw_only=True, default="")
         success: bool = field(kw_only=True, default=False)
 
-    def advance_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc" | None]:
+    def advance_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Advance the cursor before the indicated unprocessed item."""
         result = self.raw_request("advance_to", [index])
         if isinstance(result, self.Err):
@@ -100,13 +100,13 @@ class RocqDocManagerAPI(JsonRPCTP):
         assert not isinstance(result, self.Err)
         return int(result.result)
 
-    def doc_prefix(self) -> list["RocqDocManagerAPI.PrefixItem"]:
+    def doc_prefix(self) -> "list[RocqDocManagerAPI.PrefixItem]":
         """Gives the list of all processed commands, appearing before the cursor."""
         result = self.raw_request("doc_prefix", [])
         assert not isinstance(result, self.Err)
         return [self.PrefixItem(**v1) for v1 in result.result]
 
-    def doc_suffix(self) -> list["RocqDocManagerAPI.SuffixItem"]:
+    def doc_suffix(self) -> "list[RocqDocManagerAPI.SuffixItem]":
         """Gives the list of all unprocessed commands, appearing after the cursor."""
         result = self.raw_request("doc_suffix", [])
         assert not isinstance(result, self.Err)
@@ -118,7 +118,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         assert not isinstance(result, self.Err)
         return [v1 for v1 in result.result]
 
-    def go_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc" | None]:
+    def go_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Move the cursor right before the indicated item (whether it is already processed or not)."""
         result = self.raw_request("go_to", [index])
         if isinstance(result, self.Err):
@@ -138,7 +138,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         assert not isinstance(result, self.Err)
         return None
 
-    def insert_command(self, text: str) -> "RocqDocManagerAPI.CommandData" | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc" | None]:
+    def insert_command(self, text: str) -> "RocqDocManagerAPI.CommandData" | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Insert and process a command at the cursor."""
         result = self.raw_request("insert_command", [text])
         if isinstance(result, self.Err):
@@ -154,7 +154,7 @@ class RocqDocManagerAPI(JsonRPCTP):
             return self.Err(result.message, data)
         return result.result
 
-    def load_file(self) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc" | None]:
+    def load_file(self) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors)."""
         result = self.raw_request("load_file", [])
         if isinstance(result, self.Err):
@@ -176,7 +176,7 @@ class RocqDocManagerAPI(JsonRPCTP):
             return self.Err(result.message, data)
         return self.CommandData(**result.result)
 
-    def run_step(self) -> "RocqDocManagerAPI.CommandData" | None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc" | None]:
+    def run_step(self) -> "RocqDocManagerAPI.CommandData | None" | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Advance the cursor by stepping over an unprocessed item."""
         result = self.raw_request("run_step", [])
         if isinstance(result, self.Err):

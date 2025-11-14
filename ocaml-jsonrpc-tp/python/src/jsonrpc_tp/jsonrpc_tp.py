@@ -57,7 +57,7 @@ class JsonRPCTP:
             self,
             method: str,
             params: list[Any],
-    ) -> "JsonRPCTP.Resp"[Any] | "JsonRPCTP.Err"[Any]:
+    ) -> "JsonRPCTP.Resp[Any] | JsonRPCTP.Err[Any]":
         if self._process is None:
             raise self.Error("Not running anymore.")
         assert (self._process.stdin is not None)

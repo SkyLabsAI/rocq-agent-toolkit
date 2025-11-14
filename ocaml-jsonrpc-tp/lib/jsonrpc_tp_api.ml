@@ -33,16 +33,32 @@ module Schema = struct
     | List s -> "a list where each element is " ^ descr s
     | Obj o -> "an instance of the `" ^ o ^ "` object"
 
-  let rec python_type : type a. cls:string -> a t -> string = fun ~cls s ->
+  let rec has_object: type a. a t -> bool = fun s ->
     match s with
-    | Null -> "None"
-    | Any -> "Any"
-    | Int -> "int"
-    | Bool -> "bool"
-    | String -> "str"
-    | Nullable s -> python_type ~cls s ^ " | None"
-    | List s -> "list[" ^ python_type ~cls s ^ "]"
-    | Obj o -> Printf.sprintf "\"%s.%s\"" cls o
+    | Null
+    | Any
+    | Int
+    | Bool
+    | String -> false
+    | Nullable s -> has_object s
+    | List s -> has_object s
+    | Obj _ -> true
+
+  let python_type : type a. cls:string -> a t -> string = fun ~cls s ->
+    let rec python_type : type a. a t -> string = fun s ->
+      match s with
+      | Null -> "None"
+      | Any -> "Any"
+      | Int -> "int"
+      | Bool -> "bool"
+      | String -> "str"
+      | Nullable s -> python_type s ^ " | None"
+      | List s -> "list[" ^ python_type s ^ "]"
+      | Obj o -> Printf.sprintf "%s.%s" cls o
+    in
+    match has_object s with
+    | false -> python_type s
+    | true  -> Printf.sprintf "\"%s\"" (python_type s)
 
   (* Ensure every field has a default; auto-generated methods use dictionary
      unpacking and must handle cases where null/empty fields are elided. *)
@@ -466,6 +482,7 @@ let output_python_api oc api =
   line "from typing import Any";
   line "";
   line "from jsonrpc_tp import JsonRPCTP";
+  line "";
   line "";
   line "class %s(JsonRPCTP):" api.name;
   line "    \"\"\"Main API class.\"\"\"";
