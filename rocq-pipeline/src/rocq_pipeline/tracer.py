@@ -3,7 +3,7 @@ import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
@@ -49,14 +49,68 @@ class GoalAsString(StateExtractor[str]):
             return result.result # type: ignore
         return ""
 
-def trace_proof[T](extractor: StateExtractor[T], rdm: RocqDocManager) -> list[tuple[(T|None), str, (T|None)]]:
+class TacticExtractor[T]:
+    def before(self, rdm: RocqDocManager, tactic:str) -> T | None:
+        return None
+
+    def after(self, rdm: RocqDocManager, tactic:str) -> T | None:
+        return None
+
+class AllTacticExtractor(TacticExtractor[dict[str,Any]]):
+    def __init__(self, extractors: dict[str, TacticExtractor[Any]]) -> None:
+        self._extractors = extractors
+
+    def before(self, rdm: RocqDocManager, tactic:str) -> dict[str,Any] | None:
+        def go[T](e: TacticExtractor[T]) -> T|None:
+            try:
+                return e.before(rdm, tactic)
+            except Exception:
+                return None
+        return {key: go(e) for key, e in self._extractors.items()}
+
+    def after(self, rdm: RocqDocManager, tactic:str) -> dict[str,Any] | None:
+        def go[T](e: TacticExtractor[T]) -> T|None:
+            try:
+                return e.after(rdm, tactic)
+            except Exception:
+                return None
+        return {key: go(e) for key, e in self._extractors.items()}
+
+class Before[T](TacticExtractor[T]):
+    def __init__(self, state: StateExtractor[T]):
+        self._extractor = state
+
+    @override
+    def before(self, rdm: RocqDocManager, tactic:str) -> T|None:
+        return self._extractor(rdm)
+
+class After[T](TacticExtractor[T]):
+    def __init__(self, state: StateExtractor[T]):
+        self._extractor = state
+    @override
+    def after(self, rdm: RocqDocManager, tactic:str) -> T|None:
+        return self._extractor(rdm)
+
+class BeforeAndAfter[T](TacticExtractor[T]):
+    def __init__(self, state: StateExtractor[T]):
+        self._extractor = state
+
+    @override
+    def before(self, rdm: RocqDocManager, tactic:str) -> T|None:
+        return self._extractor(rdm)
+
+    @override
+    def after(self, rdm: RocqDocManager, tactic:str) -> T|None:
+        return self._extractor(rdm)
+
+def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager) -> list[tuple[(T|None), str, (T|None)]]:
     try:
         tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
         trace: list[tuple[(T|None),str,(T|None)]] = []
         for tactic in tactics:
-            pre = extractor(rdm)
+            pre = extractor.before(rdm, tactic)
             rdm.run_command(tactic)
-            post = extractor(rdm)
+            post = extractor.after(rdm, tactic)
             trace.append((pre, tactic.strip(".").strip(), post))
         return trace
     except Exception:
@@ -142,7 +196,7 @@ def main(args: list[str] | None = None) -> bool:
                     print(f"{task_id}: locator returned false")
                     return False
 
-                trace = trace_proof(GoalAsString(), rdm)
+                trace = trace_proof(BeforeAndAfter(GoalAsString()), rdm)
 
             with open(arguments.output_dir / f"{task_id.replace('/','_')}.json", "w") as output:
                 json.dump(trace, output)
