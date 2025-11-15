@@ -95,7 +95,9 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
                 dune=True,
         ) as rdm:
             progress(0.05, "🔃")
-            if not isinstance(rdm.load_file(), RocqDocManager.Resp):
+            load_reply = rdm.load_file()
+            if isinstance(load_reply, RocqDocManager.Err):
+                logger.warning(str(load_reply))
                 return None
             progress(0.06, "🔎")
 
@@ -269,7 +271,6 @@ def agent_main(agent_builder: AgentBuilder, args: list[str]|None=None) -> bool:
     config: RunConfiguration = parse_arguments(arguments, agent_builder=agent_builder)
     if agent_args:
         config.agent_builder.add_args(agent_args)
-
     return run_config(config)
 
 def run_ns(args: Namespace, extra_args:list[str]|None=None) -> bool:
