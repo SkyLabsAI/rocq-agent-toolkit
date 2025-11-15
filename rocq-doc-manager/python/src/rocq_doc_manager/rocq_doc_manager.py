@@ -22,7 +22,8 @@ class RocqDocManager(RocqDocManagerAPI):
             if dune_disable_global_lock:
                 env = dune_env_hack()
             args = [
-                "dune", "exec", "--no-build", "--display=quiet",
+                "dune", "exec", "--no-build",
+                "--no-print-directory", "--display=quiet",
                 "rocq-doc-manager", "--", file_path,
                 "--"
             ] + rocq_args
