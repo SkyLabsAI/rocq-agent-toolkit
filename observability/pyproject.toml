@@ -21,7 +21,7 @@ dependencies = [
     "opentelemetry-semantic-conventions>=0.54b0",
     "pydantic>=2.9.0,<3",
     "structlog>=24.4.0,<25",
-    "rich>=13.8.0,<14",
+    "rich>=13.8.0",
     "click>=8.1.7,<9",
 ]
 
