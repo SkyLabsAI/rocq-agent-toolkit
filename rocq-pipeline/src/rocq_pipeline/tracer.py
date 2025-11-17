@@ -1,14 +1,12 @@
 import argparse
 import json
-import sys
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
-from rocq_pipeline import find_tasks, locator
+from rocq_pipeline import find_tasks, locator, util
 from rocq_pipeline.extractor import BeforeAndAfter, GoalAsString, TacticExtractor
 
 
@@ -25,11 +23,13 @@ def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager) -> list[t
     except Exception:
         return []
 
-def mk_argparser() -> argparse.ArgumentParser:
+def mk_parser(parent: Any|None=None) -> Any:
     # Set up the argument parser
-    parser = argparse.ArgumentParser(
-        description="Traces Rocq states.",
-    )
+    if parent:
+        parser = parent.add_parser("trace", help="Traces Rocq states")
+    else:
+        parser = argparse.ArgumentParser(description="Traces Rocq states.")
+
     # Add the single required positional argument
     parser.add_argument("--task-json", type=json.loads, help="The task descriptor, as JSON.")
     parser.add_argument(
@@ -51,36 +51,16 @@ def mk_argparser() -> argparse.ArgumentParser:
     )
     return parser
 
-def main(args: list[str] | None = None) -> bool:
-    """
-    The entry point to the tracer
-    """
-    if args is None:
-        args = sys.argv[1:]
+type Task = dict[str,Any]
 
-    arguments = mk_argparser().parse_args(args)
+def run(output_dir: Path, wdir:Path, tasks: list[Task], jobs:int=1) -> None:
+    def get_task_id(task: Task) -> str:
+        return f"{task['file']}#{task['locator']}"
 
-    wdir = Path(".")
-
-    if arguments.task_json and arguments.task_file:
-        print(" ".join([
-            "[--task-file ...] and [--task-json ...] shouldn't both be used;",
-            "choosing [--task-json]."
-        ]))
-
-    if arguments.task_json is not None:
-        # TODO: if we had a schema we could automatically validate that the
-        # task JSON has the expected shape.
-        tasks = Tasks.mk_validated_tasklist(arguments.task_json)
-    elif arguments.task_file is not None:
-        (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
-    else:
-        print("unspecified task")
-        return False
-
-    def run_task(task: dict[str, Any]) -> bool:
+    def run_task(task: Task, progress: util.ProgressCallback) -> bool:
         # TODO: find a better ID for tasks
-        task_id: str = f"{task['file']}#{task['locator']}"
+        task_id: str = get_task_id(task)
+        output_file: Path = output_dir / f"{task_id.replace('/','_').replace('#','_')}.json"
 
         try:
             task_file: Path = wdir / task["file"]
@@ -89,7 +69,9 @@ def main(args: list[str] | None = None) -> bool:
                     str(task_file),
                     dune=True,
             ) as rdm:
+                progress(0.01, "🔃")
                 load_reply = rdm.load_file()
+                progress(0.05, "🔃")
                 if isinstance(load_reply, RocqDocManager.Err):
                     raise RuntimeError(" ".join([
                         f"rocq-doc-manager failed to load {task_file};",
@@ -98,12 +80,14 @@ def main(args: list[str] | None = None) -> bool:
                     ]))
 
                 if not locator.parse_locator(task["locator"])(rdm):
-                    print(f"{task_id}: locator returned false")
+                    print(f"Failed to find task: {task_id}")
                     return False
+                progress(0.1, "💭")
 
                 trace = trace_proof(BeforeAndAfter(GoalAsString()), rdm)
+                progress(0.95, "💭")
 
-            with open(arguments.output_dir / f"{task_id.replace('/','_').replace('#','_')}.json", "w") as output:
+            with open(output_file, "w") as output:
                 json.dump(trace, output)
 
             return True
@@ -111,13 +95,32 @@ def main(args: list[str] | None = None) -> bool:
         except Exception:
             return False
 
-    with ThreadPoolExecutor(arguments.jobs) as tpe:
-        # NOTE: iterator blocks if the next result has not been yielded
-        for result in tpe.map(run_task, tasks):
-            print(f"Finished task: {result}")
-            pass
+    util.parallel_runner(run_task, [(get_task_id(x), x) for x in tasks], lambda x: x, jobs=jobs)
 
+def run_ns(arguments: argparse.Namespace, extra_args:list[str]|None=None) -> bool:
+    assert extra_args is None or len(extra_args) == 0
+    if arguments.task_json and arguments.task_file:
+        print(" ".join([
+            "[--task-file ...] and [--task-json ...] shouldn't both be used;",
+            "choosing [--task-json]."
+        ]))
+    if arguments.task_json is not None:
+        # TODO: if we had a schema we could automatically validate that the
+        # task JSON has the expected shape.
+        tasks = Tasks.mk_validated_tasklist(arguments.task_json)
+    elif arguments.task_file is not None:
+        wdir = Path('.')
+        (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
+    else:
+        print("unspecified task")
+        return False
+
+    run(arguments.output, wdir, tasks)
     return True
+
+def main() -> bool:
+    arguments = mk_parser().parse_args()
+    return run_ns(arguments)
 
 if __name__ == '__main__':
     main()
