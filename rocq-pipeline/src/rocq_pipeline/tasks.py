@@ -5,8 +5,9 @@ from typing import Any, cast
 import jmespath
 import yaml
 
+type Task = dict[str, Any]
 
-def validate_task_schema(task: dict[str, Any]) -> None:
+def validate_task_schema(task: Task) -> None:
     if not isinstance(task, dict):
         raise ValueError(
             f"Task should be a dict, but had type {type(task)}: {task}"
@@ -23,7 +24,7 @@ def validate_task_schema(task: dict[str, Any]) -> None:
         raise ValueError("Task file should be a Rocq file (.v): {task}")
 
 
-def validate_tasklist_schema(tasks: list[dict[str, Any]]) -> None:
+def validate_tasklist_schema(tasks: list[Task]) -> None:
     assert isinstance(tasks, list)
     for task in tasks:
         validate_task_schema(task)
@@ -31,14 +32,14 @@ def validate_tasklist_schema(tasks: list[dict[str, Any]]) -> None:
 
 def mk_validated_tasklist(
         data: dict[str, Any] | list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+) -> list[Task]:
     if isinstance(data, dict):
         data = [data]
     validate_tasklist_schema(data)
     return data
 
 
-def load_tasks(filename: str | Path) -> tuple[Path, list[dict[str, Any]]]:
+def load_tasks(filename: str | Path) -> tuple[Path, list[Task]]:
     filename = Path(filename)
     wdir = filename.parent
     with open(filename, encoding="utf-8") as f:
@@ -54,10 +55,19 @@ def load_tasks(filename: str | Path) -> tuple[Path, list[dict[str, Any]]]:
 
         return (wdir, mk_validated_tasklist(data))
 
+def save_tasks(filename: str | Path, tasks: list[Task]) -> None:
+    filename = Path(filename)
+    with open(filename, 'w') as f:
+        if filename.suffix in [".yaml",".yml"]:
+            yaml.safe_dump(tasks, f)
+        elif filename.suffix in [".json"]:
+            json.dump(tasks, f)
+        else:
+            raise ValueError("Invalid file extension. Expected `.json`, `.yaml`, or `.yml`")
 
-def filter_tags(tasks: list[dict[str, Any]], tag: str) -> list[dict[str, Any]]:
+def filter_tags(tasks: list[Task], tag: str) -> list[Task]:
     escaped = tag.replace("'", r"\'")
     return cast(
-        list[dict[str, Any]],
+        list[Task],
         jmespath.search(f"[? contains(tags, '{escaped}')]", tasks)
     )
