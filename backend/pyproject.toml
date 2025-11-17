@@ -27,6 +27,14 @@ include = ["src/backend"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.setuptools.package-data]
+"backend" = ["py.typed"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2,<2",
+]
+
 [tool.pytest.ini_options]
 pythonpath = [
   "src"
