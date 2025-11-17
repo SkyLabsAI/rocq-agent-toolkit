@@ -1,36 +1,60 @@
 import sys
 from argparse import ArgumentParser, Namespace
+from collections.abc import Callable
+from typing import Any
 
 from rocq_pipeline import find_tasks, task_manip, task_runner, tracer
+
+# TODO: cleanup these type annotations
+#
+# NOTE: argparser commands use some private types (e.g. [_SubParsersAction])
+type mk_parserT[PARSER] = Callable[[Any | None], Any]
+type run_nsT = Callable[[Namespace, list[str] | None], Any]
+_entrypoints: dict[str, tuple[mk_parserT, run_nsT]] = {
+    "ingest": (
+        find_tasks.mk_parser,
+        find_tasks.run_ns
+    ),
+    "run": (
+        lambda subparsers: task_runner.mk_parser(subparsers, with_agent=True),
+        task_runner.run_ns,
+    ),
+    "trace": (
+        tracer.mk_parser,
+        tracer.run_ns
+    ),
+    "filter": (
+        task_manip.mk_parser,
+        task_manip.run_ns,
+    ),
+}
 
 
 # --- Entry Point ---
 def main() -> None:
     parser = ArgumentParser(description="The Rocq Agent Toolkit Driver")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    find_tasks.mk_parser(subparsers)
-    task_runner.mk_parser(subparsers, with_agent=True)
-    tracer.mk_parser(subparsers)
-    task_manip.mk_parser(subparsers)
+    subparsers = parser.add_subparsers(
+        dest="command",
+        help="Available commands"
+    )
+    for mk_parser, _ in _entrypoints.values():
+        mk_parser(subparsers)
+
     args = sys.argv[1:]
-    extra_args:list[str] = []
+    extra_args: list[str] = []
+
     try:
         idx = args.index('--')
         extra_args = args[idx+1:]
         args = args[:idx]
     except ValueError:
         pass
+    arguments: Namespace = parser.parse_args(args)
 
-    arguments:Namespace = parser.parse_args(args)
     if arguments.command is None:
         parser.print_help()
-    elif arguments.command == 'ingest':
-        find_tasks.run_ns(arguments, extra_args)
-    elif arguments.command == 'run':
-        task_runner.run_ns(arguments, extra_args)
-    elif arguments.command == 'trace':
-        tracer.run_ns(arguments, extra_args)
-    elif arguments.command == 'filter':
-        task_manip.run_ns(arguments, extra_args)
+    elif arguments.command in _entrypoints:
+        [_, run_ns] = _entrypoints[arguments.command]
+        run_ns(arguments, extra_args)
     else:
         parser.print_help()
