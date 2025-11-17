@@ -172,8 +172,9 @@ def load_agent(agent_desc: str) -> AgentBuilder:
         agent_mod = agent_desc
         agent_type_name = 'default'
     try:
-        mod = loader.load_module(Path(agent_mod))
-        result = getattr(mod, agent_type_name)
+        result = loader.load_module(Path(agent_mod))
+        for next in agent_type_name.split('.'):
+            result = getattr(result, next)
         if isinstance(result, AgentBuilder):
             return result
         raise Exception(f"{result} is not an [AgentBuilder]")
