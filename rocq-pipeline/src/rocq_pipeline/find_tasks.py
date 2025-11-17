@@ -7,7 +7,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import yaml
 from rocq_doc_manager import DuneUtil, RocqDocManager
@@ -326,7 +326,6 @@ def extract_tactics(s:str) -> tuple[list[str], list[str]]:
 def my_tagger(task: ProofTask) -> list[str]:
     tags = ["admitted"] if task.admitted else []
     omitted = []
-    identified = tags
     
     for sentence in task.proof_tactics:
         identified_tactics, leftovers = extract_tactics(sentence)
