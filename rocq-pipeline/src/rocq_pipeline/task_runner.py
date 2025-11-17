@@ -148,9 +148,9 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
             "choosing [--task-json]."
         ]))
 
-    def to_full_task(raw: dict, wdir: Path) -> FullTask:
+    def to_full_task(raw: Tasks.Task, wdir: Path) -> FullTask:
         # TODO: find a better name for tasks
-        id = f"{raw['file']}#{raw['locator']}"
+        id = Tasks.get_task_id(raw)
         file = wdir / raw['file']
         return FullTask(id, file, locator.parse_locator(raw['locator']), None, raw['prompt'] if 'prompt' in raw else None)
 

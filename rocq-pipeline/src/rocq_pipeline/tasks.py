@@ -7,6 +7,12 @@ import yaml
 
 type Task = dict[str, Any]
 
+
+def get_task_id(task: Task) -> str:
+    validate_task_schema(task)
+    return f"{task['file']}#{task['locator']}"
+
+
 def validate_task_schema(task: Task) -> None:
     if not isinstance(task, dict):
         raise ValueError(

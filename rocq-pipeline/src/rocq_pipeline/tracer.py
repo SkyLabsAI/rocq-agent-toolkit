@@ -51,15 +51,11 @@ def mk_parser(parent: Any|None=None) -> Any:
     )
     return parser
 
-type Task = dict[str,Any]
 
-def run(output_dir: Path, wdir:Path, tasks: list[Task], jobs:int=1) -> None:
-    def get_task_id(task: Task) -> str:
-        return f"{task['file']}#{task['locator']}"
-
-    def run_task(task: Task, progress: util.ProgressCallback) -> bool:
+def run(output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
+    def run_task(task: Tasks.Task, progress: util.ProgressCallback) -> bool:
         # TODO: find a better ID for tasks
-        task_id: str = get_task_id(task)
+        task_id: str = Tasks.get_task_id(task)
         output_file: Path = output_dir / f"{task_id.replace('/','_').replace('#','_')}.json"
 
         try:
@@ -95,7 +91,7 @@ def run(output_dir: Path, wdir:Path, tasks: list[Task], jobs:int=1) -> None:
         except Exception:
             return False
 
-    util.parallel_runner(run_task, [(get_task_id(x), x) for x in tasks], lambda x: x, jobs=jobs)
+    util.parallel_runner(run_task, [(Tasks.get_task_id(x), x) for x in tasks], lambda x: x, jobs=jobs)
 
 def run_ns(arguments: argparse.Namespace, extra_args:list[str]|None=None) -> bool:
     assert extra_args is None or len(extra_args) == 0
