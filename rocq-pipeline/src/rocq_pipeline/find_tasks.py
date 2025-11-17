@@ -110,8 +110,7 @@ def split_at_top_level(text: str, separator: str) -> list[str]:
 def get_atomic_tactics(chunk: str) -> list[str]:
     """
     Recursively parses a Rocq tactic and returns a flat list
-    of all base tactics found within it. This function is
-    self-contained and does not modify any external state.
+    of all base tactics found within it.
     """
     
     # Clean chunk
