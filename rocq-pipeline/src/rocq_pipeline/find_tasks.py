@@ -121,7 +121,7 @@ def split_at_top_level(text: str, separator: str) -> list[str]:
 
         # 2. Check for Separator at Top Level
         # We check if the substring starting at 'i' matches the separator
-        if (balance_paren == 0 and balance_bracket == 0 and 
+        if (balance_paren == 0 and balance_bracket == 0 and
             text[i:i+sep_len] == separator):
 
             is_valid_split = True
@@ -131,20 +131,20 @@ def split_at_top_level(text: str, separator: str) -> list[str]:
 
                 # Check char strictly BEFORE the separator
                 # If i=0, it's a valid boundary (start of string)
-                if i > 0 and _is_word_char(text[i-1]): 
+                if i > 0 and _is_word_char(text[i-1]):
                     is_valid_split = False
 
                 # Check char strictly AFTER the separator
                 # If end_idx=len, it's a valid boundary (end of string)
                 end_idx = i + sep_len
-                if end_idx < text_len and _is_word_char(text[end_idx]): 
+                if end_idx < text_len and _is_word_char(text[end_idx]):
                     is_valid_split = False
 
             if is_valid_split:
                 parts.append(text[current_part_start:i])
                 current_part_start = i + sep_len
                 # Skip past the separator
-                i += sep_len - 1 
+                i += sep_len - 1
 
         i += 1
 
@@ -274,7 +274,7 @@ def filter_tactics(tactics: list[str], prefixes: list[str]) -> tuple[list[str], 
             leftovers_set.add(tac)
 
     # Convert sets to sorted lists for the final output
-    return sorted(list(identified_tactics_set)), sorted(list(leftovers_set))
+    return sorted(identified_tactics_set), sorted(leftovers_set)
 
 rocq_prefixes = ['rewrite', 'erewrite', 'rewrite_all', 'rename',
                  'apply', 'eapply', 'auto', 'eauto', 'auto*', 'eauto*',
@@ -329,7 +329,7 @@ def extract_tactics(s:str) -> tuple[list[str], list[str]]:
 
 def my_tagger(task: ProofTask) -> list[str]:
     tags = ["admitted"] if task.admitted else []
-    omitted = []
+    omitted:list[str] = []
 
     for sentence in task.proof_tactics:
         identified_tactics, leftovers = extract_tactics(sentence)
