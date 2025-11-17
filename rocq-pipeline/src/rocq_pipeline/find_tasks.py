@@ -398,7 +398,7 @@ def run(output_file: Path, rocq_files: list[Path], jobs:int=1) -> None:
             print(f"unknown file format! {output_file}")
 
 def run_ns(args: Namespace, extra_args:list[str]|None=None) -> None:
-    assert True if extra_args is None else len(extra_args) == 0
+    assert extra_args is None or len(extra_args) == 0
     return run(args.output, args.rocq_files, jobs=args.jobs)
 
 def main() -> None:
