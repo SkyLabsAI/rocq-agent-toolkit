@@ -96,8 +96,29 @@ class AgentBuilder:
     def __call__(self, prompt:str|None=None) -> Agent:
         return self._agent()
 
+
+class OneShotBuilder(AgentBuilder):
+    def __init__(self) -> None:
+        self._tactic:str|None = None
+
+    def add_args(self, args:list[str]) -> None:
+        if len(args) == 1:
+            self._tactic = args[1]
+        elif len(args) == 0:
+            print("Missing tactic argument")
+        else:
+            print("Too many tactics given")
+
+    def __call__(self, prompt:str|None=None) -> Agent:
+        if self._tactic is None:
+            print("Missing tactic argument")
+            raise ValueError("Missing tactic argument")
+        return OneShotAgent(self._tactic)
+
+
 class OneShotAgent(Agent):
     _tactic: str = "idtac"
+    builder = OneShotBuilder()
 
     def __init__(self, tactic: str) -> None:
         self._tactic = tactic
@@ -116,7 +137,6 @@ class OneShotAgent(Agent):
             metrics=task_output.Metrics(),
             final_doc_interaction=final_doc_interaction
         )
-
 
 # NOTE: this agent does not support backtracking
 class TraceAgent(Agent):

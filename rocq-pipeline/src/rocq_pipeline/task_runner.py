@@ -13,7 +13,7 @@ from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, locator, util
-from rocq_pipeline.agent import Agent, AgentBuilder, Finished, GiveUp, TaskResult
+from rocq_pipeline.agent import AgentBuilder, Finished, GiveUp, TaskResult
 from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
 from rocq_pipeline.locator import Locator
 from rocq_pipeline.schema import task_output
@@ -285,22 +285,4 @@ def auto_main() -> bool:
     return agent_main(AgentBuilder.of_agent(AutoAgent))
 
 def tactic_main() -> bool:
-    class OneShotBuilder(AgentBuilder):
-        def __init__(self) -> None:
-            self._tactic:str|None = None
-
-        def add_args(self, args:list[str]) -> None:
-            if len(args) == 1:
-                self._tactic = args[1]
-            elif len(args) == 0:
-                print("Missing tactic argument")
-            else:
-                print("Too many tactics given")
-
-        def __call__(self, prompt:str|None=None) -> Agent:
-            if self._tactic is None:
-                print("Missing tactic argument")
-                raise ValueError("Missing tactic argument")
-            return OneShotAgent(self._tactic)
-
-    return agent_main(OneShotBuilder())
+    return agent_main(OneShotAgent.builder)
