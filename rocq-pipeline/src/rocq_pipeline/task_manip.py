@@ -43,7 +43,7 @@ def mk_parser(parent: Any|None=None) -> Any:
 
     return parser
 
-def run(output: Path, wdir: Path, tasks: list[Task], with_tags: list[str] | None=None, without_tags:list[str] | None=None, limit:int|None = None, random_selection:bool=False) -> list[Task]:
+def run(output: Path, wdir: Path, tasks: list[Task], with_tags: set[str] | None=None, without_tags:set[str] | None=None, limit:int|None = None, random_selection:bool=False) -> list[Task]:
     def keep(task: Task) -> bool:
         if 'tags' in task:
             keep = with_tags is None or all(tag in task['tags'] for tag in with_tags)
