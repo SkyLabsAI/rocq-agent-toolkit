@@ -79,13 +79,13 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
             continue
     rdm.quit()
     return tasks
-    
+
 def split_at_top_level(text: str, separator: str) -> list[str]:
     """
     Splits a string by a separator, but only at the top level
     (i.e., not inside parentheses or brackets).
     """
-    
+
     def _is_word_char(char: str) -> bool:
         """
         Defines what constitutes a character INSIDE a tactic name.
@@ -100,36 +100,40 @@ def split_at_top_level(text: str, separator: str) -> list[str]:
     sep_len = len(separator)
     text_len = len(text)
     i = 0
-    
-    # We treat the separator as a "word" (requiring boundaries) only if 
-    # it is composed purely of letters (like 'by'). 
+
+    # We treat the separator as a "word" (requiring boundaries) only if
+    # it is composed purely of letters (like 'by').
     # Symbols like ';' or '|' do not require boundary checks.
     is_word_separator = separator.isalpha()
-        
+
     while i < text_len:
         char = text[i]
-            
+
         # 1. Track Balance
-        if char == '(': balance_paren += 1
-        elif char == ')': balance_paren = max(0, balance_paren - 1)
-        elif char == '[': balance_bracket += 1
-        elif char == ']': balance_bracket = max(0, balance_bracket - 1)
-            
+        if char == '(':
+            balance_paren += 1
+        elif char == ')':
+            balance_paren = max(0, balance_paren - 1)
+        elif char == '[':
+            balance_bracket += 1
+        elif char == ']':
+            balance_bracket = max(0, balance_bracket - 1)
+
         # 2. Check for Separator at Top Level
         # We check if the substring starting at 'i' matches the separator
         if (balance_paren == 0 and balance_bracket == 0 and 
             text[i:i+sep_len] == separator):
-                
+
             is_valid_split = True
-                
+
             if is_word_separator:
                 # A word separator must NOT be adjacent to other word chars.
-                    
+
                 # Check char strictly BEFORE the separator
                 # If i=0, it's a valid boundary (start of string)
                 if i > 0 and _is_word_char(text[i-1]): 
                     is_valid_split = False
-                    
+
                 # Check char strictly AFTER the separator
                 # If end_idx=len, it's a valid boundary (end of string)
                 end_idx = i + sep_len
@@ -141,9 +145,9 @@ def split_at_top_level(text: str, separator: str) -> list[str]:
                 current_part_start = i + sep_len
                 # Skip past the separator
                 i += sep_len - 1 
-            
+
         i += 1
-        
+
     parts.append(text[current_part_start:])
     return parts
 
@@ -152,10 +156,10 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     Recursively parses a Rocq tactic and returns a flat list
     of all base tactics found within it.
     """
-    
+
     # Clean chunk
     chunk = chunk.strip().strip(';.').strip()
-        
+
     if not chunk:
         return []
 
@@ -167,12 +171,12 @@ def get_atomic_tactics(chunk: str) -> list[str]:
         if content.startswith('(') and content.endswith(')'):
             content = content[1:-1].strip()
         return get_atomic_tactics(content)
-        
+
     #2. Handle [ X1 | X2 | ... Xn ]
     if chunk.startswith('['):
         assert(chunk.endswith(']'))
         content = chunk[1:-1] # Get content inside brackets
-        
+
         # Only split if we actually find the separator |
         parts = split_at_top_level(content, '|')
         if len(parts) > 1:
@@ -180,7 +184,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
             for part in parts:
                 results.extend(get_atomic_tactics(part))
             return results
-            
+
     #3. Handle X1; X2; ... Xn
     parts = split_at_top_level(chunk, ';')
     if len(parts) > 1:
@@ -201,14 +205,14 @@ def get_atomic_tactics(chunk: str) -> list[str]:
                 part = part[1:-1]
             results.extend(get_atomic_tactics(part))
         return results
-        
+
     # Base Case: a single tactic is returned as a singleton list.
     return [chunk]
-    
+
 def flatten_tactic_string(s: str) -> list[str]:
     """
     Flattens a nested tactic string into a flat list of individual tactics.
-    
+
     Handles:
     - 'by ...' (Proof terminator)
     - 'try', 'first', 'solve' wrappers
@@ -217,7 +221,7 @@ def flatten_tactic_string(s: str) -> list[str]:
     """
 
     s_to_process = s.strip()
-    
+
     # Handle Proof Terminator 'by ...'
     if s_to_process.startswith('by ') and s_to_process.endswith('.'):
         content = s_to_process[3:-1].strip()
@@ -225,9 +229,9 @@ def flatten_tactic_string(s: str) -> list[str]:
     elif s_to_process.startswith('by(') and s_to_process.endswith('.'):
         content = s_to_process[2:-1].strip()
         s_to_process = content[1:-1].strip() if (content.startswith('(') and content.endswith(')')) else content
-        
+
     return get_atomic_tactics(s_to_process)
-    
+
 def filter_tactics(tactics: list[str], prefixes: list[str]) -> tuple[list[str], list[str]]:
     """
     Filters a list of tactics based on a given set of prefixes
@@ -242,14 +246,14 @@ def filter_tactics(tactics: list[str], prefixes: list[str]) -> tuple[list[str], 
         1. identified_tactics: A list of unique tactic prefixes found.
         2. leftovers: A list of unique processed chunks that did not match.
     """
-                    
+
     # Use sets to store results to automatically handle duplicates
     identified_tactics_set = set()
     leftovers_set = set()
 
     for tac in tactics:
         found_prefix = None
-        
+
         for prefix in prefixes:
             # Construct regex:
             # ^             : Start of string
@@ -259,33 +263,33 @@ def filter_tactics(tactics: list[str], prefixes: list[str]) -> tuple[list[str], 
             #    |          : OR
             #    $          : End of string
             pattern = fr"^{re.escape(prefix)}(?=[\s.(]|$)"
-            
+
             if re.match(pattern, tac):
                 found_prefix = prefix
                 break
-        
+
         if found_prefix:
             identified_tactics_set.add(found_prefix)
         else:
             leftovers_set.add(tac)
-            
+
     # Convert sets to sorted lists for the final output
     return sorted(list(identified_tactics_set)), sorted(list(leftovers_set))
 
 rocq_prefixes = ['rewrite', 'erewrite', 'rewrite_all', 'rename',
-                         'apply', 'eapply', 'auto', 'eauto', 'auto*', 'eauto*',
-                         'assumption', 'eassumption', 'case',
-                         'case_decide', 'assert', 'simpl', 'Arith.arith_simpl',
-                         'trivial', 'reflexivity', 'cbv', 'cbn', 'subst', 'change',
-                         'clear', 'replace', 'specialize', 'generalize',
-                         'intro', 'intros', 'destruct', 'inversion', 'exists', 'eexists', 'exfalso',
-                         'lia', 'remember', 'symmetry', 'unfold', 'f_equal',
-                         'constructor', 'econstructor', 'induction', 'exact', 'elim'
-                         'intuition', 'revert', 'split',
-                         'left', 'right', 'Opaque', 'Transparent', 'admit',
-                         'congruence', 'contradiction', 'discriminate', 'firstorder',
-                         'instantiate', 'inversion', 'pose', 'red', 'refine', 'set', 'shelve',
-                         'unshelve', 'zify' ]
+                 'apply', 'eapply', 'auto', 'eauto', 'auto*', 'eauto*',
+                 'assumption', 'eassumption', 'case',
+                 'case_decide', 'assert', 'simpl', 'Arith.arith_simpl',
+                 'trivial', 'reflexivity', 'cbv', 'cbn', 'subst', 'change',
+                 'clear', 'replace', 'specialize', 'generalize',
+                 'intro', 'intros', 'destruct', 'inversion', 'exists', 'eexists', 'exfalso',
+                 'lia', 'remember', 'symmetry', 'unfold', 'f_equal',
+                 'constructor', 'econstructor', 'induction', 'exact', 'elim'
+                 'intuition', 'revert', 'split',
+                 'left', 'right', 'Opaque', 'Transparent', 'admit',
+                 'congruence', 'contradiction', 'discriminate', 'firstorder',
+                 'instantiate', 'inversion', 'pose', 'red', 'refine', 'set', 'shelve',
+                 'unshelve', 'zify' ]
 
 #from https://gitlab.mpi-sws.org/iris/iris/blob/master/docs/proof_mode.md
 iris_prefixes = ['iAssert', 'iExists', 'iStartProof', 'iStopProof', 'iExact',
@@ -313,7 +317,7 @@ def extract_tactics(s:str) -> tuple[list[str], list[str]]:
         1. identified_tactics: A list of unique tactic prefixes found.
         2. leftovers: A list of unique processed chunks that did not match.
     """
-    
+
     # Sort prefixes by length (longest first)
     sorted_prefixes = sorted(allowed_prefixes, key=len, reverse=True)
 
@@ -326,7 +330,7 @@ def extract_tactics(s:str) -> tuple[list[str], list[str]]:
 def my_tagger(task: ProofTask) -> list[str]:
     tags = ["admitted"] if task.admitted else []
     omitted = []
-    
+
     for sentence in task.proof_tactics:
         identified_tactics, leftovers = extract_tactics(sentence)
         tags = tags + identified_tactics

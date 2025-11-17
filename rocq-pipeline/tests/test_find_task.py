@@ -23,15 +23,14 @@ def test_factorial_longlong() -> None:
     test_ok_inv_task = tasks[3]
     assert test_ok_inv_task['locator'] == 'lemma:test_ok_inv'
     tags = test_ok_inv_task['tags']
-    #print(f"The list of tags is {tags}")
-    assert sorted(tags) == sorted(["proof",
-                                   "Arith.arith_simpl",
-                                   "rewrite",
-                                   "intros",
-                                   "wp_for",
-                                   "assert",
-                                   "go",
-                                   "lia",
-                                   "subst",
-                                   "verify_spec",
-                                   "specialize"])
+    assert set(tags) == {"proof",
+                         "Arith.arith_simpl",
+                         "rewrite",
+                         "intros",
+                         "wp_for",
+                         "assert",
+                         "go",
+                         "lia",
+                         "subst",
+                         "verify_spec",
+                         "specialize"}
