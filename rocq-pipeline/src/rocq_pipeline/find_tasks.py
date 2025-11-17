@@ -332,7 +332,6 @@ def my_tagger(task: ProofTask) -> list[str]:
         identified_tactics, leftovers = extract_tactics(sentence)
         tags = tags + identified_tactics
         omitted = omitted + leftovers
-    print(omitted)
     return list(set(tags))
 
 def mk_parser(parent: Any|None=None) -> Any:
