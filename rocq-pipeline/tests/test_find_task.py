@@ -24,7 +24,7 @@ def test_with_deps() -> None:
 #    assert set(found) == {"proof", "Arith.arith_simpl", "rewrite",
 #                          "intros", "wp_for", "assert", "go",
 #                          "lia", "subst", "verify_spec", "specialize", f"tags ={{{found}}}"}
-    
+
 def test_factorial_longlong() -> None:
     tasks = rocq_pipeline.find_tasks.find_tasks(Path("../../../psi/data/brick_groundtruth/examples/loopcorpus/Factorial_longlong.v"), tagger=rocq_pipeline.find_tasks.my_tagger)
     assert len(tasks) == 3
