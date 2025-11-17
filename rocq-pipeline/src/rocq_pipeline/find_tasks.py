@@ -115,8 +115,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     """
     
     # Clean chunk
-    chunk = chunk.strip().strip(';.')
-    chunk = chunk.strip()
+    chunk = chunk.strip().strip(';.').strip()
         
     if not chunk:
         # Base case: empty chunk returns an empty list
