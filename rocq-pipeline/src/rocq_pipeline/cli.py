@@ -1,7 +1,7 @@
 import sys
 from argparse import ArgumentParser, Namespace
 
-from rocq_pipeline import find_tasks, task_runner, tracer
+from rocq_pipeline import find_tasks, task_manip, task_runner, tracer
 
 
 # --- Entry Point ---
@@ -11,6 +11,7 @@ def main() -> None:
     find_tasks.mk_parser(subparsers)
     task_runner.mk_parser(subparsers, with_agent=True)
     tracer.mk_parser(subparsers)
+    task_manip.mk_parser(subparsers)
     args = sys.argv[1:]
     extra_args:list[str] = []
     try:
@@ -29,5 +30,7 @@ def main() -> None:
         task_runner.run_ns(arguments, extra_args)
     elif arguments.command == 'trace':
         tracer.run_ns(arguments, extra_args)
+    elif arguments.command == 'filter':
+        task_manip.run_ns(arguments, extra_args)
     else:
         parser.print_help()
