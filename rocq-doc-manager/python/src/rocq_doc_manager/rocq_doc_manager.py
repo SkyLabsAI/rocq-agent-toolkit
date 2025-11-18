@@ -1,11 +1,8 @@
 from contextlib import contextmanager
-import logging
 from typing import Iterator, Literal, override, Self, Union
 
 from .dune_util import dune_env_hack
 from .rocq_doc_manager_api import RocqDocManagerAPI as RDM_API
-
-logger = logging.getLogger(__name__)
 
 
 class RocqDocManager(RDM_API):
