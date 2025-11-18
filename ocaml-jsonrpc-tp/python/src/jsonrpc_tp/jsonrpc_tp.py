@@ -1,8 +1,8 @@
+from contextlib import contextmanager
 import json
 import subprocess
 from dataclasses import dataclass
-from types import TracebackType
-from typing import Any, Self
+from typing import Any, Iterator, Self
 
 
 class JsonRPCTP:
@@ -41,17 +41,11 @@ class JsonRPCTP:
             self._process = None
             raise self.Error(f"Failed to start process: {e}") from e
 
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc_value: BaseException | None,
-            traceback: TracebackType | None,
-    ) -> bool | None:
+    @contextmanager
+    def sess(self) -> Iterator[Self]:
+        """Context manager that calls quit upon __exit__."""
+        yield self
         self.quit()
-        return None
 
     def raw_request(
             self,
