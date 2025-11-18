@@ -1,9 +1,14 @@
+from contextlib import contextmanager
+import logging
+from typing import Iterator, Literal, override, Self, Union
+
 from .dune_util import dune_env_hack
-from .rocq_doc_manager_api import RocqDocManagerAPI
+from .rocq_doc_manager_api import RocqDocManagerAPI as RDM_API
+
+logger = logging.getLogger(__name__)
 
 
-class RocqDocManager(RocqDocManagerAPI):
-
+class RocqDocManager(RDM_API):
     def __init__(
             self,
             rocq_args: list[str],
@@ -31,7 +36,129 @@ class RocqDocManager(RocqDocManagerAPI):
             args = ["rocq-doc-manager", file_path, "--"] + rocq_args
         super().__init__(args=args, cwd=chdir, env=env)
 
-    def current_goal(self) -> str | RocqDocManagerAPI.Err[None]:
+    @contextmanager
+    @override
+    def sess(self, load_file: bool = True) -> Iterator[Self]:
+        with super().sess():
+            if load_file:
+                load_reply = self.load_file()
+                if isinstance(load_reply, RocqDocManager.Err):
+                    raise RuntimeError(
+                        f"RocqDocManager.load_file failed: {load_reply}"
+                    )
+
+            yield self
+
+    @contextmanager
+    def ctx(self, rollback: bool = True) -> Iterator[Self]:
+        """Base RDM context manager supporting optional doc rollback."""
+        current_idx: int = self.cursor_index()
+
+        yield self
+
+        if rollback:
+            revert_reply = self.revert_before(True, current_idx)
+            if isinstance(revert_reply, RocqDocManager.Err):
+                raise RuntimeError(" ".join([
+                    "RocqDocManager failed to rollback to",
+                    f"{current_idx}: {revert_reply}",
+                ]))
+
+    @contextmanager
+    def aborted_goal_ctx(
+            self,
+            goal: str = "True",
+            rollback: bool = True
+    ) -> Iterator[Self]:
+        """RDM context manager that sets up an aborted goal."""
+        with self.ctx(rollback=rollback):
+            goal_reply = self.insert_command(f"Goal {goal}.")
+            if isinstance(goal_reply, self.Err):
+                raise self.Error(goal_reply)
+
+            yield self
+
+            abort_reply = self.insert_command("Abort.")
+            if isinstance(abort_reply, self.Err):
+                raise self.Error(abort_reply)
+
+    # NOTE: we could expose a more structured way to build the context list.
+    @contextmanager
+    def Section(
+            self,
+            name: str,
+            context: list[str] | None = None,
+            rollback: bool = False,
+    ) -> Iterator[Self]:
+        with self.ctx(rollback=rollback):
+            begin_section_reply = self.insert_command(f"Section {name}.")
+            if isinstance(begin_section_reply, self.Err):
+                raise self.Error(begin_section_reply)
+
+            if context is not None:
+                context_reply = self.insert_command(
+                    f"Context {' '.join(context)}."
+                )
+                if isinstance(context_reply, self.Err):
+                    raise self.Error(context_reply)
+
+            yield self
+
+            end_section_reply = self.insert_command(f"End {name}.")
+            if isinstance(end_section_reply, self.Err):
+                raise self.Error(end_section_reply)
+
+    def Compute(
+            self,
+            term: str,
+            rollback: bool = True,
+    ) -> Union[
+        tuple[str, str],
+        RDM_API.Err[RDM_API.RocqLoc | None],
+        RDM_API.Err[list[str]],
+        RDM_API.Err[None],
+    ]:
+        """Run [Compute {term}.] and return the resulting value and type.
+
+        Arguments:
+            - term (str): the term to compute
+            - rollback (bool=True): whether to rollback the command
+
+        Raises:
+            - RocqDocManager.Error: if inserting the requested command fails
+
+        Returns:
+            - a tuple containing:
+                - the computed value
+                - the type of the computed value
+        """
+        with self.aborted_goal_ctx(
+                goal=f"exists v, v = ({term})",
+                rollback=rollback
+        ):
+            command_reply = self.insert_command("vm_compute.")
+            if isinstance(command_reply, self.Err):
+                return command_reply
+
+            equality: str = "x = ?RESULT"
+            query_reply = self.text_query_all(
+                f"""match goal with
+| |- context[@ex ?TY (fun x => {equality})] => idtac RESULT; idtac TY
+end.""",
+                indices=None,
+            )
+            if isinstance(query_reply, self.Err):
+                return query_reply
+
+            if len(query_reply) != 2:
+                return self.Err(
+                    message="RocqDocManager.Compute: expected a term and type",
+                    data=query_reply
+                )
+
+            return (query_reply[0], query_reply[1])
+
+    def current_goal(self) -> str | RDM_API.Err[None]:
         result = self.run_command('idtac.')
         if isinstance(result, self.Err):
             return result
@@ -40,3 +167,47 @@ class RocqDocManager(RocqDocManagerAPI):
         if isinstance(result.open_subgoals, str):
             return result.open_subgoals
         return self.Err("No goals available.", None)
+
+    def _import_export_cmd(
+            self,
+            kind: Literal["Import"] | Literal["Export"],
+            logpath: str,
+            require: bool = True,
+    ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
+        cmd: str = f"{'Require ' if require else ''}{kind} {logpath}."
+        return self.insert_command(cmd)
+
+    def Import(
+            self,
+            logpath: str,
+            require: bool = True,
+            insert: bool = True,
+    ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
+        return self._import_export_cmd("Import", logpath, require=require)
+
+    def Export(
+            self,
+            logpath: str,
+            require: bool = True,
+            insert: bool = True,
+    ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
+        return self._import_export_cmd("Export", logpath, require=require)
+
+    def fresh_ident(self, ident: str) -> str | RDM_API.Err[None]:
+        """Return a fresh name based on [ident].
+
+        Arguments:
+            - mgr (RocqDocManager): the document manager to send the request to
+            - ident (str): the base for the fresh name
+
+        Raises:
+            - RocqDocManager.Error: if inserting the requested command fails.
+
+        Returns:
+            - a Rocq name which is guaranteed to be fresh at the
+                  current loc. within [mgr]
+        """
+        return self.text_query(
+            f"Eval lazy in ltac:(let nm := fresh \"{ident}\" in idtac nm).",
+            0
+        )
