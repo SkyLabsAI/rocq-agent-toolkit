@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from concurrent.futures.thread import ThreadPoolExecutor
 from typing import Any
+from warnings import deprecated
 
 from rich.progress import (
     BarColumn,
@@ -23,7 +24,28 @@ class MockProgress:
     def __exit__(self, a:Any, b:Any, c:Any) -> Any:
         pass
 
-type ProgressCallback = Callable[[(float|None),(str|None)],None]
+class Feedback:
+    def __init__(self, show_name: str, progress: Progress | None=None, current_task_id: TaskID|None=None, max:float=100) -> None:
+        self._progress = progress
+        self._current_task_id = current_task_id
+        self._max = max
+        self._show_name = show_name
+
+    def status(self, percent:float|None=None, status:str|None=None) -> None:
+        if self._progress and self._current_task_id:
+            self._progress.update(self._current_task_id, completed=None if percent is None else percent*self._max, description=None if status is None else f"[yellow]-> {self._show_name} {status}")
+
+    @deprecated("use [status] instead")
+    def __call__(self, percent:float|None=None, status:str|None=None) -> None:
+        return self.status(percent, status)
+
+    def log(self, message: str) -> None:
+        if self._progress:
+            self._progress.console.print(f"{self._show_name}: {message}")
+        else:
+           print(f"{self._show_name}: {message}")
+
+type ProgressCallback = Feedback
 
 def parallel_runner[T, U](run: Callable[[T, ProgressCallback], U], tasks: list[tuple[str, T]], succeeded:Callable[[U],bool]|None =None, jobs:int=1, progress:bool=True) -> list[U]:
     total_tasks = len(tasks)
@@ -51,10 +73,7 @@ def parallel_runner[T, U](run: Callable[[T, ProgressCallback], U], tasks: list[t
                             total=PROGRESS_MAX,
                             completed=0
                         )
-            def update(value: float|None=None, status: str|None=None) -> None:
-                pb.update(current_task_id, completed=None if value is None else value*PROGRESS_MAX, description=None if status is None else f"[yellow]-> {show_name} {status}")
-
-            result = run(val, update)
+            result = run(val, Feedback(show_name, pb, current_task_id, PROGRESS_MAX) if progress else Feedback(show_name)) # type: ignore
             pb.update(
                 current_task_id,
                 completed=PROGRESS_MAX,

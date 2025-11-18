@@ -88,29 +88,29 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
 
     try:
         task_file = task.file
-        progress(0.01, "🔃")
+        progress.status(0.01, "🔃")
         with RocqDocManager(
                 DuneUtil.rocq_args_for(task_file) if task.rocq_args is None else task.rocq_args,
                 str(task_file),
                 dune=True,
         ) as rdm:
-            progress(0.05, "🔃")
+            progress.status(0.05, "🔃")
             load_reply = rdm.load_file()
             if isinstance(load_reply, RocqDocManager.Err):
                 logger.warning(str(load_reply))
                 return None
-            progress(0.06, "🔎")
+            progress.status(0.06, "🔎")
 
             if not task.locator(rdm):
-                print(f"{task_id}: locator returned false")
+                progress.log(f"{task_id}: locator returned false")
                 return None
-            progress(0.1, "💭")
+            progress.status(0.1, "💭")
             task_result = agent.run(rdm)
     except Exception as e:
-        print(f"Failure with {e}")
+        progress.log(f"Failure with {e}")
         task_result = GiveUp.from_exception(e)
     finally:
-        progress(0.95, "🔚")
+        progress.status(0.95, "🔚")
     assert task_result is not None
 
     task_failure_reason: task_output.FailureReason | None = None
@@ -119,10 +119,10 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
         task_failure_reason = task_output.FailureReason(
             task_output.Other(task_result.message)
         )
-        print(f"agent gave up with message: {task_result.message}")
+        progress.log(f"agent gave up with message: {task_result.message}")
     elif isinstance(task_result, Finished):
         task_status = task_output.TaskStatus(task_output.Success())
-        print(f"task completed: {task_result.message}")
+        progress.log(f"task completed: {task_result.message}")
 
     return task_output.TaskOutput(
         run_id=run_id,
