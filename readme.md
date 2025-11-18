@@ -15,12 +15,13 @@ This is a self-contained setup for local development. The agent, observability s
 ### Running the Agent Locally
 
 Run your agent using the `--local` flag. This is the recommended way to manage the local environment.
-bash
+
+```
 uv run code-proof-agent \
   --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
   --output-dir results \
   --local
-
+```
 **What the `--local` flag does:**
 
   * **Checks Services:** Verifies if the local Docker containers (Loki, Alloy, frontend, backend) are running.
@@ -34,23 +35,23 @@ If you prefer to manage the local services yourself (or if the automatic setup f
 
 1.  **Start Local Observability Services:**
 
-    bash
+    ```
     # Navigate to the observability compose directory
     cd psi_verifier/observability/observability_docker_compose
 
     # Start Alloy and Loki
     docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
-    
+    ```
 
 2.  **Start Local Frontend/Backend:**
 
-    bash
+    ```
     # Navigate to the toolkit directory
     cd ../../../rocq_agent_toolkit
 
     # Start the frontend and backend services
     docker compose up --build -d
-    
+    ```
 
     > **Note:** The `docker-compose.yml` file is configured to look for agent results in the `brick_agents` directory. If your agent outputs files to a different location, you must update the volume mount path in the `docker-compose.yml`.
 
@@ -75,12 +76,12 @@ This approach runs the agent locally but automatically sends logs and publishes 
 ### Running the Agent for Staging
 
 Use the `--staging` flag to run the agent and automatically publish to the remote server.
-bash
+```
 uv run code-proof-agent \
   --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
   --output-dir results \
   --staging
-
+```
 **What the `--staging` flag does:**
 
 1.  **Configures Logging:** Automatically sets the log endpoint to the remote server (`LOG_OTLP_ENDPOINT=http://172.31.0.1:4317`).
