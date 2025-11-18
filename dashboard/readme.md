@@ -20,9 +20,9 @@ Run your agent using the `--local` flag. This is the recommended way to manage t
 uv run code-proof-agent \
   --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
   --output-dir results \
-  --local
+  --env local
 ```
-**What the `--local` flag does:**
+**What the `--env local` flag does:**
 
   * **Checks Services:** Verifies if the local Docker containers (Loki, Alloy, frontend, backend) are running.
   * **Sets Up Environment (if needed):** If the services are not running, it will prompt you to automatically set them up.
@@ -75,14 +75,14 @@ This approach runs the agent locally but automatically sends logs and publishes 
 
 ### Running the Agent for Staging
 
-Use the `--staging` flag to run the agent and automatically publish to the remote server.
+Use the `--env staging` flag to run the agent and automatically publish to the remote server.
 ```
 uv run code-proof-agent \
   --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
   --output-dir results \
   --staging
 ```
-**What the `--staging` flag does:**
+**What the `--env staging` flag does:**
 
 1.  **Configures Logging:** Automatically sets the log endpoint to the remote server (`LOG_OTLP_ENDPOINT=http://172.31.0.1:4317`).
 2.  **Runs Agent:** Executes the agent locally.
