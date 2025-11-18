@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 import uuid
 from argparse import ArgumentParser, Namespace
@@ -8,17 +9,44 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from observability import add_log_context, get_logger
+from dotenv import load_dotenv
+from observability import LoggingConfig, add_log_context, get_logger, setup_logging
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, locator, util
 from rocq_pipeline.agent import AgentBuilder, Finished, GiveUp, TaskResult
 from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
+from rocq_pipeline.env_manager import (
+    DeploymentConfig,
+    DeploymentMode,
+    EnvironmentManager,
+    create_deployment_config,
+    get_otlp_endpoint,
+)
 from rocq_pipeline.locator import Locator
 from rocq_pipeline.schema import task_output
 
 logger = get_logger("task_runner")
+
+
+def init_logging(env_mode: str | None = None) -> None:
+    """Initialise logging based on the current environment and CLI flags.
+
+    This is intentionally called from entrypoints *after* argument parsing
+    so that ``--env`` can influence the OTLP endpoint.
+    """
+    # Doing it at the top level it cannot access the flags passed in by the CLI
+    load_dotenv()
+    print(f"env_mode: {env_mode}")
+    otlp_endpoint = get_otlp_endpoint(env_mode)
+    log_config = LoggingConfig(
+        service_name="rocq_agent",
+        log_level=os.getenv("LOG_LEVEL", "INFO"),
+        otlp_endpoint=otlp_endpoint,
+    )
+    setup_logging(log_config)
+    logger.info("Logging configured with OTLP endpoint: %s", otlp_endpoint)
 
 
 def mk_parser(parent: Any, with_agent:bool=True) -> Any:
@@ -53,6 +81,15 @@ def mk_parser(parent: Any, with_agent:bool=True) -> Any:
         type=lambda N: max(1, int(N)),
         default=1,
         help="The number of parallel workers."
+    )
+
+    # Add deployment mode flag
+    parser.add_argument(
+        "--env",
+        type=str,
+        choices=["local", "staging", "none"],
+        default="none",
+        help="Deployment environment. 'local': starts Docker services and opens frontend. 'staging': sends logs to staging server and uploads results. 'none': default behavior (default: none)"
     )
 
     return parser
@@ -190,6 +227,7 @@ class RunConfiguration:
     working_dir: Path
     trace: bool
     jobs: int
+    deployment_config: DeploymentConfig | None = None
 
 def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None) -> RunConfiguration:
     if agent_builder is None:
@@ -199,9 +237,23 @@ def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None
 
     (tasks_name, wdir, tasks) = load_tasks(arguments)
 
-    return RunConfiguration(agent_builder, tasks, tasks_name, arguments.output_dir, wdir, arguments.trace, arguments.jobs)
+    # Get deployment mode from --env flag
+    env_mode = getattr(arguments, 'env', 'none')
+    deployment_config = create_deployment_config(env_mode)
+
+    return RunConfiguration(agent_builder, tasks, tasks_name, arguments.output_dir, wdir, arguments.trace, arguments.jobs, deployment_config)
 
 def run_config(config: RunConfiguration) -> bool:
+    # Setup environment based on deployment mode
+    env_manager = None
+    if config.deployment_config and config.deployment_config.mode != DeploymentMode.NONE:
+        env_manager = EnvironmentManager(config.deployment_config)
+        logger.info(f"Running in {config.deployment_config.mode.value} mode")
+
+        if not env_manager.setup():
+            logger.error(f"Failed to setup {config.deployment_config.mode.value} environment")
+            return False
+
     def rocq_args(filename: Path) -> list[str]:
         # TODO: a better default
         return DuneUtil.rocq_args_for(filename)
@@ -245,6 +297,10 @@ def run_config(config: RunConfiguration) -> bool:
 
     print(f"Finished {total} tasks: {success} Success, {total-success} Failures")
 
+    # Post-run actions (e.g., upload results for staging)
+    if env_manager:
+        env_manager.post_run(tasks_result_file)
+
     return True
 
 def agent_main(agent_builder: AgentBuilder, args: list[str]|None=None) -> bool:
@@ -269,6 +325,7 @@ def agent_main(agent_builder: AgentBuilder, args: list[str]|None=None) -> bool:
         agent_args = []
 
     arguments: Namespace = mk_parser(parent=None,with_agent=agent_builder is None).parse_args(args)
+    init_logging(getattr(arguments, "env", None))
     config: RunConfiguration = parse_arguments(arguments, agent_builder=agent_builder)
     if agent_args:
         config.agent_builder.add_args(agent_args)
@@ -276,6 +333,7 @@ def agent_main(agent_builder: AgentBuilder, args: list[str]|None=None) -> bool:
 
 def run_ns(args: Namespace, extra_args:list[str]|None=None) -> bool:
     """Assumes that agent is set"""
+    init_logging(getattr(args, "env", None))
     config = parse_arguments(args, None)
     if extra_args:
         config.agent_builder.add_args(extra_args)

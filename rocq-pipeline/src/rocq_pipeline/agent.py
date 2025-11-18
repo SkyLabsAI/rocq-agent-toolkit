@@ -1,10 +1,8 @@
-import os
 import pprint
 from dataclasses import dataclass, field
 from typing import Any, Self, override
 
-from dotenv import load_dotenv
-from observability import LoggingConfig, get_logger, setup_logging
+from observability import get_logger
 from rocq_doc_manager import RocqDocManager
 
 from rocq_pipeline.schema import task_output
@@ -13,14 +11,6 @@ from rocq_pipeline.schema.task_output import (
     FailureReason,
 )
 
-load_dotenv()
-log_config = LoggingConfig(
-    service_name="rocq_agent",
-    log_level=os.getenv("LOG_LEVEL", "INFO"),
-    otlp_endpoint=os.getenv("LOG_OTLP_ENDPOINT", "http://0.0.0.0:4317"),
-)
-
-setup_logging(log_config)
 logger = get_logger("rocq_agent")
 
 
