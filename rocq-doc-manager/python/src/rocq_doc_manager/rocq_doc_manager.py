@@ -178,7 +178,6 @@ end.""",
             self,
             logpath: str,
             require: bool = True,
-            insert: bool = True,
     ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
         return self._import_export_cmd("Import", logpath, require=require)
 
@@ -186,7 +185,6 @@ end.""",
             self,
             logpath: str,
             require: bool = True,
-            insert: bool = True,
     ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
         return self._import_export_cmd("Export", logpath, require=require)
 
