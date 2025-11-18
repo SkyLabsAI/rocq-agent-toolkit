@@ -1,109 +1,114 @@
-# Rocq Agent Toolkit Guide
+# Rocq Agent Deployment Guide
 
-This guide outlines three ways to run the Rocq agent and visualize its results.
+This guide outlines the three primary deployment options for running the Rocq agent and visualizing its results.
+
+*   **Local Development:** Run everything (agent, backend, frontend, observability) on your local machine. Ideal for development and testing.
+*   **Staging Server Deployment:** Run the agent locally, but automatically publish logs and results to the central staging server (Khawarizmi) for review.
+*   **CI Deployment:** Automatically run the agent via a CI/CD pipeline when you create a pull request or tag a commit.
 
 ---
 
-### 1. Fully Remote Workflow (Khawarizmi Server)
+## 1. 📍 Local Development Workflow
 
-This approach is for running the agent, sending logs to the central server, and publishing results for others to see. It does not require any local setup of observability servers or the Rocq Agent Toolkit frontend/backend.
+This is a self-contained setup for local development. The agent, observability services, and the frontend/backend all run on your local machine using Docker.
 
-**Steps:**
+### Running the Agent Locally
 
-1.  **Run the Agent**
-    Your agent will produce a `.jsonl` file containing the results. To ensure logs are sent to the central server, you need to configure the log endpoint.
+Run your agent using the `--local` flag. This is the recommended way to manage the local environment.
+bash
+uv run code-proof-agent \
+  --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
+  --output-dir results \
+  --local
 
-2.  **Configure Centralized Logging (`.env`)**
-    Your agent needs to know where to send logs.
-    - Create a `.env` file in your agent's execution environment. For `rocq-pipeline`, this is `fmdeps/skylabs-fm/rocq-pipeline/.env`.
-    - Add the following line:
-      ```
-      LOG_OTLP_ENDPOINT=http://172.31.0.1:4317
-      ```
-    - **Note:** You must be connected to the **Khawarzimi VPN** for this to work.
+**What the `--local` flag does:**
 
-3.  **Submit Results via `scp`**
-    Once your agent run is complete, upload the generated `.jsonl` file to the server.
-    ```bash
-    scp your_results_file.jsonl 172.31.0.1:/data/skylabs/rocq-agent-runner/data/
-    ```
-    This command syntax assumes that ssh config is set up. If not you might need to update the config or the command.
+  * **Checks Services:** Verifies if the local Docker containers (Loki, Alloy, frontend, backend) are running.
+  * **Sets Up Environment (if needed):** If the services are not running, it will prompt you to automatically set them up.
+  * **Runs Agent:** Executes the agent, which writes logs and the `.jsonl` results file locally.
+  * **Opens Browser:** Automatically opens your default browser to **`http://localhost:3005`**. Click the refresh button on the frontend to load your new results.
 
-4.  **SSH Configuration (if needed)**
-    If `scp` is not configured for `172.31.0.1`, add the following to your `~/.ssh/config` file:
-    ```
+### Optional: Manual Environment Setup
+
+If you prefer to manage the local services yourself (or if the automatic setup fails), you can run the prerequisites manually.
+
+1.  **Start Local Observability Services:**
+
+    bash
+    # Navigate to the observability compose directory
+    cd psi_verifier/observability/observability_docker_compose
+
+    # Start Alloy and Loki
+    docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
+    
+
+2.  **Start Local Frontend/Backend:**
+
+    bash
+    # Navigate to the toolkit directory
+    cd ../../../rocq_agent_toolkit
+
+    # Start the frontend and backend services
+    docker compose up --build -d
+    
+
+    > **Note:** The `docker-compose.yml` file is configured to look for agent results in the `brick_agents` directory. If your agent outputs files to a different location, you must update the volume mount path in the `docker-compose.yml`.
+
+-----
+
+## 2\. 🚀 Staging Server Deployment (Khawarizmi)
+
+This approach runs the agent locally but automatically sends logs and publishes results to the central staging server, where the backend, frontend, and observability stack are already running.
+
+### Prerequisites (One-Time Setup)
+
+1.  **Connect to VPN:** You **must** be connected to the **Khawarzimi VPN**.
+2.  **Configure SSH:** Your machine needs SSH access to the server for the automatic `scp` file upload. Add the following to your `~/.ssh/config` file:
+    
     Host 172.31.0.1
       HostName 172.31.0.1
-      User <your_username>
+      User 
       Port 1223
-      IdentityFile <path_to_your_khawarzimi_key>
-    ```
+      IdentityFile 
+    
 
-5.  **View Results**
-    You can view the published results on the centralized frontend:
-    **[http://172.31.0.1:3005/](http://172.31.0.1:3005/)**
-    **Note:** After submitting, click the refresh button on the frontend to get the updated data.
+### Running the Agent for Staging
 
----
+Use the `--staging` flag to run the agent and automatically publish to the remote server.
+bash
+uv run code-proof-agent \
+  --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
+  --output-dir results \
+  --staging
 
-### 2. Hybrid Workflow (Local Review, Remote Logging)
+**What the `--staging` flag does:**
 
-This setup allows you to run the agent with logs sent to the Khawarizmi server, but view the results on a local instance of the Rocq Agent Toolkit before deciding whether to publish them.
+1.  **Configures Logging:** Automatically sets the log endpoint to the remote server (`LOG_OTLP_ENDPOINT=http://172.31.0.1:4317`).
+2.  **Runs Agent:** Executes the agent locally.
+3.  **Uploads Results:** After the run, it automatically uploads the generated `.jsonl` file to the staging server via `scp` (e.g., `scp ... 172.31.0.1:/data/skylabs/rocq-agent-runner/data/`).
 
-**Steps:**
+### View Results
 
-1.  **Configure Centralized Logging**
-    Follow step 2 from the "Fully Remote Workflow" to send your agent's logs to the central server.
+You and your team can view the published results on the centralized frontend:
+**[http://172.31.0.1:3005/](http://172.31.0.1:3005/)**
 
-2.  **Start Local Frontend/Backend**
-    - Navigate to the `rocq_agent_toolkit` directory.
-    - To point the local toolkit to the remote Loki instance, create a `.env` file in this directory with the following content:
-      ```
-      OBSERVABILITY_URL=http://172.31.0.1:3100
-      ```
-    - Start the toolkit:
-      ```bash
-      docker compose up --build -d
-      ```
+> **Note:** After the run completes, click the refresh button on the frontend to fetch the updated data.
 
-3.  **Run Your Agent**
-    The agent will produce a `.jsonl` file locally, while logs will be sent to the remote server.
+-----
 
-4.  **Review Locally**
-    You can see your run on your local frontend at `http://localhost:3005`.
+## 3\. CI (Continuous Integration) Deployment
 
-5.  **Publish (Optional)**
-    If you want to share your results, you can upload the local `.jsonl` file using `scp` as described in the "Fully Remote Workflow" (step 3).
+This workflow is for automated agent runs within our CI pipeline (e.g., GitHub Actions). It is triggered by code changes, not run manually from your terminal.
 
----
+The backend, observability, and frontend for this workflow run on our self-hosted CI runner (which may also be Khawarizmi).
 
-### 3. Fully Local Workflow
+### Process
 
-This is a self-contained setup for local development. Everything, including observability services, runs on your local machine.
+1.  **Develop:** Make changes to your agent code in a local branch.
+2.  **Commit & Push:** Push your changes to GitHub.
+3.  **Create Pull Request:** Open a pull request (or tag a commit, depending on the CI trigger configuration).
+4.  **Automatic Run:** The CI action automatically triggers. It runs the agent against a pre-configured set of tasks.
+5.  **View Results:** The CI run will output a link to the results, which are published to our internal CI frontend instance.
 
-**Steps:**
-
-1.  **Check Environment**
-    Ensure you are not overriding the default configuration to point to Khawarizmi. Specifically, check that you are not setting `OBSERVABILITY_URL=http://172.31.0.1:3100` or `LOG_OTLP_ENDPOINT=http://172.31.0.1:4317`.
-    The defualt configs are for the local systems.
-
-2.  **Start Local Observability**
-    ```bash
-    cd psi_verifier/observability/observability_docker_compose
-    docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
-    ```
-
-3.  **Start Local Frontend/Backend**
-    ```bash
-    cd ../../../rocq_agent_toolkit
-    docker compose up --build -d
-    ```
-
-4.  **Run Your Agent**
-    Your agent will write logs and the `.jsonl` file to your local machine.
-
-5.  **View Results**
-    Access the frontend at `http://localhost:3005`. After the run, click the refresh button on the frontend to get the updated data.
-
-**Note:** In the `rocq_agent_toolkit/docker-compose.yml`, the volume mount is configured for `brick_agents`. Update the path if your agent's output files are written to a different location.
-
+> **Note on CI Task Configuration:**
+> Currently, you can override the default tasks used by the CI runner. To do this, place a file named `tasks.yml` in the brick_agents directory of your repository. The CI will detect this file and use it for the run. This is intended for temporary testing and will likely be replaced by a more fixed configuration in the long run.
