@@ -72,9 +72,9 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
                 if tagger is not None:
                     tags.extend(tagger(proof))
             except NotFound:
-                print(f"Lemma {m.group(2)} does not end", file=sys.stderr)
+                print(f"{mtch.group(1)} {m.group(2)} does not end", file=sys.stderr)
                 tags = ["proof", "incomplete"]
-            task_json = { "locator": f"lemma:{m.group(2)}", "tags": tags}
+            task_json = { "locator": f"{m.group(1)}:{m.group(2)}", "tags": tags}
             tasks.append(task_json)
             continue
     rdm.quit()

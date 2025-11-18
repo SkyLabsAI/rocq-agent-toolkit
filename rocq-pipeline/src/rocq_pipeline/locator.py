@@ -90,8 +90,12 @@ class FirstLemma(Locator):
 
 
 def parse_locator(s: str) -> Locator:
-    if s.startswith("lemma:"):
-        return FirstLemma(s[len("lemma:"):],"Lemma")
+    if s.startswith("lemma:"): # Backwards compatibility
+        return FirstLemma(s[len("lemma:"):])
+    elif s.startswith("Theorem:"):
+        return FirstLemma(s[len("Theorem:"):], "Theorem")
+    elif s.startswith("Lemma:"):
+        return FirstLemma(s[len("Lemma:"):], "Lemma")
     if s == "admit":
         return FirstAdmit()
     return Locator()
