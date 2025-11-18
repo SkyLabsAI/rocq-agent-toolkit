@@ -48,10 +48,11 @@ include = ["src/rocq_doc_manager"]
 "src/rocq_doc_manager" = "rocq_doc_manager"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "tests"]
 
 [tool.setuptools.package-data]
 "rocq_doc_manager" = ["py.typed"]
+"tests" = ["py.typed"]
 
 [tool.ruff]
 line-length = 88
@@ -105,4 +106,4 @@ strict_equality = true
 [tool.taskipy.tasks]
 format_ci = "ruff check"
 typecheck_ci = "mypy ."
-test_ocaml_ci = "pytest tests/"
+test_ocaml_ci = "RDM_USE_DUNE=False pytest tests/"
