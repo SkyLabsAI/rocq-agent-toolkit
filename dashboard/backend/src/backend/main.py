@@ -8,8 +8,6 @@ import logging
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import httpx
-from datetime import datetime, timedelta
 
 from backend.config import settings
 from backend.data_access import data_store
@@ -18,11 +16,11 @@ from backend.models import (
     RunInfo,
     RunDetailsResponse,
     ObservabilityLogsResponse,
-    LogEntry,
     RefreshResponse,
     ObservabilityLabelsResponse,
 )
-from backend.utils import filter_log_labels, get_labels
+from backend.utils import get_labels, fetch_observability_logs
+import uvicorn
 
 # Configure logging
 logging.basicConfig(
@@ -235,20 +233,21 @@ async def refresh_data():
         raise HTTPException(status_code=500, detail=f"Error refreshing data: {str(e)}")
 
 
-@app.get("/api/observability/logs", response_model=ObservabilityLabelsResponse)
-async def get_observability_logs(
+@app.get("/api/observability/logs/raw", response_model=ObservabilityLogsResponse)
+async def get_observability_logs_raw(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
     task_id: str = Query(..., description="Task ID to fetch logs for"),
 ):
     """
-    Fetch observability log labels from Loki for a specific run and task.
+    Fetch raw observability logs from Loki for a specific run and task.
 
     Queries the Loki instance configured in settings to retrieve logs filtered by:
     - service_name: "Rocq_agent"
     - run_id: provided run ID
     - task_id: provided task ID
 
-    Returns only the unique labels from the logs after filtering.
+    Returns the raw log entries (after basic label filtering), without
+    any aggregation or additional post-processing.
 
     Args:
         run_id: The run ID to filter logs by
@@ -258,77 +257,47 @@ async def get_observability_logs(
         ObservabilityLabelsResponse containing unique label key-value pairs
 
     Example:
+        /api/observability/logs/raw?run_id=abc123&task_id=task456
+    """
+    try:
+        logs = await fetch_observability_logs(run_id=run_id, task_id=task_id)
+
+        logger.info(f"Retrieved {len(logs)} log entries from Loki (raw endpoint)")
+
+        return ObservabilityLogsResponse(
+            run_id=run_id,
+            task_id=task_id,
+            logs=logs,
+            total_logs=len(logs),
+        )
+    except Exception as e:
+        logger.error(
+            f"Error fetching raw observability logs: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching raw logs: {str(e)}"
+        )
+        
+
+@app.get("/api/observability/labels/raw", response_model=ObservabilityLabelsResponse)
+async def get_observability_labels_raw(
+    run_id: str = Query(..., description="Run ID to fetch logs for"),
+    task_id: str = Query(..., description="Task ID to fetch logs for"),
+):
+    """
+    Fetch observability log labels from Loki for a specific run and task.
+
+    This endpoint uses the shared utility function in `utils.py` to fetch
+    raw logs from Loki, then performs postprocessing to aggregate labels.
+
+    Returns only the unique labels from the logs after filtering.
+
+    Example:
         /api/observability/logs?run_id=abc123&task_id=task456
     """
     try:
-        # Construct LogQL query to filter logs
-        # run_id and task_id are JSON fields, not labels, so we need to parse JSON and filter
-        logql_query = f'{{service_name="rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
-
-        # Calculate time range - look back configured number of days to capture logs
-        end_time = datetime.utcnow()
-        start_time = end_time - timedelta(days=settings.log_query_time_delta_days)
-
-        # Query parameters for Loki
-        params = {
-            "query": logql_query,
-            "start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "end": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "direction": "backward",
-            "limit": 5000,  # Maximum number of logs to return
-        }
-
-        logger.info(f"Querying Loki for logs: run_id={run_id}, task_id={task_id}")
-        logger.info(f"LogQL query: {logql_query}")
-
-        # Make request to Loki
-        loki_url = f"{settings.observability_url}/loki/api/v1/query_range"
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(loki_url, params=params)
-
-            if response.status_code == 404:
-                # Loki not available
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"Loki service not available at {settings.observability_url}",
-                )
-
-            response.raise_for_status()
-            data = response.json()
-
-        # Parse Loki response
-        logs = []
-
-        if data.get("status") == "success":
-            result = data.get("data", {}).get("result", [])
-
-            for stream in result:
-                stream_labels = stream.get("stream", {})
-                values = stream.get("values", [])
-
-                for value in values:
-                    # Loki returns [timestamp_ns, log_line]
-                    timestamp_ns = value[0]
-                    log_line = value[1]
-
-                    # Convert nanosecond timestamp to ISO format
-                    timestamp_sec = int(timestamp_ns) / 1_000_000_000
-                    timestamp_iso = datetime.fromtimestamp(timestamp_sec).isoformat()
-
-                    # Filter out unwanted labels before sending to frontend
-                    filtered_labels = filter_log_labels(stream_labels)
-
-                    logs.append(
-                        LogEntry(
-                            timestamp=timestamp_iso,
-                            line=log_line,
-                            labels=filtered_labels,
-                        )
-                    )
-
-        # Sort logs by timestamp
-        logs.sort(key=lambda x: x.timestamp)
+        # Fetch raw logs via shared utility
+        logs = await fetch_observability_logs(run_id=run_id, task_id=task_id)
 
         logger.info(f"Retrieved {len(logs)} log entries from Loki")
 
@@ -343,28 +312,65 @@ async def get_observability_logs(
             labels=labels_dict,
             total_labels=len(labels_dict),
         )
-
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Loki HTTP error: {e}")
-        raise HTTPException(
-            status_code=502,
-            detail=f"Error communicating with Loki: {e.response.status_code}",
-        )
-    except httpx.RequestError as e:
-        logger.error(f"Loki request error: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"Could not connect to Loki at {settings.observability_url}",
-        )
     except HTTPException:
+        # Let HTTPExceptions from the utility bubble up unchanged
         raise
     except Exception as e:
-        logger.error(f"Error fetching observability logs: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error fetching logs: {str(e)}")
+        logger.error(
+            f"Error fetching observability log labels: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching log labels: {str(e)}"
+        )
+
+
+
+@app.get("/api/observability/logs", response_model=ObservabilityLabelsResponse)
+async def get_observability_logs(
+    run_id: str = Query(..., description="Run ID to fetch logs for"),
+    task_id: str = Query(..., description="Task ID to fetch logs for"),
+):
+    """
+    Fetch observability log labels from Loki for a specific run and task.
+
+    This endpoint uses the shared utility function in `utils.py` to fetch
+    raw logs from Loki, then performs postprocessing to aggregate labels.
+
+    Returns only the unique labels from the logs after filtering.
+
+    Example:
+        /api/observability/logs?run_id=abc123&task_id=task456
+    """
+    try:
+        # Fetch raw logs via shared utility
+        logs = await fetch_observability_logs(run_id=run_id, task_id=task_id)
+
+        logger.info(f"Retrieved {len(logs)} log entries from Loki")
+
+        # Extract unique labels from the logs (filter already applied)
+        labels_dict = get_labels(logs, group_by=["tactic"])
+
+        logger.info(f"Extracted {len(labels_dict)} unique labels from logs")
+
+        return ObservabilityLabelsResponse(
+            run_id=run_id,
+            task_id=task_id,
+            labels=labels_dict,
+            total_labels=len(labels_dict),
+        )
+    except HTTPException:
+        # Let HTTPExceptions from the utility bubble up unchanged
+        raise
+    except Exception as e:
+        logger.error(
+            f"Error fetching observability log labels: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching log labels: {str(e)}"
+        )
 
 
 if __name__ == "__main__":
-    import uvicorn
 
     uvicorn.run(
         "main:app",
