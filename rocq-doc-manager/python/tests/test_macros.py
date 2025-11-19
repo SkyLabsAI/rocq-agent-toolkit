@@ -17,7 +17,7 @@ class Test_RDM_macros(RDM_Tests):
             n: int,
             m: int,
     ) -> None:
-        with self.assert_doc_unchanged(transient_shared_rdm):
+        with RDM_Tests.assert_doc_unchanged(transient_shared_rdm):
             with transient_shared_rdm.ctx():
                 compute_reply = transient_shared_rdm.Compute(
                     f"{n}+{m}",
@@ -29,7 +29,7 @@ class Test_RDM_macros(RDM_Tests):
             self,
             transient_rdm: RocqDocManager,
     ) -> None:
-        with self.assert_doc_unchanged(transient_rdm):
+        with RDM_Tests.assert_doc_unchanged(transient_rdm):
             with transient_rdm.ctx():
                 nm: str = "x"
                 val: int | str = 0

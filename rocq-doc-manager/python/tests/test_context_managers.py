@@ -14,18 +14,18 @@ class Test_RDM_sess(RDM_Tests):
     ) -> None:
         rdm = request.getfixturevalue(rdm_fixture)
         with rdm.sess(load_file=False):
-            self.assert_check_ok(rdm)
+            RDM_Tests.assert_check_ok(rdm)
 
     def test_sess_load(self, loadable_rdm: RocqDocManager) -> None:
         with loadable_rdm.sess():
             assert not isinstance(loadable_rdm.run_step(), RocqDocManager.Resp)
-            self.assert_check_ok(loadable_rdm, term="N", lhs="N")
+            RDM_Tests.assert_check_ok(loadable_rdm, term="N", lhs="N")
 
     def test_sess_load_nonexistent(
             self,
             transient_rdm: RocqDocManager
     ) -> None:
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(RocqDocManager.Error) as exc_info:
             with transient_rdm.sess():
                 pass
         assert exc_info.match("my_fake.v: No such file or directory")
@@ -43,15 +43,16 @@ class Test_RDM_ctx(RDM_Tests):
             request: pytest.FixtureRequest
     ) -> None:
         rdm = request.getfixturevalue(rdm_fixture)
+        print(rdm)
         cmds = [f"Compute ({i}+{i})." for i in range(100)]
 
         with (
-                self.assert_doc_unchanged(rdm)
+                RDM_Tests.assert_doc_unchanged(rdm)
                 if rollback else
-                self.assert_commands_inserted(rdm, cmds=cmds)
+                RDM_Tests.assert_commands_inserted(rdm, cmds=cmds)
         ):
             with rdm.ctx(rollback=rollback):
-                with self.assert_commands_inserted(rdm, cmds=cmds):
+                with RDM_Tests.assert_commands_inserted(rdm, cmds=cmds):
                     for cmd in cmds:
                         assert not isinstance(
                             rdm.insert_command(cmd),
@@ -74,9 +75,9 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
             "Abort.",
         ]
         with (
-                self.assert_doc_unchanged(transient_rdm)
+                RDM_Tests.assert_doc_unchanged(transient_rdm)
                 if rollback else
-                self.assert_commands_inserted(transient_rdm, cmds=cmds)
+                RDM_Tests.assert_commands_inserted(transient_rdm, cmds=cmds)
         ):
             with transient_rdm.aborted_goal_ctx(goal=goal, rollback=rollback):
                 idtac_reply = transient_rdm.run_command("idtac.")
@@ -92,7 +93,7 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
 
 class Test_RDM_Section(RDM_Tests):
     def test_Context(self, transient_rdm: RocqDocManager) -> None:
-        with self.assert_doc_unchanged(transient_rdm):
+        with RDM_Tests.assert_doc_unchanged(transient_rdm):
             context = [
                 ("n", "nat"),
                 ("b", "bool"),
@@ -104,7 +105,7 @@ class Test_RDM_Section(RDM_Tests):
                     rollback=True
             ):
                 for ident, ty in context:
-                    self.assert_check_ok(
+                    RDM_Tests.assert_check_ok(
                         transient_rdm,
                         term=ident,
                         lhs=ident,

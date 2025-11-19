@@ -78,8 +78,8 @@ class RDM_Tests:
             assert doc_suffix == rdm.doc_suffix()
 
     @contextmanager
+    @staticmethod
     def assert_doc_unchanged(
-            self,
             rdm: RocqDocManager
     ) -> Iterator[RocqDocManager]:
         doc_prefix = rdm.doc_prefix()

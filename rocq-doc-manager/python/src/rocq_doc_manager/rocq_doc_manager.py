@@ -40,7 +40,7 @@ class RocqDocManager(API):
             if load_file:
                 load_reply = self.load_file()
                 if isinstance(load_reply, RocqDocManager.Err):
-                    raise RuntimeError(
+                    raise self.Error(
                         f"RocqDocManager.load_file failed: {load_reply}"
                     )
 
@@ -56,7 +56,7 @@ class RocqDocManager(API):
         if rollback:
             revert_reply = self.revert_before(True, current_idx)
             if isinstance(revert_reply, RocqDocManager.Err):
-                raise RuntimeError(" ".join([
+                raise self.Error(" ".join([
                     "RocqDocManager failed to rollback to",
                     f"{current_idx}: {revert_reply}",
                 ]))
