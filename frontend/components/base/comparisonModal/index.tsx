@@ -69,7 +69,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
 
   // Define which keys should have custom UI
   const customUIKeys = React.useMemo(() => 
-    ['cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent', 'tactic_prediction_explanation', 'tactic_prediction_tactic', 'tactic_info'], []
+    ['cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent', 'tactic_prediction_explanation', 'tactic_prediction_tactic', 'tactic'], []
   );
   
   // Get all available keys from all fetched logs
@@ -110,7 +110,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
   // Helper function to render custom UI for specific keys
   const renderCustomContent = (key: string, value: unknown) => {
     // Handle new tactic_info array with structured tactic objects
-    if (key === 'tactic_info' && Array.isArray(value)) {
+    if (key === 'tactic' && Array.isArray(value)) {
       return (
         <TacticInfoViewer
           tactics={value as Array<{name: string; next_tactic_prediction: string; status: "success" | "failure"; explaination: string; [key: string]: unknown}>}
@@ -190,7 +190,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
   // Helper function to render JSON content
   const renderJsonContent = (key: string, value: unknown) => {
     // For all keys except tactic prediction and tactic info ones, handle as string arrays
-    if (key !== 'tactic_prediction_explanation' && key !== 'tactic_prediction_tactic' && key !== 'tactic_info' && Array.isArray(value)) {
+    if (key !== 'tactic_prediction_explanation' && key !== 'tactic_prediction_tactic' && key !== 'tactic' && Array.isArray(value)) {
       const stringValues = value.filter((item): item is string => typeof item === 'string');
       if (stringValues.length > 0) {
         return (
@@ -224,7 +224,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
   // Helper function to get tab color based on key
   const getTabColor = (key: string) => {
     const lowerKey = key.toLowerCase();
-    if (key === 'tactic_info') return 'purple';
+    if (key === 'tactic') return 'purple';
     if (key === 'tactic_prediction_explanation') return 'blue';
     if (key === 'tactic_prediction_tactic') return 'green';
     if (lowerKey.includes('cpp') || lowerKey.includes('code')) return 'blue';

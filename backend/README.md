@@ -124,7 +124,7 @@ This is a FastAPI backend server that serves brick_agent task results for visual
 
 ### Development Mode (with auto-reload)
 ```bash
-python main.py
+uv run python src/backend/main.py
 ```
 
 ### Production Mode
