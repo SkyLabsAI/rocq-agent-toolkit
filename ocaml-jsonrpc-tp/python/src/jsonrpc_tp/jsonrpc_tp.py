@@ -3,9 +3,7 @@ import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from types import TracebackType
 from typing import Any, Self
-from warnings import deprecated
 
 
 class JsonRPCTP:
@@ -43,19 +41,6 @@ class JsonRPCTP:
         except Exception as e:
             self._process = None
             raise self.Error(f"Failed to start process: {e}") from e
-
-    @deprecated("Use/extend sess contextmanager instead.")
-    def __enter__(self) -> Self:
-        return self
-
-    @deprecated("Use/extend sess contextmanager instead.")
-    def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc_value: BaseException | None,
-            traceback: TracebackType | None,
-    ) -> None:
-        self.quit()
 
     @contextmanager
     def sess(self) -> Iterator[Self]:

@@ -64,7 +64,7 @@ def run(output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> Non
                     DuneUtil.rocq_args_for(task_file),
                     str(task_file),
                     dune=True,
-            ) as rdm:
+            ).sess() as rdm:
                 progress(0.01, "🔃")
                 load_reply = rdm.load_file()
                 progress(0.05, "🔃")

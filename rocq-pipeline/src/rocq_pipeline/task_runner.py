@@ -121,7 +121,7 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
                 DuneUtil.rocq_args_for(task_file) if task.rocq_args is None else task.rocq_args,
                 str(task_file),
                 dune=True,
-        ) as rdm:
+        ).sess() as rdm:
             progress.status(0.05, "🔃")
             load_reply = rdm.load_file()
             if isinstance(load_reply, RocqDocManager.Err):
