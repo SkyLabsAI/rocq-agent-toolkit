@@ -1,7 +1,7 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
 import os
 import pytest
-from typing import Iterator
 
 from rocq_doc_manager import RocqDocManager
 
@@ -18,21 +18,27 @@ class RDM_Tests:
             dune=os.environ.get("RDM_USE_DUNE", "True") == "True",
         )
 
-    @pytest.fixture
-    @classmethod
-    def transient_rdm(cls) -> RocqDocManager:
+    @pytest.fixture(scope="class")
+    @staticmethod
+    def transient_shared_rdm() -> RocqDocManager:
         """A RocqDocManager for a fake file that can't be loaded."""
-        return cls.mk_rdm()
+        return RDM_Tests.mk_rdm()
 
     @pytest.fixture
-    @classmethod
-    def loadable_rdm(cls) -> RocqDocManager:
+    @staticmethod
+    def transient_rdm() -> RocqDocManager:
+        """A RocqDocManager for a fake file that can't be loaded."""
+        return RDM_Tests.mk_rdm()
+
+    @pytest.fixture
+    @staticmethod
+    def loadable_rdm() -> RocqDocManager:
         """A RocqDocManager for a real file that can be loaded."""
-        return cls.mk_rdm(path="./tests/test.v")
+        return RDM_Tests.mk_rdm(path="./tests/test.v")
 
     @contextmanager
+    @staticmethod
     def assert_commands_inserted(
-            self,
             rdm: RocqDocManager,
             cmds: list[str],
             ignore_blanks: bool = True,
@@ -82,8 +88,8 @@ class RDM_Tests:
         assert doc_prefix == rdm.doc_prefix()
         assert doc_suffix == rdm.doc_suffix()
 
+    @staticmethod
     def assert_check_ok(
-            self,
             rdm: RocqDocManager,
             term: str = "nat",
             lhs: str = "nat",
