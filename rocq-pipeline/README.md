@@ -17,7 +17,7 @@ Tasks are JSON objects with the following scheme (here presented in YAML):
 
 ```yaml
 name: my-name # optional, by default constructed by [file#locator]
-file: relative/path/to/file.v
+file: relative/path/to/file.v # relative to the current file
 locator: lemma:lemma_name # see `locator.py` for more information
 tags: # free-form tags useful for filtering
 - proof
@@ -37,35 +37,34 @@ Multiple tasks can be bundled into a single file (idiomatically called
 ```
 
 ## Pipeline / Runner
-To run an agent over a collection of tasks, you should create a file that sets up your agent. This is often something as simple as:
+To run an agent over a collection of tasks, you should create a file that sets
+up your agent. This is often something as simple as:
 
 ```python
-import task_runner
+from rocq_pipeline.task_runner import agent_main
 from my_agent import MyAgent
 
 if __name__ == '__main__':
-    task_runner.main(MyAgent)
+    agent_main(AgentBuilder.of_agent(MyAgent))
 ```
 
 If you need extra customization for your agent that should be separately
 configurable in a production environment, e.g. extra tools that your agent uses,
-you can use extra static methods on your agent class. For example,
+you can define a custom `AgentBuilder`.
 
 ```python
-class MyRunnerAgent(MyAgent):
-    @staticmethod
-    def arg_parser(parser : arg_parser):
-        """Add additional configuration options to the arg_parser"""
+class MyAgentBuilder(AgentBuilder):
+    def add_args(self, args: list[str]) -> None:
+        # args is extra command line arguments passed to the agent, e.g. ["--tactic", "foo; bar"]
         pass
 
-    @staticmethod
-    def build(prompt : str | None, args) -> Agent:
-       """args is the command line arguments"""
-       return MyAgent(...extra arguments...)
-```
+    def __call__(self) -> Agent:
+        return MyAgent(self.args)
 
-If you do not specify a `build` method, then the default constructor is used to
-construct an instance of your agent.
+# Used with
+if __name__ == '__main__':
+    agent_main(MyAgentBuilder())
+```
 
 ## Setting up a Data Set
 A data set defines a collection of tasks as well as the infrastructure needed to
@@ -73,17 +72,8 @@ execute agents on these tasks.
 
 A data set contains the following:
 
-1. A tasks file (`tasks.json` or `tasks.yaml`) that contains the list of tasks contained within the data set.
-2. A `build.py` file that contains functionality to:
-   - Build the test suite, e.g. by invoking `dune b` or the appropriate `Makefile`.
-   - Describe command line arguments used to interpret the Rocq documents.
-   - **Optional** Construct additional arguments for agents. This is only
-     necessary if a data set wants to give agents access to additional data
-     sources that are **dataset specific** and not immediately accessible from the
-     Rocq context. Some examples,
-     - For program verification tasks, the agent might get access to the source code
-     - For auto-formalization tasks it might get access to domain-specific
-       reference material.
+1. A tasks file (`tasks.json` or `tasks.yaml`) that contains the list of tasks
+   contained within the data set.
 
 ### Task Output
 
