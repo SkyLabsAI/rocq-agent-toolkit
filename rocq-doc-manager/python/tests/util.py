@@ -1,7 +1,8 @@
 import os
-import pytest
 from collections.abc import Iterator
 from contextlib import contextmanager
+
+import pytest
 from hypothesis import strategies as st
 
 from rocq_doc_manager import RocqDocManager
@@ -148,5 +149,5 @@ class RDM_Tests:
         query_reply = rdm.text_query_all(f"Check {term}.", indices=None)
         assert not isinstance(query_reply, RocqDocManager.Err)
         assert len(query_reply) == 1
-        parts = list(map(lambda s: s.strip(), query_reply[0].split(":")))
+        parts = [s.strip() for s in query_reply[0].split(":")]
         assert parts == [lhs, rhs]

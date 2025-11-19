@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator, Literal, override, Self, Union
+from typing import Literal, Self, override
 
 from .dune_util import dune_env_hack
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
@@ -121,12 +122,7 @@ class RocqDocManager(API):
             self,
             term: str,
             rollback: bool = True,
-    ) -> Union[
-        tuple[str, str],
-        API.Err[API.RocqLoc | None],
-        API.Err[list[str]],
-        API.Err[None],
-    ]:
+    ) -> tuple[str, str] | API.Err[API.RocqLoc | None] | API.Err[list[str]] | API.Err[None]:
         """Run [Compute {term}.] and return the resulting value and type.
 
         Arguments:
