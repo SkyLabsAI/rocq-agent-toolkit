@@ -238,6 +238,9 @@ def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None
     return RunConfiguration(agent_builder, tasks, tasks_name, arguments.output_dir, wdir, arguments.trace, arguments.jobs, deployment_env)
 
 def run_config(config: RunConfiguration) -> bool:
+    def rocq_args(filename: Path) -> list[str]:
+        # TODO: a better default
+        return DuneUtil.rocq_args_for(filename)
     # Setup environment based on deployment mode
     if config.deployment_env:
         logger.info(f"Setting up environment: {type(config.deployment_env).__name__}")
