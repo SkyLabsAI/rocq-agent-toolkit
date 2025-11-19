@@ -1,5 +1,5 @@
+# import pytest
 from hypothesis import given, settings, strategies as st
-import pytest
 
 from rocq_doc_manager import RocqDocManager
 from .util import RDM_Tests

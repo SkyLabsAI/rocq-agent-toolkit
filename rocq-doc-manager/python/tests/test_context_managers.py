@@ -1,5 +1,6 @@
 import itertools
 import pytest
+from hypothesis import given, settings, strategies as st
 
 from rocq_doc_manager import RocqDocManager
 from .util import RDM_Tests
@@ -58,6 +59,39 @@ class Test_RDM_ctx(RDM_Tests):
                             rdm.insert_command(cmd),
                             RocqDocManager.Err
                         )
+
+    @given(
+        prefix=RDM_Tests.rocq_trivial_blank_cmd_sequence_strategy(),
+        rollback=RDM_Tests.rocq_trivial_blank_cmd_sequence_strategy(),
+        suffix=RDM_Tests.rocq_trivial_blank_cmd_sequence_strategy(),
+    )
+    @settings(deadline=None)
+    def test_property_rollback_ignores_blanks(
+            self,
+            transient_shared_rdm: RocqDocManager,
+            prefix: list[tuple[str, bool]],
+            rollback: list[tuple[str, bool]],
+            suffix: list[tuple[str, bool]],
+    ) -> None:
+        def _process(items: list[tuple[str, bool]]) -> None:
+            for text, is_cmd in items:
+                if is_cmd:
+                    assert not isinstance(
+                        transient_shared_rdm.insert_command(text),
+                        RocqDocManager.Err
+                    )
+                else:
+                    transient_shared_rdm.insert_blanks(text)
+
+        # Set up the document to contain a suffix and prefix of interleaved
+        # blanks/commands
+        _process(suffix)
+        transient_shared_rdm.revert_before(False, 0)
+        _process(prefix)
+
+        with RDM_Tests.assert_doc_unchanged(transient_shared_rdm):
+            with transient_shared_rdm.ctx(rollback=True):
+                _process(rollback)
 
 
 class Test_RDM_aborted_goal_ctx(RDM_Tests):

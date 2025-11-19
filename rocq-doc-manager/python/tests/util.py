@@ -1,7 +1,8 @@
-from collections.abc import Iterator
-from contextlib import contextmanager
 import os
 import pytest
+from collections.abc import Iterator
+from contextlib import contextmanager
+from hypothesis import strategies as st
 
 from rocq_doc_manager import RocqDocManager
 
@@ -35,6 +36,55 @@ class RDM_Tests:
     def loadable_rdm() -> RocqDocManager:
         """A RocqDocManager for a real file that can be loaded."""
         return RDM_Tests.mk_rdm(path="./tests/test.v")
+
+    @staticmethod
+    def rocq_whitespace_strategy() -> st.SearchStrategy[str]:
+        """Generates arbitrary sequences of Rocq whitespace characters."""
+        # We use a limited, safe alphabet of standard whitespace characters.
+        return st.text(
+            alphabet='\n\t ',
+            min_size=1,  # Must have at least one character to be a blank
+            max_size=20,  # Keep the size reasonable for testing
+        )
+
+    @staticmethod
+    def rocq_comment_strategy() -> st.SearchStrategy[str]:
+        """Generates non-nested Coq comments (e.g., (* some text *))."""
+        # Content of the comment: arbitrary text, excluding nested comment
+        # delimiters '(*' and '*)'
+        comment_content = st.text(
+            st.characters(
+                # Unicode character properties:
+                # - [L]: letter
+                # - [N]: number
+                # - [P]: punctuation
+                # - [Z]: separator
+                whitelist_categories=('L', 'N', 'P', 'Z'),
+                min_codepoint=32,
+                max_codepoint=126
+            ),
+            max_size=15,
+        )
+        # Map the content into the (* ... *) wrapper
+        return comment_content.map(lambda s: f"(* {s} *)")
+
+    @staticmethod
+    def rocq_blanks_strategy() -> st.SearchStrategy[str]:
+        return st.one_of(
+            RDM_Tests.rocq_whitespace_strategy(),
+            RDM_Tests.rocq_comment_strategy()
+        )
+
+    @staticmethod
+    def rocq_trivial_blank_cmd_sequence_strategy() -> st.SearchStrategy[
+            list[tuple[str, bool]]
+    ]:
+        return st.lists(
+            st.one_of(
+                RDM_Tests.rocq_blanks_strategy().map(lambda s: (s, False)),
+                st.just(("Check tt.", True))
+            )
+        )
 
     @contextmanager
     @staticmethod
