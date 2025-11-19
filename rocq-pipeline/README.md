@@ -17,7 +17,7 @@ Tasks are JSON objects with the following scheme (here presented in YAML):
 
 ```yaml
 name: my-name # optional, by default constructed by [file#locator]
-file: relative/path/to/file.v # relative to the current file
+file: relative/path/to/file.v # relative to the task file
 locator: lemma:lemma_name # see `locator.py` for more information
 tags: # free-form tags useful for filtering
 - proof
