@@ -7,25 +7,28 @@ from rocq_doc_manager import RocqDocManager
 
 
 class RDM_Tests:
-    @pytest.fixture
     @staticmethod
-    def loadable_rdm() -> RocqDocManager:
-        """A RocqDocManager for a real file that can be loaded."""
+    def mk_rdm(
+            path: str = "my_fake.v",
+            rocq_args: list[str] | None = None
+    ) -> RocqDocManager:
         return RocqDocManager(
-            [],
-            "./tests/test.v",
+            [] if rocq_args is None else rocq_args,
+            path,
             dune=os.environ.get("RDM_USE_DUNE", "True") == "True",
         )
 
     @pytest.fixture
-    @staticmethod
-    def transient_rdm() -> RocqDocManager:
+    @classmethod
+    def transient_rdm(cls) -> RocqDocManager:
         """A RocqDocManager for a fake file that can't be loaded."""
-        return RocqDocManager(
-            [],
-            "my_fake.v",
-            dune=os.environ.get("RDM_USE_DUNE", "True") == "True",
-        )
+        return cls.mk_rdm()
+
+    @pytest.fixture
+    @classmethod
+    def loadable_rdm(cls) -> RocqDocManager:
+        """A RocqDocManager for a real file that can be loaded."""
+        return cls.mk_rdm(path="./tests/test.v")
 
     @contextmanager
     def assert_commands_inserted(
