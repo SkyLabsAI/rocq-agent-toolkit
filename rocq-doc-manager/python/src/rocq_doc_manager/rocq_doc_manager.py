@@ -2,10 +2,10 @@ from contextlib import contextmanager
 from typing import Iterator, Literal, override, Self, Union
 
 from .dune_util import dune_env_hack
-from .rocq_doc_manager_api import RocqDocManagerAPI as RDM_API
+from .rocq_doc_manager_api import RocqDocManagerAPI as API
 
 
-class RocqDocManager(RDM_API):
+class RocqDocManager(API):
     def __init__(
             self,
             rocq_args: list[str],
@@ -111,9 +111,9 @@ class RocqDocManager(RDM_API):
             rollback: bool = True,
     ) -> Union[
         tuple[str, str],
-        RDM_API.Err[RDM_API.RocqLoc | None],
-        RDM_API.Err[list[str]],
-        RDM_API.Err[None],
+        API.Err[API.RocqLoc | None],
+        API.Err[list[str]],
+        API.Err[None],
     ]:
         """Run [Compute {term}.] and return the resulting value and type.
 
@@ -155,7 +155,7 @@ end.""",
 
             return (query_reply[0], query_reply[1])
 
-    def current_goal(self) -> str | RDM_API.Err[None]:
+    def current_goal(self) -> str | API.Err[None]:
         result = self.run_command('idtac.')
         if isinstance(result, self.Err):
             return result
@@ -170,7 +170,7 @@ end.""",
             kind: Literal["Import"] | Literal["Export"],
             logpath: str,
             require: bool = True,
-    ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
         cmd: str = f"{'Require ' if require else ''}{kind} {logpath}."
         return self.insert_command(cmd)
 
@@ -178,17 +178,17 @@ end.""",
             self,
             logpath: str,
             require: bool = True,
-    ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
         return self._import_export_cmd("Import", logpath, require=require)
 
     def Export(
             self,
             logpath: str,
             require: bool = True,
-    ) -> RDM_API.CommandData | RDM_API.Err[RDM_API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
         return self._import_export_cmd("Export", logpath, require=require)
 
-    def fresh_ident(self, ident: str) -> str | RDM_API.Err[None]:
+    def fresh_ident(self, ident: str) -> str | API.Err[None]:
         """Return a fresh name based on [ident].
 
         Arguments:
