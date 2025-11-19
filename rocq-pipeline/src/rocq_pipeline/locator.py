@@ -1,6 +1,6 @@
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import override
 
 from rocq_doc_manager import RocqDocManager
@@ -36,7 +36,7 @@ def advance_to_first_match(
     ]
 
     def pretty_match_candidates(
-            candidates: list[
+            candidates: Sequence[
                 tuple[
                     int,
                     RocqDocManager.PrefixItem | RocqDocManager.SuffixItem
@@ -64,7 +64,7 @@ def advance_to_first_match(
     # currently we only use the first match
     match_idx, match_item = candidate_suffix_matches[0]
     pretty_match = (
-        f"{match_item.text} of {match_item.kind} @ idx {match_item.idx}"
+        f"{match_item.text} of {match_item.kind} @ idx {match_idx}"
     )
     if len(candidate_suffix_matches) != 1:
         logger.warning("\n".join([
@@ -180,9 +180,11 @@ class FirstLemma(Locator):
 
 def parse_locator(s: str) -> Locator:
     if s.startswith("lemma:"):  # Backwards compatibility
-        logger.warning(
-            "\"lemma:\" locator is deprecated; use \"Theorem:\" or \"Lemma:\""
-        )
+        logger.warning(" ".join([
+            "\"lemma:\" locator is deprecated,",
+            "use \"Theorem:\" or \"Lemma:\":",
+            s,
+        ]))
         return FirstLemma(s[len("lemma:"):])
     elif s.startswith("Theorem:"):
         return FirstLemma(s[len("Theorem:"):], "Theorem")
