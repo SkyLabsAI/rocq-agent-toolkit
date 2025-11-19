@@ -137,10 +137,9 @@ class RocqDocManager(API):
             if isinstance(command_reply, self.Err):
                 return command_reply
 
-            equality: str = "x = ?RESULT"
             query_reply = self.text_query_all(
-                f"""match goal with
-| |- context[@ex ?TY (fun x => {equality})] => idtac RESULT; idtac TY
+                """match goal with
+| |- context[@ex ?TY (fun x => x = ?RESULT)] => idtac RESULT; idtac TY
 end.""",
                 indices=None,
             )
