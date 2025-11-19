@@ -176,16 +176,28 @@ end.""",
     def Import(
             self,
             logpath: str,
-            require: bool = True,
     ) -> API.CommandData | API.Err[API.RocqLoc | None]:
-        return self._import_export_cmd("Import", logpath, require=require)
+        return self._import_export_cmd("Import", logpath, require=False)
 
     def Export(
             self,
             logpath: str,
             require: bool = True,
     ) -> API.CommandData | API.Err[API.RocqLoc | None]:
-        return self._import_export_cmd("Export", logpath, require=require)
+        return self._import_export_cmd("Export", logpath, require=False)
+
+    def RequireImport(
+            self,
+            logpath: str,
+    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+        return self._import_export_cmd("Import", logpath, require=True)
+
+    def RequireExport(
+            self,
+            logpath: str,
+            require: bool = True,
+    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+        return self._import_export_cmd("Export", logpath, require=True)
 
     def fresh_ident(self, ident: str) -> str | API.Err[None]:
         """Return a fresh name based on [ident].
