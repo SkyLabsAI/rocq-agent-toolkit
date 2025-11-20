@@ -154,6 +154,14 @@ class RocqDocManagerAPI(JsonRPCTP):
             return self.Err(result.message, data)
         return result.result
 
+    def json_query_all(self, text: str, indices: list[int] | None) -> list[Any] | JsonRPCTP.Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = self.raw_request("json_query_all", [text, indices])
+        if isinstance(result, self.Err):
+            data = None
+            return self.Err(result.message, data)
+        return [v1 for v1 in result.result]
+
     def load_file(self) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors)."""
         result = self.raw_request("load_file", [])

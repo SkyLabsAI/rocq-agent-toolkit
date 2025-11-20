@@ -178,6 +178,16 @@ API Methods
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
+### `json_query_all`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
+- Response payload: a list where each element is a JSON value.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
 ### `load_file`
 
 - Description: adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors).
@@ -225,7 +235,7 @@ API Methods
 - Description: runs the given query at the cursor, not updating the state.
 - Arguments (in order, or named):
   - text: text of the query (as a string).
-  - indices: feedback index indices to collect (as either `null` or a list where each element is an integer).
+  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
 - Response payload: a list where each element is a string.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.

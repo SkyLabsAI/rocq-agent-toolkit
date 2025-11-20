@@ -159,3 +159,6 @@ val text_query_all : ?indices:int list -> t -> text:string
     the result is additionally turned into JSON data. If the command result is
     not a valid JSON string, an [Error] is returned. *)
 val json_query : ?index:int -> t -> text:string -> (json, string) result
+
+val json_query_all : ?indices:int list -> t -> text:string
+  -> (json list, string) result

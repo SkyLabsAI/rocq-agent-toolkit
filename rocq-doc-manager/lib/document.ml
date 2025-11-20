@@ -355,3 +355,9 @@ let json_query : ?index:int -> t -> text:string -> (json, string) result =
   match text_query ?index d ~text with Error(s) -> Error(s) | Ok(text) ->
   try Ok(Yojson.Safe.from_string text) with Yojson.Json_error(_) ->
   Error("the query result does not contain valid JSON")
+
+let json_query_all : ?indices:int list -> t -> text:string ->
+    (json list, string) result = fun ?indices d ~text ->
+  match text_query_all ?indices d ~text with Error(s) -> Error(s) | Ok(l) ->
+  try Ok(List.map Yojson.Safe.from_string l) with Yojson.Json_error(_) ->
+  Error("Not all results of the query contain valid JSON")

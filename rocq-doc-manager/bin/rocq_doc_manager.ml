@@ -290,7 +290,7 @@ let _ =
 
 let query_all_args =
   A.add ~name:"text" ~descr:"text of the query" S.string @@
-  A.add ~name:"indices" ~descr:"feedback index indices to collect"
+  A.add ~name:"indices" ~descr:"feedback indices to collect"
     S.(nullable (list int)) @@
   A.nil
 
@@ -308,6 +308,13 @@ let _ =
     taken from the \"info\" / \"notice\" feedback with the given index"
     ~err:S.null @@ fun d (text, (index, ())) ->
   let res = Document.json_query d ~text ~index in
+  (d, Result.map_error (fun s -> ((), s)) res)
+
+let _ =
+  API.declare_full api ~name:"json_query_all" ~descr:"runs the given query \
+    at the cursor, not updating the state" ~args:query_all_args
+    ~ret:S.(list any) ~err:S.null @@ fun d (text, (indices, ())) ->
+  let res = Document.json_query_all d ~text ?indices in
   (d, Result.map_error (fun s -> ((), s)) res)
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
