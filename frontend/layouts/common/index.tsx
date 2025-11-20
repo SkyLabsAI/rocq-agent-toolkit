@@ -19,7 +19,7 @@ const Layout = ({ title,children }: { title: string;children: React.ReactNode })
           </div>
         </div>
         
-      <div className="mx-auto px-4 sm:px-6 mt-24">
+      <div className="mx-auto px-4 sm:px-10 mt-24">
         {children}
       </div>
     </div>
