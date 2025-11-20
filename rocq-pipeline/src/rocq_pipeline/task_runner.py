@@ -213,19 +213,12 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
 
 def load_agent(agent_desc: str) -> AgentBuilder:
     try:
-        (agent_mod, agent_builder) = agent_desc.rsplit(':', maxsplit=1)
-    except ValueError:
-        agent_mod = agent_desc
-        agent_builder = 'default'
-    try:
-        result = loader.load_module(Path(agent_mod))
-        for next in agent_builder.split('.'):
-            result = getattr(result, next)
-        if isinstance(result, AgentBuilder):
-            return result
-        raise Exception(f"{result} is not an [AgentBuilder]")
+        agent_builder = loader.load_from_str(agent_desc, "dyn_loaded_agent")
+        if isinstance(agent_builder, AgentBuilder):
+            return agent_builder
+        raise Exception(f"{agent_builder} is not an [AgentBuilder]")
     except Exception as err:
-        raise ValueError(f"Failed to load AgentBuilder from {agent_mod}:{agent_builder}.") from err
+        raise ValueError(f"Failed to load AgentBuilder from {agent_desc}.") from err
 
 @dataclass
 class RunConfiguration:

@@ -6,10 +6,11 @@ from typing import Any
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
-from rocq_pipeline import find_tasks, locator, util
+from rocq_pipeline import find_tasks, loader, locator, util
 from rocq_pipeline.tracers.extractor import (
     BeforeAndAfter,
     GoalAsString,
+    StateExtractor,
     TacticExtractor,
 )
 
@@ -27,7 +28,7 @@ def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager) -> list[t
     except Exception:
         return []
 
-def mk_parser(parent: Any|None=None) -> Any:
+def mk_parser(parent: Any|None=None, with_tracer: bool = True) -> Any:
     # Set up the argument parser
     if parent:
         parser = parent.add_parser("trace", help="Traces Rocq states")
@@ -45,6 +46,8 @@ def mk_parser(parent: Any|None=None) -> Any:
         default=Path("."),
         help="The directory to output task results, as JSON."
     )
+    if with_tracer:
+        parser.add_argument("--tracer", type=str, help="The tracer to use specified as: file.py:def.")
     parser.add_argument(
         "-j", "--jobs",
         type=lambda N: max(1, int(N)),
@@ -54,7 +57,7 @@ def mk_parser(parent: Any|None=None) -> Any:
     return parser
 
 
-def run(output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
+def run(tracer: TacticExtractor, output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
     def run_task(task: Tasks.Task, progress: util.ProgressCallback) -> bool:
         # TODO: find a better ID for tasks
         task_id: str = Tasks.get_task_id(task)
@@ -82,7 +85,7 @@ def run(output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> Non
                     return False
                 progress(0.1, "💭")
 
-                trace = trace_proof(BeforeAndAfter(GoalAsString()), rdm)
+                trace = trace_proof(tracer, rdm)
                 progress(0.95, "💭")
 
             with open(output_file, "w") as output:
@@ -113,8 +116,37 @@ def run_ns(arguments: argparse.Namespace, extra_args:list[str]|None=None) -> boo
         print("unspecified task")
         return False
 
-    run(arguments.output, wdir, tasks)
+    if arguments.tracer is None:
+        tracer = BeforeAndAfter(GoalAsString())
+    else:
+        if isinstance(arguments.tracer, str):
+            tracer = loader.load_from_str(arguments.tracer)
+        else:
+            tracer = arguments.tracer
+
+        if isinstance(tracer, StateExtractor):
+            tracer = BeforeAndAfter(tracer)
+        elif not isinstance(tracer, TacticExtractor):
+            # print(f"'{arguments.tracer}' is a '{tracer}' but expected a [TacticExtractor].")
+            return False
+
+    run(tracer, arguments.output_dir, wdir, tasks, jobs=arguments.jobs)
     return True
+
+def tracer_main(tracer: TacticExtractor, args:list[str]|None=None) -> bool:
+    """
+    This function can be used to create a `main` entry point for a specific tracer.
+    Use it with something like:
+
+    ```python
+    my_tracer = ...
+    if __name__ == '__main__':
+        rocq_pipeline.tracer.tracer_main(my_tracer)
+    ```
+    """
+    arguments = mk_parser().parse_args(args)
+    arguments.tracer = tracer
+    return run_ns(arguments)
 
 def main() -> bool:
     arguments = mk_parser().parse_args()

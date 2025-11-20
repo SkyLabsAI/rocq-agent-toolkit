@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 
-def load_module(module_path: Path) -> Any:
+def load_module(module_path: Path, package_name: str|None=None) -> Any:
     """
     Loads a Python module from a given file path and executes its 'run' method.
     This version correctly configures the module to support relative imports
@@ -17,7 +17,8 @@ def load_module(module_path: Path) -> Any:
         sys.exit(1)
 
     # 2. Define package details for relative imports
-    DYNAMIC_PACKAGE_NAME = "dynamically_loaded_pkg" # A temporary name for the package structure
+    # A temporary name for the package structure
+    DYNAMIC_PACKAGE_NAME = "dynamically_loaded_pkg" if package_name is None else package_name
     base_module_name = os.path.splitext(os.path.basename(module_path))[0]
 
     # The module must have a fully qualified name (e.g., pkg.module_name)
@@ -77,3 +78,27 @@ def load_module(module_path: Path) -> Any:
         #     del sys.modules[DYNAMIC_PACKAGE_NAME]
         # if module_name in sys.modules:
         #     del sys.modules[module_name]
+
+def load_definition(mod_path: Path, def_name: str, package_name:str|None=None) -> Any:
+    """
+    Load a definition from a file.
+    """
+    result = load_module(mod_path)
+    val = []
+    for comp in def_name.split('.'):
+        if hasattr(result, comp):
+            result = getattr(result, comp)
+            val.append(comp)
+        else:
+            raise ImportError(f"Failed to extract {comp} from {".".join(val)}")
+    return result
+
+def load_from_str(desc: str, package_name: str|None=None) -> Any:
+    """
+    Load a value from a file. Uses the syntax `path/to/module.py:definition.to.load`.
+    """
+    mod_and_def = desc.rsplit(":", 1)
+    if len(mod_and_def) == 2:
+        return load_definition(Path(mod_and_def[0]), mod_and_def[1], package_name)
+    else:
+        return load_module(Path(mod_and_def[0]), package_name)
