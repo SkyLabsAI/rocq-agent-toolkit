@@ -184,5 +184,5 @@ docker-compose -f docker-compose.yml -f docker-compose.local.yml up
 To run only the Loki and Alloy services for the RoCQ agent, use the following command. This will start the services in detached mode and build the images if necessary.
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up  alloy loki
+docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up  alloy loki grafana
 ```

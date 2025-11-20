@@ -1,4 +1,4 @@
- # Usage : docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
+ # Usage : docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki grafana
 
 services:
   alloy:
@@ -10,6 +10,10 @@ services:
   loki:
     volumes:
       - ./loki/loki.yml:/etc/loki/loki.yaml
+    networks:
+      - rocq-agent-network
+
+  grafana:
     networks:
       - rocq-agent-network
 

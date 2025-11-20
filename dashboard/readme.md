@@ -6,9 +6,30 @@ This guide outlines the three primary deployment options for running the Rocq ag
 *   **Staging Server Deployment:** Run the agent locally, but automatically publish logs and results to the central staging server (Khawarizmi) for review.
 *   **CI Deployment:** Automatically run the agent via a CI/CD pipeline when you create a pull request or tag a commit.
 
+
+### About Observability Stack  
+
+We use an observability stack composed of **Alloy**, **Loki**, and **Grafana**. Alloy acts as the telemetry collector/ingester, receiving logs from the Rocq agent and forwarding them to Loki, which stores and indexes the logs. Grafana provides dashboards and an interface for querying and visualizing these logs.
+
+These services together form the observability stack. Currently, there will be two stacks running: one **local** on your machine and one on **Khawarizmi**. Based on the environment configuration, the agent can send logs either to the local stack or to the Khawarizmi stack for centralized access.
+
+- **Grafana dashboard**: exposed on port `3000`.
+  - Local: `http://0.0.0.0:3000`
+  - Khawarizmi: `http://172.31.0.1:3000`
+- **Rocq Agent Toolkit dashboard** (our internal UI for visualizing runs): exposed on port `3005`:
+
+    The Rocq Agent Toolkit provides its own frontend dashboard that visualizes these logs, while you can still use Grafana to inspect raw logs.
+    - Local: `http://0.0.0.0:3000`
+    - Khawarizmi: `http://172.31.0.1:3000`
+
+
+* **Using Grafana**  
+In Grafana, first set the **time range** for which you want to query logs. Then, select the log stream with service name `rocq_agent`. Once these are set, the relevant logs can be fetched. You can also write more complex **LogQL** queries to build specific filters and perform advanced analysis.
+
+
 ---
 
-## 1. 📍 Local Development Workflow
+## 1. Local Development Workflow
 
 This is a self-contained setup for local development. The agent, observability services, and the frontend/backend all run on your local machine using Docker.
 
@@ -24,12 +45,12 @@ uv run code-proof-agent \
 ```
 **What the `--env local` flag does:**
 
-  * **Checks Services:** Verifies if the local Docker containers (Loki, Alloy, frontend, backend) are running.
-  * **Sets Up Environment (if needed):** If the services are not running, it will prompt you to automatically set them up.
+  * **Checks Services:** Verifies if the local Docker containers (Loki, Alloy, Grafana, frontend, backend) are running.
+  * **Sets Up Environment (if needed):** If the services are not running, it will set them up.
   * **Runs Agent:** Executes the agent, which writes logs and the `.jsonl` results file locally.
-  * **Opens Browser:** Automatically opens your default browser to **`http://localhost:3005`**. Click the refresh button on the frontend to load your new results.
+  * **Open Browser:** Go to the frontend dashbaord **`http://localhost:3005`**. Click the refresh button on the frontend to load your new results.
 
-### Optional: Manual Environment Setup
+### Optional: Manual Local Environment Setup
 
 If you prefer to manage the local services yourself (or if the automatic setup fails), you can run the prerequisites manually.
 
@@ -40,7 +61,7 @@ If you prefer to manage the local services yourself (or if the automatic setup f
     cd psi_verifier/observability/observability_docker_compose
 
     # Start Alloy and Loki
-    docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki
+    docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki grafana
     ```
 
 2.  **Start Local Frontend/Backend:**
@@ -57,7 +78,7 @@ If you prefer to manage the local services yourself (or if the automatic setup f
 
 -----
 
-## 2\. 🚀 Staging Server Deployment (Khawarizmi)
+## 2\. Staging Server Deployment (Khawarizmi)
 
 This approach runs the agent locally but automatically sends logs and publishes results to the central staging server, where the backend, frontend, and observability stack are already running.
 
@@ -65,13 +86,13 @@ This approach runs the agent locally but automatically sends logs and publishes 
 
 1.  **Connect to VPN:** You **must** be connected to the **Khawarzimi VPN**.
 2.  **Configure SSH:** Your machine needs SSH access to the server for the automatic `scp` file upload. Add the following to your `~/.ssh/config` file:
-    
-    Host 172.31.0.1
-      HostName 172.31.0.1
-      User 
-      Port 1223
-      IdentityFile 
-    
+```  
+Host 172.31.0.1
+  HostName 172.31.0.1
+  User 
+  Port 1223
+  IdentityFile 
+``` 
 
 ### Running the Agent for Staging
 
@@ -88,13 +109,36 @@ uv run code-proof-agent \
 2.  **Runs Agent:** Executes the agent locally.
 3.  **Uploads Results:** After the run, it automatically uploads the generated `.jsonl` file to the staging server via `scp` (e.g., `scp ... 172.31.0.1:/data/skylabs/rocq-agent-runner/data/`).
 
-### View Results
+**View Results**
 
 You and your team can view the published results on the centralized frontend:
 **[http://172.31.0.1:3005/](http://172.31.0.1:3005/)**
 
 > **Note:** After the run completes, click the refresh button on the frontend to fetch the updated data.
 
+### Optional: Manual Staging Environment Setup 
+
+If you prefer to not use --env staging and manage things yourself. 
+
+1.  **Configure Centralized Logging (`.env`)**
+    Your agent needs to know where to send logs.
+    - Create a `.env` file in your agent's execution environment. For `rocq-pipeline`, this is `fmdeps/skylabs-fm/rocq-pipeline/.env`.
+    - Add the following line:
+      ```
+      LOG_OTLP_ENDPOINT=http://172.31.0.1:4317
+      ```
+    - **Note:** You must be connected to the **Khawarzimi VPN** for this to work.
+
+2. **Run the Agent**
+    Your agent will produce a `.jsonl` file containing the results. To make it centralized, share it to server.
+
+3.  **Submit Results via `scp`**
+    Once your agent run is complete, upload the generated `.jsonl` file to the server.
+    ```bash
+    scp your_results_file.jsonl 172.31.0.1:/data/skylabs/rocq-agent-runner/data/
+    ```
+    This command syntax assumes that ssh config is set up. If not you might need to update the config or the command.
+    
 -----
 
 ## 3\. CI (Continuous Integration) Deployment

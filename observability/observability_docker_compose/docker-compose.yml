@@ -21,7 +21,6 @@ services:
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
     depends_on:
-      - tempo
       - loki
 
   # Tempo - Distributed tracing backend
@@ -66,7 +65,6 @@ services:
       - GF_SECURITY_DISABLE_GRAVATAR=true
       - GF_DATAPROXY_TIMEOUT=600  # 10 minutes global timeout
     depends_on:
-      - tempo
       - loki
 
 volumes:
