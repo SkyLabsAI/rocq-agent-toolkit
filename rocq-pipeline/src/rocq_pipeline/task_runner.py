@@ -117,18 +117,17 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
     try:
         task_file = task.file
         progress.status(0.01, "🔃")
+        rocq_args = (
+            DuneUtil.rocq_args_for(task_file)
+            if task.rocq_args is None
+            else task.rocq_args
+        )
         with RocqDocManager(
-                DuneUtil.rocq_args_for(task_file) if task.rocq_args is None else task.rocq_args,
+                rocq_args,
                 str(task_file),
                 dune=True,
-        ).sess() as rdm:
+        ).sess(load_file=True) as rdm:
             progress.status(0.05, "🔃")
-            load_reply = rdm.load_file()
-            if isinstance(load_reply, RocqDocManager.Err):
-                logger.warning(str(load_reply))
-                return None
-            progress.status(0.06, "🔎")
-
             if not task.locator(rdm):
                 progress.log(f"{task_id}: locator returned false")
                 return None

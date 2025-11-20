@@ -1,9 +1,12 @@
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Literal, Self, override
 
 from .dune_util import dune_env_hack
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
+
+logger = logging.getLogger(__name__)
 
 
 class RocqDocManager(API):
@@ -33,8 +36,25 @@ class RocqDocManager(API):
         else:
             args = ["rocq-doc-manager", file_path, "--"] + rocq_args
         super().__init__(args=args, cwd=chdir, env=env)
+        self._file_path: str = file_path
+        self._file_loaded: bool = False
 
     # ===== BEGIN: API patches ================================================
+    # Note: patch load_file to raise/warn if the file is reloaded, since
+    # this duplicates the document contents.
+    @override
+    def load_file(
+            self,
+            strict: bool = False,
+    ) -> None | API.Err[API.RocqLoc | None]:
+        if self._file_loaded:
+            msg = f"reloading {self._file_path} duplicates document content"
+            if strict:
+                raise self.Error(msg)
+            else:
+                logger.warning(msg)
+        return super().load_file()
+
     # Note: patch insert_command since it is unsafe to
     # insert multiple commands without intervening blanks.
     @override
