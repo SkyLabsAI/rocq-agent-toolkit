@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -44,8 +45,10 @@ def mk_validated_tasklist(
     validate_tasklist_schema(data)
     return data
 
-
 def load_tasks(filename: str | Path) -> tuple[Path, list[Task]]:
+    if filename == "-":
+        return (Path("."), json.load(sys.stdin))
+
     filename = Path(filename)
     wdir = filename.parent
     with open(filename, encoding="utf-8") as f:
@@ -62,6 +65,8 @@ def load_tasks(filename: str | Path) -> tuple[Path, list[Task]]:
         return (wdir, mk_validated_tasklist(data))
 
 def save_tasks(filename: str | Path, tasks: list[Task]) -> None:
+    if filename == "-":
+        json.dump(tasks, sys.stdout)
     filename = Path(filename)
     with open(filename, 'w') as f:
         if filename.suffix in [".yaml",".yml"]:
