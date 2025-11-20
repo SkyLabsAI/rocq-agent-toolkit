@@ -11,6 +11,11 @@ TEST_CASES: dict[str,list[str]] = {
     "foo; bar": ["foo", "bar"],
     "foo; [ bar | baz |]": ["foo", "bar", "baz"],
     "go; [ a | b ] => /rw": ["go", "a", "b"],
+    "go; first [ a | b ]": ["go", "a", "b"],
+    "go; try solve [ a | b ]": ["go", "a", "b"],
+    "assert (x)by b": ["assert (x)", "b"],
+    "assert(x) by b": ["assert(x)", "b"],
+    "assert (x) by (a;b)": ["assert (x)", "a", "b"],
 
     # Edge cases
     "": [],
