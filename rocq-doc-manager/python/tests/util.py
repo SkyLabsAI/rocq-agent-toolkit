@@ -1,6 +1,7 @@
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 
 import pytest
 from hypothesis import strategies as st
@@ -9,6 +10,24 @@ from rocq_doc_manager import RocqDocManager
 
 
 class RDM_Tests:
+    # NOTE: these are dynamically computed by code at the end of this file.
+    TEST_DOT_V_DOC_LEN: int | None = None
+    TEST_DOT_V_NO_THEOREM_PREFIX_LEN: int | None = None
+
+    @classmethod
+    def CONSTANT_NAMES(cls) -> list[str]:
+        return [
+            "TEST_DOT_V_DOC_LEN",
+            "TEST_DOT_V_NO_THEOREM_PREFIX_LEN",
+        ]
+
+    @classmethod
+    def CONSTANTS(cls) -> dict[str, Any | None]:
+        return {
+            nm: getattr(cls, nm, None)
+            for nm in cls.CONSTANT_NAMES()
+        }
+
     @staticmethod
     def mk_rdm(
             path: str = "my_fake.v",
@@ -25,6 +44,30 @@ class RDM_Tests:
     def transient_shared_rdm() -> RocqDocManager:
         """A RocqDocManager for a fake file that can't be loaded."""
         return RDM_Tests.mk_rdm()
+
+    @pytest.fixture(scope="class")
+    @staticmethod
+    def loaded_shared_rdm() -> RocqDocManager:
+        """A RocqDocManager for a real file that can be loaded."""
+        rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
+        assert not isinstance(
+            rdm.load_file(),
+            RocqDocManager.Err,
+        )
+        return rdm
+
+    @contextmanager
+    @staticmethod
+    def starting_from(
+            rdm: RocqDocManager,
+            /,
+            idx: int,
+    ) -> Iterator[RocqDocManager]:
+        assert not isinstance(
+            rdm.go_to(idx),
+            RocqDocManager.Err,
+        )
+        yield rdm
 
     @pytest.fixture
     @staticmethod
@@ -151,3 +194,17 @@ class RDM_Tests:
         assert len(query_reply) == 1
         parts = [s.strip() for s in query_reply[0].split(":")]
         assert parts == [lhs, rhs]
+
+
+with RDM_Tests.mk_rdm("./tests/test.v").sess() as rdm:
+    doc_contents = rdm.doc_suffix()
+
+    RDM_Tests.TEST_DOT_V_DOC_LEN = len(doc_contents)
+
+    idx = 0
+    for item in doc_contents:
+        if item.kind == "blanks" or not item.text.startswith("Theorem"):
+            idx += 1
+        else:
+            break
+    RDM_Tests.TEST_DOT_V_NO_THEOREM_PREFIX_LEN = idx
