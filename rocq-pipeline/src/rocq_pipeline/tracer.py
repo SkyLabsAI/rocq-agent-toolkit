@@ -7,7 +7,11 @@ from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, locator, util
-from rocq_pipeline.extractor import BeforeAndAfter, GoalAsString, TacticExtractor
+from rocq_pipeline.tracers.extractor import (
+    BeforeAndAfter,
+    GoalAsString,
+    TacticExtractor,
+)
 
 
 def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager) -> list[tuple[(T|None), str, (T|None)]]:
