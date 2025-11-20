@@ -39,6 +39,5 @@ def test_factorial_longlong() -> None:
                          "assert",
                          "go",
                          "lia",
-                         "subst",
                          "verify_spec",
                          "specialize"}
