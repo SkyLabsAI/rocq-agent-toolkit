@@ -43,13 +43,34 @@ def mk_parser(parent: Any|None=None) -> Any:
 
     return parser
 
+def eval_options(tags: list[str], with_tags: list[str], without_tags: list[str]) -> bool:
+    def check_tag(tag: str, default:bool=True) -> bool:
+        tag = tag.strip()
+        if tag == '':
+            return default
+        for ctag in tag.split('|'):
+            if ctag.strip() in tags:
+                return True
+        return False
+
+    keep = with_tags is None or all(check_tag(tag, default=True) for tag in with_tags)
+    remove = without_tags is not None and any(check_tag(tag, default=False) for tag in without_tags)
+    return keep and not remove
+
+
 def run(output: Path, wdir: Path, tasks: list[Task], with_tags: set[str] | None=None, without_tags:set[str] | None=None, limit:int|None = None, random_selection:bool=False) -> list[Task]:
+    def norm(ts : set[str]|None) -> list[str]:
+        if ts is None:
+            return []
+        else:
+            return [tag for tag in ts if tag != '']
+    with_tags_l = norm(with_tags)
+    without_tags_l = norm(without_tags)
     def keep(task: Task) -> bool:
-        if 'tags' in task:
-            keep = with_tags is None or all(tag in task['tags'] for tag in with_tags)
-            remove = without_tags is not None and any(tag in task['tags'] for tag in without_tags)
-            return keep and not remove
-        return with_tags is None or len(with_tags) == 0
+        if 'tags' not in task:
+            return len(with_tags_l) == 0
+        return eval_options(task['tags'], with_tags_l, without_tags_l)
+
     result_tasks = [task for task in tasks if keep(task)]
     if limit is not None:
         limit = min(limit, len(result_tasks))
