@@ -117,11 +117,14 @@ class OneShotAgent(Agent):
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         solve_tac = f"solve [ {self._tactic} ]."
         final_doc_interaction: str = solve_tac
-        if isinstance(rdm.run_command(solve_tac), RocqDocManager.Err):
+        command_reply = rdm.run_command(solve_tac)
+        if isinstance(command_reply, RocqDocManager.Err):
             return GiveUp(
                 metrics=task_output.Metrics(),
                 final_doc_interaction=final_doc_interaction,
-                reason=FailureReason(ExecutionError(solve_tac))
+                reason=FailureReason(ExecutionError(
+                    f"tactic ({solve_tac}) failed: {command_reply}"
+                ))
             )
         return Finished(
             metrics=task_output.Metrics(),

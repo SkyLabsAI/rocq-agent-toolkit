@@ -147,7 +147,9 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
         task_failure_reason = task_output.FailureReason(
             task_output.Other(task_result.message)
         )
-        progress.log(f"agent gave up with message: {task_result.message}")
+        progress.log(
+            f"{agent.name()} gave up with message: {task_result.message}"
+        )
     elif isinstance(task_result, Finished):
         task_status = task_output.TaskStatus(task_output.Success())
         progress.log(f"task completed: {task_result.message}")
