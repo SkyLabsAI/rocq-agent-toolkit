@@ -17,6 +17,7 @@ logger = get_logger("env_internal")
 DEFAULT_SERVER = "172.31.0.1"
 DEFAULT_DATA_PATH = "/data/skylabs/rocq-agent-runner/data/"
 DEFAULT_FRONTEND_PORT = 3005
+DEFAULT_GRAFANA_PORT = 3000
 
 
 class DockerServiceManager:
@@ -69,6 +70,7 @@ class DockerServiceManager:
         services = {
             "alloy": self.check_service_running("alloy"),
             "loki": self.check_service_running("loki"),
+            "grafana": self.check_service_running("grafana"),
             "backend": self.check_service_running("rocq-agent-toolkit-backend"),
             "frontend": self.check_service_running("rocq-agent-toolkit-frontend"),
         }
@@ -98,6 +100,7 @@ class DockerServiceManager:
                     "-d",
                     "alloy",
                     "loki",
+                    "grafana",
                 ],
                 cwd=self.observability_compose_dir,
             )
@@ -226,6 +229,9 @@ class LocalEnvironment(Environment):
         logger.info(
             f"Results saved locally. View results at: http://localhost:{DEFAULT_FRONTEND_PORT}/"
         )
+        logger.info(
+            f"Raw Logs can be viewed at Grafana Dashboard at: http://localhost:{DEFAULT_GRAFANA_PORT}/explore"
+        )
 
     def get_otlp_endpoint(self) -> str:
         return "http://0.0.0.0:4317"
@@ -240,6 +246,7 @@ class StagingEnvironment(Environment):
         self.server = DEFAULT_SERVER
         self.data_path = DEFAULT_DATA_PATH
         self.frontend_port = DEFAULT_FRONTEND_PORT
+        self.grafana_port = DEFAULT_GRAFANA_PORT
 
     def get_otlp_endpoint(self) -> str:
         return f"http://{self.server}:4317"
@@ -290,6 +297,9 @@ class StagingEnvironment(Environment):
                 logger.info(f"Results uploaded successfully to {scp_target}")
                 logger.info(
                     f"View results at: http://{self.server}:{self.frontend_port}/"
+                )
+                logger.info(
+                    f"Raw Logs can be viewed at Grafana Dashboard at: http://{self.server}:{self.grafana_port}/explore"
                 )
             else:
                 logger.error("Failed to upload results")
