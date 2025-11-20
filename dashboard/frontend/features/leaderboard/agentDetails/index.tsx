@@ -80,6 +80,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
                   {adminView ? (
                     <AgentRunsView
                       runDetails={runDetails}
+                      agentName={agent_name}
                       expandedRuns={expandedRuns}
                       selectedRuns={selectedRuns}
                       loadingRunDetails={loadingRunDetails}
