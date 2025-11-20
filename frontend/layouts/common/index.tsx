@@ -1,20 +1,25 @@
-import { Logo } from "@/icons/logo/logo";
+import { Logo, LogoIcon } from "@/icons/logo/logo";
 
 const Layout = ({ title,children }: { title: string;children: React.ReactNode }) => {
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-linear-to-b from-[#1B1C1D] to-[#161718]">
         {/* Header */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center gap-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl px-8 py-4">
-            <Logo  />
-            <h1 className="text-4xl font-bold bg-linear-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+        <div className="justify-center border-b border-[#292B2D]">
+          <div className="flex items-center gap-4 backdrop-blur-sm  px-10 py-4">
+            <div className="flex items-center">
+
+            <LogoIcon  />
+            <h1 className="ml-2.5 text-[#E1E2E3] font-['Noto_Sans'] text-base font-normal leading-[normal]">Skylabs AI</h1>
+            </div>
+            <div className="h-7 w-px mx-4.5 bg-[#292B2D] "></div>
+            <h1 className="text-[#97999F] font-['Noto_Sans'] text-base font-normal leading-[normal]">
               {title}
             </h1>
           </div>
         </div>
         
+      <div className="mx-auto px-4 sm:px-6 mt-24">
         {children}
       </div>
     </div>

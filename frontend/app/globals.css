@@ -1,16 +1,134 @@
 @import "tailwindcss";
 
+/* Noto Sans Font Definitions */
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/NotoSans-VariableFont_wdth,wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-stretch: 62.5% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/NotoSans-Italic-VariableFont_wdth,wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-stretch: 62.5% 100%;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Static Font Fallbacks */
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Noto Sans Condensed Variants */
+@font-face {
+  font-family: 'Noto Sans Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_Condensed-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_Condensed-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Noto Sans Extra Condensed Variants */
+@font-face {
+  font-family: 'Noto Sans Extra Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_ExtraCondensed-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Extra Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_ExtraCondensed-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Material Theme Lighter */
   --background: #FAFAFA;
   --foreground: #546E7A;
+  
+  /* Font Variables */
+  --font-noto-sans: 'Noto Sans', system-ui, -apple-system, sans-serif;
+  --font-noto-sans-condensed: 'Noto Sans Condensed', system-ui, -apple-system, sans-serif;
+  --font-noto-sans-extra-condensed: 'Noto Sans Extra Condensed', system-ui, -apple-system, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-noto-sans);
   --font-mono: var(--font-geist-mono);
+  --font-noto-sans: var(--font-noto-sans);
+  --font-noto-condensed: var(--font-noto-sans-condensed);
+  --font-noto-extra-condensed: var(--font-noto-sans-extra-condensed);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,5 +142,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-noto-sans);
 }
