@@ -96,9 +96,8 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     #2. Handle [ X1 | X2 | ... Xn ]
     if chunk.startswith('['):
         each = split_at_top_level(chunk[1:], ']')
-        assert 1 < len(each)
         content = each[0]
-        # TODO: currently ignore each[1]
+        # TODO: currently ignore each[1:]
 
         # Only split if we actually find the separator |
         parts = split_at_top_level(content, '|')

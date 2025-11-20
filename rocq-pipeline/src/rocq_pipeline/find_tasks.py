@@ -51,7 +51,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
     resp = rdm.load_file()
     if isinstance(resp, RocqDocManager.Err):
         print(f"Loading file failed with error (pwd={os.curdir}):\n{resp}")
-        raise RuntimeError(f"Failed to load file: {resp}")
+        return []
 
     tasks = []
 
