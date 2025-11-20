@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Literal, Self, override
@@ -67,6 +68,11 @@ class RocqDocManager(API):
         if isinstance(insert_reply, self.Err):
             return insert_reply
         if blanks is not None:
+            if not re.match(r"\s+|\(\*.*\*\)", blanks):
+                logger.warning(" ".join([
+                    "blanks should be whitespace or Rocq comments:",
+                    f"\"{blanks}\"",
+                ]))
             self.insert_blanks(blanks)
         return insert_reply
     # ===== END: API patches ==================================================
