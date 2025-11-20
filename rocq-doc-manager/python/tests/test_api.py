@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pytest
 
 from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager.rocq_doc_manager_api import RocqDocManagerAPI
 
 from .util import RDM_Tests
 
@@ -25,3 +28,49 @@ class Test_API(RDM_Tests):
         result = loadable_rdm.raw_request("doc_suffix", [])
         assert isinstance(result, RocqDocManager.Resp)
         assert result == RocqDocManager.Resp([{'kind': "command", 'text': "Require Import Stdlib.ZArith.BinInt."}, {'kind': 'blanks', 'text': '\n\n'}, {'kind': 'command', 'text': 'About nil.'}, {'kind': 'blanks', 'text': '\n    '}, {'kind': 'command', 'text': 'Definition junk :=\n\n\nnat.'}, {'kind': 'blanks', 'text': '\n'}, {'kind': 'command', 'text': 'Check 12 < 42 <= 100.'}, {'kind': 'blanks', 'text': '\n\n\n'}, {'kind': 'command', 'text': 'Theorem test : forall x : nat, x = x.'}, {'kind': 'blanks', 'text': '\n'}, {'kind': 'command', 'text': 'Proof.'}, {'kind': 'blanks', 'text': '\n  '}, {'kind': 'command', 'text': 'intro x.'}, {'kind': 'blanks', 'text': '\n  '}, {'kind': 'command', 'text': 'reflexivity.'}, {'kind': 'blanks', 'text': '\n'}, {'kind': 'command', 'text': 'Qed.'}])
+
+    def _test_insert_commands_without_intervening_blanks(
+            self,
+            tmp_path: Path,
+            /,
+            rdm_cls: type[RocqDocManagerAPI],
+            should_succeed: bool,
+    ) -> None:
+        tmp_v = tmp_path / "foo.v"
+        tmp_rdm = RDM_Tests.mk_rdm(path=str(tmp_v))
+        with tmp_rdm.sess(load_file=False):
+            assert not isinstance(
+                rdm_cls.insert_command(tmp_rdm, "Check tt."),
+                rdm_cls.Err,
+            )
+            # NOTE: no intervening blank
+            assert not isinstance(
+                rdm_cls.insert_command(tmp_rdm, "Check tt."),
+                rdm_cls.Err,
+            )
+            rdm_cls.commit(tmp_rdm, True)
+            compile_result = rdm_cls.compile(tmp_rdm)
+            if should_succeed:
+                assert compile_result.error is None
+            else:
+                assert compile_result.error is not None
+
+    def test_insert_commands_without_intervening_blanks_fails(
+            self,
+            tmp_path: Path,
+    ) -> None:
+        self._test_insert_commands_without_intervening_blanks(
+            tmp_path,
+            rdm_cls=RocqDocManagerAPI,
+            should_succeed=False,
+        )
+
+    def test_patched_insert_commands_without_intervening_blanks_works(
+            self,
+            tmp_path: Path,
+    ) -> None:
+        self._test_insert_commands_without_intervening_blanks(
+            tmp_path,
+            rdm_cls=RocqDocManager,
+            should_succeed=True,
+        )

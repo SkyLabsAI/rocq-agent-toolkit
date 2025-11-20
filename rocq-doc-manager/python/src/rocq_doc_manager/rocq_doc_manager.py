@@ -34,6 +34,21 @@ class RocqDocManager(API):
             args = ["rocq-doc-manager", file_path, "--"] + rocq_args
         super().__init__(args=args, cwd=chdir, env=env)
 
+    # Note: patch insert_command since it is unsafe to
+    # insert multiple commands without intervening blanks.
+    @override
+    def insert_command(
+            self,
+            text: str,
+            blanks: str | None = "\n",
+    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+        insert_reply = super().insert_command(text)
+        if isinstance(insert_reply, API.Err):
+            return insert_reply
+        if blanks is not None:
+            self.insert_blanks(blanks)
+        return insert_reply
+
     @contextmanager
     @override
     def sess(self, load_file: bool = True) -> Iterator[Self]:
