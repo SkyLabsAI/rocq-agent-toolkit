@@ -34,6 +34,7 @@ class RocqDocManager(API):
             args = ["rocq-doc-manager", file_path, "--"] + rocq_args
         super().__init__(args=args, cwd=chdir, env=env)
 
+    # ===== BEGIN: API patches ================================================
     # Note: patch insert_command since it is unsafe to
     # insert multiple commands without intervening blanks.
     @override
@@ -43,19 +44,21 @@ class RocqDocManager(API):
             blanks: str | None = "\n",
     ) -> API.CommandData | API.Err[API.RocqLoc | None]:
         insert_reply = super().insert_command(text)
-        if isinstance(insert_reply, API.Err):
+        if isinstance(insert_reply, self.Err):
             return insert_reply
         if blanks is not None:
             self.insert_blanks(blanks)
         return insert_reply
+    # ===== END: API patches ==================================================
 
+    # ===== BEGIN: contextmanagers ============================================
     @contextmanager
     @override
     def sess(self, load_file: bool = True) -> Iterator[Self]:
         with super().sess():
             if load_file:
                 load_reply = self.load_file()
-                if isinstance(load_reply, RocqDocManager.Err):
+                if isinstance(load_reply, self.Err):
                     raise self.Error(
                         f"RocqDocManager.load_file failed: {load_reply}"
                     )
@@ -73,7 +76,7 @@ class RocqDocManager(API):
             # ensure that the document is left unchanged.
             marker_cmd = "Check tt."
             insert_command_reply = self.insert_command(marker_cmd)
-            if isinstance(insert_command_reply, RocqDocManager.Err):
+            if isinstance(insert_command_reply, self.Err):
                 raise self.Error(" ".join([
                     f"RocqDocManager failed to insert {marker_cmd}:",
                     str(insert_command_reply),
@@ -83,7 +86,7 @@ class RocqDocManager(API):
 
         if rollback:
             revert_reply = self.revert_before(True, current_idx)
-            if isinstance(revert_reply, RocqDocManager.Err):
+            if isinstance(revert_reply, self.Err):
                 raise self.Error(" ".join([
                     "RocqDocManager failed to rollback to",
                     f"{current_idx}: {revert_reply}",
@@ -132,7 +135,9 @@ class RocqDocManager(API):
             end_section_reply = self.insert_command(f"End {name}.")
             if isinstance(end_section_reply, self.Err):
                 raise self.Error(end_section_reply)
+    # ===== END: contextmanagers ==============================================
 
+    # ===== BEGIN: macros =====================================================
     def Compute(
             self,
             term: str,
@@ -240,3 +245,4 @@ end.""",
             f"Eval lazy in ltac:(let nm := fresh \"{ident}\" in idtac nm).",
             0
         )
+    # ===== END: macros =======================================================
