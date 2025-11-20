@@ -3,10 +3,47 @@ from typing import Any, override
 from rocq_doc_manager import RocqDocManager
 
 
-class StateExtractor[T]:
+class DocumentWatcher:
+    """
+    Provides callback infrastructure to watch certain parts of the document.
+
+    When used in a tracing context, it is important that any manipulations of
+    the document do not affect the behavior of other parts of the file.
+    """
+
+    def setup(self, rdm: RocqDocManager) -> None:
+        """
+        Sets up the infrastructure necessary to run the extractor.
+
+        This is called once **per-file** and should NOT have any user-visible
+        side effects in the Rocq document, e.g. it should not alter parsing
+        scopes scopes or bring new symbols into scope.
+        """
+        _ = rdm
+
+    def start_proof(self, rdm: RocqDocManager) -> None:
+        """
+        Function called at the start of a proof.
+
+        This is called once at the start of any proof that is being traced.
+        """
+        _ = rdm
+
+    def end_proof(self, rdm: RocqDocManager) -> None:
+        """
+        Function called at the end of the proof.
+
+        Note: This occurs after the last tactic invocation. There may
+        still be open subgoals if the proof is being closed by `Admitted`.
+        """
+        _ = rdm
+
+
+class StateExtractor[T](DocumentWatcher):
     """
     A StateExtractor extracts state from a Rocq proof.
     """
+
     def __call__(self, rdm: RocqDocManager) -> T | None:
         """
         Extract a feature from the current state.
@@ -19,6 +56,18 @@ class AllStateExtractor(StateExtractor[dict[str,Any]]):
     """
     def __init__(self, extractors: dict[str, StateExtractor[Any]]):
         self._extractors:dict[str, StateExtractor] = extractors
+
+    def setup(self, rdm: RocqDocManager) -> None:
+        for _, e in self._extractors.items():
+            e.setup(rdm)
+
+    def start_proof(self, rdm: RocqDocManager) -> None:
+        for _, e in self._extractors.items():
+            e.start_proof(rdm)
+
+    def end_proof(self, rdm: RocqDocManager) -> None:
+        for _, e in self._extractors.items():
+            e.end_proof(rdm)
 
     @override
     def __call__(self, rdm: RocqDocManager) -> dict[str,Any]:
@@ -42,7 +91,7 @@ class GoalAsString(StateExtractor[str]):
             return result.result # type: ignore
         return ""
 
-class TacticExtractor[T]:
+class TacticExtractor[T](DocumentWatcher):
     """
     Extract information about the execution of a tactic. This class can extract
     additional information based on the tactic, e.g. adding the types of lemmas that
@@ -60,6 +109,18 @@ class TacticExtractor[T]:
 class AllTacticExtractor(TacticExtractor[dict[str,Any]]):
     def __init__(self, extractors: dict[str, TacticExtractor[Any]]) -> None:
         self._extractors = extractors
+
+    def setup(self, rdm: RocqDocManager) -> None:
+        for _, e in self._extractors.items():
+            e.setup(rdm)
+
+    def start_proof(self, rdm: RocqDocManager) -> None:
+        for _, e in self._extractors.items():
+            e.start_proof(rdm)
+
+    def end_proof(self, rdm: RocqDocManager) -> None:
+        for _, e in self._extractors.items():
+            e.end_proof(rdm)
 
     def before(self, rdm: RocqDocManager, tactic:str) -> dict[str,Any] | None:
         def go[T](e: TacticExtractor[T]) -> T|None:
@@ -82,6 +143,15 @@ class Before[T](TacticExtractor[T]):
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
 
+    def setup(self, rdm: RocqDocManager) -> None:
+        self._extractor.setup(rdm)
+
+    def start_proof(self, rdm: RocqDocManager) -> None:
+        self._extractor.start_proof(rdm)
+
+    def end_proof(self, rdm: RocqDocManager) -> None:
+        self._extractor.end_proof(rdm)
+
     @override
     def before(self, rdm: RocqDocManager, tactic:str) -> T|None:
         return self._extractor(rdm)
@@ -90,6 +160,16 @@ class After[T](TacticExtractor[T]):
     """Run the StateExtractor after the tactic runs"""
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
+
+    def setup(self, rdm: RocqDocManager) -> None:
+        self._extractor.setup(rdm)
+
+    def start_proof(self, rdm: RocqDocManager) -> None:
+        self._extractor.start_proof(rdm)
+
+    def end_proof(self, rdm: RocqDocManager) -> None:
+        self._extractor.end_proof(rdm)
+
     @override
     def after(self, rdm: RocqDocManager, tactic:str) -> T|None:
         return self._extractor(rdm)
@@ -98,6 +178,15 @@ class BeforeAndAfter[T](TacticExtractor[T]):
     """Run the StateExtractor before and after the tactic runs"""
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
+
+    def setup(self, rdm: RocqDocManager) -> None:
+        self._extractor.setup(rdm)
+
+    def start_proof(self, rdm: RocqDocManager) -> None:
+        self._extractor.start_proof(rdm)
+
+    def end_proof(self, rdm: RocqDocManager) -> None:
+        self._extractor.end_proof(rdm)
 
     @override
     def before(self, rdm: RocqDocManager, tactic:str) -> T|None:
