@@ -38,6 +38,14 @@ def setup_logging(config: LoggingConfig) -> None:
         environment=config.environment,
     )
 
+    # 1a. Optionally disable console/terminal logging while keeping other handlers
+    if not config.enable_console_logging:
+        root_logger = logging.getLogger()
+        root_logger.handlers = [
+            h for h in root_logger.handlers if not isinstance(h, logging.StreamHandler)
+        ]
+        logger.debug("Console logging disabled by configuration")
+
     # 1b. Populate event schemas so loggers can filter payloads appropriately
     event_configs = {
         "training": config.training_event_config,

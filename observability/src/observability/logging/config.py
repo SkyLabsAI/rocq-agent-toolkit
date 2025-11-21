@@ -33,6 +33,7 @@ class LoggingConfig:
     # Logging configuration
     enable_logging: bool = True
     enable_otlp_log_export: bool = True
+    enable_console_logging: bool = True
     log_level: str = "INFO"
     log_format_json: bool = True
 
