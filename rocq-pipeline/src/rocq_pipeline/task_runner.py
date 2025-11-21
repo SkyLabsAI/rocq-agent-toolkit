@@ -36,6 +36,7 @@ def init_logging(env: Environment) -> None:
         service_name="rocq_agent",
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         otlp_endpoint=env.get_otlp_endpoint(),
+        enable_console_logging=False,
     )
     setup_logging(log_config)
     logger.info("Logging configured with OTLP endpoint: %s", otlp_endpoint)
@@ -97,7 +98,22 @@ class FullTask:
     prompt: str|None
 
 
-def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, progress: util.ProgressCallback) -> task_output.TaskOutput | None:
+def collect_env_tags(prefix: str = "TAG_") -> dict[str, str]:
+    """
+    Collect environment variables that represent tags.
+
+    For each variable of the form TAG_FOO=bar, this returns an entry
+    {"foo": "bar"} in the resulting dict.
+    """
+    tags: dict[str, str] = {}
+    for key, value in os.environ.items():
+        if key.startswith(prefix):
+            tag_key = key[len(prefix):].lower()
+            tags[tag_key] = value
+    return tags
+
+
+def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, tags: dict[str, str], progress: util.ProgressCallback) -> task_output.TaskOutput | None:
     """
     Build an agent using [build_agent] and invoke it on the task.
     """
@@ -164,6 +180,7 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, p
         results=task_result.final_doc_interaction,
         failure_reason=task_failure_reason,
         metrics=task_result.metrics,
+        metadata=task_output.Metadata(tags=task_output.Tags(list(tags.items()))),
     )
 
 def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]]:
@@ -219,6 +236,7 @@ class RunConfiguration:
     working_dir: Path
     trace: bool
     jobs: int
+    tags: dict[str, str]
     deployment_env: Environment | None = None
 
 def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None) -> RunConfiguration:
@@ -236,7 +254,8 @@ def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None
 
     init_logging(deployment_env)
 
-    return RunConfiguration(agent_builder, tasks, tasks_name, arguments.output_dir, wdir, arguments.trace, arguments.jobs, deployment_env)
+    tags = collect_env_tags()
+    return RunConfiguration(agent_builder, tasks, tasks_name, arguments.output_dir, wdir, arguments.trace, arguments.jobs, tags, deployment_env)
 
 def run_config(config: RunConfiguration) -> bool:
     def rocq_args(filename: Path) -> list[str]:
@@ -259,7 +278,7 @@ def run_config(config: RunConfiguration) -> bool:
     # # add_log_context("run_id", run_id)
 
     def run_it(full_task: FullTask, progress:Any) -> task_output.TaskOutput | None:
-        return run_task(config.agent_builder, full_task, run_id, wdir=config.working_dir, progress=progress)
+        return run_task(config.agent_builder, full_task, run_id, wdir=config.working_dir, tags=config.tags, progress=progress)
 
     # Touch the file early to make sure that it is createable
     Path(tasks_result_file).touch()

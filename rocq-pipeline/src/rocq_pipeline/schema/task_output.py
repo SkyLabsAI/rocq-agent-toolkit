@@ -431,6 +431,27 @@ class TaskKind:
 
 
 @dataclass
+class Tags:
+    """Original type: tags"""
+
+    value: List[Tuple[str, str]]
+
+    @classmethod
+    def from_json(cls, x: Any) -> 'Tags':
+        return cls(_atd_read_assoc_object_into_list(_atd_read_string)(x))
+
+    def to_json(self) -> Any:
+        return _atd_write_assoc_list_to_object(_atd_write_string)(self.value)
+
+    @classmethod
+    def from_json_string(cls, x: str) -> 'Tags':
+        return cls.from_json(json.loads(x))
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
 class ResourceUsage:
     """Original type: resource_usage = { ... }"""
 
@@ -571,6 +592,34 @@ class Metrics:
 
 
 @dataclass
+class Metadata:
+    """Original type: metadata = { ... }"""
+
+    tags: Tags = field(default_factory=lambda: Tags([]))
+
+    @classmethod
+    def from_json(cls, x: Any) -> 'Metadata':
+        if isinstance(x, dict):
+            return cls(
+                tags=Tags.from_json(x['tags']) if 'tags' in x else Tags([]),
+            )
+        else:
+            _atd_bad_json('Metadata', x)
+
+    def to_json(self) -> Any:
+        res: Dict[str, Any] = {}
+        res['tags'] = (lambda x: x.to_json())(self.tags)
+        return res
+
+    @classmethod
+    def from_json_string(cls, x: str) -> 'Metadata':
+        return cls.from_json(json.loads(x))
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
 class ResourceExhaustion:
     """Original type: failure_reason = [ ... | ResourceExhaustion of ... | ... ]"""
 
@@ -673,6 +722,7 @@ class TaskOutput:
     trace_id: Optional[str] = None
     failure_reason: Optional[FailureReason] = None
     results: Any = field(default_factory=lambda: None)
+    metadata: Optional[Metadata] = None
 
     @classmethod
     def from_json(cls, x: Any) -> 'TaskOutput':
@@ -688,6 +738,7 @@ class TaskOutput:
                 trace_id=_atd_read_string(x['trace_id']) if 'trace_id' in x else None,
                 failure_reason=FailureReason.from_json(x['failure_reason']) if 'failure_reason' in x else None,
                 results=(lambda x: x)(x['results']) if 'results' in x else None,
+                metadata=Metadata.from_json(x['metadata']) if 'metadata' in x else None,
             )
         else:
             _atd_bad_json('TaskOutput', x)
@@ -706,6 +757,8 @@ class TaskOutput:
         if self.failure_reason is not None:
             res['failure_reason'] = (lambda x: x.to_json())(self.failure_reason)
         res['results'] = (lambda x: x)(self.results)
+        if self.metadata is not None:
+            res['metadata'] = (lambda x: x.to_json())(self.metadata)
         return res
 
     @classmethod

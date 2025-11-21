@@ -40,6 +40,14 @@ type metrics <doc text="Aggregated metrics for task."> = {
   ~custom <doc text="Additional user defined metrics."> <python default="None"> : abstract;
 }
 
+(* Simple key/value tags, represented as a JSON object mapping string->string. *)
+type tags <doc text="User-defined tags as key/value pairs."> = (string * string) list <json repr="object">
+
+type metadata <doc text="Additional metadata for a task."> = {
+  ~tags <doc text="User-defined tags for this task (from environment, etc.).">
+    <python default="Tags([])"> : tags;
+}
+
 type task_output <doc text="Agent output for a single task."> = {
   run_id <doc text="Unique identifier for the run (UUID)."> : string;
   task_kind <doc text="Kind of task."> : task_kind;
@@ -54,4 +62,5 @@ type task_output <doc text="Agent output for a single task."> = {
   ?failure_reason <doc text="Reason for task failure."> : failure_reason option;
   ~results <doc text="Agent results after task completion."> <python default="None"> : abstract;
   metrics <doc text="Aggregated metrics for task."> : metrics;
+  ?metadata <doc text="Additional metadata, including env tags."> : metadata option;
 }
