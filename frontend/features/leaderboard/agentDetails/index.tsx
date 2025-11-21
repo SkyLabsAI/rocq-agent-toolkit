@@ -1,8 +1,6 @@
-import TaskDetailsModal from "@/features/taskDetailsModal";
 import cn from "classnames";
 import { useAgentDetails } from "@/hooks/useAgentDetails";
 import AgentRunsView from "./AgentRunsView";
-import AgentTasksView from "./AgentTasksView";
 
 interface AgentDetailsProps {
   agent_name: string;
@@ -15,12 +13,8 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
     taskDetails,
     runDetails,
     isOpen,
-    modalState,
     selectedRuns,
-    loadingLogs,
     toggleDetails,
-    openCodeModal,
-    closeModal,
     compareSelected,
     toggleRunSelection,
     clearSelectedRuns,
@@ -64,41 +58,20 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
                 </div>
               ) : (
                 <div className="space-y-4">
-                  
-                
-                  {adminView ? (
-                    <AgentRunsView
+                <AgentRunsView
                       runDetails={runDetails}
                       agentName={agent_name}
                       selectedRuns={selectedRuns}
-                      loadingLogs={loadingLogs}
                       toggleRunSelection={toggleRunSelection}
                       clearSelectedRuns={clearSelectedRuns}
                       compareSelected={compareSelected}
-                      openCodeModal={openCodeModal}
                     />
-                  ) : (
-                    <AgentTasksView
-                      taskDetails={taskDetails}
-                      loadingLogs={loadingLogs}
-                      openCodeModal={openCodeModal}
-                    />
-                  )}
                 </div>
               )}
             </div>
           </td>
         </tr>
       )}
-
-      {/* Task Details Modal */}
-      <TaskDetailsModal
-        isOpen={modalState.isOpen}
-        onClose={closeModal}
-        details={modalState.logs}
-        title={modalState.selectedTask ? `Observability Logs - ${modalState.selectedTask.task_id}` : 'Task Logs'}
-        taskId={modalState.selectedTask?.task_id}
-      />
     </>
   );
 };

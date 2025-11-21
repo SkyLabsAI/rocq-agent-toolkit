@@ -1,25 +1,17 @@
 import React from 'react';
 import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
-import TaskButton from '@/components/base/taskButton';
-import { Button } from '@/components/base/Button';
 import RunRow from '@/components/RunRow';
-import RunDetailsView from '@/components/RunDetailsView';
 import StickyCompareBar from '@/components/StickyCompareBar';
-import cn from 'classnames';
-
 import { PlayIcon } from '@/icons/play';
 
 type AgentRunsViewProps = {
   runDetails: any[];
   agentName: string;
   selectedRuns: string[];
-  loadingLogs: string | null;
   toggleRunSelection: (run: Run) => void;
   clearSelectedRuns: () => void;
   compareSelected: () => void;
-  openCodeModal: (task: any) => void;
 };
-
 
 const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   runDetails,
@@ -28,9 +20,8 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   toggleRunSelection,
   clearSelectedRuns,
   compareSelected,
-  openCodeModal,
 }) => {
-  const { setSelectedRun, selectedRun } = useSelectedRun();
+  const { setSelectedRun } = useSelectedRun();
 
   const handleRunClick = (run: Run) => {
     setSelectedRun(run);
@@ -39,9 +30,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   const handleBackToRuns = () => {
     setSelectedRun(null);
   };
-
- 
-
 
   return (
     <div className='space-y-4'>
@@ -95,19 +83,16 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
               totalTasks={run.total_tasks}
               successCount={run.success_count}
               failureCount={run.failure_count}
-              agentName={run.agent_name}
               timestamp={run.timestamp_utc}
-              isExpanded={false}
               isSelected={selectedRuns.includes(run.run_id)}
               onToggleExpansion={handleRunClick}
               onToggleSelection={toggleRunSelection}
-              onLogsClick={openCodeModal}
             />
           </div>
         ))}
       </div>
 
-        <StickyCompareBar
+      <StickyCompareBar
         selectedRuns={selectedRuns}
         agentName={agentName}
         onClearSelection={clearSelectedRuns}
@@ -115,6 +100,8 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
       />
 
       {/* Add bottom padding to prevent content from being hidden behind the sticky bar */}
-        </div>)}
+    </div>
+  );
+};
 
-export default AgentRunsView
+export default AgentRunsView;

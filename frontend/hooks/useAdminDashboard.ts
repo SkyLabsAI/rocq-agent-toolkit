@@ -1,11 +1,26 @@
 import { useEffect, useState } from "react";
-import { getData, refreshData } from "@/services/dataservice";
-import { AgentSummary } from "@/types/types";
+import { getData, getObservabilityLogs, refreshData } from "@/services/dataservice";
+import { AgentSummary, TaskOutput } from "@/types/types";
+
+
+interface ModalState {
+  isOpen: boolean;
+  selectedTask: TaskOutput | null;
+  logs: Record<string, unknown> | null;
+}
+
 
 export const useAdminDashboard = () => {
   const [agentData, setAgentData] = useState<AgentSummary[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string>("");
+
+    const [modalState, setModalState] = useState<ModalState>({
+    isOpen: false,
+    selectedTask: null,
+    logs: null
+  });
+    const [loadingLogs, setLoadingLogs] = useState<string | null>(null);
 
   const fetchData = async () => {
     const data = await getData();
@@ -36,10 +51,52 @@ export const useAdminDashboard = () => {
     }
   };
 
+
+    const openCodeModal = async (task: TaskOutput) => {
+
+      console.log("What is this. will this even work ? ")
+
+      const taskKey = `${task.run_id}-${task.task_id}`;
+      setLoadingLogs(taskKey);
+      
+      try {
+        const logs = await getObservabilityLogs(task.run_id, task.task_id);
+        
+        setModalState({
+          isOpen: true,
+          selectedTask: task,
+          logs: logs
+        });
+      } catch (error) {
+        console.error('Error fetching observability logs:', error);
+        setModalState({
+          isOpen: true,
+          selectedTask: task,
+          logs: { error: 'Failed to load logs' }
+        });
+      } finally {
+        setLoadingLogs(null);
+      }
+    };
+  
+    const closeModal = () => {
+      setModalState({
+        isOpen: false,
+        selectedTask: null,
+        logs: null
+      });
+    };
+
+
+
   return {
     agentData,
     isRefreshing,
     refreshMessage,
     handleRefresh,
+    openCodeModal,
+    closeModal,
+    modalState,
+    loadingLogs
   };
 };
