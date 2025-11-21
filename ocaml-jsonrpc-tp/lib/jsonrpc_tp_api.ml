@@ -62,17 +62,25 @@ module Schema = struct
 
   (* Ensure every field has a default; auto-generated methods use dictionary
      unpacking and must handle cases where null/empty fields are elided. *)
-  let python_dataclass_field : type a. a t -> string = fun s ->
-    Printf.sprintf "field(kw_only=True, %s)" @@
-    match s with
-    | Null -> "default=None"
-    | Any -> "default=None"
-    | Int -> "default=0"
-    | Bool -> "default=False"
-    | String -> "default=\"\""
-    | Nullable _ -> "default=None"
-    | List _ -> "default_factory=list"
-    | Obj o -> Printf.sprintf "default_factory=%s" o
+  let python_dataclass_field : type a. cls:string -> a t -> string =
+      fun ~cls s ->
+    let default =
+      match s with
+      | Null -> "default=None"
+      | Any -> "default=None"
+      | Int -> "default=0"
+      | Bool -> "default=False"
+      | String -> "default=\"\""
+      | Nullable _ -> "default=None"
+      | List _ -> "default_factory=list"
+      | Obj o -> Printf.sprintf "default_factory=%s.%s" cls o
+    in
+    let noqa =
+      match s with
+      | Obj _ -> "  # noqa: F821"
+      | _     -> ""
+    in
+    Printf.sprintf "field(kw_only=True, %s)%s" default noqa
 
   let python_val : type a. string -> a t -> string = fun var s ->
     let fresh = let c = ref 0 in fun () -> incr c; Printf.sprintf "v%i" !c in
@@ -497,7 +505,7 @@ let output_python_api oc api =
       Option.iter (line "        # %a." pp_capitalized) f.descr;
       line "        %s: %s = %s" f.name
         (Schema.python_type ~cls:api.name f.schema)
-        (Schema.python_dataclass_field f.schema)
+        (Schema.python_dataclass_field ~cls:api.name f.schema)
     in
     output_fields o.fields
   in
