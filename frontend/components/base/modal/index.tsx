@@ -61,6 +61,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <h2 className="text-xl font-semibold text-white">{title}</h2>
           <button
+          title='back'
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
           >
