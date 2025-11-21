@@ -80,7 +80,7 @@ class RocqDocManagerAPI(JsonRPCTP):
     class QueryResult:
         """Result of a raw query."""
         feedback: "list[RocqDocManagerAPI.Feedback]" = field(kw_only=True, default_factory=list)
-        data: "RocqDocManagerAPI.CommandData" = field(kw_only=True, default_factory=RocqDocManagerAPI.CommandData)  # noqa: F821
+        data: "RocqDocManagerAPI.CommandData" = field(kw_only=True, default_factory=lambda: RocqDocManagerAPI.CommandData())
 
     def advance_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Advance the cursor before the indicated unprocessed item."""
