@@ -35,8 +35,6 @@ def mk_parser(parent: Any|None=None) -> Any:
     parser.add_argument(
         "--task-file", type=Path, help="The task descriptor in a file, JSON or YAML"
     )
-    # Add the optional --trace flag
-    parser.add_argument("--trace", action="store_true", help="Enable tracing.")
     parser.add_argument(
         "--output-dir",
         type=Path,
