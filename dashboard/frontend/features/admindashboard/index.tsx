@@ -94,8 +94,6 @@ const AdminDashboardContent: React.FC = () => {
                   key={agent.agent_name}
                   agent_name={agent.agent_name}
                   adminView
-             
-                  setSelectedRun={setSelectedRun}
                 />
               ))}
             </tbody>
@@ -103,24 +101,17 @@ const AdminDashboardContent: React.FC = () => {
         </div>
       </div>
       )}
-      
-      {/* Render AgentDetails for run details view when selectedRun exists */}
+
       {selectedRun && (() => {
-        // Find which agent contains the selected run
         const selectedAgent = agentData.find(agent => {
-          // We need to check if this agent has the selected run
-          // For now, we'll render the first agent as a fallback
-          return true; // This will be refined when we have run data
-        });
-
-
-        
+          return true; 
+      });
         
         return selectedAgent ? (
           <RunDetailsView
             run={selectedRun}
             onBack={() => setSelectedRun(null)}
-            openCodeModal={() => { } } loadingLogs={null}          />
+            openCodeModal={() => {  }} loadingLogs={null}          />
         ) : null;
       })()}
     </Layout>

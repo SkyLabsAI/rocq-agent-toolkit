@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/base/Button';
 import cn from 'classnames';
 import { Run } from '@/contexts/SelectedRunContext';
+import { TaskOutput } from '@/types/types';
 
 interface RunRowProps {
   run: Run;
@@ -13,6 +14,7 @@ interface RunRowProps {
   timestamp: string;
   isExpanded: boolean;
   isSelected: boolean;
+  onLogsClick: (task: TaskOutput) => void;
   onToggleExpansion: (runId: Run) => void;
   onToggleSelection: (runId: Run) => void;
 }
@@ -41,6 +43,7 @@ const  RunRow: React.FC<RunRowProps> = ({
   isSelected,
   onToggleExpansion,
   onToggleSelection,
+  onLogsClick,
 }) => {
   const successRate = ((successCount / totalTasks) * 100).toFixed(1);
 

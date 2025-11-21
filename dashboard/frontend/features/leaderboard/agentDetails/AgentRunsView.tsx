@@ -25,7 +25,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   runDetails,
   agentName,
   selectedRuns,
-  loadingLogs,
   toggleRunSelection,
   clearSelectedRuns,
   compareSelected,
@@ -102,6 +101,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
               isSelected={selectedRuns.includes(run.run_id)}
               onToggleExpansion={handleRunClick}
               onToggleSelection={toggleRunSelection}
+              onLogsClick={openCodeModal}
             />
           </div>
         ))}
