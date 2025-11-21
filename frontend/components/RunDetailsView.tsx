@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/base/Button';
+import { getRunDetails } from '@/services/dataservice';
+import type { TaskOutput, RunDetailsResponse } from '@/types/types';
 
 interface RunDetailsViewProps {
-  run: any;
-  taskDetails: any[];
+  run: {
+    run_id: string;
+    agent_name: string;
+    timestamp_utc: string;
+    total_tasks: number;
+    success_count: number;
+    failure_count: number;
+  };
   loadingLogs: string | null;
   onBack: () => void;
-  openCodeModal: (task: any) => void;
+  openCodeModal: (task: TaskOutput) => void;
 }
 
 function ChevronLeft() {
@@ -34,11 +42,59 @@ function StatusBadge({ status }: { status: string }) {
 
 const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   run,
-  taskDetails,
   loadingLogs,
   onBack,
   openCodeModal,
 }) => {
+  const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRunDetails = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const runDetailsResponse = await getRunDetails([run.run_id]);
+        if (runDetailsResponse.length > 0) {
+          setTaskDetails(runDetailsResponse[0].tasks);
+        }
+      } catch (err) {
+        console.error('Error fetching run details:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch run details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRunDetails();
+  }, [run.run_id]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#292a2e] mb-4"></div>
+          <p className="font-noto-sans text-sm text-[#292a2e]">Loading run details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="font-noto-sans text-sm text-red-600 mb-4">Error: {error}</p>
+          <Button variant="default" onClick={onBack}>
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-white z-50 overflow-auto">
       <div className="min-h-full">
@@ -136,7 +192,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         Task Kind
                       </p>
                       <p className="font-noto-sans font-normal text-sm text-[#292a2e]">
-                        {task.task_kind || 'FullProofTask'}
+                        {typeof task.task_kind === 'string' ? task.task_kind : task.task_kind?.kind || 'FullProofTask'}
                       </p>
                     </div>
                     
@@ -162,7 +218,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           Execution Time
                         </p>
                         <p className="font-inter font-normal text-sm text-[#292a2e]">
-                          {task.execution_time || '23.01s'}
+                          {task.metrics?.resource_usage?.execution_time_sec ? `${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s` : '23.01s'}
                         </p>
                       </div>
                       
@@ -171,7 +227,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           CPU Time
                         </p>
                         <p className="font-inter font-normal text-sm text-[#292a2e]">
-                          {task.cpu_time || '24.98s'}
+                          {task.metrics?.resource_usage?.cpu_time_sec ? `${task.metrics.resource_usage.cpu_time_sec.toFixed(2)}s` : '24.98s'}
                         </p>
                       </div>
                       
@@ -180,7 +236,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           GPU Time
                         </p>
                         <p className="font-inter font-normal text-sm text-[#292a2e]">
-                          {task.gpu_time || '7.80s'}
+                          {task.metrics?.resource_usage?.gpu_time_sec ? `${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s` : '7.80s'}
                         </p>
                       </div>
                     </div>
@@ -191,7 +247,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           LLM Calls
                         </p>
                         <p className="font-inter font-normal text-sm text-[#292a2e]">
-                          {task.llm_calls || '24'}
+                          {task.metrics?.llm_invocation_count || '24'}
                         </p>
                       </div>
                       
@@ -200,7 +256,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           Total Tokens
                         </p>
                         <p className="font-inter font-normal text-sm text-[#292a2e]">
-                          {task.total_tokens || '0'}
+                          {task.metrics?.token_counts?.total_tokens || '0'}
                         </p>
                       </div>
                       
@@ -209,7 +265,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           Input Tokens
                         </p>
                         <p className="font-inter font-normal text-sm text-[#292a2e]">
-                          {task.input_tokens || '3,767'}
+                          {task.metrics?.token_counts?.input_tokens?.toLocaleString() || '3,767'}
                         </p>
                       </div>
                       
@@ -218,7 +274,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           Output Tokens
                         </p>
                         <p className="font-inter font-normal text-sm text-[#292a2e]">
-                          {task.output_tokens || '2,129'}
+                          {task.metrics?.token_counts?.output_tokens?.toLocaleString() || '2,129'}
                         </p>
                       </div>
                     </div>
@@ -237,7 +293,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         Proof Complexity
                       </p>
                       <p className="font-inter font-normal text-sm text-[#292a2e]">
-                        {task.proof_complexity || '5'}
+                        {String(task.metrics?.custom_metrics?.proof_complexity) || '5'}
                       </p>
                     </div>
                   </div>
@@ -252,7 +308,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                     </p>
                     <div className="bg-[#f0f2f4] rounded p-4 h-[105px] overflow-auto">
                       <pre className="font-inter font-normal text-sm text-[#292a2e] whitespace-pre-wrap">
-                        {task.result || JSON.stringify({
+                        {task.results ? JSON.stringify(task.results, null, 2) : JSON.stringify({
                           "proof_found": true,
                           "steps_taken": 13
                         }, null, 2)}
