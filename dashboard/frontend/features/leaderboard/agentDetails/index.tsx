@@ -41,10 +41,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
         )}
         onClick={toggleDetails}
       >
-        <td className="px-6 py-4 text-white font-medium">
+        <td className="px-6 py-4 text-text font-medium">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-text font-semibold text-sm">
+            <div className="h-8 w-8 bg-background-information rounded-lg flex items-center justify-center">
+              <span className="text-text-information font-semibold text-sm">
                 {agent_name.charAt(0).toUpperCase()}
               </span>
             </div>
@@ -56,7 +56,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
       {isOpen && (
         <tr>
           <td colSpan={7} className="bg-white/5 border-t border-white/10">
-            <div className="p-6">
+            <div className="p-6 pt-4">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
@@ -70,12 +70,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex gap-1 items-center">
-                      <PlayIcon/>
-                  <h3 className="text-lg font-semibold text-white">
-                    {adminView ? 'Runs' : 'Task Details'}
-                  </h3>
-                    </div>
+                  
                 
                   {adminView ? (
                     <AgentRunsView

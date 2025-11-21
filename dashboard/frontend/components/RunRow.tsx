@@ -18,29 +18,15 @@ interface RunRowProps {
 
 function LatestBadge() {
   return (
-    <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30">
-      <span className="text-xs font-semibold text-blue-300">
+    <div className="inline-flex items-center px-3 py-1 rounded-full bg-background-information border border-blue-500/30">
+      <span className="text-xs font-semibold text-text-information">
         Latest
       </span>
     </div>
   );
 }
 
-function ChevronIcon({ isExpanded }: { isExpanded: boolean }) {
-  return (
-    <svg 
-      className={cn(
-        "h-4 w-4 text-gray-400 transition-transform",
-        isExpanded ? "rotate-90" : ""
-      )} 
-      fill="none" 
-      viewBox="0 0 24 24" 
-      stroke="currentColor"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}
+
 
 const RunRow: React.FC<RunRowProps> = ({
   runId,
@@ -77,7 +63,7 @@ const RunRow: React.FC<RunRowProps> = ({
         <div className="flex gap-2 items-center min-w-0">
 
           <div className="flex items-center gap-2 min-w-0">
-            <p className="font-noto-sans font-normal leading-5 text-white text-sm truncate" title={runId}>
+            <p className="font-noto-sans font-normal text-[14px] leading-5 text-text text-sm truncate" title={runId}>
               {runId}
             </p>
             {isLatest && <LatestBadge />}
@@ -86,7 +72,7 @@ const RunRow: React.FC<RunRowProps> = ({
         
         {/* Total Tasks column */}
         <div>
-          <p className="font-noto-sans font-normal leading-5 text-white text-sm">
+          <p className="font-noto-sans font-normal leading-5 text-text text-sm">
             {totalTasks}
           </p>
         </div>
@@ -94,33 +80,28 @@ const RunRow: React.FC<RunRowProps> = ({
         {/* Success Rate column */}
         <div>
           <p className="font-noto-sans font-normal leading-5 text-sm">
-            <span className="text-green-400">{successCount}</span>
-            <span className="text-gray-400">/</span>
-            <span className="text-red-400">{failureCount}</span>
-            <span className="text-gray-400">({successRate}%)</span>
+            <span className="text-text-success">{successCount}</span>
+            <span className="text-text-disabled">/</span>
+            <span className="text-text-danger">{failureCount}</span>
+            <span className="text-text-disabled">{`  (${successRate}%)`}</span>
           </p>
         </div>
         
-        {/* Agent column */}
-        <div>
-          <p className="font-noto-sans font-normal leading-5 text-blue-400 text-sm truncate">
-            {agentName}
-          </p>
-        </div>
+      
         
         {/* Timestamp column */}
         <div>
-          <p className="font-noto-sans font-normal leading-5 text-gray-300 text-sm" title={timestamp}>
+          <p className="font-noto-sans font-normal leading-5 text-text text-sm" title={timestamp}>
             {new Date(timestamp).toLocaleString()}
           </p>
         </div>
 
         {/* Compare button column - container prevents layout shift */}
-        <div className="w-[130px] flex justify-end">
+        <div className="flex-1 flex justify-end">
           <Button
             variant={isSelected ? 'danger' : 'default'}
             onClick={handleSelectionClick}
-            className="text-sm whitespace-nowrap"
+            className="text-sm whitespace-nowrap text-[14px] font-normal"
           >
             {isSelected ? 'Deselect' : 'Add to Compare'}
           </Button>
