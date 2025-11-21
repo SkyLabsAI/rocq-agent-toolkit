@@ -1,11 +1,12 @@
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Logo, LogoIcon } from "@/icons/logo/logo";
 
 const Layout = ({ title,children }: { title: string;children: React.ReactNode }) => {
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-[#1B1C1D] to-[#161718]">
+    <div className="min-h-screen bg-elevation-surface text-text flex flex-col">
         {/* Header */}
-        <div className="justify-center border-b border-[#292B2D]">
+        <div className="justify-center border-b border-elevation-surface-overlay bg-elevation-surface">
           <div className="flex items-center gap-4 backdrop-blur-sm  px-10 py-4">
             <div className="flex items-center">
 
@@ -16,7 +17,8 @@ const Layout = ({ title,children }: { title: string;children: React.ReactNode })
             <h1 className="text-[#97999F] font-['Noto_Sans'] text-base font-normal leading-[normal]">
               {title}
             </h1>
-          </div>
+            <ThemeSwitcher className="mr-2" />
+          </div>              
         </div>
         
       <div className="mx-auto px-4 sm:px-10 mt-24">

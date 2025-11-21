@@ -44,7 +44,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
         <td className="px-6 py-4 text-white font-medium">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-blue-400 font-semibold text-sm">
+              <span className="text-text font-semibold text-sm">
                 {agent_name.charAt(0).toUpperCase()}
               </span>
             </div>
@@ -81,12 +81,8 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
                     <AgentRunsView
                       runDetails={runDetails}
                       agentName={agent_name}
-                      expandedRuns={expandedRuns}
                       selectedRuns={selectedRuns}
-                      loadingRunDetails={loadingRunDetails}
-                      runTaskDetails={runTaskDetails}
                       loadingLogs={loadingLogs}
-                      toggleRunExpansion={toggleRunExpansion}
                       toggleRunSelection={toggleRunSelection}
                       clearSelectedRuns={clearSelectedRuns}
                       compareSelected={compareSelected}

@@ -9,12 +9,8 @@ import cn from "classnames";
 interface AgentRunsViewProps {
   runDetails: any[];
   agentName: string;
-  expandedRuns: Set<string>;
   selectedRuns: string[];
-  loadingRunDetails: Set<string>;
-  runTaskDetails: Map<string, any[]>;
   loadingLogs: string | null;
-  toggleRunExpansion: (runId: string) => void;
   toggleRunSelection: (runId: string) => void;
   clearSelectedRuns: () => void;
   compareSelected: () => void;
@@ -24,12 +20,8 @@ interface AgentRunsViewProps {
 const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   runDetails,
   agentName,
-  expandedRuns,
   selectedRuns,
-  loadingRunDetails,
-  runTaskDetails,
   loadingLogs,
-  toggleRunExpansion,
   toggleRunSelection,
   clearSelectedRuns,
   compareSelected,
@@ -48,13 +40,11 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   // If a run is selected, show the full-screen view
   if (selectedRunId) {
     const selectedRun = runDetails.find(run => run.run_id === selectedRunId);
-    const taskDetails = runTaskDetails.get(selectedRunId) || [];
     
     if (selectedRun) {
       return (
         <RunDetailsView
           run={selectedRun}
-          taskDetails={taskDetails}
           loadingLogs={loadingLogs}
           onBack={handleBackToRuns}
           openCodeModal={openCodeModal}
@@ -110,7 +100,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
             failureCount={run.failure_count}
             agentName={run.agent_name}
             timestamp={run.timestamp_utc}
-            isExpanded={expandedRuns.has(run.run_id)}
+            isExpanded={false}
             isSelected={selectedRuns.includes(run.run_id)}
             onToggleExpansion={handleRunClick}
             onToggleSelection={toggleRunSelection}

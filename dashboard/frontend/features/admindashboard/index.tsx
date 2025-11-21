@@ -7,6 +7,7 @@ import Button from '@/components/base/Button';
 import { SortIcon } from '@/icons/sort/sort';
 import { ChevronDownIcon } from '@/icons/chevron-up';
 import { SearchIcon } from '@/icons/search';
+import ThemeSwitcher from '@/components/ThemeSwitcher';
 
 const AdminDashboard: React.FC = () => {
   const { agentData, isRefreshing, refreshMessage, handleRefresh } =
@@ -34,6 +35,8 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           <div className='items-center flex gap-2'>
+            <ThemeSwitcher className="mr-2" />
+            
             <Button
               variant='default'
               leftIcon={<SearchIcon />}
