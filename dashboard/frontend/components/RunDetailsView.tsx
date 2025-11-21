@@ -3,6 +3,7 @@ import { Button } from '@/components/base/Button';
 import { getRunDetails } from '@/services/dataservice';
 import type { TaskOutput, RunDetailsResponse } from '@/types/types';
 import { ChevronDownIcon } from '@/icons/chevron-up';
+import { StatusBadge } from './base/statusBadge';
 
 interface RunDetailsViewProps {
   run: {
@@ -13,52 +14,18 @@ interface RunDetailsViewProps {
     success_count: number;
     failure_count: number;
   };
-  loadingLogs: string | null;
   onBack: () => void;
-  openCodeModal: (task: TaskOutput) => void;
+
 }
 
-function ChevronLeft() {
-  return (
-    <div className='relative size-6'>
-      <svg
-        className='block size-full'
-        fill='none'
-        preserveAspectRatio='none'
-        viewBox='0 0 24 24'
-      >
-        <path
-          d='M7.41 15.41L12 10.83L16.59 15.41L18 14L12 8L6 14L7.41 15.41Z'
-          fill='#292A2E'
-          transform='rotate(90 12 12)'
-        />
-      </svg>
-    </div>
-  );
-}
 
-function StatusBadge({ status }: { status: string }) {
-  const isSuccess = status.toLowerCase() === 'success';
-  return (
-    <div className='inline-flex items-center'>
-      <div
-        className={`h-5 rounded-[15px] px-3 py-0.5 ${isSuccess ? 'bg-[#efffd6] opacity-50' : 'bg-red-100'}`}
-      >
-        <p
-          className={`font-inter font-semibold text-xs ${isSuccess ? 'text-[#4c6b1f]' : 'text-red-600'}`}
-        >
-          {status}
-        </p>
-      </div>
-    </div>
-  );
-}
+
+
 
 const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   run,
-  loadingLogs,
   onBack,
-  openCodeModal,
+
 }) => {
   const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
   const [loading, setLoading] = useState(true);
@@ -357,7 +324,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                   {/* View Logs Button */}
                   <Button
                     variant='default'
-                    onClick={() => openCodeModal(task)}
+                    // onClick={() => openCodeModal(task)}
                   >
                     View Logs
                   </Button>

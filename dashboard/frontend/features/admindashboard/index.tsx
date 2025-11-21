@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import { SelectedRunProvider, useSelectedRun } from '@/contexts/SelectedRunContext';
+import {
+  SelectedRunProvider,
+  useSelectedRun,
+} from '@/contexts/SelectedRunContext';
 import Layout from '@/layouts/common';
 import AgentDetails from '../leaderboard/agentDetails';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
@@ -10,9 +13,11 @@ import { SortIcon } from '@/icons/sort/sort';
 import { ChevronDownIcon } from '@/icons/chevron-up';
 import { SearchIcon } from '@/icons/search';
 import RunDetailsView from '@/components/RunDetailsView';
+import { RefreshIcon } from '@/icons/refresh';
 
-const AdminDashboardContent: React.FC = () => {
-  const { agentData, isRefreshing, refreshMessage, handleRefresh } = useAdminDashboard();
+const AdminDashboard: React.FC = () => {
+  const { agentData, isRefreshing, refreshMessage, handleRefresh } =
+    useAdminDashboard();
   const { selectedRun, setSelectedRun } = useSelectedRun();
 
   return (
@@ -23,105 +28,78 @@ const AdminDashboardContent: React.FC = () => {
           <p className='text-sm text-green-400'>{refreshMessage}</p>
         </div>
       )}
-
       {/* Main Table - only show when no run details are selected */}
       {!selectedRun && (
-      <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
-        <div className='px-6 py-4 border-b border-elevation-surface-raised flex items-center justify-between bg-elevation-surface-raised'>
-          <div>
-            <h2 className='text-xl font-semibold text-text'>
-              Agent Performance
-            </h2>
-            <p className='text-text-subtlest text-sm mt-1'>
-              Click on any row to view detailed task information
-            </p>
+        <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
+          <div className='px-6 py-4 border-b border-elevation-surface-raised flex items-center justify-between bg-elevation-surface-raised'>
+            <div>
+              <h2 className='text-xl font-semibold text-text'>
+                Agent Performance
+              </h2>
+              <p className='text-text-subtlest text-sm mt-1'>
+                Click on any row to view detailed task information
+              </p>
+            </div>
+
+            <div className='items-center flex gap-2'>
+              <Button
+                variant='default'
+                leftIcon={<SearchIcon />}
+                leftDivider={true}
+                className='w-60'
+              >
+                Search
+              </Button>
+
+              <Button
+                disabled
+                rightDivider
+                leftIcon={<SortIcon />}
+                rightIcon={<ChevronDownIcon />}
+              >
+                Sort
+              </Button>
+
+              <Button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                variant='default'
+                leftIcon={
+                  !isRefreshing ? (
+                  <RefreshIcon className="h-5 w-5" />
+                  ) : undefined
+                }
+              >
+                {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+              </Button>
+            </div>
           </div>
 
-          <div className='items-center flex gap-2'>
-         
-            
-            <Button
-              variant='default'
-              leftIcon={<SearchIcon />}
-              leftDivider={true}
-              className='w-60'
-            >
-              Search
-            </Button>
-
-            <Button
-              disabled
-              rightDivider
-              leftIcon={<SortIcon />}
-              rightIcon={<ChevronDownIcon />}
-            >
-              Sort
-            </Button>
-
-            <Button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              variant='default'
-              leftIcon={
-                !isRefreshing ? (
-                  <svg
-                    className='h-5 w-5'
-                    fill='none'
-                    viewBox='0 0 24 24'
-                    stroke='currentColor'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
-                    />
-                  </svg>
-                ) : undefined
-              }
-            >
-              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-            </Button>
+          <div className='overflow-x-auto'>
+            <table className='w-full text-left border-collapse'>
+              <tbody className='divide-y divide-white/10'>
+                {agentData.map(agent => (
+                  <AgentDetails
+                    key={agent.agent_name}
+                    agent_name={agent.agent_name}
+                    adminView
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-
-        <div className='overflow-x-auto'>
-          <table className='w-full text-left border-collapse'>
-           
-            <tbody className='divide-y divide-white/10'>
-              {agentData.map(agent => (
-                <AgentDetails
-                  key={agent.agent_name}
-                  agent_name={agent.agent_name}
-                  adminView
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
+      {selectedRun && (
+        <RunDetailsView run={selectedRun} onBack={() => setSelectedRun(null)} />
       )}
 
-      {selectedRun && (() => {
-        const selectedAgent = agentData.find(agent => {
-          return true; 
-      });
-        
-        return selectedAgent ? (
-          <RunDetailsView
-            run={selectedRun}
-            onBack={() => setSelectedRun(null)}
-            openCodeModal={() => {  }} loadingLogs={null}          />
-        ) : null;
-      })()}
+
+      
     </Layout>
   );
 };
 
-const AdminDashboard: React.FC = () => (
-  <SelectedRunProvider>
-    <AdminDashboardContent />
-  </SelectedRunProvider>
-);
+
 
 export default AdminDashboard;
