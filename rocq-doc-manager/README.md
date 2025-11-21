@@ -80,6 +80,19 @@ API Objects
 - Field `stdout`: a string.
 - Field `success`: a boolean.
 
+### `Feedback`
+
+- Description: Rocq feedback item.
+- Field `loc`: either `null` or an instance of the `RocqLoc` object.
+- Field `text`: a string.
+- Field `kind`: either 'debug', 'info', 'notice', 'warning', or 'error' (as a string).
+
+### `QueryResult`
+
+- Description: result of a raw query.
+- Field `feedback`: a list where each element is an instance of the `Feedback` object.
+- Field `data`: an instance of the `CommandData` object.
+
 API Methods
 ------------
 
@@ -133,7 +146,7 @@ API Methods
 ### `get_feedback`
 
 - Description: gets Rocq's feedback for the last run command (if any).
-- Response payload: list of objects with `kind` (array with single string), `text` (string), `loc` (location) (as a list where each element is a JSON value).
+- Response payload: a list where each element is an instance of the `Feedback` object.
 - Failure mode: never fails.
 
 ### `go_to`
@@ -193,6 +206,15 @@ API Methods
 - Description: adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors).
 - Response payload: a `null` value.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
+- Failure mode: recoverable failure.
+
+### `query`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+- Response payload: an instance of the `QueryResult` object.
+- Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
 ### `revert_before`

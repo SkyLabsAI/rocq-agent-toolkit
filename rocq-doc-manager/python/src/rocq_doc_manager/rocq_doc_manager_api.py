@@ -68,6 +68,20 @@ class RocqDocManagerAPI(JsonRPCTP):
         stdout: str = field(kw_only=True, default="")
         success: bool = field(kw_only=True, default=False)
 
+    @dataclass
+    class Feedback:
+        """Rocq feedback item."""
+        loc: "RocqDocManagerAPI.RocqLoc | None" = field(kw_only=True, default=None)
+        text: str = field(kw_only=True, default="")
+        # Either 'debug', 'info', 'notice', 'warning', or 'error'.
+        kind: str = field(kw_only=True, default="")
+
+    @dataclass
+    class QueryResult:
+        """Result of a raw query."""
+        feedback: "list[RocqDocManagerAPI.Feedback]" = field(kw_only=True, default_factory=list)
+        data: "RocqDocManagerAPI.CommandData" = field(kw_only=True, default_factory=RocqDocManagerAPI.CommandData)  # noqa: F821
+
     def advance_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Advance the cursor before the indicated unprocessed item."""
         result = self.raw_request("advance_to", [index])
@@ -112,11 +126,11 @@ class RocqDocManagerAPI(JsonRPCTP):
         assert not isinstance(result, self.Err)
         return [self.SuffixItem(**v1) for v1 in result.result]
 
-    def get_feedback(self) -> list[Any]:
+    def get_feedback(self) -> "list[RocqDocManagerAPI.Feedback]":
         """Gets Rocq's feedback for the last run command (if any)."""
         result = self.raw_request("get_feedback", [])
         assert not isinstance(result, self.Err)
-        return [v1 for v1 in result.result]
+        return [self.Feedback(**v1) for v1 in result.result]
 
     def go_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Move the cursor right before the indicated item (whether it is already processed or not)."""
@@ -169,6 +183,14 @@ class RocqDocManagerAPI(JsonRPCTP):
             data = None if result.data is None else self.RocqLoc(**result.data)
             return self.Err(result.message, data)
         return None
+
+    def query(self, text: str) -> "RocqDocManagerAPI.QueryResult" | JsonRPCTP.Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = self.raw_request("query", [text])
+        if isinstance(result, self.Err):
+            data = None
+            return self.Err(result.message, data)
+        return self.QueryResult(**result.result)
 
     def revert_before(self, erase: bool, index: int) -> None:
         """Revert the cursor to an earlier point in the document."""

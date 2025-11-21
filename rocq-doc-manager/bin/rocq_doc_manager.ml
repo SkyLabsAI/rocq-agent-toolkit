@@ -266,14 +266,53 @@ let _ =
     ~ret:S.(obj compile_result) @@ fun d () ->
   (d, Document.compile d)
 
+let feedback =
+  let fields =
+    let descr = "either 'debug', 'info', 'notice', 'warning', or 'error'" in
+    API.Fields.add ~name:"kind" ~descr S.string @@
+    API.Fields.add ~name:"text" S.string @@
+    API.Fields.add ~name:"loc" S.(nullable (obj rocq_loc)) @@
+    API.Fields.nil
+  in
+  let encode _ = assert false in
+  let decode Document.{kind; text; loc} =
+    let kind =
+      match kind with
+      | `Debug   -> "debug"
+      | `Info    -> "info"
+      | `Notice  -> "notice"
+      | `Warning -> "warning"
+      | `Error   -> "error"
+    in
+    (kind, (text, (loc, ())))
+  in
+  API.declare_object api ~name:"Feedback"
+    ~descr:"Rocq feedback item" ~encode ~decode fields
+
 let _ =
-  (* FIXME specify return object precisely. *)
   API.declare api ~name:"get_feedback" ~descr:"gets Rocq's feedback for the \
-    last run command (if any)" ~args:A.nil ~ret:S.(list any)
-    ~ret_descr:"list of objects with `kind` (array with single string), \
-      `text` (string), `loc` (location)" @@ fun d () ->
-  let feedback = Document.get_feedback d in
-  (d, List.map Document.feedback_to_json feedback)
+    last run command (if any)" ~args:A.nil ~ret:S.(list (obj feedback))
+    @@ fun d () ->
+  (d, Document.get_feedback d)
+
+let query_result =
+  let fields =
+    API.Fields.add ~name:"data" S.(obj command_data) @@
+    API.Fields.add ~name:"feedback" S.(list (obj feedback)) @@
+    API.Fields.nil
+  in
+  let encode (data, (feedback, ())) = (data, feedback) in
+  let decode (data, feedback) = (data, (feedback, ())) in
+  API.declare_object api ~name:"QueryResult"
+    ~descr:"result of a raw query" ~encode ~decode fields
+
+let _ =
+  let args = A.add ~name:"text" ~descr:"text of the query" S.string A.nil in
+  API.declare_full api ~name:"query" ~descr:"runs the given query at \
+    the cursor, not updating the state" ~args ~ret:S.(obj query_result)
+    ~err:S.null @@ fun d (text, ()) ->
+  let res = Document.query ~text d in
+  (d, Result.map_error (fun s -> ((), s)) res)
 
 let query_args =
   A.add ~name:"text" ~descr:"text of the query" S.string @@
