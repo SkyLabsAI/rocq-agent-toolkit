@@ -14,11 +14,13 @@ import { ChevronDownIcon } from '@/icons/chevron-up';
 import { SearchIcon } from '@/icons/search';
 import RunDetailsView from '@/components/RunDetailsView';
 import { RefreshIcon } from '@/icons/refresh';
+import TaskDetailsModal from '../taskDetailsModal';
 
 const AdminDashboard: React.FC = () => {
-  const { agentData, isRefreshing, refreshMessage, handleRefresh } =
+  const { agentData, isRefreshing, refreshMessage, handleRefresh, modalState, closeModal, openCodeModal } =
     useAdminDashboard();
   const { selectedRun, setSelectedRun } = useSelectedRun();
+
 
   return (
     <Layout title='Internal Dashboard'>
@@ -91,11 +93,20 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
       {selectedRun && (
-        <RunDetailsView run={selectedRun} onBack={() => setSelectedRun(null)} />
+        <RunDetailsView run={selectedRun} onBack={() => setSelectedRun(null)} openCodeModal={openCodeModal} />
       )}
 
 
-      
+        <TaskDetailsModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        details={modalState.logs}
+        title={modalState.selectedTask ? `Observability Logs - ${modalState.selectedTask.task_id}` : 'Task Logs'}
+        taskId={modalState.selectedTask?.task_id}
+      />
+
+
+
     </Layout>
   );
 };

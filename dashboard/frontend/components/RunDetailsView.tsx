@@ -15,7 +15,7 @@ interface RunDetailsViewProps {
     failure_count: number;
   };
   onBack: () => void;
-
+  openCodeModal: (task: TaskOutput) => void;
 }
 
 
@@ -25,7 +25,7 @@ interface RunDetailsViewProps {
 const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   run,
   onBack,
-
+  openCodeModal
 }) => {
   const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,9 +102,6 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                 </p>
               </div>
             </div>
-
-            {/* Right section with metrics */}
-           
               <div className='flex flex-col gap-2'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                   Total Tasks
@@ -324,7 +321,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                   {/* View Logs Button */}
                   <Button
                     variant='default'
-                    // onClick={() => openCodeModal(task)}
+                    onClick={() => openCodeModal(task)}
                   >
                     View Logs
                   </Button>

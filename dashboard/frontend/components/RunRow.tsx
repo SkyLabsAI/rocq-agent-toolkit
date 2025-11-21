@@ -10,11 +10,8 @@ interface RunRowProps {
   totalTasks: number;
   successCount: number;
   failureCount: number;
-  agentName: string;
   timestamp: string;
-  isExpanded: boolean;
   isSelected: boolean;
-  onLogsClick: (task: TaskOutput) => void;
   onToggleExpansion: (runId: Run) => void;
   onToggleSelection: (runId: Run) => void;
 }
@@ -37,13 +34,11 @@ const  RunRow: React.FC<RunRowProps> = ({
   totalTasks,
   successCount,
   failureCount,
-  agentName,
   timestamp,
-  isExpanded,
   isSelected,
   onToggleExpansion,
   onToggleSelection,
-  onLogsClick,
+
 }) => {
   const successRate = ((successCount / totalTasks) * 100).toFixed(1);
 
