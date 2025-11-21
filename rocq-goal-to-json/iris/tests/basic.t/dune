@@ -1,0 +1,14 @@
+(coq.theory
+ (name test)
+ (flags
+  (:standard
+   -w -notation-incompatible-prefix
+   -w -notation-overridden
+   -w -ambiguous-paths))
+ (theories
+  Stdlib Ltac2
+  stdpp iris
+  bluerock.ltac2.extra
+  skylabs_ai.ltac2_derive
+  skylabs_ai.ltac2_json
+  skylabs_ai.extractors.goal_to_json.iris))

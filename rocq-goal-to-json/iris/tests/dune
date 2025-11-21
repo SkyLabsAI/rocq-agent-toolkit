@@ -1,0 +1,9 @@
+(cram
+ (applies_to :whole_subtree)
+ (deps
+  (package coq-core)
+  (package coq-stdlib)
+  (package coq-stdpp)
+  (package coq-iris)
+  (package rocq-goal-to-json_iris)
+  (package ltac2-json)))

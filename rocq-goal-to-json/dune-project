@@ -1,0 +1,30 @@
+(lang dune 3.17)
+(using coq 0.10)
+(name rocq-goal-to-json)
+(generate_opam_files true)
+
+(source (github SkylabsAI/skylabs-fm))
+(authors
+ "Gregory Malecha <gregory@skylabs-ai.com>"
+ "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers
+ "Gregory Malecha <gregory@skylabs-ai.com>"
+ "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  LGPL-2.0)
+
+(package
+ (name rocq-goal-to-json)
+ (synopsis "Extract Rocq goals as JSON")
+ (depends
+  ltac2-derive
+  ltac2-json))
+
+(package
+ (name rocq-goal-to-json_iris)
+ (synopsis "Extract Rocq goals as JSON (Iris extensions)")
+ (depends
+   coq-stdpp coq-iris
+   ltac2-derive
+   ltac2-json))
+
+(subst disabled)
