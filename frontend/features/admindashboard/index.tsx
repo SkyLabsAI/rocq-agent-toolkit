@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+import { SelectedRunProvider, useSelectedRun } from '@/contexts/SelectedRunContext';
 import Layout from '@/layouts/common';
 import AgentDetails from '../leaderboard/agentDetails';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
@@ -7,11 +9,11 @@ import Button from '@/components/base/Button';
 import { SortIcon } from '@/icons/sort/sort';
 import { ChevronDownIcon } from '@/icons/chevron-up';
 import { SearchIcon } from '@/icons/search';
-import ThemeSwitcher from '@/components/ThemeSwitcher';
+import RunDetailsView from '@/components/RunDetailsView';
 
-const AdminDashboard: React.FC = () => {
-  const { agentData, isRefreshing, refreshMessage, handleRefresh } =
-    useAdminDashboard();
+const AdminDashboardContent: React.FC = () => {
+  const { agentData, isRefreshing, refreshMessage, handleRefresh } = useAdminDashboard();
+  const { selectedRun, setSelectedRun } = useSelectedRun();
 
   return (
     <Layout title='Internal Dashboard'>
@@ -22,8 +24,9 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Main Table */}
-      <div className=' backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
+      {/* Main Table - only show when no run details are selected */}
+      {!selectedRun && (
+      <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
         <div className='px-6 py-4 border-b border-elevation-surface-raised flex items-center justify-between bg-elevation-surface-raised'>
           <div>
             <h2 className='text-xl font-semibold text-text'>
@@ -91,14 +94,43 @@ const AdminDashboard: React.FC = () => {
                   key={agent.agent_name}
                   agent_name={agent.agent_name}
                   adminView
+             
+                  setSelectedRun={setSelectedRun}
                 />
               ))}
             </tbody>
           </table>
         </div>
       </div>
+      )}
+      
+      {/* Render AgentDetails for run details view when selectedRun exists */}
+      {selectedRun && (() => {
+        // Find which agent contains the selected run
+        const selectedAgent = agentData.find(agent => {
+          // We need to check if this agent has the selected run
+          // For now, we'll render the first agent as a fallback
+          return true; // This will be refined when we have run data
+        });
+
+
+        
+        
+        return selectedAgent ? (
+          <RunDetailsView
+            run={selectedRun}
+            onBack={() => setSelectedRun(null)}
+            openCodeModal={() => { } } loadingLogs={null}          />
+        ) : null;
+      })()}
     </Layout>
   );
 };
+
+const AdminDashboard: React.FC = () => (
+  <SelectedRunProvider>
+    <AdminDashboardContent />
+  </SelectedRunProvider>
+);
 
 export default AdminDashboard;

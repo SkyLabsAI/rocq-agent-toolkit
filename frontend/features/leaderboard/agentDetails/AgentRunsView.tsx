@@ -1,22 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
 import TaskButton from '@/components/base/taskButton';
 import { Button } from '@/components/base/Button';
 import RunRow from '@/components/RunRow';
 import RunDetailsView from '@/components/RunDetailsView';
 import StickyCompareBar from '@/components/StickyCompareBar';
 import cn from 'classnames';
+
 import { PlayIcon } from '@/icons/play';
 
-interface AgentRunsViewProps {
+type AgentRunsViewProps = {
   runDetails: any[];
   agentName: string;
   selectedRuns: string[];
   loadingLogs: string | null;
-  toggleRunSelection: (runId: string) => void;
+  toggleRunSelection: (run: Run) => void;
   clearSelectedRuns: () => void;
   compareSelected: () => void;
   openCodeModal: (task: any) => void;
-}
+};
+
 
 const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   runDetails,
@@ -28,31 +31,19 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   compareSelected,
   openCodeModal,
 }) => {
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const { setSelectedRun, selectedRun } = useSelectedRun();
 
-  const handleRunClick = (runId: string) => {
-    setSelectedRunId(runId);
+  const handleRunClick = (run: Run) => {
+    setSelectedRun(run);
   };
 
   const handleBackToRuns = () => {
-    setSelectedRunId(null);
+    setSelectedRun(null);
   };
 
-  // If a run is selected, show the full-screen view
-  if (selectedRunId) {
-    const selectedRun = runDetails.find(run => run.run_id === selectedRunId);
+ 
 
-    if (selectedRun) {
-      return (
-        <RunDetailsView
-          run={selectedRun}
-          loadingLogs={loadingLogs}
-          onBack={handleBackToRuns}
-          openCodeModal={openCodeModal}
-        />
-      );
-    }
-  }
+
   return (
     <div className='space-y-4'>
       {/* Header using CSS Grid with fractional units for perfect alignment */}
@@ -100,7 +91,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
             className='border border-white/10 rounded-lg overflow-hidden bg-elevation-surface-raised'
           >
             <RunRow
-              runId={run.run_id}
+              run={run}
               isLatest={index === 0 && runDetails.length > 1}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
@@ -116,17 +107,14 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         ))}
       </div>
 
-      {/* Add bottom padding to prevent content from being hidden behind the sticky bar */}
-
-      {/* Sticky bottom compare bar component */}
-      <StickyCompareBar
+        <StickyCompareBar
         selectedRuns={selectedRuns}
         agentName={agentName}
         onClearSelection={clearSelectedRuns}
         onCompareSelected={compareSelected}
       />
-    </div>
-  );
-};
 
-export default AgentRunsView;
+      {/* Add bottom padding to prevent content from being hidden behind the sticky bar */}
+        </div>)}
+
+export default AgentRunsView
