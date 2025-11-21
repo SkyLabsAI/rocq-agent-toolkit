@@ -23,19 +23,19 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {/* Main Table */}
-      <div className='bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden'>
-        <div className='px-6 py-4 border-b border-white/10 flex items-center justify-between'>
+      <div className=' backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
+        <div className='px-6 py-4 border-b border-elevation-surface-raised flex items-center justify-between bg-elevation-surface-raised'>
           <div>
-            <h2 className='text-xl font-semibold text-white'>
+            <h2 className='text-xl font-semibold text-text'>
               Agent Performance
             </h2>
-            <p className='text-gray-400 text-sm mt-1'>
+            <p className='text-text-subtlest text-sm mt-1'>
               Click on any row to view detailed task information
             </p>
           </div>
 
           <div className='items-center flex gap-2'>
-            <ThemeSwitcher className="mr-2" />
+         
             
             <Button
               variant='default'
@@ -84,13 +84,7 @@ const AdminDashboard: React.FC = () => {
 
         <div className='overflow-x-auto'>
           <table className='w-full text-left border-collapse'>
-            <thead className='bg-white/5'>
-              <tr>
-                <th className='px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider'>
-                  Agent Name
-                </th>
-              </tr>
-            </thead>
+           
             <tbody className='divide-y divide-white/10'>
               {agentData.map(agent => (
                 <AgentDetails

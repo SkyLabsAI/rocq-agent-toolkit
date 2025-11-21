@@ -64,12 +64,16 @@
   --color-background-warning-bold: #FBC828FF;
   --color-background-success: #EFFFD6FF;
   --color-background-success-bold: #5B7F24FF;
+  --color-background-accent-gray-subtlest: rgba(240, 241, 242, 1);
+    --color-background-accent-gray-subtler: rgba(221, 222, 225, 1);
+  --color-background-information: rgba(233, 242, 254, 1);
   --color-elevation-surface: #FFFFFFFF;
   --color-elevation-surface-hovered: #F0F1F2FF;
   --color-elevation-surface-pressed: #DDDEE1FF;
   --color-elevation-surface-overlay: #ECECECFF;
   --color-elevation-surface-raised: #F9FBFDFF;
   --color-elevation-surface-sunken: #F0F2F4FF;
+  --color-background-danger-hovered: rgba(255, 213, 210, 1);
 }
 
 /* Dark Theme */
@@ -105,6 +109,7 @@
   --color-text-information: #4583E2FF;
   --color-text-subtlest: #96999EFF;
   --color-text-subtle: #A9ABAFFF;
+  --color-background-danger-hovered: rgba(93, 31, 26, 1);
   --color-link: #669DF1FF;
   --color-link-pressed: #8FB8F6FF;
   --color-link-visited: #D8A0F7FF;
@@ -136,6 +141,9 @@
   --color-background-warning-bold: #FBC828FF;
   --color-background-success: #28311BFF;
   --color-background-success-bold: #94C748FF;
+  --color-background-accent-gray-subtlest: rgba(57, 61, 70, 1);
+  --color-background-accent-gray-subtler: rgba(82, 88, 101, 1);
+  --color-background-information: rgba(28, 43, 66, 1);
   --color-elevation-surface: #1D1E20FF;
   --color-elevation-surface-hovered: #242528FF;
   --color-elevation-surface-pressed: #2B2C2FFF;

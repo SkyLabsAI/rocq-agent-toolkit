@@ -6,7 +6,7 @@ export const ChevronDownIcon: React.FC<{ className?: string }> = ({
   return (
     <svg width='18' height='18' fill='currentColor' className={className}>
       <path
-        fill='#CECFD2'
+        fill='currentColor'
         d='M5.558 6.442 9 9.877l3.443-3.435L13.5 7.5 9 12 4.5 7.5l1.058-1.058Z'
       />
     </svg>
