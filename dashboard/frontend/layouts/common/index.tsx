@@ -1,5 +1,5 @@
 import ThemeSwitcher from "@/components/ThemeSwitcher";
-import { Logo, LogoIcon } from "@/icons/logo/logo";
+import { LogoIcon } from "@/icons/logo/logo";
 
 const Layout = ({ title,children }: { title: string;children: React.ReactNode }) => {
 

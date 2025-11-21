@@ -1,8 +1,6 @@
-import TaskButton from "@/components/base/taskButton";
 import TaskDetailsModal from "@/features/taskDetailsModal";
 import cn from "classnames";
 import { useAgentDetails } from "@/hooks/useAgentDetails";
-import { PlayIcon } from "@/icons/play";
 import AgentRunsView from "./AgentRunsView";
 import AgentTasksView from "./AgentTasksView";
 
@@ -16,17 +14,13 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
     loading,
     taskDetails,
     runDetails,
-    runTaskDetails,
-    loadingRunDetails,
     isOpen,
     modalState,
     selectedRuns,
-    expandedRuns,
     loadingLogs,
     toggleDetails,
     openCodeModal,
     closeModal,
-    toggleRunExpansion,
     compareSelected,
     toggleRunSelection,
     clearSelectedRuns,

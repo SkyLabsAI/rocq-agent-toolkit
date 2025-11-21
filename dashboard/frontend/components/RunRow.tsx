@@ -1,9 +1,10 @@
 import React from 'react';
 import { Button } from '@/components/base/Button';
 import cn from 'classnames';
+import { Run } from '@/contexts/SelectedRunContext';
 
 interface RunRowProps {
-  runId: string;
+  run: Run;
   isLatest?: boolean;
   totalTasks: number;
   successCount: number;
@@ -12,8 +13,8 @@ interface RunRowProps {
   timestamp: string;
   isExpanded: boolean;
   isSelected: boolean;
-  onToggleExpansion: (runId: string) => void;
-  onToggleSelection: (runId: string) => void;
+  onToggleExpansion: (runId: Run) => void;
+  onToggleSelection: (runId: Run) => void;
 }
 
 function LatestBadge() {
@@ -28,8 +29,8 @@ function LatestBadge() {
 
 
 
-const RunRow: React.FC<RunRowProps> = ({
-  runId,
+const  RunRow: React.FC<RunRowProps> = ({
+  run,
   isLatest,
   totalTasks,
   successCount,
@@ -44,12 +45,12 @@ const RunRow: React.FC<RunRowProps> = ({
   const successRate = ((successCount / totalTasks) * 100).toFixed(1);
 
   const handleRowClick = () => {
-    onToggleExpansion(runId);
+    onToggleExpansion(run);
   };
 
   const handleSelectionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onToggleSelection(runId);
+    onToggleSelection(run);
   };
 
   return (
@@ -63,8 +64,8 @@ const RunRow: React.FC<RunRowProps> = ({
         <div className="flex gap-2 items-center min-w-0">
 
           <div className="flex items-center gap-2 min-w-0">
-            <p className="font-noto-sans font-normal text-[14px] leading-5 text-text text-sm truncate" title={runId}>
-              {runId}
+            <p className="font-noto-sans font-normal text-[14px] leading-5 text-text text-sm truncate" title={run.run_id}>
+              {run.run_id}
             </p>
             {isLatest && <LatestBadge />}
           </div>

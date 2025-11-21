@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TaskOutput, AgentRun } from "@/types/types";
 import { getDetails, getRunDetails, getObservabilityLogs } from "@/services/dataservice";
+import { Run } from "@/contexts/SelectedRunContext";
 
 interface ModalState {
   isOpen: boolean;
@@ -133,11 +134,11 @@ export const useAgentDetails = (agent_name: string) => {
     router.push(`/admin/compare?${query}`);
   };
 
-  const toggleRunSelection = (runId: string) => {
+  const toggleRunSelection = (run: Run) => {
     setSelectedRuns(prev => 
-      prev.includes(runId) 
-        ? prev.filter(id => id !== runId)
-        : [...prev, runId]
+      prev.includes(run.run_id) 
+        ? prev.filter(id => id !== run.run_id)
+        : [...prev, run.run_id]
     );
   };
 
