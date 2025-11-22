@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/base/Button';
 import { getRunDetails } from '@/services/dataservice';
 import type { TaskOutput, RunDetailsResponse } from '@/types/types';
-import { ChevronDownIcon } from '@/icons/chevron-up';
+import { ChevronUpIcon } from '@/icons/chevron-up';
 import { StatusBadge } from './base/statusBadge';
 
 interface RunDetailsViewProps {
@@ -91,7 +91,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
             {/* Left section with chevron and run info */}
             <div className='flex items-center gap-3'>
               <Button variant='ghost' onClick={onBack} className='p-1'>
-                <ChevronDownIcon />
+                <ChevronUpIcon />
               </Button>
               <div className='flex flex-col gap-1'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const ChevronDownIcon: React.FC<{ className?: string }> = ({
+export const ChevronUpIcon: React.FC<{ className?: string }> = ({
   className,
 }) => {
   return (

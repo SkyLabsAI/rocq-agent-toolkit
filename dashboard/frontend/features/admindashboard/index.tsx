@@ -10,7 +10,7 @@ import AgentDetails from '../leaderboard/agentDetails';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import Button from '@/components/base/Button';
 import { SortIcon } from '@/icons/sort/sort';
-import { ChevronDownIcon } from '@/icons/chevron-up';
+import { ChevronUpIcon } from '@/icons/chevron-up';
 import { SearchIcon } from '@/icons/search';
 import RunDetailsView from '@/components/RunDetailsView';
 import { RefreshIcon } from '@/icons/refresh';
@@ -57,7 +57,7 @@ const AdminDashboard: React.FC = () => {
                 disabled
                 rightDivider
                 leftIcon={<SortIcon />}
-                rightIcon={<ChevronDownIcon />}
+                rightIcon={<ChevronUpIcon />}
               >
                 Sort
               </Button>
