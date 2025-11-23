@@ -1,6 +1,5 @@
 import { RunDetailsResponse } from "@/types/types";
-import { RunTaskCell } from "../..";
-import { ComparisonHeaderBar } from "../compare-header-bar";
+import {  RunTaskCell } from "../..";
 import { TaskComparisonHeaderTop } from "./compare-table-header";
 import React from "react";
 import { TaskHeader } from "./compare-table-header/task-header";
@@ -30,9 +29,9 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   console.log('Rendering ComparisonTable with tasks:', taskMap);
   return (
     <>
-      <ComparisonHeaderBar />
-      <div className=' left-[40px] rounded-[4px] top-[336px] w-[1200px]'>
-        <div className='content-stretch flex flex-col gap-px items-start overflow-clip relative rounded-[inherit] w-[1200px]'>
+
+      <div className='mt-10 border border-elevation-surface-overlay rounded-lg'>
+        <div className='grid grid-cols-1 gap-0'>
           <TaskComparisonHeaderTop runs={runs} />
           <>
             {allTaskIds != undefined &&

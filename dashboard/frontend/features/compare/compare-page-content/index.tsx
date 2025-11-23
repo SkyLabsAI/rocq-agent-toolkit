@@ -1,16 +1,14 @@
-import ComparisonModal from "@/components/base/comparisonModal";
-import Layout from "@/layouts/common";
-import { getRunDetails } from "@/services/dataservice";
-import { RunDetailsResponse } from "@/types/types";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { RunStats, RunTaskCell } from "..";
-import { CompareRunsHeader } from "./compare-page-header";
-import { RunSummary } from "./compare-page-summary";
-import { ComparisonHeaderBar } from "./compare-header-bar";
-import { ComparisonTable } from "./compare-table";
-
-
+import ComparisonModal from '@/components/base/comparisonModal';
+import Layout from '@/layouts/common';
+import { getRunDetails } from '@/services/dataservice';
+import { RunDetailsResponse } from '@/types/types';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { RunStats, RunTaskCell } from '..';
+import { CompareRunsHeader } from './compare-page-header';
+import { RunSummary } from './compare-page-summary';
+import { ComparisonHeaderBar } from './compare-header-bar';
+import { ComparisonTable } from './compare-table';
 
 const computeRunStats = (run: RunDetailsResponse): RunStats => {
   const tasks = run.tasks.length;
@@ -62,7 +60,6 @@ const normalizeFailureReason = (fr: unknown): string => {
   }
   return String(fr);
 };
-
 
 export const ComparePageContent: React.FC = () => {
   const sp = useSearchParams();
@@ -141,48 +138,41 @@ export const ComparePageContent: React.FC = () => {
 
   return (
     <>
-    
-          <div className='max-w-7xl mx-auto space-y-8'>
-            {/* Header */}
-            <CompareRunsHeader />
-            {!loading && !error && stats.length > 0 && (
-              <>
-                <RunSummary runStats={stats} />
-                <ComparisonHeaderBar />
-                <ComparisonTable
-                  runs={selectedRuns}
-                  taskMap={taskMap}
-                  allTaskIds={allTaskIds}
-                  selectedTaskId={selectedTaskId}
-                  showTasks={showTasks}
-                  onSelectTask={selectTask}
-                  onOpenModal={setComparisonModalTaskId}
-                  onToggleShowTasks={() => setShowTasks(s => !s)}
-                />
-              </>
-            )}
+      {/* Header */}
+      <CompareRunsHeader />
+      {!loading && !error && stats.length > 0 && (
+        <>
+          <RunSummary runStats={stats} />
+          {/* <ComparisonHeaderBar /> */}
+          <ComparisonTable
+            runs={selectedRuns}
+            taskMap={taskMap}
+            allTaskIds={allTaskIds}
+            selectedTaskId={selectedTaskId}
+            showTasks={showTasks}
+            onSelectTask={selectTask}
+            onOpenModal={setComparisonModalTaskId}
+            onToggleShowTasks={() => setShowTasks(s => !s)}
+          />
+        </>
+      )}
 
-          
-        
-
-            {/* Comparison Modal */}
-            {comparisonModalTaskId && (
-              <ComparisonModal
-                isOpen={!!comparisonModalTaskId}
-                onClose={() => setComparisonModalTaskId(null)}
-                taskId={comparisonModalTaskId}
-                items={selectedRuns.map(run => {
-                  const cell =
-                    taskMap[comparisonModalTaskId]?.[selectedRuns.indexOf(run)];
-                  return {
-                    label: run.agent_name,
-                    task: cell?.task || null,
-                  };
-                })}
-              />
-            )}
-          </div>
-     
+      {/* Comparison Modal */}
+      {comparisonModalTaskId && (
+        <ComparisonModal
+          isOpen={!!comparisonModalTaskId}
+          onClose={() => setComparisonModalTaskId(null)}
+          taskId={comparisonModalTaskId}
+          items={selectedRuns.map(run => {
+            const cell =
+              taskMap[comparisonModalTaskId]?.[selectedRuns.indexOf(run)];
+            return {
+              label: run.agent_name,
+              task: cell?.task || null,
+            };
+          })}
+        />
+      )}
     </>
   );
 };

@@ -1,7 +1,7 @@
 import { RunStats } from "@/features/compare";
 
 export const TaskRow: React.FC<{ stat: RunStats }> = ({ stat }) => (
-  <div className=' bg-[#1d1e20] box-border content-stretch flex items-center justify-between left-[40px] px-[24px] py-[10px] rounded-[4px] top-[56px] w-[1200px]'>
+  <div className=' bg-[#1d1e20] box-border content-stretch flex items-center justify-between left-[40px] px-[24px] py-[10px] rounded-[4px] top-[56px] '>
     <div className='content-stretch flex gap-[207px] items-center relative shrink-0'>
       <div className='content-stretch flex gap-[8px] items-center relative shrink-0'>
         <p

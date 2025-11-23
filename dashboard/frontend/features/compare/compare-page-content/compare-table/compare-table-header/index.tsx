@@ -1,5 +1,7 @@
 import { RunDetailsResponse } from "@/types/types";
-import { FilterFieldsButton } from "./filter-fields";
+import { Button } from "@/components/base";
+import { SortIcon } from "@/icons/sort/sort";
+import { ChevronUpIcon } from "@/icons/chevron-up";
 
 interface TaskComparisonHeaderTopProps {
   runs: RunDetailsResponse[];
@@ -8,12 +10,11 @@ interface TaskComparisonHeaderTopProps {
 export const TaskComparisonHeaderTop: React.FC<TaskComparisonHeaderTopProps> = ({
   runs,
 }) => (
-  <div className='bg-[#1d1e20] h-[68px] relative rounded-tl-[4px] rounded-tr-[4px] shrink-0 w-full'>
-    <div className='flex flex-row items-center overflow-clip rounded-[inherit] size-full'>
-      <div className='box-border content-stretch flex h-[68px] items-center justify-between px-[24px] py-[16px] relative w-full'>
-        <div className='basis-0 content-stretch flex grow items-center justify-between min-h-px min-w-px relative shrink-0'>
+  <>
+  </>
+ <div className='flex justify-between px-6 py-4 bg-elevation-surface items-center rounded-t-lg '>
           <p
-            className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-[20px] relative shrink-0 text-[#cecfd2] text-[14px] text-nowrap whitespace-pre"
+            className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-[#cecfd2] text-[14px] text-nowrap whitespace-pre"
             style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
           >
             Taskwise Comparison
@@ -28,9 +29,9 @@ export const TaskComparisonHeaderTop: React.FC<TaskComparisonHeaderTopProps> = (
                 {run.agent_name || run.run_id}
               </p>
             ))}
-          <FilterFieldsButton />
+          <Button leftIcon={<SortIcon />} rightIcon={<ChevronUpIcon />} variant="default" rightDivider>
+              Filter Fields
+            </Button>
         </div>
-      </div>
-    </div>
-  </div>
+    
 );

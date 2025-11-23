@@ -2,7 +2,7 @@ import { ChevronUpIcon } from "@/icons/chevron-up";
 import Link from "next/link";
 
 export const CompareRunsHeader = () => (
-  <div className=' bg-[#1d1e20] box-border content-stretch flex items-center justify-between left-0 overflow-clip px-[24px] py-[16px] top-[48px] w-full'>
+  <div className=' bg-[#1d1e20] box-border content-stretch flex items-center justify-between left-0 overflow-clip px-[24px] py-[16px] top-[48px] w-full rounded-lg'>
     <div className='basis-0 content-stretch flex grow items-center justify-between min-h-px min-w-px relative shrink-0'>
       <div className='content-stretch flex gap-[11px] items-center relative shrink-0'>
         <div
