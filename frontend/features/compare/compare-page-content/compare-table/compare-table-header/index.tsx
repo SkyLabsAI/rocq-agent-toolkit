@@ -8,16 +8,7 @@ interface TaskComparisonHeaderTopProps {
 }
 
 
-export function buildTailwindGridTemplate(length: number): string {
-  const first = "230px";
-  const last = "165px";
-  const middle = Array.from({ length }, () => "minmax(0,1fr)");
-  const cols = [first, ...middle, last];
 
-  // CORRECT: No backticks around the bracket syntax
-  // Output: [grid-template-columns:230px_minmax(0,1fr)_165px]
-  return `[grid-template-columns:${cols.join("_")}]`;
-}
 
 
 export const getCommonGridStyle = (runCount: number) => {

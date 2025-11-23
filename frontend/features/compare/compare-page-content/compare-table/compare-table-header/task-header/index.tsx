@@ -3,7 +3,7 @@ import { RunTaskCell } from '@/features/compare';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 import { CompareDetailsButton } from './compare-details';
 import { Button } from '@/components/base';
-import { buildTailwindGridTemplate, getCommonGridStyle } from '..';
+import {  getCommonGridStyle } from '..';
 import style from 'react-syntax-highlighter/dist/esm/styles/hljs/a11y-dark';
 
 export const TaskHeader = ({

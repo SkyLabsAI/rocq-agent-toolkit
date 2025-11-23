@@ -1,45 +1,41 @@
-import { RunTaskCell } from "@/features/compare";
-import { ComparisonRow } from "./comparison-row";
-import { TaskRowData } from "../../../utils";
+import { RunTaskCell } from '@/features/compare';
+import { ComparisonRow } from './comparison-row';
+import { TaskRowData } from '../../../utils';
 
-export const TaskDetailsTable = ({ id, details, taskRowData }: { id: string; details: RunTaskCell[], taskRowData: TaskRowData }) => {
+export const TaskDetailsTable = ({
+  id,
+  details,
+  taskRowData,
+}: {
+  id: string;
+  details: RunTaskCell[];
+  taskRowData: TaskRowData;
+}) => {
+  const metricRows = extractMetricRows(taskRowData);
 
-const metricRows = extractMetricRows(taskRowData);
-
- return<>
-{
- metricRows.map(row => (
-    <ComparisonRow key={row.key} label={row.label} values={row.values} />
- ))}
-    {/* <ComparisonRow label='Calls' values={["1","2","3"]} />
-    <ComparisonRow label='Calls' values={["1","2","3"]} />
-    <ComparisonRow label='Calls' values={["1","2","3"]} />
-    <ComparisonRow label='Calls' values={["1","2","3"]} />
-    <ComparisonRow label='Calls' values={["1","2","3"]} />
-    <ComparisonRow label='Calls' values={["1","2","3"]} /> */}
-    {/* <ComparisonRow label='Total Tokens' value1='10' value2='20' />
-    <ComparisonRow label='input Tokens' value1='30' value2='25' />
-    <ComparisonRow label='Output Tokens' value1='5' value2='3' />
-    <ComparisonRow label='Exec Time (s)' value1='12' value2='8' />
-    <ComparisonRow label='CPU Time (s)' value1='4' value2='2' /> */}
-  </>
-}
-
-
-
+  return (
+    <>
+      <div className='py-2'>
+        {metricRows.map(row => (
+          <ComparisonRow key={row.key} label={row.label} values={row.values} />
+        ))}
+      </div>
+    </>
+  );
+};
 
 // --- Helper 1: Flatten nested objects into dot-notation keys ---
 // Input: { token_counts: { total: 10, input: 5 } }
 // Output: ["token_counts.total", "token_counts.input"]
 function getFlatKeys(obj: any, prefix = ''): string[] {
   if (!obj || typeof obj !== 'object') return [];
-  
+
   return Object.keys(obj).reduce((acc: string[], key) => {
     const newPath = prefix ? `${prefix}.${key}` : key;
-    
+
     if (
-      typeof obj[key] === 'object' && 
-      obj[key] !== null && 
+      typeof obj[key] === 'object' &&
+      obj[key] !== null &&
       !Array.isArray(obj[key]) // Don't flatten arrays, treat them as values
     ) {
       acc.push(...getFlatKeys(obj[key], newPath));
@@ -54,13 +50,15 @@ function getFlatKeys(obj: any, prefix = ''): string[] {
 // Input: (taskObject, "metrics.token_counts.total")
 // Output: 10 or undefined
 function getNestedValue(obj: any, path: string): any {
-  return path.split('.').reduce((acc, part) => (acc ? acc[part] : undefined), obj);
+  return path
+    .split('.')
+    .reduce((acc, part) => (acc ? acc[part] : undefined), obj);
 }
 
 // --- Main Interface for your Table Row ---
 export interface MetricRowOutput {
-  key: string;      // e.g. "token_counts.total_tokens"
-  label: string;    // e.g. "Token Counts Total Tokens" (Formatted)
+  key: string; // e.g. "token_counts.total_tokens"
+  label: string; // e.g. "Token Counts Total Tokens" (Formatted)
   values: string[]; // ["100", "-", "200"]
 }
 
@@ -107,8 +105,7 @@ export function extractMetricRows(rowData: TaskRowData): MetricRowOutput[] {
         .split(/[._]/)
         .map(w => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' '),
-      values
+      values,
     };
   });
 }
-
