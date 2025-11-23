@@ -136,7 +136,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
             {stringValues.map((str, index) => (
               <div key={index} className="bg-gray-900/50 border border-white/10 rounded-lg p-4 max-h-96 overflow-auto">
                 <div className="text-xs text-gray-400 mb-2">Item {index + 1}</div>
-                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+                <pre className="text-sm text-text whitespace-pre-wrap font-mono">
                   {str}
                 </pre>
               </div>
@@ -152,7 +152,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
     
     return (
       <div className="bg-gray-900/50 border border-white/10 rounded-lg p-4 max-h-96 overflow-auto">
-        <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+        <pre className="text-sm text-text whitespace-pre-wrap font-mono">
           {jsonString}
         </pre>
       </div>
@@ -191,39 +191,11 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
       isOpen={isOpen}
       onClose={onClose}
       title={title}
+      size='full'
     >
       <div className="space-y-4">
         {/* Task ID Display */}
-        {(() => {
-          const displayTaskId = taskId || 
-            (typeof details?.task_id === 'string' ? details.task_id : '') || 
-            (typeof details?.id === 'string' ? details.id : '');
-          
-          return displayTaskId && (
-            <div className="bg-linear-to-r from-gray-800/50 to-gray-700/30 border border-gray-600/30 rounded-lg px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                  <div>
-                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wide block">Task ID</span>
-                    <span className="text-sm font-mono text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20 mt-1 inline-block">
-                      {displayTaskId}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigator.clipboard?.writeText(displayTaskId)}
-                  className="text-gray-400 hover:text-blue-400 transition-colors duration-200 p-1 rounded hover:bg-blue-500/10"
-                  title="Copy Task ID"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          );
-        })()}
+       
         
         {availableKeys.length > 0 && (
           <>
