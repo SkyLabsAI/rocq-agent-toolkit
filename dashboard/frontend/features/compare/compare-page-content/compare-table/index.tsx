@@ -4,6 +4,7 @@ import { TaskComparisonHeaderTop } from "./compare-table-header";
 import React from "react";
 import { TaskHeader } from "./compare-table-header/task-header";
 import { TaskDetailsTable } from "./compare-table-header/task-details";
+import { TaskRowData } from "../utils";
 
 interface ComparisonTableProps {
   runs: RunDetailsResponse[];
@@ -13,6 +14,7 @@ interface ComparisonTableProps {
   onSelectTask: (taskId: string) => void;
   onOpenModal: (taskId: string) => void;
   showTasks: boolean;
+  taskRowData: TaskRowData[];
   onToggleShowTasks: () => void;
 }
 
@@ -24,14 +26,15 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   onSelectTask,
   onOpenModal,
   showTasks,
+  taskRowData,
   onToggleShowTasks,
 }) => {
   console.log('Rendering ComparisonTable with tasks:', taskMap);
   return (
     <>
 
-      <div className='mt-10 border border-elevation-surface-overlay rounded-lg'>
-        <div className='grid grid-cols-1 gap-0'>
+      <div className='mt-10 border border-elevation-surface-overlay rounded-lg  bg-elevation-surface'>
+        <div className='items-center '>
           <TaskComparisonHeaderTop runs={runs} />
           <>
             {allTaskIds != undefined &&
@@ -40,19 +43,18 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                   <TaskHeader
                     id={taskId}
                     details={taskMap[taskId]}
+                    onOpenModal={onOpenModal}
                   />
                   <TaskDetailsTable
                   id={taskId}
                   details={taskMap[taskId]}
+                  taskRowData={taskRowData.find(row => row.taskId === taskId)!}
                   />
                 </React.Fragment>
               ))}
           </>
         </div>
-        <div
-          aria-hidden='true'
-          className=' border border-[#2b2c2f] border-solid inset-0 pointer-events-none rounded-[4px]'
-        />
+       
       </div>
     </>
   );

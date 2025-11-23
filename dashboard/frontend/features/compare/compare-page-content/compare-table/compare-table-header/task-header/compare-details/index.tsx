@@ -1,6 +1,6 @@
-export const CompareDetailsButton = () => (
+export const CompareDetailsButton = ({classname=""}:{classname?: string}) => (
   <div
-    className='relative rounded-[4px] shrink-0'
+    className={'relative rounded-[4px] shrink-0 ' + classname}
     onClick={e => {
       e.stopPropagation();
     //   setComparisonModalTaskId(taskId);

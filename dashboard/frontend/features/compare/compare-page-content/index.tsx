@@ -9,57 +9,8 @@ import { CompareRunsHeader } from './compare-page-header';
 import { RunSummary } from './compare-page-summary';
 import { ComparisonHeaderBar } from './compare-header-bar';
 import { ComparisonTable } from './compare-table';
+import { computeRunStats, transformRunsToTaskRows } from './utils';
 
-const computeRunStats = (run: RunDetailsResponse): RunStats => {
-  const tasks = run.tasks.length;
-  const successes = run.tasks.filter(t => t.status === 'Success').length;
-  return {
-    id: run.run_id,
-    name: run.agent_name,
-    tasks,
-    successRate: tasks === 0 ? 0 : successes / tasks,
-    totalLlmCalls: run.tasks.reduce(
-      (a, t) => a + (t.metrics?.llm_invocation_count || 0),
-      0
-    ),
-    totalTokens: run.tasks.reduce(
-      (a, t) => a + (t.metrics?.token_counts?.total_tokens || 0),
-      0
-    ),
-    avgExecutionTime:
-      tasks === 0
-        ? 0
-        : run.tasks.reduce(
-            (a, t) => a + (t.metrics?.resource_usage?.execution_time_sec || 0),
-            0
-          ) / tasks,
-  };
-};
-
-const normalizeFailureReason = (fr: unknown): string => {
-  if (fr == null) return '';
-  if (Array.isArray(fr)) {
-    return fr
-      .map(x => (typeof x === 'string' ? x : JSON.stringify(x)))
-      .join(' | ');
-  }
-  if (typeof fr === 'object') {
-    const obj = fr as { kind?: string; value?: unknown };
-    if (obj.kind) {
-      return (
-        obj.kind +
-        (obj.value
-          ? ': ' +
-            (typeof obj.value === 'object'
-              ? JSON.stringify(obj.value)
-              : String(obj.value))
-          : '')
-      );
-    }
-    return JSON.stringify(fr);
-  }
-  return String(fr);
-};
 
 export const ComparePageContent: React.FC = () => {
   const sp = useSearchParams();
@@ -136,6 +87,8 @@ export const ComparePageContent: React.FC = () => {
     setSelectedTaskId(prev => (prev === taskId ? null : taskId));
   };
 
+  const taskRows = useMemo(() => transformRunsToTaskRows(selectedRuns), [selectedRuns]);
+
   return (
     <>
       {/* Header */}
@@ -152,6 +105,7 @@ export const ComparePageContent: React.FC = () => {
             showTasks={showTasks}
             onSelectTask={selectTask}
             onOpenModal={setComparisonModalTaskId}
+            taskRowData={taskRows}
             onToggleShowTasks={() => setShowTasks(s => !s)}
           />
         </>
