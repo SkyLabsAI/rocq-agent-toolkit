@@ -1,7 +1,7 @@
 import { PlayIcon } from "@/icons/play";
 
 export const RunsHeader = () => (
-  <div className='content-stretch flex gap-[260px] items-center left-[54px] top-[19px] w-[1030px]'>
+  <div className='flex justify-between items-center left-[54px] top-[19px] w-full'>
     <div className='content-stretch flex gap-[4px] items-center relative shrink-0'>
       <PlayIcon />
       <p

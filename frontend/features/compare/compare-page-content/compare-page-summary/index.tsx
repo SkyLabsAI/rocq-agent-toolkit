@@ -11,12 +11,11 @@ interface RunSummaryProps {
 export const RunSummary: React.FC<RunSummaryProps> = ({ runStats }) => {
   return (
     <>
-      <div>
         <RunsHeader />
         {runStats.map((runStat, index) => (
           <TaskRow key={index} stat={runStat} />
         ))}
-      </div>
+    
     </>
   );
 };

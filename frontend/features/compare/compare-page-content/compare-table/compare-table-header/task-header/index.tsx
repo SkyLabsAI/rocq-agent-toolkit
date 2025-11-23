@@ -16,6 +16,12 @@ export const TaskHeader = ({
         <div className='basis-0 grow min-h-px min-w-px relative shrink-0'>
           <div className='flex flex-row items-center size-full'>
             <div className='box-border content-stretch flex gap-[84px] items-center pl-[20px] pr-0 py-0 relative w-full'>
+               <div className=' flex items-center justify-center left-[12px] size-[24px] top-[14px]'>
+          <div className='flex-none rotate-[180deg] scale-y-[-100%]'>
+            <ChevronUpIcon />
+          </div>
+        </div>
+             
               <p
                 className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-[20px] relative shrink-0 text-[#cecfd2] text-[14px] w-[230px]"
                 style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
@@ -29,11 +35,7 @@ export const TaskHeader = ({
             </div>
           </div>
         </div>
-        <div className=' flex items-center justify-center left-[12px] size-[24px] top-[14px]'>
-          <div className='flex-none rotate-[180deg] scale-y-[-100%]'>
-            <ChevronUpIcon />
-          </div>
-        </div>
+
       </div>
     </div>
   </div>
