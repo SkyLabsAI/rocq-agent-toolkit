@@ -52,13 +52,13 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
       />
       
       {/* Modal */}
-      <div className={`relative w-full bg-slate-900 border border-white/10 rounded-xl shadow-xl max-h-[90vh] flex flex-col ${
+      <div className={`relative w-full bg-elevation-surface  rounded-lg shadow-xl max-h-[90vh] flex flex-col ${
         size === 'full' ? 'max-w-[95vw]' : 
         size === 'large' ? 'max-w-6xl' : 
         'max-w-4xl'
       }`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="flex items-center justify-between p-6 py-4 border-b border-white/10">
           <h2 className="text-xl font-semibold text-white">{title}</h2>
           <button
           title='back'

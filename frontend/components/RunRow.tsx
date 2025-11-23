@@ -18,7 +18,7 @@ interface RunRowProps {
 
 function LatestBadge() {
   return (
-    <div className="inline-flex items-center px-3 py-1 rounded-full bg-background-information border border-blue-500/30">
+    <div className="flex items-center px-3 py-1 rounded-full bg-background-information border border-blue-500/30">
       <span className="text-xs font-semibold text-text-information">
         Latest
       </span>
