@@ -28,9 +28,9 @@ const TacticStepsViewer: React.FC<TacticStepsViewerProps> = ({ steps, type, titl
   };
 
   return (
-    <div className="bg-slate-800 border border-white/10 rounded-lg overflow-hidden">
+    <div className="bg-slate-800 border border-elevation-surface-overlay rounded-lg overflow-hidden">
       {/* Header */}
-      <div className={`px-4 py-3 border-b border-white/10 ${getHeaderColor()}`}>
+      <div className={`px-4 py-3 border-b border-elevation-surface-overlay ${getHeaderColor()}`}>
         <div className="flex items-center gap-2">
           {type === 'explanation' ? (
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

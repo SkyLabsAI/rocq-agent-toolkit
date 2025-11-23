@@ -59,7 +59,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
       }`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 py-4 border-b border-white/10">
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
+          <h2 className="text-xl font-semibold text-text">{title}</h2>
           <button
           title='back'
             onClick={onClose}
