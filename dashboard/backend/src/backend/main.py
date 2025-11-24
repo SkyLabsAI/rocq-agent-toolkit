@@ -325,7 +325,7 @@ async def get_observability_logs(
         logger.info(f"Retrieved {len(logs)} log entries from Loki")
 
         # Extract unique labels from the logs (filter already applied)
-        labels_dict = get_labels_grouped_by_log(logs, marker="status")
+        labels_dict = get_labels_grouped_by_log(logs, marker="status", group_name="tactic")
 
         logger.info(f"Extracted {len(labels_dict)} unique labels from logs")
 
