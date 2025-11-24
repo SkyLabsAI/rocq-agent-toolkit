@@ -20,7 +20,7 @@ export function Button({
   ...props 
 }: ButtonProps) {
   const getBaseClasses = () => {
-    const baseStyles = 'relative rounded-[4px] shrink-0';
+    const baseStyles = 'relative rounded-[4px] shrink-0 cursor-pointer';
     const textStyles = 'font-["Noto_Sans"] text-[14px] font-normal leading-5 text-text';
     
     switch (variant) {

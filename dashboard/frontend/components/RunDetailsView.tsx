@@ -231,24 +231,26 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                             : '7.80s'}
                         </p>
                       </div>
-                    </div>
 
-                    <div className='grid grid-cols-4 gap-6'>
-                      <div className='flex flex-col gap-1.5'>
+                       <div className='flex flex-col gap-1.5'>
                         <p className='font-inter font-normal text-sm text-text-disabled'>
                           LLM Calls
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.llm_invocation_count || '24'}
+                          {task.metrics?.llm_invocation_count || ''}
                         </p>
                       </div>
+                    </div>
+
+                    <div className='grid grid-cols-4 gap-6'>
+                     
 
                       <div className='flex flex-col gap-1.5'>
                         <p className='font-inter font-normal text-sm text-text-disabled'>
                           Total Tokens
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.token_counts?.total_tokens || '0'}
+                          {task.metrics?.token_counts?.total_tokens || '_'}
                         </p>
                       </div>
 
@@ -258,7 +260,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
                           {task.metrics?.token_counts?.input_tokens?.toLocaleString() ||
-                            '3,767'}
+                            ''}
                         </p>
                       </div>
 
@@ -268,14 +270,14 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
                           {task.metrics?.token_counts?.output_tokens?.toLocaleString() ||
-                            '2,129'}
+                            ''}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   {/* Divider */}
-                  <div className='h-px bg-elevation-surface-overlay'></div>
+                  {/* <div className='h-px bg-elevation-surface-overlay'></div> */}
 
                   {/* Custom Metrics */}
                   <div className='space-y-4'>
@@ -289,7 +291,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                       <p className='font-inter font-normal text-sm text-text'>
                         {String(
                           task.metrics?.custom_metrics?.proof_complexity
-                        ) || '5'}
+                        ) || ''}
                       </p>
                     </div>
                   </div>
