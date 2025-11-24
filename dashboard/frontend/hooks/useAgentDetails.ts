@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { TaskOutput, AgentRun } from "@/types/types";
 import { getDetails, getRunDetails, getObservabilityLogs } from "@/services/dataservice";
 import { Run } from "@/contexts/SelectedRunContext";
@@ -15,7 +15,7 @@ export const useAgentDetails = (agent_name: string) => {
 
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const openDetails = async () => {
     setLoading(true);
@@ -76,7 +76,11 @@ export const useAgentDetails = (agent_name: string) => {
       agent: agent_name,
       runs: selectedRuns.join(',')
     }).toString();
-    router.push(`/admin/compare?${query}`);
+    // navigate(`/compare?${query}`);
+    navigate({
+      pathname: "/compare",
+      search: `?${query}`
+    });
   };
 
   const toggleRunSelection = (run: Run) => {

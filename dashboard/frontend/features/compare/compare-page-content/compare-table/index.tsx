@@ -1,10 +1,10 @@
-import { RunDetailsResponse } from "@/types/types";
-import {  RunTaskCell } from "../..";
-import { TaskComparisonHeaderTop } from "./compare-table-header";
-import React from "react";
-import { TaskHeader } from "./compare-table-header/task-header";
-import { TaskDetailsTable } from "./compare-table-header/task-details";
-import { TaskRowData } from "../utils";
+import { RunDetailsResponse } from '@/types/types';
+import { RunTaskCell } from '../..';
+import { TaskComparisonHeaderTop } from './compare-table-header';
+import React, { useState } from 'react';
+import { TaskHeader } from './compare-table-header/task-header';
+import { TaskDetailsTable } from './compare-table-header/task-details';
+import { TaskRowData } from '../utils';
 
 interface ComparisonTableProps {
   runs: RunDetailsResponse[];
@@ -32,30 +32,46 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   console.log('Rendering ComparisonTable with tasks:', taskMap);
   return (
     <>
-
       <div className='mt-10 border border-elevation-surface-overlay rounded-lg  bg-elevation-surface'>
         <div className='items-center '>
           <TaskComparisonHeaderTop runs={runs} />
           <>
             {allTaskIds != undefined &&
               allTaskIds.map(taskId => (
-                <React.Fragment key={taskId}>
-                  <TaskHeader
-                    id={taskId}
-                    details={taskMap[taskId]}
-                    onOpenModal={onOpenModal}
-                  />
-                  <TaskDetailsTable
+                <TaskSection
+                  key={taskId}
                   id={taskId}
                   details={taskMap[taskId]}
+                  onOpenModal={onOpenModal}
                   taskRowData={taskRowData.find(row => row.taskId === taskId)!}
-                  />
-                </React.Fragment>
+                />
               ))}
           </>
         </div>
-       
       </div>
+    </>
+  );
+};
+
+interface TaskSectionProps {
+  id: string;
+  details: RunTaskCell[];
+  onOpenModal: (taskId: string) => void;
+  taskRowData: TaskRowData;
+}
+
+const TaskSection: React.FC<TaskSectionProps> = ({
+  id,
+  details,
+  onOpenModal,
+  taskRowData,
+}) => {
+  const [open,setOpen] = useState(true)
+
+  return (
+    <>
+      <TaskHeader id={id} details={details} onOpenModal={onOpenModal}  onClick={() => setOpen(!open)} isExpanded={open} />
+      {open && <TaskDetailsTable id={id} details={details} taskRowData={taskRowData} />}
     </>
   );
 };

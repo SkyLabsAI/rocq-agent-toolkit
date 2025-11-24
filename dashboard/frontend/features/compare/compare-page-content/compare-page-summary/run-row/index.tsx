@@ -1,7 +1,7 @@
 import { Button } from "@/components/base";
 import { RunStats } from "@/features/compare";
 
-export const TaskRow: React.FC<{ stat: RunStats }> = ({ stat }) => (
+export const TaskRow: React.FC<{ stat: RunStats, onClick: () => void }> = ({ stat, onClick }) => (
   <div className=' bg-elevation-surface box-border gap-10 content-stretch flex items-center left-10 px-6 py-2.5  top-19 mt-[13px] rounded-lg'>
 
       <div className='content-stretch flex gap-10 items-center relative shrink-0 w-1/4'>
@@ -55,7 +55,7 @@ export const TaskRow: React.FC<{ stat: RunStats }> = ({ stat }) => (
         </div>
  
 <div className="flex-1">
- <Button variant="danger" className="float-end self-end">
+ <Button variant="danger" className="float-end self-end" onClick={onClick}>
       Remove
     </Button>
 </div>

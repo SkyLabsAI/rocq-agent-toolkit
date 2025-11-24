@@ -3,6 +3,9 @@ import { Button } from '@/components/base/Button';
 import cn from 'classnames';
 import { Run } from '@/contexts/SelectedRunContext';
 import { TaskOutput } from '@/types/types';
+import { ChevronUpIcon } from '@/icons/chevron-up';
+import { PinOutlineIcon } from '@/icons/pin-outline';
+import { PinIcon } from '@/icons/pin';
 
 interface RunRowProps {
   run: Run;
@@ -12,8 +15,11 @@ interface RunRowProps {
   failureCount: number;
   timestamp: string;
   isSelected: boolean;
+  isPinned: boolean;
+  index: number
   onToggleExpansion: (runId: Run) => void;
   onToggleSelection: (runId: Run) => void;
+  onPin: (runId: Run) => void;
 }
 
 function LatestBadge() {
@@ -38,7 +44,9 @@ const  RunRow: React.FC<RunRowProps> = ({
   isSelected,
   onToggleExpansion,
   onToggleSelection,
-
+  isPinned = false,
+  onPin,
+  index,
 }) => {
   const successRate = ((successCount / totalTasks) * 100).toFixed(1);
 
@@ -52,8 +60,12 @@ const  RunRow: React.FC<RunRowProps> = ({
   };
 
   return (
+     <div
+            key={run.run_id}
+            className={cn('border border-white/10 rounded-lg bg-elevation-surface-raised')} style={{top: 78 * index + 0}}
+          >
     <div 
-      className="bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+      className={"bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"}
       onClick={handleRowClick}
     >
       {/* Using CSS Grid with fractional units to match header layout exactly */}
@@ -62,6 +74,9 @@ const  RunRow: React.FC<RunRowProps> = ({
         <div className="flex gap-2 items-center min-w-0">
 
           <div className="flex items-center gap-2 min-w-0">
+            <button title='pin' className='flex items-center' onClick={e=>{e.stopPropagation();onPin(run)}}>
+             {isPinned? <PinIcon className='text-text-selected'/>: <PinOutlineIcon className='opacity-0 hover:opacity-100'/>}
+            </button>
             <p className="font-noto-sans font-normal text-[14px] leading-5 text-text text-sm truncate" title={run.run_id}>
               {run.run_id}
             </p>
@@ -106,6 +121,7 @@ const  RunRow: React.FC<RunRowProps> = ({
           </Button>
         </div>
       </div>
+    </div>
     </div>
   );
 };

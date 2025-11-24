@@ -15,7 +15,7 @@ export const TaskDetailsTable = ({
 
   return (
     <>
-      <div className='py-2'>
+      <div className='py-2 divide-y divide-elevation-surface-overlay'>
         {metricRows.map(row => (
           <ComparisonRow key={row.key} label={row.label} values={row.values} />
         ))}

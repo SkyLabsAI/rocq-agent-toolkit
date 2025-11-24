@@ -23,6 +23,9 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
 }) => {
   const { setSelectedRun } = useSelectedRun();
 
+  const [pinnedRuns, setPinnedRuns] = React.useState<Set<string>>(new Set());
+
+
   const handleRunClick = (run: Run) => {
     setSelectedRun(run);
   };
@@ -31,10 +34,22 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
     setSelectedRun(null);
   };
 
+  const toggleOnPin = (run: Run) => {
+    setPinnedRuns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(run.run_id)) {
+        newSet.delete(run.run_id);
+      } else {
+        newSet.add(run.run_id);
+      }
+      return newSet;
+    });
+  };
+
   return (
-    <div className='space-y-4'>
+    <div className='space-y-4 relative '>
       {/* Header using CSS Grid with fractional units for perfect alignment */}
-      <div className='grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mb-4'>
+      <div className='grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mb-4  z-20 py-2'>
         <div className='flex gap-1 items-center'>
           <PlayIcon />
           <h3 className='text-lg font-semibold text-text'>Runs</h3>
@@ -71,15 +86,15 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
       </div>
 
       {/* Admin view: Runs list with selectable compare actions */}
-      <div className='flex flex-col gap-2'>
-        {runDetails.map((run, index) => (
-          <div
-            key={run.run_id}
-            className='border border-white/10 rounded-lg overflow-hidden bg-elevation-surface-raised'
-          >
+      <div className='flex flex-col gap-2 relative'>
+        {[
+          ...runDetails.filter(run => pinnedRuns.has(run.run_id)),
+          ...runDetails.filter(run => !pinnedRuns.has(run.run_id)),
+        ].map((run, index, arr) => (
+         
             <RunRow
               run={run}
-              isLatest={index === 0 && runDetails.length > 1}
+              isLatest={index === 0 && arr.length > 1}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
               failureCount={run.failure_count}
@@ -87,8 +102,12 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
               isSelected={selectedRuns.includes(run.run_id)}
               onToggleExpansion={handleRunClick}
               onToggleSelection={toggleRunSelection}
+              onPin={toggleOnPin}
+              isPinned={pinnedRuns.has(run.run_id)}
+              key={run.run_id}
+              index ={index}
             />
-          </div>
+
         ))}
       </div>
 
