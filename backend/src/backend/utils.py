@@ -61,70 +61,58 @@ def filter_log_labels(labels: Dict[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in labels.items() if key not in EXCLUDED_LABELS}
 
 
-def get_labels(
-    logs: List[LogEntry], group_by: List[str] = None
-) -> Dict[str, List[Union[str, Dict[str, Any]]]]:
+
+
+def get_labels_grouped_by_log(
+    logs: List[LogEntry],
+    marker: str = "status",
+) -> Dict[str, List[Dict[str, Any]]]:
     """
-    Extract labels from a list of log entries.
+    Group related log labels into items delimited by a marker label.
+
+    This is meant for observability-style UIs where a sequence of logs
+    (e.g. tactic prediction, explanations, etc.) should be grouped
+    together once a terminal label such as ``status`` appears.
+
+    The algorithm assumes:
+    - logs are in chronological order (as returned by Loki),
+    - the marker label (by default ``\"status\"``) appears once per group,
+      typically on the last log of that group.
 
     Args:
-        logs: List of LogEntry objects containing filtered labels
-        group_by: List of prefixes to group labels by
+        logs: List of LogEntry objects containing filtered labels.
+        marker: Label key that closes the current group when present.
 
     Returns:
-        Dictionary where each key maps to a list of all values found across all logs.
-        If a label matches a group_by prefix, it is added to that group as a dict {key: value}.
-        Otherwise, it is added as a string value.
+        A dictionary with a single key ``\"groups\"`` whose value is a list
+        of dictionaries. Each dictionary represents one grouped item and
+        contains the merged labels from all logs in that group.
     """
-    if group_by is None:
-        group_by = []
-
-    # First, collect all values for all keys
-    raw_labels: Dict[str, List[str]] = {}
+    groups: List[Dict[str, Any]] = []
+    current_group: Dict[str, Any] = {}
 
     for log in logs:
-        if log.labels:
-            for key, value in log.labels.items():
-                if key not in raw_labels:
-                    raw_labels[key] = []
-                raw_labels[key].append(str(value))
-
-    final_labels: Dict[str, List[Union[str, Dict[str, Any]]]] = {}
-    processed_keys = set()
-
-    # Process groups
-    for prefix in group_by:
-        # Find all keys that start with this prefix
-        group_keys = [k for k in raw_labels.keys() if k.startswith(prefix)]
-
-        if not group_keys:
+        if not log.labels:
             continue
 
-        # Mark these keys as processed
-        processed_keys.update(group_keys)
+        # Merge all labels from this log into the current group.
+        # If a key appears multiple times within a group, the latest
+        # value wins, which matches the intuition of "most recent state".
+        for key, value in log.labels.items():
+            current_group[key] = str(value)
 
-        # Group by index
-        # Find the maximum length of lists in this group
-        max_len = 0
-        for k in group_keys:
-            max_len = max(max_len, len(raw_labels[k]))
+        # When we see the marker, we consider the current group complete.
+        if marker in log.labels:
+            if current_group:
+                groups.append(current_group)
+            current_group = {}
 
-        group_list = []
-        for i in range(max_len):
-            item_dict = {}
-            for k in group_keys:
-                if i < len(raw_labels[k]):
-                    item_dict[k] = raw_labels[k][i]
-            group_list.append(item_dict)
+    # If there is a trailing, incomplete group without a marker,
+    # we still return it so the UI can decide how to render it.
+    if current_group:
+        groups.append(current_group)
 
-        final_labels[prefix] = group_list
-
-    # Add remaining non-grouped labels
-    for key, values in raw_labels.items():
-        if key not in processed_keys:
-            final_labels[key] = values
-
-    return final_labels
+    return {"groups": groups}
 
 # Adding this for now since LOKI requires a Time Range for the query
 # So we are taking a estimated time of the start and using a delta , find a time range to query the logs.
