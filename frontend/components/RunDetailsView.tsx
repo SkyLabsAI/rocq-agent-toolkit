@@ -91,7 +91,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
             {/* Left section with chevron and run info */}
             <div className='flex items-center gap-3'>
               <Button variant='ghost' onClick={onBack} className='p-1'>
-                <ChevronUpIcon />
+                <ChevronUpIcon className='rotate-90'/>
               </Button>
               <div className='flex flex-col gap-1'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>
