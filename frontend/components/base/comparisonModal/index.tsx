@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Modal from '@/components/base/modal';
 import cn from 'classnames';
 import TacticStepsViewer from '@/components/base/tacticSteps';
-import TacticInfoViewer from '@/components/base/tacticInfo';
+import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
 import CodeContent from './components/CodeContent';
 import JsonContent from './components/JsonContent';
 import { useComparisonLogs, ComparisonItem } from './hooks/useComparisonLogs';
@@ -63,7 +63,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
     if (key === 'tactic' && Array.isArray(value)) {
       return (
         <TacticInfoViewer
-          tactics={value as Array<{ name: string; next_tactic_prediction: string; status: 'success' | 'failure'; explaination: string; [key: string]: unknown }>}
+          tactics={value as TacticObject[]}
           title="Tactic Information"
         />
       );

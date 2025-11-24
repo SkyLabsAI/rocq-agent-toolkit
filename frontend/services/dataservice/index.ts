@@ -165,27 +165,27 @@ const getObservabilityLogsMock = async (runId: string, taskId: string): Promise<
         tactic: [
             {
                 name: "induction",
-                next_tactic_prediction: "induction n.",
+                tactic_prediction_tactic: "induction n.",
                 status: "success" as const,
-                explaination: "Apply mathematical induction on the variable n to break down the proof into base case and inductive step",
+                tactic_prediction_explanation: "Apply mathematical induction on the variable n to break down the proof into base case and inductive step",
                 complexity_score: 7,
                 confidence: 0.89,
                 execution_time_ms: 145
             },
             {
                 name: "reflexivity",
-                next_tactic_prediction: "reflexivity.",
+                tactic_prediction_tactic: "reflexivity.",
                 status: "success" as const,
-                explaination: "Use reflexivity to prove that 0 + 0 = 0, which is true by definition",
+                tactic_prediction_explanation: "Use reflexivity to prove that 0 + 0 = 0, which is true by definition",
                 complexity_score: 2,
                 confidence: 0.98,
                 execution_time_ms: 23
             },
             {
                 name: "simpl_rewrite",
-                next_tactic_prediction: "simpl. rewrite IHn. reflexivity.",
+                tactic_prediction_tactic: "simpl. rewrite IHn. reflexivity.",
                 status: "failure" as const,
-                explaination: "Attempt to simplify and rewrite using inductive hypothesis, but failed due to context mismatch",
+                tactic_prediction_explanation: "Attempt to simplify and rewrite using inductive hypothesis, but failed due to context mismatch",
                 complexity_score: 5,
                 confidence: 0.65,
                 execution_time_ms: 98,
@@ -193,9 +193,9 @@ const getObservabilityLogsMock = async (runId: string, taskId: string): Promise<
             },
             {
                 name: "auto",
-                next_tactic_prediction: "auto.",
+                tactic_prediction_tactic: "auto.",
                 status: "success" as const,
-                explaination: "Automatic solver successfully completes the remaining proof obligations",
+                tactic_prediction_explanation: "Automatic solver successfully completes the remaining proof obligations",
                 complexity_score: 1,
                 confidence: 0.95,
                 execution_time_ms: 67,
