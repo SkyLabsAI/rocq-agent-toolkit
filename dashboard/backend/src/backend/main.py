@@ -18,8 +18,9 @@ from backend.models import (
     ObservabilityLogsResponse,
     RefreshResponse,
     ObservabilityLabelsResponse,
+    TagsResponse,
 )
-from backend.utils import get_labels, fetch_observability_logs
+from backend.utils import get_labels_grouped_by_log, fetch_observability_logs
 import uvicorn
 
 # Configure logging
@@ -195,6 +196,25 @@ async def health_check():
     }
 
 
+@app.get("/api/tags", response_model=TagsResponse)
+async def list_tags() -> TagsResponse:
+    """
+    List all unique metadata tags across all tasks.
+
+    Returns:
+        TagsResponse containing tag keys and their unique values.
+    """
+    try:
+        # Pylint may not see dynamically added methods on the DataStore singleton.
+        tags_response = data_store.get_unique_tags()  # pylint: disable=no-member
+        return tags_response
+    except Exception as e:
+        logger.error(f"Error fetching tags: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching tags: {str(e)}"
+        ) from e
+
+
 # Change it to the POST
 @app.post("/api/refresh", response_model=RefreshResponse)
 async def refresh_data():
@@ -279,49 +299,6 @@ async def get_observability_logs_raw(
         )
         
 
-@app.get("/api/observability/labels/raw", response_model=ObservabilityLabelsResponse)
-async def get_observability_labels_raw(
-    run_id: str = Query(..., description="Run ID to fetch logs for"),
-    task_id: str = Query(..., description="Task ID to fetch logs for"),
-):
-    """
-    Fetch observability log labels from Loki for a specific run and task.
-
-    This endpoint uses the shared utility function in `utils.py` to fetch
-    raw logs from Loki, then performs postprocessing to aggregate labels.
-
-    Returns only the unique labels from the logs after filtering.
-
-    Example:
-        /api/observability/logs?run_id=abc123&task_id=task456
-    """
-    try:
-        # Fetch raw logs via shared utility
-        logs = await fetch_observability_logs(run_id=run_id, task_id=task_id)
-
-        logger.info(f"Retrieved {len(logs)} log entries from Loki")
-
-        # Extract unique labels from the logs (filter already applied)
-        labels_dict = get_labels(logs)
-
-        logger.info(f"Extracted {len(labels_dict)} unique labels from logs")
-
-        return ObservabilityLabelsResponse(
-            run_id=run_id,
-            task_id=task_id,
-            labels=labels_dict,
-            total_labels=len(labels_dict),
-        )
-    except HTTPException:
-        # Let HTTPExceptions from the utility bubble up unchanged
-        raise
-    except Exception as e:
-        logger.error(
-            f"Error fetching observability log labels: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching log labels: {str(e)}"
-        )
 
 
 
@@ -348,7 +325,7 @@ async def get_observability_logs(
         logger.info(f"Retrieved {len(logs)} log entries from Loki")
 
         # Extract unique labels from the logs (filter already applied)
-        labels_dict = get_labels(logs, group_by=["tactic"])
+        labels_dict = get_labels_grouped_by_log(logs, marker="status")
 
         logger.info(f"Extracted {len(labels_dict)} unique labels from logs")
 

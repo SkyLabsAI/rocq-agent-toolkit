@@ -7,7 +7,14 @@ import json
 from pathlib import Path
 from typing import List, Dict, Set
 from collections import defaultdict
-from backend.models import TaskResult, AgentInfo, RunInfo, RunDetailsResponse
+
+from backend.models import (
+    TaskResult,
+    AgentInfo,
+    RunInfo,
+    RunDetailsResponse,
+    TagsResponse,
+)
 
 
 class DataStore:
@@ -22,6 +29,8 @@ class DataStore:
         self._agents: Set[str] = set()
         self._runs_by_agent: Dict[str, Set[str]] = defaultdict(set)
         self._tasks_by_run: Dict[str, List[TaskResult]] = defaultdict(list)
+        # Metadata tag index: key -> set of unique string values
+        self._tags_index: Dict[str, Set[str]] = defaultdict(set)
 
     def load_from_directory(self, directory: Path, clear_existing: bool = False) -> int:
         """
@@ -96,11 +105,18 @@ class DataStore:
         self._agents.clear()
         self._runs_by_agent.clear()
         self._tasks_by_run.clear()
+        self._tags_index.clear()
 
         for task in self.task_results:
             self._agents.add(task.agent_name)
             self._runs_by_agent[task.agent_name].add(task.run_id)
             self._tasks_by_run[task.run_id].append(task)
+
+            # Index metadata tags if present
+            if task.metadata and task.metadata.tags:
+                for key, value in task.metadata.tags.items():
+                    # Ensure we always store string values for consistency
+                    self._tags_index[key].add(str(value))
 
         self._indexed = True
 
@@ -192,6 +208,22 @@ class DataStore:
             )
 
         return results
+
+    def get_unique_tags(self) -> TagsResponse:
+        """
+        Get all unique metadata tag keys and their unique values across tasks.
+
+        Returns:
+            TagsResponse containing a mapping from tag key to sorted list of values.
+        """
+        tags: Dict[str, List[str]] = {
+            key: sorted(values) for key, values in self._tags_index.items()
+        }
+
+        total_keys = len(tags)
+        total_values = sum(len(values) for values in tags.values())
+
+        return TagsResponse(tags=tags, total_keys=total_keys, total_values=total_values)
 
 
 # Global data store instance
