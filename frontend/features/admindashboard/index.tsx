@@ -67,7 +67,7 @@ const AdminDashboard: React.FC = () => {
           <div className=''>
             <table className='w-full text-left border-collapse'>
               <tbody className='divide-y divide-white/10'>
-                {agentData.map(agent => (
+                {agentData.sort((a, b) => a.agent_name.localeCompare(b.agent_name)).map(agent => (
                   <AgentDetails
                     key={agent.agent_name}
                     agent_name={agent.agent_name}

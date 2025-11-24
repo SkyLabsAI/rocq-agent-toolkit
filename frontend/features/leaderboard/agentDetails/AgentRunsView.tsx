@@ -88,10 +88,9 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
       {/* Admin view: Runs list with selectable compare actions */}
       <div className='flex flex-col gap-2 relative'>
         {[
-          ...runDetails.filter(run => pinnedRuns.has(run.run_id)),
-          ...runDetails.filter(run => !pinnedRuns.has(run.run_id)),
+          ...runDetails.filter(run => pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
+          ...runDetails.filter(run => !pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
         ].map((run, index, arr) => (
-         
             <RunRow
               run={run}
               isLatest={index === 0 && arr.length > 1}
