@@ -66,6 +66,7 @@ def filter_log_labels(labels: Dict[str, Any]) -> Dict[str, Any]:
 def get_labels_grouped_by_log(
     logs: List[LogEntry],
     marker: str = "status",
+    group_name: str = "groups",
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Group related log labels into items delimited by a marker label.
@@ -112,7 +113,7 @@ def get_labels_grouped_by_log(
     if current_group:
         groups.append(current_group)
 
-    return {"groups": groups}
+    return {group_name: groups}
 
 # Adding this for now since LOKI requires a Time Range for the query
 # So we are taking a estimated time of the start and using a delta , find a time range to query the logs.
