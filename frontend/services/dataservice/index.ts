@@ -51,7 +51,7 @@ const generateMockTaskOutput = (runId: string, agentName: string, taskIndex: num
 // Real API functions
 const getDataReal: () => Promise<AgentSummary[]> = async () => {
     const response = await axios.get(`${config.DATA_API}/agents`)
-    console.log("Fetched agent summaries:", response.data)
+
     return response.data as AgentSummary[]
 }
 
@@ -74,7 +74,7 @@ export const getData = USE_MOCK_DATA ? getDataMock : getDataReal;
 
 const getDetailsReal = async (agentName: string): Promise<AgentRun[]> => {
     const response = await axios.get(`${config.DATA_API}/agents/${agentName}/runs`)
-    console.log("Fetched agent runs:", response.data)
+
     return response.data as AgentRun[]
 }
 
@@ -98,7 +98,7 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
         });
     }
     
-    console.log("Fetched agent runs (MOCK):", mockRuns);
+
     return mockRuns;
 }
 
@@ -162,7 +162,7 @@ const getObservabilityLogsMock = async (runId: string, taskId: string): Promise<
         statesContent: [
             `Initial state: Goal (forall n, n + 0 = n)\nTactic applied: induction n\nSubgoal 1: 0 + 0 = 0\nSubgoal 2: forall n, n + 0 = n -> S n + 0 = S n`
         ],
-        tactic_info: [
+        tactic: [
             {
                 name: "induction",
                 next_tactic_prediction: "induction n.",

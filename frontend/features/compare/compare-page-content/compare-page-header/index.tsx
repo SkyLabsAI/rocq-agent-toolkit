@@ -15,8 +15,9 @@ export const CompareRunsHeader = () => (
           }
         >
           <Link to={'/'}>
-            <div className='flex-none rotate-[270deg] scale-y-[-100%] '>
-              <ChevronUpIcon />
+         
+            <div className='flex justify-center items-center rotate-[270deg] scale-y-[-100%] w-[38px] h-[38px] hover:bg-background-neutral-hovered rounded-lg'>
+              <ChevronUpIcon className="size-6 m-auto"/>
             </div>
           </Link>
         </div>

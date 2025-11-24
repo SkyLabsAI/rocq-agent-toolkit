@@ -23,7 +23,7 @@ export interface RunTaskCell {
 const ComparePage: React.FC = () => {
   return (
     <Layout title='Compare Runs'>
-      <div className='  text-white p-8'>
+      <div className='  text-text p-8 pt-0'>
         <div className='max-w-7xl mx-auto space-y-8'></div>
         <Suspense
           fallback={

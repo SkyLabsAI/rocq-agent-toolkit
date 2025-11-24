@@ -7,7 +7,7 @@ export const RunsHeader = () => (
     <div className='content-stretch flex w-1/4 col-start-1 gap-[4px] items-center relative shrink-0 text-text'>
       <PlayIcon />
       <p
-        className="font-['Noto_Sans:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-text text-[16px] text-nowrap whitespace-pre"
+        className="font-['Noto_Sans:Regular',sans-serif] font-normal leading-4 relative shrink-0 text-text text-[16px] text-nowrap whitespace-pre"
         style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
       >
         Runs

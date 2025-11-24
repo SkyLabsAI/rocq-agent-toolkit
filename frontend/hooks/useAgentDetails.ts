@@ -5,7 +5,7 @@ import { getDetails, getRunDetails, getObservabilityLogs } from "@/services/data
 import { Run } from "@/contexts/SelectedRunContext";
 
 
-export const useAgentDetails = (agent_name: string) => {
+export const useAgentDetails = (agent_name: string, setActiveAgent: (agent: string) => void) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
   const [runDetails, setRunDetails] = useState<AgentRun[]>([]);
@@ -16,6 +16,8 @@ export const useAgentDetails = (agent_name: string) => {
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
+
+ 
 
   const openDetails = async () => {
     setLoading(true);
@@ -84,6 +86,8 @@ export const useAgentDetails = (agent_name: string) => {
   };
 
   const toggleRunSelection = (run: Run) => {
+    setActiveAgent(agent_name);
+    
     setSelectedRuns(prev => 
       prev.includes(run.run_id) 
         ? prev.filter(id => id !== run.run_id)

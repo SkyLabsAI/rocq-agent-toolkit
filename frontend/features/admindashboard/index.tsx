@@ -24,6 +24,7 @@ const AdminDashboard: React.FC = () => {
     openCodeModal,
   } = useAdminDashboard();
   const { selectedRun, setSelectedRun } = useSelectedRun();
+  const [activeAgent, setActiveAgent] = React.useState<string | null>(null);
 
   return (
     <Layout title='Internal Dashboard'>
@@ -35,13 +36,13 @@ const AdminDashboard: React.FC = () => {
       )}
       {/* Main Table - only show when no run details are selected */}
       {!selectedRun && (
-        <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl'>
+        <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
           <div className='px-6 py-4 border-b border-elevation-surface-raised flex items-center justify-between bg-elevation-surface-raised'>
             <div>
-              <h2 className='text-xl font-semibold text-text'>
+              <h2 className='text-[18px] font-semibold text-text leading-6'>
                 Agent Performance
               </h2>
-              <p className='text-text-subtlest text-sm mt-1'>
+              <p className='text-text-subtlest text-[14px] mt-1 leading-5'>
                 Click on any row to view detailed task information
               </p>
             </div>
@@ -66,12 +67,15 @@ const AdminDashboard: React.FC = () => {
 
           <div className=''>
             <table className='w-full text-left border-collapse'>
-              <tbody className='divide-y divide-white/10'>
+              <tbody className='divide-y divide-elevation-surface-overlay'>
                 {agentData.sort((a, b) => a.agent_name.localeCompare(b.agent_name)).map(agent => (
                   <AgentDetails
                     key={agent.agent_name}
                     agent_name={agent.agent_name}
                     adminView
+                    activeAgent={activeAgent === agent.agent_name}
+                    setActiveAgent={setActiveAgent}
+
                   />
                 ))}
               </tbody>

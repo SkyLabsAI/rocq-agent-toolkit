@@ -14,7 +14,7 @@ const AgentTasksView: React.FC<AgentTasksViewProps> = ({ taskDetails, loadingLog
       {taskDetails.map((task) => (
         <div
           key={task.run_id}
-          className="bg-white/10 border border-white/20 rounded-lg p-4 hover:bg-white/15 transition-colors shadow-lg"
+          className=" border border-white/20 rounded-lg p-4 transition-colors shadow-lg"
         >
           <div className="space-y-4">
             {/* Basic Task Information */}
@@ -23,7 +23,7 @@ const AgentTasksView: React.FC<AgentTasksViewProps> = ({ taskDetails, loadingLog
                 <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Task ID
                 </label>
-                <p className="text-white font-mono text-sm truncate" title={task.task_id}>
+                <p className="text-text font-mono text-sm truncate" title={task.task_id}>
                   {task.task_id}
                 </p>
               </div>
