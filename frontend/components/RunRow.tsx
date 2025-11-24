@@ -20,6 +20,7 @@ interface RunRowProps {
   onToggleExpansion: (runId: Run) => void;
   onToggleSelection: (runId: Run) => void;
   onPin: (runId: Run) => void;
+  tags: Record<string, string> | undefined;
 }
 
 function LatestBadge() {
@@ -30,6 +31,14 @@ function LatestBadge() {
       </span>
     </div>
   );
+}
+
+const Tag: React.FC<{ value: string }> = ({ value }) => {
+  return <div className="flex items-center px-3 py-1 rounded-full bg-background-information border border-blue-500/30">
+      <span className="text-xs font-semibold text-text-information">
+        {value}
+      </span>
+    </div>
 }
 
 
@@ -47,6 +56,7 @@ const  RunRow: React.FC<RunRowProps> = ({
   isPinned = false,
   onPin,
   index,
+  tags
 }) => {
   const successRate = ((successCount / totalTasks) * 100).toFixed(1);
 
@@ -81,6 +91,9 @@ const  RunRow: React.FC<RunRowProps> = ({
               {run.run_id}
             </p>
             {isLatest && <LatestBadge />}
+            {tags && Object.entries(tags).map(([key, value])=>(           
+                <Tag value={value} key={key}/>
+            ))}
           </div>
         </div>
         

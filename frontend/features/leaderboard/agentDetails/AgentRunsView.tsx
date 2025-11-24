@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react';
 import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
 import RunRow from '@/components/RunRow';
@@ -23,7 +25,28 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
 }) => {
   const { setSelectedRun } = useSelectedRun();
 
-  const [pinnedRuns, setPinnedRuns] = React.useState<Set<string>>(new Set());
+  const loadPinnedRuns = (agentName: string): Set<string> => {
+    try {
+      const key = `pinnedRuns-${agentName}`;
+      const stored = localStorage.getItem(key);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch (error) {
+      console.error('Error loading pinned runs from localStorage:', error);
+      return new Set();
+    }
+  };
+
+  const [pinnedRuns, setPinnedRuns] = React.useState<Set<string>>(() => loadPinnedRuns(agentName));
+
+  // Save pinned runs to localStorage whenever it changes
+  React.useEffect(() => {
+    try {
+      const key = `pinnedRuns-${agentName}`;
+      localStorage.setItem(key, JSON.stringify(Array.from(pinnedRuns)));
+    } catch (error) {
+      console.error('Error saving pinned runs to localStorage:', error);
+    }
+  }, [pinnedRuns, agentName]);
 
 
   const handleRunClick = (run: Run) => {
@@ -90,6 +113,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
             <RunRow
               run={run}
               isLatest={index === 0 && arr.length > 1}
+              tags={run.metadata?.tags}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
               failureCount={run.failure_count}

@@ -327,6 +327,7 @@ export async function fetchAgentSummaries() : Promise<AgentSummaryTemp[]> {
         avgTime: runDetails[0].tasks.reduce((sum, task) => sum + task.metrics.resource_usage.execution_time_sec, 0) / runDetails[0].tasks.length,
         avgTokens: runDetails[0].tasks.reduce((sum, task) => sum + task.metrics.token_counts.total_tokens, 0) / runDetails[0].tasks.length,
         avgLlmCalls: runDetails[0].tasks.reduce((sum, task) => sum + task.metrics.llm_invocation_count, 0) / runDetails[0].tasks.length,
+        tags: runDetails[0].metadata?.tags
       };
     })
   );

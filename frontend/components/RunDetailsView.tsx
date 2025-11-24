@@ -284,16 +284,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                     <p className='font-noto-sans font-normal text-base text-text-disabled'>
                       Custom Metrics
                     </p>
-                    <div className='flex flex-col gap-1.5'>
-                      <p className='font-inter font-normal text-sm text-text-disabled'>
-                        Proof Complexity
-                      </p>
-                      <p className='font-inter font-normal text-sm text-text'>
-                        {String(
-                          task.metrics?.custom_metrics?.proof_complexity
-                        ) || ''}
-                      </p>
-                    </div>
+                  
                   </div>
 
                   {/* Divider */}
