@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { RunStats, RunTaskCell } from '..';
 import { CompareRunsHeader } from './compare-page-header';
 import { RunSummary } from './compare-page-summary';
-import { ComparisonHeaderBar } from './compare-header-bar';
 import { ComparisonTable } from './compare-table';
 import { computeRunStats, transformRunsToTaskRows } from './utils';
 
@@ -96,7 +95,6 @@ export const ComparePageContent: React.FC = () => {
       {!loading && !error && stats.length > 0 && (
         <>
           <RunSummary runStats={stats} />
-          {/* <ComparisonHeaderBar /> */}
           <ComparisonTable
             runs={selectedRuns}
             taskMap={taskMap}

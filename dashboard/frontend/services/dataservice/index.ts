@@ -32,7 +32,7 @@ const generateMockTaskOutput = (runId: string, agentName: string, taskIndex: num
             token_counts: {
                 input_tokens: Math.floor(Math.random() * 5000) + 1000,
                 output_tokens: Math.floor(Math.random() * 2000) + 500,
-                total_tokens: 0
+                total_tokens: Math.floor(Math.random() * 7000) + 1500
             },
             resource_usage: {
                 execution_time_sec: Math.random() * 30 + 5,
@@ -166,7 +166,7 @@ const getObservabilityLogsMock = async (runId: string, taskId: string): Promise<
             {
                 name: "induction",
                 tactic_prediction_tactic: "induction n.",
-                status: "success" as const,
+                status: "Success" as const,
                 tactic_prediction_explanation: "Apply mathematical induction on the variable n to break down the proof into base case and inductive step",
                 complexity_score: 7,
                 confidence: 0.89,
@@ -175,7 +175,7 @@ const getObservabilityLogsMock = async (runId: string, taskId: string): Promise<
             {
                 name: "reflexivity",
                 tactic_prediction_tactic: "reflexivity.",
-                status: "success" as const,
+                status: "Success" as const,
                 tactic_prediction_explanation: "Use reflexivity to prove that 0 + 0 = 0, which is true by definition",
                 complexity_score: 2,
                 confidence: 0.98,
@@ -194,7 +194,7 @@ const getObservabilityLogsMock = async (runId: string, taskId: string): Promise<
             {
                 name: "auto",
                 tactic_prediction_tactic: "auto.",
-                status: "success" as const,
+                status: "Success" as const,
                 tactic_prediction_explanation: "Automatic solver successfully completes the remaining proof obligations",
                 complexity_score: 1,
                 confidence: 0.95,
@@ -293,6 +293,8 @@ export type AgentSummaryTemp = {
 
 export async function fetchAgentSummaries() : Promise<AgentSummaryTemp[]> {
   // 1. Fetch all agents
+    console.log("Fetching agent summaries...");
+
   const agentsRes = await getData();
   const agents: AgentSummary[] =  agentsRes
 
@@ -307,19 +309,14 @@ export async function fetchAgentSummaries() : Promise<AgentSummaryTemp[]> {
         b.timestamp_utc.localeCompare(a.timestamp_utc)
       )[0];
 
-      if (!latestRun) {
-        return {
-          agentName: agent.agent_name,
-          successRate: 0,
-          avgTime: 0,
-          avgTokens: 0,
-          avgLlmCalls: 0,
-        };
-      }
+      
+      
 
       // 4. Fetch run details for the latest run
       const runDetailsRes = await getRunDetails([latestRun.run_id]);
       const runDetails: RunDetailsResponse[] = await runDetailsRes;
+
+      console.log(runDetails)
 
       return {
         agentName: agent.agent_name,
