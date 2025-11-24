@@ -69,7 +69,7 @@ const  RunRow: React.FC<RunRowProps> = ({
       onClick={handleRowClick}
     >
       {/* Using CSS Grid with fractional units to match header layout exactly */}
-      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-2.5">
+      <div className="grid grid-cols-[3fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-2.5">
         {/* Run ID column with chevron */}
         <div className="flex gap-2 items-center min-w-0">
 

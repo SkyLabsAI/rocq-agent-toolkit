@@ -278,3 +278,58 @@ export const refreshData = USE_MOCK_DATA ? refreshDataMock : refreshDataReal;
 //     }
 //     throw new Error("Run not found")
 // }
+
+
+
+
+
+export type AgentSummaryTemp = {
+  agentName: string;
+  successRate: number;
+  avgTime: number;
+  avgTokens: number;
+  avgLlmCalls: number;
+};
+
+export async function fetchAgentSummaries() : Promise<AgentSummaryTemp[]> {
+  // 1. Fetch all agents
+  const agentsRes = await getData();
+  const agents: AgentSummary[] =  agentsRes
+
+  // 2. For each agent, fetch their runs
+  const summaries = await Promise.all(
+    agents.map(async (agent) => {
+      const runsRes = await getDetails(agent.agent_name);
+      const runs: AgentRun[] = runsRes
+
+      // 3. Find the latest run by timestamp
+      const latestRun = runs.sort((a, b) =>
+        b.timestamp_utc.localeCompare(a.timestamp_utc)
+      )[0];
+
+      if (!latestRun) {
+        return {
+          agentName: agent.agent_name,
+          successRate: 0,
+          avgTime: 0,
+          avgTokens: 0,
+          avgLlmCalls: 0,
+        };
+      }
+
+      // 4. Fetch run details for the latest run
+      const runDetailsRes = await getRunDetails([latestRun.run_id]);
+      const runDetails: RunDetailsResponse[] = await runDetailsRes;
+
+      return {
+        agentName: agent.agent_name,
+        successRate: latestRun.success_count/latestRun.total_tasks,
+        avgTime: runDetails[0].tasks.reduce((sum, task) => sum + task.metrics.resource_usage.execution_time_sec, 0) / runDetails[0].tasks.length,
+        avgTokens: runDetails[0].tasks.reduce((sum, task) => sum + task.metrics.token_counts.total_tokens, 0) / runDetails[0].tasks.length,
+        avgLlmCalls: runDetails[0].tasks.reduce((sum, task) => sum + task.metrics.llm_invocation_count, 0) / runDetails[0].tasks.length,
+      };
+    })
+  );
+
+  return summaries;
+}

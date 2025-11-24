@@ -49,7 +49,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   return (
     <div className='space-y-4 relative '>
       {/* Header using CSS Grid with fractional units for perfect alignment */}
-      <div className='grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20'>
+      <div className='grid grid-cols-[3fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20'>
         <div className='flex gap-1 items-center'>
           <PlayIcon />
           <h3 className='text-[16px] leading-4 font-semibold text-text'>Runs</h3>

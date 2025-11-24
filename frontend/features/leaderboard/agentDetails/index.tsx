@@ -2,15 +2,18 @@ import cn from "classnames";
 import { useAgentDetails } from "@/hooks/useAgentDetails";
 import AgentRunsView from "./AgentRunsView";
 import { useEffect } from "react";
+import { AgentSummary } from "@/types/types";
+import { AgentSummaryTemp } from "@/services/dataservice";
 
 interface AgentDetailsProps {
-  agent_name: string;
+  agent: AgentSummary;
   adminView?: boolean;
   activeAgent?: boolean;
    setActiveAgent: (agent: string) => void;
+  agentDetailData?: AgentSummaryTemp;
 }
 
-const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false, activeAgent=false,setActiveAgent }) => {
+const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, activeAgent=false,setActiveAgent, agentDetailData }) => {
   const {
     loading,
     taskDetails,
@@ -21,8 +24,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
     compareSelected,
     toggleRunSelection,
     clearSelectedRuns,
+
     
-  } = useAgentDetails(agent_name, setActiveAgent);
+  } = useAgentDetails(agent.agent_name, setActiveAgent);
 
    useEffect(() => {
     if (!activeAgent) {
@@ -43,10 +47,51 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
           <div className="flex items-center gap-3">
             <div className="h-6 w-6 bg-background-information rounded-lg flex items-center justify-center">
               <span className="text-text-information font-semibold text-sm">
-                {agent_name.charAt(0).toUpperCase()}
+                {agentDetailData?.agentName?.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className="truncate">{agent_name}</span>
+            <span className="truncate">{agent.agent_name}</span>
+          </div>
+        </td>
+         <td className="px-6 py-4 text-text font-medium">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+              <span className="text-text font-semibold text-sm">
+                {agentDetailData?.successRate.toPrecision(2)}
+              </span>
+            </div>
+           
+          </div>
+        </td>
+
+         <td className="px-6 py-4 text-text font-medium">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+              <span className="text-text font-semibold text-sm">
+                {agentDetailData?.avgTime}
+              </span>
+            </div>
+           
+          </div>
+        </td>
+         <td className="px-6 py-4 text-text font-medium">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+              <span className="text-text font-semibold text-sm">
+                {agentDetailData?.avgTokens}
+              </span>
+            </div>
+           
+          </div>
+        </td>
+         <td className="px-6 py-4 text-text font-medium">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+              <span className="text-text font-semibold text-sm">
+                {agentDetailData?.avgTokens}
+              </span>
+            </div>
+           
           </div>
         </td>
       </tr>
@@ -70,7 +115,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent_name, adminView=false
                 <div className="space-y-4">
                 <AgentRunsView
                       runDetails={runDetails}
-                      agentName={agent_name}
+                      agentName={agent.agent_name}
                       selectedRuns={selectedRuns}
                       toggleRunSelection={toggleRunSelection}
                       clearSelectedRuns={clearSelectedRuns}

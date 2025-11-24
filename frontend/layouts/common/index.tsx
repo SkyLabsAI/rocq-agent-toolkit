@@ -29,7 +29,7 @@ const Layout = ({
               {title}
             </h1>
           </div>
-          {/* <ThemeSwitcher className='mr-2 relative right-2' /> */}
+          <ThemeSwitcher className='mr-2 relative right-2' />
         </div>
       </div>
 
