@@ -71,6 +71,7 @@ class Agent:
             reason=FailureReason(task_output.Other("not implemented"))
         )
 
+
 class AgentBuilder:
     """Builder class for agents"""
     def __init__(self, agent_type: type[Agent] = Agent):
@@ -80,10 +81,10 @@ class AgentBuilder:
     def of_agent(agent_type: type[Agent]) -> "AgentBuilder":
         return AgentBuilder(agent_type)
 
-    def add_args(self, args:list[str]) -> None:
+    def add_args(self, args: list[str]) -> None:
         pass
 
-    def __call__(self, prompt:str|None=None) -> Agent:
+    def __call__(self, prompt: str | None = None) -> Agent:
         return self._agent()
 
     def extra_rocq_args(self) -> list[str]:
@@ -92,9 +93,9 @@ class AgentBuilder:
 
 class OneShotBuilder(AgentBuilder):
     def __init__(self) -> None:
-        self._tactic:str|None = None
+        self._tactic: str | None = None
 
-    def add_args(self, args:list[str]) -> None:
+    def add_args(self, args: list[str]) -> None:
         if len(args) == 1:
             self._tactic = args[1]
         elif len(args) == 0:
@@ -102,7 +103,7 @@ class OneShotBuilder(AgentBuilder):
         else:
             print("Too many tactics given")
 
-    def __call__(self, prompt:str|None=None) -> Agent:
+    def __call__(self, prompt: str | None = None) -> Agent:
         if self._tactic is None:
             print("Missing tactic argument")
             raise ValueError("Missing tactic argument")
@@ -133,6 +134,7 @@ class OneShotAgent(Agent):
             metrics=task_output.Metrics(),
             final_doc_interaction=final_doc_interaction
         )
+
 
 # NOTE: this agent does not support backtracking
 class TraceAgent(Agent):
@@ -238,7 +240,11 @@ class TraceAgent(Agent):
         # Base implementation does nothing - subclasses can override
         _ = err
 
-    def finished(self, message: str | None = None, metrics: task_output.Metrics|None = None) -> Finished:
+    def finished(
+            self,
+            message: str | None = None,
+            metrics: task_output.Metrics | None = None
+    ) -> Finished:
         if metrics is None:
             metrics = task_output.Metrics()
         final_doc_interaction = self.final_doc_interaction()
@@ -254,7 +260,11 @@ class TraceAgent(Agent):
                 final_doc_interaction=final_doc_interaction
             )
 
-    def give_up(self, reason: FailureReason, metrics: task_output.Metrics|None = None) -> GiveUp:
+    def give_up(
+            self,
+            reason: FailureReason,
+            metrics: task_output.Metrics | None = None
+    ) -> GiveUp:
         if metrics is None:
             metrics = task_output.Metrics()
         return GiveUp(
@@ -290,7 +300,11 @@ class ChoiceAgent(MarkovAgent):
 
         if self._check_index >= len(self._all_choices):
             return self.give_up(
-                FailureReason(ExecutionError("No more tactics to choose from."))
+                FailureReason(
+                    ExecutionError(
+                        "No more tactics to choose from."
+                    )
+                )
             )
 
         return Tactic(self._all_choices[self._check_index])
