@@ -55,7 +55,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, act
         </td>
          <td className="px-6 py-4 text-text font-medium">
           <div className="flex items-center gap-3">
-            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+            <div className="h-6   rounded-lg flex items-center justify-center">
               <span className="text-text font-semibold text-sm">
                 {agentDetailData?.successRate.toPrecision(2)}
               </span>
@@ -66,9 +66,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, act
 
          <td className="px-6 py-4 text-text font-medium">
           <div className="flex items-center gap-3">
-            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+            <div className="h-6   rounded-lg flex items-center justify-center">
               <span className="text-text font-semibold text-sm">
-                {agentDetailData?.avgTime}
+                {agentDetailData?.avgTime.toPrecision(5)}
               </span>
             </div>
            
@@ -76,9 +76,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, act
         </td>
          <td className="px-6 py-4 text-text font-medium">
           <div className="flex items-center gap-3">
-            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+            <div className="h-6   rounded-lg flex items-center justify-center">
               <span className="text-text font-semibold text-sm">
-                {agentDetailData?.avgTokens}
+                {agentDetailData?.avgTokens.toPrecision(5)}
               </span>
             </div>
            
@@ -86,9 +86,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, act
         </td>
          <td className="px-6 py-4 text-text font-medium">
           <div className="flex items-center gap-3">
-            <div className="h-6 w-6  rounded-lg flex items-center justify-center">
+            <div className="h-6   rounded-lg flex items-center justify-center">
               <span className="text-text font-semibold text-sm">
-                {agentDetailData?.avgTokens}
+                {agentDetailData?.avgLlmCalls.toPrecision(5)}
               </span>
             </div>
            
