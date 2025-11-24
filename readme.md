@@ -7,7 +7,7 @@ This guide outlines the three primary deployment options for running the Rocq ag
 *   **CI Deployment:** Automatically run the agent via a CI/CD pipeline when you create a pull request or tag a commit.
 
 
-### About Observability Stack  
+### About Observability Stack
 
 We use an observability stack composed of **Alloy**, **Loki**, and **Grafana**. Alloy acts as the telemetry collector/ingester, receiving logs from the Rocq agent and forwarding them to Loki, which stores and indexes the logs. Grafana provides dashboards and an interface for querying and visualizing these logs.
 
@@ -23,7 +23,7 @@ These services together form the observability stack. Currently, there will be t
     - Khawarizmi: `http://172.31.0.1:3000`
 
 
-* **Using Grafana**  
+* **Using Grafana**
 In Grafana, first set the **time range** for which you want to query logs. Then, select the log stream with service name `rocq_agent`. Once these are set, the relevant logs can be fetched. You can also write more complex **LogQL** queries to build specific filters and perform advanced analysis.
 
 
@@ -38,6 +38,8 @@ This is a self-contained setup for local development. The agent, observability s
 Run your agent using the `--local` flag. This is the recommended way to manage the local environment.
 
 ```
+cd ../brick_agents
+
 uv run code-proof-agent \
   --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
   --output-dir results \
@@ -86,18 +88,20 @@ This approach runs the agent locally but automatically sends logs and publishes 
 
 1.  **Connect to VPN:** You **must** be connected to the **Khawarzimi VPN**.
 2.  **Configure SSH:** Your machine needs SSH access to the server for the automatic `scp` file upload. Add the following to your `~/.ssh/config` file:
-```  
+```
 Host 172.31.0.1
   HostName 172.31.0.1
-  User 
+  User
   Port 1223
-  IdentityFile 
-``` 
+  IdentityFile
+```
 
 ### Running the Agent for Staging
 
 Use the `--env staging` flag to run the agent and automatically publish to the remote server.
 ```
+cd ../brick_agents
+
 uv run code-proof-agent \
   --task-file ../../data/brick_groundtruth/examples/loopcorpus/tasks.yaml \
   --output-dir results \
@@ -116,9 +120,9 @@ You and your team can view the published results on the centralized frontend:
 
 > **Note:** After the run completes, click the refresh button on the frontend to fetch the updated data.
 
-### Optional: Manual Staging Environment Setup 
+### Optional: Manual Staging Environment Setup
 
-If you prefer to not use --env staging and manage things yourself. 
+If you prefer to not use --env staging and manage things yourself.
 
 1.  **Configure Centralized Logging (`.env`)**
     Your agent needs to know where to send logs.
@@ -138,7 +142,7 @@ If you prefer to not use --env staging and manage things yourself.
     scp your_results_file.jsonl 172.31.0.1:/data/skylabs/rocq-agent-runner/data/
     ```
     This command syntax assumes that ssh config is set up. If not you might need to update the config or the command.
-    
+
 -----
 
 ## 3\. CI (Continuous Integration) Deployment
