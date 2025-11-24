@@ -59,6 +59,10 @@ def mk_parser(parent: Any|None=None, with_tracer: bool = True) -> Any:
 
 
 def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
+    output_dir.mkdir(exist_ok=True)
+    if not output_dir.is_dir():
+        print(f"No such output directory: {output_dir}")
+
     def run_task(task: Tasks.Task, progress: util.ProgressCallback) -> bool:
         # TODO: find a better ID for tasks
         task_id: str = Tasks.get_task_id(task)
@@ -70,18 +74,10 @@ def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tas
                     DuneUtil.rocq_args_for(task_file),
                     str(task_file),
                     dune=True,
-            ).sess() as rdm:
+            ).sess(load_file=True) as rdm:
                 tracer = tracer_builder.build()
-                progress(0.01, "🔃")
-                load_reply = rdm.load_file()
                 tracer.setup(rdm)
                 progress(0.05, "🔃")
-                if isinstance(load_reply, RocqDocManager.Err):
-                    raise RuntimeError(" ".join([
-                        f"rocq-doc-manager failed to load {task_file};",
-                        "is the [rocq-doc-manager] executable available",
-                        "and has the file been built?"
-                    ]))
 
                 if not locator.parse_locator(task["locator"])(rdm):
                     print(f"Failed to find task: {task_id}")
