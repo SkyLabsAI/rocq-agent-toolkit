@@ -24,7 +24,7 @@ export const TaskHeader = ({
     <div className=' flex items-center gap-2  -left-3 relative w-[242px]'>
       <ChevronUpIcon className={cn('size-6',{"rotate-180": isExpanded})} />
       <p
-        className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-[#cecfd2] text-[14px]"
+        className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-text text-[14px]"
         style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
       >
         Task ID: {id}

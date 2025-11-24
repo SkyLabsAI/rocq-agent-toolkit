@@ -27,7 +27,7 @@ export const TaskComparisonHeaderTop: React.FC<
 > = ({ runs }) => (
   <div className={`grid px-6 py-4`} style={getCommonGridStyle(runs.length)}>
     <p
-      className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-[#cecfd2] text-[14px] text-nowrap whitespace-pre"
+      className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-text text-[14px] text-nowrap whitespace-pre"
       style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
     >
       Taskwise Comparison
@@ -37,7 +37,7 @@ export const TaskComparisonHeaderTop: React.FC<
       runs.map(run => (
         <p
           key={run.run_id}
-          className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5relative shrink-0 text-[#cecfd2] text-[14px] text-nowrap whitespace-pre truncate"
+          className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5relative shrink-0 text-text text-[14px] text-nowrap whitespace-pre truncate"
           style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
         >
           { run.run_id}
