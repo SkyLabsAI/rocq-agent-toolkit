@@ -2,7 +2,7 @@ import ComparisonModal from '@/components/base/comparisonModal';
 import Layout from '@/layouts/common';
 import { getRunDetails } from '@/services/dataservice';
 import { RunDetailsResponse } from '@/types/types';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { RunStats, RunTaskCell } from '..';
 import { CompareRunsHeader } from './compare-page-header';
@@ -13,7 +13,7 @@ import { computeRunStats, transformRunsToTaskRows } from './utils';
 
 
 export const ComparePageContent: React.FC = () => {
-  const sp = useSearchParams();
+  const [sp] = useSearchParams();
   const agentName = sp.get('agent') || '';
   const runsParam = sp.get('runs') || '';
 

@@ -44,15 +44,7 @@ export const TaskComparisonHeaderTop: React.FC<
         </p>
       ))}
     <div>
-      <Button
-        leftIcon={<SortIcon />}
-        rightIcon={<ChevronUpIcon />}
-        variant='default'
-        rightDivider
-        className='ml-auto float-end'
-      >
-        Filter Fields
-      </Button>
+
     </div>
   </div>
 );

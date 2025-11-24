@@ -9,18 +9,21 @@ import Layout from '@/layouts/common';
 import AgentDetails from '../leaderboard/agentDetails';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import Button from '@/components/base/Button';
-import { SortIcon } from '@/icons/sort/sort';
-import { ChevronUpIcon } from '@/icons/chevron-up';
-import { SearchIcon } from '@/icons/search';
 import RunDetailsView from '@/components/RunDetailsView';
 import { RefreshIcon } from '@/icons/refresh';
 import TaskDetailsModal from '../taskDetailsModal';
 
 const AdminDashboard: React.FC = () => {
-  const { agentData, isRefreshing, refreshMessage, handleRefresh, modalState, closeModal, openCodeModal } =
-    useAdminDashboard();
+  const {
+    agentData,
+    isRefreshing,
+    refreshMessage,
+    handleRefresh,
+    modalState,
+    closeModal,
+    openCodeModal,
+  } = useAdminDashboard();
   const { selectedRun, setSelectedRun } = useSelectedRun();
-
 
   return (
     <Layout title='Internal Dashboard'>
@@ -32,7 +35,7 @@ const AdminDashboard: React.FC = () => {
       )}
       {/* Main Table - only show when no run details are selected */}
       {!selectedRun && (
-        <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
+        <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl'>
           <div className='px-6 py-4 border-b border-elevation-surface-raised flex items-center justify-between bg-elevation-surface-raised'>
             <div>
               <h2 className='text-xl font-semibold text-text'>
@@ -44,23 +47,7 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className='items-center flex gap-2'>
-              <Button
-                variant='default'
-                leftIcon={<SearchIcon />}
-                leftDivider={true}
-                className='w-60'
-              >
-                Search
-              </Button>
-
-              <Button
-                disabled
-                rightDivider
-                leftIcon={<SortIcon />}
-                rightIcon={<ChevronUpIcon />}
-              >
-                Sort
-              </Button>
+          
 
               <Button
                 onClick={handleRefresh}
@@ -68,7 +55,7 @@ const AdminDashboard: React.FC = () => {
                 variant='default'
                 leftIcon={
                   !isRefreshing ? (
-                  <RefreshIcon className="h-5 w-5" />
+                    <RefreshIcon className='h-5 w-5' />
                   ) : undefined
                 }
               >
@@ -77,7 +64,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className='overflow-x-auto'>
+          <div className=''>
             <table className='w-full text-left border-collapse'>
               <tbody className='divide-y divide-white/10'>
                 {agentData.map(agent => (
@@ -93,24 +80,26 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
       {selectedRun && (
-        <RunDetailsView run={selectedRun} onBack={() => setSelectedRun(null)} openCodeModal={openCodeModal} />
+        <RunDetailsView
+          run={selectedRun}
+          onBack={() => setSelectedRun(null)}
+          openCodeModal={openCodeModal}
+        />
       )}
 
-
-        <TaskDetailsModal
+      <TaskDetailsModal
         isOpen={modalState.isOpen}
         onClose={closeModal}
         details={modalState.logs}
-        title={modalState.selectedTask ? `Observability Logs - ${modalState.selectedTask.task_id}` : 'Task Logs'}
+        title={
+          modalState.selectedTask
+            ? `Observability Logs - ${modalState.selectedTask.task_id}`
+            : 'Task Logs'
+        }
         taskId={modalState.selectedTask?.task_id}
       />
-
-
-
     </Layout>
   );
 };
-
-
 
 export default AdminDashboard;

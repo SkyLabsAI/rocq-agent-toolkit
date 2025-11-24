@@ -1,5 +1,5 @@
 import { ChevronUpIcon } from "@/icons/chevron-up";
-import Link from "next/link";
+import {Link} from "react-router-dom";
 
 export const CompareRunsHeader = () => (
   <div className=' bg-elevation-surface-raised box-border content-stretch flex items-center justify-between left-0 overflow-clip px-[24px] py-[16px] top-[48px] w-full rounded-lg'>
@@ -14,7 +14,7 @@ export const CompareRunsHeader = () => (
             } as React.CSSProperties
           }
         >
-          <Link href={'/admin'}>
+          <Link to={'/'}>
             <div className='flex-none rotate-[270deg] scale-y-[-100%] '>
               <ChevronUpIcon />
             </div>
