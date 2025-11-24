@@ -132,6 +132,11 @@ export interface TaskOutput {
   metrics: Metrics;
 
   details? : Details;
+
+  metadata?: {
+    tags: Record<string, string>;
+    [key: string]: unknown;
+  }
 }
 
 /**

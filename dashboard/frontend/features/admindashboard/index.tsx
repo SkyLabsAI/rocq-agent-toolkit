@@ -12,10 +12,12 @@ import Button from '@/components/base/Button';
 import RunDetailsView from '@/components/RunDetailsView';
 import { RefreshIcon } from '@/icons/refresh';
 import TaskDetailsModal from '../taskDetailsModal';
+import AgentListIcon from '@/icons/agent-list';
 
 const AdminDashboard: React.FC = () => {
   const {
     agentData,
+    agentDetailData,
     isRefreshing,
     refreshMessage,
     handleRefresh,
@@ -48,8 +50,6 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className='items-center flex gap-2'>
-          
-
               <Button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
@@ -68,16 +68,38 @@ const AdminDashboard: React.FC = () => {
           <div className=''>
             <table className='w-full text-left border-collapse'>
               <tbody className='divide-y divide-elevation-surface-overlay'>
-                {agentData.sort((a, b) => a.agent_name.localeCompare(b.agent_name)).map(agent => (
-                  <AgentDetails
-                    key={agent.agent_name}
-                    agent_name={agent.agent_name}
-                    adminView
-                    activeAgent={activeAgent === agent.agent_name}
-                    setActiveAgent={setActiveAgent}
-
-                  />
-                ))}
+                <tr className='text-text'>
+                  <td>
+                    <div className='flex gap-1 items-center px-6 py-4 text-[16px] py-5'>
+                      <AgentListIcon className=' text-icon-success size-4' />
+                      Agents
+                    </div>
+                  </td>
+                  <td className='px-6 py-4 font-[16px] text-text-disabled'>
+                    Success Rate
+                  </td>
+                  <td className='px-6 py-4 font-[16px] text-text-disabled'>
+                    Avg Time (s)
+                  </td>
+                  <td className='px-6 py-4 font-[16px] text-text-disabled'>
+                    Avg Tokens
+                  </td>
+                  <td className='px-6 py-4 font-[16px] text-text-disabled'>
+                    Avg LLM Calls
+                  </td>
+                </tr>
+                {agentData
+                  .sort((a, b) => a.agent_name.localeCompare(b.agent_name))
+                  .map((agent,index) => (
+                    <AgentDetails
+                      key={agent.agent_name}
+                      agent={agent}
+                      agentDetailData={agentDetailData[index]}
+                      adminView
+                      activeAgent={activeAgent === agent.agent_name}
+                      setActiveAgent={setActiveAgent}
+                    />
+                  ))}
               </tbody>
             </table>
           </div>
