@@ -37,7 +37,7 @@ export const TaskHeader = ({
       ))}
 
     <div >
-      <Button className='float-right' variant='default' onClick={()=>onOpenModal(id)}>
+      <Button className='float-right' variant='outline' onClick={()=>onOpenModal(id)}>
         Compare Details
       </Button>
     </div>

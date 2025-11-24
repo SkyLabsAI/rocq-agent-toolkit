@@ -63,7 +63,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
           <button
           title='back'
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+            className="p-2 rounded-lg overflow-hidden transition-colors duration-200 w-[38px] h-[38px] flex items-center justify-center hover:bg-background-neutral-hovered"
           >
             <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

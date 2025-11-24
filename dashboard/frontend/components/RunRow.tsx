@@ -62,14 +62,14 @@ const  RunRow: React.FC<RunRowProps> = ({
   return (
      <div
             key={run.run_id}
-            className={cn('border border-white/10 rounded-lg bg-elevation-surface-raised')} style={{top: 78 * index + 0}}
+            className={cn(' rounded-lg bg-elevation-surface-raised')} style={{top: 78 * index + 0}}
           >
     <div 
-      className={"bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"}
+      className={" hover:bg-white/10 transition-colors cursor-pointer rounded-lg overflow-hidden"}
       onClick={handleRowClick}
     >
       {/* Using CSS Grid with fractional units to match header layout exactly */}
-      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-4">
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-2.5">
         {/* Run ID column with chevron */}
         <div className="flex gap-2 items-center min-w-0">
 

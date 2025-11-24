@@ -90,9 +90,9 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
           <div className='flex items-center justify-between px-6 py-4'>
             {/* Left section with chevron and run info */}
             <div className='flex items-center gap-3'>
-              <Button variant='ghost' onClick={onBack} className='p-1'>
-                <ChevronUpIcon className='rotate-90'/>
-              </Button>
+              <button title='Back' onClick={onBack} className='p-0 hover:bg-background-neutral-hovered rounded-lg w-[38px] h-[38px]'>
+                <ChevronUpIcon className='rotate-90 size-6 m-auto'/>
+              </button>
               <div className='flex flex-col gap-1'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                   Agent: {run.agent_name}
@@ -102,7 +102,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                 </p>
               </div>
             </div>
-              <div className='flex flex-col gap-2'>
+              <div className='flex flex-col gap-1'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                   Total Tasks
                 </p>
@@ -111,7 +111,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                 </p>
               </div>
 
-              <div className='flex flex-col gap-2'>
+              <div className='flex flex-col gap-1'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                   Success Rate
                 </p>
@@ -127,7 +127,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                 </p>
               </div>
 
-              <div className='flex flex-col gap-2'>
+              <div className='flex flex-col gap-1'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                   Timestamp
                 </p>

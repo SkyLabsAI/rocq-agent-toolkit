@@ -54,7 +54,7 @@ export const useAdminDashboard = () => {
 
     const openCodeModal = async (task: TaskOutput) => {
 
-      console.log("What is this. will this even work ? ")
+
 
       const taskKey = `${task.run_id}-${task.task_id}`;
       setLoadingLogs(taskKey);

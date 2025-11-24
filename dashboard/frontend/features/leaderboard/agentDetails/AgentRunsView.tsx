@@ -49,10 +49,10 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   return (
     <div className='space-y-4 relative '>
       {/* Header using CSS Grid with fractional units for perfect alignment */}
-      <div className='grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mb-4  z-20 py-2'>
+      <div className='grid grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20'>
         <div className='flex gap-1 items-center'>
           <PlayIcon />
-          <h3 className='text-lg font-semibold text-text'>Runs</h3>
+          <h3 className='text-[16px] leading-4 font-semibold text-text'>Runs</h3>
         </div>
 
         <div>
@@ -76,17 +76,13 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         <div>
           {/* Invisible button to match content row button dimensions */}
           <div className='bg-transparent relative rounded border border-transparent opacity-0 pointer-events-none'>
-            <div className='flex gap-1.5 items-center px-3 py-2 relative rounded-inherit'>
-              <p className='font-noto-sans font-normal leading-5 text-transparent text-sm whitespace-nowrap'>
-                Add to Compare
-              </p>
-            </div>
+           
           </div>
         </div>
       </div>
 
       {/* Admin view: Runs list with selectable compare actions */}
-      <div className='flex flex-col gap-2 relative'>
+      <div className='flex flex-col gap-2 relative mb-9'>
         {[
           ...runDetails.filter(run => pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
           ...runDetails.filter(run => !pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),

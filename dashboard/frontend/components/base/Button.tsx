@@ -5,7 +5,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactNode;
   leftDivider?: boolean;
   rightDivider?: boolean;
-  variant?: 'default' | 'ghost' | 'danger';
+  variant?: 'default' | 'ghost' | 'danger' | 'outline';
   children: React.ReactNode;
 }
 
@@ -20,14 +20,16 @@ export function Button({
   ...props 
 }: ButtonProps) {
   const getBaseClasses = () => {
-    const baseStyles = 'relative rounded-[4px] shrink-0 cursor-pointer';
+    const baseStyles = 'relative rounded-[4px] shrink-0 cursor-pointer overflow-hidden';
     const textStyles = 'font-["Noto_Sans"] text-[14px] font-normal leading-5 text-text';
     
     switch (variant) {
       case 'default':
         return `${baseStyles} ${textStyles} bg-background-accent-gray-subtlest border border-background-accent-gray-subtler shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)]`;
+      case 'outline':
+        return `${baseStyles} ${textStyles}  border border-background-accent-gray-subtler shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)]`;
       case 'danger':
-        return `${baseStyles} ${textStyles} bg-background-danger border border-border-danger text-text-danger border-background-danger-hovered`;
+        return `${baseStyles} ${textStyles} bg-background-danger border text-text-danger border-background-danger-hovered`;
       case 'ghost':
         return `${baseStyles} ${textStyles} border border-transparent hover:bg-background-neutral-hovered`;
       default:
@@ -43,7 +45,7 @@ export function Button({
 
   return (
     <button className={`${baseClasses} ${className}`} {...props}>
-      <div className="box-border content-stretch flex gap-3 items-center overflow-clip px-3 py-2 relative rounded-[inherit]">
+      <div className="box-border content-stretch flex gap-1.5 items-center overflow-clip px-3 py-2 relative rounded-[inherit]">
         {leftIcon && (
           <div className="content-stretch flex gap-1.5 items-center relative shrink-0">
             {leftIcon}

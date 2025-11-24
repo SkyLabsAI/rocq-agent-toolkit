@@ -26,7 +26,7 @@ const CodeViewer: React.FC<CodeViewerProps> = ({ code, language, filename }) => 
   return (
     <div className="bg-slate-800 border border-elevation-surface-overlay rounded-lg overflow-hidden">
       {filename && (
-        <div className="bg-elevation-surface-raised px-4 py-2 border-b border-white/10">
+        <div className="bg-elevation-surface-raised px-4 py-2 border-b border-elevation-surface-overlay">
           <span className="text-sm font-medium text-text">{filename}</span>
           <span className="text-xs text-text ml-2">({language})</span>
         </div>

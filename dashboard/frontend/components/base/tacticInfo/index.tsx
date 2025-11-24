@@ -1,5 +1,6 @@
 import React from 'react';
 import cn from 'classnames';
+import { StatusBadge } from '../statusBadge';
 
 interface TacticObject {
   name: string;
@@ -15,9 +16,13 @@ interface TacticInfoViewerProps {
 }
 
 const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "Tactic Information" }) => {
+
+
+  console.warn("TacticInfoViewer rendered with tactics:", tactics);
+
   if (!tactics || tactics.length === 0) {
     return (
-      <div className="text-center text-gray-400 py-8">
+      <div className="text-center text-text py-8">
         No tactic information available
       </div>
     );
@@ -50,8 +55,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
   return (
     <div className="space-y-4">
       {title && (
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-          <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
+        <h3 className="text-lg font-semibold text-text mb-4 flex items-center">
           {title}
         </h3>
       )}
@@ -67,28 +71,23 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
           {/* Header with tactic name and status */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <span className="text-sm font-medium text-gray-300">
+              <span className="text-sm font-medium text-text">
                 Tactic {index + 1}
               </span>
-              <h4 className="text-base font-semibold text-white">
+              <h4 className="text-base font-semibold text-text">
                 {tactic.name}
               </h4>
             </div>
-            <span className={cn(
-              'px-3 py-1 rounded-full text-xs font-semibold border uppercase tracking-wide',
-              getStatusColor(tactic.status)
-            )}>
-              {tactic.status}
-            </span>
+            <StatusBadge status={tactic.status} />
           </div>
 
           {/* Main content grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Next Tactic Prediction */}
             <div className="space-y-2">
-              <h5 className="text-sm font-medium text-blue-400">Next Tactic Prediction</h5>
-              <div className="bg-gray-900/50 border border-white/10 rounded-md p-3">
-                <code className="text-sm text-gray-300 font-mono">
+              <h5 className="text-sm font-medium text-text">Next Tactic Prediction</h5>
+              <div className="bg-elevation-surface border border-elevation-surface-overlay rounded-md p-3">
+                <code className="text-sm text-text">
                   {tactic.next_tactic_prediction}
                 </code>
               </div>
@@ -96,9 +95,9 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
 
             {/* Explanation */}
             <div className="space-y-2">
-              <h5 className="text-sm font-medium text-purple-400">Explanation</h5>
-              <div className="bg-gray-900/50 border border-white/10 rounded-md p-3">
-                <p className="text-sm text-gray-300">
+              <h5 className="text-sm font-medium text-text">Explanation</h5>
+              <div className="bg-elevation-surface border border-elevation-surface-overlay rounded-md p-3">
+                <p className="text-sm text-text">
                   {tactic.explaination}
                 </p>
               </div>
@@ -108,18 +107,18 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
           {/* Additional properties */}
           {additionalKeys.size > 0 && (
             <div className="mt-4 pt-4 border-t border-white/10">
-              <h5 className="text-sm font-medium text-orange-400 mb-3">Additional Information</h5>
+              <h5 className="text-sm font-medium text-text mb-3">Additional Information</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {Array.from(additionalKeys).map(key => {
                   const value = tactic[key];
                   if (value === undefined || value === null) return null;
                   
                   return (
-                    <div key={key} className="bg-gray-900/30 border border-white/5 rounded-md p-3">
-                      <div className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+                    <div key={key} className="bg-elevation-surface border border-elevation-surface-overlay rounded-md p-3">
+                      <div className="text-xs font-medium text-text uppercase tracking-wide mb-1">
                         {key.replace(/_/g, ' ')}
                       </div>
-                      <div className="text-sm text-gray-300">
+                      <div className="text-sm text-text">
                         {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
                       </div>
                     </div>
@@ -132,14 +131,14 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
       ))}
       
       {/* Summary */}
-      <div className="mt-6 p-4 bg-gray-800/30 border border-white/10 rounded-lg">
+      <div className="mt-6 p-4 bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">Total Tactics:</span>
-          <span className="text-white font-medium">{tactics.length}</span>
+          <span className="text-text">Total Tactics:</span>
+          <span className="text-text font-medium">{tactics.length}</span>
         </div>
         <div className="flex items-center justify-between text-sm mt-2">
-          <span className="text-gray-400">Success Rate:</span>
-          <span className="text-white font-medium">
+          <span className="text-text">Success Rate:</span>
+          <span className="text-text font-medium">
             {((tactics.filter(t => t.status === 'success').length / tactics.length) * 100).toFixed(1)}%
           </span>
         </div>

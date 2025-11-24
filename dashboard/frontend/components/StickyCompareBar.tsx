@@ -34,13 +34,13 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
   return createPortal(
     <div className="fixed bottom-0 left-0 right-0 bg-elevation-surface-raised backdrop-blur-sm border-t border-t-elevation-surface-overlay  z-50 shadow-lg px-10 py-3 flex justify-between items-center">
        <div className=" flex items-center justify-center">
-      <div className="flex items-center gap-3.5 w-full max-w-2xl">
+      <div className="flex items-center gap-3.5 w-full max-w-2xl h-[42px]">
         <p className="text-text text-[14px] font-semibold whitespace-nowrap">
           Agent: {agentName}
         </p>
         <div className="w-px h-5 bg-[#F0F1F2]"></div>
         <p className="text-text-disabled text-[14px] whitespace-nowrap">
-          Selected 2 Runs
+          Selected {selectedRuns.length} Runs
         </p>
       </div>
     </div>
@@ -49,7 +49,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
           <Button
             variant="danger"
             onClick={(e) => { e.stopPropagation(); onClearSelection(); }}
-            className="px-4 py-2 text-sm"
+    
           >
             Clear Selection
           </Button>
@@ -57,10 +57,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
             variant="default"
             disabled={selectedRuns.length < 2}
             onClick={(e) => { e.stopPropagation(); onCompareSelected(); }}
-            className={cn(
-              "px-6 py-2 text-sm font-medium transition-colors",
-             
-            )}
+            
           >
             {selectedRuns.length < 2 ? `Select ${2 - selectedRuns.length} more run${2 - selectedRuns.length > 1 ? 's' : ''}` : `Compare ${selectedRuns.length} Runs`}
           </Button>
