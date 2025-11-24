@@ -2,15 +2,15 @@ import React from 'react';
 import cn from 'classnames';
 import { StatusBadge } from '../statusBadge';
 
-interface TacticObject {
-  name: string;
-  next_tactic_prediction: string;
+export interface TacticObject {
+  goal: string;
+  tactic_prediction_tactic: string;
   status: "success" | "failure";
-  explaination: string;
+  tactic_prediction_explanation: string;
   [key: string]: unknown; // Additional dynamic properties
 }
 
-interface TacticInfoViewerProps {
+ interface TacticInfoViewerProps {
   tactics: TacticObject[];
   title?: string;
 }
@@ -41,7 +41,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
   };
 
   // Get all unique additional keys across all tactics (excluding the standard ones)
-  const standardKeys = new Set(['name', 'next_tactic_prediction', 'status', 'explaination']);
+  const standardKeys = new Set(['name', 'tactic_prediction_tactic', 'status', 'tactic_prediction_explanation']);
   const additionalKeys = new Set<string>();
   
   tactics.forEach(tactic => {
@@ -75,7 +75,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
                 Tactic {index + 1}
               </span>
               <h4 className="text-base font-semibold text-text">
-                {tactic.name}
+                {tactic.goal}
               </h4>
             </div>
             <StatusBadge status={tactic.status} />
@@ -88,7 +88,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
               <h5 className="text-sm font-medium text-text">Next Tactic Prediction</h5>
               <div className="bg-elevation-surface border border-elevation-surface-overlay rounded-md p-3">
                 <code className="text-sm text-text">
-                  {tactic.next_tactic_prediction}
+                  {tactic.tactic_prediction_tactic}
                 </code>
               </div>
             </div>
@@ -98,7 +98,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
               <h5 className="text-sm font-medium text-text">Explanation</h5>
               <div className="bg-elevation-surface border border-elevation-surface-overlay rounded-md p-3">
                 <p className="text-sm text-text">
-                  {tactic.explaination}
+                  {tactic.tactic_prediction_explanation}
                 </p>
               </div>
             </div>

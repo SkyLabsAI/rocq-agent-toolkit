@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from '@/components/base/modal';
 import CodeViewer from '@/components/base/codeViewer';
 import TacticStepsViewer from '@/components/base/tacticSteps';
-import TacticInfoViewer from '@/components/base/tacticInfo';
+import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
 import cn from 'classnames';
 
 interface TaskDetailsModalProps {
@@ -51,7 +51,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
     if (key === 'tactic' && Array.isArray(value)) {
       return (
         <TacticInfoViewer
-          tactics={value as Array<{name: string; next_tactic_prediction: string; status: "success" | "failure"; explaination: string; [key: string]: unknown}>}
+          tactics={value as TacticObject[]}
           title="Tactic Information"
         />
       );
