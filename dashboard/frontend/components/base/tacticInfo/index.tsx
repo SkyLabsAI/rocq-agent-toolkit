@@ -35,7 +35,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({ tactics, title = "T
   };
 
   const getStatusBgColor = (status: "success" | "failure") => {
-    return status === "success" 
+    return status.toLowerCase() === "success" 
       ? "bg-green-500/5 border-green-500/20"
       : "bg-red-500/5 border-red-500/20";
   };

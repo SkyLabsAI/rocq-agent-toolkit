@@ -182,6 +182,10 @@ export interface RunDetailsResponse {
   agent_name: string;
   total_tasks: number;
   tasks: TaskOutput[];
+  metadata?: {
+    tags: Record<string, string>;
+    [key: string]: unknown;
+  }
 }
 
 /**
