@@ -13,6 +13,7 @@ license = "GPL-2.0-or-later" # Revisit this license
 dependencies = [
     "pyyaml>=6.0.3,<7",
     "jsonrpc-tp",
+    "dataclasses-json>=0.6.7",
     "hypothesis>=6.148.2",
 ]
 

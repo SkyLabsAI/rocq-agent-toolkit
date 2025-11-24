@@ -89,7 +89,7 @@ module Schema = struct
       | List s ->
           let fresh = fresh () in
           Printf.sprintf "[%s for %s in %s]" (python_val fresh s) fresh var
-      | Obj o -> Printf.sprintf "self.%s(**%s)" o var
+      | Obj o -> Printf.sprintf "self.%s.from_dict(%s)" o var
     in
     python_val var s
 
@@ -482,6 +482,7 @@ let output_python_api oc api =
   line "from dataclasses import dataclass, field";
   line "from typing import Any";
   line "";
+  line "from dataclasses_json import DataClassJsonMixin";
   line "from jsonrpc_tp import JsonRPCTP";
   line "";
   line "";
@@ -490,7 +491,7 @@ let output_python_api oc api =
   let output_object (A(O(o))) =
     line "";
     line "    @dataclass";
-    line "    class %s:" o.name;
+    line "    class %s(DataClassJsonMixin):" o.name;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->

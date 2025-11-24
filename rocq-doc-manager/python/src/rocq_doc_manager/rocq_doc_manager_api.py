@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+from dataclasses_json import DataClassJsonMixin
 from jsonrpc_tp import JsonRPCTP
 
 
@@ -9,13 +10,13 @@ class RocqDocManagerAPI(JsonRPCTP):
     """Main API class."""
 
     @dataclass
-    class RocqSource:
+    class RocqSource(DataClassJsonMixin):
         """Rocq source file information."""
         file: str = field(kw_only=True, default="")
         dirpath: str | None = field(kw_only=True, default=None)
 
     @dataclass
-    class RocqLoc:
+    class RocqLoc(DataClassJsonMixin):
         """Rocq source code location."""
         # End position.
         ep: int = field(kw_only=True, default=0)
@@ -33,7 +34,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         fname: "RocqDocManagerAPI.RocqSource | None" = field(kw_only=True, default=None)
 
     @dataclass
-    class CommandData:
+    class CommandData(DataClassJsonMixin):
         """Data gathered while running a Rocq command."""
         # Inductives removed by the command.
         removed_inductives: list[str] = field(kw_only=True, default_factory=list)
@@ -47,20 +48,20 @@ class RocqDocManagerAPI(JsonRPCTP):
         open_subgoals: str | None = field(kw_only=True, default=None)
 
     @dataclass
-    class PrefixItem:
+    class PrefixItem(DataClassJsonMixin):
         """Document prefix item, appearing before the cursor."""
         text: str = field(kw_only=True, default="")
         offset: int = field(kw_only=True, default=0)
         kind: str = field(kw_only=True, default="")
 
     @dataclass
-    class SuffixItem:
+    class SuffixItem(DataClassJsonMixin):
         """Document suffix item, appearing after the cursor."""
         text: str = field(kw_only=True, default="")
         kind: str = field(kw_only=True, default="")
 
     @dataclass
-    class CompileResult:
+    class CompileResult(DataClassJsonMixin):
         """Result of the `compile` method."""
         # Non-null if success is false.
         error: str | None = field(kw_only=True, default=None)
@@ -69,7 +70,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         success: bool = field(kw_only=True, default=False)
 
     @dataclass
-    class Feedback:
+    class Feedback(DataClassJsonMixin):
         """Rocq feedback item."""
         loc: "RocqDocManagerAPI.RocqLoc | None" = field(kw_only=True, default=None)
         text: str = field(kw_only=True, default="")
@@ -77,7 +78,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         kind: str = field(kw_only=True, default="")
 
     @dataclass
-    class QueryResult:
+    class QueryResult(DataClassJsonMixin):
         """Result of a raw query."""
         feedback: "list[RocqDocManagerAPI.Feedback]" = field(kw_only=True, default_factory=list)
         data: "RocqDocManagerAPI.CommandData" = field(kw_only=True, default_factory=lambda: RocqDocManagerAPI.CommandData())
@@ -86,7 +87,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         """Advance the cursor before the indicated unprocessed item."""
         result = self.raw_request("advance_to", [index])
         if isinstance(result, self.Err):
-            data = None if result.data is None else self.RocqLoc(**result.data)
+            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
             return self.Err(result.message, data)
         return None
 
@@ -106,7 +107,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         """Compile the current contents of the file with `rocq compile`."""
         result = self.raw_request("compile", [])
         assert not isinstance(result, self.Err)
-        return self.CompileResult(**result.result)
+        return self.CompileResult.from_dict(result.result)
 
     def cursor_index(self) -> int:
         """Gives the index at the cursor."""
@@ -118,25 +119,25 @@ class RocqDocManagerAPI(JsonRPCTP):
         """Gives the list of all processed commands, appearing before the cursor."""
         result = self.raw_request("doc_prefix", [])
         assert not isinstance(result, self.Err)
-        return [self.PrefixItem(**v1) for v1 in result.result]
+        return [self.PrefixItem.from_dict(v1) for v1 in result.result]
 
     def doc_suffix(self) -> "list[RocqDocManagerAPI.SuffixItem]":
         """Gives the list of all unprocessed commands, appearing after the cursor."""
         result = self.raw_request("doc_suffix", [])
         assert not isinstance(result, self.Err)
-        return [self.SuffixItem(**v1) for v1 in result.result]
+        return [self.SuffixItem.from_dict(v1) for v1 in result.result]
 
     def get_feedback(self) -> "list[RocqDocManagerAPI.Feedback]":
         """Gets Rocq's feedback for the last run command (if any)."""
         result = self.raw_request("get_feedback", [])
         assert not isinstance(result, self.Err)
-        return [self.Feedback(**v1) for v1 in result.result]
+        return [self.Feedback.from_dict(v1) for v1 in result.result]
 
     def go_to(self, index: int) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Move the cursor right before the indicated item (whether it is already processed or not)."""
         result = self.raw_request("go_to", [index])
         if isinstance(result, self.Err):
-            data = None if result.data is None else self.RocqLoc(**result.data)
+            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
             return self.Err(result.message, data)
         return None
 
@@ -156,9 +157,9 @@ class RocqDocManagerAPI(JsonRPCTP):
         """Insert and process a command at the cursor."""
         result = self.raw_request("insert_command", [text])
         if isinstance(result, self.Err):
-            data = None if result.data is None else self.RocqLoc(**result.data)
+            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
             return self.Err(result.message, data)
-        return self.CommandData(**result.result)
+        return self.CommandData.from_dict(result.result)
 
     def json_query(self, text: str, index: int) -> Any | JsonRPCTP.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
@@ -180,7 +181,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         """Adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors)."""
         result = self.raw_request("load_file", [])
         if isinstance(result, self.Err):
-            data = None if result.data is None else self.RocqLoc(**result.data)
+            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
             return self.Err(result.message, data)
         return None
 
@@ -190,7 +191,7 @@ class RocqDocManagerAPI(JsonRPCTP):
         if isinstance(result, self.Err):
             data = None
             return self.Err(result.message, data)
-        return self.QueryResult(**result.result)
+        return self.QueryResult.from_dict(result.result)
 
     def revert_before(self, erase: bool, index: int) -> None:
         """Revert the cursor to an earlier point in the document."""
@@ -204,15 +205,15 @@ class RocqDocManagerAPI(JsonRPCTP):
         if isinstance(result, self.Err):
             data = None
             return self.Err(result.message, data)
-        return self.CommandData(**result.result)
+        return self.CommandData.from_dict(result.result)
 
     def run_step(self) -> "RocqDocManagerAPI.CommandData | None" | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Advance the cursor by stepping over an unprocessed item."""
         result = self.raw_request("run_step", [])
         if isinstance(result, self.Err):
-            data = None if result.data is None else self.RocqLoc(**result.data)
+            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
             return self.Err(result.message, data)
-        return None if result.result is None else self.CommandData(**result.result)
+        return None if result.result is None else self.CommandData.from_dict(result.result)
 
     def text_query(self, text: str, index: int) -> str | JsonRPCTP.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
