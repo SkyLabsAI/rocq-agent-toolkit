@@ -16,22 +16,18 @@ from rocq_pipeline.tracers.json_goal import JsonGoal
 
 
 def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager, progress: util.ProgressCallback, progress_min:float=0.0, progress_max:float=1.0) -> list[tuple[(T|None), str, (T|None)]]:
-    try:
-        tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
-        extractor.start_proof(rdm)
-        trace: list[tuple[(T|None),str,(T|None)]] = []
-        step_size: float = (progress_max - progress_min) / len(tactics)
-        for i, tactic in enumerate(tactics):
-            pre = extractor.before(rdm, tactic)
-            progress.status(status=tactic)
-            assert not isinstance(rdm.run_command(tactic), rdm.Err)
-            progress.status(percent=progress_min + i * step_size)
-            post = extractor.after(rdm, tactic)
-            trace.append((pre, tactic.strip(".").strip(), post))
-        return trace
-    except RuntimeError as err:
-        print(f"Failed to trace task due to error.\n{err}")
-        return []
+    tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
+    extractor.start_proof(rdm)
+    trace: list[tuple[(T|None),str,(T|None)]] = []
+    step_size: float = (progress_max - progress_min) / len(tactics)
+    for i, tactic in enumerate(tactics):
+        pre = extractor.before(rdm, tactic)
+        progress.status(status=tactic[:10])
+        assert not isinstance(rdm.run_command(tactic), rdm.Err)
+        progress.status(percent=progress_min + i * step_size)
+        post = extractor.after(rdm, tactic)
+        trace.append((pre, tactic.strip(".").strip(), post))
+    return trace
 
 def mk_parser(parent: Any|None=None, with_tracer: bool = True) -> Any:
     # Set up the argument parser
@@ -99,9 +95,8 @@ def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tas
             progress.status(1)
 
             return True
-
-        except RuntimeError as e:
-            print(f"Error: {e}")
+        except Exception as err:
+            print(f"Failed at task {task_id}.{err}")
             return False
 
     util.parallel_runner(run_task, [(Tasks.get_task_id(x), x) for x in tasks], lambda x: x, jobs=jobs)
