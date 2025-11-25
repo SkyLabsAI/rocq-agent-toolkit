@@ -7,7 +7,7 @@ asynchronous processing.
 """
 
 import logging
-
+import sys
 from opentelemetry import _logs
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
@@ -39,12 +39,20 @@ def setup_logging(config: LoggingConfig) -> None:
     )
 
     # 1a. Optionally disable console/terminal logging while keeping other handlers
+    # From all the stream handlers, keep only the ones that are not stdout or stderr
     if not config.enable_console_logging:
         root_logger = logging.getLogger()
+
+        def is_console_stream_handler(h: logging.Handler) -> bool:
+            return (
+                isinstance(h, logging.StreamHandler)
+                and getattr(h, "stream", None) in {sys.stdout, sys.stderr}
+            )
+
         root_logger.handlers = [
-            h for h in root_logger.handlers if not isinstance(h, logging.StreamHandler)
+            h for h in root_logger.handlers if not is_console_stream_handler(h)
         ]
-        logger.debug("Console logging disabled by configuration")
+        logger.debug("Console (stdout/stderr) logging disabled by configuration")
 
     # 1b. Populate event schemas so loggers can filter payloads appropriately
     event_configs = {
