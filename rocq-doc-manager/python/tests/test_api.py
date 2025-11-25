@@ -115,6 +115,15 @@ class Test_API(RDM_Tests):
                 ),
             ]
 
+    def test_run_command_tac_fail(
+            self,
+            transient_rdm: RocqDocManager,
+    ) -> None:
+        with transient_rdm.aborted_goal_ctx(goal="False"):
+            fail_tac_reply = transient_rdm.run_command("solve [auto].")
+            assert isinstance(fail_tac_reply, RocqDocManager.Err)
+            assert fail_tac_reply.message == "No applicable tactic."
+
     def _test_API_PATCH_insert_commands_without_intervening_blanks(
             self,
             tmp_path: Path,

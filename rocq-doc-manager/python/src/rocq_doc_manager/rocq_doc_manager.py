@@ -292,15 +292,13 @@ end.""",
 
             return (query_reply[0], query_reply[1])
 
-    def current_goal(self) -> str | API.Err[None]:
-        result = self.run_command('idtac.')
-        if isinstance(result, self.Err):
-            return result
-        index = self.cursor_index()
-        self.revert_before(True, index)
-        if isinstance(result.open_subgoals, str):
+    # TODO: expose a better structured representation for proof states
+    def current_goal(self) -> str | None | API.Err[None]:
+        with self.ctx():
+            result = self.run_command('idtac.')
+            if isinstance(result, self.Err):
+                return result
             return result.open_subgoals
-        return self.Err("No goals available.", None)
 
     def _import_export_cmd(
             self,
