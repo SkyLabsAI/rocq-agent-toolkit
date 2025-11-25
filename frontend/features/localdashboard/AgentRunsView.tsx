@@ -106,7 +106,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         </div>
       </div>
 
-      {/* Admin view: Runs list with selectable compare actions */}
+      {/* LocalView view: Runs list with selectable compare actions */}
       <div className='flex flex-col gap-2 relative mb-9'>
         {[
           ...runDetails.filter(run => pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),

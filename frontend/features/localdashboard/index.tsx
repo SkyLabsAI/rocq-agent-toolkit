@@ -1,19 +1,15 @@
 'use client';
 
 import React from 'react';
-import {
-  SelectedRunProvider,
-  useSelectedRun,
-} from '@/contexts/SelectedRunContext';
+import { useSelectedRun } from '@/contexts/SelectedRunContext';
 import Layout from '@/layouts/common';
-import AgentDetails from '../localdashboard/AgentDetails';
-
+import AgentDetails from './AgentDetails';
+import { useLocalDashboard } from '@/hooks/useLocalDashboard';
 import Button from '@/components/base/Button';
 import RunDetailsView from '@/components/RunDetailsView';
 import { RefreshIcon } from '@/icons/refresh';
 import TaskDetailsModal from '../taskDetailsModal';
 import AgentListIcon from '@/icons/agent-list';
-import { useLocalDashboard } from '@/hooks/useLocalDashboard';
 
 const LocalDashboard: React.FC = () => {
   const {
@@ -91,7 +87,7 @@ const LocalDashboard: React.FC = () => {
                 </tr>
                 {agentData
                   .sort((a, b) => a.agent_name.localeCompare(b.agent_name))
-                  .map((agent,index) => (
+                  .map((agent, index) => (
                     <AgentDetails
                       key={agent.agent_name}
                       agent={agent}
