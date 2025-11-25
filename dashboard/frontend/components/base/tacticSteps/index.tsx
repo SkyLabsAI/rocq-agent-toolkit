@@ -13,8 +13,8 @@ const TacticStepsViewer: React.FC<TacticStepsViewerProps> = ({ steps, type, titl
     return (
       <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
         type === 'explanation' 
-          ? 'bg-blue-500/20 text-blue-400 border border-blue-400/30' 
-          : 'bg-green-500/20 text-green-400 border border-green-400/30'
+          ? 'bg-blue-500/20 text-text-information border border-blue-400/30' 
+          : 'bg-green-500/20 text-text-success border border-green-400/30'
       }`}>
         {index + 1}
       </div>

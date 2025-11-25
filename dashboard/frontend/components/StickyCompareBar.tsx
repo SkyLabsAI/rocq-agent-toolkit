@@ -38,7 +38,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
         <p className="text-text text-[14px] font-semibold whitespace-nowrap">
           Agent: {agentName}
         </p>
-        <div className="w-px h-5 bg-[#F0F1F2]"></div>
+        <div className="w-px h-5 bg-text"></div>
         <p className="text-text-disabled text-[14px] whitespace-nowrap">
           Selected {selectedRuns.length} Runs
         </p>

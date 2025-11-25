@@ -3,8 +3,8 @@ import React from 'react';
 export const PinIcon: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <svg
-      width="1em"
-      height="1em"
+      width="20px"
+      height="20px"
       fill="currentColor"
       viewBox="0 0 20 20"
       className={className ? `${className} icon-center` : 'icon-center'}

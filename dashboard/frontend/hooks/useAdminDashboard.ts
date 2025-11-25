@@ -58,6 +58,9 @@ export const useAdminDashboard = () => {
     } finally {
       setIsRefreshing(false);
     }
+
+
+    fetchData()
   };
 
   const openCodeModal = async (task: TaskOutput) => {

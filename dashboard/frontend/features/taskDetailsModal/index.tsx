@@ -175,13 +175,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, de
   const getTabColorClasses = (key: string, isActive: boolean) => {
     const color = getTabColor(key);
     if (isActive) {
-      return {
-        'blue': 'border-blue-400 text-blue-400',
-        'purple': 'border-purple-400 text-purple-400',
-        'green': 'border-green-400 text-green-400',
-        'orange': 'border-orange-400 text-orange-400',
-        'gray': 'border-gray-400 text-gray-400'
-      }[color];
+      return  'border-text-information text-text-information';
     }
     return 'border-transparent text-gray-400 hover:text-gray-300';
   };

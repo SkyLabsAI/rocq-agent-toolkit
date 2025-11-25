@@ -5,14 +5,16 @@ import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
 import RunRow from '@/components/RunRow';
 import StickyCompareBar from '@/components/StickyCompareBar';
 import { PlayIcon } from '@/icons/play';
+import { AgentRun, RunDetailsResponse } from '@/types/types';
 
 type AgentRunsViewProps = {
-  runDetails: any[];
+  runDetails: AgentRun[];
   agentName: string;
   selectedRuns: string[];
   toggleRunSelection: (run: Run) => void;
   clearSelectedRuns: () => void;
   compareSelected: () => void;
+  tags?: Record<string, string>;
 };
 
 const AgentRunsView: React.FC<AgentRunsViewProps> = ({
@@ -22,6 +24,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   toggleRunSelection,
   clearSelectedRuns,
   compareSelected,
+  tags
 }) => {
   const { setSelectedRun } = useSelectedRun();
 
@@ -70,9 +73,8 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   };
 
   return (
-    <div className='space-y-4 relative '>
-      {/* Header using CSS Grid with fractional units for perfect alignment */}
-      <div className='grid grid-cols-[3fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20'>
+   <>
+   <div className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20 space-y-4 relative '>
         <div className='flex gap-1 items-center'>
           <PlayIcon />
           <h3 className='text-[16px] leading-4 font-semibold text-text'>Runs</h3>
@@ -113,7 +115,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
             <RunRow
               run={run}
               isLatest={index === 0 && arr.length > 1}
-              tags={run.metadata?.tags}
+              tags={tags}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
               failureCount={run.failure_count}
@@ -136,9 +138,8 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         onClearSelection={clearSelectedRuns}
         onCompareSelected={compareSelected}
       />
+   </>   
 
-      {/* Add bottom padding to prevent content from being hidden behind the sticky bar */}
-    </div>
   );
 };
 
