@@ -1,19 +1,25 @@
-import cn from "classnames";
-import { useAgentDetails } from "@/hooks/useAgentDetails";
-import AgentRunsView from "./AgentRunsView";
-import { useEffect } from "react";
-import { AgentSummary } from "@/types/types";
-import { AgentSummaryTemp } from "@/services/dataservice";
+import cn from 'classnames';
+import { useAgentDetails } from '@/hooks/useAgentDetails';
+import AgentRunsView from './AgentRunsView';
+import { useEffect } from 'react';
+import { AgentSummary } from '@/types/types';
+import { AgentSummaryTemp } from '@/services/dataservice';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
   adminView?: boolean;
   activeAgent?: boolean;
-   setActiveAgent: (agent: string) => void;
-  agentDetailData?: AgentSummaryTemp;
+  setActiveAgent: (agent: string) => void;
+  agentDetailData: AgentSummaryTemp;
 }
 
-const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, activeAgent=false,setActiveAgent, agentDetailData }) => {
+const AgentDetails: React.FC<AgentDetailsProps> = ({
+  agent,
+  adminView = false,
+  activeAgent = false,
+  setActiveAgent,
+  agentDetailData,
+}) => {
   const {
     loading,
     taskDetails,
@@ -24,11 +30,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, act
     compareSelected,
     toggleRunSelection,
     clearSelectedRuns,
-
-    
   } = useAgentDetails(agent.agent_name, setActiveAgent);
 
-   useEffect(() => {
+  useEffect(() => {
     if (!activeAgent) {
       clearSelectedRuns();
     }
@@ -38,60 +42,55 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, act
     <>
       <tr
         className={cn(
-          "hover:bg-white/5 cursor-pointer transition-colors duration-200",
-
+          'hover:bg-white/5 cursor-pointer transition-colors duration-200'
         )}
         onClick={toggleDetails}
       >
-        <td className="px-6 py-4 text-text font-medium">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-6 bg-background-information rounded-lg flex items-center justify-center">
-              <span className="text-text-information font-semibold text-sm">
+        <td className='px-6 py-4 text-text font-medium'>
+          <div className='flex items-center gap-3'>
+            <div className='h-6 w-6 bg-background-information rounded-lg flex items-center justify-center'>
+              <span className='text-text-information font-semibold text-sm'>
                 {agentDetailData?.agentName?.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className="truncate">{agent.agent_name}</span>
+            <span className='truncate'>{agent.agent_name}</span>
           </div>
         </td>
-         <td className="px-6 py-4 text-text font-medium">
-          <div className="flex items-center gap-3">
-            <div className="h-6   rounded-lg flex items-center justify-center">
-              <span className="text-text font-semibold text-sm">
+        <td className='px-6 py-4 text-text font-medium'>
+          <div className='flex items-center gap-3'>
+            <div className='h-6   rounded-lg flex items-center justify-center'>
+              <span className='text-text font-semibold text-sm'>
                 {agentDetailData?.successRate.toPrecision(2)}
               </span>
             </div>
-           
           </div>
         </td>
 
-         <td className="px-6 py-4 text-text font-medium">
-          <div className="flex items-center gap-3">
-            <div className="h-6   rounded-lg flex items-center justify-center">
-              <span className="text-text font-semibold text-sm">
+        <td className='px-6 py-4 text-text font-medium'>
+          <div className='flex items-center gap-3'>
+            <div className='h-6   rounded-lg flex items-center justify-center'>
+              <span className='text-text font-semibold text-sm'>
                 {agentDetailData?.avgTime.toPrecision(5)}
               </span>
             </div>
-           
           </div>
         </td>
-         <td className="px-6 py-4 text-text font-medium">
-          <div className="flex items-center gap-3">
-            <div className="h-6   rounded-lg flex items-center justify-center">
-              <span className="text-text font-semibold text-sm">
+        <td className='px-6 py-4 text-text font-medium'>
+          <div className='flex items-center gap-3'>
+            <div className='h-6   rounded-lg flex items-center justify-center'>
+              <span className='text-text font-semibold text-sm'>
                 {agentDetailData?.avgTokens.toPrecision(5)}
               </span>
             </div>
-           
           </div>
         </td>
-         <td className="px-6 py-4 text-text font-medium">
-          <div className="flex items-center gap-3">
-            <div className="h-6   rounded-lg flex items-center justify-center">
-              <span className="text-text font-semibold text-sm">
+        <td className='px-6 py-4 text-text font-medium'>
+          <div className='flex items-center gap-3'>
+            <div className='h-6   rounded-lg flex items-center justify-center'>
+              <span className='text-text font-semibold text-sm'>
                 {agentDetailData?.avgLlmCalls.toPrecision(5)}
               </span>
             </div>
-           
           </div>
         </td>
       </tr>
@@ -99,28 +98,31 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent, adminView=false, act
       {isOpen && (
         <tr>
           <td colSpan={7}>
-            <div className="px-6">
+            <div className='px-6'>
               {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-                  <span className="ml-3 text-gray-400">
+                <div className='flex items-center justify-center py-8'>
+                  <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
+                  <span className='ml-3 text-gray-400'>
                     Loading task details...
                   </span>
                 </div>
-              ) : (adminView ? runDetails.length === 0 : taskDetails.length === 0) ? (
-                <div className="text-center py-8 text-text">
+              ) : (
+                  adminView ? runDetails.length === 0 : taskDetails.length === 0
+                ) ? (
+                <div className='text-center py-8 text-text'>
                   No {adminView ? 'run' : 'task'} details available.
                 </div>
               ) : (
-                <div className="space-y-4">
-                <AgentRunsView
-                      runDetails={runDetails}
-                      agentName={agent.agent_name}
-                      selectedRuns={selectedRuns}
-                      toggleRunSelection={toggleRunSelection}
-                      clearSelectedRuns={clearSelectedRuns}
-                      compareSelected={compareSelected}
-                    />
+                <div className='space-y-4'>
+                  <AgentRunsView
+                    runDetails={runDetails}
+                    agentName={agent.agent_name}
+                    selectedRuns={selectedRuns}
+                    toggleRunSelection={toggleRunSelection}
+                    clearSelectedRuns={clearSelectedRuns}
+                    tags={agentDetailData?.tags}
+                    compareSelected={compareSelected}
+                  />
                 </div>
               )}
             </div>

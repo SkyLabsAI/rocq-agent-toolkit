@@ -56,7 +56,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
 
   if (loading) {
     return (
-      <div className=' bg-white z-50 flex items-center justify-center'>
+      <div className=' bg-elevation-surface z-50 flex items-center justify-center'>
         <div className='text-center'>
           <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#292a2e] mb-4'></div>
           <p className='font-noto-sans text-sm text-[#292a2e]'>
@@ -69,7 +69,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
 
   if (error) {
     return (
-      <div className=' bg-white z-50 flex items-center justify-center'>
+      <div className=' bg-elevation-surface z-50 flex items-center justify-center'>
         <div className='text-center'>
           <p className='font-noto-sans text-sm text-red-600 mb-4'>
             Error: {error}

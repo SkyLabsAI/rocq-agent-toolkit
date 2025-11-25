@@ -17,7 +17,7 @@ const Layout = ({
         <div className='flex items-center justify-between gap-4 backdrop-blur-sm  px-10 py-[10px]'>
           <div className='flex items-center'>
             <Link to={'/'}>
-            <div className='flex items-center' >
+            <div className='flex items-center' onClick={()=>window.location.reload()} >
               <LogoIcon />
               <h1 className="ml-2.5 text-text font-['Noto_Sans'] text-base font-normal text-[16px] leading-[normal]">
                 Skylabs AI
