@@ -36,8 +36,8 @@ def init_logging(env: Environment) -> None:
         service_name="rocq_agent",
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         otlp_endpoint=env.get_otlp_endpoint(),
-        enable_console_logging=False,
-    )
+        enable_console_logging = os.getenv("ENABLE_CONSOLE_LOGGING", "false").lower() == "true",
+        )
     setup_logging(log_config)
     logger.info("Logging configured with OTLP endpoint: %s", otlp_endpoint)
 
@@ -98,7 +98,7 @@ class FullTask:
     prompt: str|None
 
 
-def collect_env_tags(prefix: str = "TAG_") -> dict[str, str]:
+def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     """
     Collect environment variables that represent tags.
 
@@ -113,7 +113,7 @@ def collect_env_tags(prefix: str = "TAG_") -> dict[str, str]:
     return tags
 
 
-def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, tags: dict[str, str], progress: util.ProgressCallback) -> task_output.TaskOutput | None:
+def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, tags: task_output.Tags, progress: util.ProgressCallback) -> task_output.TaskOutput | None:
     """
     Build an agent using [build_agent] and invoke it on the task.
     """
