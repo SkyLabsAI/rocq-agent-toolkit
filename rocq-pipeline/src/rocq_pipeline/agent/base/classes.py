@@ -45,6 +45,12 @@ class Agent(ABC):
         """Task specific document interactions the agent wants to report."""
         ...
 
+    def task_holes_json(self, rdm: RocqDocManager) -> Any:
+        return self.task_holes(rdm)
+
+    def task_doc_interaction_json(self, rdm: RocqDocManager) -> Any:
+        return self.task_doc_interaction(rdm)
+
     @classmethod
     def cls_name(cls) -> str:
         """Return the unique name for this type of agent."""
@@ -60,7 +66,13 @@ class Agent(ABC):
         """Task specific predicate indicating whether the task is finished."""
         # Note: by default, we consider a task finished when there are no
         # more task-specific holes.
-        return not bool(self.task_holes(rdm))
+        holes = self.task_holes(rdm)
+        if isinstance(holes, RocqDocManager.Err):
+            logger.warning(
+                f"{self.name()}.task_finished: task_holes returned an error"
+            )
+            return False
+        return not bool(holes)
 
     def finished(
             self,
@@ -69,8 +81,8 @@ class Agent(ABC):
     ) -> Finished:
         data = {
             "metrics": self.task_metrics(),
-            "final_doc_interaction": self.task_doc_interaction(rdm),
-            "final_holes": self.task_holes(rdm),
+            "final_doc_interaction": self.task_doc_interaction_json(rdm),
+            "final_holes": self.task_holes_json(rdm),
         }
         if message is not None:
             data["message"] = message
@@ -89,8 +101,8 @@ class Agent(ABC):
             reason = FailureReason(ExecutionError(str(reason)))
         data = {
             "metrics": self.task_metrics(),
-            "final_doc_interaction": self.task_doc_interaction(rdm),
-            "final_holes": self.task_holes(rdm),
+            "final_doc_interaction": self.task_doc_interaction_json(rdm),
+            "final_holes": self.task_holes_json(rdm),
             "reason": reason,
         }
 
@@ -198,14 +210,26 @@ class ProofAgent(Agent):
             self,
             rdm: RocqDocManager,
             goal_ty_bound: type[RocqGoal] = RocqGoal,
-    ) -> dict[int, Any] | RocqDocManager.Err:
+    ) -> ProofState | RocqDocManager.Err:
         current_goal_reply = rdm.current_goal()
         if isinstance(current_goal_reply, RocqDocManager.Err):
             return current_goal_reply
         return ProofState(
             current_goal_reply,
             goal_ty_bound=goal_ty_bound
-        ).to_json()
+        )
+
+    @override
+    def task_holes_json(
+            self,
+            rdm: RocqDocManager,
+            goal_ty_bound: type[RocqGoal] = RocqGoal,
+    ) -> dict[int, Any] | str:
+        holes = self.task_holes(rdm, goal_ty_bound=goal_ty_bound)
+        if isinstance(holes, RocqDocManager.Err):
+            return str(holes)
+        else:
+            return holes.to_json()
 
     @override
     def task_doc_interaction(self, rdm: RocqDocManager) -> str:
