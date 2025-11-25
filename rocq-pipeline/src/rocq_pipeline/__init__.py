@@ -1,23 +1,16 @@
 # Import modules for organized access
-from . import agent, auto_agent, locator, task_runner, tasks
+from . import agent, locator, task_runner, tasks
 
 # Expose core result types and common agents at top level
-from .agent import Agent, Finished, GiveUp, Tactic
-from .auto_agent import AutoAgent
+from .agent import *  # noqa: F401 F403
 from .locator import parse_locator
 
-__all__ = [
+__all__: list[str] = [
     # Modules for organized access
     "agent",
-    "auto_agent",
     "locator",
     "task_runner",
     "tasks",
-    # Core types at top level
-    "Agent",
-    "GiveUp",
-    "Finished",
-    "Tactic",
-    "AutoAgent",
+    # Other utilities
     "parse_locator",
-]
+] + agent.__all__
