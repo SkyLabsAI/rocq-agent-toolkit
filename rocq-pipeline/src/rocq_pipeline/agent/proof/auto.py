@@ -1,5 +1,4 @@
-
-from rocq_pipeline.agent import OneShotAgent
+from .one_shot import OneShotAgent
 
 
 class AutoAgent(OneShotAgent):
