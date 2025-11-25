@@ -27,10 +27,10 @@ const ComparePage: React.FC = () => {
         <div className='max-w-7xl mx-auto space-y-8'></div>
         <Suspense
           fallback={
-            <div className='min-h-screen  text-white p-8'>
+            <div className='min-h-screen  text-text p-8'>
               <div className='max-w-7xl mx-auto'>
                 <div className='flex items-center justify-center h-64'>
-                  <div className='text-gray-400'>
+                  <div className='text-text-disabled'>
                     Loading comparison data...
                   </div>
                 </div>

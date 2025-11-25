@@ -1,10 +1,8 @@
 import { StatusBadge } from '@/components/base/statusBadge';
 import { RunTaskCell } from '@/features/compare';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { CompareDetailsButton } from './compare-details';
 import { Button } from '@/components/base';
 import {  getCommonGridStyle } from '..';
-import style from 'react-syntax-highlighter/dist/esm/styles/hljs/a11y-dark';
 import { cn } from '@/utils/cn';
 
 export const TaskHeader = ({

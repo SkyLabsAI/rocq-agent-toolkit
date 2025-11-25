@@ -41,7 +41,8 @@ const CodeViewer: React.FC<CodeViewerProps> = ({ code, language, filename }) => 
             background: 'transparent',
             fontSize: '0.875rem',
             lineHeight: '1.5',
-            backgroundColor: 'var(--color-elevation-surface, #18191a)'
+            backgroundColor: 'var(--color-elevation-surface-raised)',
+            color: 'var(--color-text)',
           }}
           
           codeTagProps={{

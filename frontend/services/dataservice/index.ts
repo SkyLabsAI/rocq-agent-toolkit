@@ -52,9 +52,19 @@ const generateMockTaskOutput = (
         cpu_time_sec: Math.random() * 25 + 3,
         gpu_time_sec: Math.random() * 10 + 1,
       },
-      custom: null,
+      custom: {
+         proof_complexity: Math.floor(Math.random() * 10) + 1,
+        something_else: Math.random() * 100,
+        hehe: 'hoho',
+        something_array: [1, 2, 3],
+         hola: "hola"
+      },
       custom_metrics: {
         proof_complexity: Math.floor(Math.random() * 10) + 1,
+        something_else: Math.random() * 100,
+        hehe: 'hoho',
+        something_array: [1, 2, 3],
+        hola: "hola"
       },
       timestamp: new Date().toISOString(),
     },

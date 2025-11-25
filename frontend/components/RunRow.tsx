@@ -71,7 +71,7 @@ const  RunRow: React.FC<RunRowProps> = ({
     onToggleSelection(run);
   };
 
-  return ( <div className="grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-2.5 hover:bg-white/10 transition-colors cursor-pointer rounded-lg overflow-hidden rounded-lg bg-elevation-surface-raised" style={{top: 78 * index + 0}} onClick={handleRowClick}>
+  return ( <div className="grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-2.5 hover:bg-white/10 transition-colors cursor-pointer rounded-lg overflow-hidden bg-elevation-surface-raised" style={{top: 78 * index + 0}} onClick={handleRowClick}>
         {/* Run ID column with chevron */}
         <div className="flex gap-2 items-center min-w-0">
 

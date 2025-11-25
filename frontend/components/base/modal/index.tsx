@@ -52,7 +52,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
       />
       
       {/* Modal */}
-      <div className={`relative w-full bg-elevation-surface  rounded-lg shadow-xl max-h-[90vh] flex flex-col ${
+      <div className={`absolute top-10 w-full bg-elevation-surface  rounded-lg shadow-xl max-h-[90vh] flex flex-col ${
         size === 'full' ? 'max-w-[95vw]' : 
         size === 'large' ? 'max-w-6xl' : 
         'max-w-4xl'
@@ -65,7 +65,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
             onClick={onClose}
             className="p-2 rounded-lg overflow-hidden transition-colors duration-200 w-[38px] h-[38px] flex items-center justify-center hover:bg-background-neutral-hovered"
           >
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5 text-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>

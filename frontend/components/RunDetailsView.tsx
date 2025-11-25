@@ -18,14 +18,10 @@ interface RunDetailsViewProps {
   openCodeModal: (task: TaskOutput) => void;
 }
 
-
-
-
-
 const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   run,
   onBack,
-  openCodeModal
+  openCodeModal,
 }) => {
   const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,10 +52,10 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
 
   if (loading) {
     return (
-      <div className=' bg-elevation-surface z-50 flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#292a2e] mb-4'></div>
-          <p className='font-noto-sans text-sm text-[#292a2e]'>
+      <div className=' bg-elevation-surface z-50 flex items-center justify-center rounded-lg py-10'>
+        <div className='text-center flex flex-col gap-5 justify-center items-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-elevation-surface-overlay'></div>
+          <p className='font-noto-sans text-sm text-text m-0'>
             Loading run details...
           </p>
         </div>
@@ -71,7 +67,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
     return (
       <div className=' bg-elevation-surface z-50 flex items-center justify-center'>
         <div className='text-center'>
-          <p className='font-noto-sans text-sm text-red-600 mb-4'>
+          <p className='font-noto-sans text-sm text-text-danger mb-4'>
             Error: {error}
           </p>
           <Button variant='default' onClick={onBack}>
@@ -90,8 +86,12 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
           <div className='flex items-center justify-between px-6 py-4'>
             {/* Left section with chevron and run info */}
             <div className='flex items-center gap-3'>
-              <button title='Back' onClick={onBack} className='p-0 hover:bg-background-neutral-hovered rounded-lg w-[38px] h-[38px]'>
-                <ChevronUpIcon className='rotate-90 size-6 m-auto'/>
+              <button
+                title='Back'
+                onClick={onBack}
+                className='p-0 hover:bg-background-neutral-hovered rounded-lg w-[38px] h-[38px]'
+              >
+                <ChevronUpIcon className='rotate-90 size-6 m-auto' />
               </button>
               <div className='flex flex-col gap-1'>
                 <p className='font-noto-sans font-normal text-sm text-text-disabled'>
@@ -102,42 +102,39 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                 </p>
               </div>
             </div>
-              <div className='flex flex-col gap-1'>
-                <p className='font-noto-sans font-normal text-sm text-text-disabled'>
-                  Total Tasks
-                </p>
-                <p className='font-noto-sans font-normal text-sm text-text'>
-                  {run.total_tasks}
-                </p>
-              </div>
+            <div className='flex flex-col gap-1'>
+              <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                Total Tasks
+              </p>
+              <p className='font-noto-sans font-normal text-sm text-text'>
+                {run.total_tasks}
+              </p>
+            </div>
 
-              <div className='flex flex-col gap-1'>
-                <p className='font-noto-sans font-normal text-sm text-text-disabled'>
-                  Success Rate
-                </p>
-                <p className='font-noto-sans font-normal text-sm'>
-                  <span className='text-text-success'>{run.success_count}</span>
-                  <span className='text-text-disabled'>/</span>
-                  <span className='text-text-danger'>{run.failure_count}</span>
-                  <span className='text-text-disabled'>
-                    {' '}
-                    ({((run.success_count / run.total_tasks) * 100).toFixed(0)}
-                    %)
-                  </span>
-                </p>
-              </div>
+            <div className='flex flex-col gap-1'>
+              <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                Success Rate
+              </p>
+              <p className='font-noto-sans font-normal text-sm'>
+                <span className='text-text-success'>{run.success_count}</span>
+                <span className='text-text-disabled'>/</span>
+                <span className='text-text-danger'>{run.failure_count}</span>
+                <span className='text-text-disabled'>
+                  {' '}
+                  ({((run.success_count / run.total_tasks) * 100).toFixed(0)}
+                  %)
+                </span>
+              </p>
+            </div>
 
-              <div className='flex flex-col gap-1'>
-                <p className='font-noto-sans font-normal text-sm text-text-disabled'>
-                  Timestamp
-                </p>
-                <p className='font-noto-sans font-normal text-sm text-text'>
-                  {new Date(run.timestamp_utc).toLocaleString()}
-                </p>
-              </div>
-
-            
-          
+            <div className='flex flex-col gap-1'>
+              <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                Timestamp
+              </p>
+              <p className='font-noto-sans font-normal text-sm text-text'>
+                {new Date(run.timestamp_utc).toLocaleString()}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -232,7 +229,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         </p>
                       </div>
 
-                       <div className='flex flex-col gap-1.5'>
+                      <div className='flex flex-col gap-1.5'>
                         <p className='font-inter font-normal text-sm text-text-disabled'>
                           LLM Calls
                         </p>
@@ -243,8 +240,6 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                     </div>
 
                     <div className='grid grid-cols-4 gap-6'>
-                     
-
                       <div className='flex flex-col gap-1.5'>
                         <p className='font-inter font-normal text-sm text-text-disabled'>
                           Total Tokens
@@ -284,7 +279,22 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                     <p className='font-noto-sans font-normal text-base text-text-disabled'>
                       Custom Metrics
                     </p>
-                  
+
+                    <div className='grid grid-cols-4 gap-6'>
+                      {task.metrics?.custom &&
+                        Object.entries(task.metrics.custom).map(
+                          ([key, value]) => (
+                            <div key={key} className='flex flex-col gap-1.5'>
+                              <p className='font-inter font-normal text-sm text-text-disabled'>
+                                {key}
+                              </p>
+                              <p className='font-inter font-normal text-sm text-text'>
+                                {String(value)}
+                              </p>
+                            </div>
+                          )
+                        )}
+                    </div>
                   </div>
 
                   {/* Divider */}
@@ -312,10 +322,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                   </div>
 
                   {/* View Logs Button */}
-                  <Button
-                    variant='default'
-                    onClick={() => openCodeModal(task)}
-                  >
+                  <Button variant='default' onClick={() => openCodeModal(task)}>
                     View Logs
                   </Button>
                 </div>
