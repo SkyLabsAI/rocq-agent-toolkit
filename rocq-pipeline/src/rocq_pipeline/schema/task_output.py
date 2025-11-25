@@ -434,14 +434,14 @@ class TaskKind:
 class Tags:
     """Original type: tags"""
 
-    value: List[Tuple[str, str]]
+    value: Dict[str, str]
 
     @classmethod
     def from_json(cls, x: Any) -> 'Tags':
-        return cls(_atd_read_assoc_object_into_list(_atd_read_string)(x))
+        return cls(_atd_read_assoc_object_into_dict(_atd_read_string)(x))
 
     def to_json(self) -> Any:
-        return _atd_write_assoc_list_to_object(_atd_write_string)(self.value)
+        return _atd_write_assoc_dict_to_object(_atd_write_string)(self.value)
 
     @classmethod
     def from_json_string(cls, x: str) -> 'Tags':
@@ -595,13 +595,13 @@ class Metrics:
 class Metadata:
     """Original type: metadata = { ... }"""
 
-    tags: Tags = field(default_factory=lambda: Tags([]))
+    tags: Tags = field(default_factory=lambda: Tags({}))
 
     @classmethod
     def from_json(cls, x: Any) -> 'Metadata':
         if isinstance(x, dict):
             return cls(
-                tags=Tags.from_json(x['tags']) if 'tags' in x else Tags([]),
+                tags=Tags.from_json(x['tags']) if 'tags' in x else Tags({}),
             )
         else:
             _atd_bad_json('Metadata', x)

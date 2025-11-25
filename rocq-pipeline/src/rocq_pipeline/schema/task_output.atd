@@ -41,11 +41,11 @@ type metrics <doc text="Aggregated metrics for task."> = {
 }
 
 (* Simple key/value tags, represented as a JSON object mapping string->string. *)
-type tags <doc text="User-defined tags as key/value pairs."> = (string * string) list <json repr="object">
+type tags <doc text="User-defined tags as key/value pairs."> = (string * string) list <python repr="dict"> <json repr="object">
 
 type metadata <doc text="Additional metadata for a task."> = {
   ~tags <doc text="User-defined tags for this task (from environment, etc.).">
-    <python default="Tags([])"> : tags;
+    <python default="Tags({})"> : tags;
 }
 
 type task_output <doc text="Agent output for a single task."> = {

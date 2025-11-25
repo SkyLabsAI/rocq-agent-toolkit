@@ -110,7 +110,7 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
         if key.startswith(prefix):
             tag_key = key[len(prefix):].lower()
             tags[tag_key] = value
-    return task_output.Tags(list(tags.items()))
+    return task_output.Tags(tags)
 
 
 def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, tags: task_output.Tags, progress: util.ProgressCallback) -> task_output.TaskOutput | None:
