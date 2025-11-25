@@ -31,7 +31,13 @@ class JsonGoal(StateExtractor[list[Any]]):
 
     @override
     def extra_paths(self) -> dict[str, Path]:
-        return {"": self.find_user_contrib()}
+        user = self.find_user_contrib()
+        def ext(path: Path, ls:list[str]) -> Path:
+            for x in ls:
+                path = path / x
+            return path
+        PATHS = ["skylabs_ai.extractors.goal_to_json", "skylabs_ai.ltac2_json", "skylabs_ai.ltac2_derive", "bluerock.ltac2.extra"]
+        return {k: ext(user, k.split(".")) for k in PATHS}
 
     def start_proof(self, rdm: RocqDocManager) -> None:
         # Detect iris
@@ -48,7 +54,10 @@ class JsonGoal(StateExtractor[list[Any]]):
                 return []
             print(f"got error, {result}")
             return None
-        elif result == ['This subproof is complete, but there are some unfocused goals.\nTry unfocusing with "}".\n']:
+        elif len(result) == 1 and result[0].startswith("This subproof is complete, but there are some unfocused goals."):
             return []
         else:
-            return [json.loads(goal) for goal in result]
+            try:
+                return [json.loads(goal) for goal in result]
+            except ValueError as err:
+                raise ValueError(f"bad value in {result}", err)
