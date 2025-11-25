@@ -72,7 +72,7 @@ def proof_state() -> ProofState:
         ' emp')
 
     # Parse using the most specific type
-    return ProofState(pf_state_str, goal_ty_bound=BrickGoal)
+    return ProofState(pf_state_str, goal_ty_upperbound=BrickGoal)
 
 # --- Tests ---
 

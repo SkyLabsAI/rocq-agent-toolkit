@@ -15,13 +15,16 @@ _parse_into_GoalParts = {
 
 def into_Goals(
         pf_state_str: str,
-        goal_ty_bound: type[RocqGoal] = RocqGoal,
+        goal_ty_upperbound: type[RocqGoal] = RocqGoal,
 ) -> dict[int, RocqGoal]:
-    if not issubclass(goal_ty_bound, RocqGoal):
-        raise RuntimeError(f"{goal_ty_bound} not a subclass of RocqGoal")
+    if not issubclass(goal_ty_upperbound, RocqGoal):
+        raise RuntimeError(f"{goal_ty_upperbound} not a subclass of RocqGoal")
 
     goal_parts: dict[int, RocqGoal] = {}
-    for goal in _into_Goals.parse_proof_state(pf_state_str, goal_ty_bound):
+    for goal in _into_Goals.parse_proof_state(
+            pf_state_str,
+            goal_ty_upperbound
+    ):
         if goal.wellformed():
             goal_parts[goal.parts.rocq_rel_goal_num] = goal
 
@@ -38,16 +41,16 @@ class _into_Goals:
     @staticmethod
     def _parse_goal_string(
         goal_str: str,
-        goal_ty_bound: type[RocqGoal],
+        goal_ty_upperbound: type[RocqGoal],
         rocq_rel_goal_num: int,
         rocq_shelved_cnt: int | None,
         is_concl_only: bool,
     ) -> RocqGoal | None:
         """
-        Tries to parse a single goal string using the MRO of the goal_ty_bound.
-        Starts with the most specific type and falls back to the most general.
+        Try to parse a single goal string using the MRO of goal_ty_upperbound.
+        Start with the most specific type and falls back to the most general.
         """
-        for cls in goal_ty_bound.__mro__:
+        for cls in goal_ty_upperbound.__mro__:
             if not issubclass(cls, RocqGoal):
                 continue
 
@@ -74,7 +77,7 @@ class _into_Goals:
     def parse_proof_state(
         cls,
         pf_state_str: str,
-        goal_ty_bound: type[RocqGoal],
+        goal_ty_upperbound: type[RocqGoal],
     ) -> Iterator[RocqGoal]:
         """
         Parses a proof state string and yields structured goals.
@@ -107,7 +110,7 @@ class _into_Goals:
                     if goal_str:
                         structured_goal = cls._parse_goal_string(
                             goal_str,
-                            goal_ty_bound,
+                            goal_ty_upperbound,
                             goal_counter,  # Use incrementing counter
                             current_shelved_cnt,
                             current_is_concl_only,
@@ -146,7 +149,7 @@ class _into_Goals:
             if goal_str:
                 structured_goal = cls._parse_goal_string(
                     goal_str,
-                    goal_ty_bound,
+                    goal_ty_upperbound,
                     goal_counter,  # Use the final counter value
                     current_shelved_cnt,
                     current_is_concl_only,

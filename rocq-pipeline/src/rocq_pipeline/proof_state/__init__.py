@@ -32,7 +32,7 @@ class ProofState:
         self,
         pf_state: str | None,
         # Use the new base class
-        goal_ty_bound: type[RocqGoal] = RocqGoal,
+        goal_ty_upperbound: type[RocqGoal] = RocqGoal,
     ) -> None:
         if pf_state is not None and not isinstance(pf_state, str):
             raise ValueError(" ".join([
@@ -41,14 +41,16 @@ class ProofState:
             ]))
 
         # Use the new base class
-        if not issubclass(goal_ty_bound, RocqGoal):
-            raise RuntimeError(f"{goal_ty_bound} not a subclass of RocqGoal")
+        if not issubclass(goal_ty_upperbound, RocqGoal):
+            raise RuntimeError(
+                f"{goal_ty_upperbound} not a subclass of RocqGoal"
+            )
 
-        self._goal_ty_bound = goal_ty_bound
+        self._goal_ty_upperbound = goal_ty_upperbound
         self._goals: dict[int, RocqGoal] = (
             {}
             if pf_state is None else
-            parse.into_Goals(pf_state, goal_ty_bound)
+            parse.into_Goals(pf_state, goal_ty_upperbound)
         )
 
     # NOTE: no [from_json], since ProofState stores class information in a

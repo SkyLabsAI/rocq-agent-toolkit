@@ -10,6 +10,7 @@ from rocq_pipeline.agent.base import (
     ProofAgent,
     TacticApplication,
 )
+from rocq_pipeline.proof_state import RocqGoal
 from rocq_pipeline.schema.task_output import ExecutionError, FailureReason
 
 logger = get_logger("rocq_agent")
@@ -21,7 +22,12 @@ logger = get_logger("rocq_agent")
 # - utilize structured proof tree
 # - support (limited) backtracking
 class TraceAgent(ProofAgent):
-    def __init__(self, stop_on_failure: bool = False) -> None:
+    def __init__(
+            self,
+            stop_on_failure: bool = False,
+            goal_ty_upperbound: type[RocqGoal] = RocqGoal,
+    ) -> None:
+        super().__init__(goal_ty_upperbound=goal_ty_upperbound)
         self._stop_on_failure = stop_on_failure
         self._history: list[TacticApplication] = []
 

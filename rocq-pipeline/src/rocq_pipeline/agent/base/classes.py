@@ -20,6 +20,7 @@ logger = get_logger("rocq_agent")
 
 class Agent(ABC):
     """Abstract base class for Rocq Agent Toolkit agents."""
+
     # TODOS:
     # 1) consider threading some task information into the [run] call
     # 2) consider allowing for restricted task mutation/elaboration/refinement
@@ -135,6 +136,14 @@ class AgentBuilder:
 # structured way.
 class ProofAgent(Agent):
     """Agents tasked with completing proof obligations."""
+
+    def __init__(self, goal_ty_upperbound: type[RocqGoal] = RocqGoal) -> None:
+        if not issubclass(goal_ty_upperbound, RocqGoal):
+            raise RuntimeError(
+                f"{goal_ty_upperbound} is not a subclass of RocqGoal"
+            )
+        self._goal_ty_upperbound = goal_ty_upperbound
+
     @override
     def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
         return self.give_up(
@@ -148,7 +157,6 @@ class ProofAgent(Agent):
             self,
             rdm: RocqDocManager,
             tac: str,
-            goal_ty_bound: type[RocqGoal] = RocqGoal,
     ) -> TacticApplication:
         """Get the result of running tac using rdm, tracing the interaction."""
         tac_app = TacticApplication(tactic=tac)
@@ -159,7 +167,7 @@ class ProofAgent(Agent):
             return tac_app
         tac_app.pf_state_pre = ProofState(
             pre_goal_reply,
-            goal_ty_bound=goal_ty_bound,
+            goal_ty_upperbound=self._goal_ty_upperbound,
         )
         logger.info(
             "Tactic Pre State",
@@ -192,7 +200,7 @@ class ProofAgent(Agent):
             return tac_app
         tac_app.pf_state_post = ProofState(
                 post_goal_reply,
-                goal_ty_bound=goal_ty_bound,
+                goal_ty_upperbound=self._goal_ty_upperbound,
             )
         logger.info(
             "Tactic Post State",
@@ -209,23 +217,18 @@ class ProofAgent(Agent):
     def task_holes(
             self,
             rdm: RocqDocManager,
-            goal_ty_bound: type[RocqGoal] = RocqGoal,
     ) -> ProofState | RocqDocManager.Err:
         current_goal_reply = rdm.current_goal()
         if isinstance(current_goal_reply, RocqDocManager.Err):
             return current_goal_reply
         return ProofState(
             current_goal_reply,
-            goal_ty_bound=goal_ty_bound
+            goal_ty_upperbound=self._goal_ty_upperbound,
         )
 
     @override
-    def task_holes_json(
-            self,
-            rdm: RocqDocManager,
-            goal_ty_bound: type[RocqGoal] = RocqGoal,
-    ) -> dict[int, Any] | str:
-        holes = self.task_holes(rdm, goal_ty_bound=goal_ty_bound)
+    def task_holes_json(self, rdm: RocqDocManager) -> dict[int, Any] | str:
+        holes = self.task_holes(rdm)
         if isinstance(holes, RocqDocManager.Err):
             return str(holes)
         else:
