@@ -15,18 +15,22 @@ from rocq_pipeline.tracers.extractor import (
 from rocq_pipeline.tracers.json_goal import JsonGoal
 
 
-def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager) -> list[tuple[(T|None), str, (T|None)]]:
+def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager, progress: util.ProgressCallback, progress_min:float=0.0, progress_max:float=1.0) -> list[tuple[(T|None), str, (T|None)]]:
     try:
         tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
         extractor.start_proof(rdm)
         trace: list[tuple[(T|None),str,(T|None)]] = []
-        for tactic in tactics:
+        step_size: float = (progress_max - progress_min) / len(tactics)
+        for i, tactic in enumerate(tactics):
             pre = extractor.before(rdm, tactic)
-            rdm.run_command(tactic)
+            progress.status(status=tactic)
+            assert not isinstance(rdm.run_command(tactic), rdm.Err)
+            progress.status(percent=progress_min + i * step_size)
             post = extractor.after(rdm, tactic)
             trace.append((pre, tactic.strip(".").strip(), post))
         return trace
-    except Exception:
+    except RuntimeError as err:
+        print(f"Failed to trace task due to error.\n{err}")
         return []
 
 def mk_parser(parent: Any|None=None, with_tracer: bool = True) -> Any:
@@ -69,26 +73,27 @@ def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tas
         output_file: Path = output_dir / f"{task_id.replace('/','_').replace('#','_')}.json"
 
         try:
+            tracer = tracer_builder.build()
             task_file: Path = wdir / task["file"]
             with RocqDocManager(
                     DuneUtil.rocq_args_for(task_file),
                     str(task_file),
                     dune=True,
             ).sess(load_file=True) as rdm:
-                tracer = tracer_builder.build()
                 tracer.setup(rdm)
-                progress(0.05, "🔃")
+                progress.status(0.05, "🔃")
 
                 if not locator.parse_locator(task["locator"])(rdm):
                     print(f"Failed to find task: {task_id}")
                     return False
-                progress(0.1, "💭")
+                progress.status(0.1, "💭")
 
-                trace = trace_proof(tracer, rdm)
-                progress(0.95, "💭")
+                trace = trace_proof(tracer, rdm, progress, 0.1, 0.95)
+                progress.status(0.95, "💭")
 
             with open(output_file, "w") as output:
                 json.dump(trace, output)
+            progress.status(1)
 
             return True
 
