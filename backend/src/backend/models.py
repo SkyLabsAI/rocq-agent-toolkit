@@ -3,7 +3,7 @@ Pydantic models for API request/response validation.
 """
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # Wrtie now defining the Schema Directly
 # Improt it from the Rocq pipeline schema later own.
@@ -39,9 +39,8 @@ class TaskMetadata(BaseModel):
     # Free-form tags attached to a task, e.g.
     tags: dict[str, str] = {}
 
-    class Config:
-        # Allow future metadata fields without breaking validation
-        extra = "allow"
+    # Allow future metadata fields without breaking validation
+    model_config = ConfigDict(extra='allow')
 
 class TaskResult(BaseModel):
     """Complete task result entry from JSONL."""

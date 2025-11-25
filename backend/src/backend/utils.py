@@ -2,7 +2,7 @@
 Utility functions for the backend.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -189,7 +189,7 @@ async def fetch_observability_logs(run_id: str, task_id: str) -> list[LogEntry]:
             end_time = estimated_time + delta
         else:
             # Fallback to a window around "now" if we cannot estimate
-            end_time = datetime.utcnow()
+            end_time = datetime.now(UTC)
             start_time = end_time - timedelta(days=settings.log_query_time_delta_days)
 
         # Query parameters for Loki
