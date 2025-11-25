@@ -5,7 +5,7 @@ import { StatusBadge } from '../statusBadge';
 export interface TacticObject {
   goal: string;
   tactic_prediction_tactic: string;
-  status: 'success' | 'failure';
+  status?: 'success' | 'failure' | "not found";
   tactic_prediction_explanation: string;
   [key: string]: unknown; // Additional dynamic properties
 }
@@ -29,10 +29,15 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
     );
   }
 
-  const getStatusBgColor = (status: 'success' | 'failure') => {
-    return status.toLowerCase() === 'success'
-      ? 'bg-green-500/5 border-green-500/20'
-      : 'bg-red-500/5 border-red-500/20';
+  const getStatusBgColor = (status: 'success' | 'failure' | "not found") => {
+    const lower = status.toLowerCase();
+    if (lower === 'success') {
+      return 'bg-green-500/5 border-green-500/20';
+    } else if (lower === 'not found') {
+      return 'bg-gray-300 border-gray-300';
+    } else {
+      return 'bg-red-500/5 border-red-500/20';
+    }
   };
 
   // Get all unique additional keys across all tactics (excluding the standard ones)
@@ -65,7 +70,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
           key={index}
           className={cn(
             'border rounded-lg p-4 transition-all duration-200',
-            getStatusBgColor(tactic.status)
+            getStatusBgColor(tactic.status || 'not found')
           )}
         >
           {/* Header with tactic name and status */}
@@ -78,7 +83,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
                 {tactic.goal}
               </h4>
             </div>
-            <StatusBadge status={tactic.status} />
+            <StatusBadge status={tactic.status || "Not found"} />
           </div>
 
           {/* Main content grid */}

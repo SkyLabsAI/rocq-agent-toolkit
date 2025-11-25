@@ -57,7 +57,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {agentDetailData?.successRate.toPrecision(2)}
+                {(agentDetailData?.successRate * 100).toPrecision(5)}%
               </span>
             </div>
           </div>

@@ -19,10 +19,10 @@ export const TaskHeader = ({
   isExpanded: boolean;
 }) => (
   <div className={`grid py-2 bg-elevation-surface-raised px-6 `} style={getCommonGridStyle(details.length)} onClick={onClick} >
-    <div className=' flex items-center gap-2  -left-3 relative w-[242px]'>
+    <div className=' flex items-center gap-2  -left-3 relative'>
       <ChevronUpIcon className={cn('size-6',{"rotate-180": isExpanded})} />
       <p
-        className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-text text-[14px]"
+        className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-text text-[14px] truncate max-w-full"
         style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
       >
         Task ID: {id}

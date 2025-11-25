@@ -26,7 +26,7 @@ export const TaskRow: React.FC<{ stat: RunStats, onClick: () => void }> = ({ sta
             className="font-['Noto_Sans:Regular',sans-serif] font-normal leading-5 relative shrink-0 text-text text-[14px] w-full"
             style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
           >
-            {stat.successRate.toFixed(2)}%
+            {(stat.successRate * 100).toFixed(2)}%
           </p>
         </div>
         <div className='content-stretch flex flex-col gap-[10px] items-center justify-center relative shrink-0 w-1/12'>

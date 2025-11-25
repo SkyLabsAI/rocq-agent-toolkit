@@ -143,17 +143,17 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
           <div className='space-y-6'>
             {taskDetails.map((task, index) => (
               <div
-                key={task.task_id || index}
+                key={task.task_id+index}
                 className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded'
               >
                 <div className='p-5 space-y-4'>
                   {/* Task info row */}
                   <div className='grid grid-cols-4 gap-6'>
                     <div className='flex flex-col gap-1.5'>
-                      <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                      <p className='font-noto-sans font-normal text-sm text-text-disabled truncate overflow-hidden'>
                         Task ID
                       </p>
-                      <p className='font-noto-sans font-normal text-sm text-text'>
+                      <p className='font-noto-sans font-normal text-sm text-text truncate'>
                         {task.task_id ||
                           `task_${index.toString().padStart(3, '0')}`}
                       </p>
@@ -201,9 +201,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           Execution Time
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.resource_usage?.execution_time_sec
-                            ? `${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s`
-                            : '23.01s'}
+                         { `${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s`}
                         </p>
                       </div>
 
@@ -212,9 +210,8 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           CPU Time
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.resource_usage?.cpu_time_sec
-                            ? `${task.metrics.resource_usage.cpu_time_sec.toFixed(2)}s`
-                            : '24.98s'}
+                          {task.metrics?.resource_usage?.cpu_time_sec.toFixed(2)}
+                       
                         </p>
                       </div>
 
@@ -223,9 +220,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           GPU Time
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.resource_usage?.gpu_time_sec
-                            ? `${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s`
-                            : '7.80s'}
+                          {`${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s`}
                         </p>
                       </div>
 
@@ -234,7 +229,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           LLM Calls
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.llm_invocation_count || ''}
+                          {task.metrics?.llm_invocation_count || "_"}
                         </p>
                       </div>
                     </div>
