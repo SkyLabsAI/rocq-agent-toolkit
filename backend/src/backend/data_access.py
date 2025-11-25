@@ -4,17 +4,16 @@ This module provides an abstraction layer that can be easily replaced
 with database queries in the future.
 """
 import json
-from pathlib import Path
-from typing import List, Dict, Set
 from collections import defaultdict
+from pathlib import Path
 
 from backend.models import (
+    AgentInfo,
+    RunDetailsResponse,
+    RunInfo,
+    TagsResponse,
     TaskMetadata,
     TaskResult,
-    AgentInfo,
-    RunInfo,
-    RunDetailsResponse,
-    TagsResponse,
 )
 
 
@@ -23,15 +22,15 @@ class DataStore:
 
     def __init__(self) -> None:
         """Initialize empty data store."""
-        self.task_results: List[TaskResult] = []
+        self.task_results: list[TaskResult] = []
         self._indexed = False
 
         # Indexes for efficient queries
-        self._agents: Set[str] = set()
-        self._runs_by_agent: Dict[str, Set[str]] = defaultdict(set)
-        self._tasks_by_run: Dict[str, List[TaskResult]] = defaultdict(list)
+        self._agents: set[str] = set()
+        self._runs_by_agent: dict[str, set[str]] = defaultdict(set)
+        self._tasks_by_run: dict[str, list[TaskResult]] = defaultdict(list)
         # Metadata tag index: key -> set of unique string values
-        self._tags_index: Dict[str, Set[str]] = defaultdict(set)
+        self._tags_index: dict[str, set[str]] = defaultdict(set)
 
     def load_from_directory(self, directory: Path, clear_existing: bool = False) -> int:
         """
@@ -61,7 +60,7 @@ class DataStore:
 
         for jsonl_file in jsonl_files:
             try:
-                with open(jsonl_file, "r", encoding="utf-8") as f:
+                with open(jsonl_file, encoding="utf-8") as f:
                     for line_num, line in enumerate(f, 1):
                         line = line.strip()
                         if not line:
@@ -121,7 +120,7 @@ class DataStore:
 
         self._indexed = True
 
-    def get_all_agents(self) -> List[AgentInfo]:
+    def get_all_agents(self) -> list[AgentInfo]:
         """
         Get list of all unique agents with their run counts.
 
@@ -134,7 +133,7 @@ class DataStore:
             agents.append(AgentInfo(agent_name=agent_name, total_runs=run_count))
         return agents
 
-    def get_runs_by_agent(self, agent_name: str) -> List[RunInfo]:
+    def get_runs_by_agent(self, agent_name: str) -> list[RunInfo]:
         """
         Get all runs for a specific agent.
 
@@ -179,7 +178,7 @@ class DataStore:
 
         return runs
 
-    def get_run_details(self, run_ids: List[str]) -> List[RunDetailsResponse]:
+    def get_run_details(self, run_ids: list[str]) -> list[RunDetailsResponse]:
         """
         Get complete details for one or more runs.
 
@@ -218,7 +217,7 @@ class DataStore:
         Returns:
             TagsResponse containing a mapping from tag key to sorted list of values.
         """
-        tags: Dict[str, List[str]] = {
+        tags: dict[str, list[str]] = {
             key: sorted(values) for key, values in self._tags_index.items()
         }
 

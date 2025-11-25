@@ -1,17 +1,16 @@
 """
 Utility functions for the backend.
 """
-from typing import Dict, Any, List, Union, Optional
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
+from typing import Any
 
 import httpx
 from fastapi import HTTPException
 
 from backend.config import settings
-from backend.models import LogEntry
 from backend.data_access import data_store
-
+from backend.models import LogEntry
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ EXCLUDED_LABELS = {
 }
 
 
-def filter_log_labels(labels: Dict[str, Any]) -> Dict[str, Any]:
+def filter_log_labels(labels: dict[str, Any]) -> dict[str, Any]:
     """
     Filter out unwanted labels from log entries.
 
@@ -64,10 +63,10 @@ def filter_log_labels(labels: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_labels_grouped_by_log(
-    logs: List[LogEntry],
+    logs: list[LogEntry],
     marker: str = "status",
     group_name: str = "groups",
-) -> Dict[str, List[Dict[str, Any]]]:
+) -> dict[str, list[dict[str, Any]]]:
     """
     Group related log labels into items delimited by a marker label.
 
@@ -89,8 +88,8 @@ def get_labels_grouped_by_log(
         of dictionaries. Each dictionary represents one grouped item and
         contains the merged labels from all logs in that group.
     """
-    groups: List[Dict[str, Any]] = []
-    current_group: Dict[str, Any] = {}
+    groups: list[dict[str, Any]] = []
+    current_group: dict[str, Any] = {}
 
     for log in logs:
         if not log.labels:
@@ -118,7 +117,7 @@ def get_labels_grouped_by_log(
 # Adding this for now since LOKI requires a Time Range for the query
 # So we are taking a estimated time of the start and using a delta , find a time range to query the logs.
 # In Production system, we might be doing something else.
-def get_estimated_time(run_id: str, task_id: str) -> Optional[datetime]:
+def get_estimated_time(run_id: str, task_id: str) -> datetime | None:
     """
     Estimate when logs were generated for a given run and task based on
     the `timestamp_utc` field from the corresponding `TaskResult`.
@@ -154,7 +153,7 @@ def get_estimated_time(run_id: str, task_id: str) -> Optional[datetime]:
     return estimated_dt
 
 
-async def fetch_observability_logs(run_id: str, task_id: str) -> List[LogEntry]:
+async def fetch_observability_logs(run_id: str, task_id: str) -> list[LogEntry]:
     """
     Fetch observability logs from Loki for a specific run and task.
 
@@ -224,7 +223,7 @@ async def fetch_observability_logs(run_id: str, task_id: str) -> List[LogEntry]:
             data = response.json()
 
         # Parse Loki response
-        logs: List[LogEntry] = []
+        logs: list[LogEntry] = []
 
         if data.get("status") == "success":
             result = data.get("data", {}).get("result", [])
@@ -265,16 +264,18 @@ async def fetch_observability_logs(run_id: str, task_id: str) -> List[LogEntry]:
         raise HTTPException(
             status_code=502,
             detail=f"Error communicating with Loki: {e.response.status_code}",
-        )
+        ) from e
     except httpx.RequestError as e:
         logger.error("Loki request error: %s", e)
         raise HTTPException(
             status_code=503,
             detail=f"Could not connect to Loki at {settings.observability_url}",
-        )
+        ) from e
     except HTTPException:
         # Re-raise HTTPException as-is to preserve status and detail
         raise
     except Exception as e:
         logger.error("Error fetching observability logs: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error fetching logs: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching logs: {str(e)}"
+        ) from e

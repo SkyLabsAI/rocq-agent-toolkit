@@ -2,26 +2,27 @@
 FastAPI backend server for Rocq_agent task results.
 Phase 1: Local file-based data access with in-memory storage.
 """
-from typing import AsyncGenerator, Any, List
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import Any
 
+import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
 from backend.config import settings
 from backend.data_access import data_store
 from backend.models import (
     AgentInfo,
-    RunInfo,
-    RunDetailsResponse,
+    ObservabilityLabelsResponse,
     ObservabilityLogsResponse,
     RefreshResponse,
-    ObservabilityLabelsResponse,
+    RunDetailsResponse,
+    RunInfo,
     TagsResponse,
 )
-from backend.utils import get_labels_grouped_by_log, fetch_observability_logs
-import uvicorn
+from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
 
 # Configure logging
 logging.basicConfig(
@@ -84,7 +85,7 @@ async def root() -> dict[str,str]:
     }
 
 
-@app.get("/api/agents", response_model=List[AgentInfo])
+@app.get("/api/agents", response_model=list[AgentInfo])
 async def list_agents() -> list[AgentInfo]:
     """
     List all unique agents found in the JSONL files.
@@ -97,10 +98,12 @@ async def list_agents() -> list[AgentInfo]:
         return agents
     except Exception as e:
         logger.error(f"Error fetching agents: {e}")
-        raise HTTPException(status_code=500, detail=f"Error fetching agents: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching agents: {str(e)}"
+        ) from e
 
 
-@app.get("/api/agents/{agent_name}/runs", response_model=List[RunInfo])
+@app.get("/api/agents/{agent_name}/runs", response_model=list[RunInfo])
 async def list_runs_by_agent(agent_name: str) -> list[RunInfo]:
     """
     List all runs for a specific agent.
@@ -129,10 +132,12 @@ async def list_runs_by_agent(agent_name: str) -> list[RunInfo]:
         raise
     except Exception as e:
         logger.error(f"Error fetching runs for agent '{agent_name}': {e}")
-        raise HTTPException(status_code=500, detail=f"Error fetching runs: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching runs: {str(e)}"
+        ) from e
 
 
-@app.get("/api/runs/details", response_model=List[RunDetailsResponse])
+@app.get("/api/runs/details", response_model=list[RunDetailsResponse])
 async def get_run_details(
     run_ids: str = Query(..., description="Comma-separated list of run IDs to retrieve")
 ) -> list[RunDetailsResponse]:
@@ -161,7 +166,7 @@ async def get_run_details(
 
         if not results:
             raise HTTPException(
-                status_code=404, detail=f"No runs found for the provided run_ids"
+                status_code=404, detail="No runs found for the provided run_ids"
             )
 
         return results
@@ -171,7 +176,7 @@ async def get_run_details(
         logger.error(f"Error fetching run details: {e}")
         raise HTTPException(
             status_code=500, detail=f"Error fetching run details: {str(e)}"
-        )
+        ) from e
 
 
 @app.get("/api/health")
@@ -247,10 +252,12 @@ async def refresh_data() -> RefreshResponse:
         raise HTTPException(
             status_code=404,
             detail=f"JSONL directory not found: {settings.jsonl_results_path}",
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Error refreshing data: {e}")
-        raise HTTPException(status_code=500, detail=f"Error refreshing data: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error refreshing data: {str(e)}"
+        ) from e
 
 
 @app.get("/api/observability/logs/raw", response_model=ObservabilityLogsResponse)
@@ -296,8 +303,8 @@ async def get_observability_logs_raw(
         )
         raise HTTPException(
             status_code=500, detail=f"Error fetching raw logs: {str(e)}"
-        )
-        
+        ) from e
+
 
 
 
@@ -344,7 +351,7 @@ async def get_observability_logs(
         )
         raise HTTPException(
             status_code=500, detail=f"Error fetching log labels: {str(e)}"
-        )
+        ) from e
 
 
 if __name__ == "__main__":
