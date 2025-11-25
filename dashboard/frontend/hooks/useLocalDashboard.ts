@@ -14,7 +14,7 @@ interface ModalState {
   logs: Record<string, unknown> | null;
 }
 
-export const useAdminDashboard = () => {
+export const useLocalDashboard = () => {
   const [agentData, setAgentData] = useState<AgentSummary[]>([]);
   const [agentDetailData, setAgentDetailData] = useState<AgentSummaryTemp[]>(
     []

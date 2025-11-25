@@ -7,7 +7,6 @@ import { AgentSummaryTemp } from '@/services/dataservice';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
-  adminView?: boolean;
   activeAgent?: boolean;
   setActiveAgent: (agent: string) => void;
   agentDetailData: AgentSummaryTemp;
@@ -15,7 +14,6 @@ interface AgentDetailsProps {
 
 const AgentDetails: React.FC<AgentDetailsProps> = ({
   agent,
-  adminView = false,
   activeAgent = false,
   setActiveAgent,
   agentDetailData,
@@ -107,10 +105,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                   </span>
                 </div>
               ) : (
-                  adminView ? runDetails.length === 0 : taskDetails.length === 0
+                 runDetails.length === 0 
                 ) ? (
                 <div className='text-center py-8 text-text'>
-                  No {adminView ? 'run' : 'task'} details available.
+                  No run details available.
                 </div>
               ) : (
                 <div className='space-y-4'>
