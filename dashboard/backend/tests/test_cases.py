@@ -1,22 +1,32 @@
-import pytest
-from typing import Any
-from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
-from backend.models import AgentInfo, RunInfo, RunDetailsResponse, TaskResult, ResourceUsage, TokenCounts, Metrics
-import os
 import json
+import os
 from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+from backend.models import (
+    AgentInfo,
+    Metrics,
+    ResourceUsage,
+    RunDetailsResponse,
+    RunInfo,
+    TaskResult,
+    TokenCounts,
+)
+from fastapi.testclient import TestClient
 
 # Set env var before importing app
 os.environ["JSONL_RESULTS_PATH"] = "/tmp/mock_results"
 os.environ["OBSERVABILITY_URL"] = "http://localhost:3100"
 
-from backend.main import app
 from backend.data_access import DataStore
+from backend.main import app
+
 
 @pytest.fixture
 def client() -> Any:
-    with patch("backend.main.data_store") as mock_store:
+    with patch("backend.main.data_store"):
         yield TestClient(app)
 
 @pytest.fixture
@@ -88,18 +98,18 @@ def mock_jsonl_data() -> list[Any]:
 def temp_jsonl_dir(tmp_path: Path, mock_jsonl_data : Any) -> Path:
     data_dir = tmp_path / "jsonl_data"
     data_dir.mkdir()
-    
+
     file1_data = mock_jsonl_data[:2]
     file2_data = mock_jsonl_data[2:]
 
     with open(data_dir / "file1.jsonl", "w") as f:
         for item in file1_data:
             f.write(json.dumps(item) + "\n")
-            
+
     with open(data_dir / "file2.jsonl", "w") as f:
         for item in file2_data:
             f.write(json.dumps(item) + "\n")
-            
+
     (data_dir / "empty.jsonl").touch()
     with open(data_dir / "invalid.jsonl", "w") as f:
         f.write("this is not json\n")
@@ -133,8 +143,8 @@ def test_list_runs_by_agent(client: Any) -> None:
 def test_get_run_details(client: Any) -> None:
     with patch("backend.main.data_store") as mock_store:
         mock_task = TaskResult(
-            run_id="run1", agent_name="agent1", task_id="task1", status="Success", timestamp_utc="2023-01-01T12:00:00Z", 
-            task_kind="kind1", 
+            run_id="run1", agent_name="agent1", task_id="task1", status="Success", timestamp_utc="2023-01-01T12:00:00Z",
+            task_kind="kind1",
             metrics=Metrics(
                 llm_invocation_count=0,
                 token_counts=TokenCounts(input_tokens=0, output_tokens=0, total_tokens=0),
