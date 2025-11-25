@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from pathlib import Path
 from typing import Any, override
 
 from rocq_doc_manager import RocqDocManager
@@ -11,6 +12,9 @@ class DocumentWatcher:
     When used in a tracing context, it is important that any manipulations of
     the document do not affect the behavior of other parts of the file.
     """
+
+    def extra_paths(self) -> dict[str, Path]:
+        return {}
 
     def setup(self, rdm: RocqDocManager) -> None:
         """
@@ -51,12 +55,28 @@ class StateExtractor[T](DocumentWatcher):
         """
         return None
 
+def merge_into[A,B](a: dict[A,B], b:dict[A,B]) -> None:
+    for k, v in b.items():
+        if k in a and a[k] != v:
+            raise RuntimeError("Overlapping entries")
+        a[k] = v
+
+def merge_all[A,B](ds: Generator[dict[A,B]], into: dict[A,B]|None=None) -> dict[A,B]:
+    result: dict[A,B] = {} if into is None else into
+    for x in ds:
+        merge_into(result, x)
+    return result
+
 class AllStateExtractor(StateExtractor[dict[str,Any]]):
     """
     Produce an object that contains the results of all of the state extractors
     """
     def __init__(self, extractors: dict[str, StateExtractor[Any]]):
         self._extractors:dict[str, StateExtractor] = extractors
+
+    @override
+    def extra_paths(self) -> dict[str, Path]:
+        return merge_all((x.extra_paths() for x in self._extractors.values()), super().extra_paths())
 
     def setup(self, rdm: RocqDocManager) -> None:
         for _, e in self._extractors.items():
@@ -111,6 +131,10 @@ class AllTacticExtractor(TacticExtractor[dict[str,Any]]):
     def __init__(self, extractors: dict[str, TacticExtractor[Any]]) -> None:
         self._extractors = extractors
 
+    @override
+    def extra_paths(self) -> dict[str, Path]:
+        return merge_all((x.extra_paths() for x in self._extractors.values()), super().extra_paths())
+
     def setup(self, rdm: RocqDocManager) -> None:
         for _, e in self._extractors.items():
             e.setup(rdm)
@@ -144,6 +168,10 @@ class Before[T](TacticExtractor[T]):
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
 
+    @override
+    def extra_paths(self) -> dict[str, Path]:
+        return self._extractor.extra_paths()
+
     def setup(self, rdm: RocqDocManager) -> None:
         self._extractor.setup(rdm)
 
@@ -162,6 +190,10 @@ class After[T](TacticExtractor[T]):
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
 
+    @override
+    def extra_paths(self) -> dict[str, Path]:
+        return self._extractor.extra_paths()
+
     def setup(self, rdm: RocqDocManager) -> None:
         self._extractor.setup(rdm)
 
@@ -179,6 +211,10 @@ class BeforeAndAfter[T](TacticExtractor[T]):
     """Run the StateExtractor before and after the tactic runs"""
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
+
+    @override
+    def extra_paths(self) -> dict[str, Path]:
+        return self._extractor.extra_paths()
 
     def setup(self, rdm: RocqDocManager) -> None:
         self._extractor.setup(rdm)
