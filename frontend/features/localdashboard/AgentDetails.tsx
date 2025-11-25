@@ -20,7 +20,6 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
 }) => {
   const {
     loading,
-    taskDetails,
     runDetails,
     isOpen,
     selectedRuns,

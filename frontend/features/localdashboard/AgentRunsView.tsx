@@ -115,7 +115,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
             <RunRow
               run={run}
               isLatest={index === 0 && arr.length > 1}
-              tags={tags}
+              tags={run.metadata?.tags}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
               failureCount={run.failure_count}
