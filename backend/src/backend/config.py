@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Server configuration
     server_host: str = "0.0.0.0"
-    server_port: int = 8001
+    server_port: int = 8000
     log_level: str = "info"
 
     model_config = SettingsConfigDict(

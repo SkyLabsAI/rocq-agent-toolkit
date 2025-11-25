@@ -169,6 +169,7 @@ class DataStore:
                     total_tasks=len(tasks),
                     success_count=success_count,
                     failure_count=failure_count,
+                    metadata=tasks[0].metadata if tasks[0].metadata else {},
                 )
             )
 
