@@ -4,7 +4,7 @@
 # A proof state consists of one or more (structured; heterogenous) goals.
 # ---------------------------------------------------------------------
 import copy
-from typing import overload
+from typing import Any, overload
 
 from rocq_pipeline.proof_state import parse
 from rocq_pipeline.proof_state.goal import BrickGoal, IrisGoal, RocqGoal
@@ -30,14 +30,14 @@ class ProofState:
 
     def __init__(
         self,
-        pf_state_str: str,
+        pf_state: str | None,
         # Use the new base class
         goal_ty_bound: type[RocqGoal] = RocqGoal,
     ) -> None:
-        if not isinstance(pf_state_str, str):
+        if pf_state is not None and not isinstance(pf_state, str):
             raise ValueError(" ".join([
                 "Expected goal (str), but got",
-                f"({type(pf_state_str)}) {pf_state_str}"
+                f"({type(pf_state)}) {pf_state}"
             ]))
 
         # Use the new base class
@@ -45,10 +45,23 @@ class ProofState:
             raise RuntimeError(f"{goal_ty_bound} not a subclass of RocqGoal")
 
         self._goal_ty_bound = goal_ty_bound
-        self._goals: dict[int, RocqGoal] = parse.into_Goals(
-            pf_state_str,
-            goal_ty_bound
+        self._goals: dict[int, RocqGoal] = (
+            {}
+            if pf_state is None else
+            parse.into_Goals(pf_state, goal_ty_bound)
         )
+
+    # NOTE: no [from_json], since ProofState stores class information in a
+    # member variable.
+    def to_json(self) -> dict[int, Any]:
+        return {
+            idx: goal.to_json()
+            for idx, goal in self.goals.items()
+        }
+
+    def closed(self) -> bool:
+        """Predicate indicating whether the proof state is fully closed."""
+        return len(self._goals) == 0
 
     @property
     def goals(self) -> dict[int, RocqGoal]:
