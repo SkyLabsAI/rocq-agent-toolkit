@@ -62,7 +62,7 @@ class FirstLemma(Locator):
         else:
             prefix = self._style
 
-        mtch = re.compile(f"({prefix})\\s+{self._name}[^0-9a-zA-Z_]")
+        mtch = re.compile(f"({prefix})\\s+{self._name}[^0-9a-zA-Z_']")
 
         def is_lemma(
                 text: str,

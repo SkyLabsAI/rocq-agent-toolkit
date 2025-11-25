@@ -1,27 +1,74 @@
-- file: theories/test_simple.v
-  locator: Lemma:is_true
-  tags:
-    - proof-0
-- file: theories/test_simple.v
-  locator: Lemma:not_false
-  tags:
-    - proof-0
 - file: theories/my_nat.v
   locator: Lemma:zero_add
   tags:
-    - proof-0
+  - proof
+  - reflexivity
 - file: theories/my_nat.v
   locator: Lemma:add_S
   tags:
-    - proof-1
-    - requires-induction
+  - proof
+  - induction
+  - auto
+  - simpl
 - file: theories/my_nat.v
   locator: Lemma:add_zero
   tags:
-    - proof-1
-    - requires-induction
+  - proof
+  - induction
+  - congruence
+  - auto
+  - simpl
+  - rewrite
+- file: theories/test_simple.v
+  locator: Lemma:is_true
+  tags:
+  - proof
+  - trivial
+- file: theories/test_simple.v
+  locator: Lemma:not_false
+  tags:
+  - proof
 - file: theories/with_dep.v
   locator: Lemma:add_comm
   tags:
-    - proof-1
-    - requires-induction
+  - proof
+  - induction
+  - admitted
+  - rewrite
+  - reflexivity
+  - auto
+  - simpl
+  - intros
+- file: theories/with_dep.v
+  locator: Lemma:add_comm'
+  tags:
+  - proof
+  - induction
+  - admitted
+  - rewrite
+  - reflexivity
+  - auto
+  - simpl
+  - intros
+- file: theories/with_dep.v
+  locator: Lemma:add_comm''
+  tags:
+  - proof
+  - induction
+  - admitted
+  - rewrite
+  - reflexivity
+  - auto
+  - simpl
+  - intros
+- file: theories/with_dep.v
+  locator: Lemma:add_comm'''
+  tags:
+  - proof
+  - induction
+  - admitted
+  - rewrite
+  - reflexivity
+  - auto
+  - simpl
+  - intros
