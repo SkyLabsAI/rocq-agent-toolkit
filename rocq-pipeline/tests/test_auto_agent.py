@@ -1,8 +1,7 @@
 import tempfile
 
 import rocq_pipeline.task_runner
-from rocq_pipeline.agent import Agent, AgentBuilder
-from rocq_pipeline.auto_agent import AutoAgent
+from rocq_pipeline.agent import AgentBuilder, AutoAgent, ProofAgent
 
 from .util import make_repeated_tasks_str, make_task_str
 
@@ -22,13 +21,14 @@ def test_auto() -> None:
 def test_failure() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         result = rocq_pipeline.task_runner.agent_main(
-            AgentBuilder.of_agent(Agent),
+            AgentBuilder.of_agent(ProofAgent),
             ["--task-json", make_task_str(
                 "examples/theories/test_simple.v",
                 "lemma:is_true"),
              "--output-dir", temp_dir],
         )
     assert result
+
 
 def test_parallel_tasks() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:

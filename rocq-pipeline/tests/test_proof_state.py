@@ -77,6 +77,11 @@ def proof_state() -> ProofState:
 # --- Tests ---
 
 
+def test_proof_state_None() -> None:
+    pf_state = ProofState(None)
+    assert pf_state.closed()
+
+
 def test_proof_state_overview(proof_state: ProofState) -> None:
     """Checks the overall structure of the parsed ProofState."""
     assert len(proof_state.goals) == 3
