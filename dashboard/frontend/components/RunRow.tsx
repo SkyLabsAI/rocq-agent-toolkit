@@ -18,7 +18,7 @@ interface RunRowProps {
   onToggleExpansion: (runId: Run) => void;
   onToggleSelection: (runId: Run) => void;
   onPin: (runId: Run) => void;
-  tags: Record<string, string> | undefined;
+  tags?: Record<string, string>;
 }
 
 function LatestBadge() {

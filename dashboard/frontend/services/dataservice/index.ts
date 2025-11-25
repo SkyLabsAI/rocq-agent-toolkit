@@ -62,8 +62,6 @@ const generateMockTaskOutput = (
       tags: {
         run_id: 'runId',
         task_id: 'taskId',
-        generated_at: new Date().toISOString(),
-        agent_version: 'mock_v1.0',
       },
     },
   };
@@ -120,6 +118,12 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
       total_tasks: totalTasks,
       success_count: successCount,
       failure_count: totalTasks - successCount,
+      metadata:{
+        tags: {
+          run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
+          task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+        }
+      }
     });
   }
 

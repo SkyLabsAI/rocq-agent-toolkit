@@ -175,6 +175,9 @@ export interface AgentRun {
   total_tasks: number;
   success_count: number;
   failure_count: number;
+  metadata :{
+    tags?: Record<string, string>;
+  }
 }
 
 export interface RunDetailsResponse {
