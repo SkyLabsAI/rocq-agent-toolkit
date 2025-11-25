@@ -1,8 +1,9 @@
 """
 Pydantic models for API request/response validation.
 """
-from typing import Optional, Any, List, Dict, Union
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
 
 # Wrtie now defining the Schema Directly
 # Improt it from the Rocq pipeline schema later own.
@@ -29,7 +30,7 @@ class Metrics(BaseModel):
     llm_invocation_count: int
     token_counts: TokenCounts
     resource_usage: ResourceUsage
-    custom: Optional[Any] = None
+    custom: Any | None = None
 
 
 class TaskMetadata(BaseModel):
@@ -38,9 +39,8 @@ class TaskMetadata(BaseModel):
     # Free-form tags attached to a task, e.g.
     tags: dict[str, str] = {}
 
-    class Config:
-        # Allow future metadata fields without breaking validation
-        extra = "allow"
+    # Allow future metadata fields without breaking validation
+    model_config = ConfigDict(extra='allow')
 
 class TaskResult(BaseModel):
     """Complete task result entry from JSONL."""
@@ -53,8 +53,8 @@ class TaskResult(BaseModel):
     status: str
     metrics: Metrics
     metadata: TaskMetadata = TaskMetadata()
-    results: Optional[str] = None
-    failure_reason: Optional[List[str]] = None
+    results: str | None = None
+    failure_reason: list[str] | None = None
 
 
 class AgentInfo(BaseModel):
@@ -83,7 +83,7 @@ class RunDetailsResponse(BaseModel):
     run_id: str
     agent_name: str
     total_tasks: int
-    tasks: List[TaskResult]
+    tasks: list[TaskResult]
 
 
 class LogEntry(BaseModel):
@@ -91,7 +91,7 @@ class LogEntry(BaseModel):
 
     timestamp: str
     line: str
-    labels: Optional[dict] = None
+    labels: dict | None = None
 
 
 class ObservabilityLogsResponse(BaseModel):
@@ -99,13 +99,13 @@ class ObservabilityLogsResponse(BaseModel):
 
     run_id: str
     task_id: str
-    logs: List[LogEntry]
+    logs: list[LogEntry]
     total_logs: int
 
 
 class RefreshResponse(BaseModel):
     """Response from refresh endpoint."""
-    
+
     success: bool
     message: str
     total_tasks: int
@@ -114,10 +114,10 @@ class RefreshResponse(BaseModel):
 
 class ObservabilityLabelsResponse(BaseModel):
     """Response containing unique labels from observability logs."""
-    
+
     run_id: str
     task_id: str
-    labels: Optional[Dict[str, List[Union[str, Dict[str, Any]]]]] = None
+    labels: dict[str, list[dict[str, Any]]] | None = None
     total_labels: int
 
 

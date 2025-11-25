@@ -2,6 +2,7 @@
 Configuration management for the FastAPI backend.
 """
 from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Path to JSONL results directory
-    jsonl_results_path: str
+    jsonl_results_path: str = "JSONL"
 
     # Observability stack port
     observability_url: str = "http://0.0.0.0:3100"

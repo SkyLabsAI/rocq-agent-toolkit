@@ -33,9 +33,17 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "mypy>=1.18.2,<2",
+    "pytest>=8.4.2",
+    "ruff>=0.14.2",
+    "taskipy>=1.14.1",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = [
   "src"
 ]
+
+[tool.taskipy.tasks]
+format_ci = "ruff check"
+typecheck_ci = "mypy ."
+test_ci = "pytest tests/"
