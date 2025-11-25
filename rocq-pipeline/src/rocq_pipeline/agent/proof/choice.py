@@ -29,4 +29,4 @@ class ChoiceAgent(MarkovAgent):
                 )),
             )
 
-        return self._all_choices[self._check_index]
+        return f"{self._all_choices[self._check_index]}."
