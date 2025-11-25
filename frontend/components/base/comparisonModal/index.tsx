@@ -1,15 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Modal from '@/components/base/modal';
-import CodeViewer from '@/components/base/codeViewer';
-import TacticStepsViewer from '@/components/base/tacticSteps';
 import cn from 'classnames';
-import type { TaskOutput } from '@/types/types';
-import { getObservabilityLogs } from '@/services/dataservice';
-
-interface ComparisonItem {
-  label: string;
-  task: TaskOutput | null;
-}
+import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
+import CodeContent from './components/CodeContent';
+import JsonContent from './components/JsonContent';
+import { useComparisonLogs, ComparisonItem } from './hooks/useComparisonLogs';
+import { getTabColorClasses } from './utils/tabColors';
 
 interface ComparisonModalProps {
   isOpen: boolean;
@@ -18,61 +14,29 @@ interface ComparisonModalProps {
   taskId: string;
 }
 
-interface TaskLogs {
-  [itemIndex: number]: Record<string, unknown> | null;
-}
+const customUIKeys = [
+  'cpp_code',
+  'cppCode',
+  'code',
+  'targetContent',
+  'lemmaContent',
+  'statesContent',
+  'tactic_prediction_explanation',
+  'tactic_prediction_tactic',
+  'tactic',
+];
 
-const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, items, taskId }) => {
-  const [activeTab, setActiveTab] = useState<string>('');
-  const [taskLogs, setTaskLogs] = useState<TaskLogs>({});
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+const ComparisonModal: React.FC<ComparisonModalProps> = ({
+  isOpen,
+  onClose,
+  items,
+  taskId,
+}) => {
+  const [activeTab, setActiveTab] = useState('');
+  const { taskLogs, loading, error } = useComparisonLogs(isOpen, items);
 
-  // Fetch observability logs when modal opens
-  useEffect(() => {
-    if (!isOpen || items.length === 0) return;
-
-    const fetchLogs = async () => {
-      setLoading(true);
-      setError(null);
-      const logs: TaskLogs = {};
-
-      try {
-        await Promise.all(
-          items.map(async (item, index) => {
-            if (item.task) {
-              try {
-                const taskLogs = await getObservabilityLogs(item.task.run_id, item.task.task_id);
-                logs[index] = taskLogs;
-              } catch (err) {
-                console.error(`Error fetching logs for ${item.label}:`, err);
-                logs[index] = null;
-              }
-            } else {
-              logs[index] = null;
-            }
-          })
-        );
-
-        setTaskLogs(logs);
-      } catch (err) {
-        console.error('Error fetching comparison logs:', err);
-        setError('Failed to load comparison data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLogs();
-  }, [isOpen, items]);
-
-  // Define which keys should have custom UI
-  const customUIKeys = React.useMemo(() => 
-    ['cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent', 'tactic_prediction_explanation', 'tactic_prediction_tactic'], []
-  );
-  
   // Get all available keys from all fetched logs
-  const availableKeys = React.useMemo(() => {
+  const availableKeys = useMemo(() => {
     const keysSet = new Set<string>();
     Object.values(taskLogs).forEach(logs => {
       if (logs && typeof logs === 'object') {
@@ -81,19 +45,19 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
     });
     return Array.from(keysSet).sort();
   }, [taskLogs]);
-  
-  const customKeys = React.useMemo(() => 
-    availableKeys.filter(key => customUIKeys.includes(key)), [availableKeys, customUIKeys]
+
+  const customKeys = useMemo(
+    () => availableKeys.filter(key => customUIKeys.includes(key)),
+    [availableKeys]
   );
-  
-  const jsonKeys = React.useMemo(() => 
-    availableKeys.filter(key => !customUIKeys.includes(key)), [availableKeys, customUIKeys]
+  const jsonKeys = useMemo(
+    () => availableKeys.filter(key => !customUIKeys.includes(key)),
+    [availableKeys]
   );
 
   // Reset active tab when details change
-  React.useEffect(() => {
+  useEffect(() => {
     if (availableKeys.length > 0) {
-      // Prefer custom UI keys first, then fallback to JSON keys
       const defaultTab = customKeys.length > 0 ? customKeys[0] : jsonKeys[0];
       setActiveTab(defaultTab || '');
     }
@@ -108,107 +72,59 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
 
   // Helper function to render custom UI for specific keys
   const renderCustomContent = (key: string, value: unknown) => {
-    // Handle tactic prediction arrays - ONLY these keys should be treated as arrays
-    if (key === 'tactic_prediction_explanation' && Array.isArray(value)) {
+    if (key === 'tactic' && Array.isArray(value)) {
       return (
-        <TacticStepsViewer
-          steps={value.filter((step): step is string => typeof step === 'string')}
-          type="explanation"
-          title="Tactic Prediction Explanation"
+        <TacticInfoViewer
+          tactics={value as TacticObject[]}
+          title='Tactic Information'
         />
       );
     }
-    
-    if (key === 'tactic_prediction_tactic' && Array.isArray(value)) {
-      return (
-        <TacticStepsViewer
-          steps={value.filter((step): step is string => typeof step === 'string')}
-          type="tactic"
-          title="Tactic Prediction Steps"
-        />
-      );
-    }
-    
-    // For all other keys, if it's an array, pick the first index (should be string)
-    let stringValue: string;
+
+    let stringValues: string[];
     if (Array.isArray(value)) {
-      stringValue = value[0] as string;
+      stringValues = value.filter(
+        (item): item is string => typeof item === 'string'
+      );
     } else if (typeof value === 'string') {
-      stringValue = value;
+      stringValues = [value];
     } else {
       return null;
     }
-    
-    const lowerKey = key.toLowerCase();
-    
-    if (lowerKey.includes('cpp') || lowerKey.includes('code')) {
-      return (
-        <CodeViewer
-          code={stringValue}
-          language="cpp"
-          filename={`${key}.cpp`}
-        />
-      );
-    }
-    
-    if (lowerKey.includes('target') || lowerKey.includes('lemma') || lowerKey.includes('states')) {
-      return (
-        <CodeViewer
-          code={stringValue}
-          language="text"
-          filename={`${key}.txt`}
-        />
-      );
-    }
-    
-    return null;
+    if (stringValues.length === 0) return null;
+    return <CodeContent keyName={key} values={stringValues} />;
   };
 
   // Helper function to render JSON content
   const renderJsonContent = (key: string, value: unknown) => {
-    // For all keys except tactic prediction ones, if it's an array, pick the first index
-    let processedValue = value;
-    if (key !== 'tactic_prediction_explanation' && key !== 'tactic_prediction_tactic' && Array.isArray(value)) {
-      processedValue = value[0];
+    if (
+      key !== 'tactic_prediction_explanation' &&
+      key !== 'tactic_prediction_tactic' &&
+      key !== 'tactic' &&
+      Array.isArray(value)
+    ) {
+      const stringValues = value.filter(
+        (item): item is string => typeof item === 'string'
+      );
+      if (stringValues.length > 0) {
+        return (
+          <div className='space-y-4'>
+            {stringValues.map((str, index) => (
+              <div
+                key={index}
+                className='bg-elevation-surface border border-elevation-surface-overlay rounded-lg p-4 max-h-96 overflow-auto'
+              >
+                <div className='text-text mb-2'>Item {index + 1}</div>
+                <pre className='text-sm text-text whitespace-pre-wrap font-mono'>
+                  {str}
+                </pre>
+              </div>
+            ))}
+          </div>
+        );
+      }
     }
-    
-    const jsonString = typeof processedValue === 'string' 
-      ? processedValue 
-      : JSON.stringify(processedValue, null, 2);
-    
-    return (
-      <div className="bg-gray-900/50 border border-white/10 rounded-lg p-4 max-h-96 overflow-auto">
-        <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
-          {jsonString}
-        </pre>
-      </div>
-    );
-  };
-
-  // Helper function to get tab color based on key
-  const getTabColor = (key: string) => {
-    const lowerKey = key.toLowerCase();
-    if (key === 'tactic_prediction_explanation') return 'blue';
-    if (key === 'tactic_prediction_tactic') return 'green';
-    if (lowerKey.includes('cpp') || lowerKey.includes('code')) return 'blue';
-    if (lowerKey.includes('target')) return 'purple';
-    if (lowerKey.includes('lemma')) return 'green';
-    if (lowerKey.includes('states')) return 'orange';
-    return 'gray';
-  };
-
-  const getTabColorClasses = (key: string, isActive: boolean) => {
-    const color = getTabColor(key);
-    if (isActive) {
-      return {
-        'blue': 'border-blue-400 text-blue-400',
-        'purple': 'border-purple-400 text-purple-400',
-        'green': 'border-green-400 text-green-400',
-        'orange': 'border-orange-400 text-orange-400',
-        'gray': 'border-gray-400 text-gray-400'
-      }[color];
-    }
-    return 'border-transparent text-gray-400 hover:text-gray-300';
+    return <JsonContent value={value} />;
   };
 
   return (
@@ -216,39 +132,37 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
       isOpen={isOpen}
       onClose={onClose}
       title={`Compare Task: ${taskId}`}
-      size="full"
+      size='full'
     >
-      <div className="space-y-4 h-full flex flex-col">
+      <div className='space-y-4 h-full flex flex-col'>
         {/* Loading State */}
         {loading && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-4"></div>
-              <p className="text-gray-400">Loading comparison data...</p>
+          <div className='flex-1 flex items-center justify-center'>
+            <div className='text-center'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-4'></div>
+              <p className='text-text'>Loading comparison data...</p>
             </div>
           </div>
         )}
-
         {/* Error State */}
         {error && !loading && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-red-400">
+          <div className='flex-1 flex items-center justify-center'>
+            <div className='text-center text-text-danger'>
               <p>Error: {error}</p>
             </div>
           </div>
         )}
-
         {/* Content */}
         {!loading && !error && availableKeys.length > 0 && (
           <>
             {/* Tab Navigation */}
-            <div className="flex flex-wrap border-b border-white/10 shrink-0">
+            <div className='flex flex-wrap border-b border-elevation-surface-overlay shrink-0'>
               {availableKeys.map(key => (
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
                   className={cn(
-                    "px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200",
+                    'px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200',
                     getTabColorClasses(key, activeTab === key)
                   )}
                 >
@@ -256,53 +170,49 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
                 </button>
               ))}
             </div>
-
             {/* Comparison Content */}
-            <div className="flex-1 overflow-hidden">
+            <div className='flex-1 overflow-hidden'>
               {activeTab && (
-                <div className="h-full overflow-y-auto">
-                  <div className="space-y-4">
+                <div className='h-full overflow-y-auto'>
+                  <div className='space-y-4'>
                     {items.map((item, index) => {
                       const value = getTaskValue(index, activeTab);
                       const hasData = value !== undefined && value !== null;
-                      
                       return (
-                        <div key={index} className="border border-white/10 rounded-lg bg-white/5 p-4">
-                          <div className="flex items-center justify-between mb-4 shrink-0">
-                            <div className="flex flex-col">
-                              <h4 className="text-sm font-medium truncate" title={item.label}>
+                        <div
+                          key={index}
+                          className='border border-elevation-surface-overlay rounded-lg bg-elevation-surface-raised p-4'
+                        >
+                          <div className='flex items-center justify-between mb-4 shrink-0'>
+                            <div className='flex flex-col'>
+                              <h4
+                                className='text-sm font-medium truncate'
+                                title={item.label}
+                              >
                                 {item.label}
                               </h4>
                               {item.task && (
-                                <span className="text-xs text-gray-400 font-mono" title={item.task.run_id}>
+                                <span
+                                  className='text-xs text-text font-mono'
+                                  title={item.task.run_id}
+                                >
                                   Run: {item.task.run_id}
                                 </span>
                               )}
                             </div>
-                            {item.task && (
-                              <span className={cn(
-                                'px-2 py-0.5 rounded-full text-xs font-semibold border',
-                                item.task.status === 'Success' ?
-                                  'bg-green-500/20 text-green-300 border-green-500/30' :
-                                  'bg-red-500/20 text-red-300 border-red-500/30'
-                              )}>
-                                {item.task.status}
-                              </span>
-                            )}
                           </div>
-                          
-                          <div className="overflow-auto">
+                          <div className='overflow-auto'>
                             {!hasData ? (
-                              <div className="text-sm text-gray-500 italic text-center py-8">
-                                {!item.task ? 'Task not present' : 'No data for this key'}
+                              <div className='text-sm text-text-disabled italic text-center py-8'>
+                                {!item.task
+                                  ? 'Task not present'
+                                  : 'No data for this key'}
                               </div>
                             ) : (
                               <>
-                                {/* Try custom UI first */}
-                                {customKeys.includes(activeTab) 
+                                {customKeys.includes(activeTab)
                                   ? renderCustomContent(activeTab, value)
-                                  : renderJsonContent(activeTab, value)
-                                }
+                                  : renderJsonContent(activeTab, value)}
                               </>
                             )}
                           </div>
@@ -315,10 +225,9 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
             </div>
           </>
         )}
-        
         {/* No Data State */}
         {!loading && !error && availableKeys.length === 0 && (
-          <div className="text-center text-gray-400 py-8 flex-1 flex items-center justify-center">
+          <div className='text-center text-text py-8 flex-1 flex items-center justify-center'>
             No comparable data available
           </div>
         )}

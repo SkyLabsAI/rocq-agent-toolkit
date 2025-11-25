@@ -10,9 +10,9 @@
    ```
 
 2. **Access the dashboard:**
-   - Open your browser and go to `http://localhost:8080`
-   - Admin dashboard: `http://localhost:8080/admin`
-   - Compare view: `http://localhost:8080/admin/compare`
+   - Open your browser and go to `http://localhost:3005`
+   - Local dashboard: `http://localhost:3005`
+   - Compare view: `http://localhost:3005/compare`
 
 3. **View logs:**
    ```bash

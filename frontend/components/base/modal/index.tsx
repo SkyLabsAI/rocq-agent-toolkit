@@ -52,19 +52,20 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
       />
       
       {/* Modal */}
-      <div className={`relative w-full bg-slate-900 border border-white/10 rounded-xl shadow-xl max-h-[90vh] flex flex-col ${
+      <div className={`absolute top-10 w-full bg-elevation-surface  rounded-lg shadow-xl max-h-[90vh] flex flex-col ${
         size === 'full' ? 'max-w-[95vw]' : 
         size === 'large' ? 'max-w-6xl' : 
         'max-w-4xl'
       }`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
+        <div className="flex items-center justify-between p-6 py-4 border-b border-white/10">
+          <h2 className="text-xl font-semibold text-text">{title}</h2>
           <button
+          title='back'
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
+            className="p-2 rounded-lg overflow-hidden transition-colors duration-200 w-[38px] h-[38px] flex items-center justify-center hover:bg-background-neutral-hovered"
           >
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5 text-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>

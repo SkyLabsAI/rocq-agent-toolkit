@@ -19,5 +19,8 @@ EXPOSE 3005
 ENV PORT=3005
 ENV HOSTNAME="0.0.0.0"
 
-# Run in dev mode
-CMD ["pnpm", "run", "dev"]
+# build project
+RUN pnpm run build
+
+# Start the application
+CMD ["pnpm", "run", "start"]

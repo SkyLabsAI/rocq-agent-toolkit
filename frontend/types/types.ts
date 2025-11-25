@@ -39,8 +39,7 @@ export type ResourceExhaustionKind =
 /**
  * Reason for task failure.
  */
-export type FailureReason =
-  | {
+export type FailureReason = string[] | {
       /** Resource exhaustion. */
       kind: "ResourceExhaustion";
       value: ResourceExhaustionKind;
@@ -133,6 +132,11 @@ export interface TaskOutput {
   metrics: Metrics;
 
   details? : Details;
+
+  metadata?: {
+    tags: Record<string, string>;
+    [key: string]: unknown;
+  }
 }
 
 /**
@@ -171,6 +175,9 @@ export interface AgentRun {
   total_tasks: number;
   success_count: number;
   failure_count: number;
+  metadata :{
+    tags?: Record<string, string>;
+  }
 }
 
 export interface RunDetailsResponse {
@@ -178,6 +185,10 @@ export interface RunDetailsResponse {
   agent_name: string;
   total_tasks: number;
   tasks: TaskOutput[];
+  metadata?: {
+    tags: Record<string, string>;
+    [key: string]: unknown;
+  }
 }
 
 /**

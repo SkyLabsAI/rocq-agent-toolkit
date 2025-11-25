@@ -1,7 +1,7 @@
 """
 Pydantic models for API request/response validation.
 """
-from typing import Optional, Any, List, Dict
+from typing import Optional, Any, List, Dict, Union
 from pydantic import BaseModel
 
 # Wrtie now defining the Schema Directly
@@ -32,6 +32,16 @@ class Metrics(BaseModel):
     custom: Optional[Any] = None
 
 
+class TaskMetadata(BaseModel):
+    """Additional metadata for a task, including tags."""
+
+    # Free-form tags attached to a task, e.g.
+    tags: dict[str, str] = {}
+
+    class Config:
+        # Allow future metadata fields without breaking validation
+        extra = "allow"
+
 class TaskResult(BaseModel):
     """Complete task result entry from JSONL."""
 
@@ -42,6 +52,7 @@ class TaskResult(BaseModel):
     agent_name: str
     status: str
     metrics: Metrics
+    metadata: TaskMetadata = TaskMetadata()
     results: Optional[str] = None
     failure_reason: Optional[List[str]] = None
 
@@ -62,6 +73,8 @@ class RunInfo(BaseModel):
     total_tasks: int
     success_count: int
     failure_count: int
+    metadata: TaskMetadata = TaskMetadata()
+
 
 
 class RunDetailsResponse(BaseModel):
@@ -104,5 +117,14 @@ class ObservabilityLabelsResponse(BaseModel):
     
     run_id: str
     task_id: str
-    labels: Optional[Dict[str, List[str]]] = None
+    labels: Optional[Dict[str, List[Union[str, Dict[str, Any]]]]] = None
     total_labels: int
+
+
+class TagsResponse(BaseModel):
+    """Response containing unique metadata tags across all tasks."""
+
+    # Mapping from tag key to sorted list of unique values
+    tags: dict[str, list[str]]
+    total_keys: int
+    total_values: int

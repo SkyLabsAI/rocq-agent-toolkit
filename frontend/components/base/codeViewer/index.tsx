@@ -24,11 +24,11 @@ const CodeViewer: React.FC<CodeViewerProps> = ({ code, language, filename }) => 
   };
 
   return (
-    <div className="bg-slate-800 border border-white/10 rounded-lg overflow-hidden">
+    <div className="bg-slate-800 border border-elevation-surface-overlay rounded-lg overflow-hidden">
       {filename && (
-        <div className="bg-slate-700 px-4 py-2 border-b border-white/10">
-          <span className="text-sm font-medium text-gray-300">{filename}</span>
-          <span className="text-xs text-gray-400 ml-2">({language})</span>
+        <div className="bg-elevation-surface-raised px-4 py-2 border-b border-elevation-surface-overlay">
+          <span className="text-sm font-medium text-text">{filename}</span>
+          <span className="text-xs text-text ml-2">({language})</span>
         </div>
       )}
       <div className="overflow-auto max-h-[60vh]">
@@ -41,7 +41,10 @@ const CodeViewer: React.FC<CodeViewerProps> = ({ code, language, filename }) => 
             background: 'transparent',
             fontSize: '0.875rem',
             lineHeight: '1.5',
+            backgroundColor: 'var(--color-elevation-surface-raised)',
+            color: 'var(--color-text)',
           }}
+          
           codeTagProps={{
             style: {
               fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',

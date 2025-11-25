@@ -16,6 +16,9 @@
 /playwright-report/
 /playwright/.cache/
 
+# Playwright screenshot snapshots
+tests/**-snapshots/
+
 # next.js
 /.next/
 /out/
