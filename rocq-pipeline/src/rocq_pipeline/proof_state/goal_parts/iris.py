@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import override
+from typing import Any, override
 
 from .rocq import RocqGoalParts
 
@@ -31,3 +31,12 @@ class IrisGoalParts(RocqGoalParts):
     def wellformed(self) -> bool:
         # An Iris goal MUST have a non-empty spatial conclusion
         return super().wellformed() and self.iris_spat_concl != ""
+
+    @override
+    def to_json(self) -> dict[str, Any]:
+        almost_serializable = super().to_json()
+        for k_set in {"iris_pers_hyps_anon", "iris_spat_hyps_anon"}:
+            almost_serializable[k_set] = list(
+                almost_serializable[k_set]
+            )
+        return almost_serializable

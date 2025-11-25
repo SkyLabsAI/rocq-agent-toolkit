@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Protocol
+from dataclasses import asdict, dataclass, field
+from typing import Any, Protocol
 
 
 @dataclass(frozen=True)
@@ -27,6 +27,9 @@ class RocqGoalParts:
         # NOTE: Rocq goals must have a conclusion; a goal of "True" or
         # "emp" is well-formed
         return self.rocq_rel_goal_num is not None and self.rocq_concl != ""
+
+    def to_json(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 class into_GoalParts[GOAL_PARTS: RocqGoalParts](Protocol):

@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from typing import Any
 
 from rocq_pipeline.proof_state.goal_parts import RocqGoalParts
@@ -24,7 +23,7 @@ class RocqGoal:
         self._parts = parts
 
     def to_json(self) -> dict[str, Any]:
-        return asdict(self._parts)
+        return self.parts.to_json()
 
     @property
     def raw_str(self) -> str:
