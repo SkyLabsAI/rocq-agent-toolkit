@@ -297,6 +297,8 @@ end.""",
         with self.ctx():
             result = self.run_command('idtac.')
             if isinstance(result, self.Err):
+                if result.message == "No such goal.":
+                    return None
                 return result
             return result.open_subgoals
 

@@ -8,6 +8,24 @@ from .util import RDM_Tests
 
 
 class Test_RDM_macros(RDM_Tests):
+    def test_current_goal(
+            self,
+            transient_rdm: RocqDocManager,
+    ) -> None:
+        outside_goal_reply = transient_rdm.current_goal()
+        assert isinstance(outside_goal_reply, RocqDocManager.Err)
+        with transient_rdm.aborted_goal_ctx(goal="True"):
+            True_goal_reply = transient_rdm.current_goal()
+            assert not isinstance(True_goal_reply, RocqDocManager.Err)
+            assert True_goal_reply == "1 goal\n  \n  ============================\n  True"
+            assert not isinstance(
+                transient_rdm.run_command("auto."),
+                RocqDocManager.Err
+            )
+            closed_goal_reply = transient_rdm.current_goal()
+            assert not isinstance(True_goal_reply, RocqDocManager.Err)
+            assert closed_goal_reply is None
+
     @given(
         n=st.integers(min_value=0, max_value=100),
         m=st.integers(min_value=0, max_value=100),
