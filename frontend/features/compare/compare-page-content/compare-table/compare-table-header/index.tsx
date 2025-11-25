@@ -15,7 +15,7 @@ export const getCommonGridStyle = (runCount: number) => {
   return {
     display: 'grid',
     // 230px Start | Dynamic Middle | 165px End
-    gridTemplateColumns: `230px repeat(${runCount}, minmax(0, 1fr)) 165px`,
+    gridTemplateColumns: `350px repeat(${runCount}, minmax(0, 1fr)) 165px`,
     alignItems: 'center',
     columnGap: '1rem' // This replaces 'gap-4' to be safe
   };
