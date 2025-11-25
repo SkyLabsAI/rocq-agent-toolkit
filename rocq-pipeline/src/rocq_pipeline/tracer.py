@@ -104,8 +104,8 @@ def run_ns(arguments: argparse.Namespace, extra_args:list[str]|None=None) -> boo
         # TODO: if we had a schema we could automatically validate that the
         # task JSON has the expected shape.
         tasks = Tasks.mk_validated_tasklist(arguments.task_json)
-    elif arguments.task_file is not None:
         wdir = Path('.')
+    elif arguments.task_file is not None:
         (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
     else:
         print("unspecified task")
