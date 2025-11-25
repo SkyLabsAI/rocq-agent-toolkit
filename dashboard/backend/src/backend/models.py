@@ -36,7 +36,7 @@ class TaskMetadata(BaseModel):
     """Additional metadata for a task, including tags."""
 
     # Free-form tags attached to a task, e.g.
-    tags: dict[str, str] | None = None
+    tags: dict[str, str] = {}
 
     class Config:
         # Allow future metadata fields without breaking validation
@@ -52,7 +52,7 @@ class TaskResult(BaseModel):
     agent_name: str
     status: str
     metrics: Metrics
-    metadata: TaskMetadata | None = None
+    metadata: TaskMetadata = TaskMetadata()
     results: Optional[str] = None
     failure_reason: Optional[List[str]] = None
 
@@ -73,6 +73,8 @@ class RunInfo(BaseModel):
     total_tasks: int
     success_count: int
     failure_count: int
+    metadata: TaskMetadata = TaskMetadata()
+
 
 
 class RunDetailsResponse(BaseModel):
