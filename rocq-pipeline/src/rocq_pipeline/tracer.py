@@ -72,11 +72,15 @@ def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tas
         task_id: str = Tasks.get_task_id(task)
         output_file: Path = output_dir / f"{task_id.replace('/','_').replace('#','_')}.json"
 
+
+        ROCQ_USER_CONTRIB = Path(__file__).parent.parent.parent.parent.parent.parent / "_build" /"install"/"default"/"lib"/"coq"/"user-contrib"
+        print(f"ROCQ_USER_CONTRIB = {ROCQ_USER_CONTRIB}")
+
         try:
             tracer = tracer_builder.build()
             task_file: Path = wdir / task["file"]
             with RocqDocManager(
-                    DuneUtil.rocq_args_for(task_file),
+                    DuneUtil.rocq_args_for(task_file) + ["-Q", str(ROCQ_USER_CONTRIB), ""],
                     str(task_file),
                     dune=True,
             ).sess(load_file=True) as rdm:
