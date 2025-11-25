@@ -110,7 +110,7 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
         if key.startswith(prefix):
             tag_key = key[len(prefix):].lower()
             tags[tag_key] = value
-    return tags
+    return task_output.Tags(list(tags.items()))
 
 
 def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, tags: task_output.Tags, progress: util.ProgressCallback) -> task_output.TaskOutput | None:
@@ -180,7 +180,7 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, t
         results=task_result.final_doc_interaction,
         failure_reason=task_failure_reason,
         metrics=task_result.metrics,
-        metadata=task_output.Metadata(tags=task_output.Tags(list(tags.items()))),
+        metadata=task_output.Metadata(tags=tags),
     )
 
 def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]]:
@@ -236,7 +236,7 @@ class RunConfiguration:
     working_dir: Path
     trace: bool
     jobs: int
-    tags: dict[str, str]
+    tags: task_output.Tags
     deployment_env: Environment | None = None
 
 def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None) -> RunConfiguration:
