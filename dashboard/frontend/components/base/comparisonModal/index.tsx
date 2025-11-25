@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Modal from '@/components/base/modal';
 import cn from 'classnames';
-import TacticStepsViewer from '@/components/base/tacticSteps';
 import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
 import CodeContent from './components/CodeContent';
 import JsonContent from './components/JsonContent';
@@ -15,13 +14,24 @@ interface ComparisonModalProps {
   taskId: string;
 }
 
-
 const customUIKeys = [
-  'cpp_code', 'cppCode', 'code', 'targetContent', 'lemmaContent', 'statesContent',
-  'tactic_prediction_explanation', 'tactic_prediction_tactic', 'tactic'
+  'cpp_code',
+  'cppCode',
+  'code',
+  'targetContent',
+  'lemmaContent',
+  'statesContent',
+  'tactic_prediction_explanation',
+  'tactic_prediction_tactic',
+  'tactic',
 ];
 
-const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, items, taskId }) => {
+const ComparisonModal: React.FC<ComparisonModalProps> = ({
+  isOpen,
+  onClose,
+  items,
+  taskId,
+}) => {
   const [activeTab, setActiveTab] = useState('');
   const { taskLogs, loading, error } = useComparisonLogs(isOpen, items);
 
@@ -36,11 +46,13 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
     return Array.from(keysSet).sort();
   }, [taskLogs]);
 
-  const customKeys = useMemo(() =>
-    availableKeys.filter(key => customUIKeys.includes(key)), [availableKeys]
+  const customKeys = useMemo(
+    () => availableKeys.filter(key => customUIKeys.includes(key)),
+    [availableKeys]
   );
-  const jsonKeys = useMemo(() =>
-    availableKeys.filter(key => !customUIKeys.includes(key)), [availableKeys]
+  const jsonKeys = useMemo(
+    () => availableKeys.filter(key => !customUIKeys.includes(key)),
+    [availableKeys]
   );
 
   // Reset active tab when details change
@@ -64,31 +76,16 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
       return (
         <TacticInfoViewer
           tactics={value as TacticObject[]}
-          title="Tactic Information"
+          title='Tactic Information'
         />
       );
     }
-    if (key === 'tactic_prediction_explanation' && Array.isArray(value)) {
-      return (
-        <TacticStepsViewer
-          steps={value.filter((step): step is string => typeof step === 'string')}
-          type="explanation"
-          title="Tactic Prediction Explanation"
-        />
-      );
-    }
-    if (key === 'tactic_prediction_tactic' && Array.isArray(value)) {
-      return (
-        <TacticStepsViewer
-          steps={value.filter((step): step is string => typeof step === 'string')}
-          type="tactic"
-          title="Tactic Prediction Steps"
-        />
-      );
-    }
+
     let stringValues: string[];
     if (Array.isArray(value)) {
-      stringValues = value.filter((item): item is string => typeof item === 'string');
+      stringValues = value.filter(
+        (item): item is string => typeof item === 'string'
+      );
     } else if (typeof value === 'string') {
       stringValues = [value];
     } else {
@@ -100,15 +97,27 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
 
   // Helper function to render JSON content
   const renderJsonContent = (key: string, value: unknown) => {
-    if (key !== 'tactic_prediction_explanation' && key !== 'tactic_prediction_tactic' && key !== 'tactic' && Array.isArray(value)) {
-      const stringValues = value.filter((item): item is string => typeof item === 'string');
+    if (
+      key !== 'tactic_prediction_explanation' &&
+      key !== 'tactic_prediction_tactic' &&
+      key !== 'tactic' &&
+      Array.isArray(value)
+    ) {
+      const stringValues = value.filter(
+        (item): item is string => typeof item === 'string'
+      );
       if (stringValues.length > 0) {
         return (
-          <div className="space-y-4">
+          <div className='space-y-4'>
             {stringValues.map((str, index) => (
-              <div key={index} className="bg-elevation-surface border border-elevation-surface-overlay rounded-lg p-4 max-h-96 overflow-auto">
-                <div className="text-text mb-2">Item {index + 1}</div>
-                <pre className="text-sm text-text whitespace-pre-wrap font-mono">{str}</pre>
+              <div
+                key={index}
+                className='bg-elevation-surface border border-elevation-surface-overlay rounded-lg p-4 max-h-96 overflow-auto'
+              >
+                <div className='text-text mb-2'>Item {index + 1}</div>
+                <pre className='text-sm text-text whitespace-pre-wrap font-mono'>
+                  {str}
+                </pre>
               </div>
             ))}
           </div>
@@ -123,22 +132,22 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
       isOpen={isOpen}
       onClose={onClose}
       title={`Compare Task: ${taskId}`}
-      size="full"
+      size='full'
     >
-      <div className="space-y-4 h-full flex flex-col">
+      <div className='space-y-4 h-full flex flex-col'>
         {/* Loading State */}
         {loading && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-4"></div>
-              <p className="text-text">Loading comparison data...</p>
+          <div className='flex-1 flex items-center justify-center'>
+            <div className='text-center'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-4'></div>
+              <p className='text-text'>Loading comparison data...</p>
             </div>
           </div>
         )}
         {/* Error State */}
         {error && !loading && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-text-danger">
+          <div className='flex-1 flex items-center justify-center'>
+            <div className='text-center text-text-danger'>
               <p>Error: {error}</p>
             </div>
           </div>
@@ -147,7 +156,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
         {!loading && !error && availableKeys.length > 0 && (
           <>
             {/* Tab Navigation */}
-            <div className="flex flex-wrap border-b border-elevation-surface-overlay shrink-0">
+            <div className='flex flex-wrap border-b border-elevation-surface-overlay shrink-0'>
               {availableKeys.map(key => (
                 <button
                   key={key}
@@ -162,38 +171,48 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
               ))}
             </div>
             {/* Comparison Content */}
-            <div className="flex-1 overflow-hidden">
+            <div className='flex-1 overflow-hidden'>
               {activeTab && (
-                <div className="h-full overflow-y-auto">
-                  <div className="space-y-4">
+                <div className='h-full overflow-y-auto'>
+                  <div className='space-y-4'>
                     {items.map((item, index) => {
                       const value = getTaskValue(index, activeTab);
                       const hasData = value !== undefined && value !== null;
                       return (
-                        <div key={index} className="border border-elevation-surface-overlay rounded-lg bg-white/5 p-4 rounded-lg">
-                          <div className="flex items-center justify-between mb-4 shrink-0">
-                            <div className="flex flex-col">
-                              <h4 className="text-sm font-medium truncate" title={item.label}>
+                        <div
+                          key={index}
+                          className='border border-elevation-surface-overlay rounded-lg bg-elevation-surface-raised p-4'
+                        >
+                          <div className='flex items-center justify-between mb-4 shrink-0'>
+                            <div className='flex flex-col'>
+                              <h4
+                                className='text-sm font-medium truncate'
+                                title={item.label}
+                              >
                                 {item.label}
                               </h4>
                               {item.task && (
-                                <span className="text-xs text-text font-mono" title={item.task.run_id}>
+                                <span
+                                  className='text-xs text-text font-mono'
+                                  title={item.task.run_id}
+                                >
                                   Run: {item.task.run_id}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="overflow-auto">
+                          <div className='overflow-auto'>
                             {!hasData ? (
-                              <div className="text-sm text-gray-500 italic text-center py-8">
-                                {!item.task ? 'Task not present' : 'No data for this key'}
+                              <div className='text-sm text-text-disabled italic text-center py-8'>
+                                {!item.task
+                                  ? 'Task not present'
+                                  : 'No data for this key'}
                               </div>
                             ) : (
                               <>
                                 {customKeys.includes(activeTab)
                                   ? renderCustomContent(activeTab, value)
-                                  : renderJsonContent(activeTab, value)
-                                }
+                                  : renderJsonContent(activeTab, value)}
                               </>
                             )}
                           </div>
@@ -208,7 +227,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, item
         )}
         {/* No Data State */}
         {!loading && !error && availableKeys.length === 0 && (
-          <div className="text-center text-text py-8 flex-1 flex items-center justify-center">
+          <div className='text-center text-text py-8 flex-1 flex items-center justify-center'>
             No comparable data available
           </div>
         )}

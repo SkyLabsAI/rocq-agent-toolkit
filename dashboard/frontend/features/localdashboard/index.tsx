@@ -29,7 +29,7 @@ const LocalDashboard: React.FC = () => {
     <Layout title='Internal Dashboard'>
       {/* Refresh Message */}
       {refreshMessage && (
-        <div className='mb-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4'>
+        <div className='mb-4 bg-elevation-surface-raised backdrop-blur-sm border border-elevation-surface-overlay rounded-xl p-4'>
           <p className='text-sm text-green-400'>{refreshMessage}</p>
         </div>
       )}
@@ -67,7 +67,7 @@ const LocalDashboard: React.FC = () => {
               <tbody className='divide-y divide-elevation-surface-overlay'>
                 <tr className='text-text'>
                   <td>
-                    <div className='flex gap-1 items-center px-6 py-4 text-[16px] py-5'>
+                    <div className='flex gap-1 items-center px-6  text-[16px] py-5'>
                       <AgentListIcon className=' text-icon-success size-4' />
                       Agents
                     </div>
