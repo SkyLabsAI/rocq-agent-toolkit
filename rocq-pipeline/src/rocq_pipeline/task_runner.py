@@ -10,14 +10,25 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from observability import LoggingConfig, add_log_context, get_logger, setup_logging
+from observability import (
+    LoggingConfig,
+    add_log_context,
+    get_logger,
+    setup_logging,
+)
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, locator, util
 from rocq_pipeline import rocq_args as RocqArgs
-from rocq_pipeline.agent import AgentBuilder, Finished, GiveUp, TaskResult
-from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
+from rocq_pipeline.agent import (
+    AgentBuilder,
+    AutoAgent,
+    Finished,
+    GiveUp,
+    OneShotBuilder,
+    TaskResult,
+)
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.locator import Locator
 from rocq_pipeline.schema import task_output
@@ -25,6 +36,7 @@ from rocq_pipeline.schema import task_output
 logger = get_logger("task_runner")
 
 load_dotenv()
+
 
 def init_logging(env: Environment) -> None:
     """Initialise logging based on the current environment and CLI flags.
@@ -43,7 +55,7 @@ def init_logging(env: Environment) -> None:
     logger.info("Logging configured with OTLP endpoint: %s", otlp_endpoint)
 
 
-def mk_parser(parent: Any, with_agent:bool=True) -> Any:
+def mk_parser(parent: Any, with_agent: bool = True) -> Any:
     """
     Extend parent or build a fresh argument parser.
     """
@@ -178,7 +190,10 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, t
         timestamp_utc=timestamp_iso_8601,
         agent_name=agent.name(),
         status=task_status,
-        results=task_result.final_doc_interaction,
+        results={
+            "doc_interaction": task_result.final_doc_interaction,
+            "holes": task_result.final_holes,
+        },
         failure_reason=task_failure_reason,
         metrics=task_result.metrics,
         metadata=task_output.Metadata(tags=tags),
@@ -340,4 +355,4 @@ def auto_main() -> bool:
     return agent_main(AgentBuilder.of_agent(AutoAgent))
 
 def tactic_main() -> bool:
-    return agent_main(OneShotAgent.builder)
+    return agent_main(OneShotBuilder())
