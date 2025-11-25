@@ -9,15 +9,16 @@ import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, locator, util
 from rocq_pipeline.tracers.extractor import (
     BeforeAndAfter,
-    GoalAsString,
-    StateExtractor,
     TacticExtractor,
+    TacticExtractorBuilder,
 )
+from rocq_pipeline.tracers.json_goal import JsonGoal
 
 
 def trace_proof[T](extractor: TacticExtractor[T], rdm: RocqDocManager) -> list[tuple[(T|None), str, (T|None)]]:
     try:
         tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
+        extractor.start_proof(rdm)
         trace: list[tuple[(T|None),str,(T|None)]] = []
         for tactic in tactics:
             pre = extractor.before(rdm, tactic)
@@ -57,7 +58,7 @@ def mk_parser(parent: Any|None=None, with_tracer: bool = True) -> Any:
     return parser
 
 
-def run(tracer: TacticExtractor, output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
+def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
     def run_task(task: Tasks.Task, progress: util.ProgressCallback) -> bool:
         # TODO: find a better ID for tasks
         task_id: str = Tasks.get_task_id(task)
@@ -70,8 +71,10 @@ def run(tracer: TacticExtractor, output_dir: Path, wdir:Path, tasks: list[Tasks.
                     str(task_file),
                     dune=True,
             ).sess() as rdm:
+                tracer = tracer_builder.build()
                 progress(0.01, "🔃")
                 load_reply = rdm.load_file()
+                tracer.setup(rdm)
                 progress(0.05, "🔃")
                 if isinstance(load_reply, RocqDocManager.Err):
                     raise RuntimeError(" ".join([
@@ -93,7 +96,8 @@ def run(tracer: TacticExtractor, output_dir: Path, wdir:Path, tasks: list[Tasks.
 
             return True
 
-        except Exception:
+        except RuntimeError as e:
+            print(f"Error: {e}")
             return False
 
     util.parallel_runner(run_task, [(Tasks.get_task_id(x), x) for x in tasks], lambda x: x, jobs=jobs)
@@ -117,18 +121,19 @@ def run_ns(arguments: argparse.Namespace, extra_args:list[str]|None=None) -> boo
         return False
 
     if arguments.tracer is None:
-        tracer = BeforeAndAfter(GoalAsString())
+        tracer: TacticExtractorBuilder = TacticExtractorBuilder.of_tactic_extractor(lambda: BeforeAndAfter(JsonGoal())) # GoalAsString())
     else:
         if isinstance(arguments.tracer, str):
             tracer = loader.load_from_str(arguments.tracer)
         else:
             tracer = arguments.tracer
 
-        if isinstance(tracer, StateExtractor):
-            tracer = BeforeAndAfter(tracer)
-        elif not isinstance(tracer, TacticExtractor):
-            # print(f"'{arguments.tracer}' is a '{tracer}' but expected a [TacticExtractor].")
-            return False
+        # if isinstance(tracer, TacticExtractorBuilder):
+        #     print("ok")
+        #     tracer = BeforeAndAfter(tracer)
+        # elif not isinstance(tracer, TacticExtractor):
+        #     # print(f"'{arguments.tracer}' is a '{tracer}' but expected a [TacticExtractor].")
+        #     return False
 
     run(tracer, arguments.output_dir, wdir, tasks, jobs=arguments.jobs)
     return True

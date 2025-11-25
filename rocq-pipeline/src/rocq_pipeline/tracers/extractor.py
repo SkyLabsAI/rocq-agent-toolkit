@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any, override
 
 from rocq_doc_manager import RocqDocManager
@@ -195,3 +196,14 @@ class BeforeAndAfter[T](TacticExtractor[T]):
     @override
     def after(self, rdm: RocqDocManager, tactic:str) -> T|None:
         return self._extractor(rdm)
+
+class TacticExtractorBuilder:
+    @staticmethod
+    def of_tactic_extractor(build: Callable[[], TacticExtractor] | type[TacticExtractor]) -> "TacticExtractorBuilder":
+        return TacticExtractorBuilder(build)
+
+    def __init__(self, build: Callable[[], TacticExtractor]) -> None:
+        self._builder = build
+
+    def build(self) -> TacticExtractor[Any]:
+        return self._builder()
