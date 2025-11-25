@@ -1,7 +1,8 @@
 import pytest
+from typing import Any
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
-from backend.models import AgentInfo, RunInfo, RunDetailsResponse, TaskResult
+from backend.models import AgentInfo, RunInfo, RunDetailsResponse, TaskResult, ResourceUsage, TokenCounts, Metrics
 import os
 import json
 from pathlib import Path
@@ -14,12 +15,12 @@ from backend.main import app
 from backend.data_access import DataStore
 
 @pytest.fixture
-def client():
+def client() -> Any:
     with patch("backend.main.data_store") as mock_store:
         yield TestClient(app)
 
 @pytest.fixture
-def mock_jsonl_data():
+def mock_jsonl_data() -> list[Any]:
     return [
         {
             "run_id": "run1",
@@ -84,7 +85,7 @@ def mock_jsonl_data():
     ]
 
 @pytest.fixture
-def temp_jsonl_dir(tmp_path, mock_jsonl_data):
+def temp_jsonl_dir(tmp_path: Path, mock_jsonl_data : Any) -> Path:
     data_dir = tmp_path / "jsonl_data"
     data_dir.mkdir()
     
@@ -106,7 +107,7 @@ def temp_jsonl_dir(tmp_path, mock_jsonl_data):
 
     return data_dir
 
-def test_list_agents(client):
+def test_list_agents(client: Any) -> None:
     with patch("backend.main.data_store") as mock_store:
         mock_store.get_all_agents.return_value = [
             AgentInfo(agent_name="agent1", total_runs=2),
@@ -118,7 +119,7 @@ def test_list_agents(client):
         assert len(data) == 2
         assert data[0]["agent_name"] == "agent1"
 
-def test_list_runs_by_agent(client):
+def test_list_runs_by_agent(client: Any) -> None:
     with patch("backend.main.data_store") as mock_store:
         mock_store.get_runs_by_agent.return_value = [
             RunInfo(run_id="run1", agent_name="agent1", timestamp_utc="2023-01-01T12:00:00Z", total_tasks=2, success_count=1, failure_count=1)
@@ -129,17 +130,16 @@ def test_list_runs_by_agent(client):
         data = response.json()
         assert len(data) == 1
 
-def test_get_run_details(client):
+def test_get_run_details(client: Any) -> None:
     with patch("backend.main.data_store") as mock_store:
         mock_task = TaskResult(
             run_id="run1", agent_name="agent1", task_id="task1", status="Success", timestamp_utc="2023-01-01T12:00:00Z", 
             task_kind="kind1", 
-            metrics={
-                "llm_invocation_count": 0,
-                "token_counts": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
-                "resource_usage": {"execution_time_sec": 0.0, "cpu_time_sec": 0.0, "gpu_time_sec": 0.0},
-                "custom": None
-            },
+            metrics=Metrics(
+                llm_invocation_count=0,
+                token_counts=TokenCounts(input_tokens=0, output_tokens=0, total_tokens=0),
+                resource_usage=ResourceUsage(execution_time_sec=0.0, cpu_time_sec=0.0, gpu_time_sec=0.0),
+            ),
             results=""
         )
         mock_store.get_run_details.return_value = [
@@ -151,7 +151,7 @@ def test_get_run_details(client):
         assert len(data[0]["tasks"]) == 1
 
 @patch("httpx.AsyncClient")
-def test_get_observability_logs(mock_async_client, client):
+def test_get_observability_logs(mock_async_client: Any, client: Any) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -165,7 +165,7 @@ def test_get_observability_logs(mock_async_client, client):
     data = response.json()
     assert data["total_labels"] > 0
 
-def test_load_from_directory(temp_jsonl_dir):
+def test_load_from_directory(temp_jsonl_dir: Path) -> None:
     data_store = DataStore()
     count = data_store.load_from_directory(temp_jsonl_dir)
     assert count == 5
@@ -173,7 +173,7 @@ def test_load_from_directory(temp_jsonl_dir):
     assert "agent1" in data_store._agents
     assert "agent2" in data_store._agents
 
-def test_get_all_agents(temp_jsonl_dir):
+def test_get_all_agents(temp_jsonl_dir: Path) -> None:
     data_store = DataStore()
     data_store.load_from_directory(temp_jsonl_dir)
     agents = data_store.get_all_agents()
@@ -184,13 +184,13 @@ def test_get_all_agents(temp_jsonl_dir):
         if agent.agent_name == "agent2":
             assert agent.total_runs == 1
 
-def test_get_runs_by_agent_data_access(temp_jsonl_dir):
+def test_get_runs_by_agent_data_access(temp_jsonl_dir: Path) -> None:
     data_store = DataStore()
     data_store.load_from_directory(temp_jsonl_dir)
     runs = data_store.get_runs_by_agent("agent1")
     assert len(runs) == 2
 
-def test_get_run_details_data_access(temp_jsonl_dir):
+def test_get_run_details_data_access(temp_jsonl_dir: Path) -> None:
     data_store = DataStore()
     data_store.load_from_directory(temp_jsonl_dir)
     details = data_store.get_run_details(["run1"])

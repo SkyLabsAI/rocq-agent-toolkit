@@ -194,7 +194,7 @@ async def fetch_observability_logs(run_id: str, task_id: str) -> List[LogEntry]:
             start_time = end_time - timedelta(days=settings.log_query_time_delta_days)
 
         # Query parameters for Loki
-        params = {
+        params : dict[str, str | int | bool | float] = {
             "query": logql_query,
             "start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "end": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),

@@ -117,7 +117,7 @@ class ObservabilityLabelsResponse(BaseModel):
     
     run_id: str
     task_id: str
-    labels: Optional[Dict[str, List[Union[str, Dict[str, Any]]]]] = None
+    labels: Optional[Dict[str, List[Dict[str, Any]]]] = None
     total_labels: int
 
 

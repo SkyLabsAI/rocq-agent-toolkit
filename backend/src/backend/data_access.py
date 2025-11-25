@@ -9,6 +9,7 @@ from typing import List, Dict, Set
 from collections import defaultdict
 
 from backend.models import (
+    TaskMetadata,
     TaskResult,
     AgentInfo,
     RunInfo,
@@ -20,7 +21,7 @@ from backend.models import (
 class DataStore:
     """In-memory data store for task results."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty data store."""
         self.task_results: List[TaskResult] = []
         self._indexed = False
@@ -100,7 +101,7 @@ class DataStore:
         """
         return self.load_from_directory(directory, clear_existing=True)
 
-    def _build_indexes(self):
+    def _build_indexes(self) -> None:
         """Build internal indexes for efficient querying."""
         self._agents.clear()
         self._runs_by_agent.clear()
@@ -169,7 +170,7 @@ class DataStore:
                     total_tasks=len(tasks),
                     success_count=success_count,
                     failure_count=failure_count,
-                    metadata=tasks[0].metadata if tasks[0].metadata else {},
+                    metadata=tasks[0].metadata if tasks[0].metadata else TaskMetadata(),
                 )
             )
 

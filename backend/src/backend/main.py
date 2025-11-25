@@ -2,7 +2,7 @@
 FastAPI backend server for Rocq_agent task results.
 Phase 1: Local file-based data access with in-memory storage.
 """
-from typing import List
+from typing import AsyncGenerator, Any, List
 import logging
 
 from fastapi import FastAPI, HTTPException, Query
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[Any]:
     """
     Lifespan context manager for startup and shutdown events.
     Loads JSONL data on startup.
@@ -75,7 +75,7 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str,str]:
     """Root endpoint - health check."""
     return {
         "message": "Rocq Agent Toolkit Backend API",
@@ -85,7 +85,7 @@ async def root():
 
 
 @app.get("/api/agents", response_model=List[AgentInfo])
-async def list_agents():
+async def list_agents() -> list[AgentInfo]:
     """
     List all unique agents found in the JSONL files.
 
@@ -101,7 +101,7 @@ async def list_agents():
 
 
 @app.get("/api/agents/{agent_name}/runs", response_model=List[RunInfo])
-async def list_runs_by_agent(agent_name: str):
+async def list_runs_by_agent(agent_name: str) -> list[RunInfo]:
     """
     List all runs for a specific agent.
 
@@ -135,7 +135,7 @@ async def list_runs_by_agent(agent_name: str):
 @app.get("/api/runs/details", response_model=List[RunDetailsResponse])
 async def get_run_details(
     run_ids: str = Query(..., description="Comma-separated list of run IDs to retrieve")
-):
+) -> list[RunDetailsResponse]:
     """
     Get complete details for one or more runs.
 
@@ -175,7 +175,7 @@ async def get_run_details(
 
 
 @app.get("/api/health")
-async def health_check():
+async def health_check() -> dict[str,Any]:
     """
     Health check endpoint.
 
@@ -217,7 +217,7 @@ async def list_tags() -> TagsResponse:
 
 # Change it to the POST
 @app.post("/api/refresh", response_model=RefreshResponse)
-async def refresh_data():
+async def refresh_data() -> RefreshResponse:
     """
     Refresh data by reloading all JSONL files from the configured directory.
 
@@ -257,7 +257,7 @@ async def refresh_data():
 async def get_observability_logs_raw(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
     task_id: str = Query(..., description="Task ID to fetch logs for"),
-):
+) -> ObservabilityLogsResponse:
     """
     Fetch raw observability logs from Loki for a specific run and task.
 
@@ -274,7 +274,7 @@ async def get_observability_logs_raw(
         task_id: The task ID to filter logs by
 
     Returns:
-        ObservabilityLabelsResponse containing unique label key-value pairs
+        ObservabilityLogsResponse containing unique label key-value pairs
 
     Example:
         /api/observability/logs/raw?run_id=abc123&task_id=task456
@@ -306,7 +306,7 @@ async def get_observability_logs_raw(
 async def get_observability_logs(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
     task_id: str = Query(..., description="Task ID to fetch logs for"),
-):
+) -> ObservabilityLabelsResponse:
     """
     Fetch observability log labels from Loki for a specific run and task.
 
