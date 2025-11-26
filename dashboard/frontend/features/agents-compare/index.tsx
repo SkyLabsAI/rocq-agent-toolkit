@@ -1,21 +1,24 @@
 import React, { Suspense } from 'react';
-import { AgentSummary } from '@/types/types'; // adjust import as needed
-import { AgentSummaryTemp } from '@/services/dataservice';
 import { useLocalDashboard } from '@/hooks/useLocalDashboard';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '@/layouts/common';
-import { ComparePageContent } from '../runs-compare/compare-page-content';
 import { CompareRunsHeader } from '../runs-compare/compare-page-content/compare-page-header';
 import { RunsHeader } from '../runs-compare/compare-page-content/compare-page-summary/run-header';
 import { TaskRow } from '../runs-compare/compare-page-content/compare-page-summary/run-row';
 
-interface AgentCompareTableProps {
-  allAgentSummaries: AgentSummaryTemp[];
-  selectedAgents: string[];
-}
+
+
 
 const AgentCompareTable: React.FC = () => {
   const { agentDetailData } = useLocalDashboard();
+const navigate = useNavigate();
+
+  // Remove an agent from the comparison
+  const handleRemove = (removeId: string) => {
+    const newAgents = selectedAgents.split(',').filter(id => id !== removeId);
+    const url = `/compare/agents?agents=${encodeURIComponent(newAgents.join(','))}`;
+    navigate(url);
+  };
 
   const [sp] = useSearchParams();
 
@@ -72,7 +75,7 @@ const AgentCompareTable: React.FC = () => {
           <CompareRunsHeader title='Compare Agents' secondary={`Selected Agents: ${selectedAgents}`}/>
 
           <RunsHeader title="Agents" keys={["Tasks", "Success %", "Avg LLM Calls", "Avg Total Token", "Avg Exec Time (s)"]} />
-          {agentsToCompare.map((agent)=><TaskRow  stats={[agent.agentName,agent.totalTasks, (agent.successRate * 100).toFixed(2), agent.avgLlmCalls, agent.avgTokens, agent.avgTime]} onClick={()=>{}}/>)}
+          {agentsToCompare.map((agent)=><TaskRow  stats={[agent.agentName,agent.totalTasks, (agent.successRate * 100).toFixed(2), agent.avgLlmCalls, agent.avgTokens, agent.avgTime]} onClick={() => handleRemove(agent.agentName)} key={agent.agentName}/>)}
          
         
 
