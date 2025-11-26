@@ -288,13 +288,6 @@ def run_config(config: RunConfiguration) -> bool:
         return is_success(result)
 
     results = util.parallel_runner(run_it, [(t.id, t) for t in config.tasks], succeeded=succeeded, jobs=config.jobs)
-    # with ThreadPoolExecutor(config.jobs) as tpe:
-    #     # NOTE: iterator blocks if the next result has not been yielded
-    #     for result in tpe.map(run_it, config.tasks):
-    #         if result is not None:
-    #             with open(tasks_result_file, "a", encoding="utf8") as f:
-    #                 json.dump(result.to_json(), f)
-    #                 f.write("\n")
 
     total = len(results)
     success = len([x for x in results if is_success(x)])
