@@ -4,6 +4,7 @@ This module provides an abstraction layer that can be easily replaced
 with database queries in the future.
 """
 import json
+import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -31,6 +32,10 @@ class DataStore:
         self._tasks_by_run: dict[str, list[TaskResult]] = defaultdict(list)
         # Metadata tag index: key -> set of unique string values
         self._tags_index: dict[str, set[str]] = defaultdict(set)
+        # Derived run-level metrics, keyed by run_id
+        self._runs: dict[str, RunInfo] = {}
+        # Best-scoring run per agent (maps agent_name -> run_id)
+        self._best_run_by_agent: dict[str, str] = {}
 
     def load_from_directory(self, directory: Path, clear_existing: bool = False) -> int:
         """
@@ -54,6 +59,7 @@ class DataStore:
             self.task_results.clear()
 
         loaded_count = 0
+        parse_error_count = 0
 
         # Find all JSONL files in the directory
         jsonl_files = list(directory.glob("*.jsonl"))
@@ -72,10 +78,12 @@ class DataStore:
                             self.task_results.append(task_result)
                             loaded_count += 1
                         except json.JSONDecodeError as e:
+                            parse_error_count += 1
                             print(
                                 f"Warning: Invalid JSON in {jsonl_file} at line {line_num}: {e}"
                             )
                         except Exception as e:
+                            parse_error_count += 1
                             print(
                                 f"Warning: Failed to parse entry in {jsonl_file} at line {line_num}: {e}"
                             )
@@ -83,6 +91,8 @@ class DataStore:
             except Exception as e:
                 print(f"Error reading file {jsonl_file}: {e}")
 
+        print(f"Loaded {loaded_count} task results")
+        print(f"Parse errors: {parse_error_count}")
         # Build indexes after loading
         self._build_indexes()
 
@@ -106,6 +116,8 @@ class DataStore:
         self._runs_by_agent.clear()
         self._tasks_by_run.clear()
         self._tags_index.clear()
+        self._runs.clear()
+        self._best_run_by_agent.clear()
 
         for task in self.task_results:
             self._agents.add(task.agent_name)
@@ -117,6 +129,75 @@ class DataStore:
                 for key, value in task.metadata.tags.items():
                     # Ensure we always store string values for consistency
                     self._tags_index[key].add(str(value))
+
+        # Compute derived per-run metrics and best run per agent
+        for run_id, tasks in self._tasks_by_run.items():
+            if not tasks:
+                continue
+
+            total_tasks = len(tasks)
+            success_count = sum(1 for task in tasks if task.status == "Success")
+            failure_count = sum(1 for task in tasks if task.status == "Failure")
+            earliest_timestamp = min(task.timestamp_utc for task in tasks)
+            success_rate = success_count / total_tasks if total_tasks else 0.0
+
+            # Simple scoring heuristic: success rate weighted by number of tasks
+            weight = math.log(1 + total_tasks)
+            score = success_rate * weight
+
+
+            # Average metrics across tasks in the run
+            total_tokens_list: list[int] = []
+            cpu_time_list: list[float] = []
+
+            for task in tasks:
+                try:
+                    total_tokens_list.append(task.metrics.token_counts.total_tokens)
+                except Exception:
+                    # If metrics are missing or malformed, skip this task for averages
+                    pass
+
+                try:
+                    cpu_time_list.append(task.metrics.resource_usage.cpu_time_sec)
+                except Exception:
+                    pass
+
+            avg_total_tokens = (
+                sum(total_tokens_list) / len(total_tokens_list)
+                if total_tokens_list
+                else 0.0
+            )
+            avg_cpu_time_sec = (
+                sum(cpu_time_list) / len(cpu_time_list) if cpu_time_list else 0.0
+            )
+
+            # Build a single RunInfo object per run_id and store it
+            run_info = RunInfo(
+                run_id=run_id,
+                agent_name=tasks[0].agent_name,
+                timestamp_utc=earliest_timestamp,
+                total_tasks=total_tasks,
+                success_count=success_count,
+                failure_count=failure_count,
+                success_rate=success_rate,
+                score=score,
+                avg_total_tokens=avg_total_tokens,
+                avg_cpu_time_sec=avg_cpu_time_sec,
+                metadata=tasks[0].metadata
+                if tasks[0].metadata
+                else TaskMetadata(),
+            )
+            self._runs[run_id] = run_info
+
+            # Track best run per agent using the stored RunInfo
+            agent_name = run_info.agent_name
+            prev_best_run_id = self._best_run_by_agent.get(agent_name)
+            if prev_best_run_id is None:
+                self._best_run_by_agent[agent_name] = run_id
+            else:
+                prev_best_run = self._runs.get(prev_best_run_id)
+                if prev_best_run is None or run_info.score > prev_best_run.score:
+                    self._best_run_by_agent[agent_name] = run_id
 
         self._indexed = True
 
@@ -130,7 +211,12 @@ class DataStore:
         agents = []
         for agent_name in sorted(self._agents):
             run_count = len(self._runs_by_agent[agent_name])
-            agents.append(AgentInfo(agent_name=agent_name, total_runs=run_count))
+            best_run_id = self._best_run_by_agent.get(agent_name)
+            best_run = self._runs.get(best_run_id) if best_run_id else None
+
+            agents.append(
+                AgentInfo(agent_name=agent_name, total_runs=run_count, best_run=best_run)
+            )
         return agents
 
     def get_runs_by_agent(self, agent_name: str) -> list[RunInfo]:
@@ -150,28 +236,10 @@ class DataStore:
         runs = []
 
         for run_id in sorted(run_ids):
-            tasks = self._tasks_by_run[run_id]
-            if not tasks:
+            run_info = self._runs.get(run_id)
+            if run_info is None:
                 continue
-
-            # Get earliest timestamp for this run
-            earliest_timestamp = min(task.timestamp_utc for task in tasks)
-
-            # Count successes and failures
-            success_count = sum(1 for task in tasks if task.status == "Success")
-            failure_count = sum(1 for task in tasks if task.status == "Failure")
-
-            runs.append(
-                RunInfo(
-                    run_id=run_id,
-                    agent_name=agent_name,
-                    timestamp_utc=earliest_timestamp,
-                    total_tasks=len(tasks),
-                    success_count=success_count,
-                    failure_count=failure_count,
-                    metadata=tasks[0].metadata if tasks[0].metadata else TaskMetadata(),
-                )
-            )
+            runs.append(run_info)
 
         # Sort by timestamp (most recent first)
         runs.sort(key=lambda x: x.timestamp_utc, reverse=True)
