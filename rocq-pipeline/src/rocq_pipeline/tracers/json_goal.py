@@ -47,18 +47,18 @@ class JsonGoal(StateExtractor[list[Any]]):
         if isinstance(result, RocqDocManager.Err):
             raise RuntimeError(f"Failed to initialize JsonGoal extractor: {result}")
 
+    _NO_GOAL_PREFIXES:list[str] = ["This subproof is complete, but there are some unfocused goals.","No more goals", "All the remaining goals are on the shelf"]
     def __call__(self, rdm: RocqDocManager) -> list[Any] | None:
         result = rdm.text_query_all(self._tactic(), indices=None)
-        PREFIXES = ["This subproof is complete, but there are some unfocused goals.","No more goals", "All the remaining goals are on the shelf"]
         if isinstance(result, rdm.Err):
             if "Init.Not_focussed" in result.message:
                 return []
             return None
-        elif len(result) == 1 or any((result[0].startswith(x) for x in prefix)):
+        elif len(result) == 1 or any(result[0].startswith(x) for x in self._NO_GOAL_PREFIXES):
             # TODO: 'All the remaining goals are on the shelf'
             return []
         else:
             try:
                 return [json.loads(goal) for goal in result]
             except ValueError as err:
-                raise ValueError(f"bad value in {result}", err)
+                raise ValueError(f"bad value in {result}") from err
