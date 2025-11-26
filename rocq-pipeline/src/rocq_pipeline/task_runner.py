@@ -14,7 +14,7 @@ from observability import LoggingConfig, add_log_context, get_logger, setup_logg
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
-from rocq_pipeline import loader, locator, util
+from rocq_pipeline import loader, locator, util, rocq_args
 from rocq_pipeline.agent import AgentBuilder, Finished, GiveUp, TaskResult
 from rocq_pipeline.auto_agent import AutoAgent, OneShotAgent
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
@@ -134,7 +134,7 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, t
         task_file = task.file
         progress.status(0.01, "🔃")
         rocq_args = (
-            DuneUtil.rocq_args_for(task_file)
+            rocq_args.extend_args(DuneUtil.rocq_args_for(task_file), build_agent.extra_rocq_args())
             if task.rocq_args is None
             else task.rocq_args
         )

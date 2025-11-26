@@ -86,6 +86,9 @@ class AgentBuilder:
     def __call__(self, prompt:str|None=None) -> Agent:
         return self._agent()
 
+    def extra_rocq_args(self) -> list[str]:
+        return []
+
 
 class OneShotBuilder(AgentBuilder):
     def __init__(self) -> None:
