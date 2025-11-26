@@ -1,4 +1,4 @@
-import { RunTaskCell } from '@/features/compare';
+import { RunTaskCell } from '@/features/runs-compare';
 import { ComparisonRow } from './comparison-row';
 import { TaskRowData } from '../../../utils';
 

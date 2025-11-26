@@ -142,7 +142,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
       </div>
 
       <StickyCompareBar
-        selectedRuns={selectedRuns}
+        selectedItems={selectedRuns}
         agentName={agentName}
         onClearSelection={clearSelectedRuns}
         onCompareSelected={compareSelected}

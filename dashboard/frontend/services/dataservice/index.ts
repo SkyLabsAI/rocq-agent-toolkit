@@ -341,6 +341,7 @@ export const refreshData = USE_MOCK_DATA ? refreshDataMock : refreshDataReal;
 
 export type AgentSummaryTemp = {
   agentName: string;
+  totalTasks: number;
   successRate: number;
   avgTime: number;
   avgTokens: number;
@@ -379,6 +380,7 @@ export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
 
       return {
         agentName: agent.agent_name,
+        totalTasks: bestRun.total_tasks,
         successRate: bestRun.success_count / bestRun.total_tasks,
         avgTime:
           runDetails[0].tasks.reduce(

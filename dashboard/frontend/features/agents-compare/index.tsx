@@ -5,6 +5,9 @@ import { useLocalDashboard } from '@/hooks/useLocalDashboard';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/layouts/common';
 import { ComparePageContent } from '../runs-compare/compare-page-content';
+import { CompareRunsHeader } from '../runs-compare/compare-page-content/compare-page-header';
+import { RunsHeader } from '../runs-compare/compare-page-content/compare-page-summary/run-header';
+import { TaskRow } from '../runs-compare/compare-page-content/compare-page-summary/run-row';
 
 interface AgentCompareTableProps {
   allAgentSummaries: AgentSummaryTemp[];
@@ -16,9 +19,11 @@ const AgentCompareTable: React.FC = () => {
 
   const [sp] = useSearchParams();
 
-  const selectedAgents = sp.get('selectedAgents') || '';
+  const selectedAgents = sp.get('agents') || '';
 
-  const agentsToCompare = agentDetailData
+  const agentsToCompare = agentDetailData.filter(agent =>
+    selectedAgents.split(',').includes(agent.agentName)
+  );
   return (
     // <div className='overflow-x-auto'>
     //   <table className='min-w-full border'>
@@ -63,8 +68,14 @@ const AgentCompareTable: React.FC = () => {
             </div>
           }
         >
-          <ComparePageContent />
-        </Suspense>
+          </Suspense>
+          <CompareRunsHeader title='Compare Agents' secondary={`Selected Agents: ${selectedAgents}`}/>
+
+          <RunsHeader title="Agents" keys={["Tasks", "Success %", "Avg LLM Calls", "Avg Total Token", "Avg Exec Time (s)"]} />
+          {agentsToCompare.map((agent)=><TaskRow  stats={[agent.agentName,agent.totalTasks, (agent.successRate * 100).toFixed(2), agent.avgLlmCalls, agent.avgTokens, agent.avgTime]} onClick={()=>{}}/>)}
+         
+        
+
       </div>
     </Layout>
   );
