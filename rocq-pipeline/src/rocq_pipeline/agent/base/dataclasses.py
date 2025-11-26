@@ -135,11 +135,6 @@ class TaskResult:
             ]
             raise ValueError(f"Missing required fields: {', '.join(missing)}")
 
-        if self.side_effects is not None and "message" in self.side_effects:
-            logger.warning(
-                f"\"message\" in {self.side_effects} overriden by agent message: {self.message}"
-            )
-
         return task_output.TaskOutput(
             run_id=run_id,
             task_kind=task_kind,
@@ -153,7 +148,7 @@ class TaskResult:
             failure_reason=self.failure_reason,
             results={
                 "message": self.message,
-                **self.side_effects,
+                "side_effects": self.side_effects,
             },
             metadata=metadata,
         )
