@@ -27,7 +27,7 @@ export const RunSummary: React.FC<RunSummaryProps> = ({ runStats }) => {
     <>
       <RunsHeader title="Runs" keys={["Tasks", "Success %", "LLM Calls", "Total Token", "Avg Exec Time (s)"]} />
       {runStats.map((runStat, index) => (
-        <TaskRow key={index} stats={[runStat.id, runStat.tasks, (runStat.successRate*100).toFixed(2),  runStat.totalLlmCalls, runStat.totalTokens, runStat.avgExecutionTime, ]} onClick={() => handleRemove(runStat.id)} />
+        <TaskRow key={index} stats={[runStat.id, runStat.tasks, (runStat.successRate*100).toFixed(2),  runStat.totalLlmCalls.toFixed(2), runStat.totalTokens.toFixed(2), runStat.avgExecutionTime.toFixed(2), ]} onClick={() => handleRemove(runStat.id)} />
       ))}
     </>
   );

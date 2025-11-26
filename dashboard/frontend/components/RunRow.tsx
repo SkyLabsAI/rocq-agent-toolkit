@@ -33,17 +33,17 @@ function LatestBadge() {
 
 // Chart color config
 const TAG_BACKGROUND_COLOR_CONFIG: Record<string, string> = {
-  "author": 'bg-chart-categorical-1/15',
+  "name": 'bg-chart-categorical-3/15',
   "branch": 'bg-chart-categorical-2/15',
 }
 
 const TAG_BORDER_COLOR_CONFIG: Record<string, string> = {
-  "author": 'border-chart-categorical-1/30',
+  "name": 'border-chart-categorical-3/30',
   "branch": 'border-chart-categorical-2/30',
 }
 
 const TAG_TEXT_COLOR_CONFIG: Record<string, string> = {
-  "author": 'text-chart-categorical-1',
+  "name": 'text-chart-categorical-3',
   "branch": 'text-chart-categorical-2',
 }
 

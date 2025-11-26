@@ -90,7 +90,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {(agent.best_run?.total_tasks ?? 0).toFixed(2)}
+                {(agent.best_run?.avg_llm_invocation_count ?? 0).toFixed(2)}
               </span>
             </div>
           </div>
