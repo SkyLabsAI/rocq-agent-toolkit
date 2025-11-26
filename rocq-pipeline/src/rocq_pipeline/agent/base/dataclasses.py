@@ -1,10 +1,13 @@
 from dataclasses import dataclass, field
 from typing import Any, Self
 
+from observability import get_logger
 from rocq_doc_manager import RocqDocManager
 
 from rocq_pipeline.proof_state import ProofState
 from rocq_pipeline.schema import task_output
+
+logger = get_logger("rocq_agent")
 
 
 @dataclass
@@ -97,6 +100,7 @@ class TaskResult:
         timestamp_utc: str | None = None,
         agent_name: str | None = None,
         trace_id: str | None = None,
+        metadata: task_output.Metadata | None = None,
     ) -> task_output.TaskOutput:
         """Convert this TaskResult to a task_output.TaskOutput.
 
@@ -131,6 +135,11 @@ class TaskResult:
             ]
             raise ValueError(f"Missing required fields: {', '.join(missing)}")
 
+        if self.side_effects is not None and "message" in self.side_effects:
+            logger.warning(
+                f"\"message\" in {self.side_effects} overriden by agent message: {self.message}"
+            )
+
         return task_output.TaskOutput(
             run_id=run_id,
             task_kind=task_kind,
@@ -146,6 +155,7 @@ class TaskResult:
                 "message": self.message,
                 **self.side_effects,
             },
+            metadata=metadata,
         )
 
 

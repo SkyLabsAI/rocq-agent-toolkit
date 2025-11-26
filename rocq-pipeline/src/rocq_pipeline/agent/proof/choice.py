@@ -2,8 +2,7 @@ from typing import override
 
 from rocq_doc_manager import RocqDocManager
 
-from rocq_pipeline.agent.base import GiveUp
-from rocq_pipeline.schema.task_output import ExecutionError, FailureReason
+from rocq_pipeline.agent.base import TaskResult
 
 from .markov import MarkovAgent
 
@@ -15,7 +14,7 @@ class ChoiceAgent(MarkovAgent):
         self._check_index: int = 0
 
     @override
-    def next_tac(self, rdm: RocqDocManager) -> str | GiveUp:
+    def next_tac(self, rdm: RocqDocManager) -> str | TaskResult:
         if self.last_failed():
             self._check_index += 1
         else:
@@ -24,9 +23,7 @@ class ChoiceAgent(MarkovAgent):
         if self._check_index >= len(self._all_choices):
             return self.give_up(
                 rdm,
-                reason=FailureReason(ExecutionError(
-                    "No more tactics to choose from."
-                )),
+                message="No more tactics to choose from.",
             )
 
         return f"{self._all_choices[self._check_index]}."

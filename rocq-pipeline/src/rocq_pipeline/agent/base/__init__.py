@@ -1,8 +1,6 @@
 from .classes import Agent, AgentBuilder, ProofAgent
 from .dataclasses import (
     AgentConfig,
-    Finished,
-    GiveUp,
     TacticApplication,
     TaskResult,
 )
@@ -10,8 +8,6 @@ from .dataclasses import (
 __all__: list[str] = [
     # dataclasses.py
     "AgentConfig",
-    "Finished",
-    "GiveUp",
     "TacticApplication",
     "TaskResult",
     # classes.py,

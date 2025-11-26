@@ -5,30 +5,30 @@ from rocq_doc_manager import RocqDocManager
 
 from rocq_pipeline.agent.base import (
     AgentBuilder,
-    Finished,
-    GiveUp,
-    ProofAgent,
-    TacticApplication,
+    TaskResult,
 )
 from rocq_pipeline.proof_state import RocqGoal
-from rocq_pipeline.schema.task_output import ExecutionError, FailureReason
+
+from .trace import TraceAgent
 
 logger = logging.getLogger(__name__)
 
 
-class OneShotAgent(ProofAgent):
+class OneShotAgent(TraceAgent):
+    """OneShotAgent: Derives from TraceAgent with a restriction on tactic applications (max 1)."""
+
     def __init__(
-            self,
-            tactic: str,
-            goal_ty_upperbound: type[RocqGoal] = RocqGoal,
+        self,
+        tactic: str,
+        goal_ty_upperbound: type[RocqGoal] = RocqGoal,
     ) -> None:
-        super().__init__(goal_ty_upperbound=goal_ty_upperbound)
+        super().__init__(
+            goal_ty_upperbound=goal_ty_upperbound,
+            fuel=1,
+        )
         if tactic.endswith("."):
-            logger.warning(
-                f"{self.name()}: tactic should not end with a period"
-            )
+            logger.warning(f"{self.name()}: tactic should not end with a period")
         self._tactic: str = tactic.rstrip(".")
-        self._tac_app: TacticApplication | None = None
 
     @property
     def tactic(self) -> str:
@@ -39,33 +39,9 @@ class OneShotAgent(ProofAgent):
         return f"{self._tactic}."
 
     @override
-    def run(self, rdm: RocqDocManager) -> Finished | GiveUp:
-        """Try to solve the goal in one shot using self._tactic."""
-        self._tac_app = self.run_tactic(rdm, self.tactic_sentence)
-        if self._tac_app.err:
-            return self.give_up(
-                rdm,
-                reason=self._tac_app.err,
-            )
-        assert self._tac_app.pf_state_pre is not None
-        assert self._tac_app.pf_state_post is not None
-
-        if self._tac_app.pf_state_post.closed():
-            return self.finished(rdm)
-        else:
-            return self.give_up(
-                rdm,
-                reason=FailureReason(ExecutionError(
-                    f"tactic ({self._tactic}) failed to close the goal"
-                ))
-            )
-
-    @override
-    def task_doc_interaction(self, rdm_: RocqDocManager) -> str:
-        if self._tac_app is not None and self._tac_app.err is None:
-            return self.tactic_sentence
-        else:
-            return ""
+    def next_tac(self, rdm: RocqDocManager) -> str | TaskResult:
+        """Get the next tactic string, but only allow one application."""
+        return self.tactic_sentence
 
 
 class OneShotBuilder(AgentBuilder):
