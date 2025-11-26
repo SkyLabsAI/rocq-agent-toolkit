@@ -84,6 +84,10 @@ const LocalDashboard: React.FC = () => {
                   <td className='px-6 py-4 font-[16px] text-text-disabled'>
                     Avg LLM Calls
                   </td>
+                  <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
+                    Actions
+                  </td>
+                  
                 </tr>
                 {agentData
                   .sort((a, b) => a.agent_name.localeCompare(b.agent_name))

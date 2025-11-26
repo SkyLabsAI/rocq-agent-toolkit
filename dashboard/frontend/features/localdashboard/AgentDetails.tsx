@@ -1,9 +1,11 @@
 import cn from 'classnames';
 import { useAgentDetails } from '@/hooks/useAgentDetails';
 import AgentRunsView from './AgentRunsView';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AgentSummary } from '@/types/types';
 import { AgentSummaryTemp } from '@/services/dataservice';
+import { Button } from '@/components/base';
+import { Link } from 'react-router-dom';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
@@ -34,6 +36,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
       clearSelectedRuns();
     }
   }, [activeAgent]);
+
+
+  const [isSelected, setIsSelected] =useState<boolean>(false);
+  
 
   return (
     <>
@@ -88,6 +94,16 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                 {agentDetailData?.avgLlmCalls.toPrecision(5)}
               </span>
             </div>
+          </div>
+        </td>
+        <td className='px-6 py-4 text-text font-medium'>
+          <div className='flex items-center gap-3 justify-center'>
+           <Link to={"/compare/agents"} onClick={(e)=>{ e.stopPropagation()}}>
+              <Button variant='default'  >
+                Compare
+              </Button>
+           </Link>
+
           </div>
         </td>
       </tr>
