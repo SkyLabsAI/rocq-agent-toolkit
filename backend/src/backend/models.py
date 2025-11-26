@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 # Wrtie now defining the Schema Directly
 # Improt it from the Rocq pipeline schema later own.
 
+
 class TokenCounts(BaseModel):
     """Token usage metrics."""
 
@@ -40,7 +41,8 @@ class TaskMetadata(BaseModel):
     tags: dict[str, str] = {}
 
     # Allow future metadata fields without breaking validation
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra="allow")
+
 
 class TaskResult(BaseModel):
     """Complete task result entry from JSONL."""
@@ -57,15 +59,8 @@ class TaskResult(BaseModel):
     failure_reason: list[str] | None = None
 
 
-class AgentInfo(BaseModel):
-    """Information about an agent."""
-
-    agent_name: str
-    total_runs: int
-
-
 class RunInfo(BaseModel):
-    """Summary information about a run."""
+    """Summary information about a run, including derived metrics."""
 
     run_id: str
     agent_name: str
@@ -73,8 +68,21 @@ class RunInfo(BaseModel):
     total_tasks: int
     success_count: int
     failure_count: int
+    # Derived metrics
+    success_rate: float = 0.0
+    score: float = 0.0
+    avg_total_tokens: float = 0.0
+    avg_llm_invocation_count: float = 0.0
+    avg_cpu_time_sec: float = 0.0
     metadata: TaskMetadata = TaskMetadata()
 
+
+class AgentInfo(BaseModel):
+    """Information about an agent plus its best-scoring run."""
+
+    agent_name: str
+    total_runs: int
+    best_run: RunInfo | None = None
 
 
 class RunDetailsResponse(BaseModel):
