@@ -77,12 +77,7 @@ def Rocq2IrisGoalParts(
         if IrisGoalPatterns.iris_pers_separator(line):
             iris_pers_hyps = iris_hyps
             iris_pers_hyps_anon = iris_hyps_anon
-            if any(
-                    map(
-                        lambda l: IrisGoalPatterns.iris_spat_separator(l.strip()),
-                        lines[i+1:]
-                    )
-            ):
+            if any(IrisGoalPatterns.iris_spat_separator(later_lines.strip()) for later_lines in lines[i+1:]):
                 iris_hyps = {}
                 iris_hyps_anon = set()
             else:
