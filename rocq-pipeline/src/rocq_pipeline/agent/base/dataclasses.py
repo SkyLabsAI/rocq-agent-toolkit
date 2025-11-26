@@ -6,64 +6,153 @@ from rocq_doc_manager import RocqDocManager
 from rocq_pipeline.proof_state import ProofState
 from rocq_pipeline.schema import task_output
 
-# TODO: improve how Rocq document interactions & partial progress
-# are reflected in the [TaskResult]s.
-
 
 @dataclass
 class AgentConfig:
     """Base type for Rocq Agent Toolkit agent configurations."""
-    pass
 
 
 @dataclass
 class TaskResult:
-    """Base type for agent task results."""
-    metrics: task_output.Metrics
-    final_doc_interaction: Any
-    final_holes: Any
-    message: str
+    """Base type for agent results on any task."""
 
+    message: str = field(kw_only=True)
+    failure_reason: task_output.FailureReason | None = field(kw_only=True, default=None)
+    side_effects: dict[str, Any] = field(kw_only=True, default_factory=dict)
+    # TODO: remove `_metrics` once opentelemetry instrumentation is in place
+    _metrics: task_output.Metrics = field(
+        kw_only=True,
+        default_factory=task_output.Metrics,
+    )
 
-@dataclass
-class GiveUp(TaskResult):
-    """TaskResult: agent gave up, potentially after making some progress."""
-    message: str = field(init=False)
-    reason: task_output.FailureReason
+    @property
+    def success(self) -> bool:
+        """Whether the task was successful."""
+        return self.failure_reason is None
 
-    def __post_init__(self) -> None:
-        self.message = f"failure: {str(self.reason)}"
+    @classmethod
+    def finished(
+        cls,
+        message: str,
+        side_effects: dict[str, Any] | None = None,
+        _metrics: task_output.Metrics | None = None,
+    ) -> Self:
+        """Create a TaskResult when the agent finishes successfully."""
+        return cls(
+            message=message,
+            failure_reason=None,
+            side_effects=side_effects or {},
+            _metrics=task_output.Metrics() if _metrics is None else _metrics,
+        )
+
+    @classmethod
+    def give_up(
+        cls,
+        message: str,
+        reason: RocqDocManager.Err | task_output.FailureReason | None = None,
+        side_effects: dict[str, Any] | None = None,
+        _metrics: task_output.Metrics | None = None,
+    ) -> Self:
+        """Create a TaskResult when the agent gives up."""
+        if isinstance(reason, RocqDocManager.Err):
+            failure_reason = task_output.FailureReason(
+                task_output.ExecutionError(str(reason))
+            )
+        else:
+            failure_reason = (
+                reason
+                if reason is not None
+                else task_output.FailureReason(task_output.Other(message))
+            )
+        return cls(
+            message=message,
+            failure_reason=failure_reason,
+            side_effects=side_effects or {},
+            _metrics=task_output.Metrics() if _metrics is None else _metrics,
+        )
 
     @classmethod
     def from_exception(
-            cls,
-            e: BaseException,
-            metrics: task_output.Metrics | None = None,
-            final_doc_interaction: Any = None,
-            final_holes: Any = None,
+        cls,
+        e: BaseException,
+        message: str | None = None,
+        side_effects: dict[str, Any] | None = None,
+        _metrics: task_output.Metrics | None = None,
     ) -> Self:
-        if metrics is None:
-            metrics = task_output.Metrics()
-        return cls(
-            metrics=metrics,
-            final_doc_interaction=final_doc_interaction,
-            final_holes=final_holes,
-            reason=task_output.FailureReason(
-                task_output.ExecutionError(str(e))
-            )
+        """Create a TaskResult from an exception."""
+        if message is None:
+            message = repr(e)
+        return cls.give_up(
+            message=message,
+            reason=task_output.FailureReason(task_output.ExecutionError(repr(e))),
+            side_effects=side_effects or {},
+            _metrics=task_output.Metrics() if _metrics is None else _metrics,
         )
 
+    def to_task_output(
+        self,
+        run_id: str | None = None,
+        task_kind: task_output.TaskKind | None = None,
+        task_id: str | None = None,
+        timestamp_utc: str | None = None,
+        agent_name: str | None = None,
+        trace_id: str | None = None,
+    ) -> task_output.TaskOutput:
+        """Convert this TaskResult to a task_output.TaskOutput.
 
-@dataclass
-class Finished(TaskResult):
-    """TaskResult: agent successfully completed the task."""
-    message: str = "success"
-    final_holes: Any = None
+        This method is used by task_runner.py to construct the final TaskOutput.
+        Subclasses should override this to provide task-specific data.
+
+        Returns:
+            A new TaskOutput with this result's status, metrics, and other data.
+        """
+        if self.success:
+            status = task_output.TaskStatus(task_output.Success())
+        else:
+            status = task_output.TaskStatus(task_output.Failure())
+
+        if (
+            run_id is None
+            or task_kind is None
+            or task_id is None
+            or timestamp_utc is None
+            or agent_name is None
+        ):
+            missing = [
+                k
+                for k, v in {
+                    "run_id": run_id,
+                    "task_kind": task_kind,
+                    "task_id": task_id,
+                    "timestamp_utc": timestamp_utc,
+                    "agent_name": agent_name,
+                }.items()
+                if v is None
+            ]
+            raise ValueError(f"Missing required fields: {', '.join(missing)}")
+
+        return task_output.TaskOutput(
+            run_id=run_id,
+            task_kind=task_kind,
+            task_id=task_id,
+            trace_id=trace_id,
+            timestamp_utc=timestamp_utc,
+            agent_name=agent_name,
+            status=status,
+            # TODO: remove `self.metrics` once opentelemetry instrumentation is in place
+            metrics=self._metrics,
+            failure_reason=self.failure_reason,
+            results={
+                "message": self.message,
+                **self.side_effects,
+            },
+        )
 
 
 @dataclass
 class TacticApplication:
     """Proof Tasks: [effect] of applying [tactic] in [proof_state]."""
+
     tactic: str
     pf_state_pre: ProofState | None = None
     pf_state_post: ProofState | None = None
