@@ -24,8 +24,6 @@ from rocq_pipeline import rocq_args as RocqArgs
 from rocq_pipeline.agent import (
     AgentBuilder,
     AutoAgent,
-    Finished,
-    GiveUp,
     OneShotBuilder,
     TaskResult,
 )
@@ -67,10 +65,17 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
         parser = ArgumentParser(description=desc)
 
     if with_agent:
-        parser.add_argument('--agent', type=str, help="The agent builder as 'module_path:value', e.g. 'path/to/agent.py:default", required=True)
+        parser.add_argument(
+            "--agent",
+            type=str,
+            help="The agent builder as 'module_path:value', e.g. 'path/to/agent.py:default",
+            required=True,
+        )
 
     # Add the single required positional argument
-    parser.add_argument("--task-json", type=json.loads, help="The task descriptor, as JSON.")
+    parser.add_argument(
+        "--task-json", type=json.loads, help="The task descriptor, as JSON."
+    )
     parser.add_argument(
         "--task-file", type=Path, help="The task descriptor in a file, JSON or YAML"
     )
@@ -80,13 +85,14 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
         "--output-dir",
         type=Path,
         default=Path("."),
-        help="The directory to output task results, as JSONL."
+        help="The directory to output task results, as JSONL.",
     )
     parser.add_argument(
-        "-j", "--jobs",
+        "-j",
+        "--jobs",
         type=lambda N: max(1, int(N)),
         default=1,
-        help="The number of parallel workers."
+        help="The number of parallel workers.",
     )
 
     # Add deployment mode flag
@@ -94,21 +100,23 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
         "--env",
         type=str,
         default="none",
-        help="Deployment environment (e.g., 'local', 'staging'). Default: none"
+        help="Deployment environment (e.g., 'local', 'staging'). Default: none",
     )
 
     return parser
 
+
 # def main(agent_type: type[Agent], args: list[str] | None = None) -> bool:
 #     pass
+
 
 @dataclass
 class FullTask:
     id: str
     file: Path
     locator: Locator
-    rocq_args: list[str]|None
-    prompt: str|None
+    rocq_args: list[str] | None
+    prompt: str | None
 
 
 def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
@@ -126,7 +134,14 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     return task_output.Tags(tags)
 
 
-def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, tags: task_output.Tags, progress: util.ProgressCallback) -> task_output.TaskOutput | None:
+def run_task(
+    build_agent: AgentBuilder,
+    task: FullTask,
+    run_id: str,
+    wdir: Path,
+    tags: task_output.Tags,
+    progress: util.ProgressCallback,
+) -> task_output.TaskOutput | None:
     """
     Build an agent using [build_agent] and invoke it on the task.
     """
@@ -152,9 +167,9 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, t
             else task.rocq_args
         )
         with RocqDocManager(
-                rocq_args,
-                str(task_file),
-                dune=True,
+            rocq_args,
+            str(task_file),
+            dune=True,
         ).sess(load_file=True) as rdm:
             progress.status(0.05, "🔃")
             if not task.locator(rdm):
@@ -164,40 +179,27 @@ def run_task(build_agent: AgentBuilder, task: FullTask, run_id:str, wdir:Path, t
             task_result = agent.run(rdm)
     except Exception as e:
         progress.log(f"Failure with {e}")
-        task_result = GiveUp.from_exception(e)
+        task_result = TaskResult.from_exception(e)
     finally:
         progress.status(0.95, "🔚")
     assert task_result is not None
 
-    task_failure_reason: task_output.FailureReason | None = None
-    if isinstance(task_result, GiveUp):
-        task_status = task_output.TaskStatus(task_output.Failure())
-        task_failure_reason = task_output.FailureReason(
-            task_output.Other(task_result.message)
-        )
-        progress.log(
-            f"{agent.name()} gave up with message: {task_result.message}"
-        )
-    elif isinstance(task_result, Finished):
-        task_status = task_output.TaskStatus(task_output.Success())
+    # Log the result
+    if not task_result.success:
+        progress.log(f"{agent.name()} gave up with message: {task_result.message}")
+    else:
         progress.log(f"task completed: {task_result.message}")
 
-    return task_output.TaskOutput(
+    return task_result.to_task_output(
         run_id=run_id,
         task_kind=task.locator.task_kind(),
         task_id=task_id,
-        trace_id=trace_id,
         timestamp_utc=timestamp_iso_8601,
         agent_name=agent.name(),
-        status=task_status,
-        results={
-            "doc_interaction": task_result.final_doc_interaction,
-            "holes": task_result.final_holes,
-        },
-        failure_reason=task_failure_reason,
-        metrics=task_result.metrics,
+        trace_id=trace_id,
         metadata=task_output.Metadata(tags=tags),
     )
+
 
 def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]]:
     """
@@ -205,20 +207,30 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
     TODO: That should be resolved in here
     """
     if arguments.task_json and arguments.task_file:
-        logger.warning(" ".join([
-            "[--task-file ...] and [--task-json ...] shouldn't both be used;",
-            "choosing [--task-json]."
-        ]))
+        logger.warning(
+            " ".join(
+                [
+                    "[--task-file ...] and [--task-json ...] shouldn't both be used;",
+                    "choosing [--task-json].",
+                ]
+            )
+        )
 
     def to_full_task(raw: Tasks.Task, wdir: Path) -> FullTask:
         # TODO: find a better name for tasks
         id = Tasks.get_task_id(raw)
-        file = wdir / raw['file']
-        return FullTask(id, file, locator.parse_locator(raw['locator']), None, raw['prompt'] if 'prompt' in raw else None)
+        file = wdir / raw["file"]
+        return FullTask(
+            id,
+            file,
+            locator.parse_locator(raw["locator"]),
+            None,
+            raw["prompt"] if "prompt" in raw else None,
+        )
 
     if arguments.task_json is not None:
         tasks = Tasks.mk_validated_tasklist(arguments.task_json)
-        wdir = Path('.')
+        wdir = Path(".")
         return ("tasks", wdir, [to_full_task(raw, wdir) for raw in tasks])
     elif arguments.task_file is not None:
         (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
@@ -226,6 +238,7 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
         return (tasks_name, wdir, [to_full_task(raw, wdir) for raw in tasks])
     else:
         raise ValueError("unspecified task")
+
 
 def load_agent(agent_desc: str) -> AgentBuilder:
     try:
@@ -248,7 +261,10 @@ class RunConfiguration:
     tags: task_output.Tags
     deployment_env: Environment | None = None
 
-def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None) -> RunConfiguration:
+
+def parse_arguments(
+    arguments: Namespace, agent_builder: AgentBuilder | None = None
+) -> RunConfiguration:
     if agent_builder is None:
         if arguments.agent is None:
             raise ValueError("Missing agent configuration. Pass [--agent ...].")
@@ -257,19 +273,27 @@ def parse_arguments(arguments: Namespace, agent_builder:AgentBuilder|None = None
     (tasks_name, wdir, tasks) = load_tasks(arguments)
 
     # Get deployment environment
-    env_name = getattr(arguments, 'env', 'none')
+    env_name = getattr(arguments, "env", "none")
     env_cls = EnvironmentRegistry.get(env_name)
     deployment_env = env_cls()
 
     init_logging(deployment_env)
 
     tags = collect_env_tags()
-    return RunConfiguration(agent_builder, tasks, tasks_name, arguments.output_dir, wdir, arguments.trace, arguments.jobs, tags, deployment_env)
+    return RunConfiguration(
+        agent_builder,
+        tasks,
+        tasks_name,
+        arguments.output_dir,
+        wdir,
+        arguments.trace,
+        arguments.jobs,
+        tags,
+        deployment_env,
+    )
+
 
 def run_config(config: RunConfiguration) -> bool:
-    def rocq_args(filename: Path) -> list[str]:
-        # TODO: a better default
-        return DuneUtil.rocq_args_for(filename)
     # Setup environment based on deployment mode
     if config.deployment_env:
         logger.info(f"Setting up environment: {type(config.deployment_env).__name__}")
@@ -286,16 +310,23 @@ def run_config(config: RunConfiguration) -> bool:
     # Here log context is not getting passed in the multithreads
     # # add_log_context("run_id", run_id)
 
-    def run_it(full_task: FullTask, progress:Any) -> task_output.TaskOutput | None:
-        return run_task(config.agent_builder, full_task, run_id, wdir=config.working_dir, tags=config.tags, progress=progress)
+    def run_it(full_task: FullTask, progress: Any) -> task_output.TaskOutput | None:
+        return run_task(
+            config.agent_builder,
+            full_task,
+            run_id,
+            wdir=config.working_dir,
+            tags=config.tags,
+            progress=progress,
+        )
 
     # Touch the file early to make sure that it is createable
     Path(tasks_result_file).touch()
 
-    def is_success(result: task_output.TaskOutput|None) -> bool:
-        return result is not None and str(result.status.value) == 'Success()'
+    def is_success(result: task_output.TaskOutput | None) -> bool:
+        return result is not None and str(result.status.value.kind) == "Success"
 
-    def succeeded(result: task_output.TaskOutput|None) -> bool:
+    def succeeded(result: task_output.TaskOutput | None) -> bool:
         if result is None:
             return False
         with open(tasks_result_file, "a", encoding="utf8") as f:
@@ -316,7 +347,8 @@ def run_config(config: RunConfiguration) -> bool:
 
     return True
 
-def agent_main(agent_builder: AgentBuilder, args: list[str]|None=None) -> bool:
+
+def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bool:
     """
     A simple entry point for an agent to be run as a stand-alone file.
 
@@ -331,19 +363,22 @@ def agent_main(agent_builder: AgentBuilder, args: list[str]|None=None) -> bool:
     if args is None:
         args = sys.argv[1:]
     try:
-        idx = args.index('--')
-        agent_args:list[str] = args[idx+1:]
+        idx = args.index("--")
+        agent_args: list[str] = args[idx + 1 :]
         args = args[:idx]
     except ValueError:
         agent_args = []
 
-    arguments: Namespace = mk_parser(parent=None,with_agent=agent_builder is None).parse_args(args)
+    arguments: Namespace = mk_parser(
+        parent=None, with_agent=agent_builder is None
+    ).parse_args(args)
     config: RunConfiguration = parse_arguments(arguments, agent_builder=agent_builder)
     if agent_args:
         config.agent_builder.add_args(agent_args)
     return run_config(config)
 
-def run_ns(args: Namespace, extra_args:list[str]|None=None) -> bool:
+
+def run_ns(args: Namespace, extra_args: list[str] | None = None) -> bool:
     """Assumes that agent is set"""
     config = parse_arguments(args, None)
     if extra_args:
@@ -353,6 +388,7 @@ def run_ns(args: Namespace, extra_args:list[str]|None=None) -> bool:
 
 def auto_main() -> bool:
     return agent_main(AgentBuilder.of_agent(AutoAgent))
+
 
 def tactic_main() -> bool:
     return agent_main(OneShotBuilder())
