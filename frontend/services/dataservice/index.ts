@@ -362,17 +362,24 @@ export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
       const runs: AgentRun[] = runsRes;
 
       // 3. Find the latest run by timestamp
-      const latestRun = runs.sort((a, b) =>
-        b.timestamp_utc.localeCompare(a.timestamp_utc)
-      )[0];
+      // const latestRun = runs.sort((a, b) =>
+      //   b.timestamp_utc.localeCompare(a.timestamp_utc)
+      // )[0];
+
+      const bestRun = runs
+        .slice()
+        .sort(
+          (a, b) =>
+            b.success_count / b.total_tasks - a.success_count / a.total_tasks
+        )[0];
 
       // 4. Fetch run details for the latest run
-      const runDetailsRes = await getRunDetails([latestRun.run_id]);
+      const runDetailsRes = await getRunDetails([bestRun.run_id]);
       const runDetails: RunDetailsResponse[] = await runDetailsRes;
 
       return {
         agentName: agent.agent_name,
-        successRate: latestRun.success_count / latestRun.total_tasks,
+        successRate: bestRun.success_count / bestRun.total_tasks,
         avgTime:
           runDetails[0].tasks.reduce(
             (sum, task) => sum + task.metrics.resource_usage.execution_time_sec,
@@ -395,3 +402,7 @@ export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
 
   return summaries;
 }
+
+
+
+
