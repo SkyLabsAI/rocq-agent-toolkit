@@ -89,10 +89,6 @@ const getDataMock: () => Promise<AgentSummary[]> = async () => {
   await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
 
   const mockData: AgentSummary[] = [
-    { agent_name: 'RocqAgent_v1', total_runs: 15 },
-    { agent_name: 'ProofAssistant_v2', total_runs: 12 },
-    { agent_name: 'TacticExplorer_v3', total_runs: 8 },
-    { agent_name: 'CoqHelper_v1', total_runs: 20 },
   ];
 
   console.log('Fetched agent summaries (MOCK):', mockData);

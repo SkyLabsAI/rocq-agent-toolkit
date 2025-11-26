@@ -32,11 +32,11 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
   const getStatusBgColor = (status: 'success' | 'failure' | "not found") => {
     const lower = status.toLowerCase();
     if (lower === 'success') {
-      return 'bg-green-500/5 border-green-500/20';
+      return 'bg-text-success';
     } else if (lower === 'not found') {
       return 'bg-gray-300 border-gray-300';
     } else {
-      return 'bg-red-500/5 border-red-500/20';
+      return 'bg-text-danger border-text-danger';
     }
   };
 
@@ -59,6 +59,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
 
   return (
     <div className='space-y-4'>
+      
       {title && (
         <h3 className='text-lg font-semibold text-text mb-4 flex items-center'>
           {title}
@@ -69,12 +70,13 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
         <div
           key={index}
           className={cn(
-            'border rounded-lg p-4 transition-all duration-200',
-            getStatusBgColor(tactic.status || 'not found')
+            'border rounded-lg pb-0 px-0 pt-0 transition-all duration-200 bg-elevation-surface-raised border-elevation-surface-overlay overflow-hidden',
+            
           )}
         >
           {/* Header with tactic name and status */}
-          <div className='flex items-center justify-between mb-4'>
+           <div className={'h-2 w-full mb-4 '+ getStatusBgColor(tactic.status || "not found")}/>
+          <div className='flex items-center justify-between mb-4 px-4'>
             <div className='flex items-center space-x-3'>
               <span className='text-sm font-medium text-text'>
                 Tactic {index + 1}
@@ -87,7 +89,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
           </div>
 
           {/* Main content grid */}
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 px-4'>
             {/* Next Tactic Prediction */}
             {tactic.tactic_prediction_tactic && (
               <div className='space-y-2'>
@@ -117,7 +119,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
 
           {/* Additional properties */}
           {additionalKeys.size > 0 && (
-            <div className='mt-4 pt-4 border-t border-white/10'>
+            <div className='mt-4 pt-4 border-t border-white/10 px-4 pb-4'>
               <h5 className='text-sm font-medium text-text mb-3'>
                 Additional Information
               </h5>

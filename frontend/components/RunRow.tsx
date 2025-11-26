@@ -31,13 +31,95 @@ function LatestBadge() {
   );
 }
 
-const Tag: React.FC<{ value: string }> = ({ value }) => {
-  return <div className="flex items-center px-3 py-1 rounded-full bg-background-information border border-blue-500/30">
-      <span className="text-xs font-semibold text-text-information">
+// Chart color config
+const TAG_BACKGROUND_COLOR_CONFIG: Record<string, string> = {
+  "author": 'bg-chart-categorical-1/15',
+  "branch": 'bg-chart-categorical-2/15',
+}
+
+const TAG_BORDER_COLOR_CONFIG: Record<string, string> = {
+  "author": 'border-chart-categorical-1/30',
+  "branch": 'border-chart-categorical-2/30',
+}
+
+const TAG_TEXT_COLOR_CONFIG: Record<string, string> = {
+  "author": 'text-chart-categorical-1',
+  "branch": 'text-chart-categorical-2',
+}
+
+const BG_CHART_COLORS = [
+  'bg-chart-categorical-1/15',
+  'bg-chart-categorical-2/15',
+  'bg-chart-categorical-3/15',
+  'bg-chart-categorical-4/15',
+  'bg-chart-categorical-5/15',
+  'bg-chart-categorical-6/15',
+  'bg-chart-categorical-7/15',
+  'bg-chart-categorical-8/15',
+  'bg-chart-categorical-9/15',
+  'bg-chart-categorical-10/15',
+];
+
+const BORDER_CHART_COLORS = [
+  'border-chart-categorical-1/30',
+  'border-chart-categorical-2/30',
+  'border-chart-categorical-3/30',
+  'border-chart-categorical-4/30',
+  'border-chart-categorical-5/30',
+  'border-chart-categorical-6/30',
+  'border-chart-categorical-7/30',
+  'border-chart-categorical-8/30',
+  'border-chart-categorical-9/30',
+  'border-chart-categorical-10/30',
+];
+
+const TEXT_CHART_COLORS = [
+  'text-chart-categorical-1',
+  'text-chart-categorical-2',
+  'text-chart-categorical-3',
+  'text-chart-categorical-4',
+  'text-chart-categorical-5',
+  'text-chart-categorical-6',
+  'text-chart-categorical-7',
+  'text-chart-categorical-8',
+  'text-chart-categorical-9',
+  'text-chart-categorical-10',
+];
+
+interface TagProps {
+  value: string;
+  attributeProp: string;
+}
+
+const Tag: React.FC<TagProps> = ({ value, attributeProp }) => {
+  // Try config first
+  let backgroundColor = TAG_BACKGROUND_COLOR_CONFIG[attributeProp];
+  let borderColor = TAG_BORDER_COLOR_CONFIG[attributeProp];
+  let textColor = TAG_TEXT_COLOR_CONFIG[attributeProp];
+  
+  // If not found, pick a color based on hash of attributeProp for consistency
+  if (!backgroundColor) {
+    let hash = 0;
+    for (let i = 0; i < attributeProp.length; i++) {
+      hash = attributeProp.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % BG_CHART_COLORS.length;
+     backgroundColor = BG_CHART_COLORS[idx];
+     borderColor = BORDER_CHART_COLORS[idx];
+     textColor = TEXT_CHART_COLORS[idx];
+  }
+  return (
+    <div
+      className={`flex items-center  px-3 py-1 rounded-full border ${backgroundColor} ${borderColor}`}
+    >
+      <span className={`text-xs font-semibold text-chart-categorical-1  ${textColor}`}>
         {value}
       </span>
     </div>
+  );
 }
+
+
 
 
 
@@ -85,7 +167,7 @@ const  RunRow: React.FC<RunRowProps> = ({
             </p>
             {isLatest && <LatestBadge />}
             {tags && Object.entries(tags).map(([key, value])=>(           
-                <Tag value={value} key={key}/>
+                <Tag value={value} key={key} attributeProp={key}/>
             ))}
           </div>
         </div>

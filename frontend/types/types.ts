@@ -6,20 +6,21 @@
 export type TaskKind =
   | {
       /** Fully proving a Rocq goal. */
-      kind: "FullProofTask";
+      kind: 'FullProofTask';
     }
   | {
       /** User defined task kind. */
-      kind: "OtherTask";
+      kind: 'OtherTask';
       value: string;
-    } | string
+    }
+  | string;
 
 /**
  * Task status upon completion.
  */
 export type TaskStatus =
-  | "Success" /** Task completed successfully. */
-  | "Failure"; /** Task failed. */
+  | 'Success' /** Task completed successfully. */
+  | 'Failure'; /** Task failed. */
 
 /**
  * Kind of resource exhaustion.
@@ -27,31 +28,33 @@ export type TaskStatus =
 export type ResourceExhaustionKind =
   | {
       /** Exceeded timelimit in seconds. */
-      kind: "Timeout";
+      kind: 'Timeout';
       value: number; // int
     }
   | {
       /** Exceeded LLM call limit. */
-      kind: "MaxLLMCalls";
+      kind: 'MaxLLMCalls';
       value: number; // int
     };
 
 /**
  * Reason for task failure.
  */
-export type FailureReason = string[] | {
+export type FailureReason =
+  | string[]
+  | {
       /** Resource exhaustion. */
-      kind: "ResourceExhaustion";
+      kind: 'ResourceExhaustion';
       value: ResourceExhaustionKind;
     }
   | {
       /** Unrecoverable error. */
-      kind: "ExecutionError";
+      kind: 'ExecutionError';
       value: string;
     }
   | {
       /** User defined failure reason. */
-      kind: "Other";
+      kind: 'Other';
       value: string;
     };
 
@@ -97,8 +100,6 @@ export interface Metrics {
   timestamp?: string;
 }
 
-
-
 export interface Details {
   cppCode: string;
   targetContent?: string;
@@ -131,12 +132,12 @@ export interface TaskOutput {
   /** Aggregated metrics for task. */
   metrics: Metrics;
 
-  details? : Details;
+  details?: Details;
 
   metadata?: {
     tags: Record<string, string>;
     [key: string]: unknown;
-  }
+  };
 }
 
 /**
@@ -154,10 +155,9 @@ export interface AgentResults {
   avgLLMCalls: number;
   failures: FailureReason[];
   runs: AgentRun[];
-
 }
 
-export interface AgentRunOld { 
+export interface AgentRunOld {
   id: string;
   name: string;
   data: TaskOutput[];
@@ -166,6 +166,22 @@ export interface AgentRunOld {
 export interface AgentSummary {
   agent_name: string;
   total_runs: number;
+  best_run?: {
+    run_id: string;
+    agent_name: string;
+    timestamp_utc: string;
+    total_tasks: number;
+    success_count: number;
+    failure_count: number;
+    success_rate: number;
+    score: number;
+    avg_total_tokens: number;
+    avg_cpu_time_sec: number;
+    avg_llm_invocation_count: number;
+    metadata: {
+      tags: Record<string, unknown>;
+    };
+  };
 }
 
 export interface AgentRun {
@@ -175,9 +191,9 @@ export interface AgentRun {
   total_tasks: number;
   success_count: number;
   failure_count: number;
-  metadata :{
+  metadata: {
     tags?: Record<string, string>;
-  }
+  };
 }
 
 export interface RunDetailsResponse {
@@ -188,7 +204,7 @@ export interface RunDetailsResponse {
   metadata?: {
     tags: Record<string, string>;
     [key: string]: unknown;
-  }
+  };
 }
 
 /**

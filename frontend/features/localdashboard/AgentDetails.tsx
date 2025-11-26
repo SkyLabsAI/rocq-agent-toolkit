@@ -52,7 +52,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6 w-6 bg-background-information rounded-lg flex items-center justify-center'>
               <span className='text-text-information font-semibold text-sm'>
-                {agentDetailData?.agentName?.charAt(0).toUpperCase()}
+                {agent.agent_name.charAt(0).toUpperCase()}
               </span>
             </div>
             <span className='truncate'>{agent.agent_name}</span>
@@ -62,7 +62,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {(agentDetailData?.successRate * 100).toPrecision(5)}%
+                {((agent.best_run?.success_rate ?? 0)*100).toFixed(2)}%
               </span>
             </div>
           </div>
@@ -72,7 +72,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {agentDetailData?.avgTime.toPrecision(5)}
+                {(agent.best_run?.avg_cpu_time_sec ?? 0).toFixed(2)}
               </span>
             </div>
           </div>
@@ -81,7 +81,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {agentDetailData?.avgTokens.toPrecision(5)}
+                {(agent.best_run?.avg_total_tokens ?? 0).toFixed(2)}
               </span>
             </div>
           </div>
@@ -90,7 +90,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {agentDetailData?.avgLlmCalls.toPrecision(5)}
+                {(agent.best_run?.total_tasks ?? 0).toFixed(2)}
               </span>
             </div>
           </div>
