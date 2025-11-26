@@ -157,7 +157,7 @@ const LocalDashboard: React.FC = () => {
       />
 
 
-      <StickyCompareBar selectedItems={selectedAgents.map((s)=>s.agentName)} agentName='' onCompareSelected={compareSelected} onClearSelection={()=>{setSelectedAgent([])}} />
+      <StickyCompareBar selectedItems={selectedAgents.map((s)=>s.agentName)} agentName='' onCompareSelected={compareSelected} onClearSelection={()=>{setSelectedAgent([])}} attribute='Agents'/>
     </Layout>
   );
 };

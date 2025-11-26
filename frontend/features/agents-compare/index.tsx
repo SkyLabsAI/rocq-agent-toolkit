@@ -75,7 +75,7 @@ const navigate = useNavigate();
           <CompareRunsHeader title='Compare Agents' secondary={`Selected Agents: ${selectedAgents}`}/>
 
           <RunsHeader title="Agents" keys={["Tasks", "Success %", "Avg LLM Calls", "Avg Total Token", "Avg Exec Time (s)"]} />
-          {agentsToCompare.map((agent)=><TaskRow  stats={[agent.agentName,agent.totalTasks, (agent.successRate * 100).toFixed(2), agent.avgLlmCalls, agent.avgTokens, agent.avgTime]} onClick={() => handleRemove(agent.agentName)} key={agent.agentName}/>)}
+          {agentsToCompare.map((agent)=><TaskRow  stats={[agent.agentName,agent.totalTasks, (agent.successRate * 100).toFixed(2), agent.avgLlmCalls.toFixed(2), agent.avgTokens.toFixed(2), agent.avgTime.toFixed(2)]} onClick={() => handleRemove(agent.agentName)} key={agent.agentName}/>)}
          
         
 

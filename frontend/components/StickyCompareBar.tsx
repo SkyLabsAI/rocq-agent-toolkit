@@ -7,6 +7,7 @@ interface StickyCompareBarProps {
   agentName: string;
   onClearSelection: () => void;
   onCompareSelected: () => void;
+  attribute: string;
 }
 
 const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
@@ -14,6 +15,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
   agentName,
   onClearSelection,
   onCompareSelected,
+  attribute,
 }) => {
   // Add bottom padding to body when bar is visible to prevent content blocking
   useEffect(() => {
@@ -39,7 +41,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
         </p>
         <div className="w-px h-5 bg-text"></div>
         <p className="text-text-disabled text-[14px] whitespace-nowrap">
-          Selected {selectedItems.length} Runs
+          Selected {selectedItems.length} {attribute}
         </p>
       </div>
     </div>
@@ -58,7 +60,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
             onClick={(e) => { e.stopPropagation(); onCompareSelected(); }}
             
           >
-            {selectedItems.length < 2 ? `Select ${2 - selectedItems.length} more run${2 - selectedItems.length > 1 ? 's' : ''}` : `Compare ${selectedItems.length} Runs`}
+            {selectedItems.length < 2 ? `Select ${2 - selectedItems.length} more run${2 - selectedItems.length > 1 ? 's' : ''}` : `Compare ${selectedItems.length} ${attribute}`}
           </Button>
         </div>
 

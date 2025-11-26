@@ -60,7 +60,7 @@ export const useLocalDashboard = () => {
     }
 
 
-    fetchData()
+    window.location.reload();
   };
 
   const openCodeModal = async (task: TaskOutput) => {

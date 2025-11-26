@@ -146,6 +146,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         agentName={agentName}
         onClearSelection={clearSelectedRuns}
         onCompareSelected={compareSelected}
+        attribute='Runs'
       />
    </>   
 
