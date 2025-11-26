@@ -49,12 +49,13 @@ class JsonGoal(StateExtractor[list[Any]]):
 
     def __call__(self, rdm: RocqDocManager) -> list[Any] | None:
         result = rdm.text_query_all(self._tactic(), indices=None)
+        PREFIXES = ["This subproof is complete, but there are some unfocused goals.","No more goals", "All the remaining goals are on the shelf"]
         if isinstance(result, rdm.Err):
             if "Init.Not_focussed" in result.message:
                 return []
-            print(f"got error, {result}")
             return None
-        elif len(result) == 1 and result[0].startswith("This subproof is complete, but there are some unfocused goals."):
+        elif len(result) == 1 or any((result[0].startswith(x) for x in prefix)):
+            # TODO: 'All the remaining goals are on the shelf'
             return []
         else:
             try:
