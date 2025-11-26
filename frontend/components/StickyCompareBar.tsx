@@ -1,33 +1,32 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/base/Button';
-import cn from "classnames";
 
 interface StickyCompareBarProps {
-  selectedRuns: string[];
+  selectedItems: string[];
   agentName: string;
   onClearSelection: () => void;
   onCompareSelected: () => void;
 }
 
 const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
-  selectedRuns,
+  selectedItems,
   agentName,
   onClearSelection,
   onCompareSelected,
 }) => {
   // Add bottom padding to body when bar is visible to prevent content blocking
   useEffect(() => {
-    if (selectedRuns.length > 0 && typeof window !== 'undefined') {
+    if (selectedItems.length > 0 && typeof window !== 'undefined') {
       document.body.style.paddingBottom = '80px';
       return () => {
         document.body.style.paddingBottom = '';
       };
     }
-  }, [selectedRuns.length]);
+  }, [selectedItems.length]);
 
   // Don't render if no runs selected or on server side
-  if (selectedRuns.length === 0 || typeof window === 'undefined') {
+  if (selectedItems.length === 0 || typeof window === 'undefined') {
     return null;
   }
 
@@ -40,7 +39,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
         </p>
         <div className="w-px h-5 bg-text"></div>
         <p className="text-text-disabled text-[14px] whitespace-nowrap">
-          Selected {selectedRuns.length} Runs
+          Selected {selectedItems.length} Runs
         </p>
       </div>
     </div>
@@ -55,11 +54,11 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
           </Button>
           <Button
             variant="default"
-            disabled={selectedRuns.length < 2}
+            disabled={selectedItems.length < 2}
             onClick={(e) => { e.stopPropagation(); onCompareSelected(); }}
             
           >
-            {selectedRuns.length < 2 ? `Select ${2 - selectedRuns.length} more run${2 - selectedRuns.length > 1 ? 's' : ''}` : `Compare ${selectedRuns.length} Runs`}
+            {selectedItems.length < 2 ? `Select ${2 - selectedItems.length} more run${2 - selectedItems.length > 1 ? 's' : ''}` : `Compare ${selectedItems.length} Runs`}
           </Button>
         </div>
 

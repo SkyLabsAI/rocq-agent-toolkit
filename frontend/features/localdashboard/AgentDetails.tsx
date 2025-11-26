@@ -5,13 +5,14 @@ import { useEffect, useState } from 'react';
 import { AgentSummary } from '@/types/types';
 import { AgentSummaryTemp } from '@/services/dataservice';
 import { Button } from '@/components/base';
-import { Link } from 'react-router-dom';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
   activeAgent?: boolean;
   setActiveAgent: (agent: string) => void;
   agentDetailData: AgentSummaryTemp;
+  isSelected: boolean;
+  toggleSelection: () => void;
 }
 
 const AgentDetails: React.FC<AgentDetailsProps> = ({
@@ -19,6 +20,8 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
   activeAgent = false,
   setActiveAgent,
   agentDetailData,
+  isSelected,
+  toggleSelection,
 }) => {
   const {
     loading,
@@ -36,10 +39,6 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
       clearSelectedRuns();
     }
   }, [activeAgent]);
-
-
-  const [isSelected, setIsSelected] =useState<boolean>(false);
-  
 
   return (
     <>
@@ -98,12 +97,19 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
         </td>
         <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3 justify-center'>
-           <Link to={"/compare/agents"} onClick={(e)=>{ e.stopPropagation()}}>
-              <Button variant='default'  >
-                Compare
-              </Button>
-           </Link>
+          
 
+            <Button
+              variant={isSelected ? 'danger' : 'default'}
+              onClick={e => {
+             e.stopPropagation();
+                toggleSelection();
+              }}
+              className='text-sm whitespace-nowrap text-[14px] font-normal float-end w-[100px] flex justify-center'
+            >
+              {isSelected ? 'Deselect' : 'Compare'}
+            </Button>
+        
           </div>
         </td>
       </tr>
@@ -119,9 +125,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                     Loading task details...
                   </span>
                 </div>
-              ) : (
-                 runDetails.length === 0 
-                ) ? (
+              ) : runDetails.length === 0 ? (
                 <div className='text-center py-8 text-text'>
                   No run details available.
                 </div>
