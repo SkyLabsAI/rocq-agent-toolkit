@@ -93,13 +93,13 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
             {/* Next Tactic Prediction */}
             {tactic.tactic_prediction_tactic && (
               <div className='space-y-2'>
-                <h5 className='text-sm font-medium text-text'>
+                <h5 className='text-sm font-medium text-text whitespace-pre-line'>
                   Next Tactic Prediction
                 </h5>
                 <div className='bg-elevation-surface border border-elevation-surface-overlay rounded-md p-3'>
-                  <code className='text-sm text-text'>
+                  <pre className='text-sm text-text text-wrap'>
                     {tactic.tactic_prediction_tactic}
-                  </code>
+                  </pre>
                 </div>
               </div>
             )}
@@ -136,11 +136,11 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
                       <div className='text-xs font-medium text-text uppercase tracking-wide mb-1'>
                         {key.replace(/_/g, ' ')}
                       </div>
-                      <div className='text-sm text-text'>
+                      <pre className='text-sm text-text'>
                         {typeof value === 'string'
                           ? value
                           : JSON.stringify(value, null, 2)}
-                      </div>
+                      </pre>
                     </div>
                   );
                 })}
@@ -160,7 +160,7 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
           <span className='text-text'>Success Rate:</span>
           <span className='text-text font-medium'>
             {(
-              (tactics.filter(t => t.status === 'success').length /
+              (tactics.filter(t => t.status?.toLowerCase() === 'success').length /
                 tactics.length) *
               100
             ).toFixed(1)}
