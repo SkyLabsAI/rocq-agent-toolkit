@@ -72,6 +72,7 @@ class RunInfo(BaseModel):
     success_rate: float = 0.0
     score: float = 0.0
     avg_total_tokens: float = 0.0
+    avg_llm_invocation_count: float = 0.0
     avg_cpu_time_sec: float = 0.0
     metadata: TaskMetadata = TaskMetadata()
 

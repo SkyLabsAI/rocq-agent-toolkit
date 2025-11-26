@@ -149,16 +149,13 @@ class DataStore:
             # Average metrics across tasks in the run
             total_tokens_list: list[int] = []
             cpu_time_list: list[float] = []
+            llm_invocation_count_list: list[int] = []
 
             for task in tasks:
                 try:
                     total_tokens_list.append(task.metrics.token_counts.total_tokens)
-                except Exception:
-                    # If metrics are missing or malformed, skip this task for averages
-                    pass
-
-                try:
                     cpu_time_list.append(task.metrics.resource_usage.cpu_time_sec)
+                    llm_invocation_count_list.append(task.metrics.llm_invocation_count)
                 except Exception:
                     pass
 
@@ -169,6 +166,11 @@ class DataStore:
             )
             avg_cpu_time_sec = (
                 sum(cpu_time_list) / len(cpu_time_list) if cpu_time_list else 0.0
+            )
+            avg_llm_invocation_count = (
+                sum(llm_invocation_count_list) / len(llm_invocation_count_list)
+                if llm_invocation_count_list
+                else 0.0
             )
 
             # Build a single RunInfo object per run_id and store it
@@ -183,6 +185,7 @@ class DataStore:
                 score=score,
                 avg_total_tokens=avg_total_tokens,
                 avg_cpu_time_sec=avg_cpu_time_sec,
+                avg_llm_invocation_count=avg_llm_invocation_count,
                 metadata=tasks[0].metadata
                 if tasks[0].metadata
                 else TaskMetadata(),
