@@ -78,8 +78,6 @@ def extend_args(rocq_args: list[str], ext: list[str]) -> list[str]:
             j = j + 1
     return extra + [x for p in i for x in ['-I',p]] + [x for mp, (p,r) in q.items() for x in ["-R" if r else "-Q", p, mp]]
 
-
-
 def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
     output_dir.mkdir(exist_ok=True)
     if not output_dir.is_dir():

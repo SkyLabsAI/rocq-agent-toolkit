@@ -22,7 +22,7 @@ class DocumentWatcher:
 
         This is called once **per-file** and should NOT have any user-visible
         side effects in the Rocq document, e.g. it should not alter parsing
-        scopes scopes or bring new symbols into scope.
+        scopes or bring new symbols into scope.
         """
         _ = rdm
 
