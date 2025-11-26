@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import json
 from pathlib import Path
 from typing import Any
@@ -6,7 +7,7 @@ from typing import Any
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
-from rocq_pipeline import find_tasks, loader, locator, util
+from rocq_pipeline import find_tasks, loader, locator, rocq_args, util
 from rocq_pipeline.tracers.extractor import (
     BeforeAndAfter,
     TacticExtractor,
@@ -57,27 +58,6 @@ def mk_parser(parent: Any|None=None, with_tracer: bool = True) -> Any:
     )
     return parser
 
-def extend_args(rocq_args: list[str], ext: list[str]) -> list[str]:
-    q:dict[str,tuple[str, bool]] = {}
-    i:list[str] = []
-    extra:list[str] = []
-    j = 0
-    all_args = rocq_args + ext
-    while j < len(all_args):
-        if all_args[j] == '-I':
-            i.append(all_args[j+1])
-            j = j + 2
-        elif all_args[j] == '-Q':
-            q[all_args[j+2]] = (all_args[j+1], False)
-            j = j + 3
-        elif all_args[j] == '-R':
-            q[all_args[j+2]] = (all_args[j+1], True)
-            j = j + 3
-        else:
-            extra.append(all_args[j])
-            j = j + 1
-    return extra + [x for p in i for x in ['-I',p]] + [x for mp, (p,r) in q.items() for x in ["-R" if r else "-Q", p, mp]]
-
 def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tasks: list[Tasks.Task], jobs:int=1) -> None:
     output_dir.mkdir(exist_ok=True)
     if not output_dir.is_dir():
@@ -90,11 +70,11 @@ def run(tracer_builder: TacticExtractorBuilder, output_dir: Path, wdir:Path, tas
 
         try:
             tracer = tracer_builder.build()
-            extra_paths = [r for k, v in tracer.extra_paths().items() for r in ["-Q", str(v), k] ]
+            extra_paths = itertools.chain.from_iterable((["-Q", str(v), k] for k, v in tracer.extra_paths().items()))
 
             task_file: Path = wdir / task["file"]
             with RocqDocManager(
-                    extend_args(DuneUtil.rocq_args_for(task_file), extra_paths),
+                    rocq_args.extend_args(DuneUtil.rocq_args_for(task_file), list(extra_paths)),
                     str(task_file),
                     dune=True,
             ).sess(load_file=True) as rdm:
