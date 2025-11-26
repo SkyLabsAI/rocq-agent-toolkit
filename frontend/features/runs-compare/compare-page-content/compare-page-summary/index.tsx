@@ -3,7 +3,7 @@
 
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { RunStats } from '@/features/compare';
+import type { RunStats } from '../..';
 import { RunsHeader } from './run-header';
 import { TaskRow } from './run-row';
 
@@ -25,9 +25,9 @@ export const RunSummary: React.FC<RunSummaryProps> = ({ runStats }) => {
 
   return (
     <>
-      <RunsHeader />
+      <RunsHeader title="Runs" keys={["Tasks", "Success %", "LLM Calls", "Total Token", "Avg Exec Time (s)"]} />
       {runStats.map((runStat, index) => (
-        <TaskRow key={index} stat={runStat} onClick={() => handleRemove(runStat.id)} />
+        <TaskRow key={index} stats={[runStat.id, runStat.tasks, (runStat.successRate*100).toFixed(2),  runStat.totalLlmCalls.toFixed(2), runStat.totalTokens.toFixed(2), runStat.avgExecutionTime.toFixed(2), ]} onClick={() => handleRemove(runStat.id)} />
       ))}
     </>
   );

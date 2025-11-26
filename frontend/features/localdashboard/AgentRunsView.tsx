@@ -17,6 +17,15 @@ type AgentRunsViewProps = {
   tags?: Record<string, string>;
 };
 
+
+export function isLatestRun(run: AgentRun, runs: AgentRun[]): boolean {
+  if (!runs.length) return false;
+  const latestTimestamp = runs
+    .map(r => r.timestamp_utc)
+    .sort((a, b) => b.localeCompare(a))[0];
+  return run.timestamp_utc === latestTimestamp;
+}
+
 const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   runDetails,
   agentName,
@@ -114,7 +123,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         ].map((run, index, arr) => (
             <RunRow
               run={run}
-              isLatest={index === 0 && arr.length > 1}
+              isLatest={isLatestRun(run, arr)}
               tags={run.metadata?.tags}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
@@ -133,14 +142,19 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
       </div>
 
       <StickyCompareBar
-        selectedRuns={selectedRuns}
+        selectedItems={selectedRuns}
         agentName={agentName}
         onClearSelection={clearSelectedRuns}
         onCompareSelected={compareSelected}
+        attribute='Runs'
       />
    </>   
 
   );
 };
+
+
+
+
 
 export default AgentRunsView;

@@ -75,6 +75,18 @@
   --color-elevation-surface-raised: #F9FBFDFF;
   --color-elevation-surface-sunken: #F0F2F4FF;
   --color-background-danger-hovered: rgba(255, 213, 210, 1);
+  --color-chart-categorical-1 : rgba(53, 125, 232, 1);
+  --color-chart-categorical-2 : rgba(130, 181, 54, 1);
+  --color-chart-categorical-3 : rgba(191, 99, 243, 1);
+  --color-chart-categorical-4 : rgba(246, 137, 9, 1);
+  --color-chart-categorical-5 : rgba(21, 88, 188, 1);
+  --color-chart-categorical-6 : rgba(150, 74, 192, 1);
+  --color-chart-categorical-7 : rgba(66, 178, 215, 1);
+  --color-chart-categorical-8 : rgba(189, 91, 0, 1);
+  --color-chart-categorical-9 : rgba(140, 143, 151, 1);
+  --color-chart-categorical-10 : rgba(241, 91, 80, 1);
+
+
 }
 
 /* Dark Theme */
@@ -152,6 +164,16 @@
   --color-elevation-surface-overlay: #2B2C2FFF;
   --color-elevation-surface-raised: #222326FF;
   --color-elevation-surface-sunken: #18191AFF;
+  --color-chart-categorical-1 : rgba(70, 136, 236, 1);
+  --color-chart-categorical-2 : rgba(148, 199, 72, 1);
+  --color-chart-categorical-3 : rgba(201, 124, 244, 1);
+  --color-chart-categorical-4 : rgba(252, 167, 0, 1);
+  --color-chart-categorical-5 : rgba(21, 88, 188, 1);
+  --color-chart-categorical-6 : rgba(150, 74, 192, 1);
+  --color-chart-categorical-7 : rgba(66, 178, 215, 1);
+  --color-chart-categorical-8 : rgba(224, 108, 0, 1);
+  --color-chart-categorical-9 : rgba(126, 129, 136, 1);
+  --color-chart-categorical-10 : rgba(226, 72, 61, 1);
 }
 
 /* Noto Sans Font Definitions */

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelectedRun } from '@/contexts/SelectedRunContext';
 import Layout from '@/layouts/common';
 import AgentDetails from './AgentDetails';
@@ -10,6 +10,9 @@ import RunDetailsView from '@/components/RunDetailsView';
 import { RefreshIcon } from '@/icons/refresh';
 import TaskDetailsModal from '../taskDetailsModal';
 import AgentListIcon from '@/icons/agent-list';
+import { AgentSummaryTemp } from '@/services/dataservice';
+import StickyCompareBar from '@/components/StickyCompareBar';
+import { useNavigate } from 'react-router-dom';
 
 const LocalDashboard: React.FC = () => {
   const {
@@ -24,6 +27,25 @@ const LocalDashboard: React.FC = () => {
   } = useLocalDashboard();
   const { selectedRun, setSelectedRun } = useSelectedRun();
   const [activeAgent, setActiveAgent] = React.useState<string | null>(null);
+  const [selectedAgents, setSelectedAgent] =useState<AgentSummaryTemp[]>([]);
+  const navigate = useNavigate();
+
+
+  const compareSelected = () => {
+    if (selectedAgents.length < 1) return;
+    const query = new URLSearchParams({
+      agents: selectedAgents.map((a)=>a.agentName).join(',')
+    }).toString();
+    navigate({
+      pathname: "/compare/agents",
+      search: `?${query}`
+    });
+  };
+
+
+  useEffect(() => {
+   console.log("Selected Agents changed: ", selectedAgents);
+  }, [selectedAgents]);
 
   return (
     <Layout title='Internal Dashboard'>
@@ -84,6 +106,10 @@ const LocalDashboard: React.FC = () => {
                   <td className='px-6 py-4 font-[16px] text-text-disabled'>
                     Avg LLM Calls
                   </td>
+                  <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
+                    Actions
+                  </td>
+                  
                 </tr>
                 {agentData
                   .sort((a, b) => a.agent_name.localeCompare(b.agent_name))
@@ -94,6 +120,15 @@ const LocalDashboard: React.FC = () => {
                       agentDetailData={agentDetailData[index]}
                       activeAgent={activeAgent === agent.agent_name}
                       setActiveAgent={setActiveAgent}
+                      isSelected={selectedAgents.some((a)=>a.agentName===agent.agent_name)}
+                      toggleSelection={()=>{
+                        console.log("Toggling selection for agent: ", agent.agent_name);
+                        if(selectedAgents.some((a)=>a.agentName===agent.agent_name)){
+                          setSelectedAgent(selectedAgents.filter((a)=>a.agentName!==agent.agent_name));
+                        }else{
+                          setSelectedAgent([...selectedAgents, {agentName:agent.agent_name} as AgentSummaryTemp]);
+                        }
+                      }}
                     />
                   ))}
               </tbody>
@@ -120,6 +155,9 @@ const LocalDashboard: React.FC = () => {
         }
         taskId={modalState.selectedTask?.task_id}
       />
+
+
+      <StickyCompareBar selectedItems={selectedAgents.map((s)=>s.agentName)} agentName='' onCompareSelected={compareSelected} onClearSelection={()=>{setSelectedAgent([])}} attribute='Agents'/>
     </Layout>
   );
 };

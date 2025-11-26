@@ -6,6 +6,7 @@ import CodeContent from './components/CodeContent';
 import JsonContent from './components/JsonContent';
 import { useComparisonLogs, ComparisonItem } from './hooks/useComparisonLogs';
 import { getTabColorClasses } from './utils/tabColors';
+import { ChevronUpIcon } from '@/icons/chevron-up';
 
 interface ComparisonModalProps {
   isOpen: boolean;
@@ -179,44 +180,16 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                       const value = getTaskValue(index, activeTab);
                       const hasData = value !== undefined && value !== null;
                       return (
-                        <div
+                        <ComparisonItemCard
                           key={index}
-                          className='border border-elevation-surface-overlay rounded-lg bg-elevation-surface-raised p-4'
-                        >
-                          <div className='flex items-center justify-between mb-4 shrink-0'>
-                            <div className='flex flex-col'>
-                              <h4
-                                className='text-sm font-medium truncate'
-                                title={item.label}
-                              >
-                                {item.label}
-                              </h4>
-                              {item.task && (
-                                <span
-                                  className='text-xs text-text font-mono'
-                                  title={item.task.run_id}
-                                >
-                                  Run: {item.task.run_id}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className='overflow-auto'>
-                            {!hasData ? (
-                              <div className='text-sm text-text-disabled italic text-center py-8'>
-                                {!item.task
-                                  ? 'Task not present'
-                                  : 'No data for this key'}
-                              </div>
-                            ) : (
-                              <>
-                                {customKeys.includes(activeTab)
-                                  ? renderCustomContent(activeTab, value)
-                                  : renderJsonContent(activeTab, value)}
-                              </>
-                            )}
-                          </div>
-                        </div>
+                          item={item}
+                          hasData={hasData}
+                          value={value}
+                          activeTab={activeTab}
+                          customKeys={customKeys}
+                          renderCustomContent={renderCustomContent}
+                          renderJsonContent={renderJsonContent}
+                        />
                       );
                     })}
                   </div>
@@ -237,3 +210,62 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
 };
 
 export default ComparisonModal;
+
+interface ComparisonItemCardProps {
+  item: any;
+  hasData: boolean;
+  value: unknown;
+  activeTab: string;
+  customKeys: string[];
+  renderCustomContent: (key: string, value: unknown) => React.ReactNode;
+  renderJsonContent: (key: string, value: unknown) => React.ReactNode;
+}
+
+const ComparisonItemCard: React.FC<ComparisonItemCardProps> = ({
+  item,
+  hasData,
+  value,
+  activeTab,
+  customKeys,
+  renderCustomContent,
+  renderJsonContent,
+}) => {
+
+  const [isOpen, setIsOpen] = useState(false);
+
+
+  return <div className='border border-elevation-surface-overlay rounded-lg bg-elevation-surface-raised p-4' onClick={()=>setIsOpen(!isOpen)} >
+    <div className='flex items-center justify-between mb-4 shrink-0'>
+
+      <div className='flex gap-2 items-center'>
+        <ChevronUpIcon className={cn('size-6 text-text',{'rotate-180': isOpen})}/>
+      <div className='flex flex-col text-text'>
+        <h4 className='text-sm font-medium truncate' title={item.label}>
+          {item.label}
+        </h4>
+        {item.task && (
+          <span
+            className='text-xs text-text-disabled font-mono'
+            title={item.task.run_id}
+          >
+            Run: {item.task.run_id}
+          </span>
+        )}
+      </div>
+      </div>
+    </div>{isOpen &&
+    <div className='overflow-auto'>
+      {!hasData ? (
+        <div className='text-sm text-text-disabled italic text-center py-8'>
+          {!item.task ? 'Task not present' : 'No data for this key'}
+        </div>
+      ) : (
+        <>
+          {customKeys.includes(activeTab)
+            ? renderCustomContent(activeTab, value)
+            : renderJsonContent(activeTab, value)}
+        </>
+      )}
+    </div>}
+  </div>
+}

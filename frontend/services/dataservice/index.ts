@@ -53,18 +53,18 @@ const generateMockTaskOutput = (
         gpu_time_sec: Math.random() * 10 + 1,
       },
       custom: {
-         proof_complexity: Math.floor(Math.random() * 10) + 1,
+        proof_complexity: Math.floor(Math.random() * 10) + 1,
         something_else: Math.random() * 100,
         hehe: 'hoho',
         something_array: [1, 2, 3],
-         hola: "hola"
+        hola: 'hola',
       },
       custom_metrics: {
         proof_complexity: Math.floor(Math.random() * 10) + 1,
         something_else: Math.random() * 100,
         hehe: 'hoho',
         something_array: [1, 2, 3],
-        hola: "hola"
+        hola: 'hola',
       },
       timestamp: new Date().toISOString(),
     },
@@ -88,12 +88,7 @@ const getDataReal: () => Promise<AgentSummary[]> = async () => {
 const getDataMock: () => Promise<AgentSummary[]> = async () => {
   await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
 
-  const mockData: AgentSummary[] = [
-    { agent_name: 'RocqAgent_v1', total_runs: 15 },
-    { agent_name: 'ProofAssistant_v2', total_runs: 12 },
-    { agent_name: 'TacticExplorer_v3', total_runs: 8 },
-    { agent_name: 'CoqHelper_v1', total_runs: 20 },
-  ];
+  const mockData: AgentSummary[] = [];
 
   console.log('Fetched agent summaries (MOCK):', mockData);
   return mockData;
@@ -128,12 +123,12 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
       total_tasks: totalTasks,
       success_count: successCount,
       failure_count: totalTasks - successCount,
-      metadata:{
+      metadata: {
         tags: {
           run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
           task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
-        }
-      }
+        },
+      },
     });
   }
 
@@ -341,6 +336,7 @@ export const refreshData = USE_MOCK_DATA ? refreshDataMock : refreshDataReal;
 
 export type AgentSummaryTemp = {
   agentName: string;
+  totalTasks: number;
   successRate: number;
   avgTime: number;
   avgTokens: number;
@@ -358,37 +354,17 @@ export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
   // 2. For each agent, fetch their runs
   const summaries = await Promise.all(
     agents.map(async agent => {
-      const runsRes = await getDetails(agent.agent_name);
-      const runs: AgentRun[] = runsRes;
-
-      // 3. Find the latest run by timestamp
-      const latestRun = runs.sort((a, b) =>
-        b.timestamp_utc.localeCompare(a.timestamp_utc)
-      )[0];
-
-      // 4. Fetch run details for the latest run
-      const runDetailsRes = await getRunDetails([latestRun.run_id]);
-      const runDetails: RunDetailsResponse[] = await runDetailsRes;
-
       return {
         agentName: agent.agent_name,
-        successRate: latestRun.success_count / latestRun.total_tasks,
-        avgTime:
-          runDetails[0].tasks.reduce(
-            (sum, task) => sum + task.metrics.resource_usage.execution_time_sec,
-            0
-          ) / runDetails[0].tasks.length,
-        avgTokens:
-          runDetails[0].tasks.reduce(
-            (sum, task) => sum + task.metrics.token_counts.total_tokens,
-            0
-          ) / runDetails[0].tasks.length,
-        avgLlmCalls:
-          runDetails[0].tasks.reduce(
-            (sum, task) => sum + task.metrics.llm_invocation_count,
-            0
-          ) / runDetails[0].tasks.length,
-        tags: runDetails[0].tasks[0].metadata?.tags,
+        totalTasks: agent.best_run?.total_tasks || 0,
+        successRate: agent.best_run
+          ? agent.best_run.success_count / agent.best_run.total_tasks
+          : 0,
+        avgTime: agent.best_run ? agent.best_run.avg_cpu_time_sec : 0,
+        avgTokens: agent.best_run ? agent.best_run.avg_total_tokens : 0,
+        avgLlmCalls: agent.best_run
+          ? agent.best_run.avg_llm_invocation_count
+          : 0,
       };
     })
   );

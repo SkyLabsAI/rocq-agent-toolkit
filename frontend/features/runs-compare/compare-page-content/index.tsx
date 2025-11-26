@@ -91,7 +91,7 @@ export const ComparePageContent: React.FC = () => {
   return (
     <>
       {/* Header */}
-      <CompareRunsHeader />
+      <CompareRunsHeader title='Compare Runs' secondary={`Agent: ${agentName}`}/>
       {!loading && !error && stats.length > 0 && (
         <>
           <RunSummary runStats={stats} />
