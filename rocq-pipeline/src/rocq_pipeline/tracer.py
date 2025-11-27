@@ -136,7 +136,7 @@ def run_ns(arguments: argparse.Namespace, extra_args:list[str]|None=None) -> boo
     run(tracer, arguments.output_dir, wdir, tasks, jobs=arguments.jobs)
     return True
 
-def tracer_main(tracer: TacticExtractor, args:list[str]|None=None) -> bool:
+def tracer_main(tracer: TacticExtractor[Any], args:list[str]|None=None) -> bool:
     """
     This function can be used to create a `main` entry point for a specific tracer.
     Use it with something like:

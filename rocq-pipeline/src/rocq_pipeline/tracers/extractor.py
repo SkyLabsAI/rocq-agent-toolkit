@@ -72,7 +72,7 @@ class AllStateExtractor(StateExtractor[dict[str,Any]]):
     Produce an object that contains the results of all of the state extractors
     """
     def __init__(self, extractors: dict[str, StateExtractor[Any]]):
-        self._extractors:dict[str, StateExtractor] = extractors
+        self._extractors:dict[str, StateExtractor[Any]] = extractors
 
     @override
     def extra_paths(self) -> dict[str, Path]:
@@ -235,10 +235,10 @@ class BeforeAndAfter[T](TacticExtractor[T]):
 
 class TacticExtractorBuilder:
     @staticmethod
-    def of_tactic_extractor(build: Callable[[], TacticExtractor] | type[TacticExtractor]) -> "TacticExtractorBuilder":
+    def of_tactic_extractor[T](build: Callable[[], TacticExtractor[T]] | type[TacticExtractor[T]]) -> "TacticExtractorBuilder":
         return TacticExtractorBuilder(build)
 
-    def __init__(self, build: Callable[[], TacticExtractor]) -> None:
+    def __init__(self, build: Callable[[], TacticExtractor[Any]]) -> None:
         self._builder = build
 
     def build(self) -> TacticExtractor[Any]:

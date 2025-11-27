@@ -73,7 +73,11 @@ def parallel_runner[T, U](run: Callable[[T, ProgressCallback], U], tasks: list[t
                             total=PROGRESS_MAX,
                             completed=0
                         )
-            result = run(val, Feedback(show_name, pb, current_task_id, PROGRESS_MAX) if progress else Feedback(show_name)) # type: ignore
+            if isinstance(pb, Progress):
+                feedback = Feedback(show_name, pb, current_task_id, PROGRESS_MAX)
+            else:
+                feedback = Feedback(show_name) # pyright: ignore
+            result = run(val, feedback)
             pb.update(
                 current_task_id,
                 completed=PROGRESS_MAX,
