@@ -18,6 +18,7 @@ const customJestConfig = {
   ],
   testPathIgnorePatterns: [
     '<rootDir>/tests/',  // Ignore Playwright tests
+    '<rootDir>/e2e/',    // Ignore E2E tests
   ],
   collectCoverageFrom: [
     'hooks/**/*.(ts|tsx)',

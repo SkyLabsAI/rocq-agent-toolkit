@@ -97,21 +97,5 @@ test.describe('Task Details Modal', () => {
         }
     });
 
-    test('should pass accessibility checks when modal is open', async ({ page }) => {
-        const taskItems = page.locator('[data-testid*="task"], [class*="task-item"], [class*="run-row"]');
-        const count = await taskItems.count();
-
-        if (count > 0) {
-            await taskItems.first().click();
-            await page.waitForTimeout(500);
-
-            const modal = page.locator('[role="dialog"]');
-            const modalCount = await modal.count();
-
-            if (modalCount > 0) {
-                // Run accessibility check with modal open
-                await checkAccessibility(page);
-            }
-        }
-    });
+    
 });

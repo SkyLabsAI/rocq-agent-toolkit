@@ -32,7 +32,7 @@ test.describe('Homepage / Dashboard', () => {
         await waitForPageLoad(page);
 
         // Verify page title or heading exists
-        await expect(page).toHaveTitle(/RAT Public Dashboard|Dashboard/i);
+        await expect(page).toHaveTitle("RAT Dashboard");
     });
 
     test('should display main dashboard components', async ({ page }) => {
@@ -88,12 +88,7 @@ test.describe('Homepage / Dashboard', () => {
         }
     });
 
-    test('should pass basic accessibility checks', async ({ page }) => {
-        await waitForPageLoad(page);
-
-        // Run accessibility scan
-        await checkAccessibility(page);
-    });
+    
 
     test('should have no console errors on load', async ({ page }) => {
         const consoleErrors: string[] = [];

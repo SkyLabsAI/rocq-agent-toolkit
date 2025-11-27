@@ -141,6 +141,7 @@ const LocalDashboard: React.FC = () => {
           run={selectedRun}
           onBack={() => setSelectedRun(null)}
           openCodeModal={openCodeModal}
+        
         />
       )}
 

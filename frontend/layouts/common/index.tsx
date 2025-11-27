@@ -33,7 +33,10 @@ const Layout = ({
         </div>
       </div>
 
+<main className='main' role='main'>
+
       <div className='px-10  mt-19 pb-19'>{children}</div>
+</main>
     </div>
   );
 };
