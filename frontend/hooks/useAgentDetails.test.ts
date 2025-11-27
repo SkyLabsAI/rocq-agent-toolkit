@@ -113,6 +113,25 @@ describe('useAgentDetails', () => {
         expect(result.current.runTaskDetails.get('run1')).toEqual([]);
     });
 
+    it('does not fetch run details if already loaded', async () => {
+        const mockRunDetails = [{ run_id: 'run1', tasks: [] }];
+        (getRunDetails as jest.Mock).mockResolvedValue(mockRunDetails);
+
+        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
+
+        // First fetch
+        await act(async () => {
+            await result.current.fetchRunDetails(['run1']);
+        });
+        expect(getRunDetails).toHaveBeenCalledTimes(1);
+
+        // Second fetch with same ID
+        await act(async () => {
+            await result.current.fetchRunDetails(['run1']);
+        });
+        expect(getRunDetails).toHaveBeenCalledTimes(1); // Should not increase
+    });
+
     it('handles error when opening details', async () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
         (getDetails as jest.Mock).mockRejectedValue(new Error('Fetch error'));
@@ -159,7 +178,7 @@ describe('useAgentDetails', () => {
 
         expect(mockNavigate).toHaveBeenCalledWith({
             pathname: '/compare',
-            search: `? agent = ${mockAgentName}& runs=run1`,
+            search: `?agent=${mockAgentName}&runs=run1`,
         });
     });
 
