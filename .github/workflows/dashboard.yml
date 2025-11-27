@@ -45,9 +45,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        browser: [chromium, firefox, webkit]
+
         
     steps:
     - name: Checkout repository
@@ -72,7 +70,7 @@ jobs:
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpm run test:e2e:install -- ${{ matrix.browser }}
+      run: pnpm run test:e2e:install
       
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
@@ -80,7 +78,7 @@ jobs:
       
     - name: Run Playwright tests
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpm run test:e2e -- --project=${{ matrix.browser }}
+      run: pnpm run test:e2e
       env:
         CI: true
         
@@ -88,7 +86,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: playwright-report-${{ matrix.browser }}
+        name: playwright-report
         path: rocq_agent_toolkit/frontend/playwright-report/
         retention-days: 30
         
@@ -96,7 +94,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results-${{ matrix.browser }}
+        name: test-results
         path: rocq_agent_toolkit/frontend/test-results/
         retention-days: 30
 
@@ -214,16 +212,8 @@ jobs:
           echo "❌ Unit tests failed" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [ -d "playwright-report-chromium" ]; then
-          echo "✅ Chromium tests completed" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        if [ -d "playwright-report-firefox" ]; then
-          echo "✅ Firefox tests completed" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        if [ -d "playwright-report-webkit" ]; then
-          echo "✅ WebKit tests completed" >> $GITHUB_STEP_SUMMARY
+        if [ -d "playwright-report" ]; then
+          echo "✅ E2E tests completed" >> $GITHUB_STEP_SUMMARY
         fi
         
         if [ -d "accessibility-report" ]; then
