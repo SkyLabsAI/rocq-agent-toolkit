@@ -4,6 +4,14 @@
  (modules fake_repl)
  (package rocq-fake-repl))
 
+
+(executable
+  (name fake_repl_json)
+  (public_name rocq-fake-repl-json)
+  (modules fake_repl_json)
+  (package rocq-fake-repl)
+  (libraries yojson))
+
 (executable
  (name nop_repl)
  (public_name rocq-nop-repl)
