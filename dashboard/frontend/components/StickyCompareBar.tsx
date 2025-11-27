@@ -60,7 +60,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
             onClick={(e) => { e.stopPropagation(); onCompareSelected(); }}
             
           >
-            {selectedItems.length < 2 ? `Select ${2 - selectedItems.length} more run${2 - selectedItems.length > 1 ? 's' : ''}` : `Compare ${selectedItems.length} ${attribute}`}
+            {selectedItems.length < 2 ? 'Select 1 more run' : `Compare ${selectedItems.length} ${attribute}`}
           </Button>
         </div>
 
