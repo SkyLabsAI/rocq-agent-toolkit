@@ -1,4 +1,4 @@
-name: Playwright Tests
+name: Frontend Tests
 
 on:
   push:
@@ -12,6 +12,35 @@ on:
       - 'rocq_agent_toolkit/frontend/**'
 
 jobs:
+  unit-tests:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: latest
+        run_install: false
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 'latest'
+        cache: 'pnpm'
+        cache-dependency-path: 'rocq_agent_toolkit/frontend/pnpm-lock.yaml'
+        
+    - name: Install frontend dependencies
+      working-directory: rocq_agent_toolkit/frontend
+      run: pnpm install --no-frozen-lockfile
+      
+    - name: Run Jest tests
+      working-directory: rocq_agent_toolkit/frontend
+      run: pnpm test
+
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -43,7 +72,7 @@ jobs:
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpx playwright install --with-deps ${{ matrix.browser }}
+      run: pnpm run test:e2e:install -- ${{ matrix.browser }}
       
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
@@ -51,7 +80,7 @@ jobs:
       
     - name: Run Playwright tests
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpx playwright test --project=${{ matrix.browser }}
+      run: pnpm run test:e2e -- --project=${{ matrix.browser }}
       env:
         CI: true
         
@@ -98,7 +127,7 @@ jobs:
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpx playwright install chromium
+      run: pnpm run test:e2e:install -- chromium
       
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
@@ -106,7 +135,7 @@ jobs:
       
     - name: Run accessibility tests
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpx playwright test --project=accessibility
+      run: pnpm run test:e2e -- --project=accessibility
       env:
         CI: true
         
@@ -145,7 +174,7 @@ jobs:
       
     - name: Install Playwright Browsers
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpx playwright install chromium
+      run: pnpm run test:e2e:install -- chromium
       
     - name: Build frontend application
       working-directory: rocq_agent_toolkit/frontend
@@ -153,7 +182,7 @@ jobs:
       
     - name: Run visual regression tests
       working-directory: rocq_agent_toolkit/frontend
-      run: pnpx playwright test --grep="visual|screenshot"
+      run: pnpm run test:e2e -- --grep="visual|screenshot"
       env:
         CI: true
         
@@ -167,7 +196,7 @@ jobs:
 
   test-summary:
     if: always()
-    needs: [test, accessibility-tests, visual-regression]
+    needs: [unit-tests, test, accessibility-tests, visual-regression]
     runs-on: ubuntu-latest
     
     steps:
@@ -176,8 +205,14 @@ jobs:
       
     - name: Create test summary
       run: |
-        echo "## 🎭 Playwright Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎭 Frontend Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ needs.unit-tests.result }}" == "success" ]; then
+          echo "✅ Unit tests passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Unit tests failed" >> $GITHUB_STEP_SUMMARY
+        fi
         
         if [ -d "playwright-report-chromium" ]; then
           echo "✅ Chromium tests completed" >> $GITHUB_STEP_SUMMARY
