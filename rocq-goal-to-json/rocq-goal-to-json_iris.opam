@@ -16,6 +16,7 @@ depends: [
   "dune" {>= "3.17"}
   "coq-stdpp"
   "coq-iris"
+  "ltac2-extra"
   "ltac2-derive"
   "ltac2-json"
   "odoc" {with-doc}

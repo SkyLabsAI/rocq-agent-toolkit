@@ -14,6 +14,7 @@ homepage: "https://github.com/SkylabsAI/skylabs-fm"
 bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
   "dune" {>= "3.17"}
+  "ltac2-extra"
   "ltac2-derive"
   "ltac2-json"
   "odoc" {with-doc}
