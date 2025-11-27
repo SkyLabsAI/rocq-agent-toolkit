@@ -1,18 +1,38 @@
 services:
+  database:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    container_name: rocq-agent-toolkit-db
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-rat_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
+      - POSTGRES_DB=${POSTGRES_DB:-rat_db}
+    volumes:
+      - rat_db_data:/var/lib/postgresql/data
+    networks:
+      - rocq-agent-network
+
+
   backend:
     build:
-      context: ../
-      dockerfile: rocq_agent_toolkit/backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: rocq-agent-toolkit-backend
     ports:
       # HOST:CONTAINER
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - JSONL_RESULTS_PATH=/brick_agents
       - OBSERVABILITY_URL=${OBSERVABILITY_URL:-http://loki:3100}
-    volumes:
-      # When setting the env from docker compose set the path of jsonl here 
-      - ${JSONL_VOLUME_PATH:-../brick_agents}:/brick_agents
+      # Database configuration
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rat_user}:${POSTGRES_PASSWORD:-rat_password}@database:5433/${POSTGRES_DB:-rat_db}
+      - POSTGRES_HOST=database
+      - POSTGRES_PORT=5433
+      - POSTGRES_USER=${POSTGRES_USER:-rat_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
+      - POSTGRES_DB=${POSTGRES_DB:-rat_db}
     networks:
       - rocq-agent-network
 
@@ -33,3 +53,6 @@ networks:
   rocq-agent-network:
     external: true
     name: rocq-agent-network
+
+volumes:
+  rat_db_data:

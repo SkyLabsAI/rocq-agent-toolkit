@@ -55,7 +55,8 @@ class TaskResult(BaseModel):
     status: str
     metrics: Metrics
     metadata: TaskMetadata = TaskMetadata()
-    results: str | None = None
+    # Results can be an arbitrary JSON structure or a plain string.
+    results: Any | None = None
     failure_reason: list[str] | None = None
 
 
@@ -136,3 +137,12 @@ class TagsResponse(BaseModel):
     tags: dict[str, list[str]]
     total_keys: int
     total_values: int
+
+
+class IngestionResponse(BaseModel):
+    """Response returned by the JSONL ingestion endpoint."""
+
+    success: bool
+    message: str
+    runs_ingested: int
+    tasks_ingested: int

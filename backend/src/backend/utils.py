@@ -9,7 +9,6 @@ import httpx
 from fastapi import HTTPException
 
 from backend.config import settings
-from backend.data_access import data_store
 from backend.models import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -114,46 +113,11 @@ def get_labels_grouped_by_log(
 
     return {group_name: groups}
 
-# Adding this for now since LOKI requires a Time Range for the query
-# So we are taking a estimated time of the start and using a delta , find a time range to query the logs.
-# In Production system, we might be doing something else.
-def get_estimated_time(run_id: str, task_id: str) -> datetime | None:
-    """
-    Estimate when logs were generated for a given run and task based on
-    the `timestamp_utc` field from the corresponding `TaskResult`.
-    """
-    task = next(
-        (
-            t
-            for t in data_store.task_results
-            if t.run_id == run_id and t.task_id == task_id
-        ),
-        None,
-    )
-
-    if task is None:
-        logger.warning("No TaskResult found when estimating time for run_id=%s, task_id=%s", run_id, task_id)
-        return None
-
-    raw_ts = task.timestamp_utc
-    if not raw_ts:
-        logger.warning("Empty timestamp_utc for run_id=%s, task_id=%s", run_id, task_id)
-        return None
-
-    # Normalise to an ISO string that `datetime.fromisoformat` understands
-    normalised_ts = raw_ts.replace("Z", "+00:00") if raw_ts.endswith("Z") else raw_ts
-
-    try:
-        estimated_dt = datetime.fromisoformat(normalised_ts)
-    except ValueError:
-        logger.warning("Failed to parse timestamp_utc='%s' for run_id=%s, task_id=%s", raw_ts, run_id, task_id)
-        return None
-
-    logger.info("Estimated log time for run_id=%s, task_id=%s: %s", run_id, task_id, estimated_dt.isoformat())
-    return estimated_dt
-
-
-async def fetch_observability_logs(run_id: str, task_id: str) -> list[LogEntry]:
+async def fetch_observability_logs(
+    run_id: str,
+    task_id: str,
+    estimated_time: datetime | None = None,
+) -> list[LogEntry]:
     """
     Fetch observability logs from Loki for a specific run and task.
 
@@ -179,11 +143,10 @@ async def fetch_observability_logs(run_id: str, task_id: str) -> list[LogEntry]:
             f'{{service_name="rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
         )
 
-        # Calculate time range based on the task's estimated time.
+        # Calculate time range based on the task's estimated time (if provided).
         # We take a symmetric window of ±delta_hours around the task timestamp.
         delta = timedelta(hours=settings.log_query_time_delta_hours)
 
-        estimated_time = get_estimated_time(run_id, task_id)
         if estimated_time is not None:
             start_time = estimated_time - delta
             end_time = estimated_time + delta

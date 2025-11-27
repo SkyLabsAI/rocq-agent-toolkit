@@ -1,7 +1,6 @@
 """
 Configuration management for the FastAPI backend.
 """
-from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,8 +8,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    # Path to JSONL results directory
-    jsonl_results_path: str = "JSONL"
+    # Database configuration
+    postgres_host: str = "localhost"
+    postgres_port: int = 5433
+    postgres_user: str = "rat_user"
+    postgres_password: str = "rat_password"
+    postgres_db: str = "rat_db"
+    # Default to a synchronous SQLAlchemy/SQLModel URL; this can be overridden
+    # via the DATABASE_URL environment variable for deployments.
+    database_url: str = (
+        f"postgresql://{postgres_user}:{postgres_password}@"
+        f"{postgres_host}:{postgres_port}/{postgres_db}"
+    )
+    database_echo: bool = False  # SQL logging
 
     # Observability stack port
     observability_url: str = "http://0.0.0.0:3100"
@@ -28,9 +38,6 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
 
-    def get_results_path(self) -> Path:
-        """Get the JSONL results path as a Path object."""
-        return Path(self.jsonl_results_path)
 
 
 # Global settings instance

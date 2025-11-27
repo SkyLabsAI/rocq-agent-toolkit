@@ -1,26 +1,41 @@
 """
 FastAPI backend server for Rocq_agent task results.
-Phase 1: Local file-based data access with in-memory storage.
+
+This service exposes a read/write API backed by a PostgreSQL database.
+Task results are ingested via the `/api/ingest` endpoint and normalised
+into a relational schema for querying and dashboard use.
 """
+# ruff: noqa: B008
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
 
 from backend.config import settings
-from backend.data_access import data_store
+from backend.dal import (
+    agent_exists,
+    get_estimated_time_for_task_from_db,
+    get_run_details_from_db,
+    get_runs_by_agent_from_db,
+    get_unique_tags_from_db,
+    ingest_task_results,
+    list_agents_from_db,
+)
+from backend.database import get_session, init_db
 from backend.models import (
     AgentInfo,
+    IngestionResponse,
     ObservabilityLabelsResponse,
     ObservabilityLogsResponse,
-    RefreshResponse,
     RunDetailsResponse,
     RunInfo,
     TagsResponse,
+    TaskResult,
 )
 from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
 
@@ -35,22 +50,21 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[Any]:
     """
     Lifespan context manager for startup and shutdown events.
-    Loads JSONL data on startup.
+
+    On startup, this initialises the database schema (creating tables if
+    they do not already exist). No data is loaded from disk; all state
+    is stored in the database.
     """
     logger.info("Starting FastAPI backend...")
-    logger.info(f"Loading JSONL files from: {settings.jsonl_results_path}")
 
+    # Initialize database schema
     try:
-        results_path = settings.get_results_path()
-        count = data_store.load_from_directory(results_path)
-        logger.info(f"Successfully loaded {count} task results")
+        logger.info("Initializing database schema...")
+        init_db()
+        logger.info("Database schema initialized successfully.")
+    except Exception as e:  # pragma: no cover - defensive logging
+        logger.error("Failed to initialize database schema: %s", e, exc_info=True)
 
-    except FileNotFoundError as e:
-        logger.error(f"Directory not found: {e}")
-        logger.warning("Server will start but no data is available")
-    except Exception as e:
-        logger.error(f"Error loading data: {e}")
-        logger.warning("Server will start but no data is available")
 
     yield
 
@@ -76,7 +90,7 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root() -> dict[str,str]:
+async def root() -> dict[str, str]:
     """Root endpoint - health check."""
     return {
         "message": "Rocq Agent Toolkit Backend API",
@@ -85,16 +99,133 @@ async def root() -> dict[str,str]:
     }
 
 
-@app.get("/api/agents", response_model=list[AgentInfo])
-async def list_agents() -> list[AgentInfo]:
+@app.get("/api/health")
+async def health_check(session: Session = Depends(get_session)) -> dict[str, Any]:
     """
-    List all unique agents found in the JSONL files.
+    Health check endpoint.
+
+    Returns:
+        System status information
+    """
+    total_agents = len(list_agents_from_db(session))
+    return {
+        "status": "healthy",
+        "total_agents": total_agents or 0,
+        "config": {
+            "observability_url": settings.observability_url,
+            "Database URL": f"{settings.postgres_host}:{settings.postgres_port}",
+        },
+    }
+
+
+@app.post("/api/ingest", response_model=IngestionResponse)
+async def ingest_jsonl(
+    file: UploadFile | None = File(
+        default=None, description="Optional JSONL file containing task results"
+    ),
+    items: list[TaskResult] | None = Body(
+        default=None,
+        description="Optional list of task result JSON objects matching the TaskResult schema",
+    ),
+    source_file_name: str | None = Query(
+        default=None,
+        description="Optional source file name for the task results, when providing list of tasks",
+    ),
+    session: Session = Depends(get_session),
+) -> IngestionResponse:
+    """
+    Ingest task results into the database.
+
+    This endpoint accepts either:
+    - A JSONL file upload where each line is a JSON object matching `TaskResult`
+    - A JSON array of `TaskResult` objects in the request body
+
+    All ingested data is normalised into the relational schema and run-level
+    aggregates are computed for each run.
+    """
+    parsed_items: list[TaskResult] = []
+
+    if file is not None:
+        if not source_file_name:
+            source_file_name = file.filename
+        raw_bytes = await file.read()
+        text = raw_bytes.decode("utf-8")
+        parse_error_count = 0
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                # Let Pydantic handle the JSON parsing & validation
+                parsed_items.append(TaskResult.model_validate_json(line))
+            except Exception as e:  # pragma: no cover - validation guard rail
+                # Log and skip invalid JSONL entries instead of failing the entire request,
+                # mirroring the behaviour of the previous file-based loader.
+                parse_error_count += 1
+                logger.warning(
+                    "Skipping invalid JSONL entry in %s at line %d: %s",
+                    source_file_name or "<upload>",
+                    line_number,
+                    e,
+                )
+
+        if parse_error_count:
+            logger.info(
+                "Completed ingestion with %d invalid JSONL lines skipped for file %s",
+                parse_error_count,
+                source_file_name or "<upload>",
+            )
+
+    if items:
+        parsed_items.extend(items)
+
+    if not parsed_items:
+        raise HTTPException(
+            status_code=400,
+            detail="No task results provided. Supply a JSONL file or a non-empty list of items.",
+        )
+
+    try:
+        stats = ingest_task_results(
+            session=session,
+            task_results=parsed_items,
+            source_file_name=source_file_name,
+        )
+        session.commit()
+    except HTTPException:
+        raise
+    except Exception as e:  # pragma: no cover - defensive logging
+        session.rollback()
+        logger.error("Error ingesting task results: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error ingesting task results: {str(e)}",
+        ) from e
+
+    message = (
+        f"Ingested {stats['tasks_ingested']} task results "
+        f"across {stats['runs_ingested']} runs."
+    )
+
+    return IngestionResponse(
+        success=True,
+        message=message,
+        runs_ingested=stats["runs_ingested"],
+        tasks_ingested=stats["tasks_ingested"],
+    )
+
+
+
+@app.get("/api/agents", response_model=list[AgentInfo])
+async def list_agents(session: Session = Depends(get_session)) -> list[AgentInfo]:
+    """
+    List all unique agents that have been ingested into the database.
 
     Returns:
         List of AgentInfo objects containing agent names and run counts
     """
     try:
-        agents = data_store.get_all_agents()
+        agents = list_agents_from_db(session)
         return agents
     except Exception as e:
         logger.error(f"Error fetching agents: {e}")
@@ -104,7 +235,9 @@ async def list_agents() -> list[AgentInfo]:
 
 
 @app.get("/api/agents/{agent_name}/runs", response_model=list[RunInfo])
-async def list_runs_by_agent(agent_name: str) -> list[RunInfo]:
+async def list_runs_by_agent(
+    agent_name: str, session: Session = Depends(get_session)
+) -> list[RunInfo]:
     """
     List all runs for a specific agent.
 
@@ -115,17 +248,12 @@ async def list_runs_by_agent(agent_name: str) -> list[RunInfo]:
         List of RunInfo objects for the specified agent
     """
     try:
-        runs = data_store.get_runs_by_agent(agent_name)
+        runs = get_runs_by_agent_from_db(session, agent_name)
 
-        if not runs:
-            # Check if agent exists
-            agents = data_store.get_all_agents()
-            agent_names = [agent.agent_name for agent in agents]
-
-            if agent_name not in agent_names:
-                raise HTTPException(
-                    status_code=404, detail=f"Agent '{agent_name}' not found"
-                )
+        if not runs and not agent_exists(session, agent_name):
+            raise HTTPException(
+                status_code=404, detail=f"Agent '{agent_name}' not found"
+            )
 
         return runs
     except HTTPException:
@@ -139,7 +267,8 @@ async def list_runs_by_agent(agent_name: str) -> list[RunInfo]:
 
 @app.get("/api/runs/details", response_model=list[RunDetailsResponse])
 async def get_run_details(
-    run_ids: str = Query(..., description="Comma-separated list of run IDs to retrieve")
+    run_ids: str = Query(..., description="Comma-separated list of run IDs to retrieve"),
+    session: Session = Depends(get_session),
 ) -> list[RunDetailsResponse]:
     """
     Get complete details for one or more runs.
@@ -162,7 +291,7 @@ async def get_run_details(
         )
 
     try:
-        results = data_store.get_run_details(id_list)
+        results = get_run_details_from_db(session, id_list)
 
         if not results:
             raise HTTPException(
@@ -179,39 +308,16 @@ async def get_run_details(
         ) from e
 
 
-@app.get("/api/health")
-async def health_check() -> dict[str,Any]:
-    """
-    Health check endpoint.
-
-    Returns:
-        System status information
-    """
-    agents = data_store.get_all_agents()
-    total_tasks = len(data_store.task_results)
-
-    return {
-        "status": "healthy",
-        "total_agents": len(agents),
-        "total_tasks": total_tasks,
-        "config": {
-            "jsonl_results_path": settings.jsonl_results_path,
-            "observability_url": settings.observability_url,
-        },
-    }
-
-
 @app.get("/api/tags", response_model=TagsResponse)
-async def list_tags() -> TagsResponse:
+async def list_tags(session: Session = Depends(get_session)) -> TagsResponse:
     """
-    List all unique metadata tags across all tasks.
+    List all unique metadata tags across all runs/tasks stored in the database.
 
     Returns:
         TagsResponse containing tag keys and their unique values.
     """
     try:
-        # Pylint may not see dynamically added methods on the DataStore singleton.
-        tags_response = data_store.get_unique_tags()  # pylint: disable=no-member
+        tags_response = get_unique_tags_from_db(session)
         return tags_response
     except Exception as e:
         logger.error(f"Error fetching tags: {e}", exc_info=True)
@@ -220,50 +326,12 @@ async def list_tags() -> TagsResponse:
         ) from e
 
 
-# Change it to the POST
-@app.post("/api/refresh", response_model=RefreshResponse)
-async def refresh_data() -> RefreshResponse:
-    """
-    Refresh data by reloading all JSONL files from the configured directory.
-
-    This endpoint clears all existing data and reloads from disk, allowing
-    the server to pick up new files without restarting.
-
-    Returns:
-        RefreshResponse with status and statistics
-    """
-    try:
-        logger.info("Refreshing data from JSONL files...")
-        results_path = settings.get_results_path()
-        count = data_store.reload_from_directory(results_path)
-
-        agents = data_store.get_all_agents()
-
-        logger.info(f"Refresh complete: {count} task results loaded")
-
-        return RefreshResponse(
-            success=True,
-            message=f"Successfully reloaded {count} task results from {len(agents)} agents",
-            total_tasks=count,
-            total_agents=len(agents),
-        )
-    except FileNotFoundError as e:
-        logger.error(f"Directory not found during refresh: {e}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"JSONL directory not found: {settings.jsonl_results_path}",
-        ) from e
-    except Exception as e:
-        logger.error(f"Error refreshing data: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Error refreshing data: {str(e)}"
-        ) from e
-
 
 @app.get("/api/observability/logs/raw", response_model=ObservabilityLogsResponse)
 async def get_observability_logs_raw(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
     task_id: str = Query(..., description="Task ID to fetch logs for"),
+    session: Session = Depends(get_session),
 ) -> ObservabilityLogsResponse:
     """
     Fetch raw observability logs from Loki for a specific run and task.
@@ -287,7 +355,10 @@ async def get_observability_logs_raw(
         /api/observability/logs/raw?run_id=abc123&task_id=task456
     """
     try:
-        logs = await fetch_observability_logs(run_id=run_id, task_id=task_id)
+        estimated_time = get_estimated_time_for_task_from_db(session, run_id, task_id)
+        logs = await fetch_observability_logs(
+            run_id=run_id, task_id=task_id, estimated_time=estimated_time
+        )
 
         logger.info(f"Retrieved {len(logs)} log entries from Loki (raw endpoint)")
 
@@ -308,11 +379,11 @@ async def get_observability_logs_raw(
 
 
 
-
 @app.get("/api/observability/logs", response_model=ObservabilityLabelsResponse)
 async def get_observability_logs(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
     task_id: str = Query(..., description="Task ID to fetch logs for"),
+    session: Session = Depends(get_session),
 ) -> ObservabilityLabelsResponse:
     """
     Fetch observability log labels from Loki for a specific run and task.
@@ -326,8 +397,11 @@ async def get_observability_logs(
         /api/observability/logs?run_id=abc123&task_id=task456
     """
     try:
-        # Fetch raw logs via shared utility
-        logs = await fetch_observability_logs(run_id=run_id, task_id=task_id)
+        # Fetch raw logs via shared utility, using DB-backed estimated time
+        estimated_time = get_estimated_time_for_task_from_db(session, run_id, task_id)
+        logs = await fetch_observability_logs(
+            run_id=run_id, task_id=task_id, estimated_time=estimated_time
+        )
 
         logger.info(f"Retrieved {len(logs)} log entries from Loki")
 
