@@ -99,6 +99,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cram"
+version = "0.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/85/5a8a3397b2ccb2ffa3ba871f76a4d72c16531e43d0e58fc89a0f2983adbd/cram-0.7.tar.gz", hash = "sha256:7da7445af2ce15b90aad5ec4792f857cef5786d71f14377e9eb994d8b8337f2f", size = 33527, upload-time = "2016-02-24T10:29:44.838Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/09/c119252f12b35c21b030c01d38d292936660c167e725ce07517fae2b01a0/cram-0.7-py2.py3-none-any.whl", hash = "sha256:008e4e8b4d325cf040964b5f62460535b004a7bc816d54f8527a4d299edfe4a3", size = 22141, upload-time = "2016-02-24T10:29:55.022Z" },
+]
+
+[[package]]
 name = "dataclasses-json"
 version = "0.6.7"
 source = { registry = "https://pypi.org/simple" }
@@ -928,6 +937,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "black" },
+    { name = "cram" },
     { name = "flake8" },
     { name = "isort" },
     { name = "mypy" },
@@ -952,6 +962,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=23.7.0,<24" },
+    { name = "cram", specifier = ">=0.7" },
     { name = "flake8", specifier = ">=6.0.0,<7" },
     { name = "isort", specifier = ">=5.12.0,<6" },
     { name = "mypy", specifier = ">=1.18.2,<2" },

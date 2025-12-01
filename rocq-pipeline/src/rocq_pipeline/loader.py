@@ -25,7 +25,7 @@ def load_module(module_path: Path, package_name: str|None=None) -> Any:
     module_name = f"{DYNAMIC_PACKAGE_NAME}.{base_module_name}"
     module_dir = os.path.dirname(os.path.abspath(module_path))
 
-    print(f"Attempting to load module '{module_name}' as part of package '{DYNAMIC_PACKAGE_NAME}' from: {module_path}")
+    # print(f"Attempting to load module '{module_name}' as part of package '{DYNAMIC_PACKAGE_NAME}' from: {module_path}")
 
     try:
         # 3. CRITICAL: Create the parent package entry in sys.modules first.

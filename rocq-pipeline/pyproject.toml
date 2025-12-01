@@ -47,6 +47,7 @@ dev = [
     "types-jmespath>=1.0.2.20250809,<2",
     "ruff>=0.14.4",
     "taskipy>=1.14.1",
+    "cram>=0.7",
 ]
 
 [tool.uv]
@@ -123,3 +124,4 @@ strict_equality = true
 format_ci = "ruff check src/ tests/"
 typecheck_ci = "mypy src/ tests/"
 test_ocaml_ci = "pytest"
+cram_ocaml_ci = "cram tests/*.t"
