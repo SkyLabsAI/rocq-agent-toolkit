@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class RocqDocManager(API):
+    NO_GOAL_STRINGS: set[str] = {
+        "No such goal.",
+        "No more goals."
+    }
+
     def __init__(
             self,
             rocq_args: list[str],
@@ -300,12 +305,18 @@ end.""",
             # - if we Unshelve the shelved goals, we can't directly report
             #   this goal info since it won't correspond to the proof state
             #   when we rollabck the effect of this block.
-            result = self.run_command('idtac.')
+
+            # NOTE: we use `all: idtac.` in case the context uses
+            # `Set Default Goal Selector "!"`.
+            result = self.run_command('all: idtac.')
             if isinstance(result, self.Err):
-                if result.message == "No such goal.":
+                if result.message in self.NO_GOAL_STRINGS:
                     return None
                 return result
-            return result.open_subgoals
+            elif result.open_subgoals in self.NO_GOAL_STRINGS:
+                return None
+            else:
+                return result.open_subgoals
 
     def _import_export_cmd(
             self,

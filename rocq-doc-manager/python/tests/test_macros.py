@@ -56,6 +56,16 @@ class Test_RDM_macros(RDM_Tests):
             assert not isinstance(closed_goal_reply, RocqDocManager.Err)
             assert closed_goal_reply is None
 
+    def test_current_goal_default_goal_selector_bang(
+            self,
+            transient_rdm: RocqDocManager,
+    ) -> None:
+        assert not isinstance(
+            transient_rdm.run_command("Set Default Goal Selector \"!\"."),
+            RocqDocManager.Err
+        )
+        self.test_current_goal_True(transient_rdm)
+
     def test_current_goal_done_up_to_one_shelved(
             self,
             transient_rdm: RocqDocManager,
@@ -94,9 +104,8 @@ class Test_RDM_macros(RDM_Tests):
             assert not isinstance(current_goal_reply, RocqDocManager.Err)
             assert current_goal_reply is not None, \
                 "When shelved goals remain, the current goal must not be None"
-            assert False, \
-                "TODO: how to communicate shelved goals w/out unshelved goals?"
-            # assert current_goal_reply == ""
+            assert current_goal_reply == "\n1 goal\n\ngoal 1 is:\n nat"
+            assert False, "Need to communicate that the goal is actually shelved."
 
     @given(
         n=st.integers(min_value=0, max_value=100),
