@@ -27,25 +27,19 @@ const LocalDashboard: React.FC = () => {
   } = useLocalDashboard();
   const { selectedRun, setSelectedRun } = useSelectedRun();
   const [activeAgent, setActiveAgent] = React.useState<string | null>(null);
-  const [selectedAgents, setSelectedAgent] =useState<AgentSummaryTemp[]>([]);
+  const [selectedAgents, setSelectedAgent] = useState<AgentSummaryTemp[]>([]);
   const navigate = useNavigate();
-
 
   const compareSelected = () => {
     if (selectedAgents.length < 1) return;
     const query = new URLSearchParams({
-      agents: selectedAgents.map((a)=>a.agentName).join(',')
+      agents: selectedAgents.map(a => a.agentName).join(','),
     }).toString();
     navigate({
-      pathname: "/compare/agents",
-      search: `?${query}`
+      pathname: '/compare/agents',
+      search: `?${query}`,
     });
   };
-
-
-  useEffect(() => {
-   console.log("Selected Agents changed: ", selectedAgents);
-  }, [selectedAgents]);
 
   return (
     <Layout title='Internal Dashboard'>
@@ -109,7 +103,6 @@ const LocalDashboard: React.FC = () => {
                   <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
                     Actions
                   </td>
-                  
                 </tr>
                 {agentData
                   .sort((a, b) => a.agent_name.localeCompare(b.agent_name))
@@ -120,14 +113,30 @@ const LocalDashboard: React.FC = () => {
                       agentDetailData={agentDetailData[index]}
                       activeAgent={activeAgent === agent.agent_name}
                       setActiveAgent={setActiveAgent}
-                      isSelected={selectedAgents.some((a)=>a.agentName===agent.agent_name)}
-                      toggleSelection={()=>{
-                        console.log("Toggling selection for agent: ", agent.agent_name);
-                        if(selectedAgents.some((a)=>a.agentName===agent.agent_name)){
-                          setSelectedAgent(selectedAgents.filter((a)=>a.agentName!==agent.agent_name));
-                        }else{
-                          setSelectedAgent([...selectedAgents, {agentName:agent.agent_name} as AgentSummaryTemp]);
-                        }
+                      isSelected={selectedAgents.some(
+                        a => a.agentName === agent.agent_name
+                      )}
+                      toggleSelection={() => {
+                        setSelectedAgent(prevSelectedAgents => {
+                          if (
+                            prevSelectedAgents.some(
+                              a => a.agentName === agent.agent_name
+                            )
+                          ) {
+                            // Remove the agent if already selected
+                            return prevSelectedAgents.filter(
+                              a => a.agentName !== agent.agent_name
+                            );
+                          } else {
+                            // Add the new agent while keeping the previous selections
+                            return [
+                              ...prevSelectedAgents,
+                              {
+                                agentName: agent.agent_name,
+                              } as AgentSummaryTemp,
+                            ];
+                          }
+                        });
                       }}
                     />
                   ))}
@@ -141,7 +150,6 @@ const LocalDashboard: React.FC = () => {
           run={selectedRun}
           onBack={() => setSelectedRun(null)}
           openCodeModal={openCodeModal}
-        
         />
       )}
 
@@ -157,8 +165,14 @@ const LocalDashboard: React.FC = () => {
         taskId={modalState.selectedTask?.task_id}
       />
 
-
-      <StickyCompareBar selectedItems={selectedAgents.map((s)=>s.agentName)} agentName='' onCompareSelected={compareSelected} onClearSelection={()=>{setSelectedAgent([])}} attribute='Agents'/>
+      <StickyCompareBar
+        selectedItems={selectedAgents.map(s => s.agentName)}
+        onCompareSelected={compareSelected}
+        onClearSelection={() => {
+          setSelectedAgent([]);
+        }}
+        attribute='Agents'
+      />
     </Layout>
   );
 };
