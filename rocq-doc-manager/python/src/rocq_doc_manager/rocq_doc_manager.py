@@ -295,6 +295,11 @@ end.""",
     # TODO: expose a better structured representation for proof states
     def current_goal(self) -> str | None | API.Err[None]:
         with self.ctx():
+            # TODO: properly account for shelved goals:
+            # - we can't use idtac when only shelved goals remain
+            # - if we Unshelve the shelved goals, we can't directly report
+            #   this goal info since it won't correspond to the proof state
+            #   when we rollabck the effect of this block.
             result = self.run_command('idtac.')
             if isinstance(result, self.Err):
                 if result.message == "No such goal.":

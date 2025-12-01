@@ -8,23 +8,95 @@ from .util import RDM_Tests
 
 
 class Test_RDM_macros(RDM_Tests):
-    def test_current_goal(
+    def test_current_goal_outside_proof(
             self,
             transient_rdm: RocqDocManager,
     ) -> None:
         outside_goal_reply = transient_rdm.current_goal()
-        assert isinstance(outside_goal_reply, RocqDocManager.Err)
+        assert outside_goal_reply == RocqDocManager.Err(
+            message="Syntax error: illegal begin of vernac.",
+            data=None,
+        )
+        with transient_rdm.aborted_goal_ctx(goal="True", rollback=False):
+            pass
+        # NOTE: ignoring offset
+        expected_prefix = [
+            ("command", "Goal True."),
+            ("blanks", "\n"),
+            ("command", "Abort."),
+            ("blanks", "\n"),
+        ]
+        prefix = transient_rdm.doc_prefix()
+        assert len(prefix) == len(expected_prefix)
+        for i, (kind, text) in enumerate(expected_prefix):
+            assert prefix[i].kind == kind
+            assert prefix[i].text == text
+        outside_goal_reply = transient_rdm.current_goal()
+        assert outside_goal_reply == RocqDocManager.Err(
+            message="Syntax error: illegal begin of vernac.",
+            data=None,
+        )
+
+    def test_current_goal_True(
+            self,
+            transient_rdm: RocqDocManager,
+    ) -> None:
         with transient_rdm.aborted_goal_ctx(goal="True"):
             True_goal_reply = transient_rdm.current_goal()
             assert not isinstance(True_goal_reply, RocqDocManager.Err)
-            assert True_goal_reply == "1 goal\n  \n  ============================\n  True"
+            assert (
+                True_goal_reply ==
+                "1 goal\n  \n  ============================\n  True"
+            )
             assert not isinstance(
                 transient_rdm.run_command("auto."),
                 RocqDocManager.Err
             )
             closed_goal_reply = transient_rdm.current_goal()
-            assert not isinstance(True_goal_reply, RocqDocManager.Err)
+            assert not isinstance(closed_goal_reply, RocqDocManager.Err)
             assert closed_goal_reply is None
+
+    def test_current_goal_done_up_to_one_shelved(
+            self,
+            transient_rdm: RocqDocManager,
+    ) -> None:
+        with transient_rdm.aborted_goal_ctx(goal="exists _ : nat, True"):
+            useless_existential_True_goal_reply = transient_rdm.current_goal()
+            assert not isinstance(
+                useless_existential_True_goal_reply,
+                RocqDocManager.Err
+            )
+            assert (
+                useless_existential_True_goal_reply ==
+                "1 goal\n  \n  ============================\n  exists _ : nat, True"
+            )
+
+            assert not isinstance(
+                transient_rdm.run_command("eexists; [shelve |]."),
+                RocqDocManager.Err,
+            )
+            shelved_existential_True_goal_reply = transient_rdm.current_goal()
+            assert not isinstance(
+                shelved_existential_True_goal_reply,
+                RocqDocManager.Err
+            )
+            assert (
+                shelved_existential_True_goal_reply ==
+                "1 focused goal (shelved: 1)\n  \n  ============================\n  True"
+            )
+
+            assert not isinstance(
+                transient_rdm.run_command("auto."),
+                RocqDocManager.Err
+            )
+
+            current_goal_reply = transient_rdm.current_goal()
+            assert not isinstance(current_goal_reply, RocqDocManager.Err)
+            assert current_goal_reply is not None, \
+                "When shelved goals remain, the current goal must not be None"
+            assert False, \
+                "TODO: how to communicate shelved goals w/out unshelved goals?"
+            # assert current_goal_reply == ""
 
     @given(
         n=st.integers(min_value=0, max_value=100),
