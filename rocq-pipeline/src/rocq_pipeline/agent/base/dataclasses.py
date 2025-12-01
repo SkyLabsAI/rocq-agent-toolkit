@@ -52,7 +52,7 @@ class TaskResult:
     def give_up(
         cls,
         message: str,
-        reason: RocqDocManager.Err | task_output.FailureReason | None = None,
+        reason: RocqDocManager.Err[Any] | task_output.FailureReason | None = None,
         side_effects: dict[str, Any] | None = None,
         _metrics: task_output.Metrics | None = None,
     ) -> Self:

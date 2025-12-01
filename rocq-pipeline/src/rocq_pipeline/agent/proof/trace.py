@@ -107,7 +107,7 @@ class TraceAgent(ProofAgent):
             self,
             rdm: RocqDocManager,
             message: str = "",
-            reason: FailureReason | RocqDocManager.Err | BaseException | None = None,
+            reason: FailureReason | RocqDocManager.Err[Any] | BaseException | None = None,
             side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
@@ -143,7 +143,7 @@ class TraceAgent(ProofAgent):
     def _task_holes(
         self,
         rdm: RocqDocManager,
-    ) -> ProofState | RocqDocManager.Err:
+    ) -> ProofState | RocqDocManager.Err[Any]:
         current_goal_reply = rdm.current_goal()
         if isinstance(current_goal_reply, RocqDocManager.Err):
             return current_goal_reply

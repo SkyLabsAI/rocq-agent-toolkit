@@ -10,7 +10,7 @@ from rocq_pipeline import find_tasks, task_manip, task_runner, tracer
 # NOTE: argparser commands use some private types (e.g. [_SubParsersAction])
 type mk_parserT[PARSER] = Callable[[Any | None], Any]
 type run_nsT = Callable[[Namespace, list[str] | None], Any]
-_entrypoints: dict[str, tuple[mk_parserT, run_nsT]] = {
+_entrypoints: dict[str, tuple[mk_parserT[Any], run_nsT]] = {
     "ingest": (
         find_tasks.mk_parser,
         find_tasks.run_ns
