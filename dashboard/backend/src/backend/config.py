@@ -9,15 +9,18 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database configuration
+    # TODO: Database can communicate internally with the docker network. 
+    # No need for external localhost/network communication.
     postgres_host: str = "localhost"
     postgres_port: int = 5433
     postgres_user: str = "rat_user"
     postgres_password: str = "rat_password"
     postgres_db: str = "rat_db"
-    # Default to a synchronous SQLAlchemy/SQLModel URL; this can be overridden
-    # via the DATABASE_URL environment variable for deployments.
+    # Default to a synchronous SQLAlchemy/SQLModel URL using the modern
+    # psycopg (v3) driver. This can be overridden via the DATABASE_URL
+    # environment variable for deployments.
     database_url: str = (
-        f"postgresql://{postgres_user}:{postgres_password}@"
+        f"postgresql+psycopg://{postgres_user}:{postgres_password}@"
         f"{postgres_host}:{postgres_port}/{postgres_db}"
     )
     database_echo: bool = False  # SQL logging
