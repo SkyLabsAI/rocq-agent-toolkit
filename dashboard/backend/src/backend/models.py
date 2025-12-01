@@ -57,15 +57,9 @@ class TaskResult(BaseModel):
     metrics: Metrics
     metadata: TaskMetadata = TaskMetadata()
     # Results can be an arbitrary JSON structure or a plain string.
-    results: Any | None = None
+    results: str | dict[str, Any] | None = None
     failure_reason: list[str] | None = None
 
-    # TODO: remove this once the backend/frontend support `results`
-    # being a dict (w/special handling for certain kinds of results)
-    def model_post_init(self, __context__: Any = None) -> None:
-        if isinstance(self.results, dict):
-            pf_script = self.results.get("side_effects", {}).get("doc_interaction", "")
-            self.results = pf_script
 
     @field_validator("results", mode="before")
     @classmethod
@@ -84,25 +78,19 @@ class TaskResult(BaseModel):
         if isinstance(v, dict):
             return v
 
-        # If it's a string, try to parse as JSON
+        # If it's a string, try to parse as JSON 
+        # It may be a JSON String with the results of the task
         if isinstance(v, str):
             try:
                 parsed = json.loads(v)
                 # If parsed to a dict, return it; otherwise return original string
                 if isinstance(parsed, dict):
                     return parsed
-                return v
             except (json.JSONDecodeError, TypeError):
-                # If parsing fails, return the string as-is (backward compatibility)
-                return v
-
-        # For any other type, wrap in a dict or convert to string
-        if isinstance(v, (list, int, float, bool)):
-            # Wrap primitive types in a dict for consistency
-            return {"value": v}
-
-        # Fallback: return as string representation
-        return str(v)
+                # If parsing fails, return the string as a JSON (backward compatibility)
+                return {"side_effects": {"doc_interaction": v}}
+            
+        return {"side_effects": {"doc_interaction": v}} # fallback to the JSON-Dict [str:Any] format
 
 
 class RunInfo(BaseModel):
@@ -116,7 +104,7 @@ class RunInfo(BaseModel):
     failure_count: int
     # Derived metrics
     success_rate: float = 0.0
-    score: float = 0.0
+    score: float = 0.0 # Dynamically Computed based on the compute_Score function
     avg_total_tokens: float = 0.0
     avg_llm_invocation_count: float = 0.0
     avg_cpu_time_sec: float = 0.0

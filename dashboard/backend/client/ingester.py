@@ -2,11 +2,10 @@
 Simple client script to ingest a JSONL file into the Rocq Agent Toolkit backend.
 
 Usage:
-    python -m backend.client.ingester /path/to/results.jsonl \
-        --base-url http://localhost:8004 \
+    uv run python -m client.ingester /home/skylabs/Desktop/psi-verifier/workspace/psi/backend/brick_agents/tasks2_results_20251201_1352.jsonl \
+        --base-url http://localhost:8000 \
         --source-file-name tasks_results.jsonl
-
-The backend must be running and exposing the /api/ingest endpoint.
+The backend must be running and exposing the /api/ingest/file endpoint.
 """
 
 from __future__ import annotations
@@ -18,8 +17,7 @@ from typing import Any
 import httpx
 
 
-DEFAULT_BASE_URL = "http://localhost:8004"
-INGEST_PATH = "/api/ingest"
+DEFAULT_BASE_URL = "http://localhost:8000"
 
 
 def ingest_file(
@@ -29,7 +27,7 @@ def ingest_file(
     timeout: float = 60.0,
 ) -> dict[str, Any]:
     """
-    Upload a JSONL file to the backend /api/ingest endpoint using the
+    Upload a JSONL file to the backend `/api/ingest/file` endpoint using the
     `file` upload option.
 
     Args:
@@ -49,11 +47,12 @@ def ingest_file(
     if source_file_name is None:
         source_file_name = path.name
 
-    url = f"{base_url.rstrip('/')}{INGEST_PATH}"
-    params = {"source_file_name": source_file_name}
+    url = f"{base_url}/api/ingest/file"
+    params: dict[str, str] = {}
+    if source_file_name is not None:
+        params["source_file_name"] = source_file_name
 
-    # FastAPI endpoint is declared with `file: UploadFile | None = File(...)`,
-    # so the reliable way to use it is via multipart/form-data file upload.
+    # The FastAPI endpoint expects `file` as a multipart/form-data upload.
     with path.open("rb") as f:
         files = {"file": (path.name, f, "application/jsonl")}
         with httpx.Client(timeout=timeout) as client:
@@ -119,5 +118,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

@@ -8,7 +8,7 @@ WORKDIR /app
 # Install uv
 RUN pip install uv
 
-COPY rocq_agent_toolkit/backend/ ./
+COPY . .
 # COPY pyproject.toml ./
 # does not need observability for now
 # COPY psi_verifier/observability/ ./psi_vserviceerifier/observability/

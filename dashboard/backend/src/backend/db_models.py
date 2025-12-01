@@ -115,6 +115,7 @@ class TaskResultDB(SQLModel, table=True):
     metrics: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     failure_reason: list[str] | None = Field(default=None, sa_column=Column(JSON))
     results: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    task_metadata: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
 
     # Relationships
     run: Run = Relationship(back_populates="results")

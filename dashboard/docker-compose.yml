@@ -4,32 +4,31 @@ services:
       context: ./database
       dockerfile: Dockerfile
     container_name: rocq-agent-toolkit-db
+    # external port can be removed : communication with in the network.
     ports:
       - "${DB_PORT:-5433}:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-rat_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
       - POSTGRES_DB=${POSTGRES_DB:-rat_db}
-    # TODO: Add the volume back
-    # remvoing it for testing purposes
-    # volumes:
-    #   - rat_db_data:/var/lib/postgresql/data
+    volumes:
+      - rat_db_data:/var/lib/postgresql/data
     networks:
       - rocq-agent-network
 
-  # Adding pg admin for testing 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: rocq-agent-toolkit-pgadmin
-    ports:
-      - "5050:80"
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@example.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-    depends_on:
-      - database
-    networks:
-      - rocq-agent-network
+  # Adding pg admin for Visualization of the database 
+  # pgadmin:
+  #   image: dpage/pgadmin4
+  #   container_name: rocq-agent-toolkit-pgadmin
+  #   ports:
+  #     - "5050:80"
+  #   environment:
+  #     - PGADMIN_DEFAULT_EMAIL=admin@example.com
+  #     - PGADMIN_DEFAULT_PASSWORD=admin
+  #   depends_on:
+  #     - database
+  #   networks:
+  #     - rocq-agent-network
 
 
   backend:
@@ -43,9 +42,10 @@ services:
     environment:
       - OBSERVABILITY_URL=${OBSERVABILITY_URL:-http://loki:3100}
       # Database configuration
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rat_user}:${POSTGRES_PASSWORD:-rat_password}@database:5433/${POSTGRES_DB:-rat_db}
-      - POSTGRES_HOST=database
-      - POSTGRES_PORT=5433
+      # Use the psycopg v3 driver and the internal PostgreSQL port (5432)
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-rat_user}:${POSTGRES_PASSWORD:-rat_password}@database:5432/${POSTGRES_DB:-rat_db}
+      - POSTGRES_HOST=database # Internal host name for the database container
+      - POSTGRES_PORT=5432  # Internal port for the database container
       - POSTGRES_USER=${POSTGRES_USER:-rat_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
       - POSTGRES_DB=${POSTGRES_DB:-rat_db}
