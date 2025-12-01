@@ -10,7 +10,9 @@ from .extractor import StateExtractor
 class JsonGoal(StateExtractor[list[Any]]):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
-    _iris:bool|None = None
+
+    def __init__(self, iris:bool|None=None):
+        self._iris:bool|None = iris
 
     @staticmethod
     def find_user_contrib(installed: bool=True) -> Path:
@@ -42,7 +44,8 @@ class JsonGoal(StateExtractor[list[Any]]):
 
     def start_proof(self, rdm: RocqDocManager) -> None:
         # Detect iris
-        self._iris = self._check_iris(rdm)
+        if self._iris is None:
+            self._iris = self._check_iris(rdm)
 
         result = rdm.run_command(f"Require {self._mod()}.")
         if isinstance(result, RocqDocManager.Err):
