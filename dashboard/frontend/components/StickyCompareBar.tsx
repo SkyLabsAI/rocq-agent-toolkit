@@ -4,7 +4,6 @@ import { Button } from '@/components/base/Button';
 
 interface StickyCompareBarProps {
   selectedItems: string[];
-  // agentName: string;
   onClearSelection: () => void;
   onCompareSelected: () => void;
   attribute: string;
@@ -12,7 +11,6 @@ interface StickyCompareBarProps {
 
 const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
   selectedItems,
-  // agentName,
   onClearSelection,
   onCompareSelected,
   attribute,
