@@ -113,7 +113,7 @@ class DockerServiceManager:
 
     def _run_command(
         self, cmd: list[str], cwd: Path | None = None, check: bool = True
-    ) -> subprocess.CompletedProcess:
+    ) -> subprocess.CompletedProcess[Any]:
         """Run a shell command and return the result"""
         try:
             result = subprocess.run(
