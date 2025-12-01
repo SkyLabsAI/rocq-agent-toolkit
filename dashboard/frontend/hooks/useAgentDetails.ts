@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TaskOutput, AgentRun } from "@/types/types";
 import { getDetails, getRunDetails, getObservabilityLogs } from "@/services/dataservice";
@@ -14,7 +14,6 @@ export const useAgentDetails = (agent_name: string, setActiveAgent: (agent: stri
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
-  const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
  
@@ -71,6 +70,10 @@ export const useAgentDetails = (agent_name: string, setActiveAgent: (agent: stri
     }
   };
 
+  useEffect(() => {
+    console.warn("selected runs changed:", selectedRuns);
+  }, [selectedRuns]);
+
 
   const compareSelected = () => {
     if (selectedRuns.length < 1) return;
@@ -86,7 +89,8 @@ export const useAgentDetails = (agent_name: string, setActiveAgent: (agent: stri
   };
 
   const toggleRunSelection = (run: Run) => {
-    setActiveAgent(agent_name);
+console.log(selectedRuns)
+
     
     setSelectedRuns(prev => 
       prev.includes(run.run_id) 
@@ -108,7 +112,7 @@ export const useAgentDetails = (agent_name: string, setActiveAgent: (agent: stri
     isOpen,
     // modalState,
     selectedRuns,
-    expandedRuns,
+    // expandedRuns,
     // loadingLogs,
     openDetails,
     toggleDetails,

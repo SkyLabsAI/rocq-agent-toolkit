@@ -139,8 +139,6 @@ const  RunRow: React.FC<RunRowProps> = ({
   tags
 }) => {
 
-  console.log("Rendering RunRow for run:", run.run_id);
-  console.log(tags)
 
   const successRate = ((successCount / totalTasks) * 100).toFixed(1);
 
