@@ -341,7 +341,7 @@ def run_config(config: RunConfiguration) -> bool:
 
     print(f"Finished {total} tasks: {success} Success, {total-success} Failures")
 
-    # Post-run actions (e.g., upload results for staging)
+    # Post-run actions (e.g., upload results via environment-specific ingest)
     if config.deployment_env:
         config.deployment_env.post_run(tasks_result_file)
 

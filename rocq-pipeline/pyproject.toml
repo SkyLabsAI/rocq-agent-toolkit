@@ -20,6 +20,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "rich>=14.2.0",
     "rich-progress>=0.4.0",
+    "httpx>=0.27.0,<0.29.0",
 ]
 
 [project.urls]

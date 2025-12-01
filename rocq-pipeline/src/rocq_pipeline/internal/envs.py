@@ -8,13 +8,96 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
+
+import httpx
 
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 
 DEFAULT_SERVER = "172.31.0.1"
 DEFAULT_DATA_PATH = "/data/skylabs/rocq-agent-runner/data/"
 DEFAULT_FRONTEND_PORT = 3005
+DEFAULT_BACKEND_PORT = 8000
 DEFAULT_GRAFANA_PORT = 3000
+
+
+def ingest_results_file(
+    result_file: Path,
+    base_url: str,
+    source_file_name: str | None = None,
+    timeout: float = 60.0,
+) -> dict[str, Any] | None:
+    """Upload a JSONL results file to a Rocq Agent Toolkit backend.
+
+    This mirrors the standalone client in ``client.ingester`` but is kept
+    local to the pipeline so we do not need to import across projects.
+    """
+    if not result_file.exists():
+        print(f"Error: Result file not found: {result_file}", file=sys.stderr)
+        return None
+
+    if source_file_name is None:
+        source_file_name = result_file.name
+
+    base = base_url.rstrip("/")
+    url = f"{base}/api/ingest/file"
+
+    params: dict[str, str] = {}
+    if source_file_name is not None:
+        params["source_file_name"] = source_file_name
+
+    try:
+        # First, check that the endpoint is reachable.
+        try:
+            with httpx.Client(timeout=timeout) as client:
+                # We only care that the server is reachable; any status code
+                # indicates that the endpoint exists.
+                resp = client.get(base)
+                print(
+                    f"Backend endpoint {base} reachable (status {resp.status_code})"
+                )
+        except httpx.RequestError as exc:
+            print(
+                f"Error: Backend endpoint {base} is not reachable: {exc}",
+                file=sys.stderr,
+            )
+            return None
+
+        with result_file.open("rb") as f:
+            files = {"file": (result_file.name, f, "application/jsonl")}
+            with httpx.Client(timeout=timeout) as client:
+                response = client.post(url, files=files, params=params)
+
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        print(
+            "Error: backend returned error during ingestion: "
+            f"{exc.response.status_code} {exc.response.text}",
+            file=sys.stderr,
+        )
+        return None
+    except httpx.RequestError as exc:
+        print(
+            f"Error: failed to upload results to backend at {base}: {exc}",
+            file=sys.stderr,
+        )
+        return None
+
+    data: dict[str, Any] = response.json()
+
+    # Print a concise human-readable summary, mirroring client.ingester.
+    success = data.get("success")
+    message = data.get("message", "")
+    runs = data.get("runs_ingested")
+    tasks = data.get("tasks_ingested")
+
+    print(f"Success: {success}")
+    if message:
+        print(message)
+    if runs is not None and tasks is not None:
+        print(f"Runs ingested: {runs}, Tasks ingested: {tasks}")
+
+    return data
 
 
 class DockerServiceManager:
@@ -227,6 +310,12 @@ class LocalEnvironment(Environment):
         return self.docker_manager.ensure_services_running()
 
     def post_run(self, result_file: Path) -> None:
+        print("Uploading results to local backend via HTTP ingest...")
+        ingest_results_file(
+            result_file=result_file,
+            base_url=f"http://localhost:{DEFAULT_BACKEND_PORT}",
+            source_file_name=result_file.name,
+        )
         print(
             f"Results saved locally. View results at: http://localhost:{DEFAULT_FRONTEND_PORT}/"
         )
@@ -281,46 +370,20 @@ class StagingEnvironment(Environment):
             return False
 
     def post_run(self, result_file: Path) -> None:
-        """Upload results file to staging server via SCP"""
-        if not result_file.exists():
-            print(f"Error: Result file not found: {result_file}", file=sys.stderr)
-            return
-
-        print("Uploading results to staging server...")
-
-        scp_target = f"{self.server}:{self.data_path}"
-        cmd = ["scp", str(result_file), scp_target]
-
-        try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=60, check=False
-            )
-
-            if result.returncode == 0:
-                print(f"Results uploaded successfully to {scp_target}")
-                print(
-                    f"View results at: http://{self.server}:{self.frontend_port}/"
-                )
-                print(
-                    f"Raw Logs can be viewed at Grafana Dashboard at: http://{self.server}:{self.grafana_port}/explore"
-                )
-            else:
-                print("Error: Failed to upload results", file=sys.stderr)
-                print(f"Error: {result.stderr}", file=sys.stderr)
-                print(
-                    f"Please upload manually using: scp {result_file} {scp_target}"
-                )
-
-        except subprocess.TimeoutExpired:
-            print("Error: Upload timed out", file=sys.stderr)
-            print(
-                f"Please upload manually using: scp {result_file} {scp_target}"
-            )
-        except Exception as e:
-            print(f"Error: Failed to upload results: {e}", file=sys.stderr)
-            print(
-                f"Please upload manually using: scp {result_file} {scp_target}"
-            )
+        """Upload results file to staging backend via HTTP ingest."""
+        print("Uploading results to staging backend via HTTP ingest...")
+        base_url = f"http://{self.server}:{DEFAULT_BACKEND_PORT}"
+        ingest_results_file(
+            result_file=result_file,
+            base_url=base_url,
+            source_file_name=result_file.name,
+        )
+        print(
+            f"View results at: http://{self.server}:{self.frontend_port}/"
+        )
+        print(
+            f"Raw Logs can be viewed at Grafana Dashboard at: http://{self.server}:{self.grafana_port}/explore"
+        )
 
 
 # Register environments
