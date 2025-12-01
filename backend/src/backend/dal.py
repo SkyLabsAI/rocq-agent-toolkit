@@ -16,15 +16,7 @@ from uuid import UUID
 from sqlmodel import Session, delete, select
 
 from backend.db_models import Agent, Run, RunTagLink, Tag, Task, TaskResultDB
-from backend.models import (
-    AgentInfo,
-    Metrics,
-    RunDetailsResponse,
-    RunInfo,
-    TagsResponse,
-    TaskMetadata,
-    TaskResult,
-)
+from backend.models import AgentInfo, Metrics, RunDetailsResponse, RunInfo, TagsResponse, TaskMetadata, TaskResult
 
 
 def _parse_timestamp_utc(ts: str) -> datetime:
@@ -194,6 +186,7 @@ def ingest_task_results_for_run(
         ts_utc = _parse_timestamp_utc(tr.timestamp_utc)
 
         metrics_dict = tr.metrics.model_dump(mode="json") if tr.metrics else None
+        metadata_dict = tr.metadata.model_dump(mode="json") if tr.metadata else None
         if tr.metrics:
             total_llm_invocation_count += tr.metrics.llm_invocation_count
             tc = tr.metrics.token_counts
@@ -204,12 +197,6 @@ def ingest_task_results_for_run(
             total_output_tokens += tc.output_tokens
             total_execution_time_sec += ru.execution_time_sec
 
-        # Normalise results payload to a JSON-serialisable dict where possible
-        results_payload = tr.results
-        if results_payload is not None and not isinstance(results_payload, dict):
-            # Wrap non-dict result in a dict for more structured querying
-            results_payload = {"value": results_payload}
-
         run_result = TaskResultDB(
             run_id=run.id,
             task_id=task.id,
@@ -217,7 +204,8 @@ def ingest_task_results_for_run(
             status=tr.status,
             metrics=metrics_dict,
             failure_reason=tr.failure_reason,
-            results=results_payload,
+            results=tr.results,
+            task_metadata=metadata_dict,
         )
         session.add(run_result)
 
@@ -252,7 +240,7 @@ def ingest_task_results_for_run(
         if existing_link is None:
             session.add(RunTagLink(run_id=run.id, tag_id=tag.id))
 
-    # Recompute "best run" flag for this agent
+    # Not computing Best Run for now
     # _recompute_best_run_for_agent(session, agent_id=agent.id)  # type: ignore[arg-type]
 
     return run
@@ -291,6 +279,23 @@ def ingest_task_results(
 
     return {"runs_ingested": runs_ingested, "tasks_ingested": total_tasks}
 
+
+def _get_tags_for_run(session: Session, run_id: UUID) -> dict[str, str]:
+    """
+    Helper to reconstruct metadata tags for a run from Tag/RunTagLink tables.
+
+    If multiple values exist for the same key, the last one seen wins.
+    """
+    rows = session.exec(
+        select(Tag.key, Tag.value)
+        .join(RunTagLink, RunTagLink.tag_id == Tag.id)
+        .where(RunTagLink.run_id == run_id)
+    ).all()
+
+    tags: dict[str, str] = {}
+    for key, value in rows:
+        tags[key] = value
+    return tags
 
 def agent_exists(session: Session, agent_name: str) -> bool:
     """Return True if an agent with the given name exists."""
@@ -333,6 +338,7 @@ def list_agents_from_db(session: Session) -> list[AgentInfo]:
 
         best_run_info: RunInfo | None = None
         if best_run_obj is not None:
+            best_run_tags = _get_tags_for_run(session, best_run_obj.id)
             best_run_info = RunInfo(
                 run_id=str(best_run_obj.id),
                 agent_name=agent_name,
@@ -357,7 +363,7 @@ def list_agents_from_db(session: Session) -> list[AgentInfo]:
                     if best_run_obj.total_tasks
                     else 0.0
                 ),
-                metadata=TaskMetadata(),
+                metadata=TaskMetadata(tags=best_run_tags),
             )
 
         agent_infos.append(
@@ -384,6 +390,7 @@ def get_runs_by_agent_from_db(session: Session, agent_name: str) -> list[RunInfo
     run_infos: list[RunInfo] = []
 
     for run in runs:
+        run_tags = _get_tags_for_run(session, run.id)
         run_infos.append(
             RunInfo(
                 run_id=str(run.id),
@@ -407,7 +414,7 @@ def get_runs_by_agent_from_db(session: Session, agent_name: str) -> list[RunInfo
                     if run.total_tasks
                     else 0.0
                 ),
-                metadata=TaskMetadata(),
+                metadata=TaskMetadata(tags=run_tags),
             )
         )
 
@@ -451,6 +458,13 @@ def get_run_details_from_db(session: Session, run_ids: list[str]) -> list[RunDet
             # Reconstruct Metrics from stored dict
             metrics = Metrics.model_validate(tr_db.metrics)
 
+            # Reconstruct TaskMetadata (including tags and any extra fields)
+            metadata = (
+                TaskMetadata.model_validate(tr_db.task_metadata)
+                if tr_db.task_metadata is not None
+                else TaskMetadata()
+            )
+
             tasks.append(
                 TaskResult(
                     run_id=str(run.id),
@@ -460,7 +474,7 @@ def get_run_details_from_db(session: Session, run_ids: list[str]) -> list[RunDet
                     agent_name=agent_name,
                     status=tr_db.status,
                     metrics=metrics,
-                    metadata=TaskMetadata(),
+                    metadata=metadata,
                     results=tr_db.results,
                     failure_reason=tr_db.failure_reason,
                 )

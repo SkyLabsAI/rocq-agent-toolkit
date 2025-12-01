@@ -118,81 +118,30 @@ async def health_check(session: Session = Depends(get_session)) -> dict[str, Any
     }
 
 
-@app.post("/api/ingest", response_model=IngestionResponse)
-async def ingest_jsonl(
-    file: UploadFile | None = File(
-        default=None, description="Optional JSONL file containing task results"
-    ),
-    items: list[TaskResult] | None = Body(
-        default=None,
-        description="Optional list of task result JSON objects matching the TaskResult schema",
-    ),
-    source_file_name: str | None = Query(
-        default=None,
-        description="Optional source file name for the task results, when providing list of tasks",
-    ),
-    session: Session = Depends(get_session),
+def _perform_ingestion(
+    *,
+    session: Session,
+    task_results: list[TaskResult],
+    source_file_name: str | None,
 ) -> IngestionResponse:
     """
-    Ingest task results into the database.
-
-    This endpoint accepts either:
-    - A JSONL file upload where each line is a JSON object matching `TaskResult`
-    - A JSON array of `TaskResult` objects in the request body
-
-    All ingested data is normalised into the relational schema and run-level
-    aggregates are computed for each run.
+    Common ingestion logic used by both the JSON and file-based endpoints.
     """
-    parsed_items: list[TaskResult] = []
-
-    if file is not None:
-        if not source_file_name:
-            source_file_name = file.filename
-        raw_bytes = await file.read()
-        text = raw_bytes.decode("utf-8")
-        parse_error_count = 0
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                # Let Pydantic handle the JSON parsing & validation
-                parsed_items.append(TaskResult.model_validate_json(line))
-            except Exception as e:  # pragma: no cover - validation guard rail
-                # Log and skip invalid JSONL entries instead of failing the entire request,
-                # mirroring the behaviour of the previous file-based loader.
-                parse_error_count += 1
-                logger.warning(
-                    "Skipping invalid JSONL entry in %s at line %d: %s",
-                    source_file_name or "<upload>",
-                    line_number,
-                    e,
-                )
-
-        if parse_error_count:
-            logger.info(
-                "Completed ingestion with %d invalid JSONL lines skipped for file %s",
-                parse_error_count,
-                source_file_name or "<upload>",
-            )
-
-    if items:
-        parsed_items.extend(items)
-
-    if not parsed_items:
+    if not task_results:
         raise HTTPException(
             status_code=400,
-            detail="No task results provided. Supply a JSONL file or a non-empty list of items.",
+            detail="No task results provided. Supply at least one TaskResult.",
         )
 
     try:
         stats = ingest_task_results(
             session=session,
-            task_results=parsed_items,
+            task_results=task_results,
             source_file_name=source_file_name,
         )
         session.commit()
     except HTTPException:
+        # Bubble up HTTPExceptions unchanged
         raise
     except Exception as e:  # pragma: no cover - defensive logging
         session.rollback()
@@ -212,6 +161,90 @@ async def ingest_jsonl(
         message=message,
         runs_ingested=stats["runs_ingested"],
         tasks_ingested=stats["tasks_ingested"],
+    )
+
+
+@app.post("/api/ingest", response_model=IngestionResponse)
+async def ingest_items(
+    items: list[TaskResult] = Body(
+        ...,
+        description="JSON array of task result objects matching the TaskResult schema",
+    ),
+    source_file_name: str = Query(
+        description=(
+            "Source file name for the task results"
+        ),
+    ),
+    session: Session = Depends(get_session),
+) -> IngestionResponse:
+    """
+    Ingest task results provided as a JSON array in the request body.
+
+    This endpoint expects the request body to be a JSON array of `TaskResult`
+    objects. It does not support file uploads.
+    """
+    return _perform_ingestion(
+        session=session,
+        task_results=items,
+        source_file_name=source_file_name,
+    )
+
+
+@app.post("/api/ingest/file", response_model=IngestionResponse)
+async def ingest_jsonl_file(
+    file: UploadFile = File(
+        ...,
+        description="JSONL file where each line is a JSON object matching `TaskResult`",
+    ),
+    source_file_name: str | None = Query(
+        default=None,
+        description="Optional source file name for the task results; defaults to the uploaded file name",
+    ),
+    session: Session = Depends(get_session),
+) -> IngestionResponse:
+    """
+    Ingest task results from a JSONL file upload.
+
+    Each non-empty line in the uploaded file must be a JSON object matching
+    the `TaskResult` schema. Invalid lines are logged and skipped.
+    """
+    if not source_file_name:
+        source_file_name = file.filename
+
+    raw_bytes = await file.read()
+    text = raw_bytes.decode("utf-8")
+    parsed_items: list[TaskResult] = []
+    parse_error_count = 0
+
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            # Let Pydantic handle the JSON parsing & validation
+            parsed_items.append(TaskResult.model_validate_json(line))
+        except Exception as e:  # pragma: no cover - validation guard rail
+            # Log and skip invalid JSONL entries instead of failing the entire request,
+            # mirroring the behaviour of the previous file-based loader.
+            parse_error_count += 1
+            logger.warning(
+                "Skipping invalid JSONL entry in %s at line %d: %s",
+                source_file_name or "<upload>",
+                line_number,
+                e,
+            )
+
+    if parse_error_count:
+        logger.info(
+            "Completed ingestion with %d invalid JSONL lines skipped for file %s",
+            parse_error_count,
+            source_file_name or "<upload>",
+        )
+
+    return _perform_ingestion(
+        session=session,
+        task_results=parsed_items,
+        source_file_name=source_file_name,
     )
 
 
