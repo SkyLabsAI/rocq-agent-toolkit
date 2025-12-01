@@ -4,14 +4,14 @@
   $ cat > test.v
 
   $ cat > calls.txt <<EOF
-  > text_query {text:"About nil.",index:0}
-  > text_query {text:"About nil.",index:1}
-  > json_query {text:"About nil.",index:0}
-  > text_query_all {text:"Eval lazy in I.",indices:[]}
-  > text_query_all {text:"Eval lazy in I.",indices:[0]}
-  > text_query_all {text:"Eval lazy in I.",indices:[0,0]}
+  > query_text {text:"About nil.",index:0}
+  > query_text {text:"About nil.",index:1}
+  > query_json {text:"About nil.",index:0}
+  > query_text_all {text:"Eval lazy in I.",indices:[]}
+  > query_text_all {text:"Eval lazy in I.",indices:[0]}
+  > query_text_all {text:"Eval lazy in I.",indices:[0,0]}
   > run_command ["Goal True."]
-  > text_query_all {text:"idtac \"hello,\"; idtac \"world!\".",indices:null}
+  > query_text_all {text:"idtac \"hello,\"; idtac \"world!\".",indices:null}
   > run_command ["Abort."]
   > EOF
 

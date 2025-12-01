@@ -189,7 +189,7 @@ class RDM_Tests:
             lhs: str = "nat",
             rhs: str = "Set",
     ) -> None:
-        query_reply = rdm.text_query_all(f"Check {term}.", indices=None)
+        query_reply = rdm.query_text_all(f"Check {term}.", indices=None)
         assert not isinstance(query_reply, RocqDocManager.Err)
         assert len(query_reply) == 1
         parts = [s.strip() for s in query_reply[0].split(":")]

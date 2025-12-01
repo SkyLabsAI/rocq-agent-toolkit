@@ -181,26 +181,6 @@ API Methods
 - Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
 
-### `json_query`
-
-- Description: runs the given query at the cursor, not updating the state.
-- Arguments (in order, or named):
-  - text: text of the query (as a string).
-  - index: feedback item index for the result (as an integer).
-- Response payload: arbitrary JSON data, as returned by the query as JSON text, taken from the "info" / "notice" feedback with the given index (as a JSON value).
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
-
-### `json_query_all`
-
-- Description: runs the given query at the cursor, not updating the state.
-- Arguments (in order, or named):
-  - text: text of the query (as a string).
-  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
-- Response payload: a list where each element is a JSON value.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
-
 ### `load_file`
 
 - Description: adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors).
@@ -214,6 +194,46 @@ API Methods
 - Arguments (in order, or named):
   - text: text of the query (as a string).
 - Response payload: an instance of the `QueryResult` object.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
+### `query_json`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - index: feedback item index for the result (as an integer).
+- Response payload: arbitrary JSON data, as returned by the query as JSON text, taken from the "info" / "notice" feedback with the given index (as a JSON value).
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
+### `query_json_all`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
+- Response payload: a list where each element is a JSON value.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
+### `query_text`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - index: feedback item index for the result (as an integer).
+- Response payload: query's result, as taken from the "info"  "notice" feedback at the given index (as a string).
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
+### `query_text_all`
+
+- Description: runs the given query at the cursor, not updating the state.
+- Arguments (in order, or named):
+  - text: text of the query (as a string).
+  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
+- Response payload: a list where each element is a string.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
@@ -240,24 +260,4 @@ API Methods
 - Description: advance the cursor by stepping over an unprocessed item.
 - Response payload: data for the command that was run, if any (as either `null` or an instance of the `CommandData` object).
 - Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
-- Failure mode: recoverable failure.
-
-### `text_query`
-
-- Description: runs the given query at the cursor, not updating the state.
-- Arguments (in order, or named):
-  - text: text of the query (as a string).
-  - index: feedback item index for the result (as an integer).
-- Response payload: query's result, as taken from the "info"  "notice" feedback at the given index (as a string).
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
-
-### `text_query_all`
-
-- Description: runs the given query at the cursor, not updating the state.
-- Arguments (in order, or named):
-  - text: text of the query (as a string).
-  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
-- Response payload: a list where each element is a string.
-- Error payload: a `null` value.
 - Failure mode: recoverable failure.

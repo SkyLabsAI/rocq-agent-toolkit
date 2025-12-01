@@ -161,22 +161,6 @@ class RocqDocManagerAPI(JsonRPCTP):
             return self.Err(result.message, data)
         return self.CommandData.from_dict(result.result)
 
-    def json_query(self, text: str, index: int) -> Any | JsonRPCTP.Err[None]:
-        """Runs the given query at the cursor, not updating the state."""
-        result = self.raw_request("json_query", [text, index])
-        if isinstance(result, self.Err):
-            data = None
-            return self.Err(result.message, data)
-        return result.result
-
-    def json_query_all(self, text: str, indices: list[int] | None) -> list[Any] | JsonRPCTP.Err[None]:
-        """Runs the given query at the cursor, not updating the state."""
-        result = self.raw_request("json_query_all", [text, indices])
-        if isinstance(result, self.Err):
-            data = None
-            return self.Err(result.message, data)
-        return [v1 for v1 in result.result]
-
     def load_file(self) -> None | JsonRPCTP.Err["RocqDocManagerAPI.RocqLoc | None"]:
         """Adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors)."""
         result = self.raw_request("load_file", [])
@@ -192,6 +176,38 @@ class RocqDocManagerAPI(JsonRPCTP):
             data = None
             return self.Err(result.message, data)
         return self.QueryResult.from_dict(result.result)
+
+    def query_json(self, text: str, index: int) -> Any | JsonRPCTP.Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = self.raw_request("query_json", [text, index])
+        if isinstance(result, self.Err):
+            data = None
+            return self.Err(result.message, data)
+        return result.result
+
+    def query_json_all(self, text: str, indices: list[int] | None) -> list[Any] | JsonRPCTP.Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = self.raw_request("query_json_all", [text, indices])
+        if isinstance(result, self.Err):
+            data = None
+            return self.Err(result.message, data)
+        return [v1 for v1 in result.result]
+
+    def query_text(self, text: str, index: int) -> str | JsonRPCTP.Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = self.raw_request("query_text", [text, index])
+        if isinstance(result, self.Err):
+            data = None
+            return self.Err(result.message, data)
+        return str(result.result)
+
+    def query_text_all(self, text: str, indices: list[int] | None) -> list[str] | JsonRPCTP.Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = self.raw_request("query_text_all", [text, indices])
+        if isinstance(result, self.Err):
+            data = None
+            return self.Err(result.message, data)
+        return [str(v1) for v1 in result.result]
 
     def revert_before(self, erase: bool, index: int) -> None:
         """Revert the cursor to an earlier point in the document."""
@@ -214,19 +230,3 @@ class RocqDocManagerAPI(JsonRPCTP):
             data = None if result.data is None else self.RocqLoc.from_dict(result.data)
             return self.Err(result.message, data)
         return None if result.result is None else self.CommandData.from_dict(result.result)
-
-    def text_query(self, text: str, index: int) -> str | JsonRPCTP.Err[None]:
-        """Runs the given query at the cursor, not updating the state."""
-        result = self.raw_request("text_query", [text, index])
-        if isinstance(result, self.Err):
-            data = None
-            return self.Err(result.message, data)
-        return str(result.result)
-
-    def text_query_all(self, text: str, indices: list[int] | None) -> list[str] | JsonRPCTP.Err[None]:
-        """Runs the given query at the cursor, not updating the state."""
-        result = self.raw_request("text_query_all", [text, indices])
-        if isinstance(result, self.Err):
-            data = None
-            return self.Err(result.message, data)
-        return [str(v1) for v1 in result.result]

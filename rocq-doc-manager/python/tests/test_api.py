@@ -30,11 +30,11 @@ class Test_API(RDM_Tests):
         assert isinstance(result, RocqDocManager.Resp)
         assert result == RocqDocManager.Resp([{'kind': "command", 'text': "Require Import Stdlib.ZArith.BinInt."}, {'kind': 'blanks', 'text': '\n\n'}, {'kind': 'command', 'text': 'About nil.'}, {'kind': 'blanks', 'text': '\n    '}, {'kind': 'command', 'text': 'Definition junk :=\n\n\nnat.'}, {'kind': 'blanks', 'text': '\n'}, {'kind': 'command', 'text': 'Check 12 < 42 <= 100.'}, {'kind': 'blanks', 'text': '\n\n\n'}, {'kind': 'command', 'text': 'Theorem test : forall x : nat, x = x.'}, {'kind': 'blanks', 'text': '\n'}, {'kind': 'command', 'text': 'Proof.'}, {'kind': 'blanks', 'text': '\n  '}, {'kind': 'command', 'text': 'intro x.'}, {'kind': 'blanks', 'text': '\n  '}, {'kind': 'command', 'text': 'reflexivity.'}, {'kind': 'blanks', 'text': '\n'}, {'kind': 'command', 'text': 'Qed.'}])
 
-    def test_Check_text_query(
+    def test_Check_query_text(
             self,
             transient_rdm: RocqDocManager,
     ) -> None:
-        check_reply = transient_rdm.text_query("Check nat.", 0)
+        check_reply = transient_rdm.query_text("Check nat.", 0)
         assert not isinstance(check_reply, RocqDocManager.Err)
         assert check_reply == "nat\n     : Set"
 

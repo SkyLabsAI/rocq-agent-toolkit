@@ -137,28 +137,28 @@ val get_feedback : t -> feedback list
     an error occurs (queries are not part of the document). *)
 val query : t -> text:string -> (command_data * feedback list, string) result
 
-(** [text_query ?index d ~text] is similar to [query d ~text], but the command
+(** [query_text ?index d ~text] is similar to [query d ~text], but the command
     result is extracted from the feedback, and returned as a string in case of
     success. If [index] is not given, the command [text] is assumed to produce
     exactly one "info" or "notice" feedback item, and its contents is taken as
     result of the query. Otherwise, the [index] identifies the "info"/"notice"
     feedback item to use as result. An [Error] is given when no valid feedback
     item is found. *)
-val text_query : ?index:int -> t -> text:string -> (string, string) result
+val query_text : ?index:int -> t -> text:string -> (string, string) result
 
-(** [text_query_all ?indices d ~text] is like [text_query d ~text], but it can
+(** [query_text_all ?indices d ~text] is like [query_text d ~text], but it can
     retrieve several "info"/"notice" feedback items at once. When [indices] is
     not given, then the list of all "info"/"notice" items is returned. When an
     [indices] value is given, then a list of same size containing the items at
     corresponding indices is returned. In the case where any of the indices is
     invalid, [Error] is returned. *)
-val text_query_all : ?indices:int list -> t -> text:string
+val query_text_all : ?indices:int list -> t -> text:string
   -> (string list, string) result
 
-(** [json_query ?index d ~text] is similar to [text_query ?index d ~text], but
+(** [query_json ?index d ~text] is similar to [query_text ?index d ~text], but
     the result is additionally turned into JSON data. If the command result is
     not a valid JSON string, an [Error] is returned. *)
-val json_query : ?index:int -> t -> text:string -> (json, string) result
+val query_json : ?index:int -> t -> text:string -> (json, string) result
 
-val json_query_all : ?indices:int list -> t -> text:string
+val query_json_all : ?indices:int list -> t -> text:string
   -> (json list, string) result

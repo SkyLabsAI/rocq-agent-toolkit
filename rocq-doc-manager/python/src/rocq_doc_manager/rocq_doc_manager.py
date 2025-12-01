@@ -2,7 +2,10 @@ import logging
 import re
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Literal, Self, override
+from typing import Any, Literal, Self, override
+from warnings import deprecated
+
+from jsonrpc_tp import JsonRPCTP
 
 from .dune_util import dune_env_hack
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
@@ -44,6 +47,24 @@ class RocqDocManager(API):
         super().__init__(args=args, cwd=chdir, env=env)
         self._file_path: str = file_path
         self._file_loaded: bool = False
+
+    # ===== BEGIN: deprecations ===============================================
+    @deprecated("use `query_text`")
+    def text_query(self, text: str, index: int) -> str | JsonRPCTP.Err[None]:
+        return self.query_text(text, index)
+
+    @deprecated("use `query_text_all`")
+    def text_query_all(self, text: str, indices: list[int] | None) -> list[str] | JsonRPCTP.Err[None]:
+        return self.query_text_all(text, indices)
+
+    @deprecated("use `query_json`")
+    def json_query(self, text: str, index: int) -> Any | JsonRPCTP.Err[None]:
+        return self.query_json(text, index)
+
+    @deprecated("use `query_json_all`")
+    def json_query_all(self, text: str, indices: list[int] | None) -> list[Any] | JsonRPCTP.Err[None]:
+        return self.query_json_all(text, indices)
+    # ===== END: deprecations =================================================
 
     # ===== BEGIN: API patches ================================================
     # Note: patch load_file to raise/warn if the file is reloaded, since
@@ -280,7 +301,7 @@ class RocqDocManager(API):
             if isinstance(command_reply, self.Err):
                 return command_reply
 
-            query_reply = self.text_query_all(
+            query_reply = self.query_text_all(
                 """match goal with
 | |- context[@ex ?TY (fun x => x = ?RESULT)] => idtac RESULT; idtac TY
 end.""",
@@ -367,7 +388,7 @@ end.""",
             - a Rocq name which is guaranteed to be fresh at the
                   current loc. within [mgr]
         """
-        return self.text_query(
+        return self.query_text(
             f"Eval lazy in ltac:(let nm := fresh \"{ident}\" in idtac nm).",
             0
         )

@@ -28,7 +28,7 @@ class JsonGoal(StateExtractor[list[Any]]):
         return f"all: {self._mod()}.goal_to_json."
 
     def _check_iris(self, rdm: RocqDocManager) -> bool:
-        result = rdm.text_query("Locate iris.proofmode.environments.envs_entails.", 0)
+        result = rdm.query_text("Locate iris.proofmode.environments.envs_entails.", 0)
         assert not isinstance(result, RocqDocManager.Err)
         return not result.startswith("No object")
 
@@ -53,7 +53,7 @@ class JsonGoal(StateExtractor[list[Any]]):
 
     _NO_GOAL_PREFIXES:list[str] = ["This subproof is complete, but there are some unfocused goals.","No more goals", "All the remaining goals are on the shelf"]
     def __call__(self, rdm: RocqDocManager) -> list[Any] | None:
-        result = rdm.text_query_all(self._tactic(), indices=None)
+        result = rdm.query_text_all(self._tactic(), indices=None)
         if isinstance(result, rdm.Err):
             if "Init.Not_focussed" in result.message:
                 return []

@@ -112,7 +112,7 @@ let command_data =
   in
   API.declare_object api ~name:"CommandData"
     ~descr:"data gathered while running a Rocq command" ~encode ~decode fields
- 
+
 let text_args =
   A.add ~name:"text" ~descr:"text of the command to insert" S.string A.nil
 
@@ -320,11 +320,11 @@ let query_args =
   A.nil
 
 let _ =
-  API.declare_full api ~name:"text_query" ~descr:"runs the given query at \
+  API.declare_full api ~name:"query_text" ~descr:"runs the given query at \
     the cursor, not updating the state" ~args:query_args ~ret:S.string
     ~ret_descr:"query's result, as taken from the \"info\" \ \"notice\" \
       feedback at the given index" ~err:S.null @@ fun d (text, (index, ())) ->
-  let res = Document.text_query d ~text ~index in
+  let res = Document.query_text d ~text ~index in
   (d, Result.map_error (fun s -> ((), s)) res)
 
 let query_all_args =
@@ -334,26 +334,26 @@ let query_all_args =
   A.nil
 
 let _ =
-  API.declare_full api ~name:"text_query_all" ~descr:"runs the given query \
+  API.declare_full api ~name:"query_text_all" ~descr:"runs the given query \
     at the cursor, not updating the state" ~args:query_all_args
     ~ret:S.(list string) ~err:S.null @@ fun d (text, (indices, ())) ->
-  let res = Document.text_query_all d ~text ?indices in
+  let res = Document.query_text_all d ~text ?indices in
   (d, Result.map_error (fun s -> ((), s)) res)
 
 let _ =
-  API.declare_full api ~name:"json_query" ~descr:"runs the given query at \
+  API.declare_full api ~name:"query_json" ~descr:"runs the given query at \
     the cursor, not updating the state" ~args:query_args ~ret:S.any
     ~ret_descr:"arbitrary JSON data, as returned by the query as JSON text, \
     taken from the \"info\" / \"notice\" feedback with the given index"
     ~err:S.null @@ fun d (text, (index, ())) ->
-  let res = Document.json_query d ~text ~index in
+  let res = Document.query_json d ~text ~index in
   (d, Result.map_error (fun s -> ((), s)) res)
 
 let _ =
-  API.declare_full api ~name:"json_query_all" ~descr:"runs the given query \
+  API.declare_full api ~name:"query_json_all" ~descr:"runs the given query \
     at the cursor, not updating the state" ~args:query_all_args
     ~ret:S.(list any) ~err:S.null @@ fun d (text, (indices, ())) ->
-  let res = Document.json_query_all d ~text ?indices in
+  let res = Document.query_json_all d ~text ?indices in
   (d, Result.map_error (fun s -> ((), s)) res)
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->

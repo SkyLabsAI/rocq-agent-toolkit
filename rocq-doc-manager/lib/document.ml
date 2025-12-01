@@ -315,7 +315,7 @@ let query : t -> text:string ->
   | Error(s) -> Error(s)
   | Ok(data) -> Ok(data, get_feedback d)
 
-let text_query : ?index:int -> t -> text:string -> (string, string) result =
+let query_text : ?index:int -> t -> text:string -> (string, string) result =
     fun ?index d ~text ->
   match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
   let pred {kind; _} = kind = `Notice || kind = `Info in
@@ -329,7 +329,7 @@ let text_query : ?index:int -> t -> text:string -> (string, string) result =
   | None    -> Error("no \"info\" / \"notice\" feedback at the given index")
   | Some(f) -> Ok(f.text)
 
-let text_query_all : ?indices:int list -> t -> text:string ->
+let query_text_all : ?indices:int list -> t -> text:string ->
     (string list, string) result = fun ?indices d ~text ->
   match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
   let pred {kind; _} = kind = `Notice || kind = `Info in
@@ -350,14 +350,14 @@ let text_query_all : ?indices:int list -> t -> text:string ->
   in
   build_res [] indices
 
-let json_query : ?index:int -> t -> text:string -> (json, string) result =
+let query_json : ?index:int -> t -> text:string -> (json, string) result =
     fun ?index d ~text ->
-  match text_query ?index d ~text with Error(s) -> Error(s) | Ok(text) ->
+  match query_text ?index d ~text with Error(s) -> Error(s) | Ok(text) ->
   try Ok(Yojson.Safe.from_string text) with Yojson.Json_error(_) ->
   Error("the query result does not contain valid JSON")
 
-let json_query_all : ?indices:int list -> t -> text:string ->
+let query_json_all : ?indices:int list -> t -> text:string ->
     (json list, string) result = fun ?indices d ~text ->
-  match text_query_all ?indices d ~text with Error(s) -> Error(s) | Ok(l) ->
+  match query_text_all ?indices d ~text with Error(s) -> Error(s) | Ok(l) ->
   try Ok(List.map Yojson.Safe.from_string l) with Yojson.Json_error(_) ->
   Error("Not all results of the query contain valid JSON")
