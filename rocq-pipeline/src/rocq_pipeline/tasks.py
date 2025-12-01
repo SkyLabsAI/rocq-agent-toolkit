@@ -14,6 +14,11 @@ def get_task_id(task: Task) -> str:
     return f"{task['file']}#{task['locator']}"
 
 
+def get_task_tags(task: Task) -> set[str]:
+    validate_task_schema(task)
+    return set(task.get("tags", list()))
+
+
 def validate_task_schema(task: Task) -> None:
     if not isinstance(task, dict):
         raise ValueError(
@@ -26,6 +31,18 @@ def validate_task_schema(task: Task) -> None:
             f"Task should contain at least ({', '.join(expected_keys)}),",
             f"but had ({', '.join(task.keys())}): {task}"
         ]))
+    for k in expected_keys:
+        v = task[k]
+        assert isinstance(v, str), \
+            f"{k} should be a str, but got {type(v)}: {v}"
+
+    if "tags" in task.keys():
+        tags = task["tags"]
+        assert isinstance(tags, list), \
+            f"tags should be a list, but got {type(tags)}: {tags}"
+        for tag in tags:
+            assert isinstance(tag, str), \
+                f"tag should be a str, but got {type(tag)}: {tag}"
 
     if Path(task["file"]).suffix != ".v":
         raise ValueError("Task file should be a Rocq file (.v): {task}")

@@ -115,6 +115,7 @@ class FullTask:
     id: str
     file: Path
     locator: Locator
+    tags: set[str]
     rocq_args: list[str] | None
     prompt: str | None
 
@@ -196,6 +197,11 @@ def run_task(
     # or in a way that it can detect the changes in the task input path or dataset.
     dataset_id = os.getenv("DATASET_NAME", "default")
 
+    # TODO: consider improving support for valueless tags, e.g. by using
+    # str | None for the value
+    for task_tag in task.tags:
+        tags.value.update({f"TASK_{task_tag}": ""})
+
     return task_result.to_task_output(
         run_id=run_id,
         task_kind=task.locator.task_kind(),
@@ -227,10 +233,12 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
         # TODO: find a better name for tasks
         id = Tasks.get_task_id(raw)
         file = wdir / raw["file"]
+        tags: set[str] = Tasks.get_task_tags(raw)
         return FullTask(
             id,
             file,
             locator.parse_locator(raw["locator"]),
+            tags,
             None,
             raw["prompt"] if "prompt" in raw else None,
         )
