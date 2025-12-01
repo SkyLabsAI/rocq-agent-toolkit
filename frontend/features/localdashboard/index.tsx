@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
 import Layout from '@/layouts/common';
 import AgentDetails from './AgentDetails';
 import { useLocalDashboard } from '@/hooks/useLocalDashboard';
@@ -12,7 +12,7 @@ import TaskDetailsModal from '../taskDetailsModal';
 import AgentListIcon from '@/icons/agent-list';
 import { AgentSummaryTemp } from '@/services/dataservice';
 import StickyCompareBar from '@/components/StickyCompareBar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const LocalDashboard: React.FC = () => {
   const {
@@ -28,18 +28,60 @@ const LocalDashboard: React.FC = () => {
   const { selectedRun, setSelectedRun } = useSelectedRun();
   const [activeAgent, setActiveAgent] = React.useState<string | null>(null);
   const [selectedAgents, setSelectedAgent] = useState<AgentSummaryTemp[]>([]);
+  const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const compareSelected = () => {
     if (selectedAgents.length < 1) return;
     const query = new URLSearchParams({
-      agents: selectedAgents.map(a => a.agentName).join(','),
+      agents: selectedAgents.map((a)=>a.agentName).join(',')
     }).toString();
     navigate({
-      pathname: '/compare/agents',
-      search: `?${query}`,
+      pathname: "/compare/agents",
+      search: `?${query}`
     });
   };
+
+  const compareSelectedRuns = () => {
+    if (selectedRuns.length < 1) return;
+    const query = new URLSearchParams({
+      runs: selectedRuns.join(',')
+    }).toString();
+    navigate({
+      pathname: "/compare",
+      search: `?${query}`
+    });
+  };
+
+  const toggleRunSelection = (run: Run) => {
+    setSelectedRuns(prev => 
+      prev.includes(run.run_id) 
+        ? prev.filter(id => id !== run.run_id)
+        : [...prev, run.run_id]
+    );
+  };
+
+  const clearSelectedRuns = () => {
+    setSelectedRuns([]);
+  };
+
+  // Clear selected runs when navigating to run details view
+  useEffect(() => {
+    if (selectedRun) {
+      clearSelectedRuns();
+      setSelectedAgent([]);
+    }
+  }, [selectedRun]);
+
+  // Clear selected runs when navigating to different pages
+  useEffect(() => {
+    const isComparePage = location.pathname.startsWith('/compare');
+    if (isComparePage) {
+      clearSelectedRuns();
+      setSelectedAgent([]);
+    }
+  }, [location.pathname]);
 
   return (
     <Layout title='Internal Dashboard'>
@@ -138,6 +180,10 @@ const LocalDashboard: React.FC = () => {
                           }
                         });
                       }}
+                      selectedRuns={selectedRuns}
+                      toggleRunSelection={toggleRunSelection}
+                      clearSelectedRuns={clearSelectedRuns}
+                      compareSelectedRuns={compareSelectedRuns}
                     />
                   ))}
               </tbody>
@@ -173,6 +219,15 @@ const LocalDashboard: React.FC = () => {
         }}
         attribute='Agents'
       />
+      
+      {selectedRuns.length > 0 && !selectedRun && (
+        <StickyCompareBar 
+          selectedItems={selectedRuns} 
+          onCompareSelected={compareSelectedRuns} 
+          onClearSelection={clearSelectedRuns} 
+          attribute='Runs'
+        />
+      )}
     </Layout>
   );
 };
