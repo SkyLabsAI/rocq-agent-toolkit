@@ -10,8 +10,24 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-rat_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
       - POSTGRES_DB=${POSTGRES_DB:-rat_db}
-    volumes:
-      - rat_db_data:/var/lib/postgresql/data
+    # TODO: Add the volume back
+    # remvoing it for testing purposes
+    # volumes:
+    #   - rat_db_data:/var/lib/postgresql/data
+    networks:
+      - rocq-agent-network
+
+  # Adding pg admin for testing 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: rocq-agent-toolkit-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    depends_on:
+      - database
     networks:
       - rocq-agent-network
 
