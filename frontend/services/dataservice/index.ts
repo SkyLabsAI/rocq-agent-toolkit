@@ -3,6 +3,7 @@ import {
   AgentSummary,
   RunDetailsResponse,
   TaskOutput,
+  Benchmark,
 } from '@/types/types';
 import axios from 'axios';
 import { config } from '@/config/env';
@@ -90,118 +91,47 @@ const getDataMock: () => Promise<AgentSummary[]> = async () => {
 
   const mockData: AgentSummary[] = [
     {
-      agent_name: 'ProofBot-v2.1-Orion',
-      total_runs: 12,
+      agent_name: 'agentA',
+      total_runs: 10,
       best_run: {
-        run_id: 'run_proofbot_001',
-        agent_name: 'ProofBot-v2.1-Orion',
+        run_id: 'run_agentA_001',
+        agent_name: 'agentA',
         timestamp_utc: new Date(Date.now() - 2 * 86400000).toISOString(),
-        total_tasks: 45,
-        success_count: 35,
-        failure_count: 10,
-        success_rate: 0.78,
-        score: 0.85,
-        avg_total_tokens: 8550,
-        avg_cpu_time_sec: 12.4,
-        avg_llm_invocation_count: 8,
+        total_tasks: 6,
+        success_count: 5,
+        failure_count: 1,
+        success_rate: 0.83,
+        score: 0.9,
+        avg_total_tokens: 5000,
+        avg_cpu_time_sec: 10.0,
+        avg_llm_invocation_count: 7,
         metadata: {
           tags: {
-            version: 'v2.1',
-            model: 'orion',
-            environment: 'production'
+            version: 'A',
+            environment: 'test',
           },
         },
       },
     },
     {
-      agent_name: 'CodeGen-Alpha',
+      agent_name: 'agentB',
       total_runs: 8,
       best_run: {
-        run_id: 'run_codegen_001',
-        agent_name: 'CodeGen-Alpha',
+        run_id: 'run_agentB_001',
+        agent_name: 'agentB',
         timestamp_utc: new Date(Date.now() - 3 * 86400000).toISOString(),
-        total_tasks: 30,
-        success_count: 25,
-        failure_count: 5,
-        success_rate: 0.83,
-        score: 0.79,
-        avg_total_tokens: 4200,
-        avg_cpu_time_sec: 6.8,
-        avg_llm_invocation_count: 4,
+        total_tasks: 6,
+        success_count: 4,
+        failure_count: 2,
+        success_rate: 0.67,
+        score: 0.8,
+        avg_total_tokens: 4800,
+        avg_cpu_time_sec: 12.0,
+        avg_llm_invocation_count: 6,
         metadata: {
           tags: {
-            version: 'alpha',
-            environment: 'staging'
-          },
-        },
-      },
-    },
-    {
-      agent_name: 'ProofBot-v1.9-Gemini',
-      total_runs: 15,
-      best_run: {
-        run_id: 'run_gemini_003',
-        agent_name: 'ProofBot-v1.9-Gemini',
-        timestamp_utc: new Date(Date.now() - 1 * 86400000).toISOString(),
-        total_tasks: 52,
-        success_count: 42,
-        failure_count: 10,
-        success_rate: 0.81,
-        score: 0.88,
-        avg_total_tokens: 9800,
-        avg_cpu_time_sec: 15.2,
-        avg_llm_invocation_count: 10,
-        metadata: {
-          tags: {
-            version: 'v1.9',
-            model: 'gemini',
-            environment: 'production'
-          },
-        },
-      },
-    },
-    {
-      agent_name: 'ReviewBot-Gamma',
-      total_runs: 5,
-      best_run: {
-        run_id: 'run_review_002',
-        agent_name: 'ReviewBot-Gamma',
-        timestamp_utc: new Date(Date.now() - 4 * 86400000).toISOString(),
-        total_tasks: 20,
-        success_count: 16,
-        failure_count: 4,
-        success_rate: 0.80,
-        score: 0.75,
-        avg_total_tokens: 3500,
-        avg_cpu_time_sec: 4.5,
-        avg_llm_invocation_count: 3,
-        metadata: {
-          tags: {
-            version: 'gamma',
-            type: 'code-review'
-          },
-        },
-      },
-    },
-    {
-      agent_name: 'DataCruncher-v1',
-      total_runs: 6,
-      best_run: {
-        run_id: 'run_data_001',
-        agent_name: 'DataCruncher-v1',
-        timestamp_utc: new Date(Date.now() - 5 * 86400000).toISOString(),
-        total_tasks: 25,
-        success_count: 18,
-        failure_count: 7,
-        success_rate: 0.72,
-        score: 0.70,
-        avg_total_tokens: 5200,
-        avg_cpu_time_sec: 18.7,
-        avg_llm_invocation_count: 5,
-        metadata: {
-          tags: {
-            version: 'v1',
-            type: 'data-analysis'
+            version: 'B',
+            environment: 'test',
           },
         },
       },
@@ -271,20 +201,44 @@ const getRunDetailsMock = async (
 ): Promise<RunDetailsResponse[]> => {
   await new Promise(resolve => setTimeout(resolve, 800));
 
+  // For this mock, always return 2 runs: agentA and agentB
+  // Each has 6 tasks: 3 common (task_001, task_002, task_003), 3 unique
+  const agentRunMap: Record<string, { agentName: string; uniqueTasks: string[] }> = {
+    'run_agentA_001': {
+      agentName: 'agentA',
+      uniqueTasks: ['task_A1', 'task_A2', 'task_A3'],
+    },
+    'run_agentB_001': {
+      agentName: 'agentB',
+      uniqueTasks: ['task_B1', 'task_B2', 'task_B3'],
+    },
+  };
+
+  const commonTasks = ['task_001', 'task_002', 'task_003'];
+
   const mockRunDetails: RunDetailsResponse[] = runIds.map(runId => {
-    const agentName = runId.split('_')[1] || 'UnknownAgent';
-    const totalTasks = Math.floor(Math.random() * 30) + 10; // 10-40 tasks
+    const agentInfo = agentRunMap[runId] || { agentName: 'UnknownAgent', uniqueTasks: [] };
     const tasks: TaskOutput[] = [];
 
-    for (let i = 0; i < totalTasks; i++) {
-      tasks.push(generateMockTaskOutput(runId, agentName, i));
+    // Add common tasks
+    for (let i = 0; i < commonTasks.length; i++) {
+      tasks.push({
+        ...generateMockTaskOutput(runId, agentInfo.agentName, i),
+        task_id: commonTasks[i],
+      });
+    }
+    // Add unique tasks
+    for (let i = 0; i < agentInfo.uniqueTasks.length; i++) {
+      tasks.push({
+        ...generateMockTaskOutput(runId, agentInfo.agentName, i + 10),
+        task_id: agentInfo.uniqueTasks[i],
+      });
     }
 
     return {
       run_id: runId,
-      agent_name: agentName,
-      total_tasks: totalTasks,
-
+      agent_name: agentInfo.agentName,
+      total_tasks: tasks.length,
       tasks,
     };
   });
@@ -451,6 +405,40 @@ const refreshDataMock = async (): Promise<{
 };
 
 export const refreshData = USE_MOCK_DATA ? refreshDataMock : refreshDataReal;
+
+// Benchmarks API
+const getBenchmarksReal: () => Promise<Benchmark[]> = async () => {
+  const response = await axios.get(`${config.DATA_API}/benchmarks`);
+  return response.data as Benchmark[];
+};
+
+const getBenchmarksMock: () => Promise<Benchmark[]> = async () => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
+
+  const mockBenchmarks: Benchmark[] = [
+    {
+      id: 'benchmark_001',
+      name: 'Basic Arithmetic Proofs',
+    },
+    {
+      id: 'benchmark_002',
+      name: 'List Operations',
+    },
+    {
+      id: 'benchmark_003',
+      name: 'Advanced Type Theory',
+    },
+    {
+      id: 'benchmark_004',
+      name: 'Functional Programming Fundamentals',
+    },
+  ];
+
+  console.log('Fetched benchmarks (MOCK):', mockBenchmarks);
+  return mockBenchmarks;
+};
+
+export const getBenchmarks = USE_MOCK_DATA ? getBenchmarksMock : getBenchmarksReal;
 
 export type AgentSummaryTemp = {
   agentName: string;

@@ -3,6 +3,7 @@
 import AgentCompareTable from "@/features/agents-compare";
 import LocalDashboard from "@/features/localdashboard";
 import ComparePage from "@/features/runs-compare";
+import BenchmarksList from "@/features/benchmarks";
 
 import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -11,7 +12,8 @@ export default function Home() {
   return (
    <MemoryRouter initialEntries={['/']}>
   <Routes>
-    <Route path="/" element={<LocalDashboard />} />
+    <Route path="/" element={<BenchmarksList />} />
+    <Route path="/agents" element={<LocalDashboard />} />
     <Route path="/compare/agents" element={<AgentCompareTable/>} />
     <Route path="/compare" element={<ComparePage/>} />
 
