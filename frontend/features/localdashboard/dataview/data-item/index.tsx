@@ -20,9 +20,9 @@ interface DataItemProps {
 export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { agents } = useBenchmarkAgents(benchmark.dataset_id);
+  const { agents: agentData } = useBenchmarkAgents(benchmark.dataset_id);
 
-  const { agentData, agentDetailData, modalState, closeModal, openCodeModal } =
+  const {  modalState, closeModal, openCodeModal } =
     useLocalDashboard();
 
   const { selectedRun, setSelectedRun } = useSelectedRun();

@@ -481,6 +481,7 @@ const getBenchmarksMock = async (): Promise<Benchmark[]> => {
 export const getBenchmarks = USE_MOCK_DATA ? getBenchmarksMock : getBenchmarksReal;
 
 const getBenchmarkAgentsReal = async (benchmarkId: string): Promise<AgentSummary[]> => {
+  console.log("Fetching agents for benchmark:", benchmarkId);
   const response = await axios.get(`${config.DATA_API}/${benchmarkId}/agents`);
   return response.data as AgentSummary[];
 };
