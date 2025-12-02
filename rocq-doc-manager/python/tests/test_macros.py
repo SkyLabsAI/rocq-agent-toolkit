@@ -100,12 +100,16 @@ class Test_RDM_macros(RDM_Tests):
                 RocqDocManager.Err
             )
 
+            assert transient_rdm.run_command("idtac.") == RocqDocManager.Err(
+                message="No such goal.",
+                data=None,
+            )
+
             current_goal_reply = transient_rdm.current_goal()
             assert not isinstance(current_goal_reply, RocqDocManager.Err)
             assert current_goal_reply is not None, \
                 "When shelved goals remain, the current goal must not be None"
             assert current_goal_reply == "\n1 goal\n\ngoal 1 is:\n nat"
-            assert False, "Need to communicate that the goal is actually shelved."
 
     @given(
         n=st.integers(min_value=0, max_value=100),
