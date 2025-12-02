@@ -4,6 +4,9 @@ import { RefreshIcon } from '@/icons/refresh';
 import SlidingTabs from '@/components/base/ui/sliding-tabs';
 import AgentView from './agentview';
 import DataView from './dataview';
+import { Agent } from 'http';
+import AgentListIcon from '@/icons/agent-list';
+import { DataSetListIcon } from '@/icons/dataset-list';
 
 type SortableKey = 'agent_name' | 'success_rate' | 'avg_cpu_time_sec' | 'avg_total_tokens' | 'avg_llm_invocation_count';
 
@@ -33,7 +36,7 @@ return   <div className='backdrop-blur-sm border bg-elevation-surface border-ele
 
       <div className='items-center flex gap-2'>
         <SlidingTabs
-          tabs={[{id:"agents", label:"Agents"},{id:"datasets", label:"Datasets"} ]}
+          tabs={[{id:"agents", label:"Agents",icon:<AgentListIcon className='size-[15px]'/>},{id:"datasets", label:"Datasets", icon:<DataSetListIcon className='size-[15px]'/>} ]}
           defaultTab='agents'
           onTabChange={(tabId) => setActiveTab(tabId as 'agents' | 'datasets')}
         />
