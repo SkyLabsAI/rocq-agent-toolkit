@@ -197,10 +197,8 @@ def run_task(
     # or in a way that it can detect the changes in the task input path or dataset.
     dataset_id = os.getenv("DATASET_NAME", "default")
 
-    # TODO: consider improving support for valueless tags, e.g. by using
-    # str | None for the value
     for task_tag in task.tags:
-        tags.value.update({f"TASK_{task_tag}": ""})
+        tags.value.update({f"TASK_{task_tag}": task_tag})
 
     return task_result.to_task_output(
         run_id=run_id,
