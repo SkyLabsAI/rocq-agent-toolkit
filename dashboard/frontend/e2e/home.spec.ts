@@ -9,14 +9,7 @@ async function waitForPageLoad(page: Page) {
     await page.waitForLoadState('networkidle');
 }
 
-/**
- * Run accessibility checks on the page
- */
-async function checkAccessibility(page: Page) {
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-    return accessibilityScanResults;
-}
+
 
 test.describe('Homepage / Dashboard', () => {
     test.beforeEach(async ({ page }) => {

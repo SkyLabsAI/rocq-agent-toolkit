@@ -5,14 +5,14 @@
  */
 export type TaskKind =
   | {
-      /** Fully proving a Rocq goal. */
-      kind: 'FullProofTask';
-    }
+    /** Fully proving a Rocq goal. */
+    kind: 'FullProofTask';
+  }
   | {
-      /** User defined task kind. */
-      kind: 'OtherTask';
-      value: string;
-    }
+    /** User defined task kind. */
+    kind: 'OtherTask';
+    value: string;
+  }
   | string;
 
 /**
@@ -27,15 +27,15 @@ export type TaskStatus =
  */
 export type ResourceExhaustionKind =
   | {
-      /** Exceeded timelimit in seconds. */
-      kind: 'Timeout';
-      value: number; // int
-    }
+    /** Exceeded timelimit in seconds. */
+    kind: 'Timeout';
+    value: number; // int
+  }
   | {
-      /** Exceeded LLM call limit. */
-      kind: 'MaxLLMCalls';
-      value: number; // int
-    };
+    /** Exceeded LLM call limit. */
+    kind: 'MaxLLMCalls';
+    value: number; // int
+  };
 
 /**
  * Reason for task failure.
@@ -43,20 +43,20 @@ export type ResourceExhaustionKind =
 export type FailureReason =
   | string[]
   | {
-      /** Resource exhaustion. */
-      kind: 'ResourceExhaustion';
-      value: ResourceExhaustionKind;
-    }
+    /** Resource exhaustion. */
+    kind: 'ResourceExhaustion';
+    value: ResourceExhaustionKind;
+  }
   | {
-      /** Unrecoverable error. */
-      kind: 'ExecutionError';
-      value: string;
-    }
+    /** Unrecoverable error. */
+    kind: 'ExecutionError';
+    value: string;
+  }
   | {
-      /** User defined failure reason. */
-      kind: 'Other';
-      value: string;
-    };
+    /** User defined failure reason. */
+    kind: 'Other';
+    value: string;
+  };
 
 /**
  * Aggregated LLM token metrics for task.
@@ -211,3 +211,11 @@ export interface RunDetailsResponse {
  * The final structure: an array of AgentResults.
  */
 export type AgentResultsArray = AgentResults[];
+
+/**
+ * Represents a benchmark or task set
+ */
+export interface Benchmark {
+  id: string;
+  name: string;
+}
