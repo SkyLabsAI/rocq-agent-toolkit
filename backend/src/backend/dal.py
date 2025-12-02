@@ -15,8 +15,19 @@ from uuid import UUID
 
 from sqlmodel import Session, delete, select
 
-from backend.db_models import Agent, Run, RunTagLink, Tag, Task, TaskResultDB
-from backend.models import AgentInfo, Metrics, RunDetailsResponse, RunInfo, TagsResponse, TaskMetadata, TaskResult
+from backend.db_models import Agent, Dataset, Run, RunTagLink, Tag, Task, TaskResultDB
+from backend.models import (
+    AgentInfo,
+    AgentWithRuns,
+    DatasetAgentsResponse,
+    DatasetInfo,
+    Metrics,
+    RunDetailsResponse,
+    RunInfo,
+    TagsResponse,
+    TaskMetadata,
+    TaskResult,
+)
 
 
 def _parse_timestamp_utc(ts: str) -> datetime:
@@ -42,6 +53,12 @@ def _parse_timestamp_utc(ts: str) -> datetime:
         return dt.replace(tzinfo=UTC)
     return dt.astimezone(UTC)
 
+ # Compute score per run (success_rate * log(1 + total_tasks))
+def compute_score(run: Run) -> float:
+    weight = math.log(1 + run.total_tasks) if run.total_tasks > 0 else 0.0
+    return run.success_rate * weight
+
+
 
 def get_or_create_agent(session: Session, name: str, description: str | None = None) -> Agent:
     """Fetch an Agent by name or create it if missing."""
@@ -58,15 +75,52 @@ def get_or_create_agent(session: Session, name: str, description: str | None = N
     return agent
 
 
-def get_or_create_task(session: Session, task_id: str, kind: str | None = None) -> Task:
-    """Fetch a Task by id or create it if missing."""
+def get_or_create_dataset(
+    session: Session, name: str, description: str | None = None
+) -> Dataset:
+    """
+    Fetch a Dataset by name or create it if missing.
+
+    The logical identifier coming from JSONL (e.g. "loop_corpus") is stored
+    in the `name` column; the primary key is an auto-generated integer.
+    """
+    stmt = select(Dataset).where(Dataset.name == name)
+    dataset = session.exec(stmt).first()
+    if dataset:
+        if description and dataset.description != description:
+            dataset.description = description
+        return dataset
+
+    dataset = Dataset(name=name, description=description)
+    session.add(dataset)
+    session.flush()
+    return dataset
+
+
+def get_or_create_task(
+    session: Session, task_id: str, kind: str | None = None, dataset: Dataset | None = None
+) -> Task:
+    """Fetch a Task by id or create it if missing.
+
+    If a Dataset is provided and the Task is newly created, it will be
+    associated with that dataset. Existing tasks keep their dataset
+    association to avoid surprising cross-dataset moves.
+    """
     task = session.get(Task, task_id)
     if task:
         if kind and task.kind != kind:
             task.kind = kind
+        # Only set dataset if it's currently unset; avoid overwriting an
+        # existing association.
+        if dataset is not None and task.dataset_id is None and dataset.id is not None:
+            task.dataset_id = dataset.id
         return task
 
-    task = Task(id=task_id, kind=kind)
+    task = Task(
+        id=task_id,
+        kind=kind,
+        dataset_id=dataset.id if (dataset is not None and dataset.id is not None) else None,
+    )
     session.add(task)
     session.flush()
     return task
@@ -85,27 +139,6 @@ def get_or_create_tag(session: Session, key: str, value: str) -> Tag:
     return tag
 
 
-def _recompute_best_run_for_agent(session: Session, agent_id: int) -> None:
-    """
-    Recalculate which run is the "best" for a given agent based on
-    a simple heuristic:
-
-        score = success_rate * log(1 + total_tasks)
-    """
-    stmt = select(Run).where(Run.agent_id == agent_id)
-    runs: list[Run] = list(session.exec(stmt).all())
-
-    if not runs:
-        return
-
-    def score(run: Run) -> float:
-        weight = math.log(1 + run.total_tasks) if run.total_tasks > 0 else 0.0
-        return run.success_rate * weight
-
-    best = max(runs, key=score)
-    for run in runs:
-        run.is_best_run = run.id == best.id
-
 
 def ingest_task_results_for_run(
     session: Session,
@@ -118,7 +151,7 @@ def ingest_task_results_for_run(
     Ingest a collection of TaskResult entries belonging to a single run.
 
     This function:
-    - Ensures Agent and Task entities exist
+    - Ensures Agent, Dataset and Task entities exist
     - Creates or updates the Run row
     - Replaces all RunResult rows for that run
     - Aggregates metrics at the run level
@@ -135,6 +168,9 @@ def ingest_task_results_for_run(
     if agent.id is None:
         raise ValueError("Agent must have a persisted primary key before creating runs")
 
+    dataset_id = task_results[0].dataset_id or "default"
+    dataset = get_or_create_dataset(session, name=dataset_id)
+    
     run = session.get(Run, run_uuid)
 
     if run is None:
@@ -145,6 +181,7 @@ def ingest_task_results_for_run(
         run = Run(
             id=run_uuid,
             agent_id=agent.id,
+            dataset_id=dataset.id,
             timestamp_utc=earliest_ts,
             source_file_name=source_file_name,
         )
@@ -153,6 +190,7 @@ def ingest_task_results_for_run(
     else:
         # Update basic fields on re-ingestion
         run.agent_id = agent.id
+        run.dataset_id = dataset.id
         if source_file_name:
             run.source_file_name = source_file_name
 
@@ -180,8 +218,8 @@ def ingest_task_results_for_run(
         elif tr.status == "Failure":
             failure_count += 1
 
-        # Ensure task exists
-        task = get_or_create_task(session, task_id=tr.task_id, kind=tr.task_kind)
+        # Ensure dataset and task exist
+        task = get_or_create_task(session, task_id=tr.task_id, kind=tr.task_kind, dataset=dataset)
 
         ts_utc = _parse_timestamp_utc(tr.timestamp_utc)
 
@@ -200,6 +238,7 @@ def ingest_task_results_for_run(
         run_result = TaskResultDB(
             run_id=run.id,
             task_id=task.id,
+            dataset_id=dataset.id,
             timestamp_utc=ts_utc,
             status=tr.status,
             metrics=metrics_dict,
@@ -239,9 +278,7 @@ def ingest_task_results_for_run(
         existing_link = session.exec(link_stmt).first()
         if existing_link is None:
             session.add(RunTagLink(run_id=run.id, tag_id=tag.id))
-
-    # Not computing Best Run for now
-    # _recompute_best_run_for_agent(session, agent_id=agent.id)  # type: ignore[arg-type]
+    
 
     return run
 
@@ -297,6 +334,22 @@ def _get_tags_for_run(session: Session, run_id: UUID) -> dict[str, str]:
         tags[key] = value
     return tags
 
+
+def _get_dataset_name_for_run(session: Session, run: Run) -> str | None:
+    """
+    Helper to resolve the logical dataset identifier (Dataset.name) for a run.
+
+    Returns None if no dataset is associated with the run or the Dataset row
+    cannot be found (for backward compatibility with older ingestions).
+    """
+    if run.dataset_id is None:
+        return None
+
+    ds = session.get(Dataset, run.dataset_id)
+    if ds is None:
+        return None
+    return ds.name
+
 def agent_exists(session: Session, agent_name: str) -> bool:
     """Return True if an agent with the given name exists."""
     return session.exec(
@@ -329,25 +382,26 @@ def list_agents_from_db(session: Session) -> list[AgentInfo]:
     for agent_name, runs in sorted(grouped.items(), key=lambda x: x[0]):
         total_runs = len(runs)
 
-        # Compute score per run (success_rate * log(1 + total_tasks))
-        def score(run: Run) -> float:
-            weight = math.log(1 + run.total_tasks) if run.total_tasks > 0 else 0.0
-            return run.success_rate * weight
-
-        best_run_obj: Run | None = max(runs, key=score) if runs else None
+        # Prefer the run explicitly marked as best in the database, if any.
+        # Fallback to the highest-scoring run if no flag is set.
+        best_run_obj: Run | None = next((r for r in runs if r.is_best_run), None)
+        if best_run_obj is None and runs:
+            best_run_obj = max(runs, key=compute_score)
 
         best_run_info: RunInfo | None = None
         if best_run_obj is not None:
             best_run_tags = _get_tags_for_run(session, best_run_obj.id)
+            best_run_dataset_name = _get_dataset_name_for_run(session, best_run_obj)
             best_run_info = RunInfo(
                 run_id=str(best_run_obj.id),
                 agent_name=agent_name,
                 timestamp_utc=best_run_obj.timestamp_utc.isoformat(),
+                dataset_id=best_run_dataset_name,
                 total_tasks=best_run_obj.total_tasks,
                 success_count=best_run_obj.success_count,
                 failure_count=best_run_obj.failure_count,
                 success_rate=best_run_obj.success_rate,
-                score=score(best_run_obj),
+                score=compute_score(best_run_obj),
                 avg_total_tokens=(
                     best_run_obj.total_tokens / best_run_obj.total_tasks
                     if best_run_obj.total_tasks
@@ -363,6 +417,7 @@ def list_agents_from_db(session: Session) -> list[AgentInfo]:
                     if best_run_obj.total_tasks
                     else 0.0
                 ),
+                best_run=best_run_obj.is_best_run,
                 metadata=TaskMetadata(tags=best_run_tags),
             )
 
@@ -391,16 +446,18 @@ def get_runs_by_agent_from_db(session: Session, agent_name: str) -> list[RunInfo
 
     for run in runs:
         run_tags = _get_tags_for_run(session, run.id)
+        dataset_name = _get_dataset_name_for_run(session, run)
         run_infos.append(
             RunInfo(
                 run_id=str(run.id),
                 agent_name=agent_name,
                 timestamp_utc=run.timestamp_utc.isoformat(),
+                dataset_id=dataset_name,
                 total_tasks=run.total_tasks,
                 success_count=run.success_count,
                 failure_count=run.failure_count,
                 success_rate=run.success_rate,
-                score=0.0,  # Score is not persisted; callers can compute if needed
+                score=compute_score(run),
                 avg_total_tokens=(
                     run.total_tokens / run.total_tasks if run.total_tasks else 0.0
                 ),
@@ -414,6 +471,68 @@ def get_runs_by_agent_from_db(session: Session, agent_name: str) -> list[RunInfo
                     if run.total_tasks
                     else 0.0
                 ),
+                best_run=run.is_best_run,
+                metadata=TaskMetadata(tags=run_tags),
+            )
+        )
+
+    return run_infos
+
+
+def get_runs_by_agent_and_dataset_from_db(
+    session: Session, agent_name: str, dataset_id: str
+) -> list[RunInfo] | None:
+    """
+    Get all runs for a specific agent within a specific dataset, sorted by
+    timestamp (most recent first).
+    """
+    agent = session.exec(select(Agent).where(Agent.name == agent_name)).first()
+    if agent is None:
+        # Agent does not exist; let the caller decide how to handle this.
+        return []
+
+    dataset = session.exec(select(Dataset).where(Dataset.name == dataset_id)).first()
+    if dataset is None:
+        # Dataset does not exist; signal this with None so the caller can
+        # distinguish it from "no runs yet".
+        return None
+
+    runs = session.exec(
+        select(Run)
+        .where(Run.agent_id == agent.id, Run.dataset_id == dataset.id)
+        .order_by(Run.timestamp_utc.desc())  # type: ignore[arg-type]
+    ).all()
+
+    run_infos: list[RunInfo] = []
+
+    for run in runs:
+        run_tags = _get_tags_for_run(session, run.id)
+        dataset_name = _get_dataset_name_for_run(session, run)
+        run_infos.append(
+            RunInfo(
+                run_id=str(run.id),
+                agent_name=agent_name,
+                timestamp_utc=run.timestamp_utc.isoformat(),
+                dataset_id=dataset_name,
+                total_tasks=run.total_tasks,
+                success_count=run.success_count,
+                failure_count=run.failure_count,
+                success_rate=run.success_rate,
+                score=compute_score(run),
+                avg_total_tokens=(
+                    run.total_tokens / run.total_tasks if run.total_tasks else 0.0
+                ),
+                avg_llm_invocation_count=(
+                    run.total_llm_invocation_count / run.total_tasks
+                    if run.total_tasks
+                    else 0.0
+                ),
+                avg_cpu_time_sec=(
+                    run.total_execution_time_sec / run.total_tasks
+                    if run.total_tasks
+                    else 0.0
+                ),
+                best_run=run.is_best_run,
                 metadata=TaskMetadata(tags=run_tags),
             )
         )
@@ -451,6 +570,19 @@ def get_run_details_from_db(session: Session, run_ids: list[str]) -> list[RunDet
             task = session.get(Task, tr_db.task_id)
             task_kind = (task.kind or "") if task else ""
 
+            # Reconstruct dataset identifier as exposed via the JSONL API.
+            # Prefer the Task's dataset (and its Dataset.name); if missing,
+            # fall back to the Run-level dataset, if any.
+            dataset_name: str | None = None
+            if task is not None and task.dataset_id is not None:
+                ds = session.get(Dataset, task.dataset_id)
+                if ds is not None:
+                    dataset_name = ds.name
+            if dataset_name is None and run.dataset_id is not None:
+                ds = session.get(Dataset, run.dataset_id)
+                if ds is not None:
+                    dataset_name = ds.name
+
             if tr_db.metrics is None:
                 # Skip tasks without metrics; they don't fit the TaskResult schema
                 continue
@@ -470,6 +602,7 @@ def get_run_details_from_db(session: Session, run_ids: list[str]) -> list[RunDet
                     run_id=str(run.id),
                     task_kind=task_kind,
                     task_id=tr_db.task_id,
+                    dataset_id=dataset_name,
                     timestamp_utc=tr_db.timestamp_utc.isoformat(),
                     agent_name=agent_name,
                     status=tr_db.status,
@@ -509,6 +642,149 @@ def get_unique_tags_from_db(session: Session) -> TagsResponse:
     total_values = sum(len(values) for values in tags_sorted.values())
 
     return TagsResponse(tags=tags_sorted, total_keys=total_keys, total_values=total_values)
+
+
+def list_datasets_from_db(session: Session) -> list[DatasetInfo]:
+    """
+    List all datasets stored in the database.
+
+    Returns them as DatasetInfo objects exposing the logical identifier
+    (Dataset.name) as dataset_id.
+    """
+    datasets: list[Dataset] = session.exec(
+        select(Dataset).order_by(Dataset.name)  # type: ignore[arg-type]
+    ).all()
+
+    result: list[DatasetInfo] = []
+    for ds in datasets:
+        created_at_str = ds.created_at.isoformat() if ds.created_at is not None else None
+        result.append(
+            DatasetInfo(
+                dataset_id=ds.name,
+                description=ds.description,
+                created_at=created_at_str,
+            )
+        )
+    return result
+
+
+def get_agents_for_dataset_from_db(
+    session: Session, dataset_id: str
+) -> DatasetAgentsResponse | None:
+    """
+    Get all agents that have at least one run for the given dataset.
+
+    The dataset is identified by its logical identifier (Dataset.name), which
+    corresponds to the JSONL `dataset_id` field (e.g. "loop_corpus").
+    """
+    dataset = session.exec(
+        select(Dataset).where(Dataset.name == dataset_id)
+    ).first()
+    if dataset is None:
+        return None
+
+    # Load all runs for this dataset joined with their agents
+    rows = session.exec(
+        select(Run, Agent)
+        .join(Agent, Run.agent_id == Agent.id)  # type: ignore[arg-type]
+        .where(Run.dataset_id == dataset.id)
+    ).all()
+
+    if not rows:
+        # Dataset exists but currently has no runs; return empty structure.
+        return DatasetAgentsResponse(dataset_id=dataset.name, agents=[])
+
+    # Group runs by agent name
+    agents_runs: dict[str, list[Run]] = {}
+    for run, agent in rows:
+        agents_runs.setdefault(agent.name, []).append(run)
+
+    agents: list[AgentWithRuns] = []
+
+    for agent_name, runs in sorted(agents_runs.items(), key=lambda x: x[0]):
+        # Collect all run_ids for this agent within the dataset
+        run_ids = sorted(str(run.id) for run in runs)
+
+        # Prefer the run explicitly marked as best in the database, if any.
+        # This flag is global per agent; if the best run lives in another
+        # dataset, there may be no flagged run in this subset, in which case
+        # we fall back to the highest-scoring run for this dataset only.
+        best_run_obj: Run | None = next((r for r in runs if r.is_best_run), None)
+        if best_run_obj is None and runs:
+            best_run_obj = max(runs, key=compute_score)
+
+        best_run_info: RunInfo | None = None
+        if best_run_obj is not None:
+            best_run_tags = _get_tags_for_run(session, best_run_obj.id)
+            best_run_dataset_name = _get_dataset_name_for_run(session, best_run_obj)
+            best_run_info = RunInfo(
+                run_id=str(best_run_obj.id),
+                agent_name=agent_name,
+                timestamp_utc=best_run_obj.timestamp_utc.isoformat(),
+                dataset_id=best_run_dataset_name,
+                total_tasks=best_run_obj.total_tasks,
+                success_count=best_run_obj.success_count,
+                failure_count=best_run_obj.failure_count,
+                success_rate=best_run_obj.success_rate,
+                score=compute_score(best_run_obj),
+                avg_total_tokens=(
+                    best_run_obj.total_tokens / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                avg_llm_invocation_count=(
+                    best_run_obj.total_llm_invocation_count / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                avg_cpu_time_sec=(
+                    best_run_obj.total_execution_time_sec / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                best_run=best_run_obj.is_best_run,
+                metadata=TaskMetadata(tags=best_run_tags),
+            )
+
+        agents.append(
+            AgentWithRuns(
+                agent_name=agent_name,
+                run_ids=run_ids,
+                best_run=best_run_info,
+            )
+        )
+
+    return DatasetAgentsResponse(dataset_id=dataset.name, agents=agents)
+
+
+def set_best_run_flag_for_run(session: Session, run_id: str, best_run: bool) -> bool:
+    """
+    Set or unset the 'best run' flag for a specific run.
+ 
+    Args:
+        session: Database session.
+        run_id: String representation of the run UUID.
+        best_run: Boolean flag indicating whether this run is the best run.
+ 
+    Returns:
+        The updated boolean value of the best-run flag.
+ 
+    Raises:
+        ValueError: If the run_id is not a valid UUID format.
+        LookupError: If no run with the given ID exists.
+    """
+    try:
+        run_uuid = UUID(run_id)
+    except ValueError as e:
+        raise ValueError(f"Invalid run_id format: {run_id}") from e
+ 
+    run = session.get(Run, run_uuid)
+    if run is None:
+        raise LookupError(f"Run with id '{run_id}' not found")
+ 
+    # Update the best-run flag
+    run.is_best_run = best_run
+    return run.is_best_run
 
 
 def get_estimated_time_for_task_from_db(

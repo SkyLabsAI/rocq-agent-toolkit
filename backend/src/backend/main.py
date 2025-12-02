@@ -19,16 +19,23 @@ from sqlmodel import Session
 from backend.config import settings
 from backend.dal import (
     agent_exists,
+    get_agents_for_dataset_from_db,
     get_estimated_time_for_task_from_db,
     get_run_details_from_db,
+    get_runs_by_agent_and_dataset_from_db,
     get_runs_by_agent_from_db,
     get_unique_tags_from_db,
     ingest_task_results,
     list_agents_from_db,
+    list_datasets_from_db,
+    set_best_run_flag_for_run,
 )
 from backend.database import get_session, init_db
 from backend.models import (
     AgentInfo,
+    BestRunUpdateResponse,
+    DatasetAgentsResponse,
+    DatasetInfo,
     IngestionResponse,
     ObservabilityLabelsResponse,
     ObservabilityLogsResponse,
@@ -298,6 +305,58 @@ async def list_runs_by_agent(
         ) from e
 
 
+@app.get(
+    "/api/{dataset_id}/agents/{agent_name}/runs",
+    response_model=list[RunInfo],
+)
+async def list_runs_by_agent_for_dataset(
+    dataset_id: str,
+    agent_name: str,
+    session: Session = Depends(get_session),
+) -> list[RunInfo]:
+    """
+    List all runs for a specific agent within a specific dataset.
+
+    Args:
+        dataset_id: Logical dataset identifier (e.g. "function_corpus")
+        agent_name: Name of the agent
+
+    Returns:
+        List of RunInfo objects for the specified agent and dataset.
+    """
+    try:
+        runs = get_runs_by_agent_and_dataset_from_db(session, agent_name, dataset_id)
+
+        if runs is None:
+            # Dataset not found
+            raise HTTPException(
+                status_code=404, detail=f"Dataset '{dataset_id}' not found"
+            )
+
+        if not runs and not agent_exists(session, agent_name):
+            raise HTTPException(
+                status_code=404, detail=f"Agent '{agent_name}' not found"
+            )
+
+        return runs
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching runs for agent '%s' in dataset '%s': %s",
+            agent_name,
+            dataset_id,
+            e,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Error fetching runs for agent '{agent_name}' "
+                f"in dataset '{dataset_id}': {str(e)}"
+            ),
+        ) from e
+
+
 @app.get("/api/runs/details", response_model=list[RunDetailsResponse])
 async def get_run_details(
     run_ids: str = Query(..., description="Comma-separated list of run IDs to retrieve"),
@@ -341,6 +400,49 @@ async def get_run_details(
         ) from e
 
 
+@app.post("/api/runs/{run_id}/best-run", response_model=BestRunUpdateResponse)
+async def update_best_run_flag(
+    run_id: str,
+    best_run: bool = Query(
+        ...,
+        description=(
+            "Boolean flag indicating whether this run should be marked as the best run "
+            "for its agent (true) or unmarked (false)."
+        ),
+    ),
+    session: Session = Depends(get_session),
+) -> BestRunUpdateResponse:
+    """
+    Set or unset the 'best run' flag for a specific run.
+
+    This endpoint toggles the underlying `is_best_run` boolean field on the Run
+    row identified by `run_id` and returns the updated RunInfo view.
+    """
+    try:
+        updated_flag = set_best_run_flag_for_run(
+            session=session,
+            run_id=run_id,
+            best_run=best_run,
+        )
+        session.commit()
+        return BestRunUpdateResponse(run_id=run_id, best_run=updated_flag)
+    except LookupError as e:
+        session.rollback()
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        session.rollback()
+        logger.error(
+            "Error updating best_run flag for run '%s': %s", run_id, e, exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating best_run flag for run '{run_id}': {str(e)}",
+        ) from e
+
+
 @app.get("/api/tags", response_model=TagsResponse)
 async def list_tags(session: Session = Depends(get_session)) -> TagsResponse:
     """
@@ -356,6 +458,57 @@ async def list_tags(session: Session = Depends(get_session)) -> TagsResponse:
         logger.error(f"Error fetching tags: {e}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Error fetching tags: {str(e)}"
+        ) from e
+
+
+@app.get("/api/datasets", response_model=list[DatasetInfo])
+async def list_datasets(session: Session = Depends(get_session)) -> list[DatasetInfo]:
+    """
+    List all datasets that have been created in the database.
+
+    Each dataset is identified by its logical `dataset_id` (e.g. "loop_corpus")
+    which corresponds to the JSONL field, along with optional description and
+    creation time.
+    """
+    try:
+        return list_datasets_from_db(session)
+    except Exception as e:
+        logger.error("Error fetching datasets: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching datasets: {str(e)}"
+        ) from e
+
+
+@app.get(
+    "/api/{dataset_id}/agents",
+    response_model=DatasetAgentsResponse,
+)
+async def list_agents_for_dataset(
+    dataset_id: str, session: Session = Depends(get_session)
+) -> DatasetAgentsResponse:
+    """
+    List all agents that have at least one run for the given dataset.
+
+    The dataset is identified by its logical `dataset_id` (e.g. "loop_corpus"),
+    matching the `dataset_id` field in the ingested JSONL.
+    """
+    try:
+        result = get_agents_for_dataset_from_db(session, dataset_id)
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset '{dataset_id}' not found",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching agents for dataset '%s': %s", dataset_id, e, exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching agents for dataset '{dataset_id}': {str(e)}",
         ) from e
 
 
