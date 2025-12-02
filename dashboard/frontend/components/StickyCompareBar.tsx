@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from '@/components/base/Button';
+import { Button } from '@/components/base/ui/button';
 
 interface StickyCompareBarProps {
   selectedItems: string[];
