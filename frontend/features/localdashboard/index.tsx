@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
 import Layout from '@/layouts/common';
 import AgentDetails from './AgentDetails';
 import { useLocalDashboard } from '@/hooks/useLocalDashboard';
@@ -12,7 +12,7 @@ import TaskDetailsModal from '../taskDetailsModal';
 import AgentListIcon from '@/icons/agent-list';
 import { AgentSummaryTemp } from '@/services/dataservice';
 import StickyCompareBar from '@/components/StickyCompareBar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const LocalDashboard: React.FC = () => {
   const {
@@ -27,9 +27,10 @@ const LocalDashboard: React.FC = () => {
   } = useLocalDashboard();
   const { selectedRun, setSelectedRun } = useSelectedRun();
   const [activeAgent, setActiveAgent] = React.useState<string | null>(null);
-  const [selectedAgents, setSelectedAgent] =useState<AgentSummaryTemp[]>([]);
+  const [selectedAgents, setSelectedAgent] = useState<AgentSummaryTemp[]>([]);
+  const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
   const navigate = useNavigate();
-
+  const location = useLocation();
 
   const compareSelected = () => {
     if (selectedAgents.length < 1) return;
@@ -42,10 +43,45 @@ const LocalDashboard: React.FC = () => {
     });
   };
 
+  const compareSelectedRuns = () => {
+    if (selectedRuns.length < 1) return;
+    const query = new URLSearchParams({
+      runs: selectedRuns.join(',')
+    }).toString();
+    navigate({
+      pathname: "/compare",
+      search: `?${query}`
+    });
+  };
 
+  const toggleRunSelection = (run: Run) => {
+    setSelectedRuns(prev => 
+      prev.includes(run.run_id) 
+        ? prev.filter(id => id !== run.run_id)
+        : [...prev, run.run_id]
+    );
+  };
+
+  const clearSelectedRuns = () => {
+    setSelectedRuns([]);
+  };
+
+  // Clear selected runs when navigating to run details view
   useEffect(() => {
-   console.log("Selected Agents changed: ", selectedAgents);
-  }, [selectedAgents]);
+    if (selectedRun) {
+      clearSelectedRuns();
+      setSelectedAgent([]);
+    }
+  }, [selectedRun]);
+
+  // Clear selected runs when navigating to different pages
+  useEffect(() => {
+    const isComparePage = location.pathname.startsWith('/compare');
+    if (isComparePage) {
+      clearSelectedRuns();
+      setSelectedAgent([]);
+    }
+  }, [location.pathname]);
 
   return (
     <Layout title='Internal Dashboard'>
@@ -109,7 +145,6 @@ const LocalDashboard: React.FC = () => {
                   <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
                     Actions
                   </td>
-                  
                 </tr>
                 {agentData
                   .sort((a, b) => a.agent_name.localeCompare(b.agent_name))
@@ -120,15 +155,35 @@ const LocalDashboard: React.FC = () => {
                       agentDetailData={agentDetailData[index]}
                       activeAgent={activeAgent === agent.agent_name}
                       setActiveAgent={setActiveAgent}
-                      isSelected={selectedAgents.some((a)=>a.agentName===agent.agent_name)}
-                      toggleSelection={()=>{
-                        console.log("Toggling selection for agent: ", agent.agent_name);
-                        if(selectedAgents.some((a)=>a.agentName===agent.agent_name)){
-                          setSelectedAgent(selectedAgents.filter((a)=>a.agentName!==agent.agent_name));
-                        }else{
-                          setSelectedAgent([...selectedAgents, {agentName:agent.agent_name} as AgentSummaryTemp]);
-                        }
+                      isSelected={selectedAgents.some(
+                        a => a.agentName === agent.agent_name
+                      )}
+                      toggleSelection={() => {
+                        setSelectedAgent(prevSelectedAgents => {
+                          if (
+                            prevSelectedAgents.some(
+                              a => a.agentName === agent.agent_name
+                            )
+                          ) {
+                            // Remove the agent if already selected
+                            return prevSelectedAgents.filter(
+                              a => a.agentName !== agent.agent_name
+                            );
+                          } else {
+                            // Add the new agent while keeping the previous selections
+                            return [
+                              ...prevSelectedAgents,
+                              {
+                                agentName: agent.agent_name,
+                              } as AgentSummaryTemp,
+                            ];
+                          }
+                        });
                       }}
+                      selectedRuns={selectedRuns}
+                      toggleRunSelection={toggleRunSelection}
+                      clearSelectedRuns={clearSelectedRuns}
+                      compareSelectedRuns={compareSelectedRuns}
                     />
                   ))}
               </tbody>
@@ -156,8 +211,23 @@ const LocalDashboard: React.FC = () => {
         taskId={modalState.selectedTask?.task_id}
       />
 
-
-      <StickyCompareBar selectedItems={selectedAgents.map((s)=>s.agentName)} agentName='' onCompareSelected={compareSelected} onClearSelection={()=>{setSelectedAgent([])}} attribute='Agents'/>
+      <StickyCompareBar
+        selectedItems={selectedAgents.map(s => s.agentName)}
+        onCompareSelected={compareSelected}
+        onClearSelection={() => {
+          setSelectedAgent([]);
+        }}
+        attribute='Agents'
+      />
+      
+      {selectedRuns.length > 0 && !selectedRun && (
+        <StickyCompareBar 
+          selectedItems={selectedRuns} 
+          onCompareSelected={compareSelectedRuns} 
+          onClearSelection={clearSelectedRuns} 
+          attribute='Runs'
+        />
+      )}
     </Layout>
   );
 };

@@ -1,6 +1,8 @@
-'use client'
 
 import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "RAT Dashboard",
+};
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import "./globals.css";
@@ -30,6 +32,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
             <SelectedRunProvider>
+              
           {children}
           </SelectedRunProvider>
         </ThemeProvider>

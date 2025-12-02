@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { AgentSummary } from '@/types/types';
 import { AgentSummaryTemp } from '@/services/dataservice';
 import { Button } from '@/components/base';
+import { Run } from '@/contexts/SelectedRunContext';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
@@ -13,32 +14,28 @@ interface AgentDetailsProps {
   agentDetailData: AgentSummaryTemp;
   isSelected: boolean;
   toggleSelection: () => void;
+  selectedRuns: string[];
+  toggleRunSelection: (run: Run) => void;
+  clearSelectedRuns: () => void;
+  compareSelectedRuns: () => void;
 }
 
 const AgentDetails: React.FC<AgentDetailsProps> = ({
   agent,
-  activeAgent = false,
-  setActiveAgent,
   agentDetailData,
   isSelected,
   toggleSelection,
+  selectedRuns,
+  toggleRunSelection,
+  clearSelectedRuns,
+  compareSelectedRuns,
 }) => {
   const {
     loading,
     runDetails,
     isOpen,
-    selectedRuns,
     toggleDetails,
-    compareSelected,
-    toggleRunSelection,
-    clearSelectedRuns,
-  } = useAgentDetails(agent.agent_name, setActiveAgent);
-
-  useEffect(() => {
-    if (!activeAgent) {
-      clearSelectedRuns();
-    }
-  }, [activeAgent]);
+  } = useAgentDetails(agent.agent_name);
 
   return (
     <>
@@ -138,7 +135,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                     toggleRunSelection={toggleRunSelection}
                     clearSelectedRuns={clearSelectedRuns}
                     tags={agentDetailData?.tags}
-                    compareSelected={compareSelected}
+                    compareSelected={compareSelectedRuns}
                   />
                 </div>
               )}

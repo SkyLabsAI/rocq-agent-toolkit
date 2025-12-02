@@ -65,9 +65,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
     setSelectedRun(run);
   };
 
-  const handleBackToRuns = () => {
-    setSelectedRun(null);
-  };
 
   const toggleOnPin = (run: Run) => {
     setPinnedRuns((prev) => {
@@ -143,7 +140,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
 
       <StickyCompareBar
         selectedItems={selectedRuns}
-        agentName={agentName}
         onClearSelection={clearSelectedRuns}
         onCompareSelected={compareSelected}
         attribute='Runs'

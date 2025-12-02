@@ -9,19 +9,22 @@ import { TaskRow } from './run-row';
 
 interface RunSummaryProps {
   runStats: RunStats[];
+  onRemove?: (id: string) => void;
 }
 
-export const RunSummary: React.FC<RunSummaryProps> = ({ runStats }) => {
+export const RunSummary: React.FC<RunSummaryProps> = ({ runStats, onRemove }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const agent = searchParams.get('agent') || '';
   const runs = runStats.map(r => r.id);
 
-  const handleRemove = (removeId: string) => {
+  const defaultHandleRemove = (removeId: string) => {
     const newRuns = runs.filter(id => id !== removeId);
     const url = `/compare?agent=${encodeURIComponent(agent)}&runs=${encodeURIComponent(newRuns.join(','))}`;
     navigate(url);
   };
+
+  const handleRemove = onRemove || defaultHandleRemove;
 
   return (
     <>

@@ -22,12 +22,8 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   runs,
   taskMap,
   allTaskIds,
-  selectedTaskId,
-  onSelectTask,
   onOpenModal,
-  showTasks,
   taskRowData,
-  onToggleShowTasks,
 }) => {
   console.log('Rendering ComparisonTable with tasks:', taskMap);
   return (
