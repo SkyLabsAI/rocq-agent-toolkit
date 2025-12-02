@@ -715,6 +715,7 @@ class TaskOutput:
     run_id: str
     task_kind: TaskKind
     task_id: str
+    dataset_id: str
     timestamp_utc: str
     agent_name: str
     status: TaskStatus
@@ -731,6 +732,7 @@ class TaskOutput:
                 run_id=_atd_read_string(x['run_id']) if 'run_id' in x else _atd_missing_json_field('TaskOutput', 'run_id'),
                 task_kind=TaskKind.from_json(x['task_kind']) if 'task_kind' in x else _atd_missing_json_field('TaskOutput', 'task_kind'),
                 task_id=_atd_read_string(x['task_id']) if 'task_id' in x else _atd_missing_json_field('TaskOutput', 'task_id'),
+                dataset_id=_atd_read_string(x['dataset_id']) if 'dataset_id' in x else _atd_missing_json_field('TaskOutput', 'dataset_id'),
                 timestamp_utc=_atd_read_string(x['timestamp_utc']) if 'timestamp_utc' in x else _atd_missing_json_field('TaskOutput', 'timestamp_utc'),
                 agent_name=_atd_read_string(x['agent_name']) if 'agent_name' in x else _atd_missing_json_field('TaskOutput', 'agent_name'),
                 status=TaskStatus.from_json(x['status']) if 'status' in x else _atd_missing_json_field('TaskOutput', 'status'),
@@ -748,6 +750,7 @@ class TaskOutput:
         res['run_id'] = _atd_write_string(self.run_id)
         res['task_kind'] = (lambda x: x.to_json())(self.task_kind)
         res['task_id'] = _atd_write_string(self.task_id)
+        res['dataset_id'] = _atd_write_string(self.dataset_id)
         res['timestamp_utc'] = _atd_write_string(self.timestamp_utc)
         res['agent_name'] = _atd_write_string(self.agent_name)
         res['status'] = (lambda x: x.to_json())(self.status)

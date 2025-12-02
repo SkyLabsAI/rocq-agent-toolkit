@@ -190,10 +190,17 @@ def run_task(
     else:
         progress.log(f"task completed: {task_result.message}")
 
+    # For the time being taking id from the environment variable
+    # TODO: Update it to add automatically
+    # can be created based on the task input path
+    # or in a way that it can detect the changes in the task input path or dataset.
+    dataset_id = os.getenv("DATASET_NAME", "default")
+    
     return task_result.to_task_output(
         run_id=run_id,
         task_kind=task.locator.task_kind(),
         task_id=task_id,
+        dataset_id=dataset_id,
         timestamp_utc=timestamp_iso_8601,
         agent_name=agent.name(),
         trace_id=trace_id,

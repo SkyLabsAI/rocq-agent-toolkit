@@ -52,6 +52,7 @@ type task_output <doc text="Agent output for a single task."> = {
   run_id <doc text="Unique identifier for the run (UUID)."> : string;
   task_kind <doc text="Kind of task."> : task_kind;
   task_id <doc text="Unique task identifier (file+task locator)."> : string;
+  dataset_id <doc text="Unique name of the dataset on which agent is run"> : string;
   ?trace_id <doc text="Unique trace identifier for corresponding opentelemetry output."> : string option;
   timestamp_utc <doc text="Timestamp when task began (ISO 8601)."> : string;
   (* NOTE: in the future we may want to store additional metadata

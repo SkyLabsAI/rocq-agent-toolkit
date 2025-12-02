@@ -97,6 +97,7 @@ class TaskResult:
         run_id: str | None = None,
         task_kind: task_output.TaskKind | None = None,
         task_id: str | None = None,
+        dataset_id: str | None = None,
         timestamp_utc: str | None = None,
         agent_name: str | None = None,
         trace_id: str | None = None,
@@ -119,6 +120,7 @@ class TaskResult:
             run_id is None
             or task_kind is None
             or task_id is None
+            or dataset_id is None
             or timestamp_utc is None
             or agent_name is None
         ):
@@ -139,6 +141,7 @@ class TaskResult:
             run_id=run_id,
             task_kind=task_kind,
             task_id=task_id,
+            dataset_id=dataset_id,
             trace_id=trace_id,
             timestamp_utc=timestamp_utc,
             agent_name=agent_name,
