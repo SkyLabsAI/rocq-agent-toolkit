@@ -136,7 +136,7 @@ const DataView: React.FC = ({}) => {
    
      <div className='flex flex-col gap-4'>
       {benchmarks.map((benchmark) => (
-        <DataItem key={benchmark.id} benchmark={benchmark} />
+        <DataItem key={benchmark.dataset_id} benchmark={benchmark} />
       ))}
     
      </div>

@@ -20,7 +20,7 @@ interface DataItemProps {
 export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { agents } = useBenchmarkAgents(benchmark.id);
+  const { agents } = useBenchmarkAgents(benchmark.dataset_id);
 
   const { agentData, agentDetailData, modalState, closeModal, openCodeModal } =
     useLocalDashboard();
@@ -149,7 +149,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
       >
         <div className='flex gap-1 items-center text-text'>
           <ChevronUpIcon className={cn('size-6', { 'rotate-180': isOpen })} />
-          <span className='text-[16px] cursor-pointer '>{benchmark.name}</span>
+          <span className='text-[16px] cursor-pointer '>{benchmark.dataset_id}</span>
         </div>
 
         <span className='text-text-disabled text-sm '>{''}</span>

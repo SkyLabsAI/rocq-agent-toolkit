@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getBenchmarks, getBenchmarkAgents } from '@/services/dataservice';
-import { AgentSummary } from '@/types/types';
+import { AgentSummary, Benchmark } from '@/types/types';
 
-export interface Benchmark {
-  id: string;
-  name: string;
-  description?: string;
-  created_at: string;
-  task_count: number;
-}
 
 
 
