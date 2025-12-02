@@ -51,6 +51,7 @@ class TaskResult(BaseModel):
     run_id: str
     task_kind: str
     task_id: str
+    dataset_id: str | None = None # Can be None for backward compatibility with older ingestions.
     timestamp_utc: str
     agent_name: str
     status: str
@@ -99,6 +100,7 @@ class RunInfo(BaseModel):
     run_id: str
     agent_name: str
     timestamp_utc: str
+    dataset_id: str | None = None
     total_tasks: int
     success_count: int
     failure_count: int
@@ -108,6 +110,7 @@ class RunInfo(BaseModel):
     avg_total_tokens: float = 0.0
     avg_llm_invocation_count: float = 0.0
     avg_cpu_time_sec: float = 0.0
+    best_run: bool = False
     metadata: TaskMetadata = TaskMetadata()
 
 
@@ -179,3 +182,29 @@ class IngestionResponse(BaseModel):
     message: str
     runs_ingested: int
     tasks_ingested: int
+
+
+class DatasetInfo(BaseModel):
+    """Summary information about a dataset."""
+    dataset_id: str
+    description: str | None = None
+    created_at: str | None = None
+
+
+class AgentWithRuns(BaseModel):
+    """An agent that has runs for a given dataset, plus its run IDs."""
+    agent_name: str
+    run_ids: list[str]
+    best_run: RunInfo | None = None
+
+
+class DatasetAgentsResponse(BaseModel):
+    """Agents and their runs associated with a specific dataset."""
+    dataset_id: str
+    agents: list[AgentWithRuns]
+
+
+class BestRunUpdateResponse(BaseModel):
+    """Response for endpoints that toggle the best_run flag on a run."""
+    run_id: str
+    best_run: bool

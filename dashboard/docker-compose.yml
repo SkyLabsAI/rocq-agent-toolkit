@@ -16,7 +16,7 @@ services:
     networks:
       - rocq-agent-network
 
-  # Adding pg admin for Visualization of the database 
+  #Adding pg admin for Visualization of the database 
   # pgadmin:
   #   image: dpage/pgadmin4
   #   container_name: rocq-agent-toolkit-pgadmin
