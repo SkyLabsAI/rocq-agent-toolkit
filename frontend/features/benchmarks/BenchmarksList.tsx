@@ -34,7 +34,7 @@ const BenchmarksList: React.FC = () => {
 
   const handleBenchmarkClick = (benchmark: Benchmark) => {
     // Navigate to agents page with benchmark filter
-    navigate(`/agents?benchmark=${benchmark.id}`);
+    navigate(`/agents?benchmark=${benchmark.dataset_id}`);
   };
 
   return (
@@ -85,16 +85,16 @@ const BenchmarksList: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {benchmarks.map((benchmark) => (
                 <button
-                  key={benchmark.id}
+                  key={benchmark.dataset_id}
                   onClick={() => handleBenchmarkClick(benchmark)}
                   className="group relative bg-elevation-surface-raised border border-elevation-surface-overlay hover:border-primary-default transition-all duration-200 rounded-lg p-6 text-left cursor-pointer hover:shadow-lg hover:shadow-primary-default/10"
                 >
                   <div className="flex flex-col gap-2">
                     <h3 className="text-[16px] font-semibold text-text group-hover:text-primary-default transition-colors">
-                      {benchmark.name}
+                      {benchmark.dataset_id}
                     </h3>
                     <p className="text-[14px] text-text-subtlest">
-                      ID: {benchmark.id}
+                      ID: {benchmark.dataset_id}
                     </p>
                   </div>
                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -1,6 +1,7 @@
 import {
   AgentRun,
   AgentSummary,
+  Benchmark,
   RunDetailsResponse,
   TaskOutput,
 } from '@/types/types';
@@ -445,7 +446,7 @@ export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
 
 // Benchmark API functions
 const getBenchmarksReal = async (): Promise<Benchmark[]> => {
-  const response = await axios.get(`${config.DATA_API}/benchmarks`);
+  const response = await axios.get(`${config.DATA_API}/datasets`);
   return response.data as Benchmark[];
 };
 
@@ -454,25 +455,22 @@ const getBenchmarksMock = async (): Promise<Benchmark[]> => {
 
   const mockBenchmarks: Benchmark[] = [
     {
-      id: 'benchmark_001',
-      name: 'Mathematical Proofs',
+      dataset_id: 'benchmark_001',
       description: 'Collection of mathematical theorem proving tasks',
       created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-      task_count: 150,
+   
     },
     {
-      id: 'benchmark_002',
-      name: 'Logic Puzzles',
+        
+      dataset_id: 'benchmark_002',
       description: 'Logical reasoning and puzzle solving challenges',
       created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-      task_count: 75,
+
     },
     {
-      id: 'benchmark_003',
-      name: 'Code Generation',
-      description: 'Programming and code generation benchmarks',
-      created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
-      task_count: 200,
+        dataset_id: 'benchmark_003',
+      description: 'Logical reasoning and puzzle solving challenges',
+      created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
     },
   ];
 
@@ -483,7 +481,7 @@ const getBenchmarksMock = async (): Promise<Benchmark[]> => {
 export const getBenchmarks = USE_MOCK_DATA ? getBenchmarksMock : getBenchmarksReal;
 
 const getBenchmarkAgentsReal = async (benchmarkId: string): Promise<AgentSummary[]> => {
-  const response = await axios.get(`${config.DATA_API}/benchmarks/${benchmarkId}/agents`);
+  const response = await axios.get(`${config.DATA_API}/${benchmarkId}/agents`);
   return response.data as AgentSummary[];
 };
 
@@ -523,12 +521,4 @@ const getBenchmarkAgentsMock = async (benchmarkId: string): Promise<AgentSummary
 export const getBenchmarkAgents = USE_MOCK_DATA ? getBenchmarkAgentsMock : getBenchmarkAgentsReal;
 
 // Types for benchmarks
-export interface Benchmark {
-  id: string;
-  name: string;
-  description?: string;
-  created_at: string;
-  task_count: number;
-}
-
 

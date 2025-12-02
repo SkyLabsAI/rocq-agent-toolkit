@@ -216,6 +216,7 @@ export type AgentResultsArray = AgentResults[];
  * Represents a benchmark or task set
  */
 export interface Benchmark {
-  id: string;
-  name: string;
+  dataset_id: string;
+  description?: string;
+  created_at: string;
 }

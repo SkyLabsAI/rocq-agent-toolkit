@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getRunDetails } from '@/services/dataservice';
+import { getRunDetails, getObservabilityLogs } from '@/services/dataservice';
 import { RunDetailsResponse, TaskOutput } from '@/types/types';
 import { Button } from '@/components/base';
+import TaskDetailsModal from '@/features/taskDetailsModal';
 
 interface AgentRunDetailsProps {
   runId: string;
@@ -17,6 +18,16 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
   const [runDetails, setRunDetails] = useState<RunDetailsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingLogs, setLoadingLogs] = useState<string | null>(null);
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    selectedTask: TaskOutput | null;
+    logs: Record<string, unknown> | null;
+  }>({
+    isOpen: false,
+    selectedTask: null,
+    logs: null,
+  });
 
   useEffect(() => {
     if (isExpanded && !runDetails) {
@@ -36,6 +47,38 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCodeModal = async (task: TaskOutput) => {
+    const taskKey = `${task.run_id}-${task.task_id}`;
+    setLoadingLogs(taskKey);
+
+    try {
+      const logs = await getObservabilityLogs(task.run_id, task.task_id);
+
+      setModalState({
+        isOpen: true,
+        selectedTask: task,
+        logs: logs,
+      });
+    } catch (error) {
+      console.error('Error fetching observability logs:', error);
+      setModalState({
+        isOpen: true,
+        selectedTask: task,
+        logs: { error: 'Failed to load logs' },
+      });
+    } finally {
+      setLoadingLogs(null);
+    }
+  };
+
+  const closeModal = () => {
+    setModalState({
+      isOpen: false,
+      selectedTask: null,
+      logs: null,
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -79,7 +122,7 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
           {runDetails && !loading && (
             <div className="space-y-4">
               {/* Header */}
-              <div className="grid grid-cols-6 gap-4">
+              <div className="grid gap-4 px-2.5" style={{ gridTemplateColumns: '30% 1fr 1fr 1fr 1fr 1fr' }}>
                 <div className="text-text text-[16px]">Tasks</div>
                 <div className="text-text-disabled text-[14px]">Status</div>
                 <div className="text-text-disabled text-[14px]">LLM Calls</div>
@@ -91,19 +134,23 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
               {/* Rows */}
               <div className="flex flex-col gap-2 justify-between">
                 {runDetails.tasks.map((task: TaskOutput) => (
-                  <div key={task.task_id} className="grid grid-cols-6 gap-4 p-2.5 bg-elevation-surface-raised rounded items-center">
-                    <div className="text-text">{task.task_id}</div>
+                  <div key={task.task_id} className="grid gap-4 p-2.5 bg-elevation-surface-raised rounded items-center" style={{ gridTemplateColumns: '30% 1fr 1fr 1fr 1fr 1fr' }}>
+                    <div className="text-text text-[14px]">{task.task_id}</div>
                     <div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${task.status === 'Success' ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className={`px-2 py-1 rounded text-[14px] font-medium ${task.status === 'Success' ? 'text-green-400' : 'text-red-400'}`}>
                         {task.status}
                       </span>
                     </div>
-                    <div className="text-text">{task.metrics.llm_invocation_count}</div>
-                    <div className="text-text">{formatMetricValue(task.metrics.token_counts.total_tokens)}</div>
-                    <div className="text-text">{task.metrics.resource_usage.execution_time_sec.toFixed(2)}s</div>
+                    <div className="text-text text-[14px]">{task.metrics.llm_invocation_count}</div>
+                    <div className="text-text text-[14px]">{formatMetricValue(task.metrics.token_counts.total_tokens)}</div>
+                    <div className="text-text text-[14px]">{task.metrics.resource_usage.execution_time_sec.toFixed(2)}s</div>
                     <div >
-                      <Button className='float-right' >
-                        View Logs
+                      <Button 
+                        className='float-right' 
+                        onClick={() => openCodeModal(task)}
+                        disabled={loadingLogs === `${task.run_id}-${task.task_id}`}
+                      >
+                        {loadingLogs === `${task.run_id}-${task.task_id}` ? 'Loading...' : 'View Logs'}
                       </Button>
                     </div>
                   </div>
@@ -112,6 +159,19 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
             </div>
           )}
         </div>
+        
+        {/* Task Details Modal */}
+        <TaskDetailsModal
+          isOpen={modalState.isOpen}
+          onClose={closeModal}
+          details={modalState.logs}
+          title={
+            modalState.selectedTask
+              ? `Observability Logs - ${modalState.selectedTask.task_id}`
+              : 'Task Logs'
+          }
+          taskId={modalState.selectedTask?.task_id}
+        />
       </td>
     </tr>
   );
