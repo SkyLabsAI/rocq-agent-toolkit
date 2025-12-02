@@ -480,13 +480,13 @@ const getBenchmarksMock = async (): Promise<Benchmark[]> => {
 
 export const getBenchmarks = USE_MOCK_DATA ? getBenchmarksMock : getBenchmarksReal;
 
-const getBenchmarkAgentsReal = async (benchmarkId: string): Promise<AgentSummary[]> => {
+const getBenchmarkAgentsReal = async (benchmarkId: string): Promise<BenchmarkAgentData> => {
   console.log("Fetching agents for benchmark:", benchmarkId);
   const response = await axios.get(`${config.DATA_API}/${benchmarkId}/agents`);
-  return response.data as AgentSummary[];
+  return response.data as BenchmarkAgentData;
 };
 
-const getBenchmarkAgentsMock = async (benchmarkId: string): Promise<AgentSummary[]> => {
+const getBenchmarkAgentsMock = async (benchmarkId: string): Promise<BenchmarkAgentData> => {
   await new Promise(resolve => setTimeout(resolve, 400));
 
   const agents = ['agentA', 'agentB', 'ProofBot-v2.1', 'CodeGen-Alpha', 'LogicSolver'];
@@ -516,10 +516,17 @@ const getBenchmarkAgentsMock = async (benchmarkId: string): Promise<AgentSummary
   }));
 
   console.log(`Fetched agents for benchmark ${benchmarkId} (MOCK):`, mockAgents);
-  return mockAgents;
+  return {
+    dataset_id: benchmarkId,
+    agents: mockAgents,
+  }
 };
 
 export const getBenchmarkAgents = USE_MOCK_DATA ? getBenchmarkAgentsMock : getBenchmarkAgentsReal;
 
 // Types for benchmarks
 
+interface BenchmarkAgentData {
+  dataset_id: string;
+  agents: AgentSummary[];
+}
