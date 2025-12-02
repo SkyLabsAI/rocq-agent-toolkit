@@ -16,7 +16,7 @@ def get_task_id(task: Task) -> str:
 
 def get_task_tags(task: Task) -> set[str]:
     validate_task_schema(task)
-    return set(task.get("tags", list()))
+    return set(task.get("tags", []))
 
 
 def validate_task_schema(task: Task) -> None:
