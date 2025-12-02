@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button } from '@/components/base/Button';
+import { Button } from '@/components/base/ui/button';
 import { getRunDetails } from '@/services/dataservice';
 import type { TaskOutput, RunDetailsResponse } from '@/types/types';
 import { ChevronUpIcon } from '@/icons/chevron-up';

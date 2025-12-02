@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/layouts/common';
 import { getBenchmarks } from '@/services/dataservice';
 import { Benchmark } from '@/types/types';
-import Button from '@/components/base/Button';
+import Button from '@/components/base/ui/button';
 import { RefreshIcon } from '@/icons/refresh';
 
 const BenchmarksList: React.FC = () => {

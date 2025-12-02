@@ -41,25 +41,6 @@ export const useLocalDashboard = () => {
   }, []);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setRefreshMessage('');
-    try {
-      const result = await refreshData();
-      if (result.success) {
-        setRefreshMessage(result.message);
-        await fetchData();
-        // Clear message after 3 seconds
-        setTimeout(() => setRefreshMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      setRefreshMessage('Error refreshing data. Please try again.');
-      setTimeout(() => setRefreshMessage(''), 3000);
-    } finally {
-      setIsRefreshing(false);
-    }
-
-
     window.location.reload();
   };
 

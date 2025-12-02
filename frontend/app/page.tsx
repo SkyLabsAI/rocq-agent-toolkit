@@ -12,7 +12,7 @@ export default function Home() {
   return (
    <MemoryRouter initialEntries={['/']}>
   <Routes>
-    <Route path="/" element={<BenchmarksList />} />
+    <Route path="/" element={<LocalDashboard />} />
     <Route path="/agents" element={<LocalDashboard />} />
     <Route path="/compare/agents" element={<AgentCompareTable/>} />
     <Route path="/compare" element={<ComparePage/>} />

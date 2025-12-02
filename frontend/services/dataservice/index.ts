@@ -3,7 +3,6 @@ import {
   AgentSummary,
   RunDetailsResponse,
   TaskOutput,
-  Benchmark,
 } from '@/types/types';
 import axios from 'axios';
 import { config } from '@/config/env';
@@ -406,40 +405,6 @@ const refreshDataMock = async (): Promise<{
 
 export const refreshData = USE_MOCK_DATA ? refreshDataMock : refreshDataReal;
 
-// Benchmarks API
-const getBenchmarksReal: () => Promise<Benchmark[]> = async () => {
-  const response = await axios.get(`${config.DATA_API}/benchmarks`);
-  return response.data as Benchmark[];
-};
-
-const getBenchmarksMock: () => Promise<Benchmark[]> = async () => {
-  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-
-  const mockBenchmarks: Benchmark[] = [
-    {
-      id: 'benchmark_001',
-      name: 'Basic Arithmetic Proofs',
-    },
-    {
-      id: 'benchmark_002',
-      name: 'List Operations',
-    },
-    {
-      id: 'benchmark_003',
-      name: 'Advanced Type Theory',
-    },
-    {
-      id: 'benchmark_004',
-      name: 'Functional Programming Fundamentals',
-    },
-  ];
-
-  console.log('Fetched benchmarks (MOCK):', mockBenchmarks);
-  return mockBenchmarks;
-};
-
-export const getBenchmarks = USE_MOCK_DATA ? getBenchmarksMock : getBenchmarksReal;
-
 export type AgentSummaryTemp = {
   agentName: string;
   totalTasks: number;
@@ -477,3 +442,93 @@ export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
 
   return summaries;
 }
+
+// Benchmark API functions
+const getBenchmarksReal = async (): Promise<Benchmark[]> => {
+  const response = await axios.get(`${config.DATA_API}/benchmarks`);
+  return response.data as Benchmark[];
+};
+
+const getBenchmarksMock = async (): Promise<Benchmark[]> => {
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const mockBenchmarks: Benchmark[] = [
+    {
+      id: 'benchmark_001',
+      name: 'Mathematical Proofs',
+      description: 'Collection of mathematical theorem proving tasks',
+      created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+      task_count: 150,
+    },
+    {
+      id: 'benchmark_002',
+      name: 'Logic Puzzles',
+      description: 'Logical reasoning and puzzle solving challenges',
+      created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
+      task_count: 75,
+    },
+    {
+      id: 'benchmark_003',
+      name: 'Code Generation',
+      description: 'Programming and code generation benchmarks',
+      created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+      task_count: 200,
+    },
+  ];
+
+  console.log('Fetched benchmarks (MOCK):', mockBenchmarks);
+  return mockBenchmarks;
+};
+
+export const getBenchmarks = USE_MOCK_DATA ? getBenchmarksMock : getBenchmarksReal;
+
+const getBenchmarkAgentsReal = async (benchmarkId: string): Promise<AgentSummary[]> => {
+  const response = await axios.get(`${config.DATA_API}/benchmarks/${benchmarkId}/agents`);
+  return response.data as AgentSummary[];
+};
+
+const getBenchmarkAgentsMock = async (benchmarkId: string): Promise<AgentSummary[]> => {
+  await new Promise(resolve => setTimeout(resolve, 400));
+
+  const agents = ['agentA', 'agentB', 'ProofBot-v2.1', 'CodeGen-Alpha', 'LogicSolver'];
+  const mockAgents: AgentSummary[] = agents.map((agentName, index) => ({
+    agent_name: agentName,
+    total_runs: Math.floor(Math.random() * 20) + 5,
+    best_run: {
+      run_id: `run_${agentName}_best_${benchmarkId}`,
+      agent_name: agentName,
+      timestamp_utc: new Date(Date.now() - Math.random() * 7 * 86400000).toISOString(),
+      total_tasks: Math.floor(Math.random() * 50) + 20,
+      success_count: Math.floor((Math.random() * 0.4 + 0.6) * (Math.floor(Math.random() * 50) + 20)),
+      failure_count: Math.floor((Math.random() * 0.4) * (Math.floor(Math.random() * 50) + 20)),
+      success_rate: Math.random() * 0.4 + 0.6, // 60-100%
+      score: Math.random() * 0.4 + 0.6,
+      avg_total_tokens: Math.floor(Math.random() * 3000) + 2000,
+      avg_cpu_time_sec: Math.random() * 20 + 5,
+      avg_llm_invocation_count: Math.floor(Math.random() * 15) + 5,
+      metadata: {
+        tags: {
+          benchmark_id: benchmarkId,
+          version: `v${index + 1}.0`,
+          environment: 'benchmark',
+        },
+      },
+    },
+  }));
+
+  console.log(`Fetched agents for benchmark ${benchmarkId} (MOCK):`, mockAgents);
+  return mockAgents;
+};
+
+export const getBenchmarkAgents = USE_MOCK_DATA ? getBenchmarkAgentsMock : getBenchmarkAgentsReal;
+
+// Types for benchmarks
+export interface Benchmark {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  task_count: number;
+}
+
+
