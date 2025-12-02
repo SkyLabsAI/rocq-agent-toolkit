@@ -7,11 +7,11 @@ import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AgentSummaryTemp } from '@/services/dataservice';
 import { useLocalDashboard } from '@/hooks/useLocalDashboard';
-import StickyCompareBar from '@/components/StickyCompareBar';
 import TaskDetailsModal from '@/features/taskDetailsModal';
 import RunDetailsView from '@/components/RunDetailsView';
 import AgentDetails from "./agent-details"
 import AgentListIcon from '@/icons/agent-list';
+import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
 
 interface DataItemProps {
   benchmark: Benchmark;
@@ -27,8 +27,19 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
 
   const { selectedRun, setSelectedRun } = useSelectedRun();
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
-  const [selectedAgents, setSelectedAgent] = useState<AgentSummaryTemp[]>([]);
-  const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
+  
+  // Use global compare context instead of local state
+  const {
+    selectAgent,
+    deselectAgent,
+    selectRun,
+    deselectRun,
+    getSelectedAgentsForDataset,
+    getSelectedRunsForDataset,
+    isAgentSelected,
+    isRunSelected,
+    clearDatasetSelections
+  } = useGlobalCompare();
 
   type SortableKey =
     | 'agent_name'
@@ -44,38 +55,12 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const compareSelected = () => {
-    if (selectedAgents.length < 1) return;
-    const query = new URLSearchParams({
-      agents: selectedAgents.map(a => a.agentName).join(','),
-    }).toString();
-    navigate({
-      pathname: '/compare/agents',
-      search: `?${query}`,
-    });
-  };
-
-  const compareSelectedRuns = () => {
-    if (selectedRuns.length < 1) return;
-    const query = new URLSearchParams({
-      runs: selectedRuns.join(','),
-    }).toString();
-    navigate({
-      pathname: '/compare',
-      search: `?${query}`,
-    });
-  };
-
   const toggleRunSelection = (run: Run) => {
-    setSelectedRuns(prev =>
-      prev.includes(run.run_id)
-        ? prev.filter(id => id !== run.run_id)
-        : [...prev, run.run_id]
-    );
-  };
-
-  const clearSelectedRuns = () => {
-    setSelectedRuns([]);
+    if (isRunSelected(run.run_id, benchmark.dataset_id)) {
+      deselectRun(run.run_id, benchmark.dataset_id);
+    } else {
+      selectRun(run.run_id, benchmark.dataset_id);
+    }
   };
 
   // Sorting function
@@ -124,22 +109,20 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
     });
   };
 
-  // Clear selected runs when navigating to run details view
+  // Clear dataset selections when navigating to run details view
   useEffect(() => {
     if (selectedRun) {
-      clearSelectedRuns();
-      setSelectedAgent([]);
+      clearDatasetSelections(benchmark.dataset_id);
     }
-  }, [selectedRun]);
+  }, [selectedRun, benchmark.dataset_id, clearDatasetSelections]);
 
-  // Clear selected runs when navigating to different pages
+  // Clear dataset selections when navigating to different pages
   useEffect(() => {
     const isComparePage = location.pathname.startsWith('/compare');
     if (isComparePage) {
-      clearSelectedRuns();
-      setSelectedAgent([]);
+      clearDatasetSelections(benchmark.dataset_id);
     }
-  }, [location.pathname]);
+  }, [location.pathname, benchmark.dataset_id, clearDatasetSelections]);
 
   return (
     <div>
@@ -255,30 +238,13 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
                     <AgentDetails
                       key={agent.agent_name}
                       agent={agent}
-                      isSelected={selectedAgents.some(
-                        a => a.agentName === agent.agent_name
-                      )}
+                      isSelected={isAgentSelected(agent.agent_name, benchmark.dataset_id)}
                       toggleSelection={() => {
-                        setSelectedAgent(prevSelectedAgents => {
-                          if (
-                            prevSelectedAgents.some(
-                              a => a.agentName === agent.agent_name
-                            )
-                          ) {
-                            // Remove the agent if already selected
-                            return prevSelectedAgents.filter(
-                              a => a.agentName !== agent.agent_name
-                            );
-                          } else {
-                            // Add the new agent while keeping the previous selections
-                            return [
-                              ...prevSelectedAgents,
-                              {
-                                agentName: agent.agent_name,
-                              } as AgentSummaryTemp,
-                            ];
-                          }
-                        });
+                        if (isAgentSelected(agent.agent_name, benchmark.dataset_id)) {
+                          deselectAgent(agent.agent_name, benchmark.dataset_id);
+                        } else {
+                          selectAgent(agent.agent_name, benchmark.dataset_id);
+                        }
                       }}
                     />
                   ))}
@@ -306,24 +272,6 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
             }
             taskId={modalState.selectedTask?.task_id}
           />
-
-          <StickyCompareBar
-            selectedItems={selectedAgents.map(s => s.agentName)}
-            onCompareSelected={compareSelected}
-            onClearSelection={() => {
-              setSelectedAgent([]);
-            }}
-            attribute='Agents'
-          />
-
-          {selectedRuns.length > 0 && !selectedRun && (
-            <StickyCompareBar
-              selectedItems={selectedRuns}
-              onCompareSelected={compareSelectedRuns}
-              onClearSelection={clearSelectedRuns}
-              attribute='Runs'
-            />
-          )}
         </>
       )}
     </div>
