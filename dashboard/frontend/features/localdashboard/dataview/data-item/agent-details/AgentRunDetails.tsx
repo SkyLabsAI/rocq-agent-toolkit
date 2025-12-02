@@ -137,7 +137,7 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
                   <div key={task.task_id} className="grid gap-4 p-2.5 bg-elevation-surface-raised rounded items-center" style={{ gridTemplateColumns: '30% 1fr 1fr 1fr 1fr 1fr' }}>
                     <div className="text-text text-[14px]">{task.task_id}</div>
                     <div>
-                      <span className={`px-2 py-1 rounded text-[14px] font-medium ${task.status === 'Success' ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className={` py-1 rounded text-[14px] font-medium ${task.status === 'Success' ? 'text-text-success' : 'text-text-danger'}`}>
                         {task.status}
                       </span>
                     </div>
