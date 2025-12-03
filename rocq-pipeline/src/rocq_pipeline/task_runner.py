@@ -195,7 +195,7 @@ def run_task(
     # can be created based on the task input path
     # or in a way that it can detect the changes in the task input path or dataset.
     dataset_id = os.getenv("DATASET_NAME", "default")
-    
+
     return task_result.to_task_output(
         run_id=run_id,
         task_kind=task.locator.task_kind(),

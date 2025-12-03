@@ -1,5 +1,5 @@
 from typing import Any, override
-import os
+
 from observability import get_logger
 from rocq_doc_manager import RocqDocManager
 
