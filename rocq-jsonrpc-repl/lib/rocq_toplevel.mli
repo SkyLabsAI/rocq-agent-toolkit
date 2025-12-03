@@ -44,19 +44,14 @@ val get_state_id : t -> StateId.t
 (** Rocq source code location, if any. *)
 type loc = Rocq_loc.t option
 
-(** Exception raised by [back_to] and [show_goal] in the case where the given
-    [StateId.t] was obtained from a different toplevel. *)
+(** Exception raised by [back_to] in the case where the given [StateId.t] was
+    obtained from a different toplevel. *)
 exception Toplevel_mismatch
 
 (** [back_to t ~sid] backtracks the state of toplevel [t] to state [sid], or
     gives an error message. Exception [Toplevel_mismatch] is raised without
     a query being emitted if [sid] was not issued for [t]. *)
 val back_to : t -> sid:StateId.t -> (unit, string) result
-
-(** [show_goal t ~sid ~gid] returns the goal identifier by [gid] in the state
-    [sid] for toplevel [t], or gives an error message. As for [back_to], the
-    [Toplevel_mismatch] exception is raised if [sid] is not valid for [t]. *)
-val show_goal : t -> sid:StateId.t -> gid:int -> (string, string) result
 
 (** Type of data returned by the [run] function. *)
 type run_data = {

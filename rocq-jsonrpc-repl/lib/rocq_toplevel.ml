@@ -191,18 +191,6 @@ let back_to : t -> sid:StateId.t -> (unit, string) result = fun t ~sid ->
   | Success({payload = None}) -> Ok(())
   | Success({payload = _   }) -> panic "unexpected payload"
 
-let show_goal : t -> sid:StateId.t -> gid:int -> (string, string) result =
-    fun t ~sid ~gid ->
-  check_not_stopped t;
-  let sid = int_of_sid t sid in
-  match request t ~f:"show_goal" ~params:[`Int(gid); `Int(sid)] with
-  | Failure({loc = _; error})       -> Error(error)
-  | Success({payload = None      }) -> panic "payload expected"
-  | Success({payload = Some(json)}) ->
-  match json with
-  | `String(s) -> Ok(s)
-  | _          -> panic "ill-typed payload"
-
 type run_data = {
   open_subgoals      : string option;
   new_constants      : string list;

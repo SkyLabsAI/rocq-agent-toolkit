@@ -135,16 +135,6 @@ let _ =
   let (doc, _) = Stm.edit_at ~doc:state.doc sid in
   (None, {state with doc; sid})
 
-let _ =
-  let pspec = P.(cons int (cons int nil)) in
-  add_handler "show_goal" pspec @@ fun state (gid, (sid, ())) ->
-  run_cmd state @@ fun state ->
-  let sid = Stateid.of_int sid in
-  let proof = Stm.get_proof ~doc:state.doc sid in
-  let goal = Printer.pr_goal_emacs ~proof gid (Stateid.to_int sid) in
-  let data = `String(Pp.string_of_ppcmds goal) in
-  (Some(data), state)
-
 let is_require : Vernacexpr.vernac_control -> bool = fun vernac ->
   let open Vernacexpr in
   match vernac.CAst.v.expr with
