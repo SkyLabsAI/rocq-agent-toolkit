@@ -13,7 +13,8 @@ import ComparisonModal from '@/components/base/comparisonModal';
 export const AgentCompareContent: React.FC = () => {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
-  const { agentData } = useLocalDashboard();
+  const { agentData, isLoading: agentDataLoading } = useLocalDashboard();
+
 
   const selectedAgents = sp.get('agents') || '';
   const agentNames = useMemo(() => {
@@ -45,6 +46,11 @@ export const AgentCompareContent: React.FC = () => {
         return;
       }
 
+      // Wait for agentData to be loaded before proceeding
+      if (agentDataLoading) {
+        return;
+      }
+
       setError(null);
 
       try {
@@ -58,7 +64,12 @@ export const AgentCompareContent: React.FC = () => {
           .map(agent => agent.best_run?.run_id)
           .filter(Boolean) as string[];
 
-      
+        if (bestRunIds.length === 0) {
+          console.warn('No valid run IDs found for agents:', agentNames);
+          setBestRuns([]);
+          setLoading(false);
+          return;
+        }
 
         // Fetch run details for the best runs
         const runDetails = await getRunDetails(bestRunIds);
@@ -75,7 +86,7 @@ export const AgentCompareContent: React.FC = () => {
     };
 
     fetchBestRuns();
-  }, [agentNames, agentData]);
+  }, [agentNames, agentData, agentDataLoading]);
 
   const stats = useMemo(
     () => bestRuns.map(run => {
