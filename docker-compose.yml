@@ -1,18 +1,54 @@
 services:
+  database:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    container_name: rocq-agent-toolkit-db
+    # external port can be removed : communication with in the network.
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-rat_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
+      - POSTGRES_DB=${POSTGRES_DB:-rat_db}
+    volumes:
+      - rat_db_data:/var/lib/postgresql/data
+    networks:
+      - rocq-agent-network
+
+  #Adding pg admin for Visualization of the database 
+  # pgadmin:
+  #   image: dpage/pgadmin4
+  #   container_name: rocq-agent-toolkit-pgadmin
+  #   ports:
+  #     - "5050:80"
+  #   environment:
+  #     - PGADMIN_DEFAULT_EMAIL=admin@example.com
+  #     - PGADMIN_DEFAULT_PASSWORD=admin
+  #   depends_on:
+  #     - database
+  #   networks:
+  #     - rocq-agent-network
+
+
   backend:
     build:
-      context: ../
-      dockerfile: rocq_agent_toolkit/backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: rocq-agent-toolkit-backend
     ports:
       # HOST:CONTAINER
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - JSONL_RESULTS_PATH=/brick_agents
       - OBSERVABILITY_URL=${OBSERVABILITY_URL:-http://loki:3100}
-    volumes:
-      # When setting the env from docker compose set the path of jsonl here 
-      - ${JSONL_VOLUME_PATH:-../brick_agents}:/brick_agents
+      # Database configuration
+      # Use the psycopg v3 driver and the internal PostgreSQL port (5432)
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-rat_user}:${POSTGRES_PASSWORD:-rat_password}@database:5432/${POSTGRES_DB:-rat_db}
+      - POSTGRES_HOST=database # Internal host name for the database container
+      - POSTGRES_PORT=5432  # Internal port for the database container
+      - POSTGRES_USER=${POSTGRES_USER:-rat_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
+      - POSTGRES_DB=${POSTGRES_DB:-rat_db}
     networks:
       - rocq-agent-network
 
@@ -33,3 +69,6 @@ networks:
   rocq-agent-network:
     external: true
     name: rocq-agent-network
+
+volumes:
+  rat_db_data:
