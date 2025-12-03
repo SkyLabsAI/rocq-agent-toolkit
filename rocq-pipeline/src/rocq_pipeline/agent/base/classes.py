@@ -30,9 +30,6 @@ class Agent:
 
     def name(self) -> str:
         """Return the unique name for an instance of this type of agent."""
-        # EXP : Change agent name based on the environment variables.
-        if os.getenv("AGENT_NAME"):
-            return os.getenv("AGENT_NAME")
         return self.cls_name()
 
     def finished(

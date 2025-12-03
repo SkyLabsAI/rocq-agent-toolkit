@@ -153,6 +153,7 @@ class DockerServiceManager:
             "grafana": self.check_service_running("grafana"),
             "backend": self.check_service_running("rocq-agent-toolkit-backend"),
             "frontend": self.check_service_running("rocq-agent-toolkit-frontend"),
+            "database": self.check_service_running("rocq-agent-toolkit-db"),
         }
         return services
 
