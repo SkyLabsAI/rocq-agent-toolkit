@@ -1,34 +1,45 @@
 import cn from 'classnames';
 import { AgentSummary } from '@/types/types';
 import { Button } from '@/components/base';
-import { useState } from 'react';
-import AgentRunDetails from './AgentRunDetails';
+import { useDatasetAgentDetails } from '@/hooks/useDatasetAgentDetails';
+import AgentRunsView from '@/features/localdashboard/AgentRunsView';
+import { Run } from '@/contexts/SelectedRunContext';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
+  datasetId: string;
   isSelected: boolean;
   toggleSelection: () => void;
+  selectedRuns: string[];
+  toggleRunSelection: (run: Run) => void;
+  clearSelectedRuns: () => void;
+  compareSelectedRuns: () => void;
 }
 
 const AgentDetails: React.FC<AgentDetailsProps> = ({
   agent,
+  datasetId,
   isSelected,
   toggleSelection,
+  selectedRuns,
+  toggleRunSelection,
+  clearSelectedRuns,
+  compareSelectedRuns,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
-  };
+  const {
+    loading,
+    runDetails,
+    isOpen,
+    toggleDetails,
+  } = useDatasetAgentDetails(datasetId, agent.agent_name);
 
   return (
     <>
       <tr
         className={cn(
-          'hover:bg-white/5 cursor-pointer transition-colors duration-200',
-          isExpanded && 'bg-white/5'
+          'hover:bg-white/5 cursor-pointer transition-colors duration-200'
         )}
-        onClick={toggleExpanded}
+        onClick={toggleDetails}
       >
         <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3'>
@@ -95,14 +106,37 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           </div>
         </td>
       </tr>
-      
-      {/* Agent Run Details - only render if agent has a best_run */}
-      {agent.best_run && isExpanded && (
-        <AgentRunDetails
-          runId={agent.best_run.run_id}
-          agentName={agent.agent_name}
-          isExpanded={isExpanded}
-        />
+
+      {isOpen && (
+        <tr>
+          <td colSpan={7}>
+            <div className='px-6'>
+              {loading ? (
+                <div className='flex items-center justify-center py-8'>
+                  <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
+                  <span className='ml-3 text-text'>
+                    Loading run details...
+                  </span>
+                </div>
+              ) : runDetails.length === 0 ? (
+                <div className='text-center py-8 text-text'>
+                  No run details available.
+                </div>
+              ) : (
+                <div className='space-y-4'>
+                  <AgentRunsView
+                    runDetails={runDetails}
+                    agentName={agent.agent_name}
+                    selectedRuns={selectedRuns}
+                    toggleRunSelection={toggleRunSelection}
+                    clearSelectedRuns={clearSelectedRuns}
+                    compareSelected={compareSelectedRuns}
+                  />
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
       )}
     </>
   );

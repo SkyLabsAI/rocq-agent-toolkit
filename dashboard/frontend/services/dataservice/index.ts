@@ -185,6 +185,59 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
 
 export const getDetails = USE_MOCK_DATA ? getDetailsMock : getDetailsReal;
 
+// Get runs for a specific agent within a specific dataset
+const getDetailsForDatasetReal = async (
+  datasetId: string,
+  agentName: string
+): Promise<AgentRun[]> => {
+  const response = await axios.get(
+    `${config.DATA_API}/${datasetId}/agents/${agentName}/runs`
+  );
+
+  return response.data as AgentRun[];
+};
+
+const getDetailsForDatasetMock = async (
+  datasetId: string,
+  agentName: string
+): Promise<AgentRun[]> => {
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const numRuns = Math.floor(Math.random() * 10) + 5; // 5-15 runs
+  const mockRuns: AgentRun[] = [];
+
+  for (let i = 0; i < numRuns; i++) {
+    const totalTasks = Math.floor(Math.random() * 50) + 20; // 20-70 tasks
+    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3)); // 60-90% success
+
+    mockRuns.push({
+      run_id: `run_${agentName}_${i.toString().padStart(3, '0')}_${datasetId}`,
+      agent_name: agentName,
+      timestamp_utc: new Date(
+        Date.now() - Math.random() * 7 * 86400000
+      ).toISOString(), // Last 7 days
+      total_tasks: totalTasks,
+      success_count: successCount,
+      failure_count: totalTasks - successCount,
+      metadata: {
+        tags: {
+          dataset_id: datasetId,
+          run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
+          task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+        },
+      },
+    });
+  }
+
+  console.log(`Fetched runs for agent ${agentName} in dataset ${datasetId} (MOCK):`, mockRuns);
+  return mockRuns;
+};
+
+export const getDetailsForDataset = USE_MOCK_DATA
+  ? getDetailsForDatasetMock
+  : getDetailsForDatasetReal;
+
+
 const getRunDetailsReal = async (
   runIds: string[]
 ): Promise<RunDetailsResponse[]> => {
@@ -458,17 +511,17 @@ const getBenchmarksMock = async (): Promise<Benchmark[]> => {
       dataset_id: 'benchmark_001',
       description: 'Collection of mathematical theorem proving tasks',
       created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-   
+
     },
     {
-        
+
       dataset_id: 'benchmark_002',
       description: 'Logical reasoning and puzzle solving challenges',
       created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
 
     },
     {
-        dataset_id: 'benchmark_003',
+      dataset_id: 'benchmark_003',
       description: 'Logical reasoning and puzzle solving challenges',
       created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
     },

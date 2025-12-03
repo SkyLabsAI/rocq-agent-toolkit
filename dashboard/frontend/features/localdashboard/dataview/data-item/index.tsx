@@ -238,6 +238,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
                     <AgentDetails
                       key={agent.agent_name}
                       agent={agent}
+                      datasetId={benchmark.dataset_id}
                       isSelected={isAgentSelected(agent.agent_name, benchmark.dataset_id)}
                       toggleSelection={() => {
                         if (isAgentSelected(agent.agent_name, benchmark.dataset_id)) {
@@ -245,6 +246,20 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
                         } else {
                           selectAgent(agent.agent_name, benchmark.dataset_id);
                         }
+                      }}
+                      selectedRuns={getSelectedRunsForDataset(benchmark.dataset_id)}
+                      toggleRunSelection={toggleRunSelection}
+                      clearSelectedRuns={() => clearDatasetSelections(benchmark.dataset_id)}
+                      compareSelectedRuns={() => {
+                        const selectedRunIds = getSelectedRunsForDataset(benchmark.dataset_id);
+                        if (selectedRunIds.length < 1) return;
+                        const query = new URLSearchParams({
+                          runs: selectedRunIds.join(','),
+                        }).toString();
+                        navigate({
+                          pathname: '/compare',
+                          search: `?${query}`,
+                        });
                       }}
                     />
                   ))}
