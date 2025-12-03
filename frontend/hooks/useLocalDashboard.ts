@@ -19,6 +19,7 @@ export const useLocalDashboard = () => {
   const [agentDetailData, setAgentDetailData] = useState<AgentSummaryTemp[]>(
     []
   );
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string>('');
 
@@ -30,10 +31,12 @@ export const useLocalDashboard = () => {
   const [loadingLogs, setLoadingLogs] = useState<string | null>(null);
 
   const fetchData = async () => {
+    setIsLoading(true);
     const data = await getData();
     const detailData = await fetchAgentSummaries();
     setAgentData(data);
     setAgentDetailData(detailData);
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -79,6 +82,7 @@ export const useLocalDashboard = () => {
   return {
     agentData,
     agentDetailData,
+    isLoading,
     isRefreshing,
     refreshMessage,
     handleRefresh,
