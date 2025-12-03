@@ -1,0 +1,19 @@
+(lang dune 3.17)
+(name rocq-toplevel-api)
+(generate_opam_files true)
+
+(source (github SkylabsAI/skylabs-fm))
+(authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  LGPL-2.1-onl)
+
+(package
+ (name rocq-toplevel-api)
+ (synopsis "Process-isolated Rocq toplevel exposed via an OCaml API")
+ (depends
+  rocq-core
+  rocq-loc
+  yojson
+  ppx_deriving_yojson))
+
+(subst disabled)

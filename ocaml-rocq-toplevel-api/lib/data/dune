@@ -1,0 +1,8 @@
+(library
+ (name rocq_toplevel_data)
+ (public_name rocq-toplevel-api.data)
+ (wrapped false)
+ (preprocess (pps ppx_deriving_yojson))
+ (libraries
+  rocq-runtime.lib rocq-runtime.kernel rocq-loc
+  yojson ppx_deriving_yojson.runtime))

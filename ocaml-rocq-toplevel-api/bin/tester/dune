@@ -1,0 +1,5 @@
+(executable
+ (public_name rocq-toplevel-api.tester)
+ (package rocq-toplevel-api)
+ (name main)
+ (libraries rocq_toplevel))

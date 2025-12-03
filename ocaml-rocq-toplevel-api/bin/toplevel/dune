@@ -1,0 +1,5 @@
+(executable
+ (public_name rocq-toplevel-api.private)
+ (package rocq-toplevel-api)
+ (name main)
+ (libraries rocq-runtime.toplevel rocq_toplevel_data))
