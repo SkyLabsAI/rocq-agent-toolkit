@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 export interface GlobalSelection {
   selectedAgents: Array<{ agentName: string; datasetId: string }>;
@@ -41,20 +41,19 @@ export const GlobalCompareProvider: React.FC<GlobalCompareProviderProps> = ({ ch
     activeDatasetId: null,
   });
 
-  const clearOtherDatasets = (currentDatasetId: string) => {
+  const clearOtherDatasets = useCallback((currentDatasetId: string) => {
     setSelections(prev => ({
       ...prev,
       selectedAgents: prev.selectedAgents.filter(a => a.datasetId === currentDatasetId),
       selectedRuns: prev.selectedRuns.filter(r => r.datasetId === currentDatasetId),
       activeDatasetId: currentDatasetId,
     }));
-  };
+  }, []);
 
-  const selectAgent = (agentName: string, datasetId: string) => {
+  const selectAgent = useCallback((agentName: string, datasetId: string) => {
     setSelections(prev => {
       // If switching to a different dataset, clear other selections
       if (prev.activeDatasetId !== null && prev.activeDatasetId !== datasetId) {
-        clearOtherDatasets(datasetId);
         return {
           selectedAgents: [{ agentName, datasetId }],
           selectedRuns: [],
@@ -72,9 +71,9 @@ export const GlobalCompareProvider: React.FC<GlobalCompareProviderProps> = ({ ch
       }
       return prev;
     });
-  };
+  }, []);
 
-  const deselectAgent = (agentName: string, datasetId: string) => {
+  const deselectAgent = useCallback((agentName: string, datasetId: string) => {
     setSelections(prev => ({
       ...prev,
       selectedAgents: prev.selectedAgents.filter(
@@ -82,13 +81,12 @@ export const GlobalCompareProvider: React.FC<GlobalCompareProviderProps> = ({ ch
       ),
       activeDatasetId: prev.selectedAgents.length <= 1 ? null : prev.activeDatasetId,
     }));
-  };
+  }, []);
 
-  const selectRun = (runId: string, datasetId: string) => {
+  const selectRun = useCallback((runId: string, datasetId: string) => {
     setSelections(prev => {
       // If switching to a different dataset, clear other selections
       if (prev.activeDatasetId !== null && prev.activeDatasetId !== datasetId) {
-        clearOtherDatasets(datasetId);
         return {
           selectedAgents: [],
           selectedRuns: [{ runId, datasetId }],
@@ -106,9 +104,9 @@ export const GlobalCompareProvider: React.FC<GlobalCompareProviderProps> = ({ ch
       }
       return prev;
     });
-  };
+  }, []);
 
-  const deselectRun = (runId: string, datasetId: string) => {
+  const deselectRun = useCallback((runId: string, datasetId: string) => {
     setSelections(prev => ({
       ...prev,
       selectedRuns: prev.selectedRuns.filter(
@@ -116,44 +114,44 @@ export const GlobalCompareProvider: React.FC<GlobalCompareProviderProps> = ({ ch
       ),
       activeDatasetId: prev.selectedRuns.length <= 1 ? null : prev.activeDatasetId,
     }));
-  };
+  }, []);
 
-  const clearAllSelections = () => {
+  const clearAllSelections = useCallback(() => {
     setSelections({
       selectedAgents: [],
       selectedRuns: [],
       activeDatasetId: null,
     });
-  };
+  }, []);
 
-  const clearDatasetSelections = (datasetId: string) => {
+  const clearDatasetSelections = useCallback((datasetId: string) => {
     setSelections(prev => ({
       ...prev,
       selectedAgents: prev.selectedAgents.filter(a => a.datasetId !== datasetId),
       selectedRuns: prev.selectedRuns.filter(r => r.datasetId !== datasetId),
       activeDatasetId: prev.activeDatasetId === datasetId ? null : prev.activeDatasetId,
     }));
-  };
+  }, []);
 
-  const getSelectedAgentsForDataset = (datasetId: string): string[] => {
+  const getSelectedAgentsForDataset = useCallback((datasetId: string): string[] => {
     return selections.selectedAgents
       .filter(a => a.datasetId === datasetId)
       .map(a => a.agentName);
-  };
+  }, [selections.selectedAgents]);
 
-  const getSelectedRunsForDataset = (datasetId: string): string[] => {
+  const getSelectedRunsForDataset = useCallback((datasetId: string): string[] => {
     return selections.selectedRuns
       .filter(r => r.datasetId === datasetId)
       .map(r => r.runId);
-  };
+  }, [selections.selectedRuns]);
 
-  const isAgentSelected = (agentName: string, datasetId: string): boolean => {
+  const isAgentSelected = useCallback((agentName: string, datasetId: string): boolean => {
     return selections.selectedAgents.some(a => a.agentName === agentName && a.datasetId === datasetId);
-  };
+  }, [selections.selectedAgents]);
 
-  const isRunSelected = (runId: string, datasetId: string): boolean => {
+  const isRunSelected = useCallback((runId: string, datasetId: string): boolean => {
     return selections.selectedRuns.some(r => r.runId === runId && r.datasetId === datasetId);
-  };
+  }, [selections.selectedRuns]);
 
   return (
     <GlobalCompareContext.Provider
