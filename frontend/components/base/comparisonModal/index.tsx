@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import Modal from '@/components/base/modal';
+import Modal from '@/components/base/ui/modal';
 import cn from 'classnames';
 import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
 import CodeContent from './components/CodeContent';

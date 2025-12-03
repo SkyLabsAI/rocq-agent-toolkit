@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Modal from '@/components/base/modal';
+import Modal from '@/components/base/ui/modal';
 import CodeViewer from '@/components/base/codeViewer';
 import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
 import cn from 'classnames';

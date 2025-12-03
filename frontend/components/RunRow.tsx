@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@/components/base/Button';
+import { Button } from '@/components/base/ui/button';
 import cn from 'classnames';
 import { Run } from '@/contexts/SelectedRunContext';
 import { PinOutlineIcon } from '@/icons/pin-outline';
