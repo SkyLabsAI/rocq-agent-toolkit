@@ -23,6 +23,3 @@ type t = Loc.t = {
   ep : int; (** end position *)
 }
 [@@deriving yojson]
-
-let of_json = of_yojson
-let to_json = to_yojson

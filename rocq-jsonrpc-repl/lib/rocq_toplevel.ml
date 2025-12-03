@@ -89,7 +89,7 @@ let stop : t -> unit = fun t ->
 type loc = Rocq_loc.t option
 
 let loc_of_json json =
-  match Rocq_loc.of_json json with
+  match Rocq_loc.of_yojson json with
   | Ok(loc)  -> loc
   | Error(_) -> panic "ill-formed location"
 

@@ -53,12 +53,12 @@ type loc = Rocq_loc.t option
 let loc_to_yojson loc =
   match loc with
   | None      -> `Null
-  | Some(loc) -> Rocq_loc.to_json loc
+  | Some(loc) -> Rocq_loc.to_yojson loc
 
 let loc_of_yojson json =
   match json with
   | `Null -> Ok(None)
-  | _     -> Result.map (fun o -> Some(o)) (Rocq_loc.of_json json)
+  | _     -> Result.map (fun o -> Some(o)) (Rocq_loc.of_yojson json)
 
 let loc_to_json = loc_to_yojson
 

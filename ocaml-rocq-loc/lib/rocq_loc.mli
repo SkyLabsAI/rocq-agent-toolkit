@@ -22,6 +22,6 @@ type t = Loc.t = {
   ep : int;
 }
 
-val to_json : t -> Yojson.Safe.t
+val to_yojson : t -> Yojson.Safe.t
 
-val of_json : Yojson.Safe.t -> (t, string) result
+val of_yojson : Yojson.Safe.t -> (t, string) result

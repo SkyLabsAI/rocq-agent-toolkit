@@ -62,7 +62,7 @@ let feedback_filter : Feed.t -> json option = fun fb ->
     let items =
       match loc with
       | None      -> items
-      | Some(loc) -> ("loc", Rocq_loc.to_json loc) :: items
+      | Some(loc) -> ("loc", Rocq_loc.to_yojson loc) :: items
     in
     let items = ("kind", `String(string_of_level level)) :: items in
     `Assoc(items)
@@ -117,7 +117,7 @@ let run_cmd : state -> (state -> json option * state) -> state * json =
     let loc =
       match loc with
       | None      -> []
-      | Some(loc) -> [("loc", Rocq_loc.to_json loc)]
+      | Some(loc) -> [("loc", Rocq_loc.to_yojson loc)]
     in
     let feedback =
       match feedback with

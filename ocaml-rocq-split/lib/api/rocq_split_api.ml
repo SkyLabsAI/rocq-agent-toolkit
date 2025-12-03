@@ -62,7 +62,7 @@ let get : args:string list -> file:string -> (sentence list, error) result =
       | _                    -> assert false (* Unreachable. *)
     in
     let loc_of_json json =
-      match Rocq_loc.of_json json with
+      match Rocq_loc.of_yojson json with
       | Ok(loc)  -> loc
       | Error(_) -> assert false (* Unreachable. *)
     in

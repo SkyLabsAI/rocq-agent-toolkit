@@ -1,5 +1,5 @@
 let output_error ?loc error =
-  let loc = match loc with Some(loc) -> Rocq_loc.to_json loc | _ -> `Null in
+  let loc = match loc with Some(loc) -> Rocq_loc.to_yojson loc | _ -> `Null in
   let json =
     `Assoc([
       ("error", `String(error));
