@@ -170,7 +170,7 @@ def ingest_task_results_for_run(
 
     dataset_id = task_results[0].dataset_id or "default"
     dataset = get_or_create_dataset(session, name=dataset_id)
-    
+
     run = session.get(Run, run_uuid)
 
     if run is None:
@@ -278,7 +278,7 @@ def ingest_task_results_for_run(
         existing_link = session.exec(link_stmt).first()
         if existing_link is None:
             session.add(RunTagLink(run_id=run.id, tag_id=tag.id))
-    
+
 
     return run
 
@@ -439,7 +439,7 @@ def get_runs_by_agent_from_db(session: Session, agent_name: str) -> list[RunInfo
     runs = session.exec(
         select(Run)
         .where(Run.agent_id == agent.id)
-        .order_by(Run.timestamp_utc.desc())  # type: ignore[arg-type]
+        .order_by(Run.timestamp_utc.desc())
     ).all()
 
     run_infos: list[RunInfo] = []
@@ -760,15 +760,15 @@ def get_agents_for_dataset_from_db(
 def set_best_run_flag_for_run(session: Session, run_id: str, best_run: bool) -> bool:
     """
     Set or unset the 'best run' flag for a specific run.
- 
+
     Args:
         session: Database session.
         run_id: String representation of the run UUID.
         best_run: Boolean flag indicating whether this run is the best run.
- 
+
     Returns:
         The updated boolean value of the best-run flag.
- 
+
     Raises:
         ValueError: If the run_id is not a valid UUID format.
         LookupError: If no run with the given ID exists.
@@ -777,11 +777,11 @@ def set_best_run_flag_for_run(session: Session, run_id: str, best_run: bool) -> 
         run_uuid = UUID(run_id)
     except ValueError as e:
         raise ValueError(f"Invalid run_id format: {run_id}") from e
- 
+
     run = session.get(Run, run_uuid)
     if run is None:
         raise LookupError(f"Run with id '{run_id}' not found")
- 
+
     # Update the best-run flag
     run.is_best_run = best_run
     return run.is_best_run
