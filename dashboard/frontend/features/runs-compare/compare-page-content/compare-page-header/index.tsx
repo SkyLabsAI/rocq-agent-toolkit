@@ -35,7 +35,7 @@ export const CompareRunsHeader = ({
             {title}
           </p>
           <p
-            className="font-['Noto_Sans:Regular',sans-serif] font-normal relative shrink-0 text-text-disabled w-full"
+            className="font-['Noto_Sans:Regular',sans-serif] font-normal relative shrink-0 text-text-disabled w-full whitespace-nowrap"
             style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
           >
             {secondary}

@@ -164,7 +164,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         Trace ID
                       </p>
                       <p className='font-noto-sans font-normal text-sm text-text'>
-                        {task.trace_id || 'trace_pe1melqs0r'}
+                        {task.trace_id || 'Not found'}
                       </p>
                     </div>
 
@@ -175,7 +175,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                       <p className='font-noto-sans font-normal text-sm text-text'>
                         {typeof task.task_kind === 'string'
                           ? task.task_kind
-                          : task.task_kind?.kind || 'FullProofTask'}
+                          : task.task_kind?.kind || 'Not found'}
                       </p>
                     </div>
 
@@ -183,7 +183,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                       <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                         Status
                       </p>
-                      <StatusBadge status={task.status || 'Success'} />
+                      <StatusBadge status={task.status} />
                     </div>
                   </div>
 
@@ -250,7 +250,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
                           {task.metrics?.token_counts?.input_tokens?.toLocaleString() ||
-                            ''}
+                            '_'}
                         </p>
                       </div>
 
@@ -260,7 +260,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
                           {task.metrics?.token_counts?.output_tokens?.toLocaleString() ||
-                            ''}
+                            '_'}
                         </p>
                       </div>
                     </div>
@@ -303,15 +303,8 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                     <div className='bg-elevation-surface-sunken rounded p-4 h-fit overflow-auto'>
                       <pre className='font-inter font-normal text-sm text-text whitespace-pre-wrap'>
                         {task.results
-                          ? JSON.stringify(task.results, null, 2)
-                          : JSON.stringify(
-                              {
-                                proof_found: true,
-                                steps_taken: 13,
-                              },
-                              null,
-                              2
-                            )}
+                          && JSON.stringify(task.results, null, 2)
+                          || 'No results available.'}
                       </pre>
                     </div>
                   </div>
