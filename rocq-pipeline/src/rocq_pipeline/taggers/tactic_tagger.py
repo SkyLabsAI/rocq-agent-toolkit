@@ -268,7 +268,7 @@ def looptac_tagger(tac:str, prefix: str) -> str:
         res = prefix
     return res
 
-def extract_tactics(s:str) -> tuple[dict[[str], int], list[str]]:
+def extract_tactics(s:str) -> tuple[dict[str, int], list[str]]:
     """
     Flattens a string to a list of tactics and then filters for
     'allowed_prefixes', ensuring no duplicates in the output.
