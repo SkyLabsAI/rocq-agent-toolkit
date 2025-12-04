@@ -79,7 +79,7 @@ class TaskResult(BaseModel):
         if isinstance(v, dict):
             return v
 
-        # If it's a string, try to parse as JSON 
+        # If it's a string, try to parse as JSON
         # It may be a JSON String with the results of the task
         if isinstance(v, str):
             try:
@@ -90,7 +90,7 @@ class TaskResult(BaseModel):
             except (json.JSONDecodeError, TypeError):
                 # If parsing fails, return the string as a JSON (backward compatibility)
                 return {"side_effects": {"doc_interaction": v}}
-            
+
         return {"side_effects": {"doc_interaction": v}} # fallback to the JSON-Dict [str:Any] format
 
 

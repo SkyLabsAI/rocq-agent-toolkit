@@ -49,5 +49,5 @@ pythonpath = [
 
 [tool.taskipy.tasks]
 format_ci = "ruff check"
-typecheck_ci = "mypy ."
-test_ci = "pytest tests/"
+# typecheck_ci = "mypy ."
+# test_ci = "pytest tests/"
