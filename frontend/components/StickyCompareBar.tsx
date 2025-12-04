@@ -34,9 +34,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
     <div className="fixed bottom-0 left-0 right-0 bg-elevation-surface-raised backdrop-blur-sm border-t border-t-elevation-surface-overlay  z-50 shadow-lg px-10 py-3 flex justify-between items-center">
        <div className=" flex items-center justify-center">
       <div className="flex items-center gap-3.5 w-full max-w-2xl h-[42px]">
-        {/* <p className="text-text text-[14px] font-semibold whitespace-nowrap">
-          Agent: {agentName}
-        </p> */}
+       
         <div className="w-px h-5 bg-text"></div>
         <p className="text-text-disabled text-[14px] whitespace-nowrap">
           Selected {selectedItems.length} {attribute}
@@ -58,7 +56,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
             onClick={(e) => { e.stopPropagation(); onCompareSelected(); }}
             
           >
-            {selectedItems.length < 2 ? 'Select 1 more run' : `Compare ${selectedItems.length} ${attribute}`}
+            {selectedItems.length < 2 ? `Select 1 more ${attribute}` : `Compare ${selectedItems.length} ${attribute}`}
           </Button>
         </div>
 
