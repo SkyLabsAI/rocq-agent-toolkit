@@ -1,3 +1,5 @@
+from jsonrpc_tp import JsonRPCTP
+
 from rocq_doc_manager import RocqDocManager
 
 from .util import RDM_Tests
@@ -12,16 +14,16 @@ class Test_RDM_Tests(RDM_Tests):
     ) -> None:
         assert not isinstance(
             transient_shared_rdm.cursor_index(),
-            RocqDocManager.Err,
+            JsonRPCTP.Err,
         )
         assert not isinstance(
             transient_rdm.cursor_index(),
-            RocqDocManager.Err,
+            JsonRPCTP.Err,
         )
         with loadable_rdm.sess() as rdm:
             assert not isinstance(
                 rdm.cursor_index(),
-                RocqDocManager.Err,
+                JsonRPCTP.Err,
             )
 
     @classmethod

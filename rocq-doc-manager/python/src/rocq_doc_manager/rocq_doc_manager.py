@@ -44,25 +44,25 @@ class RocqDocManager(API):
             ] + rocq_args
         else:
             args = ["rocq-doc-manager", file_path, "--"] + rocq_args
-        super().__init__(args=args, cwd=chdir, env=env)
+        super().__init__(JsonRPCTP(args=args, cwd=chdir, env=env))
         self._file_path: str = file_path
         self._file_loaded: bool = False
 
     # ===== BEGIN: deprecations ===============================================
     @deprecated("use `query_text`")
-    def text_query(self, text: str, index: int) -> str | JsonRPCTP.Err[None]:
+    def text_query(self, text: str, index: int) -> str | API.Err[None]:
         return self.query_text(text, index)
 
     @deprecated("use `query_text_all`")
-    def text_query_all(self, text: str, indices: list[int] | None) -> list[str] | JsonRPCTP.Err[None]:
+    def text_query_all(self, text: str, indices: list[int] | None) -> list[str] | API.Err[None]:
         return self.query_text_all(text, indices)
 
     @deprecated("use `query_json`")
-    def json_query(self, text: str, index: int) -> Any | JsonRPCTP.Err[None]:
+    def json_query(self, text: str, index: int) -> Any | API.Err[None]:
         return self.query_json(text, index)
 
     @deprecated("use `query_json_all`")
-    def json_query_all(self, text: str, indices: list[int] | None) -> list[Any] | JsonRPCTP.Err[None]:
+    def json_query_all(self, text: str, indices: list[int] | None) -> list[Any] | API.Err[None]:
         return self.query_json_all(text, indices)
     # ===== END: deprecations =================================================
 
@@ -77,10 +77,13 @@ class RocqDocManager(API):
         if self._file_loaded:
             msg = f"reloading {self._file_path} duplicates document content"
             if strict:
-                raise self.Error(msg)
+                raise API.Error(msg)
             else:
                 logger.warning(msg)
         return super().load_file()
+
+    def quit(self) -> None:
+        self._rpc.quit()
 
     # Note: patch insert_command since it is unsafe to
     # insert multiple commands without intervening blanks.
@@ -91,7 +94,7 @@ class RocqDocManager(API):
             blanks: str | None = "\n",
     ) -> API.CommandData | API.Err[API.RocqLoc | None]:
         insert_reply = super().insert_command(text)
-        if isinstance(insert_reply, self.Err):
+        if isinstance(insert_reply, API.Err):
             return insert_reply
         if blanks is not None:
             if not re.match(r"\s+|\(\*.*\*\)", blanks):
@@ -105,13 +108,12 @@ class RocqDocManager(API):
 
     # ===== BEGIN: contextmanagers ============================================
     @contextmanager
-    @override
     def sess(self, load_file: bool = True) -> Iterator[Self]:
-        with super().sess():
+        with self._rpc.sess():
             if load_file:
                 load_reply = self.load_file()
-                if isinstance(load_reply, self.Err):
-                    raise self.Error(
+                if isinstance(load_reply, API.Err):
+                    raise API.Error(
                         f"RocqDocManager.load_file failed: {load_reply}"
                     )
 
@@ -129,8 +131,8 @@ class RocqDocManager(API):
             # ensure that the document is left unchanged.
             marker_cmd = "Check tt."
             insert_command_reply = self.insert_command(marker_cmd)
-            if isinstance(insert_command_reply, self.Err):
-                raise self.Error(" ".join([
+            if isinstance(insert_command_reply, API.Err):
+                raise API.Error(" ".join([
                     f"RocqDocManager failed to insert {marker_cmd}:",
                     str(insert_command_reply),
                 ]))
@@ -139,8 +141,8 @@ class RocqDocManager(API):
 
         if rollback:
             revert_reply = self.revert_before(True, current_idx)
-            if isinstance(revert_reply, self.Err):
-                raise self.Error(" ".join([
+            if isinstance(revert_reply, API.Err):
+                raise API.Error(" ".join([
                     "RocqDocManager failed to rollback to",
                     f"{current_idx}: {revert_reply}",
                 ]))
@@ -154,14 +156,14 @@ class RocqDocManager(API):
         """RDM context manager that sets up an aborted goal."""
         with self.ctx(rollback=rollback):
             goal_reply = self.insert_command(f"Goal {goal}.")
-            if isinstance(goal_reply, self.Err):
-                raise self.Error(goal_reply)
+            if isinstance(goal_reply, API.Err):
+                raise API.Error(goal_reply)
 
             yield self
 
             abort_reply = self.insert_command("Abort.")
-            if isinstance(abort_reply, self.Err):
-                raise self.Error(abort_reply)
+            if isinstance(abort_reply, API.Err):
+                raise API.Error(abort_reply)
 
     # NOTE: we could expose a more structured way to build the context list.
     @contextmanager
@@ -173,21 +175,21 @@ class RocqDocManager(API):
     ) -> Iterator[Self]:
         with self.ctx(rollback=rollback):
             begin_section_reply = self.insert_command(f"Section {name}.")
-            if isinstance(begin_section_reply, self.Err):
-                raise self.Error(begin_section_reply)
+            if isinstance(begin_section_reply, API.Err):
+                raise API.Error(begin_section_reply)
 
             if context is not None:
                 context_reply = self.insert_command(
                     f"Context {' '.join(context)}."
                 )
-                if isinstance(context_reply, self.Err):
-                    raise self.Error(context_reply)
+                if isinstance(context_reply, API.Err):
+                    raise API.Error(context_reply)
 
             yield self
 
             end_section_reply = self.insert_command(f"End {name}.")
-            if isinstance(end_section_reply, self.Err):
-                raise self.Error(end_section_reply)
+            if isinstance(end_section_reply, API.Err):
+                raise API.Error(end_section_reply)
     # ===== END: contextmanagers ==============================================
 
     # ===== BEGIN: visitors ===================================================
@@ -256,7 +258,7 @@ class RocqDocManager(API):
         #
         # NOTE: proofs are not skipped
         advance_to_reply = self.advance_to(match_idx)
-        if isinstance(advance_to_reply, self.Err):
+        if isinstance(advance_to_reply, API.Err):
             logger.warning(" ".join([
                 f"Failed to advance to the match ({pretty_match}):",
                 str(advance_to_reply),
@@ -265,7 +267,7 @@ class RocqDocManager(API):
 
         if step_over_match:
             run_step_reply = self.run_step()
-            if isinstance(run_step_reply, self.Err):
+            if isinstance(run_step_reply, API.Err):
                 logger.warning(
                     "Failed to step over the match: {run_step_repl}",
                 )
@@ -299,7 +301,7 @@ class RocqDocManager(API):
                 rollback=rollback
         ):
             command_reply = self.insert_command("vm_compute.")
-            if isinstance(command_reply, self.Err):
+            if isinstance(command_reply, API.Err):
                 return command_reply
 
             query_reply = self.query_text_all(
@@ -308,11 +310,11 @@ class RocqDocManager(API):
 end.""",
                 indices=None,
             )
-            if isinstance(query_reply, self.Err):
+            if isinstance(query_reply, API.Err):
                 return query_reply
 
             if len(query_reply) != 2:
-                return self.Err(
+                return API.Err(
                     message="RocqDocManager.Compute: expected a term and type",
                     data=query_reply
                 )
@@ -331,7 +333,7 @@ end.""",
             # NOTE: we use `all: idtac.` in case the context uses
             # `Set Default Goal Selector "!"`.
             result = self.run_command('all: idtac.')
-            if isinstance(result, self.Err):
+            if isinstance(result, API.Err):
                 if result.message in self.NO_GOAL_STRINGS:
                     return None
                 return result
