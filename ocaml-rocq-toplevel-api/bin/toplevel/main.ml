@@ -91,6 +91,30 @@ let back_to state sid =
     let pp = CErrors.iprint (Exninfo.capture e) in
     (state, Error(Pp.string_of_ppcmds pp))
 
+(* Hack around the lack of standalone subgoal printing. *)
+let fixup_subgoal : Pp.t -> Pp.t = fun p ->
+  let open Pp in
+  let exception Fallback in
+  let rec decomp rest =
+    match rest with
+    | [] :: rest -> decomp rest
+    | (v :: vs) :: rest -> (v, vs :: rest)
+    | [] -> raise Fallback
+  in
+  let rec find found_is (p, rest) =
+    match repr p with
+    | Ppcmd_glue(p :: ps) -> find found_is (p, ps :: rest)
+    | Ppcmd_string(" is:") when not found_is ->
+        find true (decomp rest)
+    | Ppcmd_box(_,_) when found_is -> p
+    | _ -> find found_is (decomp rest)
+  in
+  try
+    match repr p with
+    | Ppcmd_box(_,p) -> find false (p, [])
+    | _ -> raise Fallback
+  with Fallback -> p
+
 let run state off text =
   Feed.reset ();
   try
@@ -115,10 +139,21 @@ let run state off text =
       in
       let proof_state =
         match new_state.proof with None -> None | Some(proof) ->
-        let open_subgoals =
-          Pp.string_of_ppcmds (Printer.pr_open_subgoals proof)
+        let Proof.{goals; stack; sigma; _} = Proof.data proof in
+        let given_up_goals = Evar.Set.cardinal (Evd.given_up sigma) in
+        let shelved_goals = List.length (Evd.shelf sigma) in
+        let unfocused_goals =
+          let make (l, r) = List.length l + List.length r in
+          List.map make stack
         in
-        Some({open_subgoals})
+        let focused_goals =
+          let make i _ =
+            let p = Printer.pr_nth_open_subgoal ~proof (i + 1) in
+            Pp.string_of_ppcmds (fixup_subgoal p)
+          in
+          List.mapi make goals
+        in
+        Some({given_up_goals; shelved_goals; unfocused_goals; focused_goals})
       in
       let feedback_messages = Feed.collect feedback_filter in
       {globrefs_diff; feedback_messages; proof_state}

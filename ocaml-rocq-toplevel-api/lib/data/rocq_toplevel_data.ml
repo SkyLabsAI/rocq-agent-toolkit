@@ -47,7 +47,10 @@ let empty_globrefs_diff = {
 }
 
 type proof_state = {
-  open_subgoals : string;
+  given_up_goals : (int [@default 0]);
+  shelved_goals : (int [@default 0]);
+  unfocused_goals : (int list [@default []]);
+  focused_goals : (string list [@default []]);
 }
 [@@deriving to_yojson]
 

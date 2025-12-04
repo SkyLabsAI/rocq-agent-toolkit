@@ -68,7 +68,10 @@ type globrefs_diff = {
 }
 
 type proof_state = {
-  open_subgoals : string;
+  given_up_goals : int;
+  shelved_goals : int;
+  unfocused_goals : int list;
+  focused_goals : string list;
 }
 
 type run_data = {

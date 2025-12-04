@@ -76,17 +76,17 @@
   Error: Unable to locate library Stdlib.ZArith.BinInk.
   {
     "proof_state": {
-      "open_subgoals": "1 goal\n  \n  ============================\n  0 = 0"
+      "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   OK
   {
     "proof_state": {
-      "open_subgoals": "1 goal\n  \n  ============================\n  0 = 0"
+      "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   OK
-  { "proof_state": { "open_subgoals": "No more goals." } }
+  { "proof_state": {} }
   OK
   { "globrefs_diff": { "added_constants": [ "Top.test" ] } }
   OK
