@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database configuration
-    # TODO: Database can communicate internally with the docker network. 
+    # TODO: Database can communicate internally with the docker network.
     # No need for external localhost/network communication.
     postgres_host: str = "localhost"
     postgres_port: int = 5433
