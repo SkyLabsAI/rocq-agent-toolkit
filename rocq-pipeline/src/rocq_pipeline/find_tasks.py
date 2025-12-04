@@ -47,7 +47,7 @@ def scan_proof(suffix : list[RocqDocManager.SuffixItem]) -> ProofTask:
 def find_tasks(path : Path, tagger: Callable[[ProofTask], set[str]] | None = None) -> list[dict[str, Any]]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
     with RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True).sess(load_file=True) as rdm:
-        tasks = []
+        tasks:list[dict[str, Any]] = []
 
         suffix = rdm.doc_suffix()
         total_sentences = len(suffix)
@@ -69,7 +69,7 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], set[str]] | None = Non
                 except NotFound:
                     print(f"{m.group(1)} {m.group(2)} does not end", file=sys.stderr)
                     tags = {"proof", "incomplete"}
-                task_json = { "locator": f"{m.group(1)}:{m.group(2)}", "tags": list(tags)}
+                task_json:dict[str, Any] = { "locator": f"{m.group(1)}:{m.group(2)}", "tags": list(tags)}
                 tasks.append(task_json)
                 continue
         return tasks
@@ -157,11 +157,25 @@ def run(output_file: Path, rocq_files: list[Path], jobs:int=1) -> None:
     all_tasks:list[list[dict[str, Any]]] = parallel_runner(run_it, [(str(x),x) for x in rocq_files], None, jobs=jobs, progress=False)
     flat_tasks = list(itertools.chain.from_iterable(all_tasks))
     print(f"Total number of tasks: {len(flat_tasks)}")
+
+    unique_tasks = []
+    seen_tasks:set[tuple[str,str]] = set()
+
+    for d in flat_tasks:
+        taskfile = d['file']
+        taskloc = d['locator']
+        t = (taskfile, taskloc)
+        if t not in seen_tasks:
+            seen_tasks.add(t)
+            unique_tasks.append(d)
+
+    print(f"Total number of unique tasks: {len(unique_tasks)}")
+
     with open(output_file, 'w') as f:
         if output_file.suffix in [".yml", ".yaml"]:
-            yaml.dump(flat_tasks, f)
+            yaml.dump(unique_tasks, f)
         elif output_file.suffix == ".json":
-            json.dump(flat_tasks, f)
+            json.dump(unique_tasks, f)
         else:
             print(f"unknown file format! {output_file}")
 
