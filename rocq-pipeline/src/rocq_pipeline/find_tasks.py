@@ -44,7 +44,7 @@ def scan_proof(suffix : list[RocqDocManager.SuffixItem]) -> ProofTask:
         tactics.append(txt)
     raise NotFound
 
-def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = None) -> list[dict[str, Any]]:
+def find_tasks(path : Path, tagger: Callable[[ProofTask], set[str]] | None = None) -> list[dict[str, Any]]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
     with RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True).sess(load_file=True) as rdm:
         tasks = []
@@ -63,26 +63,42 @@ def find_tasks(path : Path, tagger: Callable[[ProofTask], list[str]] | None = No
                 try:
                     proof: ProofTask = scan_proof(suffix[idx:])
                     idx += proof.end
-                    tags = ["proof"]
+                    tags = {"proof"}
                     if tagger is not None:
-                        tags.extend(tagger(proof))
+                        tags.update(tagger(proof))
                 except NotFound:
                     print(f"{m.group(1)} {m.group(2)} does not end", file=sys.stderr)
-                    tags = ["proof", "incomplete"]
-                task_json = { "locator": f"{m.group(1)}:{m.group(2)}", "tags": tags}
+                    tags = {"proof", "incomplete"}
+                task_json = { "locator": f"{m.group(1)}:{m.group(2)}", "tags": list(tags)}
                 tasks.append(task_json)
                 continue
         return tasks
 
-def my_tagger(task: ProofTask) -> list[str]:
-    tags = ["admitted"] if task.admitted else []
-    omitted:list[str] = []
+def my_tagger(task: ProofTask) -> set[str]:
+    tags:set[str] = set()
+    numtactics = 0
+    omitted:set[str] = set()
 
     for sentence in task.proof_tactics:
         identified_tactics, leftovers = tactic_tagger.extract_tactics(sentence)
-        tags = tags + identified_tactics
-        omitted = omitted + leftovers
-    return list(set(tags))
+
+        #increment numtactics by adding the identified_tactics according to their multiplicities
+        numtactics = numtactics + sum(identified_tactics.values())
+
+        #add the identified tactics to tags, ignoring entries with non-positive multiplicities
+        nonzero_identifed_tactics: set[str] = {key for key, value in identified_tactics.items() if value > 0}
+        tags.update(nonzero_identifed_tactics)
+        omitted.update(set(leftovers))
+
+    tags.add(f'NumTactics={numtactics}')
+
+    if task.admitted:
+        tags.add("admitted")
+
+    if omitted:
+        tags.add(f'UnmatchedTactics={sorted(omitted)}')
+
+    return tags
 
 def mk_parser(parent: Any|None=None) -> Any:
     # 1. Create the parser
@@ -140,6 +156,7 @@ def run(output_file: Path, rocq_files: list[Path], jobs:int=1) -> None:
 
     all_tasks:list[list[dict[str, Any]]] = parallel_runner(run_it, [(str(x),x) for x in rocq_files], None, jobs=jobs, progress=False)
     flat_tasks = list(itertools.chain.from_iterable(all_tasks))
+    print(f"Total number of tasks: {len(flat_tasks)}")
     with open(output_file, 'w') as f:
         if output_file.suffix in [".yml", ".yaml"]:
             yaml.dump(flat_tasks, f)

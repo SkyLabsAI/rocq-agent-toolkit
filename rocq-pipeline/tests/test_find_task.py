@@ -27,9 +27,11 @@ def test_factorial_longlong() -> None:
                          "Arith.arith_simpl",
                          "rewrite",
                          "intros",
-                         "wp_for",
+                         "wp_for-loopinv",
                          "assert",
                          "go",
                          "lia",
                          "verify_spec",
-                         "specialize"}
+                         "specialize",
+                         'NumTactics=18',
+                         "UnmatchedTactics=['+', '{', '}']"}

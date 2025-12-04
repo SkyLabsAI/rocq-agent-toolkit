@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import re
 
 
@@ -154,23 +156,32 @@ def flatten_tactic_string(s: str) -> list[str]:
 
     return get_atomic_tactics(s_to_process)
 
-def filter_tactics(tactics: list[str], prefixes: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Filters a list of tactics based on a given set of prefixes
+
+def filter_tactics(tactics: list[str], prefixes: list[str],
+                   tac_tagger:Callable[[str, str], str] | None = None) -> tuple[dict[str, int], list[str]]:
+    r"""Filters a list of tactics based on a given set of prefixes,
+    and applying the optional tac_tagger to each match.
 
     Args:
-        chunks: The input list of strings; chunks are allready 'stripped'
+        tactics: The input list of strings; tactics are allready 'stripped'
                 so do not contain leading or trailing whitespaces
         prefixes: A list of allowwed tactic prefixes
+        tac_tagger: a tagger that takes a (full)tactic string and a prefix of
+                    the tactic string as arguments and emits a suitable tag.
+                    If no tac_tagger is given, the resulting tag is just the prefix
 
-    Returns:
-        A tuple containing two lists, both sorted and without duplicates:
-        1. identified_tactics: A list of unique tactic prefixes found.
-        2. leftovers: A list of unique processed chunks that did not match.
+    Returns: A tuple containing: , both sorted and without duplicates:
+        1. identified_tactics: A dictionary mapping each identified
+        tactic prfix (possibly modified by the tagger as desccribed)
+        to its multiplicity (to permit meta tags such as
+        num_tactics)
+        2. leftovers: A list of unique processed tactics that did not
+        match.
+
     """
 
-    # Use sets to store results to automatically handle duplicates
-    identified_tactics_set = set()
+    # Use multiset for identified tactics and set for the leftovers.
+    identified_tactics_dict:dict[str, int] = {}
     leftovers_set = set()
 
     for tac in tactics:
@@ -187,31 +198,34 @@ def filter_tactics(tactics: list[str], prefixes: list[str]) -> tuple[list[str], 
             pattern = fr"^{re.escape(prefix)}(?=[\s.(]|$)"
 
             if re.match(pattern, tac):
-                found_prefix = prefix
+                if tac_tagger is None:
+                    found_prefix = prefix
+                else:
+                    found_prefix = tac_tagger(tac, prefix)
                 break
 
         if found_prefix:
-            identified_tactics_set.add(found_prefix)
+            identified_tactics_dict[found_prefix] = identified_tactics_dict.get(found_prefix, 0) + 1
         else:
             leftovers_set.add(tac)
 
-    # Convert sets to sorted lists for the final output
-    return sorted(identified_tactics_set), sorted(leftovers_set)
+    # Convert the leftover set to a sorted lists for the final output
+    return identified_tactics_dict, sorted(leftovers_set)
 
 rocq_prefixes = ['rewrite', 'erewrite', 'rewrite_all', 'rename',
                  'apply', 'eapply', 'auto', 'eauto', 'auto*', 'eauto*',
                  'assumption', 'eassumption', 'case',
-                 'case_decide', 'assert', 'simpl', 'Arith.arith_simpl',
+                 'case_decide', 'assert', 'simpl', 'Arith.arith_simpl', 'Arith.arith_solve',
                  'trivial', 'reflexivity', 'cbv', 'cbn', 'subst', 'change',
                  'clear', 'replace', 'specialize', 'generalize',
                  'intro', 'intros', 'destruct', 'inversion', 'exists', 'eexists', 'exfalso',
                  'lia', 'remember', 'symmetry', 'unfold', 'f_equal',
                  'constructor', 'econstructor', 'induction', 'exact', 'elim'
-                 'intuition', 'revert', 'split',
+                 'intuition', 'revert', 'split', 'tauto',
                  'left', 'right', 'Opaque', 'Transparent', 'admit',
                  'congruence', 'contradiction', 'discriminate', 'firstorder',
                  'instantiate', 'inversion', 'pose', 'red', 'refine', 'set', 'shelve',
-                 'unshelve', 'zify' ]
+                 'unshelve', 'Unshelve', 'zify', 'setoid_rewrite', 'move']
 
 #from https://gitlab.mpi-sws.org/iris/iris/blob/master/docs/proof_mode.md
 iris_prefixes = ['iAssert', 'iExists', 'iStartProof', 'iStopProof', 'iExact',
@@ -221,12 +235,40 @@ iris_prefixes = ['iAssert', 'iExists', 'iStartProof', 'iStopProof', 'iExact',
                  'iCombine', 'iAccu', 'iModIntro', 'iNext', 'iMod', 'iLöb', 'iInduction',
                  'iRewrite', 'iEval', 'iSimpl', 'iUnfold', 'iInv', 'done' ]
 
-brick_prefixes = ['verify_spec', 'go', 'ego', 'work', 'bind_ren', 'ren_hyp',
-                  'wp_for', 'wp_while', 'wp_do', 'wp_if' ]
+brick_prefixes = ['verify_spec', "verify_spec'", 'go', 'ego', 'work', 'ework',
+                  'bind_ren', 'ren_hyp', 'wp_for', 'wp_while', 'wp_do', 'wp_do_while', 'wp_if',
+                  'solve_learnable']
 
 allowed_prefixes = rocq_prefixes + iris_prefixes + brick_prefixes
 
-def extract_tactics(s:str) -> tuple[list[str], list[str]]:
+def looptac_tagger(tac:str, prefix: str) -> str:
+    r"""A tagger that annotatates 'wp_for', 'wp_while', 'wp_do', 'wp_do_while' with
+    'loopinv' or 'loopspec'.
+
+    Args:
+        tac: The full tactic string.
+        prefix: The identified prefix of the tac
+
+    Returns:
+        A annotated version of the prefix.
+
+    """
+
+    # Tag Brick loop tactics
+    if prefix in {'wp_for', 'wp_while', 'wp_do', 'wp_do_while' }:
+        # Extract the argument (the part after the prefix)
+        argument = tac[len(prefix):]
+
+        # Check for '\post' (escaped as \\post in python strings)
+        if "\\post" in argument:
+            res = prefix + '-loopspec'
+        else:
+            res = prefix + '-loopinv'
+    else:
+        res = prefix
+    return res
+
+def extract_tactics(s:str) -> tuple[dict[[str], int], list[str]]:
     """
     Flattens a string to a list of tactics and then filters for
     'allowed_prefixes', ensuring no duplicates in the output.
@@ -236,8 +278,8 @@ def extract_tactics(s:str) -> tuple[list[str], list[str]]:
 
     Returns:
         A tuple containing two lists, both sorted and without duplicates:
-        1. identified_tactics: A list of unique tactic prefixes found.
-        2. leftovers: A list of unique processed chunks that did not match.
+        1. identified_tactics: a dict of tactic prefixes found, with multiplicities.
+        2. leftovers: A list of unique processed tactics that did not match.
     """
 
     # Sort prefixes by length (longest first)
@@ -247,4 +289,4 @@ def extract_tactics(s:str) -> tuple[list[str], list[str]]:
     tactics = flatten_tactic_string(s)
 
     #filter the tactics by the sorted prefixes and return the result
-    return filter_tactics(tactics, sorted_prefixes)
+    return filter_tactics(tactics, sorted_prefixes, looptac_tagger)
