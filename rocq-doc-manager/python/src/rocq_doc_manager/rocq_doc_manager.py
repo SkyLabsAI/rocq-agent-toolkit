@@ -120,8 +120,9 @@ class RocqDocManager(API):
     @contextmanager
     def ctx(self, rollback: bool = True) -> Iterator[Self]:
         """Base RDM context manager supporting optional doc rollback."""
+        current_idx: int = 0 # satisfies pyright.
         if rollback:
-            current_idx: int = self.cursor_index()
+            current_idx = self.cursor_index()
             # NOTE: blanks are fused, so inserting blanks at the beginning
             # of a rollback context can leave the document in a modified state.
             # By inserting a real (but trivial) command that we rollback, we
