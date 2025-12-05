@@ -475,6 +475,21 @@ let output_docs oc api =
   line "------------";
   SMap.iter document_method api.api_methods
 
+let pp_escape (_ : unit) (s : string) : string =
+  let len = String.length s in
+  let out = Buffer.create len in
+  for i = 0 to len - 1 do
+    let open Buffer in
+    match s.[i] with
+    | '\n' -> add_string out "\\n"  (* Newline *)
+    | '\t' -> add_string out "\\t"  (* Tab *)
+    | '\r' -> add_string out "\\r"  (* Carriage return *)
+    | '\\' -> add_string out "\\\\" (* Backslash *)
+    | '"'  -> add_string out "\\\"" (* Double quote *)
+    | c -> add_char out c           (* All other characters *)
+  done;
+  Buffer.contents out
+
 let output_python_api oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
   let pp_capitalized oc s = output_string oc (String.capitalize_ascii s) in
@@ -535,20 +550,25 @@ let output_python_api oc api =
       | Rslt(i) ->
           let ret = Schema.python_type ~cls:api.name m.ret in
           let err = Schema.python_type ~cls:api.name i.err in
-          Printf.sprintf "%s | JsonRPCTP.Err[%s]" ret err
+          Printf.sprintf "%s | \"%s.Err[%a]\"" ret api.name pp_escape err
     in
     line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
     line "        result = self._rpc.raw_request(\"%s\", [%a])"
       m.name pp_names m.args;
     let _ =
+      (* it is important we check the result against [JsonRPCTP.Err]
+         rather than [self.Err] because [raw_result]s return type is
+         not related to [self.Err]
+       *)
       match m.impl with
       | Pure(_) ->
-      line "        assert not isinstance(result, %s.Err)" api.name;
+        line "        assert not isinstance(result, JsonRPCTP.Err)";
       | Rslt(i) ->
-      line "        if isinstance(result, %s.Err):" api.name;
-      line "            data = %s" (Schema.python_val "result.data" i.err);
-      line "            return self.Err(result.message, data)"
+        (* it is important that this mentions [JsonRPCTP] rather than [self] *)
+        line "        if isinstance(result, JsonRPCTP.Err):";
+        line "            data = %s" (Schema.python_val "result.data" i.err);
+        line "            return %s.Err(result.message, data)" api.name
     in
     line "        return %s" (Schema.python_val "result.result" m.ret)
   in
