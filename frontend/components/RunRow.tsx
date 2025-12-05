@@ -1,9 +1,9 @@
 import React from 'react';
 import { Button } from '@/components/base/ui/button';
 import cn from 'classnames';
-import { Run } from '@/contexts/SelectedRunContext';
 import { PinOutlineIcon } from '@/icons/pin-outline';
 import { PinIcon } from '@/icons/pin';
+import { Run } from '@/types/types';
 
 interface RunRowProps {
   run: Run;

@@ -1,6 +1,4 @@
 import React, { Suspense } from 'react';
-import { useLocalDashboard } from '@/hooks/useLocalDashboard';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '@/layouts/common';
 import { AgentCompareContent } from './agent-compare-content';
 

@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 import AgentListIcon from '@/icons/agent-list';
-import AgentDetails from '../AgentDetails';
+import AgentDetails from './agent-details';
 import { AgentSummaryTemp } from '@/services/dataservice';
 import TaskDetailsModal from '@/features/taskDetailsModal';
 import RunDetailsView from '@/components/RunDetailsView';
 import StickyCompareBar from '@/components/StickyCompareBar';
-import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
+import {  useSelectedRun } from '@/contexts/SelectedRunContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useLocalDashboard } from '@/hooks/useLocalDashboard';
+import { useAgents } from '@/hooks/useAgentsSummary';
+import { Run } from '@/types/types';
+import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
 
 
 
 const AgentView: React.FC = ({}) => {
   const { agentData, agentDetailData, modalState, closeModal, openCodeModal } =
-    useLocalDashboard();
+    useAgents();
 
   const { selectedRun, setSelectedRun } = useSelectedRun();
   const [activeAgent, setActiveAgent] = React.useState<string | null>(null);
@@ -133,7 +135,7 @@ const AgentView: React.FC = ({}) => {
   }, [location.pathname]);
 
   return (
-    <>
+    <GlobalCompareProvider>
       {!selectedRun && (
         <div className=''>
           <table className='w-full text-left border-collapse'>
@@ -225,9 +227,9 @@ const AgentView: React.FC = ({}) => {
                     />
                   </button>
                 </td>
-                <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
+                {/* <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
                   Actions
-                </td>
+                </td> */}
               </tr>
               {getSortedAgents().map((agent, index) => (
                 <AgentDetails
@@ -309,7 +311,7 @@ const AgentView: React.FC = ({}) => {
           attribute='Runs'
         />
       )}
-    </>
+    </GlobalCompareProvider>
   );
 };
 

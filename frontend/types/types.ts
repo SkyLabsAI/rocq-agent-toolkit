@@ -191,10 +191,13 @@ export interface AgentRun {
   total_tasks: number;
   success_count: number;
   failure_count: number;
+  dataset_id: string;
   metadata: {
     tags?: Record<string, string>;
   };
 }
+
+export type Run = AgentRun;
 
 export interface RunDetailsResponse {
   run_id: string;
