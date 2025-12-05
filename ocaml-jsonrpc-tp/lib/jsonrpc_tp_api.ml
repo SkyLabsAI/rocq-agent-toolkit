@@ -33,20 +33,8 @@ module Schema = struct
     | List s -> "a list where each element is " ^ descr s
     | Obj o -> "an instance of the `" ^ o ^ "` object"
 
-  let rec has_object: type a. a t -> bool = fun s ->
-    match s with
-    | Null
-    | Any
-    | Int
-    | Bool
-    | String -> false
-    | Nullable s -> has_object s
-    | List s -> has_object s
-    | Obj _ -> true
-
-  let python_type : type a. cls:string -> a t -> string = fun ~cls s ->
-    let rec python_type : type a. a t -> string = fun s ->
-      match s with
+  let python_type : type a. cls:string -> a t -> string = fun ~cls ->
+    let rec python_type : type a. a t -> string = function
       | Null -> "None"
       | Any -> "Any"
       | Int -> "int"
@@ -56,9 +44,7 @@ module Schema = struct
       | List s -> "list[" ^ python_type s ^ "]"
       | Obj o -> Printf.sprintf "%s.%s" cls o
     in
-    match has_object s with
-    | false -> python_type s
-    | true  -> Printf.sprintf "\"%s\"" (python_type s)
+    python_type
 
   (* Ensure every field has a default; auto-generated methods use dictionary
      unpacking and must handle cases where null/empty fields are elided. *)
@@ -475,24 +461,11 @@ let output_docs oc api =
   line "------------";
   SMap.iter document_method api.api_methods
 
-let pp_escape (_ : unit) (s : string) : string =
-  let len = String.length s in
-  let out = Buffer.create len in
-  for i = 0 to len - 1 do
-    let open Buffer in
-    match s.[i] with
-    | '\n' -> add_string out "\\n"  (* Newline *)
-    | '\t' -> add_string out "\\t"  (* Tab *)
-    | '\r' -> add_string out "\\r"  (* Carriage return *)
-    | '\\' -> add_string out "\\\\" (* Backslash *)
-    | '"'  -> add_string out "\\\"" (* Double quote *)
-    | c -> add_char out c           (* All other characters *)
-  done;
-  Buffer.contents out
-
 let output_python_api oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
   let pp_capitalized oc s = output_string oc (String.capitalize_ascii s) in
+  line "from __future__ import annotations";
+  line "";
   line "# ruff: noqa: C416 -- unnecessary list comprehension";
   line "from dataclasses import dataclass, field";
   line "from typing import Any, TypeAlias";
@@ -550,22 +523,19 @@ let output_python_api oc api =
       | Rslt(i) ->
           let ret = Schema.python_type ~cls:api.name m.ret in
           let err = Schema.python_type ~cls:api.name i.err in
-          Printf.sprintf "%s | \"%s.Err[%a]\"" ret api.name pp_escape err
+          Printf.sprintf "%s | %s.Err[%s]" ret api.name err
     in
     line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
     line "        result = self._rpc.raw_request(\"%s\", [%a])"
       m.name pp_names m.args;
     let _ =
-      (* it is important we check the result against [JsonRPCTP.Err]
-         rather than [self.Err] because [raw_result]s return type is
-         not related to [self.Err]
-       *)
+      (* We check the result against [JsonRPCTP.Err] rather than [self.Err]
+         to decouple these *)
       match m.impl with
       | Pure(_) ->
         line "        assert not isinstance(result, JsonRPCTP.Err)";
       | Rslt(i) ->
-        (* it is important that this mentions [JsonRPCTP] rather than [self] *)
         line "        if isinstance(result, JsonRPCTP.Err):";
         line "            data = %s" (Schema.python_val "result.data" i.err);
         line "            return %s.Err(result.message, data)" api.name
