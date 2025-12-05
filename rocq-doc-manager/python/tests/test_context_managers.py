@@ -104,6 +104,7 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
             rollback: bool,
     ) -> None:
         goal = "True /\\ 1 = 1"
+        proof_goal = "\n============================\n" + goal
         tac = "intuition auto."
         cmds = [
             f"Goal {goal}.",
@@ -118,13 +119,16 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
             with transient_rdm.aborted_goal_ctx(goal=goal, rollback=rollback):
                 idtac_reply = transient_rdm.run_command("idtac.")
                 assert isinstance(idtac_reply, RocqDocManager.CommandData)
-                assert idtac_reply.open_subgoals is not None
-                # TODO: use structured proof state to make this more precise
-                assert goal in idtac_reply.open_subgoals
+                assert idtac_reply.proof_state is not None
+                assert idtac_reply.proof_state.focused_goals == [proof_goal]
+
                 tac_reply = transient_rdm.insert_command(tac)
                 assert isinstance(tac_reply, RocqDocManager.CommandData)
-                # TODO: use structured proof state to make this more precise
-                assert tac_reply.open_subgoals == "No more goals."
+                assert tac_reply.proof_state is not None
+                assert tac_reply.proof_state.focused_goals == []
+                assert tac_reply.proof_state.shelved_goals == 0
+                assert tac_reply.proof_state.given_up_goals == 0
+                assert tac_reply.proof_state.unfocused_goals == []
 
 
 class Test_RDM_Section(RDM_Tests):

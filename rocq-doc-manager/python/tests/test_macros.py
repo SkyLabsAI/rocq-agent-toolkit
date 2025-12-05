@@ -13,10 +13,7 @@ class Test_RDM_macros(RDM_Tests):
             transient_rdm: RocqDocManager,
     ) -> None:
         outside_goal_reply = transient_rdm.current_goal()
-        assert outside_goal_reply == RocqDocManager.Err(
-            message="Syntax error: illegal begin of vernac.",
-            data=None,
-        )
+        assert outside_goal_reply is None
         with transient_rdm.aborted_goal_ctx(goal="True", rollback=False):
             pass
         # NOTE: ignoring offset
@@ -32,10 +29,7 @@ class Test_RDM_macros(RDM_Tests):
             assert prefix[i].kind == kind
             assert prefix[i].text == text
         outside_goal_reply = transient_rdm.current_goal()
-        assert outside_goal_reply == RocqDocManager.Err(
-            message="Syntax error: illegal begin of vernac.",
-            data=None,
-        )
+        assert outside_goal_reply is None
 
     def test_current_goal_True(
             self,
@@ -44,9 +38,10 @@ class Test_RDM_macros(RDM_Tests):
         with transient_rdm.aborted_goal_ctx(goal="True"):
             True_goal_reply = transient_rdm.current_goal()
             assert not isinstance(True_goal_reply, RocqDocManager.Err)
+            assert True_goal_reply is not None
             assert (
-                True_goal_reply ==
-                "1 goal\n  \n  ============================\n  True"
+                True_goal_reply.focused_goals ==
+                ["\n============================\nTrue"]
             )
             assert not isinstance(
                 transient_rdm.run_command("auto."),
@@ -54,7 +49,11 @@ class Test_RDM_macros(RDM_Tests):
             )
             closed_goal_reply = transient_rdm.current_goal()
             assert not isinstance(closed_goal_reply, RocqDocManager.Err)
-            assert closed_goal_reply is None
+            assert closed_goal_reply is not None
+            assert closed_goal_reply.focused_goals == []
+            assert closed_goal_reply.unfocused_goals == []
+            assert closed_goal_reply.given_up_goals == 0
+            assert closed_goal_reply.shelved_goals == 0
 
     def test_current_goal_default_goal_selector_bang(
             self,
@@ -76,9 +75,10 @@ class Test_RDM_macros(RDM_Tests):
                 useless_existential_True_goal_reply,
                 RocqDocManager.Err
             )
+            assert useless_existential_True_goal_reply is not None
             assert (
-                useless_existential_True_goal_reply ==
-                "1 goal\n  \n  ============================\n  exists _ : nat, True"
+                useless_existential_True_goal_reply.focused_goals ==
+                ["\n============================\nexists _ : nat, True"]
             )
 
             assert not isinstance(
@@ -90,10 +90,12 @@ class Test_RDM_macros(RDM_Tests):
                 shelved_existential_True_goal_reply,
                 RocqDocManager.Err
             )
+            assert shelved_existential_True_goal_reply is not None
             assert (
-                shelved_existential_True_goal_reply ==
-                "1 focused goal (shelved: 1)\n  \n  ============================\n  True"
+                shelved_existential_True_goal_reply.focused_goals ==
+                ["\n============================\nTrue"]
             )
+            assert (shelved_existential_True_goal_reply.shelved_goals == 1)
 
             assert not isinstance(
                 transient_rdm.run_command("auto."),
@@ -109,7 +111,8 @@ class Test_RDM_macros(RDM_Tests):
             assert not isinstance(current_goal_reply, RocqDocManager.Err)
             assert current_goal_reply is not None, \
                 "When shelved goals remain, the current goal must not be None"
-            assert current_goal_reply == "\n1 goal\n\ngoal 1 is:\n nat"
+            assert current_goal_reply.focused_goals == []
+            assert current_goal_reply.shelved_goals == 1
 
     @given(
         n=st.integers(min_value=0, max_value=100),

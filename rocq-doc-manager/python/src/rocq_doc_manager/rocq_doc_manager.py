@@ -92,7 +92,7 @@ class RocqDocManager(API):
             self,
             text: str,
             blanks: str | None = "\n",
-    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.CommandError]:
         insert_reply = super().insert_command(text)
         if isinstance(insert_reply, API.Err):
             return insert_reply
@@ -281,7 +281,7 @@ class RocqDocManager(API):
             self,
             term: str,
             rollback: bool = True,
-    ) -> tuple[str, str] | API.Err[API.RocqLoc | None] | API.Err[list[str]] | API.Err[None]:
+    ) -> tuple[str, str] | API.Err[API.CommandError] | API.Err[list[str]] | API.Err[None]:
         """Run [Compute {term}.] and return the resulting value and type.
 
         Arguments:
@@ -321,60 +321,45 @@ end.""",
 
             return (query_reply[0], query_reply[1])
 
-    # TODO: expose a better structured representation for proof states
-    def current_goal(self) -> str | None | API.Err[None]:
-        with self.ctx():
-            # TODO: properly account for shelved goals:
-            # - we can't use idtac when only shelved goals remain
-            # - if we Unshelve the shelved goals, we can't directly report
-            #   this goal info since it won't correspond to the proof state
-            #   when we rollabck the effect of this block.
-
-            # NOTE: we use `all: idtac.` in case the context uses
-            # `Set Default Goal Selector "!"`.
-            result = self.run_command('all: idtac.')
-            if isinstance(result, API.Err):
-                if result.message in self.NO_GOAL_STRINGS:
-                    return None
-                return result
-            elif result.open_subgoals in self.NO_GOAL_STRINGS:
-                return None
-            else:
-                return result.open_subgoals
+    def current_goal(self) -> API.ProofState | None | API.Err[None]:
+        result = self.query('About nat.')
+        if isinstance(result, self.Err):
+            return result
+        return result.proof_state
 
     def _import_export_cmd(
             self,
             kind: Literal["Import"] | Literal["Export"],
             logpath: str,
             require: bool = True,
-    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.CommandError]:
         cmd: str = f"{'Require ' if require else ''}{kind} {logpath}."
         return self.insert_command(cmd)
 
     def Import(
             self,
             logpath: str,
-    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.CommandError]:
         return self._import_export_cmd("Import", logpath, require=False)
 
     def Export(
             self,
             logpath: str,
             require: bool = True,
-    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.CommandError]:
         return self._import_export_cmd("Export", logpath, require=False)
 
     def RequireImport(
             self,
             logpath: str,
-    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.CommandError]:
         return self._import_export_cmd("Import", logpath, require=True)
 
     def RequireExport(
             self,
             logpath: str,
             require: bool = True,
-    ) -> API.CommandData | API.Err[API.RocqLoc | None]:
+    ) -> API.CommandData | API.Err[API.CommandError]:
         return self._import_export_cmd("Export", logpath, require=True)
 
     def fresh_ident(self, ident: str) -> str | API.Err[None]:
