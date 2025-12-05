@@ -1,4 +1,4 @@
-type 'a api_obj = string
+type 'a api_obj = {name : string; default : 'a option}
 
 type json = Yojson.Safe.t
 
@@ -31,7 +31,7 @@ module Schema = struct
     | String -> "a string"
     | Nullable s -> "either `null` or " ^ descr s
     | List s -> "a list where each element is " ^ descr s
-    | Obj o -> "an instance of the `" ^ o ^ "` object"
+    | Obj o -> "an instance of the `" ^ o.name ^ "` object"
 
   let python_type : type a. cls:string -> a t -> string = fun ~cls ->
     let rec python_type : type a. a t -> string = function
@@ -42,7 +42,7 @@ module Schema = struct
       | String -> "str"
       | Nullable s -> python_type s ^ " | None"
       | List s -> "list[" ^ python_type s ^ "]"
-      | Obj o -> Printf.sprintf "%s.%s" cls o
+      | Obj o -> Printf.sprintf "%s.%s" cls o.name
     in
     python_type
 
@@ -59,7 +59,7 @@ module Schema = struct
     | String -> "default=\"\""
     | Nullable _ -> "default=None"
     | List _ -> "default_factory=list"
-    | Obj o -> Printf.sprintf "default_factory=lambda: %s.%s()" cls o
+    | Obj o -> Printf.sprintf "default_factory=lambda: %s.%s()" cls o.name
 
   let python_val : type a. string -> a t -> string = fun var s ->
     let fresh = let c = ref 0 in fun () -> incr c; Printf.sprintf "v%i" !c in
@@ -75,7 +75,7 @@ module Schema = struct
       | List s ->
           let fresh = fresh () in
           Printf.sprintf "[%s for %s in %s]" (python_val fresh s) fresh var
-      | Obj o -> Printf.sprintf "self.%s.from_dict(%s)" o var
+      | Obj o -> Printf.sprintf "self.%s.from_dict(%s)" o.name var
     in
     python_val var s
 
@@ -85,6 +85,7 @@ module Schema = struct
     | (Bool       , false) -> true
     | (List(_)    , []   ) -> true
     | (Nullable(_), None ) -> true
+    | (Obj(o)     , v    ) -> Some(v) = o.default
     | (_          , _    ) -> false
 
   let default : type a. a t -> a option = fun s ->
@@ -93,6 +94,7 @@ module Schema = struct
     | Bool        -> Some(false)
     | List(_)     -> Some([])
     | Nullable(_) -> Some(None)
+    | Obj(o)      -> o.default
     | _           -> None
 end
 
@@ -116,7 +118,7 @@ module Args = GenList()
 
 type _ obj =
   | O : {
-      name : 'b api_obj;
+      key : 'b api_obj;
       descr : string option;
       fields : 'a Fields.t;
       encode : ('a -> 'b);
@@ -155,7 +157,7 @@ type 's api = {
 }
 
 let get_obj : type a. _ api -> a api_obj -> a obj = fun api k ->
-  match List.find_opt (fun (A(O(o))) -> o.name = k) api.api_objects with
+  match List.find_opt (fun (A(O(o))) -> o.key.name = k.name) api.api_objects with
   | None       -> assert false
   | Some(A(o)) -> Obj.magic o
 
@@ -165,12 +167,13 @@ let create : name:string -> _ api = fun ~name ->
 let duplicate fname =
   raise (Invalid_argument("Jsonrpc_tp_api." ^ fname ^ ": duplicate name"))
 
-let declare_object api ~name ?descr ~encode ~decode fields =
-  match List.exists (fun (A(O(r))) -> r.name = name) api.api_objects with
+let declare_object api ~name ?descr ?default ~encode ~decode fields =
+  match List.exists (fun (A(O(r))) -> r.key.name = name) api.api_objects with
   | true  -> duplicate "declare_object"
   | false ->
-  let o = A(O({name; descr; fields; encode; decode})) in
-  api.api_objects <- o :: api.api_objects; name
+  let key = {name; default} in
+  let o = A(O({key; descr; fields; encode; decode})) in
+  api.api_objects <- o :: api.api_objects; key
 
 let declare api ~name ?descr ~args ~ret ?ret_descr impl =
   match SMap.mem name api.api_methods with
@@ -261,7 +264,7 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
   let error ctxt s = raise (Error(ctxt, s)) in
   let rec of_json : type a. context list -> a Schema.t -> json -> a =
       fun ctxt s json ->
-    let of_json_obj : type a. _ -> a api_obj -> _ = fun ctxt o fields ->
+    let of_json_obj : type a. context list -> a api_obj -> (string * json) list -> a = fun ctxt o fields ->
       let O(o) = get_obj api o in
       let rec make : type a. a Fields.t -> a = fun fs ->
         let open Fields in
@@ -270,7 +273,7 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
         | Cns({name; schema; tail=fs; _}) ->
         match List.assoc_opt name fields with
         | Some(json) ->
-            let ctxt = Field({name=o.name; field=name}) :: ctxt in
+            let ctxt = Field({name=o.key.name; field=name}) :: ctxt in
             (of_json ctxt schema json, make fs)
         | None       ->
         match Schema.default schema with
@@ -415,7 +418,7 @@ let output_docs oc api =
   in
   let document_object (A(O(o))) =
     line "";
-    line "### `%s`" o.name;
+    line "### `%s`" o.key.name;
     line "";
     Option.iter (line "- Description: %s.") o.descr;
     let rec document_fields : type a. a Fields.t -> unit = fun fields ->
@@ -486,7 +489,7 @@ let output_python_api oc api =
   let output_object (A(O(o))) =
     line "";
     line "    @dataclass";
-    line "    class %s(DataClassJsonMixin):" o.name;
+    line "    class %s(DataClassJsonMixin):" o.key.name;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->

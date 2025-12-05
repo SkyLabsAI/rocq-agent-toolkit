@@ -75,14 +75,14 @@ type _ api
     class name when a Python API is generated. *)
 val create : name:string -> 'a api
 
-(** [declare_object api ~name ?descr ~encode ~decode fs] declares a new object
-    type in the given [api]. This declared object is given type [name], and it
-    holds the fields specified by [fs]. Similarly to [Fields.add], [descr] can
-    be used to document what the object type represent. The [encode] function,
-    and its inverse [decode], can be used to specify a higher-level OCaml type
-    for an object's representation. The exception [Invalid_argument] is raised
-    if an object [name] was already declared in [api]. *)
-val declare_object : _ api -> name:string -> ?descr:string
+(** [declare_object api ~name ?descr ?default ~encode ~decode fs]  declares  a
+    new object type [name],  with fields [fs] and an optional [default] value,
+    in the given [api]. Like for [Fields.add], [descr] can be used to document
+    what the object type represent. The [encode] and [decode] functions may be
+    used to specify a higher-level OCaml type for the object's representation.
+    Exception [Invalid_argument] is raised if an object of the same [name] was
+    already declared in [api]. *)
+val declare_object : _ api -> name:string -> ?descr:string -> ?default:'b
   -> encode:('a -> 'b) -> decode:('b -> 'a) -> 'a Fields.t -> 'b api_obj
 
 (** [declare api ~name ... impl] declares a new method [name], implemented via
