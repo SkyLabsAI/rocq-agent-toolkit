@@ -1,6 +1,0 @@
-(library
- (name rocq_jsonrpc_repl)
- (public_name rocq-jsonrpc-repl.api)
- (wrapped false)
- (preprocess (pps ppx_deriving_yojson))
- (libraries rocq-loc jsonrpc-tp ppx_deriving_yojson.runtime))

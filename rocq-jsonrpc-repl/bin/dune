@@ -1,5 +1,0 @@
-(executable
- (public_name rocq-jsonrpc-repl)
- (package rocq-jsonrpc-repl)
- (name repl)
- (libraries rocq-runtime.toplevel jsonrpc-tp rocq-loc))
