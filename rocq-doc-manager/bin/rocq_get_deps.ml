@@ -27,7 +27,7 @@ let main : Document.t -> unit = fun state ->
   let _ =
     match Document.load_file state with
     | Ok(())       -> ()
-    | Error(loc,e) ->
+    | Error(e,loc) ->
         let loc =
           match loc with None -> "" | Some(loc) ->
           Pp.string_of_ppcmds Pp.(Loc.pr loc ++ str ":" ++ fnl ())
@@ -41,14 +41,17 @@ let main : Document.t -> unit = fun state ->
     | Error(e) -> panic "Error: %s" e
   in
   let removed_inductives = Hashtbl.create 11 in
-  let handle_removed_inductive loc s =
+  let handle_removed_inductive loc i =
+    let s = Names.MutInd.to_string i in
     Hashtbl.add removed_inductives s loc
   in
   let removed_constants = Hashtbl.create 11 in
-  let handle_removed_constant loc s =
+  let handle_removed_constant loc c =
+    let s = Names.Constant.to_string c in
     Hashtbl.add removed_constants s loc
   in
-  let handle_inductive Document.{off; len} s =
+  let handle_added_inductive Document.{off; len} i =
+    let s = Names.MutInd.to_string i in
     let json () =
       if Hashtbl.mem removed_inductives s then None else
       Some(`Assoc([
@@ -60,21 +63,17 @@ let main : Document.t -> unit = fun state ->
     in
     json_items := Lazy.from_fun json :: !json_items
   in
-  let handle_constant Document.{off; len} s =
+  let handle_added_constant Document.{off; len} c =
+    let s = Names.Constant.to_string c in
     let json () =
       if Hashtbl.mem removed_constants s then None else
       let text = "DepsOfJSON " ^ s ^ "." in
-      match Document.insert_command state ~text with
-      | Error(_,s) -> panic "Error: %s" s
-      | Ok(_)      ->
-      let open Document in
-      let feedback = Document.get_feedback state in
-      match List.find_opt (fun f -> f.kind = `Notice) feedback with
-      | None    -> assert false
-      | Some(f) ->
+      match Document.query_json state ~text with
+      | Error(s) -> panic "Error: %s" s
+      | Ok(json) ->
       let json =
         let fields =
-          match Yojson.Safe.from_string f.text with
+          match json with
           | `Assoc(fields) -> fields
           | _              -> assert false
         in
@@ -83,7 +82,6 @@ let main : Document.t -> unit = fun state ->
           ("len", `Int(len));
         ])
       in
-      Document.insert_blanks state ~text:"\n";
       Some(json)
     in
     json_items := Lazy.from_fun json :: !json_items;
@@ -93,14 +91,16 @@ let main : Document.t -> unit = fun state ->
     | false -> ()
     | true  ->
     match Document.run_step state with
-    | Error(_,s)  -> panic "Error: %s" s
+    | Error(s, _) -> panic "Error: %s" s
     | Ok(None)    -> loop ()
     | Ok(Some(d)) ->
     let loc = Option.get (Document.byte_loc_of_last_step state) in
-    List.iter (handle_removed_inductive loc) d.Document.removed_inductives;
-    List.iter (handle_removed_constant loc) d.Document.removed_constants;
-    List.iter (handle_inductive loc) d.Document.new_inductives;
-    List.iter (handle_constant loc) d.Document.new_constants;
+    let open Rocq_toplevel in
+    let diff = d.globrefs_diff in
+    List.iter (handle_removed_inductive loc) diff.removed_inductives;
+    List.iter (handle_removed_constant loc) diff.removed_constants;
+    List.iter (handle_added_inductive loc) diff.added_inductives;
+    List.iter (handle_added_constant loc) diff.added_constants;
     loop ()
   in
   loop ();

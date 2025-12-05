@@ -3,7 +3,7 @@
  (name rocq_doc_manager)
  (modules rocq_doc_manager)
  (package rocq-doc-manager)
- (libraries rocq-doc-manager.lib))
+ (libraries jsonrpc-tp rocq-doc-manager.lib))
 
 (executable
  (public_name rocq-get-deps)

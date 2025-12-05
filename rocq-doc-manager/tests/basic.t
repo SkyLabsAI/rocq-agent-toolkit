@@ -59,18 +59,45 @@
   {
     "id": 5,
     "jsonrpc": "2.0",
-    "result": { "new_constants": [ "test.dir.test.inserted" ] }
+    "result": {
+      "globrefs_diff": { "added_constants": [ "test.dir.test.inserted" ] },
+      "feedback_messages": [
+        { "level": "info", "text": "inserted is defined" }
+      ]
+    }
   }
   { "id": 6, "jsonrpc": "2.0", "result": null }
-  { "id": 7, "jsonrpc": "2.0", "result": {} }
+  {
+    "id": 7,
+    "jsonrpc": "2.0",
+    "result": {
+      "feedback_messages": [
+        {
+          "level": "notice",
+          "text": "nil : forall {A : Type}, list A\n\nnil is template universe polymorphic\nArguments nil {A}%_type_scope\nExpands to: Constructor Corelib.Init.Datatypes.nil\nDeclared in library Corelib.Init.Datatypes, line 319, characters 3-6"
+        }
+      ]
+    }
+  }
   { "id": 8, "jsonrpc": "2.0", "result": null }
   {
     "id": 9,
     "jsonrpc": "2.0",
-    "result": { "new_constants": [ "test.dir.test.junk" ] }
+    "result": {
+      "globrefs_diff": { "added_constants": [ "test.dir.test.junk" ] },
+      "feedback_messages": [ { "level": "info", "text": "junk is defined" } ]
+    }
   }
   { "id": 10, "jsonrpc": "2.0", "result": null }
-  { "id": 11, "jsonrpc": "2.0", "result": {} }
+  {
+    "id": 11,
+    "jsonrpc": "2.0",
+    "result": {
+      "feedback_messages": [
+        { "level": "notice", "text": "12 < 42 <= 100\n     : Prop" }
+      ]
+    }
+  }
   {
     "id": 12,
     "jsonrpc": "2.0",
@@ -123,7 +150,13 @@
     "id": 15,
     "jsonrpc": "2.0",
     "result": {
-      "open_subgoals": "1 goal\n  \n  ============================\n  forall x : nat, x = x"
+      "proof_state": {
+        "given_up_goals": 0,
+        "shelved_goals": 0,
+        "focused_goals": [
+          "\n============================\nforall x : nat, x = x"
+        ]
+      }
     }
   }
   { "id": 16, "jsonrpc": "2.0", "result": null }
@@ -131,7 +164,13 @@
     "id": 17,
     "jsonrpc": "2.0",
     "result": {
-      "open_subgoals": "1 goal\n  \n  ============================\n  forall x : nat, x = x"
+      "proof_state": {
+        "given_up_goals": 0,
+        "shelved_goals": 0,
+        "focused_goals": [
+          "\n============================\nforall x : nat, x = x"
+        ]
+      }
     }
   }
   { "id": 18, "jsonrpc": "2.0", "result": null }
@@ -139,20 +178,26 @@
     "id": 19,
     "jsonrpc": "2.0",
     "result": {
-      "open_subgoals": "1 goal\n  \n  x : nat\n  ============================\n  x = x"
+      "proof_state": {
+        "given_up_goals": 0,
+        "shelved_goals": 0,
+        "focused_goals": [ "\nx : nat\n============================\nx = x" ]
+      }
     }
   }
   { "id": 20, "jsonrpc": "2.0", "result": null }
   {
     "id": 21,
     "jsonrpc": "2.0",
-    "result": { "open_subgoals": "No more goals." }
+    "result": { "proof_state": { "given_up_goals": 0, "shelved_goals": 0 } }
   }
   { "id": 22, "jsonrpc": "2.0", "result": null }
   {
     "id": 23,
     "jsonrpc": "2.0",
-    "result": { "new_constants": [ "test.dir.test.test" ] }
+    "result": {
+      "globrefs_diff": { "added_constants": [ "test.dir.test.test" ] }
+    }
   }
   {
     "id": 24,

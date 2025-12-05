@@ -109,7 +109,7 @@ val declare_full : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ret:'b Schema.t -> ?ret_descr:string
   -> err:'e Schema.t -> ?err_descr:string
   -> ?recoverable:bool
-  -> ('s -> 'a -> 's * ('b, 'e * string) Result.t) -> unit
+  -> ('s -> 'a -> 's * ('b, string * 'e) Result.t) -> unit
 
 (** [run api ~ic ~oc s] starts an interactive request/response loop for [api].
     Requests are expected on channel [ic], and the corresponding responses are

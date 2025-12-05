@@ -7,15 +7,20 @@ type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
 
+let loc_to_yojson loc =
+  match loc with
+  | None -> `Null
+  | Some(loc) -> Rocq_loc.to_yojson loc
+
 let main : Document.t -> unit = fun state ->
   let json =
     match Document.load_file state with
     | Ok(())       -> None
-    | Error(loc,s) ->
+    | Error(s,loc) ->
         let fields =
           ("status" , `String("error")) ::
           ("message", `String(s)) ::
-          ("loc"    , Document.loc_to_json loc) :: []
+          ("loc"    , loc_to_yojson loc) :: []
         in
         Some(`Assoc(fields))
   in
@@ -25,19 +30,26 @@ let main : Document.t -> unit = fun state ->
     | false -> `Assoc([("status", `String("success"))])
     | true  ->
     match Document.run_step state with
-    | Error(loc,s) ->
+    | Error(s,err) ->
+        let loc =
+          match err with
+          | None -> None
+          | Some(err) -> err.Rocq_toplevel.error_loc
+        in
         let fields =
           ("status" , `String("error")) ::
           ("message", `String(s)) ::
-          ("loc"    , Document.loc_to_json loc) :: []
+          ("loc"    , loc_to_yojson loc) :: []
         in
         let fields =
           match !prev_data with
           | None -> fields
           | Some(data) ->
-          match data.Document.open_subgoals with
+          match data.Rocq_toplevel.proof_state with
           | None -> fields
-          | Some(goals) -> fields @ [("goals", `String(goals))]
+          | Some(p) ->
+          let p = Rocq_toplevel.proof_state_to_yojson p in
+          fields @ [("proof_state", p)]
         in
         `Assoc(fields)
     | Ok(None)     -> loop ()

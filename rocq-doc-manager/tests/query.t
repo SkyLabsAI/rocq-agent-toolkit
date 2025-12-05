@@ -50,7 +50,11 @@
     "id": 7,
     "jsonrpc": "2.0",
     "result": {
-      "open_subgoals": "1 goal\n  \n  ============================\n  True"
+      "proof_state": {
+        "given_up_goals": 0,
+        "shelved_goals": 0,
+        "focused_goals": [ "\n============================\nTrue" ]
+      }
     }
   }
   { "id": 8, "jsonrpc": "2.0", "result": [ "hello,", "world!" ] }

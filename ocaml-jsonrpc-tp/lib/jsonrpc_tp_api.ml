@@ -138,7 +138,7 @@ type ('s, 'a, 'b) api_method_impl =
       err : 'e Schema.t;
       err_descr : string option;
       recoverable : bool;
-      impl : ('s -> 'a -> 's * ('b, 'e * string) Result.t);
+      impl : ('s -> 'a -> 's * ('b, string * 'e) Result.t);
     } -> ('s, 'a, 'b) api_method_impl
 
 type 's api_method = M : {
@@ -392,7 +392,7 @@ let run api ~ic ~oc s =
               | Ok(ret)             ->
                   let ret = to_json api spec.ret ret in
                   J.Response.ok id ret
-              | Error(err, message) ->
+              | Error(message, err) ->
                   let data =
                     match impl.err with
                     | Null -> None

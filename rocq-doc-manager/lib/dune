@@ -3,8 +3,8 @@
  (name rocq_doc_manager)
  (inline_tests)
  (wrapped false)
- (preprocess (pps ppx_deriving_yojson ppx_inline_test))
+ (preprocess (pps ppx_inline_test))
  (libraries
   rocq-split.api
-  rocq-jsonrpc-repl.api
-  ppx_deriving_yojson.runtime))
+  rocq-toplevel-api.api
+  yojson))

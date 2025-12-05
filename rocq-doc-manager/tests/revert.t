@@ -43,10 +43,24 @@
   {
     "id": 3,
     "jsonrpc": "2.0",
-    "result": { "new_constants": [ "test.dir.test.test" ] }
+    "result": {
+      "globrefs_diff": { "added_constants": [ "test.dir.test.test" ] },
+      "feedback_messages": [ { "level": "info", "text": "test is defined" } ]
+    }
   }
   { "id": 4, "jsonrpc": "2.0", "result": null }
-  { "id": 5, "jsonrpc": "2.0", "result": {} }
+  {
+    "id": 5,
+    "jsonrpc": "2.0",
+    "result": {
+      "feedback_messages": [
+        {
+          "level": "notice",
+          "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
+        }
+      ]
+    }
+  }
   { "id": 6, "jsonrpc": "2.0", "result": null }
   { "id": 7, "jsonrpc": "2.0", "result": null }
   { "id": 8, "jsonrpc": "2.0", "result": null }
@@ -60,19 +74,46 @@
       { "kind": "command", "text": "Check test." }
     ]
   }
-  { "id": 11, "jsonrpc": "2.0", "result": {} }
+  {
+    "id": 11,
+    "jsonrpc": "2.0",
+    "result": {
+      "feedback_messages": [
+        {
+          "level": "notice",
+          "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
+        }
+      ]
+    }
+  }
   { "id": 12, "jsonrpc": "2.0", "result": null }
   {
     "id": 13,
     "jsonrpc": "2.0",
     "error": {
       "data": {
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
-        "bp": 51,
-        "ep": 55
+        "error_loc": {
+          "line_nb": 1,
+          "bol_pos": 0,
+          "line_nb_last": 1,
+          "bol_pos_last": 0,
+          "bp": 51,
+          "ep": 55
+        },
+        "feedback_messages": [
+          {
+            "level": "error",
+            "loc": {
+              "line_nb": 1,
+              "bol_pos": 0,
+              "line_nb_last": 1,
+              "bol_pos_last": 0,
+              "bp": 51,
+              "ep": 55
+            },
+            "text": "The reference test was not found in the current environment."
+          }
+        ]
       },
       "code": -32803,
       "message": "The reference test was not found in the current environment."

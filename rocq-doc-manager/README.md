@@ -50,14 +50,48 @@ API Objects
 - Field `line_nb`: start line number (as an integer).
 - Field `fname`: source file identification if not run as a toplevel (as either `null` or an instance of the `RocqSource` object).
 
+### `Quickfix`
+
+- Description: Quick fix hint.
+- Field `text`: a string.
+- Field `loc`: an instance of the `RocqLoc` object.
+
+### `FeedbackMessage`
+
+- Description: Rocq feedback message.
+- Field `text`: a string.
+- Field `quickfix`: a list where each element is an instance of the `Quickfix` object.
+- Field `loc`: either `null` or an instance of the `RocqLoc` object.
+- Field `level`: either 'debug', 'info', 'notice', 'warning', or 'error' (as a string).
+
+### `GlobrefsDiff`
+
+- Description: environment modification performed by a Rocq command.
+- Field `removed_inductives`: a list where each element is a string.
+- Field `added_inductives`: a list where each element is a string.
+- Field `removed_constants`: a list where each element is a string.
+- Field `added_constants`: a list where each element is a string.
+
+### `ProofState`
+
+- Description: Summary of a Rocq proof state, including the text of focused goals.
+- Field `focused_goals`: a list where each element is a string.
+- Field `unfocused_goals`: a list where each element is an integer.
+- Field `shelved_goals`: an integer.
+- Field `given_up_goals`: an integer.
+
 ### `CommandData`
 
 - Description: data gathered while running a Rocq command.
-- Field `removed_inductives`: inductives removed by the command (as a list where each element is a string).
-- Field `new_inductives`: inductives introduced by the command (as a list where each element is a string).
-- Field `removed_constants`: constants removed by the command (as a list where each element is a string).
-- Field `new_constants`: constants introduced by the command (as a list where each element is a string).
-- Field `open_subgoals`: open sub-goals, if in a proof (as either `null` or a string).
+- Field `proof_state`: either `null` or an instance of the `ProofState` object.
+- Field `feedback_messages`: a list where each element is an instance of the `FeedbackMessage` object.
+- Field `globrefs_diff`: an instance of the `GlobrefsDiff` object.
+
+### `CommandError`
+
+- Description: data returned on Rocq command errors.
+- Field `feedback_messages`: a list where each element is an instance of the `FeedbackMessage` object.
+- Field `error_loc`: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 
 ### `PrefixItem`
 
@@ -80,19 +114,6 @@ API Objects
 - Field `stdout`: a string.
 - Field `success`: a boolean.
 
-### `Feedback`
-
-- Description: Rocq feedback item.
-- Field `loc`: either `null` or an instance of the `RocqLoc` object.
-- Field `text`: a string.
-- Field `kind`: either 'debug', 'info', 'notice', 'warning', or 'error' (as a string).
-
-### `QueryResult`
-
-- Description: result of a raw query.
-- Field `feedback`: a list where each element is an instance of the `Feedback` object.
-- Field `data`: an instance of the `CommandData` object.
-
 API Methods
 ------------
 
@@ -102,7 +123,7 @@ API Methods
 - Arguments (in order, or named):
   - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
+- Error payload: optional source code location for the error (as an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
 
 ### `clear_suffix`
@@ -143,19 +164,13 @@ API Methods
 - Response payload: a list where each element is an instance of the `SuffixItem` object.
 - Failure mode: never fails.
 
-### `get_feedback`
-
-- Description: gets Rocq's feedback for the last run command (if any).
-- Response payload: a list where each element is an instance of the `Feedback` object.
-- Failure mode: never fails.
-
 ### `go_to`
 
 - Description: move the cursor right before the indicated item (whether it is already processed or not).
 - Arguments (in order, or named):
   - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
+- Error payload: optional source code location for the error (as an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
 
 ### `has_suffix`
@@ -178,7 +193,7 @@ API Methods
 - Arguments (in order, or named):
   - text: text of the command to insert (as a string).
 - Response payload: an instance of the `CommandData` object.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
+- Error payload: an instance of the `CommandError` object.
 - Failure mode: recoverable failure.
 
 ### `load_file`
@@ -193,7 +208,7 @@ API Methods
 - Description: runs the given query at the cursor, not updating the state.
 - Arguments (in order, or named):
   - text: text of the query (as a string).
-- Response payload: an instance of the `QueryResult` object.
+- Response payload: an instance of the `CommandData` object.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
@@ -259,5 +274,5 @@ API Methods
 
 - Description: advance the cursor by stepping over an unprocessed item.
 - Response payload: data for the command that was run, if any (as either `null` or an instance of the `CommandData` object).
-- Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
+- Error payload: error data for the command that was run, if any (as either `null` or an instance of the `CommandError` object).
 - Failure mode: recoverable failure.

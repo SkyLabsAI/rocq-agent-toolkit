@@ -21,29 +21,17 @@ val init : args:string list -> file:string -> t
 
 val stop : t -> unit
 
-type loc = Rocq_loc.t option
+val load_file : t -> (unit, string * Rocq_loc.t option) result
 
-type json = Yojson.Safe.t
-
-val loc_to_json : loc -> json
-
-val load_file : t -> (unit, loc * string) result
-
-type command_data = {
-  open_subgoals : string option;
-  new_constants : string list;
-  removed_constants : string list;
-  new_inductives : string list;
-  removed_inductives : string list;
-}
+type command_data = Rocq_toplevel.run_data
+type command_error = Rocq_toplevel.run_error
 
 val file : t -> string
 
-val command_data_to_json : command_data -> json
-
 val insert_blanks : t -> text:string -> unit
 
-val insert_command : t -> text:string -> (command_data, loc * string) result
+val insert_command : t -> text:string
+  -> (command_data, string * command_error) result
 
 (** [run_command d ~text] is similar to [insert_command d ~text], but does not
     record the run command in the document. Note however that any side-effects
@@ -70,7 +58,8 @@ val with_rollback : t -> (unit -> 'a) -> 'a
 
 val clear_suffix : t -> unit
 
-val run_step : t -> (command_data option, loc * string) result
+val run_step : t ->
+  (command_data option, string * command_error option) result
 
 (** [advance_to d ~index] advances the cursor of document [d] to place it just
     before the item with the given [index]. If [index] is invalid, which means
@@ -79,14 +68,14 @@ val run_step : t -> (command_data option, loc * string) result
     [Invalid_argument] is raised. In case of error while processing a command,
     the cursor is left at the reached position, and [Error (loc,msg)] is given
     similarly to what [insert_command] or [run_step] do. *)
-val advance_to : t -> index:int -> (unit, loc * string) result
+val advance_to : t -> index:int -> (unit, string * command_error) result
 
 (** [go_to d ~index] is the same as [advance_to d ~index], but it additionally
     allows to revert to an earlier index like [revert_before d ~index]. In any
     case, no item is erased from the document. If the [index] is invalid, then
     [Invalid_argument] is raised. Valid indices range from [0] to one past the
     index of the last item in the document's suffix. *)
-val go_to : t -> index:int -> (unit, loc * string) result
+val go_to : t -> index:int -> (unit, string * command_error) result
 
 type byte_loc = {off : int; len : int}
 
@@ -118,16 +107,6 @@ val commit : t -> include_suffix:bool -> unit
 
 val compile : t -> (unit, string) result * string * string
 
-type feedback = {
-  kind : [`Debug | `Info | `Notice | `Warning | `Error];
-  text : string;
-  loc  : loc;
-}
-
-val feedback_to_json : feedback -> json
-
-val get_feedback : t -> feedback list
-
 (** [query d ~text] runs the command [text] at the cursor in document [d]. The
     cursor is not moved, and the command is not recorded in the document. Note
     also that the Rocq state is rolled back, to undo any potential side-effect
@@ -135,7 +114,7 @@ val get_feedback : t -> feedback list
     a similar result to [insert_command]. However, feedback is always returned
     immediately in the success case, and no source code location is given when
     an error occurs (queries are not part of the document). *)
-val query : t -> text:string -> (command_data * feedback list, string) result
+val query : t -> text:string -> (command_data, string) result
 
 (** [query_text ?index d ~text] is similar to [query d ~text], but the command
     result is extracted from the feedback, and returned as a string in case of
@@ -154,6 +133,9 @@ val query_text : ?index:int -> t -> text:string -> (string, string) result
     invalid, [Error] is returned. *)
 val query_text_all : ?indices:int list -> t -> text:string
   -> (string list, string) result
+
+(** Type of JSON data. *)
+type json = Yojson.Safe.t
 
 (** [query_json ?index d ~text] is similar to [query_text ?index d ~text], but
     the result is additionally turned into JSON data. If the command result is

@@ -11,25 +11,29 @@ let main : Document.t -> unit = fun state ->
   let _ =
     match Document.load_file state with
     | Ok(())     -> ()
-    | Error(_,s) -> panic "Error: failed to load the file.\n%s" s
+    | Error(s,_) -> panic "Error: failed to load the file.\n%s" s
   in
-  let rec loop () =
+  let rec loop last_data =
     match Document.has_suffix state with
-    | false -> ()
+    | false -> last_data
     | true  ->
     match Document.run_step state with
-    | Ok(_)      -> loop ()
-    | Error(_,s) -> panic "Error: failed to process a command.\n%s" s
+    | Ok(None)   -> loop last_data
+    | Ok(data)   -> loop data
+    | Error(s,_) -> panic "Error: failed to process a command.\n%s" s
   in
-  loop ();
-  let feedback = Document.get_feedback state in
-  let feedback = List.filter (fun f -> f.Document.kind = `Notice) feedback in
-  match feedback with
+  match loop None with
+  | None    -> panic "Error: no command were run."
+  | Some(d) ->
+  let filter Rocq_toplevel.{level; text; _} =
+    match level with
+    | Feedback.Info | Feedback.Notice -> Some(text)
+    | _ -> None
+  in
+  match List.filter_map filter d.Rocq_toplevel.feedback_messages with
   | []          -> panic "Error: the last command gave no feedback."
   | _ :: _ :: _ -> panic "Error: the last command gave too much feedback."
-  | [f]         ->
-  let feedback = f.Document.text in
-  Printf.printf "%s%!" feedback
+  | [s]         -> Printf.printf "%s%!" s
 
 (* We assume a single Rocq source file is passed last. *)
 let parse_args : argv:string array -> string list * string = fun ~argv ->

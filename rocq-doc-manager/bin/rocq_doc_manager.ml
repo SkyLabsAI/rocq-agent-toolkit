@@ -81,37 +81,124 @@ let _ =
     @@ fun d (text, ()) ->
   (d, Document.insert_blanks d ~text)
 
-let command_data =
+let quickfix =
   let fields =
-    API.Fields.add ~name:"open_subgoals"
-      ~descr:"open sub-goals, if in a proof" S.(nullable string) @@
-    API.Fields.add ~name:"new_constants"
-      ~descr:"constants introduced by the command" S.(list string) @@
-    API.Fields.add ~name:"removed_constants"
-      ~descr:"constants removed by the command" S.(list string) @@
-    API.Fields.add ~name:"new_inductives"
-      ~descr:"inductives introduced by the command" S.(list string) @@
-    API.Fields.add ~name:"removed_inductives"
-      ~descr:"inductives removed by the command" S.(list string) @@
+    API.Fields.add ~name:"loc" S.(obj rocq_loc) @@
+    API.Fields.add ~name:"text" S.string @@
     API.Fields.nil
   in
-  let encode arg =
-    let (open_subgoals, (new_constants, (removed_constants, arg))) = arg in
-    let (new_inductives, (removed_inductives, ())) = arg in
-    Document.{
-      open_subgoals; new_constants; removed_constants;
-      new_inductives; removed_inductives
-    }
+  let open Rocq_toplevel in
+  let encode (loc, (text, ())) = {loc; text} in
+  let decode ({loc; text} : quickfix) = (loc, (text, ())) in
+  API.declare_object api ~name:"Quickfix"
+    ~descr:"Quick fix hint" ~encode ~decode fields
+
+let feedback_message =
+  let fields =
+    let descr = "either 'debug', 'info', 'notice', 'warning', or 'error'" in
+    API.Fields.add ~name:"level" ~descr S.string @@
+    API.Fields.add ~name:"loc" S.(nullable (obj rocq_loc)) @@
+    API.Fields.add ~name:"quickfix" S.(list (obj quickfix)) @@
+    API.Fields.add ~name:"text" S.string @@
+    API.Fields.nil
   in
-  let decode data =
-    let Document.{open_subgoals; _} = data in
-    let Document.{new_constants; removed_constants; _} = data in
-    let Document.{new_inductives; removed_inductives; _} = data in
-    let ret = (new_inductives, (removed_inductives, ())) in
-    (open_subgoals, (new_constants, (removed_constants, ret)))
+  let open Rocq_toplevel in
+  let encode _ = assert false in
+  let decode {level; loc; quickfix; text} =
+    let level =
+      match level with
+      | Feedback.Debug   -> "debug"
+      | Feedback.Info    -> "info"
+      | Feedback.Notice  -> "notice"
+      | Feedback.Warning -> "warning"
+      | Feedback.Error   -> "error"
+    in
+    (level, (loc, (quickfix, (text, ()))))
+  in
+  API.declare_object api ~name:"FeedbackMessage"
+    ~descr:"Rocq feedback message" ~encode ~decode fields
+
+let globrefs_diff =
+  let fields =
+    API.Fields.add ~name:"added_constants" S.(list string) @@
+    API.Fields.add ~name:"removed_constants" S.(list string) @@
+    API.Fields.add ~name:"added_inductives" S.(list string) @@
+    API.Fields.add ~name:"removed_inductives" S.(list string) @@
+    API.Fields.nil
+  in
+  let open Rocq_toplevel in
+  let encode _ = assert false in
+  let decode diff =
+    let {added_constants = ac; removed_constants = rc; _} = diff in
+    let {added_inductives = ai; removed_inductives = ri; _} = diff in
+    let ac = List.map Names.Constant.to_string ac in
+    let rc = List.map Names.Constant.to_string rc in
+    let ai = List.map Names.MutInd.to_string ai in
+    let ri = List.map Names.MutInd.to_string ri in
+    (ac, (rc, (ai, (ri, ()))))
+  in
+  let default =
+    {added_constants = []; removed_constants = [];
+     added_inductives = []; removed_inductives = []}
+  in
+  API.declare_object api ~name:"GlobrefsDiff" ~descr:"environment \
+    modification performed by a Rocq command" ~default ~encode ~decode fields
+
+let proof_state =
+  let fields =
+    API.Fields.add ~name:"given_up_goals" S.int @@
+    API.Fields.add ~name:"shelved_goals" S.int @@
+    API.Fields.add ~name:"unfocused_goals" S.(list int) @@
+    API.Fields.add ~name:"focused_goals" S.(list string) @@
+    API.Fields.nil
+  in
+  let open Rocq_toplevel in
+  let encode arg =
+    let (given_up_goals, (shelved_goals, arg)) = arg in
+    let (unfocused_goals, (focused_goals, ())) = arg in
+    {given_up_goals; shelved_goals; unfocused_goals; focused_goals}
+  in
+  let decode {given_up_goals; shelved_goals; unfocused_goals; focused_goals} =
+    (given_up_goals, (shelved_goals, (unfocused_goals, (focused_goals, ()))))
+  in
+  API.declare_object api ~name:"ProofState" ~descr:"Summary of a Rocq proof \
+    state, including the text of focused goals" ~encode ~decode fields
+
+let command_data =
+  let fields =
+    API.Fields.add ~name:"globrefs_diff" S.(obj globrefs_diff) @@
+    API.Fields.add ~name:"feedback_messages"
+      S.(list (obj feedback_message)) @@
+    API.Fields.add ~name:"proof_state" S.(nullable (obj proof_state)) @@
+    API.Fields.nil
+  in
+  let open Rocq_toplevel in
+  let encode (globrefs_diff, (feedback_messages, (proof_state, ()))) =
+    {globrefs_diff; feedback_messages; proof_state}
+  in
+  let decode {globrefs_diff; feedback_messages; proof_state} =
+    (globrefs_diff, (feedback_messages, (proof_state, ())))
   in
   API.declare_object api ~name:"CommandData"
     ~descr:"data gathered while running a Rocq command" ~encode ~decode fields
+
+let command_error =
+  let fields =
+    API.Fields.add ~name:"error_loc" ~descr:"optional source code location \
+      for the error" S.(nullable (obj rocq_loc)) @@
+    API.Fields.add ~name:"feedback_messages"
+      S.(list (obj feedback_message)) @@
+    API.Fields.nil
+  in
+  let open Rocq_toplevel in
+  let encode (error_loc, (feedback_messages, ())) =
+    {error_loc; feedback_messages}
+  in
+  let decode {error_loc; feedback_messages} =
+    (error_loc, (feedback_messages, ()))
+  in
+  API.declare_object api ~name:"CommandError"
+    ~descr:"data returned on Rocq command errors" ~encode ~decode fields
 
 let text_args =
   A.add ~name:"text" ~descr:"text of the command to insert" S.string A.nil
@@ -119,8 +206,7 @@ let text_args =
 let _ =
   API.declare_full api ~name:"insert_command"
     ~descr:"insert and process a command at the cursor"
-    ~args:text_args ~ret:S.(obj command_data) ~err:S.(nullable (obj rocq_loc))
-    ~err_descr:"optional source code location for the error"
+    ~args:text_args ~ret:S.(obj command_data) ~err:S.(obj command_error)
     @@ fun d (text, ()) ->
   (d, Document.insert_command d ~text)
 
@@ -129,7 +215,7 @@ let _ =
     ~descr:"process a command at the cursor without inserting it in the \
       document" ~args:text_args ~ret:S.(obj command_data) ~err:S.null
     @@ fun d (text, ()) ->
-  (d, Result.map_error (fun s -> ((), s)) (Document.run_command d ~text))
+  (d, Result.map_error (fun s -> (s, ())) (Document.run_command d ~text))
 
 let _ =
   API.declare api ~name:"cursor_index"
@@ -157,7 +243,7 @@ let index_before_args =
 let _ =
   API.declare_full api ~name:"advance_to" ~descr:"advance the cursor before \
     the indicated unprocessed item" ~args:index_before_args ~ret:S.null
-    ~err:S.(nullable (obj rocq_loc))
+    ~err:S.(obj command_error)
     ~err_descr:"optional source code location for the error"
     @@ fun d (index, ()) ->
   (d, Document.advance_to d ~index)
@@ -165,7 +251,7 @@ let _ =
 let _ =
   API.declare_full api ~name:"go_to" ~descr:"move the cursor right before \
     the indicated item (whether it is already processed or not)"
-    ~args:index_before_args ~ret:S.null ~err:S.(nullable (obj rocq_loc))
+    ~args:index_before_args ~ret:S.null ~err:S.(obj command_error)
     ~err_descr:"optional source code location for the error"
     @@ fun d (index, ()) ->
   (d, Document.go_to d ~index)
@@ -180,8 +266,8 @@ let _ =
     stepping over an unprocessed item" ~args:A.nil
     ~ret:S.(nullable (obj command_data))
     ~ret_descr:"data for the command that was run, if any"
-    ~err:S.(nullable (obj rocq_loc))
-    ~err_descr:"optional source code location for the error" @@ fun d () ->
+    ~err:S.(nullable (obj command_error))
+    ~err_descr:"error data for the command that was run, if any" @@ fun d () ->
   (d, Document.run_step d)
 
 let prefix_item =
@@ -266,53 +352,13 @@ let _ =
     ~ret:S.(obj compile_result) @@ fun d () ->
   (d, Document.compile d)
 
-let feedback =
-  let fields =
-    let descr = "either 'debug', 'info', 'notice', 'warning', or 'error'" in
-    API.Fields.add ~name:"kind" ~descr S.string @@
-    API.Fields.add ~name:"text" S.string @@
-    API.Fields.add ~name:"loc" S.(nullable (obj rocq_loc)) @@
-    API.Fields.nil
-  in
-  let encode _ = assert false in
-  let decode Document.{kind; text; loc} =
-    let kind =
-      match kind with
-      | `Debug   -> "debug"
-      | `Info    -> "info"
-      | `Notice  -> "notice"
-      | `Warning -> "warning"
-      | `Error   -> "error"
-    in
-    (kind, (text, (loc, ())))
-  in
-  API.declare_object api ~name:"Feedback"
-    ~descr:"Rocq feedback item" ~encode ~decode fields
-
-let _ =
-  API.declare api ~name:"get_feedback" ~descr:"gets Rocq's feedback for the \
-    last run command (if any)" ~args:A.nil ~ret:S.(list (obj feedback))
-    @@ fun d () ->
-  (d, Document.get_feedback d)
-
-let query_result =
-  let fields =
-    API.Fields.add ~name:"data" S.(obj command_data) @@
-    API.Fields.add ~name:"feedback" S.(list (obj feedback)) @@
-    API.Fields.nil
-  in
-  let encode (data, (feedback, ())) = (data, feedback) in
-  let decode (data, feedback) = (data, (feedback, ())) in
-  API.declare_object api ~name:"QueryResult"
-    ~descr:"result of a raw query" ~encode ~decode fields
-
 let _ =
   let args = A.add ~name:"text" ~descr:"text of the query" S.string A.nil in
   API.declare_full api ~name:"query" ~descr:"runs the given query at \
-    the cursor, not updating the state" ~args ~ret:S.(obj query_result)
+    the cursor, not updating the state" ~args ~ret:S.(obj command_data)
     ~err:S.null @@ fun d (text, ()) ->
   let res = Document.query ~text d in
-  (d, Result.map_error (fun s -> ((), s)) res)
+  (d, Result.map_error (fun s -> (s, ())) res)
 
 let query_args =
   A.add ~name:"text" ~descr:"text of the query" S.string @@
@@ -325,7 +371,7 @@ let _ =
     ~ret_descr:"query's result, as taken from the \"info\" \ \"notice\" \
       feedback at the given index" ~err:S.null @@ fun d (text, (index, ())) ->
   let res = Document.query_text d ~text ~index in
-  (d, Result.map_error (fun s -> ((), s)) res)
+  (d, Result.map_error (fun s -> (s, ())) res)
 
 let query_all_args =
   A.add ~name:"text" ~descr:"text of the query" S.string @@
@@ -338,7 +384,7 @@ let _ =
     at the cursor, not updating the state" ~args:query_all_args
     ~ret:S.(list string) ~err:S.null @@ fun d (text, (indices, ())) ->
   let res = Document.query_text_all d ~text ?indices in
-  (d, Result.map_error (fun s -> ((), s)) res)
+  (d, Result.map_error (fun s -> (s, ())) res)
 
 let _ =
   API.declare_full api ~name:"query_json" ~descr:"runs the given query at \
@@ -347,14 +393,14 @@ let _ =
     taken from the \"info\" / \"notice\" feedback with the given index"
     ~err:S.null @@ fun d (text, (index, ())) ->
   let res = Document.query_json d ~text ~index in
-  (d, Result.map_error (fun s -> ((), s)) res)
+  (d, Result.map_error (fun s -> (s, ())) res)
 
 let _ =
   API.declare_full api ~name:"query_json_all" ~descr:"runs the given query \
     at the cursor, not updating the state" ~args:query_all_args
     ~ret:S.(list any) ~err:S.null @@ fun d (text, (indices, ())) ->
   let res = Document.query_json_all d ~text ?indices in
-  (d, Result.map_error (fun s -> ((), s)) res)
+  (d, Result.map_error (fun s -> (s, ())) res)
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in

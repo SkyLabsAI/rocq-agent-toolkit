@@ -36,7 +36,15 @@ It fails otherwise.
   $ cat > test.v <<EOF
   > Variant i := Test.
   > Definition junk m n := m + n * n.
+  > Set Printing All.
   > EOF
   $ rocq-query test.v -- -Q . test.dir
   Error: the last command gave no feedback.
+  [1]
+
+  $ cat > test.v <<EOF
+  > (* Empty file *)
+  > EOF
+  $ rocq-query test.v -- -Q . test.dir
+  Error: no command were run.
   [1]

@@ -1,6 +1,6 @@
 type json = Yojson.Safe.t
 
-type sid = Rocq_toplevel.StateId.t
+type sid = Rocq_toplevel.StateID.t
 
 type processed =
   | Blanks of {index : int; off : int; text : string}
@@ -13,7 +13,7 @@ type unprocessed =
 type t = {
   args : string list;
   file : string;
-  toplevel : Rocq_toplevel.t;
+  toplevel : Rocq_toplevel.toplevel;
   initial_sid : sid;
   mutable rev_prefix : processed list;
   mutable cursor_sid : sid;
@@ -31,8 +31,8 @@ let cursor_index : t -> int = fun d ->
   | Command({index; _}) :: _ -> index + 1
 
 let init : args:string list -> file:string -> t = fun ~args ~file ->
-  let toplevel = Rocq_toplevel.init ~args ~file in
-  let initial_sid = Rocq_toplevel.get_state_id toplevel in
+  let toplevel = Rocq_toplevel.init ~args:(args @ ["-topfile"; file]) in
+  let initial_sid = Rocq_toplevel.StateID.current toplevel in
   let cursor_sid = initial_sid in
   let cursor_off = 0 in
   let (rev_prefix, suffix) = ([], []) in
@@ -50,37 +50,17 @@ let to_unprocessed : Rocq_split_api.sentence -> unprocessed = fun s ->
 
 type loc = Rocq_loc.t option
 
-let loc_to_yojson loc =
-  match loc with
-  | None      -> `Null
-  | Some(loc) -> Rocq_loc.to_yojson loc
-
-let loc_of_yojson json =
-  match json with
-  | `Null -> Ok(None)
-  | _     -> Result.map (fun o -> Some(o)) (Rocq_loc.of_yojson json)
-
-let loc_to_json = loc_to_yojson
-
-let load_file : t -> (unit, loc * string) result = fun d ->
+let load_file : t -> (unit, string * loc) result = fun d ->
   let {file; args; _} = d in
   match Rocq_split_api.get ~args ~file with
-  | Error(err)    -> Error(Rocq_split_api.(err.loc, err.message))
+  | Error(err)    -> Error(Rocq_split_api.(err.message, err.loc))
   | Ok(sentences) ->
   let suffix = List.rev_map to_unprocessed sentences in
   d.suffix <- List.rev_append suffix d.suffix;
   Ok(())
 
-type command_data = Rocq_toplevel.run_data = {
-  open_subgoals : string option;
-  new_constants : (string list [@default []]);
-  removed_constants : (string list [@default []]);
-  new_inductives : (string list [@default []]);
-  removed_inductives : (string list [@default []]);
-}
-[@@deriving yojson]
-
-let command_data_to_json = command_data_to_yojson
+type command_data = Rocq_toplevel.run_data
+type command_error = Rocq_toplevel.run_error
 
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
   let len = String.length text in
@@ -97,23 +77,23 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
       d.cursor_off <- d.cursor_off + len
 
 let insert_command : t -> text:string ->
-    (command_data, loc * string) result = fun d ~text ->
+    (command_data, string * command_error) result = fun d ~text ->
   let off = d.cursor_off in
   let sid_before = d.cursor_sid in
   let res = Rocq_toplevel.run d.toplevel ~off ~text in
   match res with Error(_) -> res | _ ->
   let index = cursor_index d in
   d.rev_prefix <- Command({index; off; sid_before; text}) :: d.rev_prefix;
-  d.cursor_sid <- Rocq_toplevel.get_state_id d.toplevel;
+  d.cursor_sid <- Rocq_toplevel.StateID.current d.toplevel;
   d.cursor_off <- d.cursor_off + String.length text;
   res
 
 let run_command : t -> text:string -> (command_data, string) result =
     fun d ~text ->
   match Rocq_toplevel.run d.toplevel ~off:0 ~text with
-  | Error(_,s) -> Error(s)
+  | Error(s, _) -> Error(s)
   | Ok(data)   ->
-  d.cursor_sid <- Rocq_toplevel.get_state_id d.toplevel;
+  d.cursor_sid <- Rocq_toplevel.StateID.current d.toplevel;
   Ok(data)
 
 let revert_before : ?erase:bool -> t -> index:int -> unit =
@@ -172,17 +152,19 @@ let byte_loc_of_last_step : t -> byte_loc option = fun d ->
   | Command({off; text; _}) :: _ ->
       Some({off; len = String.length text})
 
-let run_step : t -> (command_data option, loc * string) result = fun d ->
+let run_step : t -> (command_data option, string * command_error option) result = fun d ->
   match d.suffix with
-  | []             -> Error(None, "no step left to run")
+  | []             -> Error("no step left to run", None)
   | step :: suffix ->
   d.suffix <- suffix;
   match step with
   | RemBlanks({text})  -> insert_blanks d ~text; Ok(None)
   | RemCommand({text}) ->
-      Result.map (fun d -> Some(d)) (insert_command d ~text)
+  match insert_command d ~text with
+  | Ok(d) -> Ok(Some(d))
+  | Error(s,d) -> Error(s, Some(d))
 
-let advance_to : t -> index:int -> (unit, loc * string) result =
+let advance_to : t -> index:int -> (unit, string * command_error) result =
     fun d ~index ->
   let cur = cursor_index d in
   let len_suffix = List.length d.suffix in
@@ -191,12 +173,13 @@ let advance_to : t -> index:int -> (unit, loc * string) result =
   let rec loop cur =
     if cur = index then Ok(()) else
     match run_step d with
-    | Ok(_)    -> loop (cur + 1)
-    | Error(e) -> Error(e)
+    | Ok(_) -> loop (cur + 1)
+    | Error(s, Some(d)) -> Error(s, d)
+    | Error(_, None) -> assert false (* Unreachable since correct index. *)
   in
   loop cur
 
-let go_to : t -> index:int -> (unit, loc * string) result = fun d ~index ->
+let go_to : t -> index:int -> (unit, string * command_error) result = fun d ~index ->
   let cur = cursor_index d in
   match index < cur with
   | true  -> revert_before d ~index ~erase:false; Ok(())
@@ -295,55 +278,43 @@ let compile : t -> (unit, string) result * string * string = fun d ->
   Sys.remove stderr;
   (ret, out, err)
 
-type feedback = Rocq_toplevel.feedback = {
-  kind : [`Debug | `Info | `Notice | `Warning | `Error];
-  text : string;
-  loc  : loc;
-}
-[@@deriving yojson]
+let query : t -> text:string -> (command_data, string) result = fun d ~text ->
+  with_rollback d @@ fun _ -> run_command d ~text
 
-let feedback_to_json = feedback_to_yojson
-
-let get_feedback : t -> feedback list = fun d ->
-  try Rocq_toplevel.get_feedback d.toplevel with
-  | Rocq_toplevel.No_feedback -> []
-
-let query : t -> text:string ->
-    (command_data * feedback list, string) result = fun d ~text ->
-  with_rollback d @@ fun () ->
-  match run_command d ~text with
-  | Error(s) -> Error(s)
-  | Ok(data) -> Ok(data, get_feedback d)
+let get_info_or_notice : command_data -> string list = fun data ->
+  let filter Rocq_toplevel.{level; text; _} =
+    match level with
+    | Feedback.Info | Feedback.Notice -> Some(text)
+    | _ -> None
+  in
+  List.filter_map filter data.Rocq_toplevel.feedback_messages
 
 let query_text : ?index:int -> t -> text:string -> (string, string) result =
     fun ?index d ~text ->
-  match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
-  let pred {kind; _} = kind = `Notice || kind = `Info in
-  let notices = List.filter pred feedback in
-  match (index, notices) with
-  | (None   , [f]) -> Ok(f.text)
+  match query d ~text with Error(s) -> Error(s) | Ok(data) ->
+  match (index, get_info_or_notice data) with
+  | (None   , [s]) -> Ok(s)
   | (None   , [] ) -> Error("no \"info\" / \"notice\" feedback")
   | (None   , _  ) -> Error("too much \"info\" / \"notice\" feedback")
-  | (Some(i), _  ) ->
-  match List.nth_opt notices i with
+  | (Some(i), ls ) ->
+  match List.nth_opt ls i with
   | None    -> Error("no \"info\" / \"notice\" feedback at the given index")
-  | Some(f) -> Ok(f.text)
+  | Some(s) -> Ok(s)
 
 let query_text_all : ?indices:int list -> t -> text:string ->
     (string list, string) result = fun ?indices d ~text ->
-  match query d ~text with Error(s) -> Error(s) | Ok(_, feedback) ->
-  let pred {kind; _} = kind = `Notice || kind = `Info in
-  let notices = List.filter pred feedback in
+  match query d ~text with Error(s) -> Error(s) | Ok(data) ->
+  let feedback = get_info_or_notice data in
   match indices with
-  | None          -> Ok(List.map (fun f -> f.text) notices)
+  | None          -> Ok(feedback)
   | Some(indices) ->
-  let notices = Array.of_list notices in
+  let feedback = Array.of_list feedback in
   let rec build_res rev_items indices =
     match indices with
-    | []               -> Ok(List.rev_map (fun f -> f.text) rev_items)
+    | []               -> Ok(List.rev rev_items)
     | index :: indices ->
     try
-      let item = Array.get notices index in
+      let item = Array.get feedback index in
       build_res (item :: rev_items) indices
     with Invalid_argument(_) ->
       Error("no \"info\" / \"notice\" feedback at one of the given indices")

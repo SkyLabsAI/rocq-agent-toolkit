@@ -43,18 +43,49 @@ class RocqDocManagerAPI:
         fname: RocqDocManagerAPI.RocqSource | None = field(kw_only=True, default=None)
 
     @dataclass
+    class Quickfix(DataClassJsonMixin):
+        """Quick fix hint."""
+        text: str = field(kw_only=True, default="")
+        loc: RocqDocManagerAPI.RocqLoc = field(kw_only=True, default_factory=lambda: RocqDocManagerAPI.RocqLoc())
+
+    @dataclass
+    class FeedbackMessage(DataClassJsonMixin):
+        """Rocq feedback message."""
+        text: str = field(kw_only=True, default="")
+        quickfix: list[RocqDocManagerAPI.Quickfix] = field(kw_only=True, default_factory=list)
+        loc: RocqDocManagerAPI.RocqLoc | None = field(kw_only=True, default=None)
+        # Either 'debug', 'info', 'notice', 'warning', or 'error'.
+        level: str = field(kw_only=True, default="")
+
+    @dataclass
+    class GlobrefsDiff(DataClassJsonMixin):
+        """Environment modification performed by a Rocq command."""
+        removed_inductives: list[str] = field(kw_only=True, default_factory=list)
+        added_inductives: list[str] = field(kw_only=True, default_factory=list)
+        removed_constants: list[str] = field(kw_only=True, default_factory=list)
+        added_constants: list[str] = field(kw_only=True, default_factory=list)
+
+    @dataclass
+    class ProofState(DataClassJsonMixin):
+        """Summary of a Rocq proof state, including the text of focused goals."""
+        focused_goals: list[str] = field(kw_only=True, default_factory=list)
+        unfocused_goals: list[int] = field(kw_only=True, default_factory=list)
+        shelved_goals: int = field(kw_only=True, default=0)
+        given_up_goals: int = field(kw_only=True, default=0)
+
+    @dataclass
     class CommandData(DataClassJsonMixin):
         """Data gathered while running a Rocq command."""
-        # Inductives removed by the command.
-        removed_inductives: list[str] = field(kw_only=True, default_factory=list)
-        # Inductives introduced by the command.
-        new_inductives: list[str] = field(kw_only=True, default_factory=list)
-        # Constants removed by the command.
-        removed_constants: list[str] = field(kw_only=True, default_factory=list)
-        # Constants introduced by the command.
-        new_constants: list[str] = field(kw_only=True, default_factory=list)
-        # Open sub-goals, if in a proof.
-        open_subgoals: str | None = field(kw_only=True, default=None)
+        proof_state: RocqDocManagerAPI.ProofState | None = field(kw_only=True, default=None)
+        feedback_messages: list[RocqDocManagerAPI.FeedbackMessage] = field(kw_only=True, default_factory=list)
+        globrefs_diff: RocqDocManagerAPI.GlobrefsDiff = field(kw_only=True, default_factory=lambda: RocqDocManagerAPI.GlobrefsDiff())
+
+    @dataclass
+    class CommandError(DataClassJsonMixin):
+        """Data returned on Rocq command errors."""
+        feedback_messages: list[RocqDocManagerAPI.FeedbackMessage] = field(kw_only=True, default_factory=list)
+        # Optional source code location for the error.
+        error_loc: RocqDocManagerAPI.RocqLoc | None = field(kw_only=True, default=None)
 
     @dataclass
     class PrefixItem(DataClassJsonMixin):
@@ -78,25 +109,11 @@ class RocqDocManagerAPI:
         stdout: str = field(kw_only=True, default="")
         success: bool = field(kw_only=True, default=False)
 
-    @dataclass
-    class Feedback(DataClassJsonMixin):
-        """Rocq feedback item."""
-        loc: RocqDocManagerAPI.RocqLoc | None = field(kw_only=True, default=None)
-        text: str = field(kw_only=True, default="")
-        # Either 'debug', 'info', 'notice', 'warning', or 'error'.
-        kind: str = field(kw_only=True, default="")
-
-    @dataclass
-    class QueryResult(DataClassJsonMixin):
-        """Result of a raw query."""
-        feedback: list[RocqDocManagerAPI.Feedback] = field(kw_only=True, default_factory=list)
-        data: RocqDocManagerAPI.CommandData = field(kw_only=True, default_factory=lambda: RocqDocManagerAPI.CommandData())
-
-    def advance_to(self, index: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc | None]:
+    def advance_to(self, index: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
         """Advance the cursor before the indicated unprocessed item."""
         result = self._rpc.raw_request("advance_to", [index])
         if isinstance(result, JsonRPCTP.Err):
-            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
+            data = self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return None
 
@@ -136,17 +153,11 @@ class RocqDocManagerAPI:
         assert not isinstance(result, JsonRPCTP.Err)
         return [self.SuffixItem.from_dict(v1) for v1 in result.result]
 
-    def get_feedback(self) -> list[RocqDocManagerAPI.Feedback]:
-        """Gets Rocq's feedback for the last run command (if any)."""
-        result = self._rpc.raw_request("get_feedback", [])
-        assert not isinstance(result, JsonRPCTP.Err)
-        return [self.Feedback.from_dict(v1) for v1 in result.result]
-
-    def go_to(self, index: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc | None]:
+    def go_to(self, index: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
         """Move the cursor right before the indicated item (whether it is already processed or not)."""
         result = self._rpc.raw_request("go_to", [index])
         if isinstance(result, JsonRPCTP.Err):
-            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
+            data = self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return None
 
@@ -162,11 +173,11 @@ class RocqDocManagerAPI:
         assert not isinstance(result, JsonRPCTP.Err)
         return None
 
-    def insert_command(self, text: str) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc | None]:
+    def insert_command(self, text: str) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
         """Insert and process a command at the cursor."""
         result = self._rpc.raw_request("insert_command", [text])
         if isinstance(result, JsonRPCTP.Err):
-            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
+            data = self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return self.CommandData.from_dict(result.result)
 
@@ -178,13 +189,13 @@ class RocqDocManagerAPI:
             return RocqDocManagerAPI.Err(result.message, data)
         return None
 
-    def query(self, text: str) -> RocqDocManagerAPI.QueryResult | RocqDocManagerAPI.Err[None]:
+    def query(self, text: str) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
         result = self._rpc.raw_request("query", [text])
         if isinstance(result, JsonRPCTP.Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
-        return self.QueryResult.from_dict(result.result)
+        return self.CommandData.from_dict(result.result)
 
     def query_json(self, text: str, index: int) -> Any | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
@@ -232,10 +243,10 @@ class RocqDocManagerAPI:
             return RocqDocManagerAPI.Err(result.message, data)
         return self.CommandData.from_dict(result.result)
 
-    def run_step(self) -> RocqDocManagerAPI.CommandData | None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc | None]:
+    def run_step(self) -> RocqDocManagerAPI.CommandData | None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]:
         """Advance the cursor by stepping over an unprocessed item."""
         result = self._rpc.raw_request("run_step", [])
         if isinstance(result, JsonRPCTP.Err):
-            data = None if result.data is None else self.RocqLoc.from_dict(result.data)
+            data = None if result.data is None else self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return None if result.result is None else self.CommandData.from_dict(result.result)

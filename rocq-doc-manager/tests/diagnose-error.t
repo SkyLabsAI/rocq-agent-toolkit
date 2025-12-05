@@ -25,5 +25,7 @@
       "bp": 128,
       "ep": 132
     },
-    "goals": "1 goal\n  \n  x : nat\n  ============================\n  x = x"
+    "proof_state": {
+      "focused_goals": [ "\nx : nat\n============================\nx = x" ]
+    }
   }

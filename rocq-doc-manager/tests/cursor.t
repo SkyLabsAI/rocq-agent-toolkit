@@ -34,7 +34,10 @@
   {
     "id": 4,
     "jsonrpc": "2.0",
-    "result": { "new_constants": [ "test.dir.test.test1" ] }
+    "result": {
+      "globrefs_diff": { "added_constants": [ "test.dir.test.test1" ] },
+      "feedback_messages": [ { "level": "info", "text": "test1 is defined" } ]
+    }
   }
   { "id": 5, "jsonrpc": "2.0", "result": 1 }
   { "id": 6, "jsonrpc": "2.0", "result": null }
@@ -42,7 +45,10 @@
   {
     "id": 8,
     "jsonrpc": "2.0",
-    "result": { "new_constants": [ "test.dir.test.test2" ] }
+    "result": {
+      "globrefs_diff": { "added_constants": [ "test.dir.test.test2" ] },
+      "feedback_messages": [ { "level": "info", "text": "test2 is defined" } ]
+    }
   }
   { "id": 9, "jsonrpc": "2.0", "result": 3 }
   { "id": 10, "jsonrpc": "2.0", "result": null }
@@ -50,7 +56,10 @@
   {
     "id": 12,
     "jsonrpc": "2.0",
-    "result": { "new_constants": [ "test.dir.test.test3" ] }
+    "result": {
+      "globrefs_diff": { "added_constants": [ "test.dir.test.test3" ] },
+      "feedback_messages": [ { "level": "info", "text": "test3 is defined" } ]
+    }
   }
   { "id": 13, "jsonrpc": "2.0", "result": 5 }
   {

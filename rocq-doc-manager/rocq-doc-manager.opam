@@ -9,7 +9,7 @@ bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
   "dune" {>= "3.17"}
   "jsonrpc-tp"
-  "rocq-jsonrpc-repl"
+  "rocq-toplevel-api"
   "rocq-split"
   "odoc" {with-doc}
 ]
