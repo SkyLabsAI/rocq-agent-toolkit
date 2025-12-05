@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useLocalDashboard } from '@/hooks/useLocalDashboard';
+import { useAgents } from '@/hooks/useAgentsSummary';
 import { getRunDetails } from '@/services/dataservice';
 import { RunDetailsResponse } from '@/types/types';
 import { CompareRunsHeader } from '../runs-compare/compare-page-content/compare-page-header';
@@ -13,7 +13,7 @@ import ComparisonModal from '@/components/base/comparisonModal';
 export const AgentCompareContent: React.FC = () => {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
-  const { agentData, isLoading: agentDataLoading } = useLocalDashboard();
+  const { agentData, isLoading: agentDataLoading } = useAgents();
 
 
   const selectedAgents = sp.get('agents') || '';

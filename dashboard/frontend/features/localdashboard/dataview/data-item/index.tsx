@@ -1,12 +1,11 @@
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { Benchmark } from '@/types/types';
+import { Benchmark, Run } from '@/types/types';
 import { cn } from '@/utils/cn';
 import { useEffect, useState } from 'react';
-import { useBenchmarkAgents } from '../use-dataview';
-import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
+import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
+import {  useSelectedRun } from '@/contexts/SelectedRunContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AgentSummaryTemp } from '@/services/dataservice';
-import { useLocalDashboard } from '@/hooks/useLocalDashboard';
+import { useAgents } from '@/hooks/useAgentsSummary';
 import TaskDetailsModal from '@/features/taskDetailsModal';
 import RunDetailsView from '@/components/RunDetailsView';
 import AgentDetails from "./agent-details"
@@ -23,7 +22,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
   const { agents: agentData } = useBenchmarkAgents(benchmark.dataset_id);
 
   const {  modalState, closeModal, openCodeModal } =
-    useLocalDashboard();
+    useAgents();
 
   const { selectedRun, setSelectedRun } = useSelectedRun();
   const [activeAgent, setActiveAgent] = useState<string | null>(null);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useBenchmarks } from './use-dataview';
+import { useBenchmarks } from '../../../hooks/use-dataview';
 import { DataItem } from './data-item';
 import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
 import { GlobalStickyCompareBar } from '@/components/GlobalStickyCompareBar';

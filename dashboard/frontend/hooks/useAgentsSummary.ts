@@ -3,8 +3,7 @@ import {
   AgentSummaryTemp,
   fetchAgentSummaries,
   getData,
-  getObservabilityLogs,
-  refreshData,
+  getObservabilityLogs
 } from '@/services/dataservice';
 import { AgentSummary, TaskOutput } from '@/types/types';
 
@@ -14,14 +13,12 @@ interface ModalState {
   logs: Record<string, unknown> | null;
 }
 
-export const useLocalDashboard = () => {
+export const useAgents = () => {
   const [agentData, setAgentData] = useState<AgentSummary[]>([]);
   const [agentDetailData, setAgentDetailData] = useState<AgentSummaryTemp[]>(
     []
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshMessage, setRefreshMessage] = useState<string>('');
 
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
@@ -43,9 +40,7 @@ export const useLocalDashboard = () => {
     fetchData();
   }, []);
 
-  const handleRefresh = async () => {
-    window.location.reload();
-  };
+
 
   const openCodeModal = async (task: TaskOutput) => {
     const taskKey = `${task.run_id}-${task.task_id}`;
@@ -83,9 +78,6 @@ export const useLocalDashboard = () => {
     agentData,
     agentDetailData,
     isLoading,
-    isRefreshing,
-    refreshMessage,
-    handleRefresh,
     openCodeModal,
     closeModal,
     modalState,

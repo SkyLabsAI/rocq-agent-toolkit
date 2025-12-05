@@ -171,6 +171,7 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
       total_tasks: totalTasks,
       success_count: successCount,
       failure_count: totalTasks - successCount,
+      dataset_id: `dataset_${(Math.floor(Math.random() * 3) + 1).toString().padStart(3, '0')}`,
       metadata: {
         tags: {
           run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
@@ -219,6 +220,7 @@ const getDetailsForDatasetMock = async (
       total_tasks: totalTasks,
       success_count: successCount,
       failure_count: totalTasks - successCount,
+      dataset_id: datasetId,
       metadata: {
         tags: {
           dataset_id: datasetId,
