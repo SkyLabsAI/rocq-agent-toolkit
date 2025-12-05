@@ -7,7 +7,7 @@ type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
 
-module API = Jsonrpc_tp_api
+module API = Jsonrpc_tp.API
 module A = API.Args
 module S = API.Schema
 

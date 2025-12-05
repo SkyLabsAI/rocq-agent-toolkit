@@ -165,7 +165,7 @@ let create : name:string -> _ api = fun ~name ->
   {name; api_objects = []; api_methods = SMap.empty}
 
 let duplicate fname =
-  raise (Invalid_argument("Jsonrpc_tp_api." ^ fname ^ ": duplicate name"))
+  invalid_arg ("Jsonrpc_tp.Interface." ^ fname ^ ": duplicate name")
 
 let declare_object api ~name ?descr ?default ~encode ~decode fields =
   match List.exists (fun (A(O(r))) -> r.key.name = name) api.api_objects with
@@ -197,7 +197,7 @@ module Response = struct
   let error ~oc id ?data code message =
     let e = J.Response.Error.make ?data ~code ~message () in
     let r = J.Response.error id e in
-    Jsonrpc_tp.send ~oc (J.Packet.Response(r))
+    Base.send ~oc (J.Packet.Response(r))
 
   let method_not_found ~oc id f =
     let message = Printf.sprintf "Method %s not found." f in
@@ -212,7 +212,7 @@ module Response = struct
 
   let reply ~oc id payload =
     let response = J.Response.ok id payload in
-    Jsonrpc_tp.send ~oc (J.Packet.Response(response))
+    Base.send ~oc (J.Packet.Response(response))
 
   let ok ~oc id =
     reply ~oc id `Null
@@ -350,7 +350,7 @@ let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
 
 let run api ~ic ~oc s =
   let rec loop s =
-    match Jsonrpc_tp.recv ~ic () with
+    match Base.recv ~ic () with
     | Error(msg)  -> Error(msg)
     | Ok(None)    -> Ok(s)
     | Ok(Some(p)) ->
@@ -379,7 +379,7 @@ let run api ~ic ~oc s =
             | (s, ret)                        ->
             let ret = to_json api spec.ret ret in
             let response = J.Response.ok id ret in
-            Jsonrpc_tp.send ~oc (J.Packet.Response(response)); s
+            Base.send ~oc (J.Packet.Response(response)); s
           end
       | Rslt(impl) ->
           begin
@@ -402,7 +402,7 @@ let run api ~ic ~oc s =
                   let err = J.Response.Error.make ?data ~code ~message () in
                   J.Response.error id err
             in
-            Jsonrpc_tp.send ~oc (J.Packet.Response(response)); s
+            Base.send ~oc (J.Packet.Response(response)); s
           end
     in
     loop s

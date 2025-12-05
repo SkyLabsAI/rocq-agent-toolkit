@@ -3,7 +3,7 @@ let output_packet p =
   Printf.printf "%a\n%!" (Yojson.Safe.pretty_to_channel ~std:true) json
 
 let rec process_packets () =
-  match Jsonrpc_tp.recv () with
+  match Jsonrpc_tp.Base.recv () with
   | Ok(None   ) -> ()
   | Ok(Some(p)) -> output_packet p; process_packets ()
   | Error(e)    -> failwith e
