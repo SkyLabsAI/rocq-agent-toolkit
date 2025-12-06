@@ -12,7 +12,7 @@ import yaml
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 from rocq_pipeline.locator import NotFound
-from rocq_pipeline.taggers import tactic_tagger
+from rocq_pipeline.taggers.tactic_tagger import extract_tactics
 from rocq_pipeline.util import parallel_runner
 
 
@@ -80,14 +80,23 @@ def my_tagger(task: ProofTask) -> set[str]:
     omitted:set[str] = set()
 
     for sentence in task.proof_tactics:
-        identified_tactics, leftovers = tactic_tagger.extract_tactics(sentence)
+        identified_tactics: dict[str, int]
+        leftovers: list[str]
+        identified_tactics, leftovers = extract_tactics(sentence)
 
         #increment numtactics by adding the identified_tactics according to their multiplicities
         numtactics = numtactics + sum(identified_tactics.values())
 
         #add the identified tactics to tags, ignoring entries with non-positive multiplicities
-        nonzero_identifed_tactics: set[str] = {key for key, value in identified_tactics.items() if value > 0}
-        tags.update(nonzero_identifed_tactics)
+        has_nonpositives = any(value < 1 for value in identified_tactics.values())
+
+        if has_nonpositives:
+            print("Eliminating the tactics with multiplicity < 1.")
+            tactics: set[str] = {key for key, value in identified_tactics.items() if value > 0}
+        else:
+            tactics: set[str]  = set(identified_tactics.keys())
+
+        tags.update(tactics)
         omitted.update(set(leftovers))
 
     tags.add(f'NumTactics={numtactics}')
@@ -158,7 +167,7 @@ def run(output_file: Path, rocq_files: list[Path], jobs:int=1) -> None:
     flat_tasks = list(itertools.chain.from_iterable(all_tasks))
     print(f"Total number of tasks: {len(flat_tasks)}")
 
-    unique_tasks = []
+    unique_tasks:list[dict[str,Any]] = []
     seen_tasks:set[tuple[str,str]] = set()
 
     for d in flat_tasks:
