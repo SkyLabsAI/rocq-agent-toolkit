@@ -94,6 +94,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
             content = content[1:-1].strip()
         return get_atomic_tactics(content)
 
+    results:list[str]
     #2. Handle [ X1 | X2 | ... Xn ]
     if chunk.startswith('['):
         each = split_at_top_level(chunk[1:], ']')
@@ -103,7 +104,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
         # Only split if we actually find the separator |
         parts = split_at_top_level(content, '|')
         if len(parts) > 1:
-            results:list[str] = []
+            results = []
             for part in parts:
                 results.extend(get_atomic_tactics(part))
             return results
@@ -111,7 +112,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     #3. Handle X1; X2; ... Xn
     parts = split_at_top_level(chunk, ';')
     if len(parts) > 1:
-        results:list[str] = []
+        results = []
         for part in parts:
             results.extend(get_atomic_tactics(part))
         return results
@@ -119,7 +120,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     #4. Check 'by' keyword
     parts = split_at_top_level(chunk, 'by')
     if len(parts) > 1:
-        results:list[str] = []
+        results = []
         for idx, part in enumerate(parts):
             part = part.strip()
             # If this part is the RHS of a 'by' (index > 0), unwrap parens

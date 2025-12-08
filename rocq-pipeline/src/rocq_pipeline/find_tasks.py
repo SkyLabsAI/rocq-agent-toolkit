@@ -90,11 +90,12 @@ def my_tagger(task: ProofTask) -> set[str]:
         #add the identified tactics to tags, ignoring entries with non-positive multiplicities
         has_nonpositives = any(value < 1 for value in identified_tactics.values())
 
+        tactics: set[str]
         if has_nonpositives:
             print("Eliminating the tactics with multiplicity < 1.")
-            tactics: set[str] = {key for key, value in identified_tactics.items() if value > 0}
+            tactics = {key for key, value in identified_tactics.items() if value > 0}
         else:
-            tactics: set[str]  = set(identified_tactics.keys())
+            tactics = set(identified_tactics.keys())
 
         tags.update(tactics)
         omitted.update(set(leftovers))
