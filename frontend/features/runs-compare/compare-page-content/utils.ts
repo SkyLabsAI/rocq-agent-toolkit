@@ -10,18 +10,18 @@ export const computeRunStats = (run: RunDetailsResponse): RunStats => {
     tasks,
     successRate: tasks === 0 ? 0 : successes / tasks,
     totalLlmCalls: run.tasks.reduce(
-      (a, t) => a + (t.metrics?.llm_invocation_count || 0),
+      (a, t) => a + (t.metrics?.llm_invocation_count),
       0
     ),
     totalTokens: run.tasks.reduce(
-      (a, t) => a + (t.metrics?.token_counts?.total_tokens || 0),
+      (a, t) => a + (t.metrics?.token_counts?.total_tokens),
       0
     ),
     avgExecutionTime:
       tasks === 0
         ? 0
         : run.tasks.reduce(
-            (a, t) => a + (t.metrics?.resource_usage?.execution_time_sec || 0),
+            (a, t) => a + (t.metrics?.resource_usage?.execution_time_sec),
             0
           ) / tasks,
   };

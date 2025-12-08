@@ -1,11 +1,13 @@
 import cn from 'classnames';
 import { useAgentDetails } from '@/hooks/useAgentDetails';
-import AgentRunsView from './AgentRunsView';
+import AgentRunsView from '../../AgentRunsView';
 import { useEffect, useState } from 'react';
-import { AgentSummary } from '@/types/types';
+import { AgentSummary, Run } from '@/types/types';
 import { AgentSummaryTemp } from '@/services/dataservice';
 import { Button } from '@/components/base';
-import { Run } from '@/contexts/SelectedRunContext';
+import { ChevronUpIcon } from '@/icons/chevron-up';
+import { AgentBenchmark } from './agent-benchmarks';
+import { useBenchmarks } from '@/hooks/use-dataview';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
@@ -30,12 +32,12 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
   clearSelectedRuns,
   compareSelectedRuns,
 }) => {
-  const {
-    loading,
-    runDetails,
-    isOpen,
-    toggleDetails,
-  } = useAgentDetails(agent.agent_name);
+  const { loading, runDetails, isOpen, toggleDetails } = useAgentDetails(
+    agent.agent_name
+  );
+
+  const {benchmarks} = useBenchmarks();
+
 
   return (
     <>
@@ -59,7 +61,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {((agent.best_run?.success_rate ?? 0)*100).toFixed(2)}%
+                {((agent.best_run?.success_rate ?? 0) * 100).toFixed(2)}%
               </span>
             </div>
           </div>
@@ -92,7 +94,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
             </div>
           </div>
         </td>
-        <td className='px-6 py-4 text-text font-medium'>
+        {/* <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3 justify-center'>
           
 
@@ -108,7 +110,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
             </Button>
         
           </div>
-        </td>
+        </td> */}
       </tr>
 
       {isOpen && (
@@ -126,19 +128,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                 <div className='text-center py-8 text-text'>
                   No run details available.
                 </div>
-              ) : (
-                <div className='space-y-4'>
-                  <AgentRunsView
-                    runDetails={runDetails}
-                    agentName={agent.agent_name}
-                    selectedRuns={selectedRuns}
-                    toggleRunSelection={toggleRunSelection}
-                    clearSelectedRuns={clearSelectedRuns}
-                    tags={agentDetailData?.tags}
-                    compareSelected={compareSelectedRuns}
-                  />
-                </div>
-              )}
+              ) :
+                benchmarks.map((benchmark) => (<AgentBenchmark key={benchmark.dataset_id} benchmark={benchmark} agentName={agent.agent_name} />))
+                
+              }
             </div>
           </td>
         </tr>

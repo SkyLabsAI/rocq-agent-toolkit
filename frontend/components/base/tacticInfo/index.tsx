@@ -83,7 +83,7 @@ const TacticItem: React.FC<TacticItemProps> = ({ tactic, index, additionalKeys }
       {/* Additional properties */}
       {additionalKeys.size > 0 && (
         <div className='mt-4 pt-4 border-t border-white/10 px-4 pb-4'>
-          <div className='flex gap-1 items-center mb-3 cursor-pointer select-none' onClick={() => setIsAdditionalInfoOpen(!isAdditionalInfoOpen)}>
+          <div className='flex gap-1 items-center mb-3 cursor-pointer select-none' onClick={(e) => {setIsAdditionalInfoOpen(!isAdditionalInfoOpen); e.stopPropagation()}}>
             <ChevronUpIcon className={cn('transition-transform duration-200 ease-in-out size-5 text-text', { 'rotate-180': isAdditionalInfoOpen })}/>
             <h5 className='text-sm font-medium text-text'>
               Additional Information
@@ -92,7 +92,7 @@ const TacticItem: React.FC<TacticItemProps> = ({ tactic, index, additionalKeys }
           <div 
             className={cn(
               'overflow-hidden transition-all duration-300 ease-in-out',
-              isAdditionalInfoOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+              isAdditionalInfoOpen ? ' opacity-100' : 'max-h-0 opacity-0'
             )}
           >
             <div className='grid grid-cols-1 md:grid-cols-2 gap-3 pb-1'>

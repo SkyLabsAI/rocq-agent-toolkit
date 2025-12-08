@@ -1,11 +1,11 @@
 'use client'
 
 import React from 'react';
-import { Run, useSelectedRun } from '@/contexts/SelectedRunContext';
+import { useSelectedRun } from '@/contexts/SelectedRunContext';
 import RunRow from '@/components/RunRow';
 import StickyCompareBar from '@/components/StickyCompareBar';
 import { PlayIcon } from '@/icons/play';
-import { AgentRun, RunDetailsResponse } from '@/types/types';
+import { AgentRun, Run, RunDetailsResponse } from '@/types/types';
 
 type AgentRunsViewProps = {
   runDetails: AgentRun[];
@@ -14,7 +14,6 @@ type AgentRunsViewProps = {
   toggleRunSelection: (run: Run) => void;
   clearSelectedRuns: () => void;
   compareSelected: () => void;
-  tags?: Record<string, string>;
 };
 
 
@@ -33,7 +32,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   toggleRunSelection,
   clearSelectedRuns,
   compareSelected,
-  tags
 }) => {
   const { setSelectedRun } = useSelectedRun();
 
@@ -114,7 +112,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
 
       {/* LocalView view: Runs list with selectable compare actions */}
       <div className='flex flex-col gap-2 relative mb-9'>
-        {[
+        {(runDetails || []).length > 0 && [
           ...runDetails.filter(run => pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
           ...runDetails.filter(run => !pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
         ].map((run, index, arr) => (
