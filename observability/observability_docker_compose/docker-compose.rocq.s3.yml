@@ -1,4 +1,7 @@
-# Usage: docker-compose -f docker-compose.rocq.s3.yml up --build -d 
+# Standalone configuration for the Khawarzimi server (or similar environments).
+# Runs the stack with S3 storage and distinct ports to allow side-by-side execution with other instances.
+# Connects to 'rocq-agent-network'.
+# Usage: docker-compose -f docker-compose.rocq.s3.yml up --build -d
 
 name: rocq-agent-toolkit-obs
 

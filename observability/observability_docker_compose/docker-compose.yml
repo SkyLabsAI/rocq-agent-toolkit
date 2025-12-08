@@ -1,5 +1,6 @@
-# For local development  : docker-compose -f docker-compose.yml -f docker-compose.local.yml up --build -d 
-# For S3-based deployment: docker-compose -f docker-compose.yml -f docker-compose.s3.yml up --build -d
+# Base configuration for the observability stack (Alloy, Tempo, Loki, Grafana).
+# This file serves as the foundation and must be used with an override file (.local, .s3, or .rocq)
+# to define the specific storage backend and environment configuration.
 
 services:
   # Observability Stack
@@ -71,4 +72,3 @@ volumes:
   grafana-data:
   loki-data:
   tempo-data: 
-

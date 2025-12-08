@@ -1,4 +1,6 @@
-# docker-compose -f docker-compose.yml -f docker-compose.s3.yml up --build -d alloy tempo loki grafana
+# Override configuration for S3-based storage.
+# Configures the stack to persist data in AWS S3 buckets.
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.s3.yml up --build -d
 
 services:
   alloy:

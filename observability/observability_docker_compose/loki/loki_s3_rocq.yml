@@ -44,7 +44,7 @@ schema_config:
         period: 24h
     
     # Period 2: New logs (write to S3) - Starting Today
-    - from: 2025-12-05
+    - from: 2025-12-07
       store: tsdb
       object_store: s3
       schema: v13
@@ -65,7 +65,7 @@ limits_config:
   reject_old_samples_max_age: 168h
   max_cache_freshness_per_query: 10m
   split_queries_by_interval: 15m
-  query_timeout: 60s # TODO : increase 
+  query_timeout: 120s # TODO : increase 
 
 ingester:
   lifecycler:
@@ -75,6 +75,6 @@ ingester:
         store: inmemory
       replication_factor: 1
     final_sleep: 0s
-  chunk_idle_period: 5m # TODO: change to 1 hr later own 
+  chunk_idle_period: 1h # TODO: change to 1 hr later own 
   chunk_retain_period: 30s
-  max_chunk_age: 5m
+  max_chunk_age: 1h

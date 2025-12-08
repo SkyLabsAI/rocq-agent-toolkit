@@ -1,4 +1,6 @@
- # Usage : docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki grafana
+# Override configuration for local storage with Rocq network integration.
+# Introduces the 'rocq-agent-network' to allow communication with the rocq-agent-toolkit.
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d
 
 services:
   alloy:
@@ -21,5 +23,3 @@ networks:
   rocq-agent-network:
     driver: bridge
     name: rocq-agent-network # this is the network name that will be used to communicate with the other services ( Rocq Backend)
-
-
