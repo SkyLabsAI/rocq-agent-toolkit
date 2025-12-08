@@ -53,8 +53,8 @@ dev = [
 [tool.uv]
 
 [tool.uv.sources]
-observability = {path = "./../../../psi/backend/psi_verifier/observability", editable = true}
-rocq-doc-manager = { path = "./../rocq-doc-manager/python", editable = true }
+observability = { workspace = true }
+rocq-doc-manager = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/rocq_pipeline"]

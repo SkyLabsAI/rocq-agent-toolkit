@@ -38,7 +38,7 @@ dev = [
 [tool.uv]
 
 [tool.uv.sources]
-jsonrpc-tp = { path = "./../../ocaml-jsonrpc-tp/python", editable = true }
+jsonrpc-tp = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/rocq_doc_manager"]

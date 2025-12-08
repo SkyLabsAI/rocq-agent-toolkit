@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "psi-agents"
 version = "0.1.0"
@@ -10,12 +14,19 @@ requires-python = ">=3.13"
 dependencies = [
 ]
 
-[tool.poetry]
-packages = [{include = "psi_agents", from = "src"}]
+[tool.uv]
 
-[tool.poetry.dependencies]
-rocq-pipeline = { path = "./../rocq-pipeline", develop = true }
+[tool.uv.sources]
+rocq-pipeline = { workspace = true }
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.hatch.build.targets.sdist]
+include = ["src/psi_agent"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/psi_agent"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/psi_agent" = "psi_agent"
+
+[tool.setuptools.packages.find]
+where = ["src", "tests"]
