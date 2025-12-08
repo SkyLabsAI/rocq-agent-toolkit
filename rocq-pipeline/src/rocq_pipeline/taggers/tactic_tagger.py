@@ -1,6 +1,5 @@
-from collections.abc import Callable
-
 import re
+from collections.abc import Callable
 
 
 def split_at_top_level(text: str, separator: str) -> list[str]:
@@ -16,7 +15,7 @@ def split_at_top_level(text: str, separator: str) -> list[str]:
         """
         return char.isalnum() or char in '_-'
 
-    parts = []
+    parts:list[str] = []
     balance_paren = 0
     balance_bracket = 0
     current_part_start = 0
@@ -87,7 +86,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
         return []
 
     #1. Descend into the 'wrappers' try / first / solve
-    WRAPPER_PATTERN = re.compile(r"^(try|first|solve)(\s+|(?=[\[\(]))")
+    WRAPPER_PATTERN = re.compile(r"^(try|first|solve|repeat)(\s+|(?=[\[\(]))")
     match = WRAPPER_PATTERN.match(chunk)
     if match:
         content = chunk[match.end():].strip()
@@ -104,7 +103,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
         # Only split if we actually find the separator |
         parts = split_at_top_level(content, '|')
         if len(parts) > 1:
-            results = []
+            results:list[str] = []
             for part in parts:
                 results.extend(get_atomic_tactics(part))
             return results
@@ -112,7 +111,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     #3. Handle X1; X2; ... Xn
     parts = split_at_top_level(chunk, ';')
     if len(parts) > 1:
-        results = []
+        results:list[str] = []
         for part in parts:
             results.extend(get_atomic_tactics(part))
         return results
@@ -120,7 +119,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     #4. Check 'by' keyword
     parts = split_at_top_level(chunk, 'by')
     if len(parts) > 1:
-        results = []
+        results:list[str] = []
         for idx, part in enumerate(parts):
             part = part.strip()
             # If this part is the RHS of a 'by' (index > 0), unwrap parens
@@ -139,7 +138,7 @@ def flatten_tactic_string(s: str) -> list[str]:
 
     Handles:
     - 'by ...' (Proof terminator)
-    - 'try', 'first', 'solve' wrappers
+    - 'try', 'first', 'solve', 'repeat' wrappers
     - ';' and '|' separators
     - 'tactic by script' separators (merged logic)
     """
@@ -182,7 +181,7 @@ def filter_tactics(tactics: list[str], prefixes: list[str],
 
     # Use multiset for identified tactics and set for the leftovers.
     identified_tactics_dict:dict[str, int] = {}
-    leftovers_set = set()
+    leftovers_set:set[str] = set()
 
     for tac in tactics:
         found_prefix = None
@@ -237,7 +236,7 @@ iris_prefixes = ['iAssert', 'iExists', 'iStartProof', 'iStopProof', 'iExact',
 
 brick_prefixes = ['verify_spec', "verify_spec'", 'go', 'ego', 'work', 'ework',
                   'bind_ren', 'ren_hyp', 'wp_for', 'wp_while', 'wp_do', 'wp_do_while', 'wp_if',
-                  'solve_learnable']
+                  'solve_learnable', 'run', 'erun' ]
 
 allowed_prefixes = rocq_prefixes + iris_prefixes + brick_prefixes
 
