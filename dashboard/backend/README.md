@@ -113,7 +113,7 @@ This is a FastAPI backend server that serves brick_agent task results for visual
    JSONL_RESULTS_PATH=/home/skylabs/Desktop/psi-verifier/workspace/psi/backend/brick_agents
    
    # Port where observability stack is accessible
-   OBSERVABILITY_PORT=3000
+   OBSERVABILITY_PORT=3010
    
    # Server configuration (optional)
    SERVER_HOST=0.0.0.0

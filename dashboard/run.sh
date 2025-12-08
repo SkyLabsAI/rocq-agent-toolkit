@@ -10,12 +10,12 @@ PSI_BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "--- Step 1: Starting observability ---"
 
-OBSERVABILITY_PATH="$PSI_BACKEND_DIR/psi_verifier/observability/observability_docker_compose"
+OBSERVABILITY_PATH="$PSI_BACKEND_DIR/psi_verifier/observability/observability_docker_compose/rocq"
 echo "Changing directory to $OBSERVABILITY_PATH"
 cd "$OBSERVABILITY_PATH"
 
 echo "Starting alloy and loki containers..."
-docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki grafana
+docker compose -f docker-compose.rocq.yml up --build -d alloy loki grafana
 echo "Observability services started."
 
 echo ""

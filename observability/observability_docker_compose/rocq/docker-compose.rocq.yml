@@ -1,24 +1,24 @@
-# Standalone configuration for the Khawarzimi server (or similar environments).
-# Runs the stack with S3 storage and distinct ports to allow side-by-side execution with other instances.
+# Standalone configuration for local storage with Rocq network integration.
 # Connects to 'rocq-agent-network'.
-# Usage: docker-compose -f docker-compose.rocq.s3.yml up --build -d
+# Usage: docker-compose -f docker-compose.rocq.yml up --build -d
 
-name: rocq-agent-toolkit-obs
+name: rocq-agent-toolkit-obs-local
 
 services:
   # Observability Stack
   
+  # Grafana Alloy - Unified observability collector
   alloy:
     image: grafana/alloy:latest
+    container_name: rocq-alloy-local
     restart: unless-stopped
-    container_name: rocq-alloy
     ports:
       - "4327:4317"   # OTLP gRPC (Rocq)
       - "4328:4318"   # OTLP HTTP (Rocq)
       - "12365:12345" # Alloy HTTP (Rocq)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./alloy/s3_config.alloy:/etc/alloy/config.alloy
+      - ../alloy/config.alloy:/etc/alloy/config.alloy
     command: 
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -32,19 +32,14 @@ services:
   # Tempo - Distributed tracing backend
   tempo:
     image: grafana/tempo:latest
+    container_name: rocq-tempo-local
     restart: unless-stopped
-    container_name: rocq-tempo
     ports:
       - "3210:3200"   # Tempo HTTP (Rocq)
       - "14278:14268" # Jaeger ingest (Rocq)
     volumes:
       - tempo-data:/var/tempo
-      - ./tempo/tempo_s3_rocq.yml:/etc/tempo.yaml
-    environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - ../tempo/tempo.yaml:/etc/tempo.yaml
     command: 
       - -config.file=/etc/tempo.yaml
     networks:
@@ -53,33 +48,28 @@ services:
   # Loki - Log aggregation system
   loki:
     image: grafana/loki:latest
+    container_name: rocq-loki-local
     restart: unless-stopped
-    container_name: rocq-loki
     ports:
       - "3110:3100"
     volumes:
       - loki-data:/loki
-      - ./loki/loki_s3_rocq.yml:/etc/loki/loki.yaml
-    environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
-    command: -config.file=/etc/loki/loki.yaml 
+      - ../loki/loki.yml:/etc/loki/loki.yaml
+    command: -config.file=/etc/loki/loki.yaml
     networks:
       - rocq-agent-network
 
   # Grafana - Visualization and dashboards
   grafana:
     image: grafana/grafana:latest
+    container_name: rocq-grafana-local
     restart: unless-stopped
-    container_name: rocq-grafana
     ports:
       - "3010:3000"
     volumes:
-      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
-      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ../grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ../grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ../grafana/dashboards:/var/lib/grafana/dashboards
       - grafana-data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
@@ -94,6 +84,7 @@ services:
 networks:
   rocq-agent-network:
     driver: bridge
+    name: rocq-agent-network
 
 volumes:
   grafana-data:
