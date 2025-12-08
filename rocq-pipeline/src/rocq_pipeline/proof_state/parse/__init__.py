@@ -17,11 +17,12 @@ from .brick import (  # isort:skip
     Rocq2BrickGoalParts,
     into_BrickGoalParts
 )
-from .proof_state import into_Goals  # isort:skip
-
+# TODO: remove str_into_Goals
+from .proof_state import str_into_Goal  # isort:skip
 
 __all__ = [
-    "into_Goals",
+    "str_into_Goal",
+    "str_into_Goals",
 
     "into_RocqGoalParts",
 

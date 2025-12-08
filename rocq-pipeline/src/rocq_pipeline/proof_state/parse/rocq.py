@@ -24,9 +24,11 @@ class RocqPatterns:
 
 def into_RocqGoalParts(
         goal: str,
+        *,
+        rocq_rel_goal_num: int,
+        rocq_shelved_cnt: int,
+        rocq_admit_cnt: int,
         rocq_goal_id: int | None = None,
-        rocq_rel_goal_num: int = 1,
-        rocq_shelved_cnt: int | None = None,
         is_concl_only: bool = False,
         silent: bool = False,
 ) -> RocqGoalParts:
@@ -69,10 +71,10 @@ def into_RocqGoalParts(
         print(f"Warning (unknown Rocq goal content): {unknown}")
 
     return RocqGoalParts(
-        rocq_goal_raw=goal,
         rocq_goal_id=rocq_goal_id,
         rocq_rel_goal_num=rocq_rel_goal_num,
         rocq_shelved_cnt=rocq_shelved_cnt,
+        rocq_admit_cnt=rocq_admit_cnt,
         rocq_hyps=rocq_hyps,
         rocq_concl=rocq_concl,
     )
