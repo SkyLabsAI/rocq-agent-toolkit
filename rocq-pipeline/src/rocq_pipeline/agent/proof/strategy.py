@@ -17,7 +17,7 @@ class Strategy(ABC):
     type Rollout = Generator[tuple[float, Action]]
 
     @abstractmethod
-    def rollout(self, rdm: RocqDocManager) -> Rollout:
+    def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Rollout:
         """
         Given the goal `G`, generates `(Pr,A)` such that:
         - `Pr` is the probability that `A` is (the next/a necessary) step in an
@@ -37,11 +37,11 @@ class CompositeStrategy(Strategy):
         self._children = children
 
     @override
-    def rollout(self, rdm: RocqDocManager) -> Strategy.Rollout:
+    def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
         def combine() -> Strategy.Rollout:
             queue:list[tuple[float,int,Strategy.Action,Strategy.Rollout]] = []
             for i, strat in enumerate(self._children):
-                gen = strat.rollout(rdm)
+                gen = strat.rollout(rdm, max_rollout=max_rollout)
                 try:
                     pr, act = next(gen)
                 except StopIteration:
@@ -68,5 +68,5 @@ class SafeTacticStrategy(Strategy):
         self._prob = prob
 
     @override
-    def rollout(self, rdm: RocqDocManager) -> Strategy.Rollout:
+    def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
         return ((prob, TacticApplication(tac)) for prob, tac in [(self._prob, self._tactic)])
