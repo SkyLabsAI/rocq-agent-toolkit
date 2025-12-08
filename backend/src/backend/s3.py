@@ -4,8 +4,11 @@ S3 upload utilities.
 import io
 import logging
 
-import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
+import boto3  # type: ignore[import-untyped]
+from botocore.exceptions import (  # type: ignore[import-untyped]
+    ClientError,
+    NoCredentialsError,
+)
 
 from backend.config import settings
 
