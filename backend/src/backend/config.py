@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     database_echo: bool = False  # SQL logging
 
     # Observability stack port
-    observability_url: str = "http://0.0.0.0:3100"
+    observability_url: str = "http://0.0.0.0:3110"
     # Legacy days-based setting (kept for backwards compatibility, not used directly)
     log_query_time_delta_days: int = 7
     # Time window (in hours) around the task timestamp used when querying Loki

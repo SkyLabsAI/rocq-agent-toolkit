@@ -13,13 +13,13 @@ We use an observability stack composed of **Alloy**, **Loki**, and **Grafana**. 
 
 These services together form the observability stack. Currently, there will be two stacks running: one **local** on your machine and one on **Khawarizmi**. Based on the environment configuration, the agent can send logs either to the local stack or to the Khawarizmi stack for centralized access.
 
-- **Grafana dashboard**: exposed on port `3000`.
-  - Local: `http://0.0.0.0:3000`
+- **Grafana dashboard**: exposed on port `3010`.
+  - Local: `http://0.0.0.0:3010`
   - Khawarizmi: `http://172.31.0.1:3010`
 - **Rocq Agent Toolkit dashboard** (our internal UI for visualizing runs): exposed on port `3005`:
 
     The Rocq Agent Toolkit provides its own frontend dashboard that visualizes these logs, while you can still use Grafana to inspect raw logs.
-    - Local: `http://0.0.0.0:3000`
+    - Local: `http://0.0.0.0:3010`
     - Khawarizmi: `http://172.31.0.1:3010`
 
 
@@ -60,10 +60,10 @@ If you prefer to manage the local services yourself (or if the automatic setup f
 
     ```
     # Navigate to the observability compose directory
-    cd psi_verifier/observability/observability_docker_compose
+    cd psi_verifier/observability/observability_docker_compose/rocq
 
     # Start Alloy and Loki
-    docker compose -f docker-compose.yml -f docker-compose.rocq.yml up --build -d alloy loki grafana
+    docker compose -f docker-compose.rocq.yml up --build -d alloy loki grafana
     ```
 
 2.  **Start Local Frontend/Backend:**
