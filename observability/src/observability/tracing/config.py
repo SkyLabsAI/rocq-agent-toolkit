@@ -108,10 +108,6 @@ class ObservabilityConfig(LoggingConfig):
                 raise ValueError(f"default_extractor must be one of {valid_extractors}")
         if not self.langsmith_service_suffix:
             raise ValueError("langsmith_service_suffix cannot be empty")
-        if self.async_log_queue_size <= 0:
-            raise ValueError("async_log_queue_size must be positive")
-        if self.async_log_queue_timeout <= 0:
-            raise ValueError("async_log_queue_timeout must be positive")
 
 
 @dataclass

@@ -140,8 +140,8 @@ class BusinessOperationExtractor(CustomExtractor):
         include_tenant_id: bool = False,
         user_id_extractor: Optional[Callable] = None,
         tenant_id_extractor: Optional[Callable] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize business operation extractor.
 
@@ -267,8 +267,8 @@ class MLOperationExtractor(CustomExtractor):
         operation_type: str = "inference",
         include_input_shape: bool = True,
         include_batch_size: bool = True,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize ML operation extractor.
 
@@ -325,12 +325,12 @@ class MLOperationExtractor(CustomExtractor):
 
     def _extract_batch_size(
         self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Optional[int]:
+    ) -> Optional[str]:
         """Extract batch size from input."""
         if args:
             first_arg = args[0]
             if hasattr(first_arg, "shape") and len(first_arg.shape) > 0:
-                return int(first_arg.shape[0])
+                return str(first_arg.shape[0])
             elif hasattr(first_arg, "__len__"):
-                return len(first_arg)
+                return str(len(first_arg))
         return None

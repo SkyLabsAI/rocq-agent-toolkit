@@ -89,7 +89,9 @@ def _setup_tracing(config: ObservabilityConfig, resource: Resource) -> None:
         export_timeout_millis=config.batch_export_timeout_ms,
         max_export_batch_size=config.max_export_batch_size,
     )
-    trace.get_tracer_provider().add_span_processor(span_processor)
+    tracer_provider = trace.get_tracer_provider()
+    if isinstance(tracer_provider, TracerProvider):
+        tracer_provider.add_span_processor(span_processor)
 
     propagate.set_global_textmap(TraceContextTextMapPropagator())
 

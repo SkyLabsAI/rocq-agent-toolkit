@@ -52,32 +52,32 @@ class StructuredLogger:
         self.name = name
         self.event_context = event_context
 
-    def debug(self, message: str, *args: Any, **kwargs: Any):
+    def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log debug message with structured data."""
         self._log(logging.DEBUG, message, *args, **kwargs)
 
-    def info(self, message: str, *args: Any, **kwargs: Any):
+    def info(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log info message with structured data."""
         self._log(logging.INFO, message, *args, **kwargs)
 
-    def warning(self, message: str, *args: Any, **kwargs: Any):
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log warning message with structured data."""
         self._log(logging.WARNING, message, *args, **kwargs)
 
-    def error(self, message: str, *args: Any, **kwargs: Any):
+    def error(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log error message with structured data."""
         self._log(logging.ERROR, message, *args, **kwargs)
 
-    def critical(self, message: str, *args: Any, **kwargs: Any):
+    def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log critical message with structured data."""
         self._log(logging.CRITICAL, message, *args, **kwargs)
 
-    def exception(self, message: str, *args: Any, **kwargs: Any):
+    def exception(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log exception with structured data and stack trace."""
         kwargs["exc_info"] = True
         self._log(logging.ERROR, message, *args, **kwargs)
 
-    def _log(self, level: int, message: str, *args: Any, **kwargs: Any):
+    def _log(self, level: int, message: str, *args: Any, **kwargs: Any) -> None:
         """Internal logging method that adds structure and trace correlation."""
         if not self.logger.isEnabledFor(level):
             return
@@ -132,7 +132,7 @@ class StructuredLogger:
             if key != "exc_info":  # Skip special logging parameters
                 # Flatten nested objects for better readability
                 if isinstance(value, dict):
-                    for nested_key_str, nested_value in value.items():  # type: ignore
+                    for nested_key_str, nested_value in value.items():
                         log_entry[f"{key}.{nested_key_str}"] = nested_value
                 else:
                     log_entry[key] = value
@@ -203,7 +203,7 @@ class StructuredLogger:
 
         return kwargs
 
-    def _add_trace_correlation(self, log_entry: Dict[str, Any]):
+    def _add_trace_correlation(self, log_entry: Dict[str, Any]) -> None:
         """Add OpenTelemetry trace correlation if available."""
         try:
             span = otel_trace.get_current_span()
@@ -267,7 +267,7 @@ class StructuredLogger:
     # ------------------------------------------------------------------
     # Event-based structured logging
     # ------------------------------------------------------------------
-    def set_event_context(self, event_type: Optional[str]):
+    def set_event_context(self, event_type: Optional[str]) -> None:
         """Set or clear the event context for this logger instance.
 
         Args:
@@ -342,7 +342,7 @@ def setup_logging(
     format_json: bool = True,
     loki_endpoint: Optional[str] = None,
     environment: Optional[str] = None,
-):
+) -> None:
     """
     Complete logging setup for a service.
 
@@ -381,7 +381,7 @@ def setup_logging(
     )
 
 
-def set_global_service_name(service_name: str):
+def set_global_service_name(service_name: str) -> None:
     """
     Set the global service name for all loggers.
 
@@ -392,7 +392,7 @@ def set_global_service_name(service_name: str):
     _global_service_name = service_name
 
 
-def set_global_event_context(event_context: Optional[str]):
+def set_global_event_context(event_context: Optional[str]) -> None:
     """
     Set the global event context for all new loggers.
 
@@ -413,7 +413,7 @@ def get_global_event_context() -> Optional[str]:
     return _global_event_context
 
 
-def configure_logging(level: str = "INFO", format_json: bool = True):
+def configure_logging(level: str = "INFO", format_json: bool = True) -> None:
     """
     Configure the Python logging system.
 
@@ -484,7 +484,7 @@ def _get_hostname() -> str:
 
     try:
         # Fallback to environment variables
-        hostname = os.getenv("HOSTNAME") or os.getenv("COMPUTERNAME")
+        hostname = os.getenv("HOSTNAME", "") or os.getenv("COMPUTERNAME", "")
         if hostname:
             return hostname
     except Exception:

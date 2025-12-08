@@ -59,7 +59,12 @@ class EventLogConfig:
                 allowed.append(attr_name[len("include_") :])
         allowed.extend(self.extra_fields)
         seen: set[str] = set()
-        return [x for x in allowed if not (x in seen or seen.add(x))]
+        result = []
+        for x in allowed:
+            if x not in seen:
+                seen.add(x)
+                result.append(x)
+        return result
 
 
 @dataclass

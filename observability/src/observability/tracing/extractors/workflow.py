@@ -120,7 +120,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return labels
 
-    def _find_state(self, args: Tuple, kwargs: Dict[str, Any]):
+    def _find_state(self, args: Tuple, kwargs: Dict[str, Any]) -> Any:
         """Find the state object in function arguments."""
         # Check kwargs first
         if self.state_arg in kwargs:
@@ -141,7 +141,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_workflow_info(self, state) -> Dict[str, Any]:
+    def _extract_workflow_info(self, state: Any) -> Dict[str, Any]:
         """Extract workflow information from state object."""
         attrs = {}
 
@@ -158,7 +158,7 @@ class WorkflowExtractor(AttributeExtractor):
         # Try to extract step sequence/index
         step_index = self._extract_step_index(state)
         if step_index is not None:
-            attrs["workflow.step.index"] = step_index
+            attrs["workflow.step.index"] = str(step_index)
 
         # Try to extract workflow status
         status = self._extract_workflow_status(state)
@@ -172,7 +172,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return attrs
 
-    def _extract_workflow_id(self, state) -> Optional[str]:
+    def _extract_workflow_id(self, state: Any) -> Optional[str]:
         """Extract workflow ID from state."""
         if isinstance(state, dict):
             # Try common field names
@@ -189,7 +189,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_execution_id(self, state) -> Optional[str]:
+    def _extract_execution_id(self, state: Any) -> Optional[str]:
         """Extract workflow execution ID from state."""
         if isinstance(state, dict):
             for field in ["execution_id", "run_id", "session_id"]:
@@ -204,12 +204,12 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_step_index(self, state) -> Optional[int]:
+    def _extract_step_index(self, state: Any) -> Optional[int]:
         """Extract step index/sequence number from state."""
         if isinstance(state, dict):
             for field in ["step_index", "current_step", "step_number"]:
                 if field in state and isinstance(state[field], int):
-                    return state[field]
+                    return int(state[field])
 
         for attr in ["step_index", "current_step", "step_number"]:
             if hasattr(state, attr):
@@ -219,7 +219,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_workflow_status(self, state) -> Optional[str]:
+    def _extract_workflow_status(self, state: Any) -> Optional[str]:
         """Extract workflow status from state."""
         if isinstance(state, dict):
             for field in ["status", "state", "phase"]:
@@ -234,7 +234,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_workflow_metadata(self, state) -> Dict[str, Any]:
+    def _extract_workflow_metadata(self, state: Any) -> Dict[str, Any]:
         """Extract additional workflow metadata."""
         attrs = {}
 

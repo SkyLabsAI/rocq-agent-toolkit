@@ -17,6 +17,8 @@ Built-in extractors:
 You can also create your own extractors by inheriting from AttributeExtractor.
 """
 
+from typing import Any
+
 from .base import AttributeExtractor
 from .custom import CustomExtractor
 from .database import DatabaseExtractor
@@ -36,7 +38,7 @@ EXTRACTOR_REGISTRY = {
 }
 
 
-def get_extractor(name_or_extractor, **kwargs):
+def get_extractor(name_or_extractor: Any, **kwargs: Any) -> AttributeExtractor:
     """
     Get an extractor instance from name or return the extractor if already instantiated.
 
@@ -53,7 +55,9 @@ def get_extractor(name_or_extractor, **kwargs):
                 f"Unknown extractor: {name_or_extractor}.\n"
                 f"Available: {list(EXTRACTOR_REGISTRY.keys())}"
             )
-        return EXTRACTOR_REGISTRY[name_or_extractor](**kwargs)
+        extractor_class = EXTRACTOR_REGISTRY[name_or_extractor]
+        instance: AttributeExtractor = extractor_class(**kwargs)
+        return instance
     elif isinstance(name_or_extractor, type) and issubclass(
         name_or_extractor, AttributeExtractor
     ):

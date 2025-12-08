@@ -194,7 +194,7 @@ class HttpExtractor(AttributeExtractor):
 
         return labels
 
-    def _find_request(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]):
+    def _find_request(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> Any:
         """Find the request object in function arguments."""
         # Check kwargs first
         if self.request_arg in kwargs:
@@ -208,7 +208,7 @@ class HttpExtractor(AttributeExtractor):
 
         return None
 
-    def _get_remote_addr(self, request) -> Optional[str]:
+    def _get_remote_addr(self, request: Any) -> Optional[str]:
         """Get remote IP address from request."""
         # Try common attributes for remote address
         for attr in ["remote_addr", "client", "environ"]:
@@ -217,13 +217,13 @@ class HttpExtractor(AttributeExtractor):
                 if isinstance(addr, str):
                     return addr
                 elif hasattr(addr, "host"):  # FastAPI client
-                    return addr.host
+                    return str(addr.host)
                 elif isinstance(addr, dict) and "REMOTE_ADDR" in addr:  # WSGI environ
-                    return addr["REMOTE_ADDR"]
+                    return str(addr["REMOTE_ADDR"])
 
         return None
 
-    def _get_query_params(self, request) -> Optional[str]:
+    def _get_query_params(self, request: Any) -> Optional[str]:
         """Get query parameters from request."""
         # Try different ways to get query string
         query_string = None
@@ -243,7 +243,7 @@ class HttpExtractor(AttributeExtractor):
 
         return query_string if query_string else None
 
-    def _get_headers(self, request) -> Dict[str, str]:
+    def _get_headers(self, request: Any) -> Dict[str, str]:
         """Get headers from request."""
         headers = {}
 
@@ -262,13 +262,13 @@ class HttpExtractor(AttributeExtractor):
 
         return headers
 
-    def _get_user_agent(self, request) -> Optional[str]:
+    def _get_user_agent(self, request: Any) -> Optional[str]:
         """Get user agent from request."""
         # Try different ways to get user agent
         if hasattr(request, "headers") and "user-agent" in request.headers:
-            return request.headers["user-agent"]
+            return str(request.headers["user-agent"])
         elif hasattr(request, "META") and "HTTP_USER_AGENT" in request.META:
-            return request.META["HTTP_USER_AGENT"]
+            return str(request.META["HTTP_USER_AGENT"])
         elif hasattr(request, "user_agent"):
             ua = request.user_agent
             return str(ua) if ua else None

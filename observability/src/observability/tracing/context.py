@@ -29,8 +29,8 @@ def trace_context(
     attributes: Optional[Dict[str, Any]] = None,
     metrics_enabled: bool = True,
     record_exception: bool = True,
-    **extractor_kwargs,
-):
+    **extractor_kwargs: Any,
+) -> Any:
     """
     Context manager for manual tracing of code blocks.
 
@@ -148,7 +148,7 @@ def get_current_span() -> Optional[Span]:
     return trace.get_current_span()
 
 
-def add_span_event(name: str, attributes: Optional[Dict[str, Any]] = None):
+def add_span_event(name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
     """
     Add an event to the current span.
 
@@ -175,7 +175,7 @@ def add_span_event(name: str, attributes: Optional[Dict[str, Any]] = None):
         span.add_event(name, attributes or {})
 
 
-def set_span_attribute(key: str, value: Any):
+def set_span_attribute(key: str, value: Any) -> None:
     """
     Set an attribute on the current span.
 
@@ -205,7 +205,7 @@ def set_span_attribute(key: str, value: Any):
 
 
 @contextmanager
-def suppress_tracing():
+def suppress_tracing() -> Any:
     """
     Context manager to suppress tracing for a block of code.
 
@@ -234,7 +234,7 @@ def suppress_tracing():
         yield
 
 
-def _get_operation_extractor(extractor_spec, **kwargs) -> AttributeExtractor:
+def _get_operation_extractor(extractor_spec: Any, **kwargs: Any) -> AttributeExtractor:
     """Get the appropriate extractor instance."""
     if extractor_spec is None:
         return NoOpExtractor()
@@ -248,7 +248,7 @@ def _get_operation_extractor(extractor_spec, **kwargs) -> AttributeExtractor:
         return NoOpExtractor()
 
 
-def _set_custom_attributes(span: Span, attributes: Dict[str, Any]):
+def _set_custom_attributes(span: Span, attributes: Dict[str, Any]) -> None:
     """Set custom attributes on the span."""
     for key, value in attributes.items():
         if value is not None:
@@ -259,7 +259,7 @@ def _set_custom_attributes(span: Span, attributes: Dict[str, Any]):
             span.set_attribute(key, str_value)
 
 
-def _record_context_start_metrics(extractor: AttributeExtractor, operation_name: str):
+def _record_context_start_metrics(extractor: AttributeExtractor, operation_name: str) -> None:
     """Record metrics when context operation starts."""
     try:
         meter = metrics.get_meter(__name__)
@@ -279,7 +279,7 @@ def _record_context_start_metrics(extractor: AttributeExtractor, operation_name:
 
 def _record_context_success_metrics(
     extractor: AttributeExtractor, operation_name: str, duration: float
-):
+) -> None:
     """Record metrics for successful context operations."""
     try:
         meter = metrics.get_meter(__name__)
@@ -310,7 +310,7 @@ def _record_context_error_metrics(
     operation_name: str,
     duration: float,
     exception: Exception,
-):
+) -> None:
     """Record metrics for failed context operations."""
     try:
         meter = metrics.get_meter(__name__)

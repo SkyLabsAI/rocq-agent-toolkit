@@ -32,8 +32,8 @@ def trace(
     include_args: bool = False,
     include_result: bool = False,
     record_exception: bool = True,
-    **extractor_kwargs,
-):
+    **extractor_kwargs: Any,
+) -> Callable:
     """
     Universal tracing decorator for any operation.
 
@@ -97,7 +97,7 @@ def trace(
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Initialize extractor
             operation_extractor = _get_operation_extractor(
                 extractor, **extractor_kwargs
@@ -184,7 +184,7 @@ def trace(
     return decorator
 
 
-def _get_operation_extractor(extractor_spec, **kwargs) -> AttributeExtractor:
+def _get_operation_extractor(extractor_spec: Any, **kwargs: Any) -> AttributeExtractor:
     """Get the appropriate extractor instance."""
     if extractor_spec is None:
         return NoOpExtractor()
@@ -199,8 +199,8 @@ def _get_operation_extractor(extractor_spec, **kwargs) -> AttributeExtractor:
 
 
 def _set_basic_attributes(
-    span, func: Callable, args: tuple, kwargs: dict, include_args: bool
-):
+    span: Any, func: Callable, args: tuple, kwargs: dict, include_args: bool
+) -> None:
     """Set basic function attributes on the span."""
     span.set_attribute("function.name", func.__name__)
     span.set_attribute("function.module", func.__module__ or "unknown")
@@ -217,7 +217,7 @@ def _set_basic_attributes(
                 span.set_attribute("function.args.names", ",".join(arg_names))
 
 
-def _set_custom_attributes(span, attributes: Dict[str, Any]):
+def _set_custom_attributes(span: Any, attributes: Dict[str, Any]) -> None:
     """Set custom attributes on the span."""
     for key, value in attributes.items():
         if value is not None:
@@ -229,8 +229,8 @@ def _set_custom_attributes(span, attributes: Dict[str, Any]):
 
 
 def _set_extractor_attributes(
-    span, extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict
-):
+    span: Any, extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict
+) -> None:
     """Extract and set attributes using the operation extractor."""
     try:
         extracted_attrs = extractor.extract_attributes(func, args, kwargs)
@@ -240,7 +240,7 @@ def _set_extractor_attributes(
         # Continue operation even if attribute extraction fails
 
 
-def _set_result_attributes(span, result: Any):
+def _set_result_attributes(span: Any, result: Any) -> None:
     """Set attributes based on function result."""
     span.set_attribute("function.result.type", type(result).__name__)
 
@@ -260,7 +260,7 @@ def _set_result_attributes(span, result: Any):
 
 def _record_start_metrics(
     extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict
-):
+) -> None:
     """Record metrics when operation starts."""
     try:
         meter = metrics.get_meter(__name__)
@@ -284,7 +284,7 @@ def _record_success_metrics(
     args: tuple,
     kwargs: dict,
     duration: float,
-):
+) -> None:
     """Record metrics for successful operations."""
     try:
         meter = metrics.get_meter(__name__)
@@ -317,7 +317,7 @@ def _record_error_metrics(
     kwargs: dict,
     duration: float,
     exception: Exception,
-):
+) -> None:
     """Record metrics for failed operations."""
     try:
         meter = metrics.get_meter(__name__)
@@ -349,26 +349,26 @@ def _record_error_metrics(
 
 
 # Convenience aliases for common patterns
-def trace_http(**kwargs):
+def trace_http(**kwargs: Any) -> Callable:
     """Convenience decorator for HTTP operations."""
     return trace(extractor="http", **kwargs)
 
 
-def trace_rpc(**kwargs):
+def trace_rpc(**kwargs: Any) -> Callable:
     """Convenience decorator for RPC operations."""
     return trace(extractor="rpc", **kwargs)
 
 
-def trace_database(**kwargs):
+def trace_database(**kwargs: Any) -> Callable:
     """Convenience decorator for database operations."""
     return trace(extractor="database", **kwargs)
 
 
-def trace_workflow(**kwargs):
+def trace_workflow(**kwargs: Any) -> Callable:
     """Convenience decorator for workflow operations."""
     return trace(extractor="workflow", **kwargs)
 
 
-def trace_langchain(**kwargs):
+def trace_langchain(**kwargs: Any) -> Callable:
     """Convenience decorator for LangChain/LangGraph operations."""
     return trace(extractor="langchain", **kwargs)

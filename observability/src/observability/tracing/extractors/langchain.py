@@ -225,10 +225,10 @@ class LangChainExtractor(AttributeExtractor):
                 attrs["langchain.input"] = self._truncate_string(
                     input_data, self.max_input_length
                 )
-                attrs["langchain.input_length"] = len(input_data)
+                attrs["langchain.input_length"] = str(len(input_data))
             elif isinstance(input_data, dict):
                 attrs["langchain.input_type"] = "dict"
-                attrs["langchain.input_keys"] = list(input_data.keys())
+                attrs["langchain.input_keys"] = str(list(input_data.keys()))
                 # Try to get text content from common keys
                 for key in ["input", "prompt", "question", "query", "text"]:
                     if key in input_data and isinstance(input_data[key], str):
@@ -272,7 +272,7 @@ class LangChainExtractor(AttributeExtractor):
 
             # Count messages if present
             if "messages" in state and isinstance(state["messages"], list):
-                attrs["langchain.messages_count"] = len(state["messages"])
+                attrs["langchain.messages_count"] = str(len(state["messages"]))
 
             # Extract next steps if available
             if "next" in state:
