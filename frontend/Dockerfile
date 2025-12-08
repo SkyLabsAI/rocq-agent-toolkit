@@ -18,6 +18,11 @@ EXPOSE 3005
 
 ENV PORT=3005
 ENV HOSTNAME="0.0.0.0"
+ENV NODE_ENV="production"
+
+# 1. Accept the build argument
+ARG NEXT_PUBLIC_DATA_API
+ENV NEXT_PUBLIC_DATA_API=${NEXT_PUBLIC_DATA_API}
 
 # build project
 RUN pnpm run build

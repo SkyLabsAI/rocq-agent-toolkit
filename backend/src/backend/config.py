@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     server_port: int = 8000
     log_level: str = "info"
 
+        # AWS S3 Configuration (Optional - for backup)
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_REGION: str | None = "us-east-2"
+    S3_BUCKET_NAME: str | None = "rocq-agent-toolkit-jsonls"
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
