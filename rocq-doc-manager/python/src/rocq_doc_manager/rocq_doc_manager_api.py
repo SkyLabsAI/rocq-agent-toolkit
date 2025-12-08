@@ -18,13 +18,13 @@ class RocqDocManagerAPI:
     def __init__(self, rpc: JsonRPCTP) -> None:
         self._rpc:JsonRPCTP = rpc
 
-    @dataclass
+    @dataclass(frozen=True)
     class RocqSource(DataClassJsonMixin):
         """Rocq source file information."""
         file: str = field(kw_only=True, default="")
         dirpath: str | None = field(kw_only=True, default=None)
 
-    @dataclass
+    @dataclass(frozen=True)
     class RocqLoc(DataClassJsonMixin):
         """Rocq source code location."""
         # End position.
@@ -42,13 +42,13 @@ class RocqDocManagerAPI:
         # Source file identification if not run as a toplevel.
         fname: RocqDocManagerAPI.RocqSource | None = field(kw_only=True, default=None)
 
-    @dataclass
+    @dataclass(frozen=True)
     class Quickfix(DataClassJsonMixin):
         """Quick fix hint."""
         text: str = field(kw_only=True, default="")
         loc: RocqDocManagerAPI.RocqLoc = field(kw_only=True, default_factory=lambda: RocqDocManagerAPI.RocqLoc())
 
-    @dataclass
+    @dataclass(frozen=True)
     class FeedbackMessage(DataClassJsonMixin):
         """Rocq feedback message."""
         text: str = field(kw_only=True, default="")
@@ -57,7 +57,7 @@ class RocqDocManagerAPI:
         # Either 'debug', 'info', 'notice', 'warning', or 'error'.
         level: str = field(kw_only=True, default="")
 
-    @dataclass
+    @dataclass(frozen=True)
     class GlobrefsDiff(DataClassJsonMixin):
         """Environment modification performed by a Rocq command."""
         removed_inductives: list[str] = field(kw_only=True, default_factory=list)
@@ -65,7 +65,7 @@ class RocqDocManagerAPI:
         removed_constants: list[str] = field(kw_only=True, default_factory=list)
         added_constants: list[str] = field(kw_only=True, default_factory=list)
 
-    @dataclass
+    @dataclass(frozen=True)
     class ProofState(DataClassJsonMixin):
         """Summary of a Rocq proof state, including the text of focused goals."""
         focused_goals: list[str] = field(kw_only=True, default_factory=list)
@@ -73,34 +73,34 @@ class RocqDocManagerAPI:
         shelved_goals: int = field(kw_only=True, default=0)
         given_up_goals: int = field(kw_only=True, default=0)
 
-    @dataclass
+    @dataclass(frozen=True)
     class CommandData(DataClassJsonMixin):
         """Data gathered while running a Rocq command."""
         proof_state: RocqDocManagerAPI.ProofState | None = field(kw_only=True, default=None)
         feedback_messages: list[RocqDocManagerAPI.FeedbackMessage] = field(kw_only=True, default_factory=list)
         globrefs_diff: RocqDocManagerAPI.GlobrefsDiff = field(kw_only=True, default_factory=lambda: RocqDocManagerAPI.GlobrefsDiff())
 
-    @dataclass
+    @dataclass(frozen=True)
     class CommandError(DataClassJsonMixin):
         """Data returned on Rocq command errors."""
         feedback_messages: list[RocqDocManagerAPI.FeedbackMessage] = field(kw_only=True, default_factory=list)
         # Optional source code location for the error.
         error_loc: RocqDocManagerAPI.RocqLoc | None = field(kw_only=True, default=None)
 
-    @dataclass
+    @dataclass(frozen=True)
     class PrefixItem(DataClassJsonMixin):
         """Document prefix item, appearing before the cursor."""
         text: str = field(kw_only=True, default="")
         offset: int = field(kw_only=True, default=0)
         kind: str = field(kw_only=True, default="")
 
-    @dataclass
+    @dataclass(frozen=True)
     class SuffixItem(DataClassJsonMixin):
         """Document suffix item, appearing after the cursor."""
         text: str = field(kw_only=True, default="")
         kind: str = field(kw_only=True, default="")
 
-    @dataclass
+    @dataclass(frozen=True)
     class CompileResult(DataClassJsonMixin):
         """Result of the `compile` method."""
         # Non-null if success is false.

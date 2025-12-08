@@ -488,7 +488,7 @@ let output_python_api oc api =
   line "        self._rpc:JsonRPCTP = rpc";
   let output_object (A(O(o))) =
     line "";
-    line "    @dataclass";
+    line "    @dataclass(frozen=True)";
     line "    class %s(DataClassJsonMixin):" o.key.name;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
