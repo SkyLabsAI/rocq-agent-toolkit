@@ -125,6 +125,24 @@ class ProofAgent(Agent):
         # TODO: validate that no goals remain.
         return self.prove(rdm)
 
+    def current_proof_state(
+            self,
+            rdm: RocqDocManager,
+            goal_ty_upperbound: type[RocqGoal] | None = None,
+    ) -> ProofState | RocqDocManager.Err[None]:
+        """Structured view of the current proof state (via RDM.current_goal).
+
+        Note: self._goal_ty_upperbound can be overriden."""
+        if goal_ty_upperbound is None:
+            goal_ty_upperbound = self._goal_ty_upperbound
+        goal_reply = rdm.current_goal()
+        if isinstance(goal_reply, RocqDocManager.Err):
+            return goal_reply
+        return ProofState(
+            goal_reply,
+            goal_ty_upperbound=goal_ty_upperbound,
+        )
+
     def run_tactic(
         self,
         rdm: RocqDocManager,
@@ -133,14 +151,12 @@ class ProofAgent(Agent):
         """Get the result of running tac using rdm, tracing the interaction."""
         tac_app = TacticApplication(tactic=tac)
 
-        pre_goal_reply = rdm.current_goal()
-        if isinstance(pre_goal_reply, RocqDocManager.Err):
-            tac_app.err = pre_goal_reply
+        pre_pf_state_reply = self.current_proof_state(rdm)
+        if isinstance(pre_pf_state_reply, RocqDocManager.Err):
+            tac_app.err = pre_pf_state_reply
             return tac_app
-        tac_app.pf_state_pre = ProofState(
-            pre_goal_reply,
-            goal_ty_upperbound=self._goal_ty_upperbound,
-        )
+        else:
+            tac_app.pf_state_pre = pre_pf_state_reply
         logger.info(
             "Tactic Pre State",
             pf_state_pre=tac_app.pf_state_pre.to_json(),
@@ -165,14 +181,11 @@ class ProofAgent(Agent):
             status="Success",
         )
 
-        post_goal_reply = rdm.current_goal()
-        if isinstance(post_goal_reply, RocqDocManager.Err):
-            tac_app.err = post_goal_reply
+        post_pf_state_reply = self.current_proof_state(rdm)
+        if isinstance(post_pf_state_reply, RocqDocManager.Err):
+            tac_app.err = post_pf_state_reply
             return tac_app
-        tac_app.pf_state_post = ProofState(
-            post_goal_reply,
-            goal_ty_upperbound=self._goal_ty_upperbound,
-        )
+        tac_app.pf_state_post = post_pf_state_reply
         logger.info(
             "Tactic Post State",
             pf_state_post=tac_app.pf_state_post.to_json(),

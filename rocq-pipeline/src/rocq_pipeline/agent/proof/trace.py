@@ -54,7 +54,7 @@ class TraceAgent(ProofAgent):
     @override
     def prove(self, rdm: RocqDocManager) -> TaskResult:
         """Keep trying to prove via next tactic prediction."""
-        while rdm.current_goal() is not None:
+        while not self.current_proof_state(rdm).closed(proof=True):
             if self._max_fuel is not None and self._tac_app_cnt >= self._max_fuel:
                 return self.give_up(
                     rdm,
@@ -152,7 +152,7 @@ class TraceAgent(ProofAgent):
             goal_ty_upperbound=self._goal_ty_upperbound,
         )
 
-    def _task_holes_json(self, rdm: RocqDocManager) -> dict[int, Any] | str:
+    def _task_holes_json(self, rdm: RocqDocManager) -> dict[str, Any] | str:
         holes = self._task_holes(rdm)
         if isinstance(holes, RocqDocManager.Err):
             return str(holes)
