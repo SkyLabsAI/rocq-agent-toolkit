@@ -13,6 +13,7 @@ from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
+from sqlalchemy import desc
 from sqlmodel import Session, delete, select
 
 from backend.db_models import Agent, Dataset, Run, RunTagLink, Tag, Task, TaskResultDB
@@ -195,7 +196,7 @@ def ingest_task_results_for_run(
             run.source_file_name = source_file_name
 
         # Remove existing results for this run so we can replace them
-        session.exec(delete(TaskResultDB).where(TaskResultDB.run_id == run.id))
+        session.exec(delete(TaskResultDB).where(TaskResultDB.run_id == run.id))  # type: ignore[arg-type]
 
     # Aggregation accumulators
     total_tasks = 0
@@ -266,7 +267,7 @@ def ingest_task_results_for_run(
 
     # Attach tags at the run level
     # First, clear existing links to avoid duplicates on re-ingestion
-    session.exec(delete(RunTagLink).where(RunTagLink.run_id == run.id))
+    session.exec(delete(RunTagLink).where(RunTagLink.run_id == run.id))  # type: ignore[arg-type]
 
     for key, value in sorted(tag_pairs):
         tag = get_or_create_tag(session, key=key, value=value)
@@ -325,7 +326,7 @@ def _get_tags_for_run(session: Session, run_id: UUID) -> dict[str, str]:
     """
     rows = session.exec(
         select(Tag.key, Tag.value)
-        .join(RunTagLink, RunTagLink.tag_id == Tag.id)
+        .join(RunTagLink, RunTagLink.tag_id == Tag.id)  # type: ignore[arg-type]
         .where(RunTagLink.run_id == run_id)
     ).all()
 
@@ -439,7 +440,7 @@ def get_runs_by_agent_from_db(session: Session, agent_name: str) -> list[RunInfo
     runs = session.exec(
         select(Run)
         .where(Run.agent_id == agent.id)
-        .order_by(Run.timestamp_utc.desc())
+        .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
     ).all()
 
     run_infos: list[RunInfo] = []
@@ -500,7 +501,7 @@ def get_runs_by_agent_and_dataset_from_db(
     runs = session.exec(
         select(Run)
         .where(Run.agent_id == agent.id, Run.dataset_id == dataset.id)
-        .order_by(Run.timestamp_utc.desc())  # type: ignore[arg-type]
+        .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
     ).all()
 
     run_infos: list[RunInfo] = []
@@ -651,8 +652,8 @@ def list_datasets_from_db(session: Session) -> list[DatasetInfo]:
     Returns them as DatasetInfo objects exposing the logical identifier
     (Dataset.name) as dataset_id.
     """
-    datasets: list[Dataset] = session.exec(
-        select(Dataset).order_by(Dataset.name)  # type: ignore[arg-type]
+    datasets: Sequence[Dataset] = session.exec(
+        select(Dataset).order_by(Dataset.name)
     ).all()
 
     result: list[DatasetInfo] = []

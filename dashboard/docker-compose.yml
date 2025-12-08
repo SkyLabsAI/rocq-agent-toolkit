@@ -56,14 +56,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_DATA_API: ${NEXT_PUBLIC_DATA_API:-http://localhost:8000/api}
     container_name: rocq-agent-toolkit-frontend
     ports:
       - "${FRONTEND_PORT:-3005}:3005"
     networks:
       - rocq-agent-network
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - NEXT_PUBLIC_DATA_API=${NEXT_PUBLIC_DATA_API:-http://localhost:8000/api}
 
 networks:
   rocq-agent-network:

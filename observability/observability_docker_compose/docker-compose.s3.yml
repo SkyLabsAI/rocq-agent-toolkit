@@ -1,3 +1,5 @@
+# docker-compose -f docker-compose.yml -f docker-compose.s3.yml up --build -d alloy tempo loki grafana
+
 services:
   alloy:
     volumes:

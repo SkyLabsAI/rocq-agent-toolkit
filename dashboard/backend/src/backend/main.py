@@ -9,10 +9,12 @@ into a relational schema for querying and dashboard use.
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Any
 
 import uvicorn
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 
@@ -44,6 +46,7 @@ from backend.models import (
     TagsResponse,
     TaskResult,
 )
+from backend.s3 import upload_bytes_to_s3
 from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
 
 # Configure logging
@@ -190,6 +193,19 @@ async def ingest_items(
     This endpoint expects the request body to be a JSON array of `TaskResult`
     objects. It does not support file uploads.
     """
+
+    # Convert items to JSONL bytes for backup
+    # We reconstruct the JSONL format that would have been in a file
+    jsonl_content = "\n".join(item.model_dump_json() for item in items)
+    raw_bytes = jsonl_content.encode("utf-8")
+
+    # Backup to S3 if configured
+    await run_in_threadpool(
+        upload_bytes_to_s3,
+        file_content=raw_bytes,
+        object_key=source_file_name,
+    )
+
     return _perform_ingestion(
         session=session,
         task_results=items,
@@ -216,9 +232,17 @@ async def ingest_jsonl_file(
     the `TaskResult` schema. Invalid lines are logged and skipped.
     """
     if not source_file_name:
-        source_file_name = file.filename
+        source_file_name = file.filename or f"upload_{datetime.now().strftime('%Y%m%d%H%M%S')}.jsonl"
 
     raw_bytes = await file.read()
+
+    # Backup to S3 if configured
+    await run_in_threadpool(
+        upload_bytes_to_s3,
+        file_content=raw_bytes,
+        object_key=source_file_name,
+    )
+
     text = raw_bytes.decode("utf-8")
     parsed_items: list[TaskResult] = []
     parse_error_count = 0
@@ -614,12 +638,16 @@ async def get_observability_logs(
         ) from e
 
 
-if __name__ == "__main__":
-
+def start() -> None:
+    """Entry point for running the application."""
     uvicorn.run(
-        "main:app",
+        "backend.main:app",
         host=settings.server_host,
         port=settings.server_port,
         reload=True,
         log_level=settings.log_level,
     )
+
+
+if __name__ == "__main__":
+    start()
