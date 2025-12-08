@@ -15,10 +15,13 @@ import httpx
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 
 DEFAULT_SERVER = "172.31.0.1"
+OTLP_ENDPOINT_SERVER = "http://172.31.0.1:4327"
+OTLP_ENDPOINT_LOCAL = "http://0.0.0.0:4327"
+
 DEFAULT_DATA_PATH = "/data/skylabs/rocq-agent-runner/data/"
 DEFAULT_FRONTEND_PORT = 3005
-DEFAULT_BACKEND_PORT = 8000
-DEFAULT_GRAFANA_PORT = 3000
+DEFAULT_BACKEND_PORT = 8010
+DEFAULT_GRAFANA_PORT = 3010
 
 
 def ingest_results_file(
@@ -107,7 +110,7 @@ class DockerServiceManager:
         self.workspace_root = workspace_root
         self.observability_compose_dir = (
             workspace_root
-            / "psi/backend/psi_verifier/observability/observability_docker_compose"
+            / "psi/backend/psi_verifier/observability/observability_docker_compose/rocq"
         )
         self.toolkit_dir = workspace_root / "psi/backend/rocq_agent_toolkit"
 
@@ -148,9 +151,9 @@ class DockerServiceManager:
     def check_services(self) -> dict[str, bool]:
         """Check the status of all required services"""
         services = {
-            "alloy": self.check_service_running("alloy"),
-            "loki": self.check_service_running("loki"),
-            "grafana": self.check_service_running("grafana"),
+            "alloy": self.check_service_running("rocq-alloy-local"),
+            "loki": self.check_service_running("rocq-loki-local"),
+            "grafana": self.check_service_running("rocq-grafana-local"),
             "backend": self.check_service_running("rocq-agent-toolkit-backend"),
             "frontend": self.check_service_running("rocq-agent-toolkit-frontend"),
             "database": self.check_service_running("rocq-agent-toolkit-db"),
@@ -173,8 +176,6 @@ class DockerServiceManager:
                 [
                     "docker",
                     "compose",
-                    "-f",
-                    "docker-compose.yml",
                     "-f",
                     "docker-compose.rocq.yml",
                     "up",
@@ -325,7 +326,7 @@ class LocalEnvironment(Environment):
         )
 
     def get_otlp_endpoint(self) -> str:
-        return "http://0.0.0.0:4317"
+        return OTLP_ENDPOINT_LOCAL
 
 
 class StagingEnvironment(Environment):
@@ -340,7 +341,7 @@ class StagingEnvironment(Environment):
         self.grafana_port = DEFAULT_GRAFANA_PORT
 
     def get_otlp_endpoint(self) -> str:
-        return f"http://{self.server}:4317"
+        return OTLP_ENDPOINT_SERVER
 
     def setup(self) -> bool:
         """Check if staging server is reachable"""

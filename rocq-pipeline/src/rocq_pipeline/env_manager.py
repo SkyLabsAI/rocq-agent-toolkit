@@ -45,7 +45,7 @@ class NoOpEnvironment(Environment):
         pass
 
     def get_otlp_endpoint(self) -> str:
-        return os.getenv("LOG_OTLP_ENDPOINT", "http://0.0.0.0:4317")
+        return os.getenv("LOG_OTLP_ENDPOINT", "http://0.0.0.0:4327")
 
 
 class EnvironmentRegistry:
