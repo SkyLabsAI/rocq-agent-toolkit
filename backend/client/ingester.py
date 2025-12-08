@@ -58,7 +58,7 @@ def ingest_file(
             response = client.post(url, files=files, params=params)
 
     response.raise_for_status()
-    return response.json()
+    return response.json()  # type: ignore[no-any-return]
 
 
 def _parse_args() -> argparse.Namespace:

@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     database_echo: bool = False  # SQL logging
 
     # Observability stack port
-    observability_url: str = "http://0.0.0.0:3100"
+    observability_url: str = "http://0.0.0.0:3110"
     # Legacy days-based setting (kept for backwards compatibility, not used directly)
     log_query_time_delta_days: int = 7
     # Time window (in hours) around the task timestamp used when querying Loki
@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     server_host: str = "0.0.0.0"
     server_port: int = 8000
     log_level: str = "info"
+
+        # AWS S3 Configuration (Optional - for backup)
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_REGION: str | None = "us-east-2"
+    S3_BUCKET_NAME: str | None = "rocq-agent-toolkit-jsonls"
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
