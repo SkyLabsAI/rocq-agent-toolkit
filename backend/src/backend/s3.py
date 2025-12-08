@@ -21,6 +21,10 @@ def upload_bytes_to_s3(
 
     Returns the S3 URL if successful, or None if skipped/failed.
     """
+    # Prepend folder to object_key
+    folder = "rat-jsonls"
+    object_key = f"{folder}/{object_key}"
+
     if not (
         settings.AWS_ACCESS_KEY_ID
         and settings.AWS_SECRET_ACCESS_KEY

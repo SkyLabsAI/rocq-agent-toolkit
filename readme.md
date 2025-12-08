@@ -15,12 +15,12 @@ These services together form the observability stack. Currently, there will be t
 
 - **Grafana dashboard**: exposed on port `3000`.
   - Local: `http://0.0.0.0:3000`
-  - Khawarizmi: `http://172.31.0.1:3000`
+  - Khawarizmi: `http://172.31.0.1:3010`
 - **Rocq Agent Toolkit dashboard** (our internal UI for visualizing runs): exposed on port `3005`:
 
     The Rocq Agent Toolkit provides its own frontend dashboard that visualizes these logs, while you can still use Grafana to inspect raw logs.
     - Local: `http://0.0.0.0:3000`
-    - Khawarizmi: `http://172.31.0.1:3000`
+    - Khawarizmi: `http://172.31.0.1:3010`
 
 
 * **Using Grafana**
@@ -109,7 +109,7 @@ uv run code-proof-agent \
 ```
 **What the `--env staging` flag does:**
 
-1.  **Configures Logging:** Automatically sets the log endpoint to the remote server (`LOG_OTLP_ENDPOINT=http://172.31.0.1:4317`).
+1.  **Configures Logging:** Automatically sets the log endpoint to the remote server (`LOG_OTLP_ENDPOINT=http://172.31.0.1:4327`).
 2.  **Runs Agent:** Executes the agent locally.
 3.  **Uploads Results:** After the run, it automatically uploads the generated `.jsonl` file to the staging server via `scp` (e.g., `scp ... 172.31.0.1:/data/skylabs/rocq-agent-runner/data/`).
 
@@ -129,7 +129,7 @@ If you prefer to not use --env staging and manage things yourself.
     - Create a `.env` file in your agent's execution environment. For `rocq-pipeline`, this is `fmdeps/skylabs-fm/rocq-pipeline/.env`.
     - Add the following line:
       ```
-      LOG_OTLP_ENDPOINT=http://172.31.0.1:4317
+      LOG_OTLP_ENDPOINT=http://172.31.0.1:4327
       ```
     - **Note:** You must be connected to the **Khawarzimi VPN** for this to work.
 
