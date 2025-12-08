@@ -4,6 +4,8 @@ from typing import Any, override
 
 from rocq_doc_manager import RocqDocManager
 
+from rocq_pipeline.proof_state import ProofState
+
 
 class DocumentWatcher:
     """
@@ -108,9 +110,9 @@ class GoalAsString(StateExtractor[str]):
     """A simple extractor that just gets the current goal the way it is printed in Rocq."""
     def __call__(self, rdm: RocqDocManager) -> str:
         result = rdm.current_goal()
-        if isinstance(result, rdm.Resp):
-            return result.result # type: ignore
-        return ""
+        if isinstance(result, rdm.Err):
+            raise RuntimeError("Failed to parse goal: {result}")
+        return str(ProofState(result))
 
 class TacticExtractor[T](DocumentWatcher):
     """
