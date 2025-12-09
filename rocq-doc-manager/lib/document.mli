@@ -19,6 +19,11 @@ type t
     exists on the file system or not, the document starts empty. *)
 val init : args:string list -> file:string -> t
 
+(** [clone t] creates a new cursor that is independent of [t] but in the same
+    state as [t] *)
+val clone : t -> t
+
+(** This operation does not have clear semantics if we do not expose the backend. *)
 val stop : t -> unit
 
 val load_file : t -> (unit, string * Rocq_loc.t option) result

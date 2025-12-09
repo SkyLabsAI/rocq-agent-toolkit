@@ -155,6 +155,10 @@ let init : args:string list -> file:string -> t = fun ~args ~file ->
   { backend; initial_sid;
     rev_prefix; cursor_sid; cursor_off; suffix }
 
+let clone : t -> t = fun d ->
+  (* just copy the object *)
+  { d with backend=d.backend }
+
 let stop : t -> unit = fun d ->
   Rocq_toplevel.stop d.backend.toplevel
 
