@@ -4,6 +4,15 @@ from typing import cast, override
 from rocq_pipeline.proof_state.goal import IrisGoal
 from rocq_pipeline.proof_state.goal_parts import BrickGoalParts
 
+def head_ast(s:str, constructs: list[str]) -> bool:
+    for ast in constructs:
+        if re.search(
+            fr"::wpS\s+\[.*?\]\s+\({ast}",
+            s,
+            re.DOTALL,  # "." should match everything, including newlines
+        ):
+            return True
+    return False
 
 class BrickGoal(IrisGoal):
     """Single Brick goal, consisting of structured goal parts.
@@ -26,30 +35,10 @@ class BrickGoal(IrisGoal):
         """
         Checks if the spatial conclusion contains a loop AST node.
         """
-        if not self.parts.iris_spat_concl:
-            return False
-
-        for loop_ast_text in ["Sdo_while", "Sfor", "Swhile"]:
-            if re.search(
-                rf"::wpS\s+\[.*?\]\s+\({loop_ast_text}",
-                self.parts.iris_spat_concl,
-                re.DOTALL,  # "." should match everything, including newlines
-            ):
-                return True
-        return False
+        return head_ast(self.parts.iris_spat_concl, ["Sdo_while", "Sfor", "Swhile"])
 
     def is_conditional_goal(self) -> bool:
         """
         Checks if the spatial conclusion contains a 'if' AST node.
         """
-        if not self.parts.iris_spat_concl:
-            return False
-
-        for if_ast_text in ["Sif"]:
-            if re.search(
-                fr"::wpS\s+\[.*?\]\s+\({if_ast_text}",
-                self.parts.iris_spat_concl,
-                re.DOTALL,  # "." should match everything, including newlines
-            ):
-                return True
-        return False
+        return head_ast(self.parts.iris_spat_concl, ["Sif"])
