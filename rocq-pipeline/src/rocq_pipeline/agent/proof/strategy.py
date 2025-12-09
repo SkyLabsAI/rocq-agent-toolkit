@@ -8,7 +8,6 @@ from rocq_doc_manager import RocqDocManager
 
 from rocq_pipeline.agent.base import TacticApplication
 
-
 class Strategy(ABC):
     """
     A `Strategy` proposes actions to take
@@ -71,17 +70,31 @@ class SafeTacticStrategy(Strategy):
     def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
         return ((prob, TacticApplication(tac)) for prob, tac in [(self._prob, self._tactic)])
 
-class TryTacticStrategy(SafeTacticStrategy):
-    """A simple strategy that emits 'try (tac)' for tactic tac.
-    Success probability 1.0 is inherited from SafeTacticStrategy and appropriate."""
-    def __init__(self, tac: str) -> None:
-        super().__init__(f'try ({tac})')
-
 class CutAssertStrategy(SafeTacticStrategy):
     """A simple strategy that cuts a Rocq lemma.
     The inherited success probability 1.0 is not necessarily appropriate."""
     def __init__(self, lemma: str) -> None:
         super().__init__(f'assert ({lemma})')
+
+def empty_generator() -> Strategy.Rollout:
+    return ((prob_tac) for prob_tac in [])
+
+
+class FailStrategy(Strategy):
+    """A simple strategy that fails."""
+    def __init__(self) -> None:
+        pass
+
+    @override
+    def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
+        return ((prob_tac) for prob_tac in [])
+
+ #----------------- Likely to be decommissioned Strategies -----------------#
+class TryTacticStrategy(SafeTacticStrategy):
+    """A simple strategy that emits 'try (tac)' for tactic tac.
+    Success probability 1.0 is inherited from SafeTacticStrategy and appropriate."""
+    def __init__(self, tac: str) -> None:
+        super().__init__(f'try ({tac})')
 
 class FirstTacticStrategy(Strategy):
     """A simple strategy creates the tactic 'first [ t1 | .. | tn ]' ).
@@ -96,15 +109,3 @@ class FirstTacticStrategy(Strategy):
         tacs_string = ' | '.join(tacs)
         first_tac = f"first [{tacs_string}]"
         return ((prob, TacticApplication(tac)) for prob, tac in [(maxprob, first_tac)])
-
-class FailStrategy(Strategy):
-    """A simple strategy that fails."""
-    def __init__(self) -> None:
-        pass
-
-    @override
-    def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
-        def empty_generator() -> Strategy.Rollout:
-            if False:
-                yield
-        return empty_generator()

@@ -37,3 +37,19 @@ class BrickGoal(IrisGoal):
             ):
                 return True
         return False
+
+    def is_conditional_goal(self) -> bool:
+        """
+        Checks if the spatial conclusion contains a 'if' AST node.
+        """
+        if not self.parts.iris_spat_concl:
+            return False
+
+        for if_ast_text in ["Sif"]:
+            if re.search(
+                fr"::wpS\s+\[.*?\]\s+\({if_ast_text}",
+                self.parts.iris_spat_concl,
+                re.DOTALL,  # "." should match everything, including newlines
+            ):
+                return True
+        return False
