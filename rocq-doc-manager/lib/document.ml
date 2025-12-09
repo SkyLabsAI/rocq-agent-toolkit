@@ -44,7 +44,7 @@ let%test "take_drop 1 [1]" = take_drop 1 [1] = ([1], [])
 let%test "take_drop 1 [1;2]" = take_drop 1 [1;2] = ([1], [2])
 let%test "take_drop 2 [1;2;3;4;5]" = take_drop 2 [1;2;3;4;5] = ([2;1], [3;4;5])
 
-let revert_replay : type a b. a processed list -> b processed list -> a option * b processed list =
+let revert_replay : type a b. a processed list -> b processed list -> a option * a processed list * b processed list =
   let rec consistent : a processed list -> b processed list -> bool = fun ls rs ->
     match ls, rs with
     | [] , [] -> true
@@ -55,9 +55,9 @@ let revert_replay : type a b. a processed list -> b processed list -> a option *
     | _ , _ -> false
   in
   fun src dst ->
-    let rec find_common : a processed list -> b processed list -> a option -> b processed list -> a option * b processed list =
+    let rec find_common : a processed list -> b processed list -> a option -> b processed list -> a option * a processed list * b processed list =
       fun src dst cur_sid acc ->
-        if consistent src dst then (cur_sid, acc)
+        if consistent src dst then (cur_sid, src, acc)
         else match src , dst with
             | Blanks _ :: src , d :: dst -> find_common src dst cur_sid (d :: acc)
             | Command {sid_before; _} :: src, d :: dst -> find_common src dst (Some sid_before) (d :: acc)
@@ -85,44 +85,55 @@ let revert_replay : type a b. a processed list -> b processed list -> a option *
 ;;
 
 let%test "[],[]" =
-  revert_replay [] [] = (None, [])
+  revert_replay [] [] = (None, [], [])
 let%test "[Blanks],[Blanks]" =
   let procs = [Blanks{index=0;off=0;text=""}] in
-  revert_replay procs procs = (None, [])
+  revert_replay procs procs = (None, procs, [])
 let%test "[C1],[C1]" =
   let procs = [Command{index=0;off=0;sid_before=0;text="";visible=true}] in
-  revert_replay procs procs = (None, [])
+  revert_replay procs procs = (None, procs, [])
 let%test "[],[C1]" =
   let src = [] in
   let dst = [Command{index=0;off=0;sid_before=3;text="bar.";visible=true}] in
-  revert_replay src dst = (None, dst)
+  revert_replay src dst = (None, src, dst)
 let%test "[C1],[]" =
   let src = [Command{index=0;off=0;sid_before=5;text="foo.";visible=true}] in
   let dst = [] in
-  revert_replay src dst = (Some 5, [])
+  revert_replay src dst = (Some 5, [], [])
 let%test "[C1],[C2]" =
   let src = [Command{index=0;off=0;sid_before=5;text="foo.";visible=true}] in
   let dst = [Command{index=0;off=0;sid_before=3;text="bar.";visible=true}] in
-  revert_replay src dst = (Some 5, dst)
+  revert_replay src dst = (Some 5, [], dst)
 let%test "[C2;C1],[C1]" =
   let c1 = Command{index=0;off=0;sid_before=5;text="foo.";visible=true} in
   let c2 = Command{index=1;off=0;sid_before=3;text="bar.";visible=true} in
   (* NOTE: list is reversed *)
-  revert_replay [c2;c1] [c1] = (Some 3, [])
+  revert_replay [c2;c1] [c1] = (Some 3, [c1], [])
+
+(*
+let rec print_processed top out = function
+  | [] -> output_string out "[]"
+| Blanks _ :: ls -> output_string out "<blanks>::" ; print_processed top out ls
+| Command {sid_before;_} :: ls ->
+  output_string out (string_of_int @@ Rocq_toplevel.StateID.to_int top sid_before) ;
+  output_string out "::" ;
+  print_processed top out ls
+*)
 
 (** returns the backend focused to the current cusor *)
 let focused (cursor : t) : backend =
   let backend = cursor.backend in
-  let revert , replay = revert_replay backend.rev_commands cursor.rev_prefix in
+  let revert , reverted_to , replay = revert_replay backend.rev_commands cursor.rev_prefix in
   let toplevel = backend.toplevel in
   let sid =
     match revert with
     | Some revert ->
-      assert (Rocq_toplevel.back_to toplevel ~sid:revert = Ok ()) ;
+      assert (Rocq_toplevel.back_to toplevel ~sid:revert = Ok ());
       revert
     | _ ->
       Rocq_toplevel.StateID.current toplevel
   in
+  backend.rev_commands <- reverted_to ;
   let _ =
     List.fold_left (fun sid -> function
         | Blanks _ -> sid
@@ -263,11 +274,11 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
   if not erase then d.suffix <- suffix;
   ()
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
+  let _ = focused d in
   let rev_prefix = d.rev_prefix in
   let cursor_off = d.cursor_off in
   let suffix = d.suffix in
   let v = f () in
-  let _ = focused {d with rev_prefix; cursor_off; suffix} in
   d.rev_prefix <- rev_prefix;
   d.cursor_off <- cursor_off;
   d.suffix <- suffix; v
