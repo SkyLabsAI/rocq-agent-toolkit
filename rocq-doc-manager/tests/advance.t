@@ -10,13 +10,13 @@
   > EOF
 
   $ cat > calls.txt <<EOF
-  > load_file
-  > advance_to [4]
-  > advance_to [4]
-  > doc_suffix
-  > advance_to [9]
-  > doc_suffix
-  > advance_to [10]
+  > load_file [0]
+  > advance_to [0,4]
+  > advance_to [0,4]
+  > doc_suffix [0]
+  > advance_to [0,9]
+  > doc_suffix [0]
+  > advance_to [0,10]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt

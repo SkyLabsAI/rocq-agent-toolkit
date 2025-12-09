@@ -20,33 +20,33 @@
   > EOF
 
   $ cat > calls.txt <<EOF
-  > load_file
-  > run_step
-  > run_step
-  > insert_blanks ["\n(* inserted comment *)\n"]
-  > insert_command ["Definition inserted := nat."]
-  > insert_blanks ["\n"]
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > doc_prefix
-  > doc_suffix
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > run_step
-  > non-existent
-  > commit [true]
-  > compile
+  > load_file [0]
+  > run_step [0]
+  > run_step [0]
+  > insert_blanks [0,"\n(* inserted comment *)\n"]
+  > insert_command [0,"Definition inserted := nat."]
+  > insert_blanks [0,"\n"]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > doc_prefix [0]
+  > doc_suffix [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > non-existent [0]
+  > commit [0,true]
+  > compile [0]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt

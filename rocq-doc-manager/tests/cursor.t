@@ -8,21 +8,21 @@
   > EOF
 
   $ cat > calls.txt <<EOF
-  > cursor_index
-  > load_file
-  > cursor_index
-  > run_step
-  > cursor_index
-  > run_step
-  > cursor_index
-  > run_step
-  > cursor_index
-  > run_step
-  > cursor_index
-  > run_step
-  > cursor_index
-  > run_step
-  > cursor_index
+  > cursor_index [0]
+  > load_file [0]
+  > cursor_index [0]
+  > run_step [0]
+  > cursor_index [0]
+  > run_step [0]
+  > cursor_index [0]
+  > run_step [0]
+  > cursor_index [0]
+  > run_step [0]
+  > cursor_index [0]
+  > run_step [0]
+  > cursor_index [0]
+  > run_step [0]
+  > cursor_index [0]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt

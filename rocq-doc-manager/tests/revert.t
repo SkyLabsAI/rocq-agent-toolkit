@@ -8,21 +8,21 @@
   > EOF
 
   $ cat > calls.txt <<EOF
-  > load_file
-  > doc_suffix
-  > run_step
-  > run_step
-  > run_step
-  > revert_before {erase:false,index:2}
-  > revert_before {erase:false,index:2}
-  > revert_before {erase:true,index:0}
-  > doc_prefix
-  > doc_suffix
-  > run_step
-  > run_step
-  > run_step
-  > revert_before {erase:false,index:0}
-  > revert_before {erase:false,index:0}
+  > load_file [0]
+  > doc_suffix [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > revert_before [0,{erase:false,index:2}]
+  > revert_before [0,{erase:false,index:2}]
+  > revert_before [0,{erase:true,index:0}]
+  > doc_prefix [0]
+  > doc_suffix [0]
+  > run_step [0]
+  > run_step [0]
+  > run_step [0]
+  > revert_before [0,{erase:false,index:0}]
+  > revert_before [0,{erase:false,index:0}]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -61,63 +61,75 @@
       ]
     }
   }
-  { "id": 6, "jsonrpc": "2.0", "result": null }
-  { "id": 7, "jsonrpc": "2.0", "result": null }
-  { "id": 8, "jsonrpc": "2.0", "result": null }
-  { "id": 9, "jsonrpc": "2.0", "result": [] }
+  {
+    "id": 6,
+    "jsonrpc": "2.0",
+    "error": {
+      "code": -32602,
+      "message": "Invalid parameters for method revert_before: Ill-typed argument 'erase': expected boolean value."
+    }
+  }
+  {
+    "id": 7,
+    "jsonrpc": "2.0",
+    "error": {
+      "code": -32602,
+      "message": "Invalid parameters for method revert_before: Ill-typed argument 'erase': expected boolean value."
+    }
+  }
+  {
+    "id": 8,
+    "jsonrpc": "2.0",
+    "error": {
+      "code": -32602,
+      "message": "Invalid parameters for method revert_before: Ill-typed argument 'erase': expected boolean value."
+    }
+  }
+  {
+    "id": 9,
+    "jsonrpc": "2.0",
+    "result": [
+      { "kind": "command", "offset": 0, "text": "Definition test := nat." },
+      { "kind": "blanks", "offset": 23, "text": "\n" },
+      { "kind": "command", "offset": 24, "text": "About nat." }
+    ]
+  }
   {
     "id": 10,
     "jsonrpc": "2.0",
     "result": [
-      { "kind": "command", "text": "About nat." },
       { "kind": "blanks", "text": "\n" },
       { "kind": "command", "text": "Check test." }
     ]
   }
+  { "id": 11, "jsonrpc": "2.0", "result": null }
   {
-    "id": 11,
+    "id": 12,
     "jsonrpc": "2.0",
     "result": {
       "feedback_messages": [
-        {
-          "level": "notice",
-          "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
-        }
+        { "level": "notice", "text": "test\n     : Set" }
       ]
     }
   }
-  { "id": 12, "jsonrpc": "2.0", "result": null }
   {
     "id": 13,
     "jsonrpc": "2.0",
+    "error": { "data": null, "code": -32803, "message": "no step left to run" }
+  }
+  {
+    "id": 14,
+    "jsonrpc": "2.0",
     "error": {
-      "data": {
-        "error_loc": {
-          "line_nb": 1,
-          "bol_pos": 0,
-          "line_nb_last": 1,
-          "bol_pos_last": 0,
-          "bp": 51,
-          "ep": 55
-        },
-        "feedback_messages": [
-          {
-            "level": "error",
-            "loc": {
-              "line_nb": 1,
-              "bol_pos": 0,
-              "line_nb_last": 1,
-              "bol_pos_last": 0,
-              "bp": 51,
-              "ep": 55
-            },
-            "text": "The reference test was not found in the current environment."
-          }
-        ]
-      },
-      "code": -32803,
-      "message": "The reference test was not found in the current environment."
+      "code": -32602,
+      "message": "Invalid parameters for method revert_before: Ill-typed argument 'erase': expected boolean value."
     }
   }
-  { "id": 14, "jsonrpc": "2.0", "result": null }
-  { "id": 15, "jsonrpc": "2.0", "result": null }
+  {
+    "id": 15,
+    "jsonrpc": "2.0",
+    "error": {
+      "code": -32602,
+      "message": "Invalid parameters for method revert_before: Ill-typed argument 'erase': expected boolean value."
+    }
+  }
