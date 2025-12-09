@@ -54,7 +54,18 @@ class TraceAgent(ProofAgent):
     @override
     def prove(self, rdm: RocqDocManager) -> TaskResult:
         """Keep trying to prove via next tactic prediction."""
-        while not self.current_proof_state(rdm).closed(proof=True):
+
+        while True:
+            pf_state_reply = self.current_proof_state(rdm)
+            if isinstance(pf_state_reply, RocqDocManager.Err):
+                return self.give_up(
+                    rdm,
+                    message="{self.name()}: couldn't get current proof state",
+                    reason = pf_state_reply,
+                )
+            elif pf_state_reply.closed(proof=True):
+                break
+
             if self._max_fuel is not None and self._tac_app_cnt >= self._max_fuel:
                 return self.give_up(
                     rdm,
