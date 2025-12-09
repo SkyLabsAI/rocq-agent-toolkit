@@ -173,6 +173,15 @@ API Methods
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
+### `dispose`
+
+- Description: destroys the cursor.
+- Arguments (in order, or named):
+  - cursor: an integer.
+- Response payload: a `null` value.
+- Error payload: the cursor does not exist (as a `null` value).
+- Failure mode: recoverable failure.
+
 ### `doc_prefix`
 
 - Description: gives the list of all processed commands, appearing before the cursor.

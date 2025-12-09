@@ -478,6 +478,20 @@ let _ =
       let index = d.fresh in
       { fresh = index + 1 ; cursors = IntMap.add index new_cursor d.cursors }, Ok index
 
+let _ =
+  let args =
+    A.add ~name:"cursor" S.int @@
+    A.nil
+  in
+  API.declare_full api ~name:"dispose" ~descr:"destroys the cursor"
+  ~args
+  ~ret:S.null
+  ~err:S.null ~err_descr:"the cursor does not exist" @@ fun d (cursor, ()) ->
+    match IntMap.find_opt cursor d.cursors with
+    | None -> d, Error("cursor does not exist", ())
+    | Some _ ->
+      { d with cursors = IntMap.remove cursor d.cursors }, Ok ()
+
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in

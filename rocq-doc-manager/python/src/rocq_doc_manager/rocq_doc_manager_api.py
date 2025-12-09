@@ -158,6 +158,14 @@ class RocqDocManagerAPI:
             return RocqDocManagerAPI.Err(result.message, data)
         return int(result.result)
 
+    def dispose(self, cursor: int) -> None | RocqDocManagerAPI.Err[None]:
+        """Destroys the cursor."""
+        result = self._rpc.raw_request("dispose", [cursor])
+        if isinstance(result, JsonRPCTP.Err):
+            data = None
+            return RocqDocManagerAPI.Err(result.message, data)
+        return None
+
     def doc_prefix(self, cursor: int) -> list[RocqDocManagerAPI.PrefixItem] | RocqDocManagerAPI.Err[None]:
         """Gives the list of all processed commands, appearing before the cursor."""
         result = self._rpc.raw_request("doc_prefix", [cursor])

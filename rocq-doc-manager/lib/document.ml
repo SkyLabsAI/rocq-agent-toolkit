@@ -13,21 +13,13 @@ type unprocessed =
 type backend = {
   args : string list;
   file : string;
-  toplevel : Rocq_toplevel.toplevel; (* TODO: this could be explicitly reference counted, or tracked using Gc.finalise *)
-  (* initial_sid : sid; -- not necessary? *)
+  toplevel : Rocq_toplevel.toplevel; (* TODO: this should be reference counted *)
   mutable rev_commands : sid processed list;
-  (* ^^ this does not need visible, but blanks are potentially still relevant
-     since the offsets could be stored
-   *)
-  (* mutable cursor_sid : sid; -- not necessary? *)
-  (* mutable cursor_off : int; -- not necessary? *)
 }
 
 type t = {
   backend : backend;
-  initial_sid : sid;
-  mutable rev_prefix : sid processed list;
-  mutable cursor_sid : sid;
+  mutable rev_prefix : unit processed list; (* this can use [unit processed list] *)
   mutable cursor_off : int;
   mutable suffix : unprocessed list;
 }
@@ -52,11 +44,20 @@ let%test "take_drop 1 [1]" = take_drop 1 [1] = ([1], [])
 let%test "take_drop 1 [1;2]" = take_drop 1 [1;2] = ([1], [2])
 let%test "take_drop 2 [1;2;3;4;5]" = take_drop 2 [1;2;3;4;5] = ([2;1], [3;4;5])
 
-let revert_replay : type a. a processed list -> a processed list -> a option * a processed list =
+let revert_replay : type a b. a processed list -> b processed list -> a option * b processed list =
+  let rec consistent : a processed list -> b processed list -> bool = fun ls rs ->
+    match ls, rs with
+    | [] , [] -> true
+    | Blanks l :: ls , Blanks r :: rs ->
+      if l.index = r.index && l.off = r.off && l.text = r.text then consistent ls rs else false
+    | Command l :: ls , Command r :: rs ->
+      if l.index = r.index && l.off = r.off && l.text = r.text then consistent ls rs else false
+    | _ , _ -> false
+  in
   fun src dst ->
-    let rec find_common : a processed list -> a processed list -> a option -> a processed list -> a option * a processed list =
+    let rec find_common : a processed list -> b processed list -> a option -> b processed list -> a option * b processed list =
       fun src dst cur_sid acc ->
-        if src = dst then (cur_sid, acc)
+        if consistent src dst then (cur_sid, acc)
         else match src , dst with
             | Blanks _ :: src , d :: dst -> find_common src dst cur_sid (d :: acc)
             | Command {sid_before; _} :: src, d :: dst -> find_common src dst (Some sid_before) (d :: acc)
@@ -64,25 +65,23 @@ let revert_replay : type a. a processed list -> a processed list -> a option * a
             | [] , _ :: _
             | _ :: _ , [] -> assert false (* lists must be same length *)
     in
-    if dst = src then (None, [])
-    else
-      let dst_len = List.length dst in
-      let src_len = List.length src in
-      if dst_len = src_len
-      then find_common src dst None []
-      else if src_len < dst_len then
-        let replay , dst = take_drop (dst_len - src_len) dst in
-        find_common src dst None replay
-      else (* src_len > dst_len *)
-        let rec drop_with_sid i sid = function
-          | [] -> sid, []
-          | ls when i <= 0 -> sid, ls
-          | Blanks _ :: ls -> drop_with_sid (i-1) sid ls
-          | Command {sid_before; _} :: ls -> drop_with_sid (i-1) (Some sid_before) ls
-        in
-        let sid, src = drop_with_sid (src_len - dst_len) None src in
-        assert (List.length src = List.length dst);
-        find_common src dst sid []
+    let dst_len = List.length dst in
+    let src_len = List.length src in
+    if dst_len = src_len
+    then find_common src dst None []
+    else if src_len < dst_len then
+      let replay , dst = take_drop (dst_len - src_len) dst in
+      find_common src dst None replay
+    else (* src_len > dst_len *)
+      let rec drop_with_sid i sid = function
+        | [] -> sid, []
+        | ls when i <= 0 -> sid, ls
+        | Blanks _ :: ls -> drop_with_sid (i-1) sid ls
+        | Command {sid_before; _} :: ls -> drop_with_sid (i-1) (Some sid_before) ls
+      in
+      let sid, src = drop_with_sid (src_len - dst_len) None src in
+      assert (List.length src = List.length dst);
+      find_common src dst sid []
 ;;
 
 let%test "[],[]" =
@@ -116,28 +115,39 @@ let focused (cursor : t) : backend =
   let backend = cursor.backend in
   let revert , replay = revert_replay backend.rev_commands cursor.rev_prefix in
   let toplevel = backend.toplevel in
-  let _ =
+  let sid =
     match revert with
     | Some revert ->
-      assert (Rocq_toplevel.back_to toplevel ~sid:revert = Ok ())
-    | _ -> ()
+      assert (Rocq_toplevel.back_to toplevel ~sid:revert = Ok ()) ;
+      revert
+    | _ ->
+      Rocq_toplevel.StateID.current toplevel
   in
   let _ =
-    List.iter (function
-        | Blanks _ -> ()
-        | Command {off;text;_} ->
+    List.fold_left (fun sid -> function
+        | Blanks _ -> sid
+        | Command {off;text;visible;index;_} ->
           match Rocq_toplevel.run toplevel ~off ~text with
-          | Ok _ -> ()
+          | Ok _ ->
+            backend.rev_commands <- Command {off;text;visible;index;sid_before=sid} :: backend.rev_commands ;
+            Rocq_toplevel.StateID.current toplevel
           | Error _ -> assert false
-    ) replay
+    ) sid replay
   in
-  backend.rev_commands <- cursor.rev_prefix ;
   backend
 ;;
 
-let focus_run : t -> off:int -> text:string -> _ * backend = fun d ~off ~text ->
-  let backend = focused d in
-  Rocq_toplevel.run backend.toplevel ~off ~text, backend
+let focus_run : t -> off:int -> text:string -> visible:bool -> _ result * backend =
+  fun d ~off ~text ~visible ->
+    let backend = focused d in
+    let sid_before = Rocq_toplevel.StateID.current backend.toplevel in
+    let res = Rocq_toplevel.run backend.toplevel ~off ~text in
+    let _ =
+      match res with
+      | Ok _ ->
+        backend.rev_commands <- Command {index=0;off;sid_before;text;visible} :: backend.rev_commands
+      | Error _ -> ()
+    in res, backend
 
 let cursor_index : t -> int = fun d ->
   match d.rev_prefix with
@@ -147,13 +157,10 @@ let cursor_index : t -> int = fun d ->
 
 let init : args:string list -> file:string -> t = fun ~args ~file ->
   let toplevel = Rocq_toplevel.init ~args:(args @ ["-topfile"; file]) in
-  let initial_sid = Rocq_toplevel.StateID.current toplevel in
-  let cursor_sid = initial_sid in
   let cursor_off = 0 in
   let (rev_prefix, suffix) = ([], []) in
   let backend = { args; file; toplevel; rev_commands=rev_prefix } in
-  { backend; initial_sid;
-    rev_prefix; cursor_sid; cursor_off; suffix }
+  { backend; rev_prefix; cursor_off; suffix }
 
 let clone : t -> t = fun d ->
   (* just copy the object *)
@@ -202,66 +209,66 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
 let insert_command : t -> text:string ->
     (command_data, string * command_error) result = fun d ~text ->
   let off = d.cursor_off in
-  let sid_before = d.cursor_sid in
-  let res, backend = focus_run d ~off ~text in
-  match res with Error(_) -> res | _ ->
-  let index = cursor_index d in
-  let elem = Command({index; off; sid_before; text; visible=true}) in
-  d.backend.rev_commands <- elem :: d.backend.rev_commands;
-  d.rev_prefix <- elem :: d.rev_prefix;
-  d.cursor_sid <- Rocq_toplevel.StateID.current backend.toplevel;
-  d.cursor_off <- d.cursor_off + String.length text;
-  res
+  let backend = focused d in
+  let sid_before = Rocq_toplevel.StateID.current backend.toplevel in
+  let res = Rocq_toplevel.run backend.toplevel ~off ~text in
+  match res with
+  | Error _ as res -> res
+  | _ ->
+    let index = cursor_index d in
+    let elem sid_before = Command({index; off; sid_before; text; visible=true}) in
+    backend.rev_commands <- elem sid_before :: backend.rev_commands;
+    d.rev_prefix <- elem () :: d.rev_prefix;
+    d.cursor_off <- d.cursor_off + String.length text;
+    res
 
 let run_command : t -> text:string -> (command_data, string) result =
-    fun d ~text ->
-  match focus_run d ~off:0 ~text with
-  | Error(s,_), _ -> Error(s)
-  | Ok(data), backend   ->
-    d.cursor_sid <- Rocq_toplevel.StateID.current backend.toplevel;
-    Ok(data)
+  fun d ~text ->
+    match focus_run d ~off:0 ~text ~visible:false with
+    | Error(s,_), _ -> Error(s)
+    | Ok(data), _   ->
+      d.rev_prefix <- Command{off=0;index=1+List.length d.rev_prefix;sid_before=();text;visible=false}::d.rev_prefix;
+      Ok(data)
 
 let revert_before : ?erase:bool -> t -> index:int -> unit =
     fun ?(erase=false) d ~index:i ->
   let cur_index = cursor_index d in
   if i < 0 || cur_index < i then invalid_arg "index out of bounds";
   if i = cur_index then () else
-  let rec revert rev_prefix suffix sid =
+  let rec revert rev_prefix suffix off =
     match rev_prefix with
-    | Blanks({index; text; _})              :: rev_prefix ->
-        let suffix = RemBlanks({text}) :: suffix in
-        if index = i then
-          (rev_prefix, suffix, sid)
-        else
-          revert rev_prefix suffix sid
-    | Command({index; sid_before; text; _}) :: rev_prefix ->
-        let suffix = RemCommand({text}) :: suffix in
-        if index = i then
-          (rev_prefix, suffix, sid_before)
-        else
-          revert rev_prefix suffix sid_before
+    | Blanks({index; text; off})              :: rev_prefix ->
+      let suffix = if not erase then RemBlanks({text}) :: suffix else suffix in
+      if index = i then
+        (rev_prefix, suffix, off)
+      else
+        revert rev_prefix suffix off
+    | Command({index; text; off; visible;_}) :: rev_prefix ->
+      let suffix = if not erase && visible then RemCommand({text}) :: suffix else suffix in
+      if index = i then
+        (rev_prefix, suffix, off)
+      else
+        revert rev_prefix suffix off
     | []                                                  ->
-        assert (i = 0);
-        (rev_prefix, suffix, d.initial_sid)
+      assert (i = 0);
+      (rev_prefix, suffix, off)
   in
-  let (rev_prefix, suffix, sid) = revert d.rev_prefix d.suffix d.cursor_sid in
+  let (rev_prefix, suffix, off) = revert d.rev_prefix d.suffix d.cursor_off in
   (* NOTE: We don't actually need to re-focus the document because this returns a unit
   let _ = focused { d with rev_prefix; suffix; cursor_sid=sid } in
   *)
   d.rev_prefix <- rev_prefix;
+  d.cursor_off <- off ;
+  (* TODO: this offset is not correct if the last command was inserted by [run_command] *)
   if not erase then d.suffix <- suffix;
-  d.cursor_sid <- sid;
-  () (* BUG: the offset is not updated! *)
-
+  ()
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
   let rev_prefix = d.rev_prefix in
-  let cursor_sid = d.cursor_sid in
   let cursor_off = d.cursor_off in
   let suffix = d.suffix in
   let v = f () in
-  let _ = focused {d with rev_prefix; cursor_sid; cursor_off; suffix} in
+  let _ = focused {d with rev_prefix; cursor_off; suffix} in
   d.rev_prefix <- rev_prefix;
-  d.cursor_sid <- cursor_sid;
   d.cursor_off <- cursor_off;
   d.suffix <- suffix; v
 
