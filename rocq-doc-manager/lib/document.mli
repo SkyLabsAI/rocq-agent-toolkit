@@ -26,8 +26,6 @@ val load_file : t -> (unit, string * Rocq_loc.t option) result
 type command_data = Rocq_toplevel.run_data
 type command_error = Rocq_toplevel.run_error
 
-val file : t -> string
-
 val insert_blanks : t -> text:string -> unit
 
 val insert_command : t -> text:string
