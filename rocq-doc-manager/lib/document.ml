@@ -156,12 +156,15 @@ let run_step : t -> (command_data option, string * command_error option) result 
   match d.suffix with
   | []             -> Error("no step left to run", None)
   | step :: suffix ->
-  d.suffix <- suffix;
   match step with
-  | RemBlanks({text})  -> insert_blanks d ~text; Ok(None)
+  | RemBlanks({text})  ->
+    d.suffix <- suffix;
+    insert_blanks d ~text; Ok(None)
   | RemCommand({text}) ->
   match insert_command d ~text with
-  | Ok(d) -> Ok(Some(d))
+  | Ok(v) ->
+    d.suffix <- suffix;
+    Ok(Some(v))
   | Error(s,d) -> Error(s, Some(d))
 
 let advance_to : t -> index:int -> (unit, string * command_error) result =
