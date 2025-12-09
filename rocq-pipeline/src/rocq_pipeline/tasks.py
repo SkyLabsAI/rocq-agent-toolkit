@@ -21,28 +21,31 @@ def get_task_tags(task: Task) -> set[str]:
 
 def validate_task_schema(task: Task) -> None:
     if not isinstance(task, dict):
-        raise ValueError(
-            f"Task should be a dict, but had type {type(task)}: {task}"
-        )
+        raise ValueError(f"Task should be a dict, but had type {type(task)}: {task}")
 
     expected_keys = {"file", "locator"}
     if not (expected_keys <= task.keys()):
-        raise ValueError(" ".join([
-            f"Task should contain at least ({', '.join(expected_keys)}),",
-            f"but had ({', '.join(task.keys())}): {task}"
-        ]))
+        raise ValueError(
+            " ".join(
+                [
+                    f"Task should contain at least ({', '.join(expected_keys)}),",
+                    f"but had ({', '.join(task.keys())}): {task}",
+                ]
+            )
+        )
     for k in expected_keys:
         v = task[k]
-        assert isinstance(v, str), \
-            f"{k} should be a str, but got {type(v)}: {v}"
+        assert isinstance(v, str), f"{k} should be a str, but got {type(v)}: {v}"
 
     if "tags" in task.keys():
         tags = task["tags"]
-        assert isinstance(tags, list), \
+        assert isinstance(tags, list), (
             f"tags should be a list, but got {type(tags)}: {tags}"
+        )
         for tag in tags:
-            assert isinstance(tag, str), \
+            assert isinstance(tag, str), (
                 f"tag should be a str, but got {type(tag)}: {tag}"
+            )
 
     if Path(task["file"]).suffix != ".v":
         raise ValueError("Task file should be a Rocq file (.v): {task}")
@@ -54,13 +57,12 @@ def validate_tasklist_schema(tasks: list[Task]) -> None:
         validate_task_schema(task)
 
 
-def mk_validated_tasklist(
-        data: dict[str, Any] | list[dict[str, Any]]
-) -> list[Task]:
+def mk_validated_tasklist(data: dict[str, Any] | list[dict[str, Any]]) -> list[Task]:
     if isinstance(data, dict):
         data = [data]
     validate_tasklist_schema(data)
     return data
+
 
 def load_tasks(filename: str | Path) -> tuple[Path, list[Task]]:
     if filename == "-":
@@ -74,28 +76,33 @@ def load_tasks(filename: str | Path) -> tuple[Path, list[Task]]:
         elif filename.suffix in [".json"]:
             data = json.load(f)
         else:
-            raise ValueError(" ".join([
-                "Invalid tasks file extension.",
-                "Expected `.json`, `.yaml`, or `.yml`",
-            ]))
+            raise ValueError(
+                " ".join(
+                    [
+                        "Invalid tasks file extension.",
+                        "Expected `.json`, `.yaml`, or `.yml`",
+                    ]
+                )
+            )
 
         return (wdir, mk_validated_tasklist(data))
+
 
 def save_tasks(filename: str | Path, tasks: list[Task]) -> None:
     if filename == "-":
         json.dump(tasks, sys.stdout)
     filename = Path(filename)
-    with open(filename, 'w') as f:
-        if filename.suffix in [".yaml",".yml"]:
+    with open(filename, "w") as f:
+        if filename.suffix in [".yaml", ".yml"]:
             yaml.safe_dump(tasks, f)
         elif filename.suffix in [".json"]:
             json.dump(tasks, f)
         else:
-            raise ValueError("Invalid file extension. Expected `.json`, `.yaml`, or `.yml`")
+            raise ValueError(
+                "Invalid file extension. Expected `.json`, `.yaml`, or `.yml`"
+            )
+
 
 def filter_tags(tasks: list[Task], tag: str) -> list[Task]:
     escaped = tag.replace("'", r"\'")
-    return cast(
-        list[Task],
-        jmespath.search(f"[? contains(tags, '{escaped}')]", tasks)
-    )
+    return cast(list[Task], jmespath.search(f"[? contains(tags, '{escaped}')]", tasks))

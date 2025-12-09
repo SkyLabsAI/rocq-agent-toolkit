@@ -15,20 +15,18 @@ from .iris import Rocq2IrisGoalParts, into_IrisGoalParts  # isort:skip
 from .brick import (  # isort:skip
     Iris2BrickGoalParts,
     Rocq2BrickGoalParts,
-    into_BrickGoalParts
+    into_BrickGoalParts,
 )
+
 # TODO: remove str_into_Goals
 from .proof_state import str_into_Goal  # isort:skip
 
 __all__ = [
     "str_into_Goal",
     "str_into_Goals",
-
     "into_RocqGoalParts",
-
     "into_IrisGoalParts",
     "Rocq2IrisGoalParts",
-
     "into_BrickGoalParts",
     "Rocq2BrickGoalParts",
     "Iris2BrickGoalParts",

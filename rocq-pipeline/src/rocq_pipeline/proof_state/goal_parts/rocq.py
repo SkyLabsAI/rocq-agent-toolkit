@@ -21,7 +21,9 @@ class RocqGoalParts:
     # Rocq goal ID
     rocq_goal_id: int | None = field(kw_only=True)
     # Rocq hypotheses: idents map to a type and an optional definition
-    rocq_hyps: dict[str, tuple[str, str | None]] = field(default_factory=dict, kw_only=True)
+    rocq_hyps: dict[str, tuple[str, str | None]] = field(
+        default_factory=dict, kw_only=True
+    )
     # Rocq conclusion.
     rocq_concl: str = field(kw_only=True)
 
@@ -62,5 +64,4 @@ class into_GoalParts[GOAL_PARTS: RocqGoalParts](Protocol):
         rocq_goal_id: int | None = None,
         is_concl_only: bool = False,
         silent: bool = False,
-    ) -> GOAL_PARTS:
-        ...
+    ) -> GOAL_PARTS: ...

@@ -1,6 +1,5 @@
 import pytest
 from rocq_doc_manager import RocqDocManager as RDM
-
 from rocq_pipeline.proof_state import (
     BrickGoal,
     IrisGoal,
@@ -14,62 +13,66 @@ def proof_state() -> ProofState:
     """Parses the main example string and returns the ProofState object."""
     rdm_pf_state: RDM.ProofState = RDM.ProofState(
         focused_goals=[
-            (' \n'
-             '  thread_info : biIndex\n'
-             '  _Σ : gFunctors\n'
-             '  Σ : cpp_logic thread_info _Σ\n'
-             '  σ : genv\n'
-             '  MOD : source ⊧ σ\n'
-             '  _PostPred_ : ptr → mpred\n'
-             '  n_addr : ptr\n'
-             '  n : Z\n'
-             '  PostCond : PostCondition\n'
-             '  _H_ : (0 ≤ n)%Z\n'
-             '  H : valid<"int"> (n * (n + 1))%Z\n'
-             '  sum_addr, i_addr : ptr\n'
-             '  GUARDS : GWs.GUARDS\n'
-             '  _x_0 : valid<"int"> n\n'
-             '  _x_ : valid<"int"> 0%Z\n'
-             '  _x_1 : valid<"int"> 1%Z\n'
-             '  my_num := 42 : nat\n'
-             '  ============================\n'
-             '  _ : denoteModule source\n'
-             '  _ : type_ptr "int" n_addr\n'
-             '  _ : type_ptr "int" sum_addr\n'
-             '  _ : type_ptr "int" i_addr\n'
-             '  --------------------------------------□\n'
-             '  _ : PostCond\n'
-             '  _ : n_addr |-> intR 1$m n\n'
-             '  _ : sum_addr |-> intR 1$m 0\n'
-             '  _ : i_addr |-> intR 1$m 1\n'
-             '  --------------------------------------∗\n'
-             '  ::wpS\n'
-             '    [region: "i" @ i_addr;\n'
-             '             "sum" @ sum_addr;\n'
-             '             "n" @ n_addr;\n'
-             '             return {?: "int"}]\n'
-             '    (Sfor None\n'
-             '      (Some\n'
-             '        (Ebinop Ble (Ecast Cl2r (Evar "i" "int"))\n'
-             '          (Ecast Cl2r (Evar "n" "int")) "bool"))\n'
-             '      (Some (Epreinc (Evar "i" "int") "int"))\n'
-             '      (Sseq\n'
-             '        [Sexpr\n'
-             '          (Eassign_op Badd (Evar "sum" "int")\n'
-             '            (Ecast Cl2r (Evar "i" "int")) "int")]))\n'),
-            (' \n'
-             '  ============================\n'
-             ' True\n'),
-            (' \n'
-             '  ============================\n'
-             ' --------------------------------------∗\n'
-             ' emp'),
-            (' \n'
-             '  ============================\n'
-             ' emp\n'
-             ' --------------------------------------□\n'
-             ' --------------------------------------∗\n'
-             ' emp'),
+            (
+                " \n"
+                "  thread_info : biIndex\n"
+                "  _Σ : gFunctors\n"
+                "  Σ : cpp_logic thread_info _Σ\n"
+                "  σ : genv\n"
+                "  MOD : source ⊧ σ\n"
+                "  _PostPred_ : ptr → mpred\n"
+                "  n_addr : ptr\n"
+                "  n : Z\n"
+                "  PostCond : PostCondition\n"
+                "  _H_ : (0 ≤ n)%Z\n"
+                '  H : valid<"int"> (n * (n + 1))%Z\n'
+                "  sum_addr, i_addr : ptr\n"
+                "  GUARDS : GWs.GUARDS\n"
+                '  _x_0 : valid<"int"> n\n'
+                '  _x_ : valid<"int"> 0%Z\n'
+                '  _x_1 : valid<"int"> 1%Z\n'
+                "  my_num := 42 : nat\n"
+                "  ============================\n"
+                "  _ : denoteModule source\n"
+                '  _ : type_ptr "int" n_addr\n'
+                '  _ : type_ptr "int" sum_addr\n'
+                '  _ : type_ptr "int" i_addr\n'
+                "  --------------------------------------□\n"
+                "  _ : PostCond\n"
+                "  _ : n_addr |-> intR 1$m n\n"
+                "  _ : sum_addr |-> intR 1$m 0\n"
+                "  _ : i_addr |-> intR 1$m 1\n"
+                "  --------------------------------------∗\n"
+                "  ::wpS\n"
+                '    [region: "i" @ i_addr;\n'
+                '             "sum" @ sum_addr;\n'
+                '             "n" @ n_addr;\n'
+                '             return {?: "int"}]\n'
+                "    (Sfor None\n"
+                "      (Some\n"
+                '        (Ebinop Ble (Ecast Cl2r (Evar "i" "int"))\n'
+                '          (Ecast Cl2r (Evar "n" "int")) "bool"))\n'
+                '      (Some (Epreinc (Evar "i" "int") "int"))\n'
+                "      (Sseq\n"
+                "        [Sexpr\n"
+                '          (Eassign_op Badd (Evar "sum" "int")\n'
+                '            (Ecast Cl2r (Evar "i" "int")) "int")]))\n'
+            ),
+            (" \n  ============================\n True\n"),
+            (
+                " \n"
+                "  ============================\n"
+                " --------------------------------------∗\n"
+                " emp"
+            ),
+            (
+                " \n"
+                "  ============================\n"
+                " emp\n"
+                " --------------------------------------□\n"
+                " --------------------------------------∗\n"
+                " emp"
+            ),
         ],
         unfocused_goals=[5, 6],
         shelved_goals=2,
@@ -78,6 +81,7 @@ def proof_state() -> ProofState:
 
     # Parse using the most specific type
     return ProofState(rdm_pf_state, goal_ty_upperbound=BrickGoal)
+
 
 # --- Tests ---
 
@@ -117,16 +121,16 @@ def test_goal_1_parsing(proof_state: ProofState) -> None:
 
     # Check Iris parts
     assert goal1.parts.iris_pers_hyps_anon == {
-        'denoteModule source',
+        "denoteModule source",
         'type_ptr "int" i_addr',
         'type_ptr "int" sum_addr',
         'type_ptr "int" n_addr',
     }
     assert goal1.parts.iris_spat_hyps_anon == {
-        'PostCond',
-        'i_addr |-> intR 1$m 1',
-        'n_addr |-> intR 1$m n',
-        'sum_addr |-> intR 1$m 0'
+        "PostCond",
+        "i_addr |-> intR 1$m 1",
+        "n_addr |-> intR 1$m n",
+        "sum_addr |-> intR 1$m 0",
     }
     assert goal1.parts.iris_spat_concl.strip().startswith("::wpS")
 

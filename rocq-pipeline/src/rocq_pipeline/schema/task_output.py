@@ -20,133 +20,142 @@ import json
 
 
 def _atd_missing_json_field(type_name: str, json_field_name: str) -> NoReturn:
-    raise ValueError(f"missing field '{json_field_name}'"
-                     f" in JSON object of type '{type_name}'")
+    raise ValueError(
+        f"missing field '{json_field_name}' in JSON object of type '{type_name}'"
+    )
 
 
 def _atd_bad_json(expected_type: str, json_value: Any) -> NoReturn:
     value_str = str(json_value)
     if len(value_str) > 200:
-        value_str = value_str[:200] + '…'
+        value_str = value_str[:200] + "…"
 
-    raise ValueError(f"incompatible JSON value where"
-                     f" type '{expected_type}' was expected: '{value_str}'")
+    raise ValueError(
+        f"incompatible JSON value where"
+        f" type '{expected_type}' was expected: '{value_str}'"
+    )
 
 
 def _atd_bad_python(expected_type: str, json_value: Any) -> NoReturn:
     value_str = str(json_value)
     if len(value_str) > 200:
-        value_str = value_str[:200] + '…'
+        value_str = value_str[:200] + "…"
 
-    raise ValueError(f"incompatible Python value where"
-                     f" type '{expected_type}' was expected: '{value_str}'")
+    raise ValueError(
+        f"incompatible Python value where"
+        f" type '{expected_type}' was expected: '{value_str}'"
+    )
 
 
 def _atd_read_unit(x: Any) -> None:
     if x is None:
         return x
     else:
-        _atd_bad_json('unit', x)
+        _atd_bad_json("unit", x)
 
 
 def _atd_read_bool(x: Any) -> bool:
     if isinstance(x, bool):
         return x
     else:
-        _atd_bad_json('bool', x)
+        _atd_bad_json("bool", x)
 
 
 def _atd_read_int(x: Any) -> int:
     if isinstance(x, int):
         return x
     else:
-        _atd_bad_json('int', x)
+        _atd_bad_json("int", x)
 
 
 def _atd_read_float(x: Any) -> float:
     if isinstance(x, (int, float)):
         return x
     else:
-        _atd_bad_json('float', x)
+        _atd_bad_json("float", x)
 
 
 def _atd_read_string(x: Any) -> str:
     if isinstance(x, str):
         return x
     else:
-        _atd_bad_json('str', x)
+        _atd_bad_json("str", x)
 
 
-def _atd_read_list(
-            read_elt: Callable[[Any], Any]
-        ) -> Callable[[List[Any]], List[Any]]:
+def _atd_read_list(read_elt: Callable[[Any], Any]) -> Callable[[List[Any]], List[Any]]:
     def read_list(elts: List[Any]) -> List[Any]:
         if isinstance(elts, list):
             return [read_elt(elt) for elt in elts]
         else:
-            _atd_bad_json('array', elts)
+            _atd_bad_json("array", elts)
+
     return read_list
 
 
 def _atd_read_assoc_array_into_dict(
-            read_key: Callable[[Any], Any],
-            read_value: Callable[[Any], Any],
-        ) -> Callable[[List[Any]], Dict[Any, Any]]:
+    read_key: Callable[[Any], Any],
+    read_value: Callable[[Any], Any],
+) -> Callable[[List[Any]], Dict[Any, Any]]:
     def read_assoc(elts: List[List[Any]]) -> Dict[str, Any]:
         if isinstance(elts, list):
             return {read_key(elt[0]): read_value(elt[1]) for elt in elts}
         else:
-            _atd_bad_json('array', elts)
-            raise AssertionError('impossible')  # keep mypy happy
+            _atd_bad_json("array", elts)
+            raise AssertionError("impossible")  # keep mypy happy
+
     return read_assoc
 
 
 def _atd_read_assoc_object_into_dict(
-            read_value: Callable[[Any], Any]
-        ) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
+    read_value: Callable[[Any], Any],
+) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
     def read_assoc(elts: Dict[str, Any]) -> Dict[str, Any]:
         if isinstance(elts, dict):
-            return {_atd_read_string(k): read_value(v)
-                    for k, v in elts.items()}
+            return {_atd_read_string(k): read_value(v) for k, v in elts.items()}
         else:
-            _atd_bad_json('object', elts)
-            raise AssertionError('impossible')  # keep mypy happy
+            _atd_bad_json("object", elts)
+            raise AssertionError("impossible")  # keep mypy happy
+
     return read_assoc
 
 
 def _atd_read_assoc_object_into_list(
-            read_value: Callable[[Any], Any]
-        ) -> Callable[[Dict[str, Any]], List[Tuple[str, Any]]]:
+    read_value: Callable[[Any], Any],
+) -> Callable[[Dict[str, Any]], List[Tuple[str, Any]]]:
     def read_assoc(elts: Dict[str, Any]) -> List[Tuple[str, Any]]:
         if isinstance(elts, dict):
-            return [(_atd_read_string(k), read_value(v))
-                    for k, v in elts.items()]
+            return [(_atd_read_string(k), read_value(v)) for k, v in elts.items()]
         else:
-            _atd_bad_json('object', elts)
-            raise AssertionError('impossible')  # keep mypy happy
+            _atd_bad_json("object", elts)
+            raise AssertionError("impossible")  # keep mypy happy
+
     return read_assoc
 
 
-def _atd_read_nullable(read_elt: Callable[[Any], Any]) \
-        -> Callable[[Optional[Any]], Optional[Any]]:
+def _atd_read_nullable(
+    read_elt: Callable[[Any], Any],
+) -> Callable[[Optional[Any]], Optional[Any]]:
     def read_nullable(x: Any) -> Any:
         if x is None:
             return None
         else:
             return read_elt(x)
+
     return read_nullable
 
 
-def _atd_read_option(read_elt: Callable[[Any], Any]) \
-        -> Callable[[Optional[Any]], Optional[Any]]:
+def _atd_read_option(
+    read_elt: Callable[[Any], Any],
+) -> Callable[[Optional[Any]], Optional[Any]]:
     def read_option(x: Any) -> Any:
-        if x == 'None':
+        if x == "None":
             return None
-        elif isinstance(x, List) and len(x) == 2 and x[0] == 'Some':
+        elif isinstance(x, List) and len(x) == 2 and x[0] == "Some":
             return read_elt(x[1])
         else:
-            _atd_bad_json('option', x)
-            raise AssertionError('impossible')  # keep mypy happy
+            _atd_bad_json("option", x)
+            raise AssertionError("impossible")  # keep mypy happy
+
     return read_option
 
 
@@ -154,104 +163,109 @@ def _atd_write_unit(x: Any) -> None:
     if x is None:
         return x
     else:
-        _atd_bad_python('unit', x)
+        _atd_bad_python("unit", x)
 
 
 def _atd_write_bool(x: Any) -> bool:
     if isinstance(x, bool):
         return x
     else:
-        _atd_bad_python('bool', x)
+        _atd_bad_python("bool", x)
 
 
 def _atd_write_int(x: Any) -> int:
     if isinstance(x, int):
         return x
     else:
-        _atd_bad_python('int', x)
+        _atd_bad_python("int", x)
 
 
 def _atd_write_float(x: Any) -> float:
     if isinstance(x, (int, float)):
         return x
     else:
-        _atd_bad_python('float', x)
+        _atd_bad_python("float", x)
 
 
 def _atd_write_string(x: Any) -> str:
     if isinstance(x, str):
         return x
     else:
-        _atd_bad_python('str', x)
+        _atd_bad_python("str", x)
 
 
 def _atd_write_list(
-            write_elt: Callable[[Any], Any]
-        ) -> Callable[[List[Any]], List[Any]]:
+    write_elt: Callable[[Any], Any],
+) -> Callable[[List[Any]], List[Any]]:
     def write_list(elts: List[Any]) -> List[Any]:
         if isinstance(elts, list):
             return [write_elt(elt) for elt in elts]
         else:
-            _atd_bad_python('list', elts)
+            _atd_bad_python("list", elts)
+
     return write_list
 
 
 def _atd_write_assoc_dict_to_array(
-            write_key: Callable[[Any], Any],
-            write_value: Callable[[Any], Any]
-        ) -> Callable[[Dict[Any, Any]], List[Tuple[Any, Any]]]:
+    write_key: Callable[[Any], Any], write_value: Callable[[Any], Any]
+) -> Callable[[Dict[Any, Any]], List[Tuple[Any, Any]]]:
     def write_assoc(elts: Dict[str, Any]) -> List[Tuple[str, Any]]:
         if isinstance(elts, dict):
             return [(write_key(k), write_value(v)) for k, v in elts.items()]
         else:
-            _atd_bad_python('Dict[str, <value type>]]', elts)
-            raise AssertionError('impossible')  # keep mypy happy
+            _atd_bad_python("Dict[str, <value type>]]", elts)
+            raise AssertionError("impossible")  # keep mypy happy
+
     return write_assoc
 
 
 def _atd_write_assoc_dict_to_object(
-            write_value: Callable[[Any], Any]
-        ) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
+    write_value: Callable[[Any], Any],
+) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
     def write_assoc(elts: Dict[str, Any]) -> Dict[str, Any]:
         if isinstance(elts, dict):
-            return {_atd_write_string(k): write_value(v)
-                    for k, v in elts.items()}
+            return {_atd_write_string(k): write_value(v) for k, v in elts.items()}
         else:
-            _atd_bad_python('Dict[str, <value type>]', elts)
-            raise AssertionError('impossible')  # keep mypy happy
+            _atd_bad_python("Dict[str, <value type>]", elts)
+            raise AssertionError("impossible")  # keep mypy happy
+
     return write_assoc
 
 
 def _atd_write_assoc_list_to_object(
-            write_value: Callable[[Any], Any],
-        ) -> Callable[[List[Any]], Dict[str, Any]]:
+    write_value: Callable[[Any], Any],
+) -> Callable[[List[Any]], Dict[str, Any]]:
     def write_assoc(elts: List[List[Any]]) -> Dict[str, Any]:
         if isinstance(elts, list):
-            return {_atd_write_string(elt[0]): write_value(elt[1])
-                    for elt in elts}
+            return {_atd_write_string(elt[0]): write_value(elt[1]) for elt in elts}
         else:
-            _atd_bad_python('List[Tuple[<key type>, <value type>]]', elts)
-            raise AssertionError('impossible')  # keep mypy happy
+            _atd_bad_python("List[Tuple[<key type>, <value type>]]", elts)
+            raise AssertionError("impossible")  # keep mypy happy
+
     return write_assoc
 
 
-def _atd_write_nullable(write_elt: Callable[[Any], Any]) \
-        -> Callable[[Optional[Any]], Optional[Any]]:
+def _atd_write_nullable(
+    write_elt: Callable[[Any], Any],
+) -> Callable[[Optional[Any]], Optional[Any]]:
     def write_nullable(x: Any) -> Any:
         if x is None:
             return None
         else:
             return write_elt(x)
+
     return write_nullable
 
 
-def _atd_write_option(write_elt: Callable[[Any], Any]) \
-        -> Callable[[Optional[Any]], Optional[Any]]:
+def _atd_write_option(
+    write_elt: Callable[[Any], Any],
+) -> Callable[[Optional[Any]], Optional[Any]]:
     def write_option(x: Any) -> Any:
         if x is None:
-            return 'None'
+            return "None"
         else:
-            return ['Some', write_elt(x)]
+            return ["Some", write_elt(x)]
+
     return write_option
 
 
@@ -269,25 +283,31 @@ class TokenCounts:
     total_tokens: int = field(default_factory=lambda: 0)
 
     @classmethod
-    def from_json(cls, x: Any) -> 'TokenCounts':
+    def from_json(cls, x: Any) -> "TokenCounts":
         if isinstance(x, dict):
             return cls(
-                input_tokens=_atd_read_int(x['input_tokens']) if 'input_tokens' in x else 0,
-                output_tokens=_atd_read_int(x['output_tokens']) if 'output_tokens' in x else 0,
-                total_tokens=_atd_read_int(x['total_tokens']) if 'total_tokens' in x else 0,
+                input_tokens=_atd_read_int(x["input_tokens"])
+                if "input_tokens" in x
+                else 0,
+                output_tokens=_atd_read_int(x["output_tokens"])
+                if "output_tokens" in x
+                else 0,
+                total_tokens=_atd_read_int(x["total_tokens"])
+                if "total_tokens" in x
+                else 0,
             )
         else:
-            _atd_bad_json('TokenCounts', x)
+            _atd_bad_json("TokenCounts", x)
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
-        res['input_tokens'] = _atd_write_int(self.input_tokens)
-        res['output_tokens'] = _atd_write_int(self.output_tokens)
-        res['total_tokens'] = _atd_write_int(self.total_tokens)
+        res["input_tokens"] = _atd_write_int(self.input_tokens)
+        res["output_tokens"] = _atd_write_int(self.output_tokens)
+        res["total_tokens"] = _atd_write_int(self.total_tokens)
         return res
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'TokenCounts':
+    def from_json_string(cls, x: str) -> "TokenCounts":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -301,11 +321,11 @@ class Success:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'Success'
+        return "Success"
 
     @staticmethod
     def to_json() -> Any:
-        return 'Success'
+        return "Success"
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -318,11 +338,11 @@ class Failure:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'Failure'
+        return "Failure"
 
     @staticmethod
     def to_json() -> Any:
-        return 'Failure'
+        return "Failure"
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -340,20 +360,20 @@ class TaskStatus:
         return self.value.kind
 
     @classmethod
-    def from_json(cls, x: Any) -> 'TaskStatus':
+    def from_json(cls, x: Any) -> "TaskStatus":
         if isinstance(x, str):
-            if x == 'Success':
+            if x == "Success":
                 return cls(Success())
-            if x == 'Failure':
+            if x == "Failure":
                 return cls(Failure())
-            _atd_bad_json('TaskStatus', x)
-        _atd_bad_json('TaskStatus', x)
+            _atd_bad_json("TaskStatus", x)
+        _atd_bad_json("TaskStatus", x)
 
     def to_json(self) -> Any:
         return self.value.to_json()
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'TaskStatus':
+    def from_json_string(cls, x: str) -> "TaskStatus":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -367,11 +387,11 @@ class FullProofTask:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'FullProofTask'
+        return "FullProofTask"
 
     @staticmethod
     def to_json() -> Any:
-        return 'FullProofTask'
+        return "FullProofTask"
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -386,10 +406,10 @@ class OtherTask:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'OtherTask'
+        return "OtherTask"
 
     def to_json(self) -> Any:
-        return ['OtherTask', _atd_write_string(self.value)]
+        return ["OtherTask", _atd_write_string(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -407,23 +427,23 @@ class TaskKind:
         return self.value.kind
 
     @classmethod
-    def from_json(cls, x: Any) -> 'TaskKind':
+    def from_json(cls, x: Any) -> "TaskKind":
         if isinstance(x, str):
-            if x == 'FullProofTask':
+            if x == "FullProofTask":
                 return cls(FullProofTask())
-            _atd_bad_json('TaskKind', x)
+            _atd_bad_json("TaskKind", x)
         if isinstance(x, List) and len(x) == 2:
             cons = x[0]
-            if cons == 'OtherTask':
+            if cons == "OtherTask":
                 return cls(OtherTask(_atd_read_string(x[1])))
-            _atd_bad_json('TaskKind', x)
-        _atd_bad_json('TaskKind', x)
+            _atd_bad_json("TaskKind", x)
+        _atd_bad_json("TaskKind", x)
 
     def to_json(self) -> Any:
         return self.value.to_json()
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'TaskKind':
+    def from_json_string(cls, x: str) -> "TaskKind":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -437,14 +457,14 @@ class Tags:
     value: Dict[str, str]
 
     @classmethod
-    def from_json(cls, x: Any) -> 'Tags':
+    def from_json(cls, x: Any) -> "Tags":
         return cls(_atd_read_assoc_object_into_dict(_atd_read_string)(x))
 
     def to_json(self) -> Any:
         return _atd_write_assoc_dict_to_object(_atd_write_string)(self.value)
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'Tags':
+    def from_json_string(cls, x: str) -> "Tags":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -460,25 +480,31 @@ class ResourceUsage:
     gpu_time_sec: float = field(default_factory=lambda: 0.0)
 
     @classmethod
-    def from_json(cls, x: Any) -> 'ResourceUsage':
+    def from_json(cls, x: Any) -> "ResourceUsage":
         if isinstance(x, dict):
             return cls(
-                execution_time_sec=_atd_read_float(x['execution_time_sec']) if 'execution_time_sec' in x else 0.0,
-                cpu_time_sec=_atd_read_float(x['cpu_time_sec']) if 'cpu_time_sec' in x else 0.0,
-                gpu_time_sec=_atd_read_float(x['gpu_time_sec']) if 'gpu_time_sec' in x else 0.0,
+                execution_time_sec=_atd_read_float(x["execution_time_sec"])
+                if "execution_time_sec" in x
+                else 0.0,
+                cpu_time_sec=_atd_read_float(x["cpu_time_sec"])
+                if "cpu_time_sec" in x
+                else 0.0,
+                gpu_time_sec=_atd_read_float(x["gpu_time_sec"])
+                if "gpu_time_sec" in x
+                else 0.0,
             )
         else:
-            _atd_bad_json('ResourceUsage', x)
+            _atd_bad_json("ResourceUsage", x)
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
-        res['execution_time_sec'] = _atd_write_float(self.execution_time_sec)
-        res['cpu_time_sec'] = _atd_write_float(self.cpu_time_sec)
-        res['gpu_time_sec'] = _atd_write_float(self.gpu_time_sec)
+        res["execution_time_sec"] = _atd_write_float(self.execution_time_sec)
+        res["cpu_time_sec"] = _atd_write_float(self.cpu_time_sec)
+        res["gpu_time_sec"] = _atd_write_float(self.gpu_time_sec)
         return res
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'ResourceUsage':
+    def from_json_string(cls, x: str) -> "ResourceUsage":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -494,10 +520,10 @@ class Timeout:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'Timeout'
+        return "Timeout"
 
     def to_json(self) -> Any:
-        return ['Timeout', _atd_write_int(self.value)]
+        return ["Timeout", _atd_write_int(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -512,10 +538,10 @@ class MaxLLMCalls:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'MaxLLMCalls'
+        return "MaxLLMCalls"
 
     def to_json(self) -> Any:
-        return ['MaxLLMCalls', _atd_write_int(self.value)]
+        return ["MaxLLMCalls", _atd_write_int(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -533,21 +559,21 @@ class ResourceExhaustionKind:
         return self.value.kind
 
     @classmethod
-    def from_json(cls, x: Any) -> 'ResourceExhaustionKind':
+    def from_json(cls, x: Any) -> "ResourceExhaustionKind":
         if isinstance(x, List) and len(x) == 2:
             cons = x[0]
-            if cons == 'Timeout':
+            if cons == "Timeout":
                 return cls(Timeout(_atd_read_int(x[1])))
-            if cons == 'MaxLLMCalls':
+            if cons == "MaxLLMCalls":
                 return cls(MaxLLMCalls(_atd_read_int(x[1])))
-            _atd_bad_json('ResourceExhaustionKind', x)
-        _atd_bad_json('ResourceExhaustionKind', x)
+            _atd_bad_json("ResourceExhaustionKind", x)
+        _atd_bad_json("ResourceExhaustionKind", x)
 
     def to_json(self) -> Any:
         return self.value.to_json()
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'ResourceExhaustionKind':
+    def from_json_string(cls, x: str) -> "ResourceExhaustionKind":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -564,27 +590,33 @@ class Metrics:
     custom: Any = field(default_factory=lambda: None)
 
     @classmethod
-    def from_json(cls, x: Any) -> 'Metrics':
+    def from_json(cls, x: Any) -> "Metrics":
         if isinstance(x, dict):
             return cls(
-                llm_invocation_count=_atd_read_int(x['llm_invocation_count']) if 'llm_invocation_count' in x else 0,
-                token_counts=TokenCounts.from_json(x['token_counts']) if 'token_counts' in x else TokenCounts(),
-                resource_usage=ResourceUsage.from_json(x['resource_usage']) if 'resource_usage' in x else ResourceUsage(),
-                custom=(lambda x: x)(x['custom']) if 'custom' in x else None,
+                llm_invocation_count=_atd_read_int(x["llm_invocation_count"])
+                if "llm_invocation_count" in x
+                else 0,
+                token_counts=TokenCounts.from_json(x["token_counts"])
+                if "token_counts" in x
+                else TokenCounts(),
+                resource_usage=ResourceUsage.from_json(x["resource_usage"])
+                if "resource_usage" in x
+                else ResourceUsage(),
+                custom=(lambda x: x)(x["custom"]) if "custom" in x else None,
             )
         else:
-            _atd_bad_json('Metrics', x)
+            _atd_bad_json("Metrics", x)
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
-        res['llm_invocation_count'] = _atd_write_int(self.llm_invocation_count)
-        res['token_counts'] = (lambda x: x.to_json())(self.token_counts)
-        res['resource_usage'] = (lambda x: x.to_json())(self.resource_usage)
-        res['custom'] = (lambda x: x)(self.custom)
+        res["llm_invocation_count"] = _atd_write_int(self.llm_invocation_count)
+        res["token_counts"] = (lambda x: x.to_json())(self.token_counts)
+        res["resource_usage"] = (lambda x: x.to_json())(self.resource_usage)
+        res["custom"] = (lambda x: x)(self.custom)
         return res
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'Metrics':
+    def from_json_string(cls, x: str) -> "Metrics":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -598,21 +630,21 @@ class Metadata:
     tags: Tags = field(default_factory=lambda: Tags({}))
 
     @classmethod
-    def from_json(cls, x: Any) -> 'Metadata':
+    def from_json(cls, x: Any) -> "Metadata":
         if isinstance(x, dict):
             return cls(
-                tags=Tags.from_json(x['tags']) if 'tags' in x else Tags({}),
+                tags=Tags.from_json(x["tags"]) if "tags" in x else Tags({}),
             )
         else:
-            _atd_bad_json('Metadata', x)
+            _atd_bad_json("Metadata", x)
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
-        res['tags'] = (lambda x: x.to_json())(self.tags)
+        res["tags"] = (lambda x: x.to_json())(self.tags)
         return res
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'Metadata':
+    def from_json_string(cls, x: str) -> "Metadata":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -628,10 +660,10 @@ class ResourceExhaustion:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'ResourceExhaustion'
+        return "ResourceExhaustion"
 
     def to_json(self) -> Any:
-        return ['ResourceExhaustion', (lambda x: x.to_json())(self.value)]
+        return ["ResourceExhaustion", (lambda x: x.to_json())(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -646,10 +678,10 @@ class ExecutionError:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'ExecutionError'
+        return "ExecutionError"
 
     def to_json(self) -> Any:
-        return ['ExecutionError', _atd_write_string(self.value)]
+        return ["ExecutionError", _atd_write_string(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -664,10 +696,10 @@ class Other:
     @property
     def kind(self) -> str:
         """Name of the class representing this variant."""
-        return 'Other'
+        return "Other"
 
     def to_json(self) -> Any:
-        return ['Other', _atd_write_string(self.value)]
+        return ["Other", _atd_write_string(self.value)]
 
     def to_json_string(self, **kw: Any) -> str:
         return json.dumps(self.to_json(), **kw)
@@ -685,23 +717,23 @@ class FailureReason:
         return self.value.kind
 
     @classmethod
-    def from_json(cls, x: Any) -> 'FailureReason':
+    def from_json(cls, x: Any) -> "FailureReason":
         if isinstance(x, List) and len(x) == 2:
             cons = x[0]
-            if cons == 'ResourceExhaustion':
+            if cons == "ResourceExhaustion":
                 return cls(ResourceExhaustion(ResourceExhaustionKind.from_json(x[1])))
-            if cons == 'ExecutionError':
+            if cons == "ExecutionError":
                 return cls(ExecutionError(_atd_read_string(x[1])))
-            if cons == 'Other':
+            if cons == "Other":
                 return cls(Other(_atd_read_string(x[1])))
-            _atd_bad_json('FailureReason', x)
-        _atd_bad_json('FailureReason', x)
+            _atd_bad_json("FailureReason", x)
+        _atd_bad_json("FailureReason", x)
 
     def to_json(self) -> Any:
         return self.value.to_json()
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'FailureReason':
+    def from_json_string(cls, x: str) -> "FailureReason":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -726,46 +758,64 @@ class TaskOutput:
     metadata: Optional[Metadata] = None
 
     @classmethod
-    def from_json(cls, x: Any) -> 'TaskOutput':
+    def from_json(cls, x: Any) -> "TaskOutput":
         if isinstance(x, dict):
             return cls(
-                run_id=_atd_read_string(x['run_id']) if 'run_id' in x else _atd_missing_json_field('TaskOutput', 'run_id'),
-                task_kind=TaskKind.from_json(x['task_kind']) if 'task_kind' in x else _atd_missing_json_field('TaskOutput', 'task_kind'),
-                task_id=_atd_read_string(x['task_id']) if 'task_id' in x else _atd_missing_json_field('TaskOutput', 'task_id'),
-                dataset_id=_atd_read_string(x['dataset_id']) if 'dataset_id' in x else _atd_missing_json_field('TaskOutput', 'dataset_id'),
-                timestamp_utc=_atd_read_string(x['timestamp_utc']) if 'timestamp_utc' in x else _atd_missing_json_field('TaskOutput', 'timestamp_utc'),
-                agent_name=_atd_read_string(x['agent_name']) if 'agent_name' in x else _atd_missing_json_field('TaskOutput', 'agent_name'),
-                status=TaskStatus.from_json(x['status']) if 'status' in x else _atd_missing_json_field('TaskOutput', 'status'),
-                metrics=Metrics.from_json(x['metrics']) if 'metrics' in x else _atd_missing_json_field('TaskOutput', 'metrics'),
-                trace_id=_atd_read_string(x['trace_id']) if 'trace_id' in x else None,
-                failure_reason=FailureReason.from_json(x['failure_reason']) if 'failure_reason' in x else None,
-                results=(lambda x: x)(x['results']) if 'results' in x else None,
-                metadata=Metadata.from_json(x['metadata']) if 'metadata' in x else None,
+                run_id=_atd_read_string(x["run_id"])
+                if "run_id" in x
+                else _atd_missing_json_field("TaskOutput", "run_id"),
+                task_kind=TaskKind.from_json(x["task_kind"])
+                if "task_kind" in x
+                else _atd_missing_json_field("TaskOutput", "task_kind"),
+                task_id=_atd_read_string(x["task_id"])
+                if "task_id" in x
+                else _atd_missing_json_field("TaskOutput", "task_id"),
+                dataset_id=_atd_read_string(x["dataset_id"])
+                if "dataset_id" in x
+                else _atd_missing_json_field("TaskOutput", "dataset_id"),
+                timestamp_utc=_atd_read_string(x["timestamp_utc"])
+                if "timestamp_utc" in x
+                else _atd_missing_json_field("TaskOutput", "timestamp_utc"),
+                agent_name=_atd_read_string(x["agent_name"])
+                if "agent_name" in x
+                else _atd_missing_json_field("TaskOutput", "agent_name"),
+                status=TaskStatus.from_json(x["status"])
+                if "status" in x
+                else _atd_missing_json_field("TaskOutput", "status"),
+                metrics=Metrics.from_json(x["metrics"])
+                if "metrics" in x
+                else _atd_missing_json_field("TaskOutput", "metrics"),
+                trace_id=_atd_read_string(x["trace_id"]) if "trace_id" in x else None,
+                failure_reason=FailureReason.from_json(x["failure_reason"])
+                if "failure_reason" in x
+                else None,
+                results=(lambda x: x)(x["results"]) if "results" in x else None,
+                metadata=Metadata.from_json(x["metadata"]) if "metadata" in x else None,
             )
         else:
-            _atd_bad_json('TaskOutput', x)
+            _atd_bad_json("TaskOutput", x)
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
-        res['run_id'] = _atd_write_string(self.run_id)
-        res['task_kind'] = (lambda x: x.to_json())(self.task_kind)
-        res['task_id'] = _atd_write_string(self.task_id)
-        res['dataset_id'] = _atd_write_string(self.dataset_id)
-        res['timestamp_utc'] = _atd_write_string(self.timestamp_utc)
-        res['agent_name'] = _atd_write_string(self.agent_name)
-        res['status'] = (lambda x: x.to_json())(self.status)
-        res['metrics'] = (lambda x: x.to_json())(self.metrics)
+        res["run_id"] = _atd_write_string(self.run_id)
+        res["task_kind"] = (lambda x: x.to_json())(self.task_kind)
+        res["task_id"] = _atd_write_string(self.task_id)
+        res["dataset_id"] = _atd_write_string(self.dataset_id)
+        res["timestamp_utc"] = _atd_write_string(self.timestamp_utc)
+        res["agent_name"] = _atd_write_string(self.agent_name)
+        res["status"] = (lambda x: x.to_json())(self.status)
+        res["metrics"] = (lambda x: x.to_json())(self.metrics)
         if self.trace_id is not None:
-            res['trace_id'] = _atd_write_string(self.trace_id)
+            res["trace_id"] = _atd_write_string(self.trace_id)
         if self.failure_reason is not None:
-            res['failure_reason'] = (lambda x: x.to_json())(self.failure_reason)
-        res['results'] = (lambda x: x)(self.results)
+            res["failure_reason"] = (lambda x: x.to_json())(self.failure_reason)
+        res["results"] = (lambda x: x)(self.results)
         if self.metadata is not None:
-            res['metadata'] = (lambda x: x.to_json())(self.metadata)
+            res["metadata"] = (lambda x: x.to_json())(self.metadata)
         return res
 
     @classmethod
-    def from_json_string(cls, x: str) -> 'TaskOutput':
+    def from_json_string(cls, x: str) -> "TaskOutput":
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:

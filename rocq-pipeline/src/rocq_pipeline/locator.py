@@ -19,29 +19,25 @@ class Locator:
         return False
 
     def task_kind(self) -> task_output.TaskKind:
-        return task_output.TaskKind(
-            task_output.OtherTask("unknown")
-        )
+        return task_output.TaskKind(task_output.OtherTask("unknown"))
 
 
 class FirstAdmit(Locator):
     def __str__(self) -> str:
-        return 'admit'
+        return "admit"
 
     @override
     def __call__(self, rdm: RocqDocManager) -> bool:
         def is_admit(
-                text: str,
-                kind: str,
+            text: str,
+            kind: str,
         ) -> bool:
             return kind == "command" and text.startswith("admit")
 
         return rdm.advance_to_first_match(is_admit)
 
     def task_kind(self) -> task_output.TaskKind:
-        return task_output.TaskKind(
-            task_output.OtherTask("admit")
-        )
+        return task_output.TaskKind(task_output.OtherTask("admit"))
 
 
 class FirstLemma(Locator):
@@ -65,8 +61,8 @@ class FirstLemma(Locator):
         mtch = re.compile(f"({prefix})\\s+{self._name}[^0-9a-zA-Z_']")
 
         def is_lemma(
-                text: str,
-                kind: str,
+            text: str,
+            kind: str,
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
@@ -87,23 +83,25 @@ class FirstLemma(Locator):
         return False
 
     def task_kind(self) -> task_output.TaskKind:
-        return task_output.TaskKind(
-            task_output.FullProofTask()
-        )
+        return task_output.TaskKind(task_output.FullProofTask())
 
 
 def parse_locator(s: str) -> Locator:
     if s.startswith("lemma:"):  # Backwards compatibility
-        logger.warning(" ".join([
-            "\"lemma:\" locator is deprecated,",
-            "use \"Theorem:\" or \"Lemma:\":",
-            s,
-        ]))
-        return FirstLemma(s[len("lemma:"):])
+        logger.warning(
+            " ".join(
+                [
+                    '"lemma:" locator is deprecated,',
+                    'use "Theorem:" or "Lemma:":',
+                    s,
+                ]
+            )
+        )
+        return FirstLemma(s[len("lemma:") :])
     elif s.startswith("Theorem:"):
-        return FirstLemma(s[len("Theorem:"):], "Theorem")
+        return FirstLemma(s[len("Theorem:") :], "Theorem")
     elif s.startswith("Lemma:"):
-        return FirstLemma(s[len("Lemma:"):], "Lemma")
+        return FirstLemma(s[len("Lemma:") :], "Lemma")
     if s == "admit":
         return FirstAdmit()
     return Locator()

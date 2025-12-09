@@ -47,8 +47,9 @@ def init_logging(env: Environment) -> None:
         service_name="rocq_agent",
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         otlp_endpoint=env.get_otlp_endpoint(),
-        enable_console_logging = os.getenv("ENABLE_CONSOLE_LOGGING", "false").lower() == "true",
-        )
+        enable_console_logging=os.getenv("ENABLE_CONSOLE_LOGGING", "false").lower()
+        == "true",
+    )
     setup_logging(log_config)
     logger.info("Logging configured with OTLP endpoint: %s", otlp_endpoint)
 
@@ -130,7 +131,7 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     tags: dict[str, str] = {}
     for key, value in os.environ.items():
         if key.startswith(prefix):
-            tag_key = key[len(prefix):].lower()
+            tag_key = key[len(prefix) :].lower()
             tags[tag_key] = value
     return task_output.Tags(tags)
 
@@ -163,7 +164,9 @@ def run_task(
         task_file = task.file
         progress.status(0.01, "🔃")
         rocq_args = (
-            RocqArgs.extend_args(DuneUtil.rocq_args_for(task_file), build_agent.extra_rocq_args())
+            RocqArgs.extend_args(
+                DuneUtil.rocq_args_for(task_file), build_agent.extra_rocq_args()
+            )
             if task.rocq_args is None
             else task.rocq_args
         )
@@ -262,6 +265,7 @@ def load_agent(agent_desc: str) -> AgentBuilder:
     except Exception as err:
         raise ValueError(f"Failed to load AgentBuilder from {agent_desc}.") from err
 
+
 @dataclass
 class RunConfiguration:
     agent_builder: AgentBuilder
@@ -347,12 +351,14 @@ def run_config(config: RunConfiguration) -> bool:
             f.write("\n")
         return is_success(result)
 
-    results = util.parallel_runner(run_it, [(t.id, t) for t in config.tasks], succeeded=succeeded, jobs=config.jobs)
+    results = util.parallel_runner(
+        run_it, [(t.id, t) for t in config.tasks], succeeded=succeeded, jobs=config.jobs
+    )
 
     total = len(results)
     success = len([x for x in results if is_success(x)])
 
-    print(f"Finished {total} tasks: {success} Success, {total-success} Failures")
+    print(f"Finished {total} tasks: {success} Success, {total - success} Failures")
 
     # Post-run actions (e.g., upload results via environment-specific ingest)
     if config.deployment_env:

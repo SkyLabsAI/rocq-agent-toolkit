@@ -14,25 +14,19 @@ classes expose additional structural decompositions.
 # and clients can extend this hierarchy.
 # ---------------------------------------------------------------------
 
-
 # NOTE: because [RocqGoal -> IrisGoal -> BrickGoal], it is
 # important that we import them in this order and /not/
 # alphabetical order.
 from rocq_pipeline.proof_state.goal_parts.rocq import (  # isort:skip
     RocqGoalParts,
-    into_GoalParts
+    into_GoalParts,
 )
 from rocq_pipeline.proof_state.goal_parts.iris import (  # isort:skip
-    IrisGoalParts
+    IrisGoalParts,
 )
 from rocq_pipeline.proof_state.goal_parts.brick import (  # isort:skip
-    BrickGoalParts
+    BrickGoalParts,
 )
 
 
-__all__ = [
-    "into_GoalParts",
-    "RocqGoalParts",
-    "IrisGoalParts",
-    "BrickGoalParts"
-]
+__all__ = ["into_GoalParts", "RocqGoalParts", "IrisGoalParts", "BrickGoalParts"]

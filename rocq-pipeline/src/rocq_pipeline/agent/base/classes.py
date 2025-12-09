@@ -126,9 +126,9 @@ class ProofAgent(Agent):
         return self.prove(rdm)
 
     def current_proof_state(
-            self,
-            rdm: RocqDocManager,
-            goal_ty_upperbound: type[RocqGoal] | None = None,
+        self,
+        rdm: RocqDocManager,
+        goal_ty_upperbound: type[RocqGoal] | None = None,
     ) -> ProofState | RocqDocManager.Err[None]:
         """Structured view of the current proof state (via RDM.current_goal).
 

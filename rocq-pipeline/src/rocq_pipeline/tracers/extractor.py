@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, override
 
 from rocq_doc_manager import RocqDocManager
-
 from rocq_pipeline.proof_state import ProofState
 
 
@@ -57,28 +56,36 @@ class StateExtractor[T](DocumentWatcher):
         """
         return None
 
-def merge_into[A,B](a: dict[A,B], b:dict[A,B]) -> None:
+
+def merge_into[A, B](a: dict[A, B], b: dict[A, B]) -> None:
     for k, v in b.items():
         if k in a and a[k] != v:
             raise RuntimeError("Overlapping entries")
         a[k] = v
 
-def merge_all[A,B](ds: Generator[dict[A,B]], into: dict[A,B]|None=None) -> dict[A,B]:
-    result: dict[A,B] = {} if into is None else into
+
+def merge_all[A, B](
+    ds: Generator[dict[A, B]], into: dict[A, B] | None = None
+) -> dict[A, B]:
+    result: dict[A, B] = {} if into is None else into
     for x in ds:
         merge_into(result, x)
     return result
 
-class AllStateExtractor(StateExtractor[dict[str,Any]]):
+
+class AllStateExtractor(StateExtractor[dict[str, Any]]):
     """
     Produce an object that contains the results of all of the state extractors
     """
+
     def __init__(self, extractors: dict[str, StateExtractor[Any]]):
-        self._extractors:dict[str, StateExtractor[Any]] = extractors
+        self._extractors: dict[str, StateExtractor[Any]] = extractors
 
     @override
     def extra_paths(self) -> dict[str, Path]:
-        return merge_all((x.extra_paths() for x in self._extractors.values()), super().extra_paths())
+        return merge_all(
+            (x.extra_paths() for x in self._extractors.values()), super().extra_paths()
+        )
 
     def setup(self, rdm: RocqDocManager) -> None:
         for _, e in self._extractors.items():
@@ -93,9 +100,9 @@ class AllStateExtractor(StateExtractor[dict[str,Any]]):
             e.end_proof(rdm)
 
     @override
-    def __call__(self, rdm: RocqDocManager) -> dict[str,Any]:
+    def __call__(self, rdm: RocqDocManager) -> dict[str, Any]:
         result: dict[str, Any] = {}
-        for (k,extract) in self._extractors.items():
+        for k, extract in self._extractors.items():
             # TODO: for now, we assume that extractors are hygeinic in the sense that they do revert any effects they might have on the document.
             # In the future, we could use the revert environment to enforce this.
             try:
@@ -106,13 +113,16 @@ class AllStateExtractor(StateExtractor[dict[str,Any]]):
                 pass
         return result
 
+
 class GoalAsString(StateExtractor[str]):
     """A simple extractor that just gets the current goal the way it is printed in Rocq."""
+
     def __call__(self, rdm: RocqDocManager) -> str:
         result = rdm.current_goal()
         if isinstance(result, rdm.Err):
             raise RuntimeError("Failed to parse goal: {result}")
         return str(ProofState(result))
+
 
 class TacticExtractor[T](DocumentWatcher):
     """
@@ -123,19 +133,23 @@ class TacticExtractor[T](DocumentWatcher):
     Note that [before] will always be called before [after], so you can pass state
     from the before to the after using the class state.
     """
-    def before(self, rdm: RocqDocManager, tactic:str) -> T | None:
+
+    def before(self, rdm: RocqDocManager, tactic: str) -> T | None:
         return None
 
-    def after(self, rdm: RocqDocManager, tactic:str) -> T | None:
+    def after(self, rdm: RocqDocManager, tactic: str) -> T | None:
         return None
 
-class AllTacticExtractor(TacticExtractor[dict[str,Any]]):
+
+class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
     def __init__(self, extractors: dict[str, TacticExtractor[Any]]) -> None:
         self._extractors = extractors
 
     @override
     def extra_paths(self) -> dict[str, Path]:
-        return merge_all((x.extra_paths() for x in self._extractors.values()), super().extra_paths())
+        return merge_all(
+            (x.extra_paths() for x in self._extractors.values()), super().extra_paths()
+        )
 
     def setup(self, rdm: RocqDocManager) -> None:
         for _, e in self._extractors.items():
@@ -149,24 +163,28 @@ class AllTacticExtractor(TacticExtractor[dict[str,Any]]):
         for _, e in self._extractors.items():
             e.end_proof(rdm)
 
-    def before(self, rdm: RocqDocManager, tactic:str) -> dict[str,Any] | None:
-        def go[T](e: TacticExtractor[T]) -> T|None:
+    def before(self, rdm: RocqDocManager, tactic: str) -> dict[str, Any] | None:
+        def go[T](e: TacticExtractor[T]) -> T | None:
             try:
                 return e.before(rdm, tactic)
             except Exception:
                 return None
+
         return {key: go(e) for key, e in self._extractors.items()}
 
-    def after(self, rdm: RocqDocManager, tactic:str) -> dict[str,Any] | None:
-        def go[T](e: TacticExtractor[T]) -> T|None:
+    def after(self, rdm: RocqDocManager, tactic: str) -> dict[str, Any] | None:
+        def go[T](e: TacticExtractor[T]) -> T | None:
             try:
                 return e.after(rdm, tactic)
             except Exception:
                 return None
+
         return {key: go(e) for key, e in self._extractors.items()}
+
 
 class Before[T](TacticExtractor[T]):
     """Run the StateExtractor before the tactic runs"""
+
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
 
@@ -184,11 +202,13 @@ class Before[T](TacticExtractor[T]):
         self._extractor.end_proof(rdm)
 
     @override
-    def before(self, rdm: RocqDocManager, tactic:str) -> T|None:
+    def before(self, rdm: RocqDocManager, tactic: str) -> T | None:
         return self._extractor(rdm)
+
 
 class After[T](TacticExtractor[T]):
     """Run the StateExtractor after the tactic runs"""
+
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
 
@@ -206,11 +226,13 @@ class After[T](TacticExtractor[T]):
         self._extractor.end_proof(rdm)
 
     @override
-    def after(self, rdm: RocqDocManager, tactic:str) -> T|None:
+    def after(self, rdm: RocqDocManager, tactic: str) -> T | None:
         return self._extractor(rdm)
+
 
 class BeforeAndAfter[T](TacticExtractor[T]):
     """Run the StateExtractor before and after the tactic runs"""
+
     def __init__(self, state: StateExtractor[T]):
         self._extractor = state
 
@@ -228,16 +250,19 @@ class BeforeAndAfter[T](TacticExtractor[T]):
         self._extractor.end_proof(rdm)
 
     @override
-    def before(self, rdm: RocqDocManager, tactic:str) -> T|None:
+    def before(self, rdm: RocqDocManager, tactic: str) -> T | None:
         return self._extractor(rdm)
 
     @override
-    def after(self, rdm: RocqDocManager, tactic:str) -> T|None:
+    def after(self, rdm: RocqDocManager, tactic: str) -> T | None:
         return self._extractor(rdm)
+
 
 class TacticExtractorBuilder:
     @staticmethod
-    def of_tactic_extractor[T](build: Callable[[], TacticExtractor[T]] | type[TacticExtractor[T]]) -> "TacticExtractorBuilder":
+    def of_tactic_extractor[T](
+        build: Callable[[], TacticExtractor[T]] | type[TacticExtractor[T]],
+    ) -> "TacticExtractorBuilder":
         return TacticExtractorBuilder(build)
 
     def __init__(self, build: Callable[[], TacticExtractor[Any]]) -> None:

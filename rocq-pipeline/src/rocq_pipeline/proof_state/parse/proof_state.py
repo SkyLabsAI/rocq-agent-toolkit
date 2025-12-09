@@ -1,4 +1,3 @@
-
 from rocq_pipeline.proof_state.goal import BrickGoal, IrisGoal, RocqGoal
 from rocq_pipeline.proof_state.parse.brick import into_BrickGoalParts
 from rocq_pipeline.proof_state.parse.iris import into_IrisGoalParts
@@ -12,13 +11,13 @@ _parse_into_GoalParts = {
 
 
 def str_into_Goal(
-        goal_str: str,
-        *,
-        goal_ty_upperbound: type[RocqGoal] = RocqGoal,
-        rocq_rel_goal_num: int,
-        rocq_shelved_cnt: int,
-        rocq_admit_cnt: int,
-        rocq_goal_id: int | None = None,
+    goal_str: str,
+    *,
+    goal_ty_upperbound: type[RocqGoal] = RocqGoal,
+    rocq_rel_goal_num: int,
+    rocq_shelved_cnt: int,
+    rocq_admit_cnt: int,
+    rocq_goal_id: int | None = None,
 ) -> RocqGoal:
     if not issubclass(goal_ty_upperbound, RocqGoal):
         raise RuntimeError(f"{goal_ty_upperbound} not a subclass of RocqGoal")
@@ -42,14 +41,14 @@ def str_into_Goal(
 class _into_Goals:
     @staticmethod
     def parse_goal_string(
-            goal_str: str,
-            *,
-            goal_ty_upperbound: type[RocqGoal],
-            rocq_rel_goal_num: int,
-            rocq_shelved_cnt: int,
-            rocq_admit_cnt: int,
-            rocq_goal_id: int | None = None,
-            is_concl_only: bool = False,
+        goal_str: str,
+        *,
+        goal_ty_upperbound: type[RocqGoal],
+        rocq_rel_goal_num: int,
+        rocq_shelved_cnt: int,
+        rocq_admit_cnt: int,
+        rocq_goal_id: int | None = None,
+        is_concl_only: bool = False,
     ) -> RocqGoal | None:
         """
         Try to parse a single goal string using the MRO of goal_ty_upperbound.

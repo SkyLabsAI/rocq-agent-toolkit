@@ -61,7 +61,7 @@ class TraceAgent(ProofAgent):
                 return self.give_up(
                     rdm,
                     message="{self.name()}: couldn't get current proof state",
-                    reason = pf_state_reply,
+                    reason=pf_state_reply,
                 )
             elif pf_state_reply.closed(proof=True):
                 break
@@ -99,10 +99,10 @@ class TraceAgent(ProofAgent):
 
     @override
     def finished(
-            self,
-            rdm: RocqDocManager,
-            message: str = "",
-            side_effects: dict[str, Any] | None = None,
+        self,
+        rdm: RocqDocManager,
+        message: str = "",
+        side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
@@ -115,11 +115,11 @@ class TraceAgent(ProofAgent):
 
     @override
     def give_up(
-            self,
-            rdm: RocqDocManager,
-            message: str = "",
-            reason: FailureReason | RocqDocManager.Err[Any] | BaseException | None = None,
-            side_effects: dict[str, Any] | None = None,
+        self,
+        rdm: RocqDocManager,
+        message: str = "",
+        reason: FailureReason | RocqDocManager.Err[Any] | BaseException | None = None,
+        side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
@@ -132,19 +132,15 @@ class TraceAgent(ProofAgent):
         )
 
     def _extend_side_effects(
-            self,
-            rdm: RocqDocManager,
-            side_effects: dict[str, Any]
+        self, rdm: RocqDocManager, side_effects: dict[str, Any]
     ) -> None:
         assert side_effects is not None and isinstance(side_effects, dict)
         for k, v in {
             "doc_interaction": self._task_doc_interaction_json(rdm),
-            "holes": self._task_holes_json(rdm)
+            "holes": self._task_holes_json(rdm),
         }.items():
             if k in side_effects:
-                logger.warning(
-                    f"overriding {k} with {v} in {side_effects}"
-                )
+                logger.warning(f"overriding {k} with {v} in {side_effects}")
             side_effects[k] = v
 
     # NOTE: _task_holes + _task_doc_interaction are used to report

@@ -56,9 +56,7 @@ def ingest_results_file(
                 # We only care that the server is reachable; any status code
                 # indicates that the endpoint exists.
                 resp = client.get(base)
-                print(
-                    f"Backend endpoint {base} reachable (status {resp.status_code})"
-                )
+                print(f"Backend endpoint {base} reachable (status {resp.status_code})")
         except httpx.RequestError as exc:
             print(
                 f"Error: Backend endpoint {base} is not reachable: {exc}",
@@ -191,14 +189,19 @@ class DockerServiceManager:
             print("Observability services started successfully")
             return True
         except Exception as e:
-            print(f"Error: Failed to start observability services: {e}", file=sys.stderr)
+            print(
+                f"Error: Failed to start observability services: {e}", file=sys.stderr
+            )
             return False
 
     def start_toolkit_services(self) -> bool:
         """Start frontend and backend services"""
 
         if not self.toolkit_dir.exists():
-            print(f"Error: Toolkit directory not found: {self.toolkit_dir}", file=sys.stderr)
+            print(
+                f"Error: Toolkit directory not found: {self.toolkit_dir}",
+                file=sys.stderr,
+            )
             return False
 
         try:
@@ -356,7 +359,9 @@ class StagingEnvironment(Environment):
             )
 
             if result.returncode != 0:
-                print(f"Error: Cannot reach staging server {self.server}", file=sys.stderr)
+                print(
+                    f"Error: Cannot reach staging server {self.server}", file=sys.stderr
+                )
                 print(
                     "Error: Please ensure you are connected to the VPN", file=sys.stderr
                 )
@@ -380,9 +385,7 @@ class StagingEnvironment(Environment):
             base_url=base_url,
             source_file_name=result_file.name,
         )
-        print(
-            f"View results at: http://{self.server}:{self.frontend_port}/"
-        )
+        print(f"View results at: http://{self.server}:{self.frontend_port}/")
         print(
             f"Raw Logs can be viewed at Grafana Dashboard at: http://{self.server}:{self.grafana_port}/explore"
         )

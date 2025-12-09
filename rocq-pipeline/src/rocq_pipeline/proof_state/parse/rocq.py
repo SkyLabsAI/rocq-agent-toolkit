@@ -23,14 +23,14 @@ class RocqPatterns:
 
 
 def into_RocqGoalParts(
-        goal: str,
-        *,
-        rocq_rel_goal_num: int,
-        rocq_shelved_cnt: int,
-        rocq_admit_cnt: int,
-        rocq_goal_id: int | None = None,
-        is_concl_only: bool = False,
-        silent: bool = False,
+    goal: str,
+    *,
+    rocq_rel_goal_num: int,
+    rocq_shelved_cnt: int,
+    rocq_admit_cnt: int,
+    rocq_goal_id: int | None = None,
+    is_concl_only: bool = False,
+    silent: bool = False,
 ) -> RocqGoalParts:
     rocq_hyps = dict[str, tuple[str, str | None]]()
     rocq_concl = ""
@@ -48,15 +48,15 @@ def into_RocqGoalParts(
                 continue
 
             if RocqPatterns.rocq_proof_separator(line):
-                rocq_concl = "\n".join(lines[i + 1:]).strip()
+                rocq_concl = "\n".join(lines[i + 1 :]).strip()
                 separator_found = True
                 break
-            if (match := RocqPatterns.rocq_defn_parts(line)):
+            if match := RocqPatterns.rocq_defn_parts(line):
                 name = match.groupdict()["name"].strip()
                 ty = match.groupdict()["type"].strip()
                 term = match.groupdict()["term"].strip()
                 rocq_hyps[name.strip()] = (ty, term)
-            elif (match := RocqPatterns.rocq_hyp_parts(line)):
+            elif match := RocqPatterns.rocq_hyp_parts(line):
                 ty = match.groupdict()["type"].strip()
                 for name in match.groupdict()["name"].split(","):
                     rocq_hyps[name.strip()] = (ty, None)

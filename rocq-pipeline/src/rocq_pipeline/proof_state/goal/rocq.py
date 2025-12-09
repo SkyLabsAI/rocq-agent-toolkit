@@ -17,9 +17,7 @@ class RocqGoal:
 
     def __init__(self, parts: RocqGoalParts) -> None:
         if not isinstance(parts, RocqGoalParts):
-            raise ValueError(
-                f"Expected parts (RocqGoalParts), but got ({type(parts)})"
-            )
+            raise ValueError(f"Expected parts (RocqGoalParts), but got ({type(parts)})")
         self._parts = parts
 
     def to_json(self) -> dict[str, Any]:

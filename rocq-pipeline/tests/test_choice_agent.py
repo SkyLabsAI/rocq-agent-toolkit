@@ -8,22 +8,20 @@ from .util import make_task_str
 
 class SimpleTactics(ChoiceAgent):
     def __init__(self) -> None:
-        super().__init__([
-            "solve [ trivial ]",
-            "tauto",
-            "solve [ auto ]",
-            "lia",
-            "split"
-        ])
+        super().__init__(
+            ["solve [ trivial ]", "tauto", "solve [ auto ]", "lia", "split"]
+        )
 
 
 def test_choice_agent() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         result = rocq_pipeline.task_runner.agent_main(
             AgentBuilder.of_agent(SimpleTactics),
-            ["--task-json", make_task_str(
-                "examples/theories/test_simple.v",
-                "lemma:is_true"),
-             "--output-dir", temp_dir],
+            [
+                "--task-json",
+                make_task_str("examples/theories/test_simple.v", "lemma:is_true"),
+                "--output-dir",
+                temp_dir,
+            ],
         )
     assert result

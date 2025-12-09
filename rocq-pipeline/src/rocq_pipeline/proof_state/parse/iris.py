@@ -31,14 +31,14 @@ class IrisGoalPatterns:
 
 
 def into_IrisGoalParts(
-        goal: str,
-        *,
-        rocq_rel_goal_num: int,
-        rocq_shelved_cnt: int,
-        rocq_admit_cnt: int,
-        rocq_goal_id: int | None = None,
-        is_concl_only: bool = False,
-        silent: bool = False,
+    goal: str,
+    *,
+    rocq_rel_goal_num: int,
+    rocq_shelved_cnt: int,
+    rocq_admit_cnt: int,
+    rocq_goal_id: int | None = None,
+    is_concl_only: bool = False,
+    silent: bool = False,
 ) -> IrisGoalParts:
     # First, parse as a Rocq goal
     rocq_parts = into_RocqGoalParts(
@@ -58,8 +58,8 @@ def into_IrisGoalParts(
 
 
 def Rocq2IrisGoalParts(
-        rocq_parts: RocqGoalParts,
-        silent: bool = False,
+    rocq_parts: RocqGoalParts,
+    silent: bool = False,
 ) -> IrisGoalParts:
     iris_pers_hyps = dict[str, str]()
     iris_pers_hyps_anon = set[str]()
@@ -80,21 +80,24 @@ def Rocq2IrisGoalParts(
         if IrisGoalPatterns.iris_pers_separator(line):
             iris_pers_hyps = iris_hyps
             iris_pers_hyps_anon = iris_hyps_anon
-            if any(IrisGoalPatterns.iris_spat_separator(later_lines.strip()) for later_lines in lines[i+1:]):
+            if any(
+                IrisGoalPatterns.iris_spat_separator(later_lines.strip())
+                for later_lines in lines[i + 1 :]
+            ):
                 iris_hyps = {}
                 iris_hyps_anon = set()
             else:
-                iris_spat_concl = "\n".join(lines[i + 1:]).strip()
+                iris_spat_concl = "\n".join(lines[i + 1 :]).strip()
         elif IrisGoalPatterns.iris_spat_separator(line):
             iris_spat_hyps = iris_hyps
             iris_spat_hyps_anon = iris_hyps_anon
-            iris_spat_concl = "\n".join(lines[i + 1:]).strip()
+            iris_spat_concl = "\n".join(lines[i + 1 :]).strip()
             break  # Found spatial conclusion, we are done
-        elif (m := IrisGoalPatterns.iris_named_resource_parts(line)):
+        elif m := IrisGoalPatterns.iris_named_resource_parts(line):
             name = m.groupdict()["name"]
             resource = m.groupdict()["resource"]
             iris_hyps[name] = resource
-        elif (m := IrisGoalPatterns.iris_anon_resource_parts(line)):
+        elif m := IrisGoalPatterns.iris_anon_resource_parts(line):
             resource = m.groupdict()["resource"]
             iris_hyps_anon.add(resource)
         else:

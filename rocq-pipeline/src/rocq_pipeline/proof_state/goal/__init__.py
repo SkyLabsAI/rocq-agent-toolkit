@@ -18,8 +18,8 @@ utilities for interacting with structured goals of a given kind.
 # NOTE: because [RocqGoal -> IrisGoal -> BrickGoal], it is
 # important that we import them in this order and /not/
 # alphabetical order.
-from rocq_pipeline.proof_state.goal.rocq import RocqGoal    # isort:skip
-from rocq_pipeline.proof_state.goal.iris import IrisGoal    # isort:skip
+from rocq_pipeline.proof_state.goal.rocq import RocqGoal  # isort:skip
+from rocq_pipeline.proof_state.goal.iris import IrisGoal  # isort:skip
 from rocq_pipeline.proof_state.goal.brick import BrickGoal  # isort:skip
 
 

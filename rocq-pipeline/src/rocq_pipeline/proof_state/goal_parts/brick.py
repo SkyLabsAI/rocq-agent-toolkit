@@ -10,4 +10,5 @@ class BrickGoalParts(IrisGoalParts):
     This is a frozen dataclass; member functions should only be
     const helpers for working with the structured data.
     """
+
     pass

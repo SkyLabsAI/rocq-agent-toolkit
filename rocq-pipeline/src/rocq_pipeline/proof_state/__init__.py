@@ -37,16 +37,18 @@ class ProofState:
         goal_ty_upperbound: type[RocqGoal] = RocqGoal,
     ) -> None:
         if pf_state is not None and not isinstance(pf_state, RDM.ProofState):
-            raise ValueError(" ".join([
-                "Expected goal (ProofState | None), but got",
-                f"({type(pf_state)}) {pf_state}"
-            ]))
+            raise ValueError(
+                " ".join(
+                    [
+                        "Expected goal (ProofState | None), but got",
+                        f"({type(pf_state)}) {pf_state}",
+                    ]
+                )
+            )
 
         # Use the new base class
         if not issubclass(goal_ty_upperbound, RocqGoal):
-            raise RuntimeError(
-                f"{goal_ty_upperbound} not a subclass of RocqGoal"
-            )
+            raise RuntimeError(f"{goal_ty_upperbound} not a subclass of RocqGoal")
 
         self._goal_ty_upperbound = goal_ty_upperbound
 
@@ -69,8 +71,8 @@ class ProofState:
 
             # NOTE: start at rel_goal_num=1, since Rocq goals are 1-indexed
             for rel_goal_num, focused_goal_str in enumerate(
-                    pf_state.focused_goals,
-                    start=1,
+                pf_state.focused_goals,
+                start=1,
             ):
                 self._focused_goals[rel_goal_num] = parse.str_into_Goal(
                     focused_goal_str,
@@ -95,18 +97,13 @@ class ProofState:
             ]
         )
         header = f"{header_total_goals}\n\t{header_goals_info}\n\n"
-        return header + "\n\n".join(
-            g.parts.rocq_goal_raw for g in self.goals.values()
-        )
+        return header + "\n\n".join(g.parts.rocq_goal_raw for g in self.goals.values())
 
     # NOTE: no [from_json], since ProofState stores class information in a
     # member variable.
     def to_json(self) -> dict[str, Any]:
         return {
-            "focused_goals": {
-                idx: goal.to_json()
-                for idx, goal in self.goals.items()
-            },
+            "focused_goals": {idx: goal.to_json() for idx, goal in self.goals.items()},
             "unfocused_goals": self.unfocused_goals,
             "shelved_cnt": self.shelved_cnt,
             "admit_cnt": self.admit_cnt,
@@ -121,9 +118,9 @@ class ProofState:
 
         if proof:
             return (
-                len(self._unfocused_goals) == 0 and
-                self._shelved_cnt == 0 and
-                self._admit_cnt == 0
+                len(self._unfocused_goals) == 0
+                and self._shelved_cnt == 0
+                and self._admit_cnt == 0
             )
         else:
             return True
@@ -157,11 +154,7 @@ class ProofState:
 
     @overload
     def goal[Goal_T: RocqGoal](
-            self,
-            idx: int = 1,
-            *,
-            strict: bool = True,
-            cast_to: type[Goal_T]
+        self, idx: int = 1, *, strict: bool = True, cast_to: type[Goal_T]
     ) -> Goal_T | None:
         """
         Gets a specific goal and casts it to the requested type.
@@ -172,11 +165,7 @@ class ProofState:
 
     @overload
     def goal[Goal_T: RocqGoal](
-            self,
-            idx: int = 1,
-            *,
-            strict: bool = True,
-            cast_to: None = None
+        self, idx: int = 1, *, strict: bool = True, cast_to: None = None
     ) -> RocqGoal | None:
         """
         Gets a specific goal, returning it as the base RocqGoal.
@@ -186,21 +175,25 @@ class ProofState:
         ...
 
     def goal[Goal_T: RocqGoal](
-            self,
-            idx: int = 1,
-            *,
-            strict: bool = True,
-            cast_to: type[Goal_T] | None = None,
+        self,
+        idx: int = 1,
+        *,
+        strict: bool = True,
+        cast_to: type[Goal_T] | None = None,
     ) -> Goal_T | RocqGoal | None:
         g = self._focused_goals.get(idx)
 
         # 1. Handle goal not found
         if g is None:
             if strict:
-                raise KeyError(" ".join([
-                    f"No goal found with index {idx}.",
-                    f"Found: {self._focused_goals.keys()}",
-                ]))
+                raise KeyError(
+                    " ".join(
+                        [
+                            f"No goal found with index {idx}.",
+                            f"Found: {self._focused_goals.keys()}",
+                        ]
+                    )
+                )
             return None
 
         # 2. Handle type checking/casting

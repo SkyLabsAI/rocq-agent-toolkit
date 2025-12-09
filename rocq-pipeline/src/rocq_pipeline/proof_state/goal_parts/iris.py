@@ -36,7 +36,5 @@ class IrisGoalParts(RocqGoalParts):
     def to_json(self) -> dict[str, Any]:
         almost_serializable = super().to_json()
         for k_set in {"iris_pers_hyps_anon", "iris_spat_hyps_anon"}:
-            almost_serializable[k_set] = list(
-                almost_serializable[k_set]
-            )
+            almost_serializable[k_set] = list(almost_serializable[k_set])
         return almost_serializable

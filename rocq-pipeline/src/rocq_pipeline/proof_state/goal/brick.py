@@ -31,7 +31,7 @@ class BrickGoal(IrisGoal):
 
         for loop_ast_text in ["Sdo_while", "Sfor", "Swhile"]:
             if re.search(
-                fr"::wpS\s+\[.*?\]\s+\({loop_ast_text}",
+                rf"::wpS\s+\[.*?\]\s+\({loop_ast_text}",
                 self.parts.iris_spat_concl,
                 re.DOTALL,  # "." should match everything, including newlines
             ):

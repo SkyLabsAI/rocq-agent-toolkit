@@ -9,6 +9,4 @@ from rocq_pipeline.schema import task_output
 
 __version__ = "0.1.0"
 
-__all__ = [
-    "task_output"
-]
+__all__ = ["task_output"]

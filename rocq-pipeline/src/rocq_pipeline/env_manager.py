@@ -50,6 +50,7 @@ class NoOpEnvironment(Environment):
 
 class EnvironmentRegistry:
     """Registry for Environment implementations."""
+
     _registry: dict[str, type[Environment]] = {}
 
     @classmethod

@@ -11,15 +11,15 @@ class JsonGoal(StateExtractor[list[Any]]):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
 
-    def __init__(self, iris:bool|None=None):
-        self._iris:bool|None = iris
+    def __init__(self, iris: bool | None = None):
+        self._iris: bool | None = iris
 
     @staticmethod
-    def find_user_contrib(installed: bool=True) -> Path:
+    def find_user_contrib(installed: bool = True) -> Path:
         cur = Path(__file__)
         while not (cur / "_build").exists():
             cur = cur.parent
-        return cur /"_build"/"install"/"default"/"lib"/"coq"/"user-contrib"
+        return cur / "_build" / "install" / "default" / "lib" / "coq" / "user-contrib"
 
     def _mod(self) -> str:
         return JsonGoal._IRIS_PATH if self._iris else JsonGoal._RAW_PATH
@@ -35,11 +35,18 @@ class JsonGoal(StateExtractor[list[Any]]):
     @override
     def extra_paths(self) -> dict[str, Path]:
         user = self.find_user_contrib()
-        def ext(path: Path, ls:list[str]) -> Path:
+
+        def ext(path: Path, ls: list[str]) -> Path:
             for x in ls:
                 path = path / x
             return path
-        PATHS = ["skylabs_ai.extractors.goal_to_json", "skylabs_ai.ltac2_json", "skylabs_ai.ltac2_derive", "bluerock.ltac2.extra"]
+
+        PATHS = [
+            "skylabs_ai.extractors.goal_to_json",
+            "skylabs_ai.ltac2_json",
+            "skylabs_ai.ltac2_derive",
+            "bluerock.ltac2.extra",
+        ]
         return {k: ext(user, k.split(".")) for k in PATHS}
 
     def start_proof(self, rdm: RocqDocManager) -> None:
@@ -51,14 +58,21 @@ class JsonGoal(StateExtractor[list[Any]]):
         if isinstance(result, RocqDocManager.Err):
             raise RuntimeError(f"Failed to initialize JsonGoal extractor: {result}")
 
-    _NO_GOAL_PREFIXES:list[str] = ["This subproof is complete, but there are some unfocused goals.","No more goals", "All the remaining goals are on the shelf"]
+    _NO_GOAL_PREFIXES: list[str] = [
+        "This subproof is complete, but there are some unfocused goals.",
+        "No more goals",
+        "All the remaining goals are on the shelf",
+    ]
+
     def __call__(self, rdm: RocqDocManager) -> list[Any] | None:
         result = rdm.query_text_all(self._tactic(), indices=None)
         if isinstance(result, rdm.Err):
             if "Init.Not_focussed" in result.message:
                 return []
             return None
-        elif len(result) == 1 or any(result[0].startswith(x) for x in self._NO_GOAL_PREFIXES):
+        elif len(result) == 1 or any(
+            result[0].startswith(x) for x in self._NO_GOAL_PREFIXES
+        ):
             # TODO: 'All the remaining goals are on the shelf'
             return []
         else:
