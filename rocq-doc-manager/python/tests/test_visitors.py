@@ -1,7 +1,6 @@
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
 from rocq_doc_manager import RocqDocManager
 
 from .util import RDM_Tests
@@ -14,14 +13,16 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
     def _match_any_Theorem(self, text: str, kind: str) -> bool:
         return kind == "command" and text.startswith("Theorem")
 
-    @given(steps=st.integers(
-        min_value=0,
-        max_value=RDM_Tests.TEST_DOT_V_DOC_LEN,
-    ))
+    @given(
+        steps=st.integers(
+            min_value=0,
+            max_value=RDM_Tests.TEST_DOT_V_DOC_LEN,
+        )
+    )
     def test_advance_to_first_match_none(
-            self,
-            steps: int,
-            loaded_shared_rdm: RocqDocManager,
+        self,
+        steps: int,
+        loaded_shared_rdm: RocqDocManager,
     ) -> None:
         with RDM_Tests.starting_from(loaded_shared_rdm, idx=0) as rdm:
             assert not isinstance(
@@ -32,17 +33,19 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
                 self._no_match,
             )
 
-    @given(steps=st.integers(
-        min_value=0,
-        max_value=RDM_Tests.TEST_DOT_V_NO_THEOREM_PREFIX_LEN,
-    ))
+    @given(
+        steps=st.integers(
+            min_value=0,
+            max_value=RDM_Tests.TEST_DOT_V_NO_THEOREM_PREFIX_LEN,
+        )
+    )
     @settings(deadline=None)
     @pytest.mark.parametrize("step_over_match", [True, False])
     def test_advance_to_first_match_some(
-            self,
-            steps: int,
-            step_over_match: bool,
-            loaded_shared_rdm: RocqDocManager,
+        self,
+        steps: int,
+        step_over_match: bool,
+        loaded_shared_rdm: RocqDocManager,
     ) -> None:
         with RDM_Tests.starting_from(loaded_shared_rdm, idx=0) as rdm:
             assert not isinstance(

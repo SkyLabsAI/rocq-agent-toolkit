@@ -2,18 +2,17 @@ import itertools
 
 import pytest
 from hypothesis import given, settings
-
 from rocq_doc_manager import RocqDocManager
 
 from .util import RDM_Tests
 
 
 class Test_RDM_sess(RDM_Tests):
-    @pytest.mark.parametrize('rdm_fixture', ['loadable_rdm', 'transient_rdm'])
+    @pytest.mark.parametrize("rdm_fixture", ["loadable_rdm", "transient_rdm"])
     def test_sess_no_load(
-            self,
-            rdm_fixture: str,
-            request: pytest.FixtureRequest,
+        self,
+        rdm_fixture: str,
+        request: pytest.FixtureRequest,
     ) -> None:
         rdm = request.getfixturevalue(rdm_fixture)
         with rdm.sess(load_file=False):
@@ -24,10 +23,7 @@ class Test_RDM_sess(RDM_Tests):
             assert not isinstance(loadable_rdm.run_step(), RocqDocManager.Resp)
             RDM_Tests.assert_check_ok(loadable_rdm, term="N", lhs="N")
 
-    def test_sess_load_nonexistent(
-            self,
-            transient_rdm: RocqDocManager
-    ) -> None:
+    def test_sess_load_nonexistent(self, transient_rdm: RocqDocManager) -> None:
         with pytest.raises(RocqDocManager.Error) as exc_info:
             with transient_rdm.sess():
                 pass
@@ -36,30 +32,26 @@ class Test_RDM_sess(RDM_Tests):
 
 class Test_RDM_ctx(RDM_Tests):
     @pytest.mark.parametrize(
-        'rdm_fixture, rollback',
-        itertools.product(['loadable_rdm', 'transient_rdm'], [True, False])
+        "rdm_fixture, rollback",
+        itertools.product(["loadable_rdm", "transient_rdm"], [True, False]),
     )
     def test_side_effects(
-            self,
-            rdm_fixture: str,
-            rollback: bool,
-            request: pytest.FixtureRequest
+        self, rdm_fixture: str, rollback: bool, request: pytest.FixtureRequest
     ) -> None:
         rdm = request.getfixturevalue(rdm_fixture)
         print(rdm)
         cmds = [f"Compute ({i}+{i})." for i in range(100)]
 
         with (
-                RDM_Tests.assert_doc_unchanged(rdm)
-                if rollback else
-                RDM_Tests.assert_commands_inserted(rdm, cmds=cmds)
+            RDM_Tests.assert_doc_unchanged(rdm)
+            if rollback
+            else RDM_Tests.assert_commands_inserted(rdm, cmds=cmds)
         ):
             with rdm.ctx(rollback=rollback):
                 with RDM_Tests.assert_commands_inserted(rdm, cmds=cmds):
                     for cmd in cmds:
                         assert not isinstance(
-                            rdm.insert_command(cmd),
-                            RocqDocManager.Err
+                            rdm.insert_command(cmd), RocqDocManager.Err
                         )
 
     @given(
@@ -69,18 +61,17 @@ class Test_RDM_ctx(RDM_Tests):
     )
     @settings(deadline=None)
     def test_property_rollback_ignores_blanks(
-            self,
-            transient_shared_rdm: RocqDocManager,
-            prefix: list[tuple[str, bool]],
-            rollback: list[tuple[str, bool]],
-            suffix: list[tuple[str, bool]],
+        self,
+        transient_shared_rdm: RocqDocManager,
+        prefix: list[tuple[str, bool]],
+        rollback: list[tuple[str, bool]],
+        suffix: list[tuple[str, bool]],
     ) -> None:
         def _process(items: list[tuple[str, bool]]) -> None:
             for text, is_cmd in items:
                 if is_cmd:
                     assert not isinstance(
-                        transient_shared_rdm.insert_command(text),
-                        RocqDocManager.Err
+                        transient_shared_rdm.insert_command(text), RocqDocManager.Err
                     )
                 else:
                     transient_shared_rdm.insert_blanks(text)
@@ -97,11 +88,11 @@ class Test_RDM_ctx(RDM_Tests):
 
 
 class Test_RDM_aborted_goal_ctx(RDM_Tests):
-    @pytest.mark.parametrize('rollback', [True, False])
+    @pytest.mark.parametrize("rollback", [True, False])
     def test_side_effects(
-            self,
-            transient_rdm: RocqDocManager,
-            rollback: bool,
+        self,
+        transient_rdm: RocqDocManager,
+        rollback: bool,
     ) -> None:
         goal = "True /\\ 1 = 1"
         proof_goal = "\n============================\n" + goal
@@ -112,9 +103,9 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
             "Abort.",
         ]
         with (
-                RDM_Tests.assert_doc_unchanged(transient_rdm)
-                if rollback else
-                RDM_Tests.assert_commands_inserted(transient_rdm, cmds=cmds)
+            RDM_Tests.assert_doc_unchanged(transient_rdm)
+            if rollback
+            else RDM_Tests.assert_commands_inserted(transient_rdm, cmds=cmds)
         ):
             with transient_rdm.aborted_goal_ctx(goal=goal, rollback=rollback):
                 idtac_reply = transient_rdm.run_command("idtac.")
@@ -137,12 +128,12 @@ class Test_RDM_Section(RDM_Tests):
             context = [
                 ("n", "nat"),
                 ("b", "bool"),
-                ("Hnb", "if b then n = 1 else n = 0")
+                ("Hnb", "if b then n = 1 else n = 0"),
             ]
             with transient_rdm.Section(
-                    "test",
-                    context=[f"({ident} : {ty})" for ident, ty in context],
-                    rollback=True
+                "test",
+                context=[f"({ident} : {ty})" for ident, ty in context],
+                rollback=True,
             ):
                 for ident, ty in context:
                     RDM_Tests.assert_check_ok(

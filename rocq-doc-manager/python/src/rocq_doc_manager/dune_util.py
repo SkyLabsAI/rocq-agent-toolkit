@@ -20,10 +20,18 @@ class DuneUtil:
             raise ValueError(f"Expected [.v] file: {str(file_path)}")
 
         # The dune environment hack is not needed for [dune coq top].
-        dune_args_result = subprocess.run([
-            "dune", "coq", "top", "--no-build",
-            "--no-print-directory", "--display=quiet",
-            "--toplevel=rocq-fake-repl", file_path
-        ], capture_output=True)
-        dune_args = dune_args_result.stdout.decode(encoding='utf-8')
+        dune_args_result = subprocess.run(
+            [
+                "dune",
+                "coq",
+                "top",
+                "--no-build",
+                "--no-print-directory",
+                "--display=quiet",
+                "--toplevel=rocq-fake-repl",
+                file_path,
+            ],
+            capture_output=True,
+        )
+        dune_args = dune_args_result.stdout.decode(encoding="utf-8")
         return [x.strip() for x in dune_args.splitlines()]

@@ -56,56 +56,8 @@ where = ["src", "tests"]
 "rocq_doc_manager" = ["py.typed"]
 "tests" = ["py.typed"]
 
-[tool.ruff]
-line-length = 88
-target-version = "py313"
-extend-exclude = [
-    ".eggs",
-    ".git",
-    ".hg",
-    ".mypy_cache",
-    ".tox",
-    ".venv",
-    "build",
-    "dist",
-]
-
-[tool.ruff.lint]
-select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
-]
-ignore = [
-    "E501", # line too long, handled by formatter
-]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
-
-[tool.mypy]
-python_version = "3.13"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
-
 [tool.taskipy.tasks]
-format_ci = "ruff check"
+lint_ci = "ruff check"
+format_ci = "ruff format --exclude src/rocq_doc_manager/rocq_doc_manager_api.py --check"
 typecheck_ci = "mypy ."
 test_ocaml_ci = "RDM_USE_DUNE=False pytest tests/"

@@ -1,5 +1,4 @@
 from jsonrpc_tp import JsonRPCTP
-
 from rocq_doc_manager import RocqDocManager
 
 from .util import RDM_Tests
@@ -8,9 +7,9 @@ from .util import RDM_Tests
 class Test_RDM_Tests(RDM_Tests):
     @staticmethod
     def test_fixtures_ok(
-            transient_shared_rdm: RocqDocManager,
-            transient_rdm: RocqDocManager,
-            loadable_rdm: RocqDocManager
+        transient_shared_rdm: RocqDocManager,
+        transient_rdm: RocqDocManager,
+        loadable_rdm: RocqDocManager,
     ) -> None:
         assert not isinstance(
             transient_shared_rdm.cursor_index(),

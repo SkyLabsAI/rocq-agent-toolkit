@@ -5,7 +5,6 @@ from typing import Any
 
 import pytest
 from hypothesis import strategies as st
-
 from rocq_doc_manager import RocqDocManager
 
 
@@ -23,15 +22,11 @@ class RDM_Tests:
 
     @classmethod
     def CONSTANTS(cls) -> dict[str, Any | None]:
-        return {
-            nm: getattr(cls, nm, None)
-            for nm in cls.CONSTANT_NAMES()
-        }
+        return {nm: getattr(cls, nm, None) for nm in cls.CONSTANT_NAMES()}
 
     @staticmethod
     def mk_rdm(
-            path: str = "my_fake.v",
-            rocq_args: list[str] | None = None
+        path: str = "my_fake.v", rocq_args: list[str] | None = None
     ) -> RocqDocManager:
         return RocqDocManager(
             [] if rocq_args is None else rocq_args,
@@ -59,9 +54,9 @@ class RDM_Tests:
     @contextmanager
     @staticmethod
     def starting_from(
-            rdm: RocqDocManager,
-            /,
-            idx: int,
+        rdm: RocqDocManager,
+        /,
+        idx: int,
     ) -> Iterator[RocqDocManager]:
         assert not isinstance(
             rdm.go_to(idx),
@@ -86,7 +81,7 @@ class RDM_Tests:
         """Generates arbitrary sequences of Rocq whitespace characters."""
         # We use a limited, safe alphabet of standard whitespace characters.
         return st.text(
-            alphabet='\n\t ',
+            alphabet="\n\t ",
             min_size=1,  # Must have at least one character to be a blank
             max_size=20,  # Keep the size reasonable for testing
         )
@@ -103,9 +98,9 @@ class RDM_Tests:
                 # - [N]: number
                 # - [P]: punctuation
                 # - [Z]: separator
-                whitelist_categories=('L', 'N', 'P', 'Z'),
+                whitelist_categories=("L", "N", "P", "Z"),
                 min_codepoint=32,
-                max_codepoint=126
+                max_codepoint=126,
             ),
             max_size=15,
         )
@@ -115,34 +110,34 @@ class RDM_Tests:
     @staticmethod
     def rocq_blanks_strategy() -> st.SearchStrategy[str]:
         return st.one_of(
-            RDM_Tests.rocq_whitespace_strategy(),
-            RDM_Tests.rocq_comment_strategy()
+            RDM_Tests.rocq_whitespace_strategy(), RDM_Tests.rocq_comment_strategy()
         )
 
     @staticmethod
     def rocq_trivial_blank_cmd_sequence_strategy() -> st.SearchStrategy[
-            list[tuple[str, bool]]
+        list[tuple[str, bool]]
     ]:
         return st.lists(
             st.one_of(
                 RDM_Tests.rocq_blanks_strategy().map(lambda s: (s, False)),
-                st.just(("Check tt.", True))
+                st.just(("Check tt.", True)),
             )
         )
 
     @contextmanager
     @staticmethod
     def assert_commands_inserted(
-            rdm: RocqDocManager,
-            cmds: list[str],
-            ignore_blanks: bool = True,
-            suffix_unchanged: bool = True,
+        rdm: RocqDocManager,
+        cmds: list[str],
+        ignore_blanks: bool = True,
+        suffix_unchanged: bool = True,
     ) -> Iterator[RocqDocManager]:
         expected_prefix_extension = [
             RocqDocManager.PrefixItem(
                 text=cmd,
                 kind="command",
-            ) for cmd in cmds
+            )
+            for cmd in cmds
         ]
 
         doc_prefix = rdm.doc_prefix()
@@ -152,16 +147,15 @@ class RDM_Tests:
 
         new_doc_prefix = rdm.doc_prefix()
         if ignore_blanks:
-            new_doc_prefix = (
-                new_doc_prefix[:len(doc_prefix)] +
-                list(filter(
+            new_doc_prefix = new_doc_prefix[: len(doc_prefix)] + list(
+                filter(
                     lambda item: item.kind == "command",
-                    new_doc_prefix[len(doc_prefix):],
-                ))
+                    new_doc_prefix[len(doc_prefix) :],
+                )
             )
 
         assert len(doc_prefix) + len(cmds) == len(new_doc_prefix)
-        new_prefix_extension = new_doc_prefix[len(doc_prefix):]
+        new_prefix_extension = new_doc_prefix[len(doc_prefix) :]
         for i in range(len(cmds)):
             expected_item = expected_prefix_extension[i]
             new_item = new_prefix_extension[i]
@@ -173,9 +167,7 @@ class RDM_Tests:
 
     @contextmanager
     @staticmethod
-    def assert_doc_unchanged(
-            rdm: RocqDocManager
-    ) -> Iterator[RocqDocManager]:
+    def assert_doc_unchanged(rdm: RocqDocManager) -> Iterator[RocqDocManager]:
         doc_prefix = rdm.doc_prefix()
         doc_suffix = rdm.doc_suffix()
         yield rdm
@@ -184,10 +176,10 @@ class RDM_Tests:
 
     @staticmethod
     def assert_check_ok(
-            rdm: RocqDocManager,
-            term: str = "nat",
-            lhs: str = "nat",
-            rhs: str = "Set",
+        rdm: RocqDocManager,
+        term: str = "nat",
+        lhs: str = "nat",
+        rhs: str = "Set",
     ) -> None:
         query_reply = rdm.query_text_all(f"Check {term}.", indices=None)
         assert not isinstance(query_reply, RocqDocManager.Err)
