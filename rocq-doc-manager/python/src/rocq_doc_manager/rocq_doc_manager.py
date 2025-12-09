@@ -305,9 +305,7 @@ class RocqDocManager(API):
         self,
         term: str,
         rollback: bool = True,
-    ) -> (
-        tuple[str, str] | API.Err[API.CommandError] | API.Err[list[str]] | API.Err[None]
-    ):
+    ) -> tuple[str, str] | API.Err[API.CommandError | list[str] | None]:
         """Run [Compute {term}.] and return the resulting value and type.
 
         Arguments:

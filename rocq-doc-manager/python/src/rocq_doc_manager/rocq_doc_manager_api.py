@@ -11,6 +11,7 @@ from jsonrpc_tp import JsonRPCTP
 class RocqDocManagerAPI:
     """Main API class."""
 
+    Reply: TypeAlias = JsonRPCTP.Reply # noqa: UP040
     Err: TypeAlias = JsonRPCTP.Err # noqa: UP040
     Resp: TypeAlias = JsonRPCTP.Resp # noqa: UP040
     Error: TypeAlias = JsonRPCTP.Error # noqa: UP040
