@@ -142,7 +142,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to clone (as an integer).
 - Response payload: the name of the new cursor (as an integer).
-- Error payload: the cursor does not exist (as a `null` value).
+- Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
 ### `commit`
@@ -179,7 +179,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: an integer.
 - Response payload: a `null` value.
-- Error payload: the cursor does not exist (as a `null` value).
+- Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
 ### `doc_prefix`

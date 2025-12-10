@@ -468,15 +468,15 @@ let _ =
     A.nil
   in
   API.declare_full api ~name:"clone" ~descr:"clones the given cursor"
-  ~args
-  ~ret:S.int ~ret_descr:"the name of the new cursor"
-  ~err:S.null ~err_descr:"the cursor does not exist" @@ fun d (cursor, ()) ->
-    match IntMap.find_opt cursor d.cursors with
-    | None -> d, Error("cursor does not exist", ())
-    | Some c ->
-      let new_cursor = Document.clone c in
-      let index = d.fresh in
-      { fresh = index + 1 ; cursors = IntMap.add index new_cursor d.cursors }, Ok index
+    ~args ~ret:S.int ~ret_descr:"the name of the new cursor" ~err:S.null
+    @@ fun d (cursor, ()) ->
+  match IntMap.find_opt cursor d.cursors with
+  | None    -> (d, Error("cursor does not exist", ()))
+  | Some(c) ->
+  let new_cursor = Document.clone c in
+  let index = d.fresh in
+  let cursors = IntMap.add index new_cursor d.cursors in
+  ({fresh = index + 1; cursors}, Ok(index))
 
 let _ =
   let args =
@@ -484,14 +484,12 @@ let _ =
     A.nil
   in
   API.declare_full api ~name:"dispose" ~descr:"destroys the cursor"
-  ~args
-  ~ret:S.null
-  ~err:S.null ~err_descr:"the cursor does not exist" @@ fun d (cursor, ()) ->
-    match IntMap.find_opt cursor d.cursors with
-    | None -> d, Error("cursor does not exist", ())
-    | Some _ ->
-      { d with cursors = IntMap.remove cursor d.cursors }, Ok ()
-
+    ~args ~ret:S.null ~err:S.null @@ fun d (cursor, ()) ->
+  match IntMap.find_opt cursor d.cursors with
+  | None    -> (d, Error("cursor does not exist", ()))
+  | Some(c) ->
+  Document.stop c;
+  ({d with cursors = IntMap.remove cursor d.cursors}, Ok(()))
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in
@@ -517,6 +515,11 @@ let _ =
   let state = Document.init ~args ~file in
   let state = {fresh = 1; cursors = IntMap.singleton 0 state} in
   match API.run api ~ic:stdin ~oc:stdout state with
-  | Ok(_)                    -> exit 0
-  | Error(s)                 -> Printf.eprintf "%s\n%!" s; exit 1
-  | exception Sys_error(s)   -> Printf.eprintf "Error: %s\n%!" s; exit 1
+  | Ok(_)       -> exit 0
+  | Error(s)    -> panic "%s" s
+  | exception e ->
+  match e with
+  | Sys_error(s)     -> panic "Error: %s" s
+  | Document.Stopped -> panic "Error: use of stopped document."
+  | _                ->
+  panic "Error: uncaught exception.\n%s" (Printexc.to_string e)
