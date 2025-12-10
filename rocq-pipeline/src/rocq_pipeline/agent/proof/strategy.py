@@ -8,6 +8,7 @@ from rocq_doc_manager import RocqDocManager
 
 from rocq_pipeline.agent.base import TacticApplication
 
+
 class Strategy(ABC):
     """
     A `Strategy` proposes actions to take
@@ -76,9 +77,8 @@ class CutAssertStrategy(SafeTacticStrategy):
     def __init__(self, lemma: str) -> None:
         super().__init__(f'assert ({lemma})')
 
-def empty_generator() -> Strategy.Rollout:
-    return ((prob_tac) for prob_tac in [])
-
+def empty_Rollout() -> Strategy.Rollout:
+    yield from ()
 
 class FailStrategy(Strategy):
     """A simple strategy that fails."""
@@ -87,7 +87,7 @@ class FailStrategy(Strategy):
 
     @override
     def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
-        return ((prob_tac) for prob_tac in [])
+        return empty_Rollout()
 
  #----------------- Likely to be decommissioned Strategies -----------------#
 class TryTacticStrategy(SafeTacticStrategy):
