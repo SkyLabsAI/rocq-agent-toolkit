@@ -1,7 +1,7 @@
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqDocManager, RocqCursor
 
 from .util import RDM_Tests
 
@@ -22,12 +22,12 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
     def test_advance_to_first_match_none(
         self,
         steps: int,
-        loaded_shared_rdm: RocqDocManager,
+        loaded_shared_rdm: RocqCursor,
     ) -> None:
         with RDM_Tests.starting_from(loaded_shared_rdm, idx=0) as rdm:
             assert not isinstance(
                 rdm.advance_to(steps),
-                RocqDocManager.Err,
+                RocqCursor.Err,
             )
             assert not rdm.advance_to_first_match(
                 self._no_match,
@@ -45,19 +45,19 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
         self,
         steps: int,
         step_over_match: bool,
-        loaded_shared_rdm: RocqDocManager,
+        loaded_shared_rdm: RocqCursor,
     ) -> None:
         with RDM_Tests.starting_from(loaded_shared_rdm, idx=0) as rdm:
             assert not isinstance(
                 rdm.advance_to(steps),
-                RocqDocManager.Err,
+                RocqCursor.Err,
             )
             assert rdm.advance_to_first_match(
                 self._match_any_Theorem,
                 step_over_match=step_over_match,
             )
 
-            theorem_item: RocqDocManager.PrefixItem | RocqDocManager.SuffixItem
+            theorem_item: RocqCursor.PrefixItem | RocqCursor.SuffixItem
             if step_over_match:
                 theorem_item = rdm.doc_prefix()[-1]
             else:

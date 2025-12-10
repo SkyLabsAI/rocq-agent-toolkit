@@ -116,4 +116,5 @@ class RocqDocManager(API):
                     raise API.Error(f"RocqDocManager.load_file failed: {load_reply}")
 
             yield self
+
     # ===== END: context managers ==============================================
