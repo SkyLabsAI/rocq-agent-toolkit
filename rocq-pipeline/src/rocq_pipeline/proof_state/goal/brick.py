@@ -5,15 +5,16 @@ from rocq_pipeline.proof_state.goal import IrisGoal
 from rocq_pipeline.proof_state.goal_parts import BrickGoalParts
 
 
-def head_ast(s:str, constructs: list[str]) -> bool:
+def head_ast(s: str, constructs: list[str]) -> bool:
     for ast in constructs:
         if re.search(
-            fr"::wpS\s+\[.*?\]\s+\({ast}",
+            rf"::wpS\s+\[.*?\]\s+\({ast}",
             s,
             re.DOTALL,  # "." should match everything, including newlines
         ):
             return True
     return False
+
 
 class BrickGoal(IrisGoal):
     """Single Brick goal, consisting of structured goal parts.
