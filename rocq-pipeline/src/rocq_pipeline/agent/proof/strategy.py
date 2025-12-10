@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from typing import override
 
-from rocq_doc_manager import RocqDocManager, rocq_doc_manager_api as API
+from rocq_doc_manager import RocqDocManager
 
 from rocq_pipeline.agent.base import TacticApplication
 
@@ -81,8 +81,8 @@ class CutAssertStrategy(SafeTacticStrategy):
 
     @override
     def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
-        name: str | Err[None] = rdm.fresh_ident(self._name)
-        if isinstance(name, Err):
+        name: str | RocqDocManager.Err = rdm.fresh_ident(self._name)
+        if isinstance(name, RocqDocManager.Err):
             return empty_Rollout()
         tac: str = f'assert ({self._lemma}) as {name}'
 

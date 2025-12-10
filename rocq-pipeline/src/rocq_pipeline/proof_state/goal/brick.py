@@ -4,6 +4,7 @@ from typing import cast, override
 from rocq_pipeline.proof_state.goal import IrisGoal
 from rocq_pipeline.proof_state.goal_parts import BrickGoalParts
 
+
 def head_ast(s:str, constructs: list[str]) -> bool:
     for ast in constructs:
         if re.search(
