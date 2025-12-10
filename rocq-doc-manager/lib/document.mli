@@ -38,13 +38,32 @@ val stop : t -> unit
     to running the first operation in the sequence. *)
 val clone : t -> t
 
+(** [sync d] enforces that the Rocq top-level that is relied on by [d] (and is
+    possibly shared with other documents) is in sync with [d]. After a call to
+    [sync d], subsequent operations on [d] can be run without paying any extra
+    upfront cost. *)
 val sync : t -> unit
 
+(** [is_synced d] indicates whether the Rocq toplevel that is relied on by [d]
+    is in sync with [d]. If that is the case, subsequent operations on [d] can
+    be run witout paying any extra upfront cost. *)
+val is_synced : t -> bool
+
+(** [file d] gives the Rocq source file path corresponding to [d]. The file is
+    not guaranteed to exist, as the document may have not been committed. Note
+    that the returned path exactly corresponds to the argument [file] that was
+    initially passed to [init] (it is preserved through [clone]). *)
 val file : t -> string
 
+(** [load_file d] reads the Rocq source file corresponding to [d], and appends
+    its contents to the document suffix of [d]. If the file does not exist, or
+    cannot be fully parsed, an error is returned. *)
 val load_file : t -> (unit, string * Rocq_loc.t option) result
 
+(** Data returned by the top-level when running a command. *)
 type command_data = Rocq_toplevel.run_data
+
+(** Data returned upon failure of the top-level when running a command. *)
 type command_error = Rocq_toplevel.run_error
 
 val insert_blanks : t -> text:string -> unit

@@ -117,6 +117,9 @@ let get_synced_backend : t -> backend = fun d ->
 let sync : t -> unit = fun d ->
   ignore (get_synced_backend d)
 
+let is_synced : t -> bool = fun d ->
+  synced (get_backend d) d
+
 let cursor_index : t -> int = fun d ->
   if d.backend = None then raise Stopped;
   match d.rev_prefix with
