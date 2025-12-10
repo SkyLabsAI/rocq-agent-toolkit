@@ -10,7 +10,7 @@ import {
 } from '@/types/types';
 
 // Check if we should use mock data
-const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+const USE_MOCK_DATA = config.USE_MOCK_DATA;
 
 // Mock data generator functions
 const generateMockTaskOutput = (

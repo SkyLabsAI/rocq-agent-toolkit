@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/theme-context';
 
-import ThemeSwitcher from './ThemeSwitcher';
+import ThemeSwitcher from './theme-switcher';
 
 // Mock the useTheme hook
 jest.mock('@/contexts/ThemeContext', () => ({

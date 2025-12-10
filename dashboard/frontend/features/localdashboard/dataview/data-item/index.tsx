@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import RunDetailsView from '@/components/RunDetailsView';
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import RunDetailsView from '@/components/run-details-view';
+import { useGlobalCompare } from '@/contexts/global-compare-context';
+import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/taskDetailsModal';
-import { useAgents } from '@/hooks/useAgentsSummary';
+import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 import { type Benchmark, type Run } from '@/types/types';

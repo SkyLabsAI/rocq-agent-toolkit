@@ -1,7 +1,7 @@
 import React from 'react';
 
-import { GlobalStickyCompareBar } from '@/components/GlobalStickyCompareBar';
-import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
+import { GlobalStickyCompareBar } from '@/components/global-sticky-compare-bar';
+import { GlobalCompareProvider } from '@/contexts/global-compare-context';
 
 import { useBenchmarks } from '../../../hooks/use-dataview';
 import { DataItem } from './data-item';

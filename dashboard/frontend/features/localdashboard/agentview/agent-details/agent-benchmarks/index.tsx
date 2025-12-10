@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
-import AgentRunsView from '@/features/localdashboard/AgentRunsView';
+import { useGlobalCompare } from '@/contexts/global-compare-context';
+import AgentRunsView from '@/features/localdashboard/agent-runs-view';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 import { type Benchmark, type Run } from '@/types/types';
 import { cn } from '@/utils/cn';

@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import StickyCompareBar from '@/components/StickyCompareBar';
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
+import StickyCompareBar from '@/components/sticky-compare-bar';
+import { useGlobalCompare } from '@/contexts/global-compare-context';
 
 export const GlobalStickyCompareBar: React.FC = () => {
   const navigate = useNavigate();

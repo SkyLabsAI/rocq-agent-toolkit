@@ -7,13 +7,13 @@ import TacticInfoViewer, {
 import Modal from '@/components/base/ui/modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 
-import CodeContent from './components/CodeContent';
-import JsonContent from './components/JsonContent';
+import CodeContent from './components/code-content';
+import JsonContent from './components/json-content';
 import {
   type ComparisonItem,
   useComparisonLogs,
-} from './hooks/useComparisonLogs';
-import { getTabColorClasses } from './utils/tabColors';
+} from './hooks/use-comparison-logs';
+import { getTabColorClasses } from './utils/tab-colors';
 
 interface ComparisonModalProps {
   isOpen: boolean;

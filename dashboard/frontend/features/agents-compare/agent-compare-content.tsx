@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import ComparisonModal from '@/components/base/comparisonModal';
-import { useAgents } from '@/hooks/useAgentsSummary';
+import { useAgents } from '@/hooks/use-agent-summaries';
 import { getRunDetails } from '@/services/dataservice';
 import { type RunDetailsResponse } from '@/types/types';
 
@@ -69,7 +69,6 @@ export const AgentCompareContent: React.FC = () => {
           .filter(Boolean) as string[];
 
         if (bestRunIds.length === 0) {
-          console.warn('No valid run IDs found for agents:', agentNames);
           setBestRuns([]);
           setLoading(false);
           return;

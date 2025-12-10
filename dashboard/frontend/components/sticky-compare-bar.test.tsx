@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 
-import StickyCompareBar from './StickyCompareBar';
+import StickyCompareBar from './sticky-compare-bar';
 
 describe('StickyCompareBar', () => {
   const defaultProps = {

@@ -196,7 +196,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   onClick={() => setActiveTab(key)}
                   className={cn(
                     'px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200',
-                    getTabColorClasses(key, activeTab === key)
+                    getTabColorClasses(activeTab === key)
                   )}
                 >
                   {key}
