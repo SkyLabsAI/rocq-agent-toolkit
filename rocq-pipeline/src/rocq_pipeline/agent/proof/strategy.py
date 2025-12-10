@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from typing import override
 
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqDocManager, rocq_doc_manager_api as API
 
 from rocq_pipeline.agent.base import TacticApplication
 
@@ -73,9 +73,21 @@ class SafeTacticStrategy(Strategy):
 
 class CutAssertStrategy(SafeTacticStrategy):
     """A simple strategy that cuts a Rocq lemma.
-    The inherited success probability 1.0 is not necessarily appropriate."""
-    def __init__(self, lemma: str) -> None:
-        super().__init__(f'assert ({lemma})')
+    The success probability 1.0 is not necessarily appropriate."""
+    def __init__(self, name: str, lemma: str, prob:float = 1.0)) -> None:
+        self._name:str = name
+        self._lemma:str = lemma
+        self._prob:float = prob
+
+    @override
+    def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
+        name: str | API.Err[None] = rdm.fresh_ident(self._name)
+        if isinstance(name, API.Err):
+            return empty_Rollout()
+        tac: str = f'assert ({name} := {self._lemma})'
+
+        return self._prob, TacticApplication(tac)
+        #return ((prob, TacticApplication(t)) for prob, t in [(self._prob, tac)])
 
 def empty_Rollout() -> Strategy.Rollout:
     yield from ()
