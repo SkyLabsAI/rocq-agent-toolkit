@@ -230,42 +230,48 @@ const ComparisonItemCard: React.FC<ComparisonItemCardProps> = ({
   renderCustomContent,
   renderJsonContent,
 }) => {
-
   const [isOpen, setIsOpen] = useState(false);
 
-
-  return <div className='border border-elevation-surface-overlay rounded-lg bg-elevation-surface-raised p-4' onClick={()=>setIsOpen(!isOpen)} >
-    <div className='flex items-center justify-between mb-4 shrink-0'>
-
-      <div className='flex gap-2 items-center'>
-        <ChevronUpIcon className={cn('size-6 text-text',{'rotate-180': isOpen})}/>
-      <div className='flex flex-col text-text'>
-        <h4 className='text-sm font-medium truncate' title={item.label}>
-          {item.label}
-        </h4>
-        {item.task && (
-          <span
-            className='text-xs text-text-disabled font-mono'
-            title={item.task.run_id}
-          >
-            Run: {item.task.run_id}
-          </span>
-        )}
-      </div>
-      </div>
-    </div>{isOpen &&
-    <div className='overflow-auto'>
-      {!hasData ? (
-        <div className='text-sm text-text-disabled italic text-center py-8'>
-          {!item.task ? 'Task not present' : 'No data for this key'}
+  return (
+    <div
+      className='border border-elevation-surface-overlay rounded-lg bg-elevation-surface-raised p-4'
+      onClick={() => setIsOpen(!isOpen)}
+    >
+      <div className='flex items-center justify-between mb-4 shrink-0'>
+        <div className='flex gap-2 items-center'>
+          <ChevronUpIcon
+            className={cn('size-6 text-text', { 'rotate-180': isOpen })}
+          />
+          <div className='flex flex-col text-text'>
+            <h4 className='text-sm font-medium truncate' title={item.label}>
+              {item.label}
+            </h4>
+            {item.task && (
+              <span
+                className='text-xs text-text-disabled font-mono'
+                title={item.task.run_id}
+              >
+                Run: {item.task.run_id}
+              </span>
+            )}
+          </div>
         </div>
-      ) : (
-        <>
-          {customKeys.includes(activeTab)
-            ? renderCustomContent(activeTab, value)
-            : renderJsonContent(activeTab, value)}
-        </>
+      </div>
+      {isOpen && (
+        <div className='overflow-auto'>
+          {!hasData ? (
+            <div className='text-sm text-text-disabled italic text-center py-8'>
+              {!item.task ? 'Task not present' : 'No data for this key'}
+            </div>
+          ) : (
+            <>
+              {customKeys.includes(activeTab)
+                ? renderCustomContent(activeTab, value)
+                : renderJsonContent(activeTab, value)}
+            </>
+          )}
+        </div>
       )}
-    </div>}
-  </div>
-}
+    </div>
+  );
+};

@@ -43,7 +43,9 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
       setRunDetails(details[0]);
     } catch (err) {
       console.error('Error fetching run details:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch run details');
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch run details'
+      );
     } finally {
       setLoading(false);
     }
@@ -106,51 +108,83 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
       <td colSpan={6}>
         <div className='px-8 pt-4 pb-9 bg-elevation-surface rounded-lg '>
           {loading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-3 text-text-secondary">Loading run details...</span>
+            <div className='flex items-center justify-center py-8'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+              <span className='ml-3 text-text-secondary'>
+                Loading run details...
+              </span>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-              <div className="text-red-400 font-medium">Error loading run details</div>
-              <div className="text-red-300 text-sm mt-1">{error}</div>
+            <div className='bg-red-500/10 border border-red-500/20 rounded-lg p-4'>
+              <div className='text-red-400 font-medium'>
+                Error loading run details
+              </div>
+              <div className='text-red-300 text-sm mt-1'>{error}</div>
             </div>
           )}
 
           {runDetails && !loading && (
-            <div className="space-y-4">
+            <div className='space-y-4'>
               {/* Header */}
-              <div className="grid gap-4 px-2.5" style={{ gridTemplateColumns: '30% 1fr 1fr 1fr 1fr 1fr' }}>
-                <div className="text-text text-[16px]">Tasks</div>
-                <div className="text-text-disabled text-[14px]">Status</div>
-                <div className="text-text-disabled text-[14px]">LLM Calls</div>
-                <div className="text-text-disabled text-[14px]">Total Tokens</div>
-                <div className="text-text-disabled text-[14px]">Execution Time</div>
-                <div className="text-text-disabled text-[14px]"></div>
+              <div
+                className='grid gap-4 px-2.5'
+                style={{ gridTemplateColumns: '30% 1fr 1fr 1fr 1fr 1fr' }}
+              >
+                <div className='text-text text-[16px]'>Tasks</div>
+                <div className='text-text-disabled text-[14px]'>Status</div>
+                <div className='text-text-disabled text-[14px]'>LLM Calls</div>
+                <div className='text-text-disabled text-[14px]'>
+                  Total Tokens
+                </div>
+                <div className='text-text-disabled text-[14px]'>
+                  Execution Time
+                </div>
+                <div className='text-text-disabled text-[14px]'></div>
               </div>
-              
+
               {/* Rows */}
-              <div className="flex flex-col gap-2 justify-between">
+              <div className='flex flex-col gap-2 justify-between'>
                 {runDetails.tasks.map((task: TaskOutput) => (
-                  <div key={task.task_id} className="grid gap-4 p-2.5 bg-elevation-surface-raised rounded items-center" style={{ gridTemplateColumns: '30% 1fr 1fr 1fr 1fr 1fr' }}>
-                    <div className="text-text text-[14px]">{task.task_id}</div>
+                  <div
+                    key={task.task_id}
+                    className='grid gap-4 p-2.5 bg-elevation-surface-raised rounded items-center'
+                    style={{ gridTemplateColumns: '30% 1fr 1fr 1fr 1fr 1fr' }}
+                  >
+                    <div className='text-text text-[14px]'>{task.task_id}</div>
                     <div>
-                      <span className={` py-1 rounded text-[14px] font-medium ${task.status === 'Success' ? 'text-text-success' : 'text-text-danger'}`}>
+                      <span
+                        className={` py-1 rounded text-[14px] font-medium ${task.status === 'Success' ? 'text-text-success' : 'text-text-danger'}`}
+                      >
                         {task.status}
                       </span>
                     </div>
-                    <div className="text-text text-[14px]">{task.metrics.llm_invocation_count}</div>
-                    <div className="text-text text-[14px]">{formatMetricValue(task.metrics.token_counts.total_tokens)}</div>
-                    <div className="text-text text-[14px]">{task.metrics.resource_usage.execution_time_sec.toFixed(2)}s</div>
-                    <div >
-                      <Button 
-                        className='float-right' 
+                    <div className='text-text text-[14px]'>
+                      {task.metrics.llm_invocation_count}
+                    </div>
+                    <div className='text-text text-[14px]'>
+                      {formatMetricValue(
+                        task.metrics.token_counts.total_tokens
+                      )}
+                    </div>
+                    <div className='text-text text-[14px]'>
+                      {task.metrics.resource_usage.execution_time_sec.toFixed(
+                        2
+                      )}
+                      s
+                    </div>
+                    <div>
+                      <Button
+                        className='float-right'
                         onClick={() => openCodeModal(task)}
-                        disabled={loadingLogs === `${task.run_id}-${task.task_id}`}
+                        disabled={
+                          loadingLogs === `${task.run_id}-${task.task_id}`
+                        }
                       >
-                        {loadingLogs === `${task.run_id}-${task.task_id}` ? 'Loading...' : 'View Logs'}
+                        {loadingLogs === `${task.run_id}-${task.task_id}`
+                          ? 'Loading...'
+                          : 'View Logs'}
                       </Button>
                     </div>
                   </div>
@@ -159,7 +193,7 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
             </div>
           )}
         </div>
-        
+
         {/* Task Details Modal */}
         <TaskDetailsModal
           isOpen={modalState.isOpen}

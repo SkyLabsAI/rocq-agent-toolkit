@@ -143,7 +143,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
           <div className='space-y-6'>
             {taskDetails.map((task, index) => (
               <div
-                key={task.task_id+index}
+                key={task.task_id + index}
                 className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded'
               >
                 <div className='p-5 space-y-4'>
@@ -201,7 +201,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           Execution Time
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                         { `${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s`}
+                          {`${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s`}
                         </p>
                       </div>
 
@@ -210,8 +210,9 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           CPU Time
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.resource_usage?.cpu_time_sec.toFixed(2)}
-                       
+                          {task.metrics?.resource_usage?.cpu_time_sec.toFixed(
+                            2
+                          )}
                         </p>
                       </div>
 
@@ -229,7 +230,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                           LLM Calls
                         </p>
                         <p className='font-inter font-normal text-sm text-text'>
-                          {task.metrics?.llm_invocation_count || "_"}
+                          {task.metrics?.llm_invocation_count || '_'}
                         </p>
                       </div>
                     </div>
@@ -302,9 +303,9 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                     </p>
                     <div className='bg-elevation-surface-sunken rounded p-4 h-fit overflow-auto'>
                       <pre className='font-inter font-normal text-sm text-text whitespace-pre-wrap'>
-                        {task.results
-                          && JSON.stringify(task.results, null, 2)
-                          || 'No results available.'}
+                        {(task.results &&
+                          JSON.stringify(task.results, null, 2)) ||
+                          'No results available.'}
                       </pre>
                     </div>
                   </div>

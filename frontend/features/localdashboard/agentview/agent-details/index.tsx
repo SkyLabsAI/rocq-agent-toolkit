@@ -36,8 +36,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
     agent.agent_name
   );
 
-  const {benchmarks} = useBenchmarks();
-
+  const { benchmarks } = useBenchmarks();
 
   return (
     <>
@@ -128,10 +127,15 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                 <div className='text-center py-8 text-text'>
                   No run details available.
                 </div>
-              ) :
-                benchmarks.map((benchmark) => (<AgentBenchmark key={benchmark.dataset_id} benchmark={benchmark} agentName={agent.agent_name} />))
-                
-              }
+              ) : (
+                benchmarks.map(benchmark => (
+                  <AgentBenchmark
+                    key={benchmark.dataset_id}
+                    benchmark={benchmark}
+                    agentName={agent.agent_name}
+                  />
+                ))
+              )}
             </div>
           </td>
         </tr>

@@ -5,10 +5,7 @@ import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
 
 export const GlobalStickyCompareBar: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    selections,
-    clearAllSelections,
-  } = useGlobalCompare();
+  const { selections, clearAllSelections } = useGlobalCompare();
 
   const hasAgentSelections = selections.selectedAgents.length > 0;
   const hasRunSelections = selections.selectedRuns.length > 0;
@@ -42,7 +39,7 @@ export const GlobalStickyCompareBar: React.FC = () => {
         selectedItems={selections.selectedAgents.map(a => a.agentName)}
         onCompareSelected={compareAgents}
         onClearSelection={clearAllSelections}
-        attribute="Agents"
+        attribute='Agents'
       />
     );
   }
@@ -54,7 +51,7 @@ export const GlobalStickyCompareBar: React.FC = () => {
         selectedItems={selections.selectedRuns.map(r => r.runId)}
         onCompareSelected={compareRuns}
         onClearSelection={clearAllSelections}
-        attribute="Runs"
+        attribute='Runs'
       />
     );
   }

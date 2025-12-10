@@ -9,7 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
 }
 
-export function Button({ 
+export function Button({
   leftIcon,
   rightIcon,
   leftDivider = false,
@@ -17,12 +17,14 @@ export function Button({
   variant = 'default',
   children,
   className = '',
-  ...props 
+  ...props
 }: ButtonProps) {
   const getBaseClasses = () => {
-    const baseStyles = 'relative rounded-[4px] shrink-0 cursor-pointer overflow-hidden';
-    const textStyles = 'font-["Noto_Sans"] text-[14px] font-normal leading-5 text-text';
-    
+    const baseStyles =
+      'relative rounded-[4px] shrink-0 cursor-pointer overflow-hidden';
+    const textStyles =
+      'font-["Noto_Sans"] text-[14px] font-normal leading-5 text-text';
+
     switch (variant) {
       case 'default':
         return `${baseStyles} ${textStyles} bg-background-accent-gray-subtlest border border-background-accent-gray-subtler shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)]`;
@@ -36,32 +38,30 @@ export function Button({
         return `${baseStyles} ${textStyles} border border-transparent`;
     }
   };
-  
+
   const baseClasses = getBaseClasses();
 
-  const renderDivider = () => (
-    <div className="flex h-4 w-px bg-border-bold" />
-  );
+  const renderDivider = () => <div className='flex h-4 w-px bg-border-bold' />;
 
   return (
     <button className={`${baseClasses} ${className}`} {...props}>
-      <div className="box-border content-stretch flex gap-1.5 items-center overflow-clip px-3 py-2 relative rounded-[inherit]">
+      <div className='box-border content-stretch flex gap-1.5 items-center overflow-clip px-3 py-2 relative rounded-[inherit]'>
         {leftIcon && (
-          <div className="content-stretch flex gap-1.5 items-center relative shrink-0">
+          <div className='content-stretch flex gap-1.5 items-center relative shrink-0'>
             {leftIcon}
           </div>
         )}
-        
+
         {leftDivider && renderDivider()}
-        
-        <span className="font-noto-sans text-sm font-normal leading-5 whitespace-nowrap">
+
+        <span className='font-noto-sans text-sm font-normal leading-5 whitespace-nowrap'>
           {children}
         </span>
-        
+
         {rightDivider && renderDivider()}
-        
+
         {rightIcon && (
-          <div className="flex items-center justify-center relative shrink-0">
+          <div className='flex items-center justify-center relative shrink-0'>
             {rightIcon}
           </div>
         )}
@@ -69,6 +69,5 @@ export function Button({
     </button>
   );
 }
-
 
 export default Button;

@@ -26,6 +26,6 @@ export const useAgentBenchmarks = (agentName: string, datasetId: string) => {
     runs,
     isLoading,
     error,
-    fetchRuns
+    fetchRuns,
   };
 };

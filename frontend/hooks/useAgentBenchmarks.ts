@@ -20,11 +20,11 @@
 //   const fetchAgentBenchmarkData = async () => {
 //     setIsLoading(true);
 //     setError(null);
-    
+
 //     try {
 //       // 1. Get all benchmarks
 //       const benchmarks = await getBenchmarks();
-      
+
 //       // 2. Get all agents data for each benchmark
 //       const benchmarkAgentsData = await Promise.all(
 //         benchmarks.map(async (benchmark) => {
@@ -32,14 +32,14 @@
 //           return { benchmark, agentData };
 //         })
 //       );
-      
+
 //       // 3. Group runs by agent across all benchmarks
 //       const agentMap = new Map<string, AgentWithBenchmarks>();
-      
+
 //       benchmarkAgentsData.forEach(({ benchmark, agentData }) => {
 //         agentData.agents.forEach((agent) => {
 //           const agentName = agent.agent_name;
-          
+
 //           if (!agentMap.has(agentName)) {
 //             // Initialize agent with benchmark data
 //             agentMap.set(agentName, {
@@ -47,24 +47,24 @@
 //               benchmarks: []
 //             });
 //           }
-          
+
 //           const agentWithBenchmarks = agentMap.get(agentName)!;
-          
+
 //           // Add runs for this benchmark
 //           const benchmarkData: AgentBenchmarkData = {
 //             benchmark,
 //             runs: agent.runs
 //           };
-          
+
 //           agentWithBenchmarks.benchmarks.push(benchmarkData);
 //         });
 //       });
-      
+
 //       // 4. Convert map to array and sort by agent name
-//       const agentsArray = Array.from(agentMap.values()).sort((a, b) => 
+//       const agentsArray = Array.from(agentMap.values()).sort((a, b) =>
 //         a.agent_name.localeCompare(b.agent_name)
 //       );
-      
+
 //       setAgentsWithBenchmarks(agentsArray);
 //     } catch (err) {
 //       console.error('Error fetching agent benchmark data:', err);

@@ -149,9 +149,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 key={index}
                 className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-4 max-h-96 overflow-auto'
               >
-                <div className='text-xs text-text mb-2'>
-                  Item {index + 1}
-                </div>
+                <div className='text-xs text-text mb-2'>Item {index + 1}</div>
                 <pre className='text-sm text-text whitespace-pre-wrap font-mono'>
                   {str}
                 </pre>
@@ -219,9 +217,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         )}
 
         {availableKeys.length === 0 && (
-          <div className='text-center text-text py-8'>
-            No details available
-          </div>
+          <div className='text-center text-text py-8'>No details available</div>
         )}
       </div>
     </Modal>

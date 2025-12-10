@@ -6,7 +6,10 @@ import { RunDetailsResponse } from '@/types/types';
 import { CompareRunsHeader } from '../runs-compare/compare-page-content/compare-page-header';
 import { RunSummary } from '../runs-compare/compare-page-content/compare-page-summary';
 import { ComparisonTable } from '../runs-compare/compare-page-content/compare-table';
-import { computeRunStats, transformRunsToTaskRows } from '../runs-compare/compare-page-content/utils';
+import {
+  computeRunStats,
+  transformRunsToTaskRows,
+} from '../runs-compare/compare-page-content/utils';
 import { RunStats, RunTaskCell } from '../runs-compare';
 import ComparisonModal from '@/components/base/comparisonModal';
 
@@ -14,7 +17,6 @@ export const AgentCompareContent: React.FC = () => {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const { agentData, isLoading: agentDataLoading } = useAgents();
-
 
   const selectedAgents = sp.get('agents') || '';
   const agentNames = useMemo(() => {
@@ -89,15 +91,16 @@ export const AgentCompareContent: React.FC = () => {
   }, [agentNames, agentData, agentDataLoading]);
 
   const stats = useMemo(
-    () => bestRuns.map(run => {
-      const runStats = computeRunStats(run);
-      // For agent comparison, use agent name as both id and name for display
-      return {
-        ...runStats,
-        id: run.agent_name, // Use agent name for removal
-        name: run.agent_name, // Use agent name for display
-      };
-    }),
+    () =>
+      bestRuns.map(run => {
+        const runStats = computeRunStats(run);
+        // For agent comparison, use agent name as both id and name for display
+        return {
+          ...runStats,
+          id: run.agent_name, // Use agent name for removal
+          name: run.agent_name, // Use agent name for display
+        };
+      }),
     [bestRuns]
   );
 
@@ -140,8 +143,10 @@ export const AgentCompareContent: React.FC = () => {
 
   const [showTasks, setShowTasks] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [comparisonModalTaskId, setComparisonModalTaskId] = useState<string | null>(null);
-  
+  const [comparisonModalTaskId, setComparisonModalTaskId] = useState<
+    string | null
+  >(null);
+
   const allTaskIds = useMemo(() => Object.keys(taskMap).sort(), [taskMap]);
 
   const selectTask = (taskId: string) => {
@@ -153,7 +158,9 @@ export const AgentCompareContent: React.FC = () => {
   if (loading) {
     return (
       <div className='flex items-center justify-center h-64'>
-        <div className='text-text-disabled'>Loading agent comparison data...</div>
+        <div className='text-text-disabled'>
+          Loading agent comparison data...
+        </div>
       </div>
     );
   }
@@ -166,16 +173,14 @@ export const AgentCompareContent: React.FC = () => {
     );
   }
 
- 
-
   return (
     <>
       {/* Header */}
-      <CompareRunsHeader 
-        title='Compare Agents (Best Runs)' 
+      <CompareRunsHeader
+        title='Compare Agents (Best Runs)'
         secondary={`Comparing best runs of: ${agentNames.join(', ')}`}
       />
-      
+
       {stats.length > 0 && (
         <>
           <RunSummary runStats={stats} onRemove={handleRemove} />
@@ -197,8 +202,11 @@ export const AgentCompareContent: React.FC = () => {
       {allTaskIds.length < (bestRuns[0]?.tasks.length || 0) && (
         <div className='mt-4 p-4 bg-background-information/10 border border-blue-500/30 rounded-lg'>
           <p className='text-text-information text-sm'>
-            <strong>Note:</strong> Only showing {allTaskIds.length} tasks that are common across all {bestRuns.length} runs.
-            {bestRuns.map(run => `${run.agent_name}: ${run.tasks.length} tasks`).join(', ')}
+            <strong>Note:</strong> Only showing {allTaskIds.length} tasks that
+            are common across all {bestRuns.length} runs.
+            {bestRuns
+              .map(run => `${run.agent_name}: ${run.tasks.length} tasks`)
+              .join(', ')}
           </p>
         </div>
       )}
@@ -210,7 +218,8 @@ export const AgentCompareContent: React.FC = () => {
           onClose={() => setComparisonModalTaskId(null)}
           taskId={comparisonModalTaskId}
           items={bestRuns.map(run => {
-            const cell = taskMap[comparisonModalTaskId]?.[bestRuns.indexOf(run)];
+            const cell =
+              taskMap[comparisonModalTaskId]?.[bestRuns.indexOf(run)];
             return {
               label: `${run.agent_name} (${run.run_id})`,
               task: cell?.task || null,

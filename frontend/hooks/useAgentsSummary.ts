@@ -3,7 +3,7 @@ import {
   AgentSummaryTemp,
   fetchAgentSummaries,
   getData,
-  getObservabilityLogs
+  getObservabilityLogs,
 } from '@/services/dataservice';
 import { AgentSummary, TaskOutput } from '@/types/types';
 
@@ -39,8 +39,6 @@ export const useAgents = () => {
   useEffect(() => {
     fetchData();
   }, []);
-
-
 
   const openCodeModal = async (task: TaskOutput) => {
     const taskKey = `${task.run_id}-${task.task_id}`;

@@ -1,13 +1,8 @@
 import { useState } from 'react';
 import { TaskOutput, AgentRun } from '@/types/types';
-import {
-  getDetails,
-  getRunDetails,
-} from '@/services/dataservice';
+import { getDetails, getRunDetails } from '@/services/dataservice';
 
-export const useAgentDetails = (
-  agent_name: string,
-) => {
+export const useAgentDetails = (agent_name: string) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
   const [runDetails, setRunDetails] = useState<AgentRun[]>([]);

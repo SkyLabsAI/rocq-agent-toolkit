@@ -10,7 +10,6 @@ import { RunSummary } from './compare-page-summary';
 import { ComparisonTable } from './compare-table';
 import { computeRunStats, transformRunsToTaskRows } from './utils';
 
-
 export const ComparePageContent: React.FC = () => {
   const [sp] = useSearchParams();
   const agentName = sp.get('agent') || '';
@@ -86,12 +85,15 @@ export const ComparePageContent: React.FC = () => {
     setSelectedTaskId(prev => (prev === taskId ? null : taskId));
   };
 
-  const taskRows = useMemo(() => transformRunsToTaskRows(selectedRuns), [selectedRuns]);
+  const taskRows = useMemo(
+    () => transformRunsToTaskRows(selectedRuns),
+    [selectedRuns]
+  );
 
   return (
     <>
       {/* Header */}
-      <CompareRunsHeader title='Compare Runs' secondary={``}/>
+      <CompareRunsHeader title='Compare Runs' secondary={``} />
       {!loading && !error && stats.length > 0 && (
         <>
           <RunSummary runStats={stats} />

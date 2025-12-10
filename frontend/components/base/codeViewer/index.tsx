@@ -8,7 +8,11 @@ interface CodeViewerProps {
   filename?: string;
 }
 
-const CodeViewer: React.FC<CodeViewerProps> = ({ code, language, filename }) => {
+const CodeViewer: React.FC<CodeViewerProps> = ({
+  code,
+  language,
+  filename,
+}) => {
   // Map language names to syntax highlighter compatible names
   const getLanguage = (lang: string) => {
     switch (lang.toLowerCase()) {
@@ -24,14 +28,14 @@ const CodeViewer: React.FC<CodeViewerProps> = ({ code, language, filename }) => 
   };
 
   return (
-    <div className="bg-slate-800 border border-elevation-surface-overlay rounded-lg overflow-hidden">
+    <div className='bg-slate-800 border border-elevation-surface-overlay rounded-lg overflow-hidden'>
       {filename && (
-        <div className="bg-elevation-surface-raised px-4 py-2 border-b border-elevation-surface-overlay">
-          <span className="text-sm font-medium text-text">{filename}</span>
-          <span className="text-xs text-text ml-2">({language})</span>
+        <div className='bg-elevation-surface-raised px-4 py-2 border-b border-elevation-surface-overlay'>
+          <span className='text-sm font-medium text-text'>{filename}</span>
+          <span className='text-xs text-text ml-2'>({language})</span>
         </div>
       )}
-      <div className="overflow-auto max-h-[60vh]">
+      <div className='overflow-auto max-h-[60vh]'>
         <SyntaxHighlighter
           language={getLanguage(language)}
           style={vscDarkPlus}
@@ -44,11 +48,11 @@ const CodeViewer: React.FC<CodeViewerProps> = ({ code, language, filename }) => 
             backgroundColor: 'var(--color-elevation-surface-raised)',
             color: 'var(--color-text)',
           }}
-          
           codeTagProps={{
             style: {
-              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-            }
+              fontFamily:
+                'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+            },
           }}
         >
           {code}

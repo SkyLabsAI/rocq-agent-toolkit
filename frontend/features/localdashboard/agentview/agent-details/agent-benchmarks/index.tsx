@@ -17,7 +17,10 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
   agentName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { runs, isLoading, error, fetchRuns } = useAgentBenchmarks(agentName, benchmark.dataset_id);
+  const { runs, isLoading, error, fetchRuns } = useAgentBenchmarks(
+    agentName,
+    benchmark.dataset_id
+  );
   const navigate = useNavigate();
 
   const {
@@ -25,7 +28,7 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
     deselectRun,
     getSelectedRunsForDataset,
     isRunSelected,
-    clearDatasetSelections
+    clearDatasetSelections,
   } = useGlobalCompare();
 
   const handleToggle = () => {
@@ -64,17 +67,15 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
       >
         <div className='flex gap-1 items-center text-text'>
           <ChevronUpIcon className={cn('size-6', { 'rotate-180': isOpen })} />
-          <span className='text-[16px] '>
-            {benchmark.dataset_id}
-          </span>
+          <span className='text-[16px] '>{benchmark.dataset_id}</span>
         </div>
 
         <span className='text-text-disabled text-sm '>{''}</span>
       </div>
-      {isOpen && (
-        isLoading ? (
-          <div className="flex justify-center p-4">
-             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
+      {isOpen &&
+        (isLoading ? (
+          <div className='flex justify-center p-4'>
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
           </div>
         ) : (
           <AgentRunsView
@@ -82,11 +83,12 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
             agentName={agentName}
             selectedRuns={getSelectedRunsForDataset(benchmark.dataset_id)}
             toggleRunSelection={toggleRunSelection}
-            clearSelectedRuns={() => clearDatasetSelections(benchmark.dataset_id)}
+            clearSelectedRuns={() =>
+              clearDatasetSelections(benchmark.dataset_id)
+            }
             compareSelected={compareSelected}
           />
-        )
-      )}
+        ))}
     </div>
   );
 };

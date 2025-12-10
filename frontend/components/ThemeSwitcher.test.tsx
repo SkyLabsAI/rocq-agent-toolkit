@@ -38,7 +38,9 @@ describe('ThemeSwitcher', () => {
 
     render(<ThemeSwitcher />);
 
-    const button = screen.getByRole('button', { name: /switch to light mode/i });
+    const button = screen.getByRole('button', {
+      name: /switch to light mode/i,
+    });
     expect(button).toBeInTheDocument();
   });
 
@@ -62,7 +64,7 @@ describe('ThemeSwitcher', () => {
       toggleTheme: mockToggleTheme,
     });
 
-    render(<ThemeSwitcher className="custom-class" />);
+    render(<ThemeSwitcher className='custom-class' />);
 
     const button = screen.getByRole('button');
     expect(button).toHaveClass('custom-class');

@@ -5,12 +5,12 @@ import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
 import { GlobalStickyCompareBar } from '@/components/GlobalStickyCompareBar';
 
 const DataView: React.FC = ({}) => {
-  const { benchmarks} = useBenchmarks();
+  const { benchmarks } = useBenchmarks();
 
   return (
     <GlobalCompareProvider>
       <div className='flex flex-col gap-4'>
-        {benchmarks.map((benchmark) => (
+        {benchmarks.map(benchmark => (
           <DataItem key={benchmark.dataset_id} benchmark={benchmark} />
         ))}
       </div>

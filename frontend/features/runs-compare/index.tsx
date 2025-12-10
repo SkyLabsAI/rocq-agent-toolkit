@@ -46,4 +46,3 @@ const ComparePage: React.FC = () => {
 };
 
 export default ComparePage;
-
