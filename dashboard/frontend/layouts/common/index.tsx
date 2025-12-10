@@ -1,7 +1,8 @@
 'use client';
+import { Link } from 'react-router-dom';
+
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { LogoIcon } from '@/icons/logo/logo';
-import { Link } from 'react-router-dom';
 
 const Layout = ({
   title,

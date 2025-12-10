@@ -1,6 +1,7 @@
 'use client';
-import { Run } from '@/types/types';
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
+
+import { type Run } from '@/types/types';
 
 interface SelectedRunContextType {
   selectedRun: Run | null;

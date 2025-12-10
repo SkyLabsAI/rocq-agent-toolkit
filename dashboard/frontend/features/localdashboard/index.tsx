@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+
 import Layout from '@/layouts/common';
+
 import AgentTable from './AgentTable';
 
 const LocalDashboard: React.FC = () => {

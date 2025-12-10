@@ -1,8 +1,9 @@
 import cn from 'classnames';
-import { AgentSummary, Run } from '@/types/types';
+
 import { Button } from '@/components/base';
-import { useDatasetAgentDetails } from '@/hooks/useDatasetAgentDetails';
 import AgentRunsView from '@/features/localdashboard/AgentRunsView';
+import { useDatasetAgentDetails } from '@/hooks/useDatasetAgentDetails';
+import { type AgentSummary, type Run } from '@/types/types';
 
 interface AgentDetailsProps {
   agent: AgentSummary;

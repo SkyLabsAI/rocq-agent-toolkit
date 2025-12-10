@@ -1,7 +1,9 @@
-import { useState } from 'react';
 import cn from 'classnames';
-import { StatusBadge } from '../statusBadge';
+import { useState } from 'react';
+
 import { ChevronUpIcon } from '@/icons/chevron-up';
+
+import { StatusBadge } from '../statusBadge';
 
 export interface TacticObject {
   goal: string;

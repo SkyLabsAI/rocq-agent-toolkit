@@ -1,12 +1,19 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import Modal from '@/components/base/ui/modal';
 import cn from 'classnames';
-import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
+import React, { useEffect, useMemo, useState } from 'react';
+
+import TacticInfoViewer, {
+  type TacticObject,
+} from '@/components/base/tacticInfo';
+import Modal from '@/components/base/ui/modal';
+import { ChevronUpIcon } from '@/icons/chevron-up';
+
 import CodeContent from './components/CodeContent';
 import JsonContent from './components/JsonContent';
-import { useComparisonLogs, ComparisonItem } from './hooks/useComparisonLogs';
+import {
+  type ComparisonItem,
+  useComparisonLogs,
+} from './hooks/useComparisonLogs';
 import { getTabColorClasses } from './utils/tabColors';
-import { ChevronUpIcon } from '@/icons/chevron-up';
 
 interface ComparisonModalProps {
   isOpen: boolean;

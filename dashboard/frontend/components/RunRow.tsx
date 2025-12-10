@@ -1,9 +1,9 @@
 import React from 'react';
+
 import { Button } from '@/components/base/ui/button';
-import cn from 'classnames';
-import { PinOutlineIcon } from '@/icons/pin-outline';
 import { PinIcon } from '@/icons/pin';
-import { Run } from '@/types/types';
+import { PinOutlineIcon } from '@/icons/pin-outline';
+import { type Run } from '@/types/types';
 
 interface RunRowProps {
   run: Run;
@@ -21,7 +21,7 @@ interface RunRowProps {
   tags?: Record<string, string>;
 }
 
-function LatestBadge() {
+const LatestBadge = () => {
   return (
     <div className='flex items-center px-3 py-1 rounded-full bg-background-information border border-blue-500/30'>
       <span className='text-xs font-semibold text-text-information'>
@@ -29,7 +29,7 @@ function LatestBadge() {
       </span>
     </div>
   );
-}
+};
 
 // Chart color config
 const TAG_BACKGROUND_COLOR_CONFIG: Record<string, string> = {

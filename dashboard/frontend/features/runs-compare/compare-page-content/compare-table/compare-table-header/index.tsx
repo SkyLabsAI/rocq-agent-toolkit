@@ -1,7 +1,4 @@
-import { RunDetailsResponse } from '@/types/types';
-import { Button } from '@/components/base';
-import { SortIcon } from '@/icons/sort/sort';
-import { ChevronUpIcon } from '@/icons/chevron-up';
+import { type RunDetailsResponse } from '@/types/types';
 
 interface TaskComparisonHeaderTopProps {
   runs: RunDetailsResponse[];

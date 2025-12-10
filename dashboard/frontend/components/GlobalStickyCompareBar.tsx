@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import StickyCompareBar from '@/components/StickyCompareBar';
 import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
 

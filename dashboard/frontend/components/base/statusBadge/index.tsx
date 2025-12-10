@@ -1,4 +1,4 @@
-export function StatusBadge({ status }: { status: string }) {
+export const StatusBadge = ({ status }: { status: string }) => {
   const lowerStatus = status.toLowerCase();
   const isSuccess = lowerStatus === 'success';
   const isNotFound = lowerStatus === 'not found';
@@ -27,4 +27,4 @@ export function StatusBadge({ status }: { status: string }) {
       </div>
     </div>
   );
-}
+};

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { TaskOutput, AgentRun } from '@/types/types';
+
 import { getDetailsForDataset, getRunDetails } from '@/services/dataservice';
+import { type AgentRun, type TaskOutput } from '@/types/types';
 
 export const useDatasetAgentDetails = (
   datasetId: string,
@@ -23,8 +24,8 @@ export const useDatasetAgentDetails = (
       const data = await getDetailsForDataset(datasetId, agentName);
       setRunDetails(data);
       setTaskDetails([]);
-    } catch (error) {
-      console.error(error);
+    } catch (_error) {
+      // Error handling can be added here if needed
     } finally {
       setLoading(false);
     }
@@ -56,8 +57,8 @@ export const useDatasetAgentDetails = (
       });
 
       setRunTaskDetails(newRunTaskDetails);
-    } catch (error) {
-      console.error('Error fetching run details:', error);
+    } catch (_error) {
+      // Error handling can be added here if needed
     } finally {
       setLoadingRunDetails(prev => {
         const newSet = new Set(prev);

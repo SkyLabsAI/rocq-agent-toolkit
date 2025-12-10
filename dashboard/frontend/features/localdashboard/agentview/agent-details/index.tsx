@@ -1,37 +1,16 @@
 import cn from 'classnames';
-import { useAgentDetails } from '@/hooks/useAgentDetails';
-import AgentRunsView from '../../AgentRunsView';
-import { useEffect, useState } from 'react';
-import { AgentSummary, Run } from '@/types/types';
-import { AgentSummaryTemp } from '@/services/dataservice';
-import { Button } from '@/components/base';
-import { ChevronUpIcon } from '@/icons/chevron-up';
-import { AgentBenchmark } from './agent-benchmarks';
+
 import { useBenchmarks } from '@/hooks/use-dataview';
+import { useAgentDetails } from '@/hooks/useAgentDetails';
+import { type AgentSummary } from '@/types/types';
+
+import { AgentBenchmark } from './agent-benchmarks';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
-  activeAgent?: boolean;
-  setActiveAgent: (agent: string) => void;
-  agentDetailData: AgentSummaryTemp;
-  isSelected: boolean;
-  toggleSelection: () => void;
-  selectedRuns: string[];
-  toggleRunSelection: (run: Run) => void;
-  clearSelectedRuns: () => void;
-  compareSelectedRuns: () => void;
 }
 
-const AgentDetails: React.FC<AgentDetailsProps> = ({
-  agent,
-  agentDetailData,
-  isSelected,
-  toggleSelection,
-  selectedRuns,
-  toggleRunSelection,
-  clearSelectedRuns,
-  compareSelectedRuns,
-}) => {
+const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
   const { loading, runDetails, isOpen, toggleDetails } = useAgentDetails(
     agent.agent_name
   );

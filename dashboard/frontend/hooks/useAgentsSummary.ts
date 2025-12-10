@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+
 import {
-  AgentSummaryTemp,
+  type AgentSummaryTemp,
   fetchAgentSummaries,
   getData,
   getObservabilityLogs,
 } from '@/services/dataservice';
-import { AgentSummary, TaskOutput } from '@/types/types';
+import { type AgentSummary, type TaskOutput } from '@/types/types';
 
 interface ModalState {
   isOpen: boolean;
@@ -53,7 +54,6 @@ export const useAgents = () => {
         logs: logs,
       });
     } catch (error) {
-      console.error('Error fetching observability logs:', error);
       setModalState({
         isOpen: true,
         selectedTask: task,

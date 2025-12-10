@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+
 import Button from '@/components/base/ui/button';
-import { RefreshIcon } from '@/icons/refresh';
 import SlidingTabs from '@/components/base/ui/sliding-tabs';
-import AgentView from './agentview';
-import DataView from './dataview';
 import AgentListIcon from '@/icons/agent-list';
 import { DataSetListIcon } from '@/icons/dataset-list';
+import { RefreshIcon } from '@/icons/refresh';
+
+import AgentView from './agentview';
+import DataView from './dataview';
 
 const AgentTable: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'agents' | 'datasets'>('agents');

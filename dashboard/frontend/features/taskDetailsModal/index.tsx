@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import Modal from '@/components/base/ui/modal';
-import CodeViewer from '@/components/base/codeViewer';
-import TacticInfoViewer, { TacticObject } from '@/components/base/tacticInfo';
 import cn from 'classnames';
+import React, { useState } from 'react';
+
+import CodeViewer from '@/components/base/codeViewer';
+import TacticInfoViewer, {
+  type TacticObject,
+} from '@/components/base/tacticInfo';
+import Modal from '@/components/base/ui/modal';
 
 interface TaskDetailsModalProps {
   isOpen: boolean;
@@ -17,7 +20,6 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   onClose,
   details,
   title = 'Task Details',
-  taskId,
 }) => {
   const [activeTab, setActiveTab] = useState<string>('');
 
@@ -172,7 +174,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     );
   };
 
-  const getTabColorClasses = (key: string, isActive: boolean) => {
+  const getTabColorClasses = (isActive: boolean) => {
     if (isActive) {
       return 'border-text-information text-text';
     }

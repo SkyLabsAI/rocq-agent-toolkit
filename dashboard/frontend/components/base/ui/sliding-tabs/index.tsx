@@ -1,5 +1,5 @@
-import React, { useState, useRef, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 
 export interface Tab {
   id: string;

@@ -1,5 +1,7 @@
 import React, { Suspense } from 'react';
+
 import Layout from '@/layouts/common';
+
 import { AgentCompareContent } from './agent-compare-content';
 
 const AgentCompareTable: React.FC = () => {

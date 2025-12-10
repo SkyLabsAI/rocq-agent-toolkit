@@ -1,12 +1,13 @@
-import {
-  AgentRun,
-  AgentSummary,
-  Benchmark,
-  RunDetailsResponse,
-  TaskOutput,
-} from '@/types/types';
 import axios from 'axios';
+
 import { config } from '@/config/env';
+import {
+  type AgentRun,
+  type AgentSummary,
+  type Benchmark,
+  type RunDetailsResponse,
+  type TaskOutput,
+} from '@/types/types';
 
 // Check if we should use mock data
 const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
@@ -138,7 +139,6 @@ const getDataMock: () => Promise<AgentSummary[]> = async () => {
     },
   ];
 
-  console.log('Fetched agent summaries (MOCK):', mockData);
   return mockData;
 };
 
@@ -249,7 +249,6 @@ const getRunDetailsReal = async (
   const response = await axios.get(
     `${config.DATA_API}/runs/details?run_ids=${runIdsParam}`
   );
-  console.log('Fetched run details:', response.data);
   return response.data as RunDetailsResponse[];
 };
 
@@ -322,7 +321,6 @@ const getObservabilityLogsReal = async (
   const response = await axios.get(
     `${config.DATA_API}/observability/logs?run_id=${runId}&task_id=${encodedTaskId}`
   );
-  console.log('Fetched observability logs:', response.data);
   return response.data.labels || {};
 };
 
@@ -444,7 +442,6 @@ const refreshDataReal = async (): Promise<{
   total_agents: number;
 }> => {
   const response = await axios.post(`${config.DATA_API}/refresh`);
-  console.log('Refresh response:', response.data);
   return response.data;
 };
 
@@ -481,7 +478,6 @@ export type AgentSummaryTemp = {
 
 export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
   // 1. Fetch all agents
-  console.log('Fetching agent summaries...');
 
   const agentsRes = await getData();
   const agents: AgentSummary[] = agentsRes;
@@ -545,7 +541,6 @@ export const getBenchmarks = USE_MOCK_DATA
 const getBenchmarkAgentsReal = async (
   benchmarkId: string
 ): Promise<BenchmarkAgentData> => {
-  console.log('Fetching agents for benchmark:', benchmarkId);
   const response = await axios.get(`${config.DATA_API}/${benchmarkId}/agents`);
   return response.data as BenchmarkAgentData;
 };

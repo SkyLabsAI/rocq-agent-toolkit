@@ -1,5 +1,5 @@
-import { Page, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { expect, type Page } from '@playwright/test';
 
 /**
  * Wait for the page to be fully loaded
@@ -40,7 +40,7 @@ export async function isElementVisible(
  */
 export async function checkAccessibility(
   page: Page,
-  options?: {
+  _options?: {
     detailedReport?: boolean;
     detailedReportOptions?: { html?: boolean };
   }

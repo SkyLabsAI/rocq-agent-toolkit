@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+import ComparisonModal from '@/components/base/comparisonModal';
 import { useAgents } from '@/hooks/useAgentsSummary';
 import { getRunDetails } from '@/services/dataservice';
-import { RunDetailsResponse } from '@/types/types';
+import { type RunDetailsResponse } from '@/types/types';
+
+import { type RunTaskCell } from '../runs-compare';
 import { CompareRunsHeader } from '../runs-compare/compare-page-content/compare-page-header';
 import { RunSummary } from '../runs-compare/compare-page-content/compare-page-summary';
 import { ComparisonTable } from '../runs-compare/compare-page-content/compare-table';
@@ -10,8 +14,6 @@ import {
   computeRunStats,
   transformRunsToTaskRows,
 } from '../runs-compare/compare-page-content/utils';
-import { RunStats, RunTaskCell } from '../runs-compare';
-import ComparisonModal from '@/components/base/comparisonModal';
 
 export const AgentCompareContent: React.FC = () => {
   const [sp] = useSearchParams();
@@ -77,7 +79,6 @@ export const AgentCompareContent: React.FC = () => {
         const runDetails = await getRunDetails(bestRunIds);
         setBestRuns(runDetails);
       } catch (err) {
-        console.error('Error fetching best runs:', err);
         setError(
           err instanceof Error ? err.message : 'Failed to fetch run details'
         );

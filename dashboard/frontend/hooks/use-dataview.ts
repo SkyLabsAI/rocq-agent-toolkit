@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { getBenchmarks, getBenchmarkAgents } from '@/services/dataservice';
-import { AgentSummary, Benchmark } from '@/types/types';
+import { useEffect, useState } from 'react';
+
+import { getBenchmarkAgents, getBenchmarks } from '@/services/dataservice';
+import { type AgentSummary, type Benchmark } from '@/types/types';
 
 export const useBenchmarks = () => {
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
@@ -14,7 +15,6 @@ export const useBenchmarks = () => {
       const data = await getBenchmarks();
       setBenchmarks(data);
     } catch (err) {
-      console.error('Error fetching benchmarks:', err);
       setError(
         err instanceof Error ? err.message : 'Failed to fetch benchmarks'
       );
@@ -47,7 +47,6 @@ export const useBenchmarkAgents = (benchmarkId: string | null) => {
       const data = await getBenchmarkAgents(id);
       setAgents(data.agents);
     } catch (err) {
-      console.error(`Error fetching agents for benchmark ${id}:`, err);
       setError(
         err instanceof Error ? err.message : 'Failed to fetch benchmark agents'
       );

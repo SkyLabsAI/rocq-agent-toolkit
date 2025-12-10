@@ -2,10 +2,12 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'RAT Dashboard',
 };
-import { Geist, Geist_Mono } from 'next/font/google';
-import { ThemeProvider } from '@/contexts/ThemeContext';
 import './globals.css';
+
+import { Geist, Geist_Mono } from 'next/font/google';
+
 import { SelectedRunProvider } from '@/contexts/SelectedRunContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -17,11 +19,11 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export default function RootLayout({
+const RootLayout = ({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
+}>) => {
   return (
     <html lang='en'>
       <body
@@ -33,4 +35,6 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
+};
+
+export default RootLayout;

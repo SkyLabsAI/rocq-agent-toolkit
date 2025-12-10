@@ -1,4 +1,4 @@
-export function getTabColorClasses(key: string, isActive: boolean): string {
+export function getTabColorClasses(_key: string, isActive: boolean): string {
   if (isActive) {
     return 'border-text-information text-text';
   }

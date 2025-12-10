@@ -1,5 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expect, type Page, test } from '@playwright/test';
 
 /**
  * Wait for the page to be fully loaded
