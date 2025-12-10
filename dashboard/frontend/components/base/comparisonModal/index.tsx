@@ -219,7 +219,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
 export default ComparisonModal;
 
 interface ComparisonItemCardProps {
-  item: any;
+  item: ComparisonItem;
   hasData: boolean;
   value: unknown;
   activeTab: string;

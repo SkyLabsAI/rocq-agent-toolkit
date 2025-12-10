@@ -22,32 +22,52 @@ export const TaskDetailsTable = ({
 // --- Helper 1: Flatten nested objects into dot-notation keys ---
 // Input: { token_counts: { total: 10, input: 5 } }
 // Output: ["token_counts.total", "token_counts.input"]
-function getFlatKeys(obj: any, prefix = ''): string[] {
+function getFlatKeys(
+  obj: Record<string, unknown> | object,
+  prefix = ''
+): string[] {
   if (!obj || typeof obj !== 'object') return [];
 
-  return Object.keys(obj).reduce((acc: string[], key) => {
-    const newPath = prefix ? `${prefix}.${key}` : key;
+  return Object.keys(obj as Record<string, unknown>).reduce(
+    (acc: string[], key) => {
+      const newPath = prefix ? `${prefix}.${key}` : key;
 
-    if (
-      typeof obj[key] === 'object' &&
-      obj[key] !== null &&
-      !Array.isArray(obj[key]) // Don't flatten arrays, treat them as values
-    ) {
-      acc.push(...getFlatKeys(obj[key], newPath));
-    } else {
-      acc.push(newPath);
-    }
-    return acc;
-  }, []);
+      if (
+        typeof (obj as Record<string, unknown>)[key] === 'object' &&
+        (obj as Record<string, unknown>)[key] !== null &&
+        !Array.isArray((obj as Record<string, unknown>)[key]) // Don't flatten arrays, treat them as values
+      ) {
+        acc.push(
+          ...getFlatKeys(
+            (obj as Record<string, unknown>)[key] as object,
+            newPath
+          )
+        );
+      } else {
+        acc.push(newPath);
+      }
+      return acc;
+    },
+    []
+  );
 }
 
 // --- Helper 2: Deep Value Accessor ---
 // Input: (taskObject, "metrics.token_counts.total")
 // Output: 10 or undefined
-function getNestedValue(obj: any, path: string): any {
-  return path
-    .split('.')
-    .reduce((acc, part) => (acc ? acc[part] : undefined), obj);
+function getNestedValue(
+  obj: Record<string, unknown> | object,
+  path: string
+): unknown {
+  return path.split('.').reduce(
+    (acc: unknown, part) => {
+      if (acc && typeof acc === 'object' && !Array.isArray(acc)) {
+        return (acc as Record<string, unknown>)[part];
+      }
+      return undefined;
+    },
+    obj as Record<string, unknown>
+  );
 }
 
 // --- Main Interface for your Table Row ---
