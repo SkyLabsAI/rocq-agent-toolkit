@@ -18,10 +18,10 @@ class Test_RDM_sess(RDM_Tests):
         with rdm.sess(load_file=False):
             RDM_Tests.assert_check_ok(rdm)
 
-    def test_sess_load(self, loadable_rdm: RocqCursor) -> None:
+    def test_sess_load(self, loadable_rdm: RocqDocManager) -> None:
         with loadable_rdm.sess():
-            assert not isinstance(loadable_rdm.run_step(), RocqCursor.Resp)
-            RDM_Tests.assert_check_ok(loadable_rdm, term="N", lhs="N")
+            assert not isinstance(loadable_rdm.cursor().run_step(), RocqCursor.Resp)
+            RDM_Tests.assert_check_ok(loadable_rdm.cursor(), term="N", lhs="N")
 
     def test_sess_load_nonexistent(self, transient_rdm: RocqDocManager) -> None:
         with pytest.raises(RocqCursor.Error) as exc_info:
@@ -60,28 +60,29 @@ class Test_RDM_ctx(RDM_Tests):
     @settings(deadline=None)
     def test_property_rollback_ignores_blanks(
         self,
-        transient_shared_rdm: RocqCursor,
+        transient_shared_rdm: RocqDocManager,
         prefix: list[tuple[str, bool]],
         rollback: list[tuple[str, bool]],
         suffix: list[tuple[str, bool]],
     ) -> None:
+        rc = transient_shared_rdm.cursor()
         def _process(items: list[tuple[str, bool]]) -> None:
             for text, is_cmd in items:
                 if is_cmd:
                     assert not isinstance(
-                        transient_shared_rdm.insert_command(text), RocqCursor.Err
+                        rc.insert_command(text), RocqCursor.Err
                     )
                 else:
-                    transient_shared_rdm.insert_blanks(text)
+                    rc.insert_blanks(text)
 
         # Set up the document to contain a suffix and prefix of interleaved
         # blanks/commands
         _process(suffix)
-        transient_shared_rdm.revert_before(False, 0)
+        rc.revert_before(False, 0)
         _process(prefix)
 
-        with RDM_Tests.assert_doc_unchanged(transient_shared_rdm):
-            with transient_shared_rdm.ctx(rollback=True):
+        with RDM_Tests.assert_doc_unchanged(rc):
+            with rc.ctx(rollback=True):
                 _process(rollback)
 
 
@@ -89,9 +90,10 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
     @pytest.mark.parametrize("rollback", [True, False])
     def test_side_effects(
         self,
-        transient_rdm: RocqCursor,
+        transient_rdm: RocqDocManager,
         rollback: bool,
     ) -> None:
+        rc = transient_rdm.cursor()
         goal = "True /\\ 1 = 1"
         proof_goal = "\n============================\n" + goal
         tac = "intuition auto."
@@ -101,17 +103,17 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
             "Abort.",
         ]
         with (
-            RDM_Tests.assert_doc_unchanged(transient_rdm)
+            RDM_Tests.assert_doc_unchanged(rc)
             if rollback
-            else RDM_Tests.assert_commands_inserted(transient_rdm, cmds=cmds)
+            else RDM_Tests.assert_commands_inserted(rc, cmds=cmds)
         ):
-            with transient_rdm.aborted_goal_ctx(goal=goal, rollback=rollback):
-                idtac_reply = transient_rdm.run_command("idtac.")
+            with rc.aborted_goal_ctx(goal=goal, rollback=rollback):
+                idtac_reply = rc.run_command("idtac.")
                 assert isinstance(idtac_reply, RocqCursor.CommandData)
                 assert idtac_reply.proof_state is not None
                 assert idtac_reply.proof_state.focused_goals == [proof_goal]
 
-                tac_reply = transient_rdm.insert_command(tac)
+                tac_reply = rc.insert_command(tac)
                 assert isinstance(tac_reply, RocqCursor.CommandData)
                 assert tac_reply.proof_state is not None
                 assert tac_reply.proof_state.focused_goals == []
@@ -121,21 +123,22 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
 
 
 class Test_RDM_Section(RDM_Tests):
-    def test_Context(self, transient_rdm: RocqCursor) -> None:
-        with RDM_Tests.assert_doc_unchanged(transient_rdm):
+    def test_Context(self, transient_rdm: RocqDocManager) -> None:
+        rc = transient_rdm.cursor()
+        with RDM_Tests.assert_doc_unchanged(rc):
             context = [
                 ("n", "nat"),
                 ("b", "bool"),
                 ("Hnb", "if b then n = 1 else n = 0"),
             ]
-            with transient_rdm.Section(
+            with rc.Section(
                 "test",
                 context=[f"({ident} : {ty})" for ident, ty in context],
                 rollback=True,
             ):
                 for ident, ty in context:
                     RDM_Tests.assert_check_ok(
-                        transient_rdm,
+                        rc,
                         term=ident,
                         lhs=ident,
                         rhs=ty,

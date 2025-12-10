@@ -10,10 +10,11 @@ from .util import RDM_Tests
 
 
 class Test_API(RDM_Tests):
-    def test_load_file(self, loadable_rdm: RocqCursor) -> None:
-        assert loadable_rdm.load_file() is None
+    def test_load_file(self, loadable_rdm: RocqDocManager) -> None:
+        rc = loadable_rdm.cursor()
+        assert rc.load_file() is None
 
-        result = loadable_rdm.doc_suffix()
+        result = rc.doc_suffix()
         assert result == [
             RocqCursor.SuffixItem(**kwargs)
             for kwargs in [
@@ -39,18 +40,20 @@ class Test_API(RDM_Tests):
 
     def test_Check_query_text(
         self,
-        transient_rdm: RocqCursor,
+        transient_rdm: RocqDocManager,
     ) -> None:
-        check_reply = transient_rdm.query_text("Check nat.", 0)
+        rc = transient_rdm.cursor()
+        check_reply = rc.query_text("Check nat.", 0)
         assert not isinstance(check_reply, RocqCursor.Err)
         assert check_reply == "nat\n     : Set"
 
     def test_doc_suffix(
         self,
-        loadable_rdm: RocqCursor,
+        loadable_rdm: RocqDocManager,
     ) -> None:
         with loadable_rdm.sess() as rdm:
-            assert rdm.doc_suffix() == [
+            rc = rdm.cursor()
+            assert rc.doc_suffix() == [
                 RocqCursor.SuffixItem(
                     text="Require Import Stdlib.ZArith.BinInt.",
                     kind="command",
@@ -123,10 +126,11 @@ class Test_API(RDM_Tests):
 
     def test_run_command_tac_fail(
         self,
-        transient_rdm: RocqCursor,
+        transient_rdm: RocqDocManager,
     ) -> None:
-        with transient_rdm.aborted_goal_ctx(goal="False"):
-            fail_tac_reply = transient_rdm.run_command("solve [auto].")
+        rc = transient_rdm.cursor()
+        with rc.aborted_goal_ctx(goal="False"):
+            fail_tac_reply = rc.run_command("solve [auto].")
             assert isinstance(fail_tac_reply, RocqCursor.Err)
             assert fail_tac_reply.message == "No applicable tactic."
 
@@ -134,7 +138,7 @@ class Test_API(RDM_Tests):
         self,
         tmp_path: Path,
         /,
-        rdm_cls: type[RocqCursor],
+        rc_cls: type[RocqCursor],
         should_succeed: bool,
     ) -> None:
         tmp_v = tmp_path / "foo.v"
@@ -142,16 +146,16 @@ class Test_API(RDM_Tests):
         with tmp_rdm.sess(load_file=False):
             rc = tmp_rdm.cursor()
             assert not isinstance(
-                rdm_cls.insert_command(rc, "Check tt."),
-                rdm_cls.Err,
+                rc_cls.insert_command(rc, "Check tt."),
+                rc_cls.Err,
             )
             # NOTE: no intervening blank
             assert not isinstance(
-                rdm_cls.insert_command(rc, "Check tt."),
-                rdm_cls.Err,
+                rc_cls.insert_command(rc, "Check tt."),
+                rc_cls.Err,
             )
-            rdm_cls.commit(rc, True)
-            compile_result = rdm_cls.compile(rc)
+            rc_cls.commit(rc, True)
+            compile_result = rc_cls.compile(rc)
             if should_succeed:
                 assert compile_result.error is None
             else:
@@ -163,7 +167,7 @@ class Test_API(RDM_Tests):
     ) -> None:
         self._test_API_PATCH_insert_commands_without_intervening_blanks(
             tmp_path,
-            rdm_cls=RocqCursor,
+            rc_cls=RocqCursor,
             should_succeed=False,
         )
 
@@ -173,33 +177,34 @@ class Test_API(RDM_Tests):
     ) -> None:
         self._test_API_PATCH_insert_commands_without_intervening_blanks(
             tmp_path,
-            rdm_cls=RocqCursor,
+            rc_cls=RocqCursor,
             should_succeed=True,
         )
 
     def _test_API_PATCH_double_load_file(
         self,
         caplog: pytest.LogCaptureFixture,
-        loadable_rdm: RocqCursor,
+        loadable_rdm: RocqDocManager,
         /,
-        rdm_cls: type[RocqCursorProtocol],
+        rc_cls: type[RocqCursorProtocol],
         duplicates_doc_content: bool,
     ) -> None:
+        rc = loadable_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             assert not isinstance(
-                rdm_cls.load_file(loadable_rdm),
-                rdm_cls.Err,
+                rc_cls.load_file(rc),
+                rc_cls.Err,
             )
             suffix = loadable_rdm.doc_suffix()
             assert not isinstance(
-                rdm_cls.load_file(loadable_rdm),
-                rdm_cls.Err,
+                rc_cls.load_file(rc),
+                rc_cls.Err,
             )
             if duplicates_doc_content:
-                assert loadable_rdm.doc_suffix() == suffix * 2
+                assert rc.doc_suffix() == suffix * 2
                 assert not caplog.text
             else:
-                assert loadable_rdm.doc_suffix() == suffix
+                assert rc.doc_suffix() == suffix
                 assert "duplicates document content" in caplog.text
 
     def test_double_load_file_duplicates_doc_content(
@@ -210,7 +215,7 @@ class Test_API(RDM_Tests):
         return self._test_API_PATCH_double_load_file(
             caplog,
             loadable_rdm,
-            rdm_cls=RocqCursor,
+            rc_cls=RocqCursor,
             duplicates_doc_content=True,
         )
 
@@ -222,6 +227,6 @@ class Test_API(RDM_Tests):
         return self._test_API_PATCH_double_load_file(
             caplog,
             loadable_rdm,
-            rdm_cls=RocqCursor,
+            rc_cls=RocqCursor,
             duplicates_doc_content=True,
         )

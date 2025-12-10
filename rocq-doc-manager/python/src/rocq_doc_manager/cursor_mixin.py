@@ -40,7 +40,6 @@ class CursorMixin(RocqCursorProtocol):
         self, text: str, indices: list[int] | None
     ) -> list[Any] | API.Err[API.CommandError]:
         return self.query_json_all(text, indices)
-
     # ===== END: deprecations =================================================
 
     # ===== BEGIN: API patches ================================================
@@ -68,7 +67,6 @@ class CursorMixin(RocqCursorProtocol):
                 )
             self.insert_blanks(blanks)
         return insert_reply
-
     # ===== END: API patches ==================================================
 
     # ===== BEGIN: contextmanagers ============================================
