@@ -9,8 +9,8 @@ export function StatusBadge({ status }: { status: string }) {
           isSuccess
             ? 'bg-background-success/50'
             : isNotFound
-            ? 'bg-gray-300'
-            : 'bg-background-danger'
+              ? 'bg-gray-300'
+              : 'bg-background-danger'
         }`}
       >
         <p
@@ -18,8 +18,8 @@ export function StatusBadge({ status }: { status: string }) {
             isSuccess
               ? 'text-text-success'
               : isNotFound
-              ? 'text-gray-600'
-              : 'text-text-danger'
+                ? 'text-gray-600'
+                : 'text-text-danger'
           }`}
         >
           {status}

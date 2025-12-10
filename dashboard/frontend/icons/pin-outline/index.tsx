@@ -4,7 +4,13 @@ export const PinOutlineIcon: React.FC<{ className?: string }> = ({
   className,
 }) => {
   return (
-    <svg width='20' height='20' fill='currentColor' viewBox='0 0 20 20' className={className}>
+    <svg
+      width='20'
+      height='20'
+      fill='currentColor'
+      viewBox='0 0 20 20'
+      className={className}
+    >
       <path
         fill='currentColor'
         fillOpacity='.25'

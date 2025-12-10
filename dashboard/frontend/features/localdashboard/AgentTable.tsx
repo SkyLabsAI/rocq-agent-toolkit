@@ -7,8 +7,6 @@ import DataView from './dataview';
 import AgentListIcon from '@/icons/agent-list';
 import { DataSetListIcon } from '@/icons/dataset-list';
 
-
-
 const AgentTable: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'agents' | 'datasets'>('agents');
 

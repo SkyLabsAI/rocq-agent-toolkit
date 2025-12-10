@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React from 'react';
 import { useSelectedRun } from '@/contexts/SelectedRunContext';
@@ -15,7 +15,6 @@ type AgentRunsViewProps = {
   clearSelectedRuns: () => void;
   compareSelected: () => void;
 };
-
 
 export function isLatestRun(run: AgentRun, runs: AgentRun[]): boolean {
   if (!runs.length) return false;
@@ -46,7 +45,9 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
     }
   };
 
-  const [pinnedRuns, setPinnedRuns] = React.useState<Set<string>>(() => loadPinnedRuns(agentName));
+  const [pinnedRuns, setPinnedRuns] = React.useState<Set<string>>(() =>
+    loadPinnedRuns(agentName)
+  );
 
   // Save pinned runs to localStorage whenever it changes
   React.useEffect(() => {
@@ -58,14 +59,12 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
     }
   }, [pinnedRuns, agentName]);
 
-
   const handleRunClick = (run: Run) => {
     setSelectedRun(run);
   };
 
-
   const toggleOnPin = (run: Run) => {
-    setPinnedRuns((prev) => {
+    setPinnedRuns(prev => {
       const newSet = new Set(prev);
       if (newSet.has(run.run_id)) {
         newSet.delete(run.run_id);
@@ -77,11 +76,13 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   };
 
   return (
-   <>
-   <div className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20 space-y-4 relative '>
+    <>
+      <div className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20 space-y-4 relative '>
         <div className='flex gap-1 items-center'>
           <PlayIcon />
-          <h3 className='text-[16px] leading-4 font-semibold text-text'>Runs</h3>
+          <h3 className='text-[16px] leading-4 font-semibold text-text'>
+            Runs
+          </h3>
         </div>
 
         <div>
@@ -104,18 +105,21 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
 
         <div>
           {/* Invisible button to match content row button dimensions */}
-          <div className='bg-transparent relative rounded border border-transparent opacity-0 pointer-events-none'>
-           
-          </div>
+          <div className='bg-transparent relative rounded border border-transparent opacity-0 pointer-events-none'></div>
         </div>
       </div>
 
       {/* LocalView view: Runs list with selectable compare actions */}
       <div className='flex flex-col gap-2 relative mb-9'>
-        {(runDetails || []).length > 0 && [
-          ...runDetails.filter(run => pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
-          ...runDetails.filter(run => !pinnedRuns.has(run.run_id)).sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
-        ].map((run, index, arr) => (
+        {(runDetails || []).length > 0 &&
+          [
+            ...runDetails
+              .filter(run => pinnedRuns.has(run.run_id))
+              .sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
+            ...runDetails
+              .filter(run => !pinnedRuns.has(run.run_id))
+              .sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
+          ].map((run, index, arr) => (
             <RunRow
               run={run}
               isLatest={isLatestRun(run, arr)}
@@ -130,10 +134,9 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
               onPin={toggleOnPin}
               isPinned={pinnedRuns.has(run.run_id)}
               key={run.run_id}
-              index ={index}
+              index={index}
             />
-
-        ))}
+          ))}
       </div>
 
       <StickyCompareBar
@@ -142,13 +145,8 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         onCompareSelected={compareSelected}
         attribute='Runs'
       />
-   </>   
-
+    </>
   );
 };
-
-
-
-
 
 export default AgentRunsView;

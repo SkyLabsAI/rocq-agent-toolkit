@@ -17,12 +17,15 @@ const Layout = ({
         <div className='flex items-center justify-between gap-4 backdrop-blur-sm  px-10 py-[10px]'>
           <div className='flex items-center'>
             <Link to={'/'}>
-            <div className='flex items-center' onClick={()=>window.location.reload()} >
-              <LogoIcon />
-              <h1 className="ml-2.5 text-text font-['Noto_Sans'] text-base font-normal text-[16px] leading-[normal]">
-                Skylabs AI
-              </h1>
-            </div>
+              <div
+                className='flex items-center'
+                onClick={() => window.location.reload()}
+              >
+                <LogoIcon />
+                <h1 className="ml-2.5 text-text font-['Noto_Sans'] text-base font-normal text-[16px] leading-[normal]">
+                  Skylabs AI
+                </h1>
+              </div>
             </Link>
             <div className='h-7 w-px mx-4.5 bg-background-accent-gray-subtlest'></div>
             <h1 className="text-text-subtlest font-['Noto_Sans'] text-base text-[16px] font-normal leading-[normal]">
@@ -33,10 +36,9 @@ const Layout = ({
         </div>
       </div>
 
-<main className='main' role='main'>
-
-      <div className='px-10  mt-19 pb-19'>{children}</div>
-</main>
+      <main className='main' role='main'>
+        <div className='px-10  mt-19 pb-19'>{children}</div>
+      </main>
     </div>
   );
 };

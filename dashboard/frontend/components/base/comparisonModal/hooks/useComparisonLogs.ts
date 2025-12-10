@@ -28,7 +28,10 @@ export function useComparisonLogs(isOpen: boolean, items: ComparisonItem[]) {
           items.map(async (item, index) => {
             if (item.task) {
               try {
-                const taskLogs = await getObservabilityLogs(item.task.run_id, item.task.task_id);
+                const taskLogs = await getObservabilityLogs(
+                  item.task.run_id,
+                  item.task.task_id
+                );
                 logs[index] = taskLogs;
               } catch (err) {
                 logs[index] = null;

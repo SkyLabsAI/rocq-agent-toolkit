@@ -24,11 +24,7 @@ module.exports = {
     sourceType: 'module',
     project: './tsconfig.json',
   },
-  plugins: [
-    'react',
-    '@typescript-eslint',
-    'prettier',
-  ],
+  plugins: ['react', '@typescript-eslint', 'prettier'],
   rules: {
     // Prettier rules
     'prettier/prettier': ['error', {}, { usePrettierrc: true }],
@@ -37,10 +33,7 @@ module.exports = {
     'react/react-in-jsx-scope': 'off', // Next.js doesn't require React import
     'react/jsx-props-no-spreading': 'off', // Allow prop spreading
     'react/require-default-props': 'off', // Not needed with TypeScript
-    'react/jsx-filename-extension': [
-      'error',
-      { extensions: ['.jsx', '.tsx'] },
-    ],
+    'react/jsx-filename-extension': ['error', { extensions: ['.jsx', '.tsx'] }],
     'react/function-component-definition': [
       'error',
       {
@@ -142,11 +135,7 @@ module.exports = {
     },
     // Config files
     {
-      files: [
-        '*.config.{js,ts}',
-        '.eslintrc.js',
-        'next-env.d.ts',
-      ],
+      files: ['*.config.{js,ts}', '.eslintrc.js', 'next-env.d.ts'],
       rules: {
         '@typescript-eslint/no-var-requires': 'off',
         'import/no-extraneous-dependencies': 'off',

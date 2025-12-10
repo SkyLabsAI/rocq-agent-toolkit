@@ -8,7 +8,7 @@ const ChevronUpSmallIcon = () => (
     >
       <g id='mdi:chevron-up'>
         <path
-          d="M5.5575 11.5575L9 8.1225L12.4425 11.5575L13.5 10.5L9 6L4.5 10.5L5.5575 11.5575Z"
+          d='M5.5575 11.5575L9 8.1225L12.4425 11.5575L13.5 10.5L9 6L4.5 10.5L5.5575 11.5575Z'
           fill='var(--fill-0, #CECFD2)'
           id='Vector'
         />

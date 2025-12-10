@@ -4,7 +4,6 @@ import { Button } from '@/components/base';
 import { useDatasetAgentDetails } from '@/hooks/useDatasetAgentDetails';
 import AgentRunsView from '@/features/localdashboard/AgentRunsView';
 
-
 interface AgentDetailsProps {
   agent: AgentSummary;
   datasetId: string;
@@ -26,12 +25,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
   clearSelectedRuns,
   compareSelectedRuns,
 }) => {
-  const {
-    loading,
-    runDetails,
-    isOpen,
-    toggleDetails,
-  } = useDatasetAgentDetails(datasetId, agent.agent_name);
+  const { loading, runDetails, isOpen, toggleDetails } = useDatasetAgentDetails(
+    datasetId,
+    agent.agent_name
+  );
 
   return (
     <>
@@ -55,7 +52,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6   rounded-lg flex items-center justify-center'>
               <span className='text-text font-semibold text-sm'>
-                {((agent.best_run?.success_rate ?? 0)*100).toFixed(2)}%
+                {((agent.best_run?.success_rate ?? 0) * 100).toFixed(2)}%
               </span>
             </div>
           </div>
@@ -90,19 +87,16 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
         </td>
         <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3 justify-center'>
-          
-
             <Button
               variant={isSelected ? 'danger' : 'default'}
               onClick={e => {
-             e.stopPropagation();
+                e.stopPropagation();
                 toggleSelection();
               }}
               className='text-sm whitespace-nowrap text-[14px] font-normal float-end w-[100px] flex justify-center'
             >
               {isSelected ? 'Deselect' : 'Compare'}
             </Button>
-        
           </div>
         </td>
       </tr>
@@ -114,9 +108,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
               {loading ? (
                 <div className='flex items-center justify-center py-8'>
                   <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
-                  <span className='ml-3 text-text'>
-                    Loading run details...
-                  </span>
+                  <span className='ml-3 text-text'>Loading run details...</span>
                 </div>
               ) : runDetails.length === 0 ? (
                 <div className='text-center py-8 text-text'>

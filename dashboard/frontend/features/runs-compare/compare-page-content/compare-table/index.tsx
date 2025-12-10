@@ -62,12 +62,20 @@ const TaskSection: React.FC<TaskSectionProps> = ({
   onOpenModal,
   taskRowData,
 }) => {
-  const [open,setOpen] = useState(true)
+  const [open, setOpen] = useState(true);
 
   return (
     <>
-      <TaskHeader id={id} details={details} onOpenModal={onOpenModal}  onClick={() => setOpen(!open)} isExpanded={open} />
-      {open && <TaskDetailsTable id={id} details={details} taskRowData={taskRowData} />}
+      <TaskHeader
+        id={id}
+        details={details}
+        onOpenModal={onOpenModal}
+        onClick={() => setOpen(!open)}
+        isExpanded={open}
+      />
+      {open && (
+        <TaskDetailsTable id={id} details={details} taskRowData={taskRowData} />
+      )}
     </>
   );
 };

@@ -6,13 +6,11 @@ import { AgentSummaryTemp } from '@/services/dataservice';
 import TaskDetailsModal from '@/features/taskDetailsModal';
 import RunDetailsView from '@/components/RunDetailsView';
 import StickyCompareBar from '@/components/StickyCompareBar';
-import {  useSelectedRun } from '@/contexts/SelectedRunContext';
+import { useSelectedRun } from '@/contexts/SelectedRunContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAgents } from '@/hooks/useAgentsSummary';
 import { Run } from '@/types/types';
 import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
-
-
 
 const AgentView: React.FC = ({}) => {
   const { agentData, agentDetailData, modalState, closeModal, openCodeModal } =

@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import { useState } from 'react';
 import cn from 'classnames';
 import { StatusBadge } from '../statusBadge';
 import { ChevronUpIcon } from '@/icons/chevron-up';
@@ -6,7 +6,7 @@ import { ChevronUpIcon } from '@/icons/chevron-up';
 export interface TacticObject {
   goal: string;
   tactic_prediction_tactic: string;
-  status?: 'success' | 'failure' | "not found";
+  status?: 'success' | 'failure' | 'not found';
   tactic_prediction_explanation: string;
   [key: string]: unknown; // Additional dynamic properties
 }
@@ -17,10 +17,14 @@ interface TacticItemProps {
   additionalKeys: Set<string>;
 }
 
-const TacticItem: React.FC<TacticItemProps> = ({ tactic, index, additionalKeys }) => {
+const TacticItem: React.FC<TacticItemProps> = ({
+  tactic,
+  index,
+  additionalKeys,
+}) => {
   const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false);
 
-  const getStatusBgColor = (status: 'success' | 'failure' | "not found") => {
+  const getStatusBgColor = (status: 'success' | 'failure' | 'not found') => {
     const lower = status.toLowerCase();
     if (lower === 'success') {
       return 'bg-text-success';
@@ -38,17 +42,19 @@ const TacticItem: React.FC<TacticItemProps> = ({ tactic, index, additionalKeys }
       )}
     >
       {/* Header with tactic name and status */}
-      <div className={'h-1 w-full mb-4 '+ getStatusBgColor(tactic.status || "not found")}/>
+      <div
+        className={
+          'h-1 w-full mb-4 ' + getStatusBgColor(tactic.status || 'not found')
+        }
+      />
       <div className='flex items-center justify-between mb-4 px-4'>
         <div className='flex items-center space-x-3'>
           <span className='text-sm font-medium text-text'>
             Tactic {index + 1}
           </span>
-          <h4 className='text-base font-semibold text-text'>
-            {tactic.goal}
-          </h4>
+          <h4 className='text-base font-semibold text-text'>{tactic.goal}</h4>
         </div>
-        <StatusBadge status={tactic.status || "Not found"} />
+        <StatusBadge status={tactic.status || 'Not found'} />
       </div>
 
       {/* Main content grid */}
@@ -83,13 +89,24 @@ const TacticItem: React.FC<TacticItemProps> = ({ tactic, index, additionalKeys }
       {/* Additional properties */}
       {additionalKeys.size > 0 && (
         <div className='mt-4 pt-4 border-t border-white/10 px-4 pb-4'>
-          <div className='flex gap-1 items-center mb-3 cursor-pointer select-none' onClick={(e) => {setIsAdditionalInfoOpen(!isAdditionalInfoOpen); e.stopPropagation()}}>
-            <ChevronUpIcon className={cn('transition-transform duration-200 ease-in-out size-5 text-text', { 'rotate-180': isAdditionalInfoOpen })}/>
+          <div
+            className='flex gap-1 items-center mb-3 cursor-pointer select-none'
+            onClick={e => {
+              setIsAdditionalInfoOpen(!isAdditionalInfoOpen);
+              e.stopPropagation();
+            }}
+          >
+            <ChevronUpIcon
+              className={cn(
+                'transition-transform duration-200 ease-in-out size-5 text-text',
+                { 'rotate-180': isAdditionalInfoOpen }
+              )}
+            />
             <h5 className='text-sm font-medium text-text'>
               Additional Information
             </h5>
           </div>
-          <div 
+          <div
             className={cn(
               'overflow-hidden transition-all duration-300 ease-in-out',
               isAdditionalInfoOpen ? ' opacity-100' : 'max-h-0 opacity-0'
@@ -187,7 +204,8 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
           <span className='text-text'>Success Rate:</span>
           <span className='text-text font-medium'>
             {(
-              (tactics.filter(t => t.status?.toLowerCase() === 'success').length /
+              (tactics.filter(t => t.status?.toLowerCase() === 'success')
+                .length /
                 tactics.length) *
               100
             ).toFixed(1)}
