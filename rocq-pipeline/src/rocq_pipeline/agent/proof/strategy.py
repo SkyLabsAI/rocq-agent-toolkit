@@ -81,8 +81,8 @@ class CutAssertStrategy(SafeTacticStrategy):
 
     @override
     def rollout(self, rdm: RocqDocManager, max_rollout:int|None=None) -> Strategy.Rollout:
-        name: str | API.Err[None] = rdm.fresh_ident(self._name)
-        if isinstance(name, API.Err):
+        name: str | Err[None] = rdm.fresh_ident(self._name)
+        if isinstance(name, Err):
             return empty_Rollout()
         tac: str = f'assert ({self._lemma}) as {name}'
 
