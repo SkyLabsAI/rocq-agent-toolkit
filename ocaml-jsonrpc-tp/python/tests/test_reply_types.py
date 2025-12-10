@@ -2,10 +2,9 @@ import re
 from collections.abc import Callable, Sequence
 
 import pytest
-
 from jsonrpc_tp import JsonRPCTP as API
 
-# NOTE: tests are tightly coupled to the underlying implementation
+# Note: tests are tightly coupled to the underlying implementation
 # since we are patching dataclass to play nicely with covariant data,
 # cf. https://github.com/microsoft/pyright/discussions/11012
 
@@ -56,12 +55,12 @@ class TestReplyErrResp(ReplyFixtures):
             (API.Reply, ["data"]),
             (API.Err, ["message", "data"]),
             (API.Resp, ["result"]),
-        ]
+        ],
     )
     @staticmethod
     def test_required_positional_args(
-            reply_cls: type[API.Reply],
-            expected_positional_args: Sequence[str],
+        reply_cls: type[API.Reply],
+        expected_positional_args: Sequence[str],
     ) -> None:
         with pytest.raises(TypeError) as exc_info:
             # Note: explicitly testing ctor call that misses arguments
@@ -76,7 +75,7 @@ class TestReplyErrResp(ReplyFixtures):
                         f"argument{pluralization}:",
                         " and ".join(
                             f"'{arg_nm}'" for arg_nm in expected_positional_args
-                        )
+                        ),
                     ]
                 )
             )
@@ -93,10 +92,10 @@ class TestReplyErrResp(ReplyFixtures):
         assert bool(Resp_None)
 
     def test_eq_other_types(
-            self,
-            Reply_None: API.Reply[None],
-            Err_None: API.Err[None],
-            Resp_None: API.Resp[None],
+        self,
+        Reply_None: API.Reply[None],
+        Err_None: API.Err[None],
+        Resp_None: API.Resp[None],
     ) -> None:
         replies_None = [Reply_None, Err_None, Resp_None]
 
@@ -116,10 +115,10 @@ class TestReplyErrResp(ReplyFixtures):
             assert not eq
 
     def test_eq_None(
-            self,
-            Reply_None: API.Reply[None],
-            Err_None: API.Err[None],
-            Resp_None: API.Resp[None],
+        self,
+        Reply_None: API.Reply[None],
+        Err_None: API.Err[None],
+        Resp_None: API.Resp[None],
     ) -> None:
         replies_None = [Reply_None, Err_None, Resp_None]
 
@@ -140,10 +139,7 @@ class TestReplyErrResp(ReplyFixtures):
                 else:
                     assert not (a_eq_b or b_eq_a)
 
-    def test_eq_Err_messages(
-            self,
-            mk_Err: ReplyFixtures._mk_Err[None]
-    ) -> None:
+    def test_eq_Err_messages(self, mk_Err: ReplyFixtures._mk_Err[None]) -> None:
         strs = ["", "Foo", "Bar", "Baz", "Qux"]
         for i in range(len(strs)):
             for j in range(len(strs)):
@@ -152,22 +148,29 @@ class TestReplyErrResp(ReplyFixtures):
                 else:
                     assert mk_Err(strs[i], None) != mk_Err(strs[j], None)
 
-    def test_repr_roundtrip_None(
-            self,
-            Reply_None: API.Reply[None],
-            Err_None: API.Err[None],
-            Resp_None: API.Resp[None],
-    ) -> None:
-        replies_None = [Reply_None, Err_None, Resp_None]
-        for reply_None in replies_None:
-            assert (
-                eval(repr(reply_None), globals={"JsonRPCTP": API}) ==
-                reply_None
-            )
+    def test_repr_roundtrip_None(self) -> None:
+        # Note: local import since we care to use the long name when testing
+        # repr; the rest of the code uses short name API, imported at the top
+        # of the file.
+        from jsonrpc_tp import JsonRPCTP
+
+        # Note: we could use `eval`, but we avoid it since it introduces a
+        # potential security hole.
+        _test_reply = JsonRPCTP.Reply(data=None)
+        reply_repr = "JsonRPCTP.Reply(data=None)"
+        assert repr(_test_reply) == reply_repr
+
+        _test_err = JsonRPCTP.Err(message="", data=None)
+        err_repr = "JsonRPCTP.Err(message='', data=None)"
+        assert repr(_test_err) == err_repr
+
+        _test_resp = JsonRPCTP.Resp(result=None)
+        resp_repr = "JsonRPCTP.Resp(result=None)"
+        assert repr(_test_resp) == resp_repr
 
     def test_covariant_Reply(
-            self,
-            mk_Reply: ReplyFixtures._mk_Reply,
+        self,
+        mk_Reply: ReplyFixtures._mk_Reply,
     ) -> None:
         r1: API.Reply[None] = mk_Reply(None)
         r2: API.Reply[str] = mk_Reply("FooBar")

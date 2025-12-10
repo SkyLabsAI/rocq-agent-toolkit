@@ -19,7 +19,7 @@ T_co = TypeVar("T_co", covariant=True)
 class JsonRPCTP:
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
-    # Note: custom because because dataclass doesn't play nicely with
+    # Note: custom because dataclass doesn't play nicely with
     # covariant data, cf. github.com/python/mypy/issues/17623
     #
     # Note: if we used pyright then we could use a simpler solution that still
@@ -39,9 +39,9 @@ class JsonRPCTP:
             if not issubclass(type(other), JsonRPCTP.Reply):
                 return NotImplemented
             return (
-                type(self) is type(other) and
-                type(self._data) is type(other._data) and
-                self._data == other._data
+                type(self) is type(other)
+                and type(self._data) is type(other._data)
+                and self._data == other._data
             )
 
         @override
@@ -57,7 +57,7 @@ class JsonRPCTP:
         def data(self) -> T_co:
             return self._data
 
-    # Note: custom because because dataclass doesn't play nicely with
+    # Note: custom because dataclass doesn't play nicely with
     # covariant data, cf. github.com/python/mypy/issues/17623
     #
     # Note: if we used pyright then we could use a simpler solution that still
@@ -96,7 +96,7 @@ class JsonRPCTP:
 
         # Note: we inherit data property from Reply
 
-    # Note: custom because because dataclass doesn't play nicely with
+    # Note: custom because dataclass doesn't play nicely with
     # covariant data, cf. github.com/python/mypy/issues/17623
     #
     # Note: if we used pyright then we could use a simpler solution that still
