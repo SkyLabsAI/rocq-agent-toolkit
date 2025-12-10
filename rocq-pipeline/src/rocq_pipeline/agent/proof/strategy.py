@@ -74,7 +74,7 @@ class SafeTacticStrategy(Strategy):
 class CutAssertStrategy(SafeTacticStrategy):
     """A simple strategy that cuts a Rocq lemma.
     The success probability 1.0 is not necessarily appropriate."""
-    def __init__(self, name: str, lemma: str, prob:float = 1.0)) -> None:
+    def __init__(self, name: str, lemma: str, prob:float = 1.0) -> None:
         self._name:str = name
         self._lemma:str = lemma
         self._prob:float = prob
@@ -84,10 +84,9 @@ class CutAssertStrategy(SafeTacticStrategy):
         name: str | API.Err[None] = rdm.fresh_ident(self._name)
         if isinstance(name, API.Err):
             return empty_Rollout()
-        tac: str = f'assert ({name} := {self._lemma})'
+        tac: str = f'assert ({self._lemma}) as {name}'
 
-        return self._prob, TacticApplication(tac)
-        #return ((prob, TacticApplication(t)) for prob, t in [(self._prob, tac)])
+        return ((prob, TacticApplication(t)) for prob, t in [(self._prob, tac)])
 
 def empty_Rollout() -> Strategy.Rollout:
     yield from ()
