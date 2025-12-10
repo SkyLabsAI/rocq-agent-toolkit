@@ -4,7 +4,7 @@ import React from 'react';
 
 import Layout from '@/layouts/common';
 
-import AgentTable from './AgentTable';
+import AgentTable from './agent-table';
 
 const LocalDashboard: React.FC = () => {
   return (

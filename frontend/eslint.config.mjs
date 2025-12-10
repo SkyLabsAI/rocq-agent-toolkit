@@ -6,6 +6,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import prettier from 'eslint-plugin-prettier';
+import unicorn from 'eslint-plugin-unicorn';
 
 export default [
   js.configs.recommended,
@@ -61,6 +62,7 @@ export default [
       'jsx-a11y': jsxA11y,
       'simple-import-sort': simpleImportSort,
       prettier: prettier,
+      unicorn: unicorn,
     },
     rules: {
       // TypeScript rules
@@ -118,6 +120,13 @@ export default [
       'no-unused-vars': 'off',
       'no-console': 'warn',
       'prefer-const': 'error',
+      // Filename case enforcement
+      'unicorn/filename-case': [
+        'error',
+        {
+          case: 'kebabCase',
+        },
+      ],
     },
     settings: {
       react: {

@@ -152,8 +152,6 @@ const TacticInfoViewer: React.FC<TacticInfoViewerProps> = ({
   tactics,
   title = 'Tactic Information',
 }) => {
-  console.warn('TacticInfoViewer rendered with tactics:', tactics);
-
   if (!tactics || tactics.length === 0) {
     return (
       <div className='text-center text-text py-8'>

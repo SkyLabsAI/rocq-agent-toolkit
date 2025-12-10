@@ -2,9 +2,9 @@
 
 import React from 'react';
 
-import RunRow from '@/components/RunRow';
-import StickyCompareBar from '@/components/StickyCompareBar';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import RunRow from '@/components/run-row';
+import StickyCompareBar from '@/components/sticky-compare-bar';
+import { useSelectedRun } from '@/contexts/selected-run-context';
 import { PlayIcon } from '@/icons/play';
 import { type AgentRun, type Run } from '@/types/types';
 

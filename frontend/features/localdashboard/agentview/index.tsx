@@ -1,25 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import RunDetailsView from '@/components/RunDetailsView';
-import StickyCompareBar from '@/components/StickyCompareBar';
-import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import RunDetailsView from '@/components/run-details-view';
+import StickyCompareBar from '@/components/sticky-compare-bar';
+import { GlobalCompareProvider } from '@/contexts/global-compare-context';
+import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/taskDetailsModal';
-import { useAgents } from '@/hooks/useAgentsSummary';
+import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 import { type AgentSummaryTemp } from '@/services/dataservice';
-import { type Run } from '@/types/types';
 
 import AgentDetails from './agent-details';
 
 const AgentView: React.FC = () => {
-  const { agentData, agentDetailData, modalState, closeModal, openCodeModal } =
-    useAgents();
+  const { agentData, modalState, closeModal, openCodeModal } = useAgents();
 
   const { selectedRun, setSelectedRun } = useSelectedRun();
-  const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [selectedAgents, setSelectedAgent] = useState<AgentSummaryTemp[]>([]);
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
 
@@ -57,14 +54,6 @@ const AgentView: React.FC = () => {
       pathname: '/compare',
       search: `?${query}`,
     });
-  };
-
-  const toggleRunSelection = (run: Run) => {
-    setSelectedRuns(prev =>
-      prev.includes(run.run_id)
-        ? prev.filter(id => id !== run.run_id)
-        : [...prev, run.run_id]
-    );
   };
 
   const clearSelectedRuns = () => {
@@ -231,43 +220,8 @@ const AgentView: React.FC = () => {
                   Actions
                 </td> */}
               </tr>
-              {getSortedAgents().map((agent, index) => (
-                <AgentDetails
-                  key={agent.agent_name}
-                  agent={agent}
-                  agentDetailData={agentDetailData[index]}
-                  activeAgent={activeAgent === agent.agent_name}
-                  setActiveAgent={setActiveAgent}
-                  isSelected={selectedAgents.some(
-                    a => a.agentName === agent.agent_name
-                  )}
-                  toggleSelection={() => {
-                    setSelectedAgent(prevSelectedAgents => {
-                      if (
-                        prevSelectedAgents.some(
-                          a => a.agentName === agent.agent_name
-                        )
-                      ) {
-                        // Remove the agent if already selected
-                        return prevSelectedAgents.filter(
-                          a => a.agentName !== agent.agent_name
-                        );
-                      } else {
-                        // Add the new agent while keeping the previous selections
-                        return [
-                          ...prevSelectedAgents,
-                          {
-                            agentName: agent.agent_name,
-                          } as AgentSummaryTemp,
-                        ];
-                      }
-                    });
-                  }}
-                  selectedRuns={selectedRuns}
-                  toggleRunSelection={toggleRunSelection}
-                  clearSelectedRuns={clearSelectedRuns}
-                  compareSelectedRuns={compareSelectedRuns}
-                />
+              {getSortedAgents().map(agent => (
+                <AgentDetails key={agent.agent_name} agent={agent} />
               ))}
             </tbody>
           </table>

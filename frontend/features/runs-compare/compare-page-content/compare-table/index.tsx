@@ -74,9 +74,7 @@ const TaskSection: React.FC<TaskSectionProps> = ({
         onClick={() => setOpen(!open)}
         isExpanded={open}
       />
-      {open && (
-        <TaskDetailsTable id={id} details={details} taskRowData={taskRowData} />
-      )}
+      {open && <TaskDetailsTable taskRowData={taskRowData} />}
     </>
   );
 };

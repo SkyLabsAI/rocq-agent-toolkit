@@ -6,8 +6,8 @@ import './globals.css';
 
 import { Geist, Geist_Mono } from 'next/font/google';
 
-import { SelectedRunProvider } from '@/contexts/SelectedRunContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
+import { SelectedRunProvider } from '@/contexts/selected-run-context';
+import { ThemeProvider } from '@/contexts/theme-context';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

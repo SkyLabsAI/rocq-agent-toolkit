@@ -1,7 +1,7 @@
 import cn from 'classnames';
 
+import { useAgentDetails } from '@/hooks/use-agent-details';
 import { useBenchmarks } from '@/hooks/use-dataview';
-import { useAgentDetails } from '@/hooks/useAgentDetails';
 import { type AgentSummary } from '@/types/types';
 
 import { AgentBenchmark } from './agent-benchmarks';
