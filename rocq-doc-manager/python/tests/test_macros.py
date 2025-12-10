@@ -1,7 +1,8 @@
 # import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from rocq_doc_manager import RocqDocManager
+
+from rocq_doc_manager import RocqCursor
 
 from .util import RDM_Tests
 
@@ -9,7 +10,7 @@ from .util import RDM_Tests
 class Test_RDM_macros(RDM_Tests):
     def test_current_goal_outside_proof(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: RocqCursor,
     ) -> None:
         outside_goal_reply = transient_rdm.current_goal()
         assert outside_goal_reply is None
@@ -32,20 +33,18 @@ class Test_RDM_macros(RDM_Tests):
 
     def test_current_goal_True(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: RocqCursor,
     ) -> None:
         with transient_rdm.aborted_goal_ctx(goal="True"):
             True_goal_reply = transient_rdm.current_goal()
-            assert not isinstance(True_goal_reply, RocqDocManager.Err)
+            assert not isinstance(True_goal_reply, RocqCursor.Err)
             assert True_goal_reply is not None
             assert True_goal_reply.focused_goals == [
                 "\n============================\nTrue"
             ]
-            assert not isinstance(
-                transient_rdm.run_command("auto."), RocqDocManager.Err
-            )
+            assert not isinstance(transient_rdm.run_command("auto."), RocqCursor.Err)
             closed_goal_reply = transient_rdm.current_goal()
-            assert not isinstance(closed_goal_reply, RocqDocManager.Err)
+            assert not isinstance(closed_goal_reply, RocqCursor.Err)
             assert closed_goal_reply is not None
             assert closed_goal_reply.focused_goals == []
             assert closed_goal_reply.unfocused_goals == []
@@ -54,23 +53,20 @@ class Test_RDM_macros(RDM_Tests):
 
     def test_current_goal_default_goal_selector_bang(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: RocqCursor,
     ) -> None:
         assert not isinstance(
-            transient_rdm.run_command('Set Default Goal Selector "!".'),
-            RocqDocManager.Err,
+            transient_rdm.run_command('Set Default Goal Selector "!".'), RocqCursor.Err
         )
         self.test_current_goal_True(transient_rdm)
 
     def test_current_goal_done_up_to_one_shelved(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: RocqCursor,
     ) -> None:
         with transient_rdm.aborted_goal_ctx(goal="exists _ : nat, True"):
             useless_existential_True_goal_reply = transient_rdm.current_goal()
-            assert not isinstance(
-                useless_existential_True_goal_reply, RocqDocManager.Err
-            )
+            assert not isinstance(useless_existential_True_goal_reply, RocqCursor.Err)
             assert useless_existential_True_goal_reply is not None
             assert useless_existential_True_goal_reply.focused_goals == [
                 "\n============================\nexists _ : nat, True"
@@ -78,29 +74,25 @@ class Test_RDM_macros(RDM_Tests):
 
             assert not isinstance(
                 transient_rdm.run_command("eexists; [shelve |]."),
-                RocqDocManager.Err,
+                RocqCursor.Err,
             )
             shelved_existential_True_goal_reply = transient_rdm.current_goal()
-            assert not isinstance(
-                shelved_existential_True_goal_reply, RocqDocManager.Err
-            )
+            assert not isinstance(shelved_existential_True_goal_reply, RocqCursor.Err)
             assert shelved_existential_True_goal_reply is not None
             assert shelved_existential_True_goal_reply.focused_goals == [
                 "\n============================\nTrue"
             ]
             assert shelved_existential_True_goal_reply.shelved_goals == 1
 
-            assert not isinstance(
-                transient_rdm.run_command("auto."), RocqDocManager.Err
-            )
+            assert not isinstance(transient_rdm.run_command("auto."), RocqCursor.Err)
 
-            assert transient_rdm.run_command("idtac.") == RocqDocManager.Err(
+            assert transient_rdm.run_command("idtac.") == RocqCursor.Err(
                 message="No such goal.",
-                data=None,
+                data=RocqCursor.CommandError(feedback_messages=[], error_loc=None),
             )
 
             current_goal_reply = transient_rdm.current_goal()
-            assert not isinstance(current_goal_reply, RocqDocManager.Err)
+            assert not isinstance(current_goal_reply, RocqCursor.Err)
             assert current_goal_reply is not None, (
                 "When shelved goals remain, the current goal must not be None"
             )
@@ -114,7 +106,7 @@ class Test_RDM_macros(RDM_Tests):
     @settings(deadline=None)
     def test_Compute_addition(
         self,
-        transient_shared_rdm: RocqDocManager,
+        transient_shared_rdm: RocqCursor,
         n: int,
         m: int,
     ) -> None:
@@ -123,12 +115,12 @@ class Test_RDM_macros(RDM_Tests):
                 compute_reply = transient_shared_rdm.Compute(
                     f"{n}+{m}",
                 )
-                assert not isinstance(compute_reply, RocqDocManager.Err)
+                assert not isinstance(compute_reply, RocqCursor.Err)
                 assert compute_reply == (str(n + m), "nat")
 
     def test_fresh_ident_repeated(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: RocqCursor,
     ) -> None:
         with RDM_Tests.assert_doc_unchanged(transient_rdm):
             with transient_rdm.ctx():
@@ -138,9 +130,9 @@ class Test_RDM_macros(RDM_Tests):
                     defn = f"Definition {nm} := {val}."
                     assert not isinstance(
                         transient_rdm.insert_command(defn),
-                        RocqDocManager.Err,
+                        RocqCursor.Err,
                     ), f"Bad Definition: {defn}"
                     fresh_ident_reply = transient_rdm.fresh_ident(nm)
-                    assert not isinstance(fresh_ident_reply, RocqDocManager.Err)
+                    assert not isinstance(fresh_ident_reply, RocqCursor.Err)
                     val = nm
                     nm = fresh_ident_reply

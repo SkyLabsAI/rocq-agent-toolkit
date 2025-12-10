@@ -1,14 +1,16 @@
 import sys
 
-from rocq_doc_manager import RocqDocManager
+import rocq_doc_manager
+from rocq_doc_manager import RocqDocManagerAPI
 
 
 def cram_test1() -> None:
     try:
-        dm = RocqDocManager([], sys.argv[1])
-        # print(dm.raw_request("non-existant", []))
-        print(dm.load_file())
-        print(dm.doc_suffix())
-        dm.quit()
-    except RocqDocManager.Error as e:
+        with rocq_doc_manager.create([], sys.argv[1]).sess() as dm:
+            rc = dm.cursor()
+            # print(dm.raw_request("non-existant", []))
+            print(rc.load_file())
+            print(rc.doc_suffix())
+            rc.dispose()
+    except RocqDocManagerAPI.Error as e:
         print(e)

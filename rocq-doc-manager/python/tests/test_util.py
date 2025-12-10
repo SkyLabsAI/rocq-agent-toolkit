@@ -1,5 +1,6 @@
 from jsonrpc_tp import JsonRPCTP
-from rocq_doc_manager import RocqDocManager
+
+from rocq_doc_manager import RocqCursor
 
 from .util import RDM_Tests
 

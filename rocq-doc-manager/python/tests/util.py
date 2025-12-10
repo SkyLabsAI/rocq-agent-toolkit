@@ -5,7 +5,10 @@ from typing import Any
 
 import pytest
 from hypothesis import strategies as st
-from rocq_doc_manager import RocqDocManager
+
+import rocq_doc_manager
+from rocq_doc_manager import RocqCursor
+from rocq_doc_manager.rocq_doc_manager import RocqDocManager
 
 
 class RDM_Tests:
@@ -28,7 +31,7 @@ class RDM_Tests:
     def mk_rdm(
         path: str = "my_fake.v", rocq_args: list[str] | None = None
     ) -> RocqDocManager:
-        return RocqDocManager(
+        return rocq_doc_manager.create(
             [] if rocq_args is None else rocq_args,
             path,
             dune=os.environ.get("RDM_USE_DUNE", "True") == "True",
@@ -37,16 +40,16 @@ class RDM_Tests:
     @pytest.fixture(scope="class")
     @staticmethod
     def transient_shared_rdm() -> RocqDocManager:
-        """A RocqDocManager for a fake file that can't be loaded."""
+        """A RocqCursor for a fake file that can't be loaded."""
         return RDM_Tests.mk_rdm()
 
     @pytest.fixture(scope="class")
     @staticmethod
     def loaded_shared_rdm() -> RocqDocManager:
-        """A RocqDocManager for a real file that can be loaded."""
+        """A RocqCursor for a real file that can be loaded."""
         rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
         assert not isinstance(
-            rdm.load_file(),
+            rdm.cursor().load_file(),
             RocqDocManager.Err,
         )
         return rdm
@@ -54,26 +57,26 @@ class RDM_Tests:
     @contextmanager
     @staticmethod
     def starting_from(
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         /,
         idx: int,
-    ) -> Iterator[RocqDocManager]:
+    ) -> Iterator[RocqCursor]:
         assert not isinstance(
             rdm.go_to(idx),
-            RocqDocManager.Err,
+            RocqCursor.Err,
         )
         yield rdm
 
     @pytest.fixture
     @staticmethod
     def transient_rdm() -> RocqDocManager:
-        """A RocqDocManager for a fake file that can't be loaded."""
+        """A RocqCursor for a fake file that can't be loaded."""
         return RDM_Tests.mk_rdm()
 
     @pytest.fixture
     @staticmethod
     def loadable_rdm() -> RocqDocManager:
-        """A RocqDocManager for a real file that can be loaded."""
+        """A RocqCursor for a real file that can be loaded."""
         return RDM_Tests.mk_rdm(path="./tests/test.v")
 
     @staticmethod
@@ -127,13 +130,13 @@ class RDM_Tests:
     @contextmanager
     @staticmethod
     def assert_commands_inserted(
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         cmds: list[str],
         ignore_blanks: bool = True,
         suffix_unchanged: bool = True,
-    ) -> Iterator[RocqDocManager]:
+    ) -> Iterator[RocqCursor]:
         expected_prefix_extension = [
-            RocqDocManager.PrefixItem(
+            RocqCursor.PrefixItem(
                 text=cmd,
                 kind="command",
             )
@@ -167,7 +170,7 @@ class RDM_Tests:
 
     @contextmanager
     @staticmethod
-    def assert_doc_unchanged(rdm: RocqDocManager) -> Iterator[RocqDocManager]:
+    def assert_doc_unchanged(rdm: RocqCursor) -> Iterator[RocqCursor]:
         doc_prefix = rdm.doc_prefix()
         doc_suffix = rdm.doc_suffix()
         yield rdm
@@ -176,20 +179,20 @@ class RDM_Tests:
 
     @staticmethod
     def assert_check_ok(
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         term: str = "nat",
         lhs: str = "nat",
         rhs: str = "Set",
     ) -> None:
         query_reply = rdm.query_text_all(f"Check {term}.", indices=None)
-        assert not isinstance(query_reply, RocqDocManager.Err)
+        assert not isinstance(query_reply, RocqCursor.Err)
         assert len(query_reply) == 1
         parts = [s.strip() for s in query_reply[0].split(":")]
         assert parts == [lhs, rhs]
 
 
 with RDM_Tests.mk_rdm("./tests/test.v").sess() as rdm:
-    doc_contents = rdm.doc_suffix()
+    doc_contents = rdm.cursor().doc_suffix()
 
     RDM_Tests.TEST_DOT_V_DOC_LEN = len(doc_contents)
 

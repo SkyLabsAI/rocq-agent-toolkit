@@ -18,13 +18,13 @@ class Test_RDM_sess(RDM_Tests):
         with rdm.sess(load_file=False):
             RDM_Tests.assert_check_ok(rdm)
 
-    def test_sess_load(self, loadable_rdm: RocqDocManager) -> None:
+    def test_sess_load(self, loadable_rdm: RocqCursor) -> None:
         with loadable_rdm.sess():
-            assert not isinstance(loadable_rdm.run_step(), RocqDocManager.Resp)
+            assert not isinstance(loadable_rdm.run_step(), RocqCursor.Resp)
             RDM_Tests.assert_check_ok(loadable_rdm, term="N", lhs="N")
 
     def test_sess_load_nonexistent(self, transient_rdm: RocqDocManager) -> None:
-        with pytest.raises(RocqDocManager.Error) as exc_info:
+        with pytest.raises(RocqCursor.Error) as exc_info:
             with transient_rdm.sess():
                 pass
         assert exc_info.match("my_fake.v: No such file or directory")
@@ -50,9 +50,7 @@ class Test_RDM_ctx(RDM_Tests):
             with rdm.ctx(rollback=rollback):
                 with RDM_Tests.assert_commands_inserted(rdm, cmds=cmds):
                     for cmd in cmds:
-                        assert not isinstance(
-                            rdm.insert_command(cmd), RocqDocManager.Err
-                        )
+                        assert not isinstance(rdm.insert_command(cmd), RocqCursor.Err)
 
     @given(
         prefix=RDM_Tests.rocq_trivial_blank_cmd_sequence_strategy(),
@@ -62,7 +60,7 @@ class Test_RDM_ctx(RDM_Tests):
     @settings(deadline=None)
     def test_property_rollback_ignores_blanks(
         self,
-        transient_shared_rdm: RocqDocManager,
+        transient_shared_rdm: RocqCursor,
         prefix: list[tuple[str, bool]],
         rollback: list[tuple[str, bool]],
         suffix: list[tuple[str, bool]],
@@ -71,7 +69,7 @@ class Test_RDM_ctx(RDM_Tests):
             for text, is_cmd in items:
                 if is_cmd:
                     assert not isinstance(
-                        transient_shared_rdm.insert_command(text), RocqDocManager.Err
+                        transient_shared_rdm.insert_command(text), RocqCursor.Err
                     )
                 else:
                     transient_shared_rdm.insert_blanks(text)
@@ -91,7 +89,7 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
     @pytest.mark.parametrize("rollback", [True, False])
     def test_side_effects(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: RocqCursor,
         rollback: bool,
     ) -> None:
         goal = "True /\\ 1 = 1"
@@ -109,12 +107,12 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
         ):
             with transient_rdm.aborted_goal_ctx(goal=goal, rollback=rollback):
                 idtac_reply = transient_rdm.run_command("idtac.")
-                assert isinstance(idtac_reply, RocqDocManager.CommandData)
+                assert isinstance(idtac_reply, RocqCursor.CommandData)
                 assert idtac_reply.proof_state is not None
                 assert idtac_reply.proof_state.focused_goals == [proof_goal]
 
                 tac_reply = transient_rdm.insert_command(tac)
-                assert isinstance(tac_reply, RocqDocManager.CommandData)
+                assert isinstance(tac_reply, RocqCursor.CommandData)
                 assert tac_reply.proof_state is not None
                 assert tac_reply.proof_state.focused_goals == []
                 assert tac_reply.proof_state.shelved_goals == 0
@@ -123,7 +121,7 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
 
 
 class Test_RDM_Section(RDM_Tests):
-    def test_Context(self, transient_rdm: RocqDocManager) -> None:
+    def test_Context(self, transient_rdm: RocqCursor) -> None:
         with RDM_Tests.assert_doc_unchanged(transient_rdm):
             context = [
                 ("n", "nat"),
