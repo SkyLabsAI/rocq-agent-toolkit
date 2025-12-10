@@ -63,7 +63,10 @@
     "id": 10,
     "jsonrpc": "2.0",
     "result": {
-      "globrefs_diff": { "added_constants": [ "test.dir.test.inserted" ] }
+      "globrefs_diff": { "added_constants": [ "test.dir.test.inserted" ] },
+      "feedback_messages": [
+        { "level": "info", "text": "inserted is defined" }
+      ]
     }
   }
   { "id": 11, "jsonrpc": "2.0", "result": "x1\n     : Set" }
