@@ -1,32 +1,47 @@
 type sid = Rocq_toplevel.StateID.t
 
-type 'a processed =
+type processed =
   | Blanks of {index : int; off : int; text : string}
-  | Command of {index : int; off : int; sid_before : 'a; text : string; visible:bool}
+  | Command of {index : int; off : int; text : string}
+  | Ghost of {index : int; off : int; text : string}
 
 type unprocessed =
   | RemBlanks of {text : string}
   | RemCommand of {text : string}
+  | RemGhost of {text : string}
+
+type in_toplevel = {
+  processed : processed;
+  sid_before : sid;
+}
 
 type backend = {
   args : string list;
   file : string;
-  toplevel : Rocq_toplevel.toplevel;
-  mutable toplevel_refs : int;
-  mutable rev_commands : sid processed list;
+  top : Rocq_toplevel.toplevel;
+  mutable top_refs : int;
+  mutable rev_processed : in_toplevel list;
+  mutable synced : t list;
 }
 
-type t = {
+and t = {
   mutable backend : backend option;
-  mutable rev_prefix : unit processed list;
+  mutable rev_prefix : processed list;
   mutable cursor_off : int;
   mutable suffix : unprocessed list;
 }
 
+let unsync : backend -> t -> unit = fun b d ->
+  b.synced <- List.filter (fun s -> s != d) b.synced
+
+let synced : backend -> t -> bool = fun b d ->
+  List.memq d b.synced
+
 let init : args:string list -> file:string -> t = fun ~args ~file ->
-  let toplevel = Rocq_toplevel.init ~args:(args @ ["-topfile"; file]) in
-  let b = {args; file; toplevel; toplevel_refs = 0; rev_commands = []} in
-  {backend = Some(b); rev_prefix = []; cursor_off = 0; suffix = []}
+  let top = Rocq_toplevel.init ~args:(args @ ["-topfile"; file]) in
+  let b = {args; file; top; top_refs = 1; rev_processed = []; synced = []} in
+  let d = {backend = Some(b); rev_prefix = []; cursor_off = 0; suffix = []} in
+  b.synced <- [d]; d
 
 exception Stopped
 
@@ -37,148 +52,70 @@ let get_backend : t -> backend = fun d ->
 
 let stop : t -> unit = fun d ->
   let backend = get_backend d in
-  backend.toplevel_refs <- backend.toplevel_refs - 1;
-  if backend.toplevel_refs = 0 then Rocq_toplevel.stop backend.toplevel;
+  backend.top_refs <- backend.top_refs - 1;
+  unsync backend d;
+  if backend.top_refs = 0 then Rocq_toplevel.stop backend.top;
   d.backend <- None
 
 let clone : t -> t = fun d ->
   let backend = get_backend d in
-  backend.toplevel_refs <- backend.toplevel_refs + 1;
-  {d with backend = d.backend}
+  backend.top_refs <- backend.top_refs + 1;
+  let d_clone = {d with backend = d.backend} in
+  if synced backend d then backend.synced <- d_clone :: backend.synced;
+  d_clone
 
 let file : t -> string = fun d ->
   if d.backend = None then raise Stopped;
   (get_backend d).file
 
-let take_drop : type a. int -> a list -> a list * a list =
-  (* [take_drop at ls = (rpre, post)] such that
-    [length rpre = at && rev_append rpre post = ls] *)
-  let rec go acc at ls =
-    if at <= 0 then (acc, ls)
-    else match ls with
-        | [] -> (acc, ls)
-        | l :: ls -> go (l :: acc) (at - 1) ls
-  in fun at ls -> go [] at ls
-
-let%test "take_drop 0 []" = take_drop 0 [] = ([], [])
-let%test "take_drop 0 [1]" = take_drop 0 [1] = ([], [1])
-let%test "take_drop 1 [1]" = take_drop 1 [1] = ([1], [])
-let%test "take_drop 1 [1;2]" = take_drop 1 [1;2] = ([1], [2])
-let%test "take_drop 2 [1;2;3;4;5]" = take_drop 2 [1;2;3;4;5] = ([2;1], [3;4;5])
-
-let revert_replay : type a b. a processed list -> b processed list -> a option * a processed list * b processed list =
-  let rec consistent : a processed list -> b processed list -> bool = fun ls rs ->
-    match ls, rs with
-    | [] , [] -> true
-    | Blanks l :: ls , Blanks r :: rs ->
-      if l.index = r.index && l.off = r.off && l.text = r.text then consistent ls rs else false
-    | Command l :: ls , Command r :: rs ->
-      if l.index = r.index && l.off = r.off && l.text = r.text then consistent ls rs else false
-    | _ , _ -> false
+let get_synced_backend : t -> backend = fun d ->
+  let backend = get_backend d in
+  (* match synced backend d with true -> backend | false -> *)
+  backend.synced <- [d]; (* NOTE: we could avoid this in some cases. *)
+  let rec common_prefix rev_processed rev_prefix processed prefix =
+    match (processed, prefix) with
+    (* Matching processed item, recursing. *)
+    | (pr :: processed, p :: prefix) when pr.processed = p ->
+        common_prefix (pr :: rev_processed) (p :: rev_prefix) processed prefix
+    (* Different processed item (or no more expected items), rollback. *)
+    | (pr :: _        , _          )                       ->
+        (Some(pr.sid_before), rev_processed, prefix)
+    (* In sync already. *)
+    | ([]             , _          )                       ->
+        (None, rev_processed, prefix)
   in
-  fun src dst ->
-    let rec find_common : a processed list -> b processed list -> a option -> b processed list -> a option * a processed list * b processed list =
-      fun src dst cur_sid acc ->
-        if consistent src dst then (cur_sid, src, acc)
-        else match src , dst with
-            | Blanks _ :: src , d :: dst -> find_common src dst cur_sid (d :: acc)
-            | Command {sid_before; _} :: src, d :: dst -> find_common src dst (Some sid_before) (d :: acc)
-            | [] , [] -> assert false (* src <> dst *)
-            | [] , _ :: _
-            | _ :: _ , [] -> assert false (* lists must be same length *)
-    in
-    let dst_len = List.length dst in
-    let src_len = List.length src in
-    if dst_len = src_len
-    then find_common src dst None []
-    else if src_len < dst_len then
-      let replay , dst = take_drop (dst_len - src_len) dst in
-      find_common src dst None replay
-    else (* src_len > dst_len *)
-      let rec drop_with_sid i sid = function
-        | [] -> sid, []
-        | ls when i <= 0 -> sid, ls
-        | Blanks _ :: ls -> drop_with_sid (i-1) sid ls
-        | Command {sid_before; _} :: ls -> drop_with_sid (i-1) (Some sid_before) ls
-      in
-      let sid, src = drop_with_sid (src_len - dst_len) None src in
-      assert (List.length src = List.length dst);
-      find_common src dst sid []
-
-let%test "[],[]" =
-  revert_replay [] [] = (None, [], [])
-let%test "[Blanks],[Blanks]" =
-  let procs = [Blanks{index=0;off=0;text=""}] in
-  revert_replay procs procs = (None, procs, [])
-let%test "[C1],[C1]" =
-  let procs = [Command{index=0;off=0;sid_before=0;text="";visible=true}] in
-  revert_replay procs procs = (None, procs, [])
-let%test "[],[C1]" =
-  let src = [] in
-  let dst = [Command{index=0;off=0;sid_before=3;text="bar.";visible=true}] in
-  revert_replay src dst = (None, src, dst)
-let%test "[C1],[]" =
-  let src = [Command{index=0;off=0;sid_before=5;text="foo.";visible=true}] in
-  let dst = [] in
-  revert_replay src dst = (Some 5, [], [])
-let%test "[C1],[C2]" =
-  let src = [Command{index=0;off=0;sid_before=5;text="foo.";visible=true}] in
-  let dst = [Command{index=0;off=0;sid_before=3;text="bar.";visible=true}] in
-  revert_replay src dst = (Some 5, [], dst)
-let%test "[C2;C1],[C1]" =
-  let c1 = Command{index=0;off=0;sid_before=5;text="foo.";visible=true} in
-  let c2 = Command{index=1;off=0;sid_before=3;text="bar.";visible=true} in
-  (* NOTE: list is reversed *)
-  revert_replay [c2;c1] [c1] = (Some 3, [c1], [])
-
-(*
-let rec print_processed top out = function
-  | [] -> output_string out "[]"
-| Blanks _ :: ls -> output_string out "<blanks>::" ; print_processed top out ls
-| Command {sid_before;_} :: ls ->
-  output_string out (string_of_int @@ Rocq_toplevel.StateID.to_int top sid_before) ;
-  output_string out "::" ;
-  print_processed top out ls
-*)
-
-(** returns the backend focused to the current cusor *)
-let focused (cursor : t) : backend =
-  let backend = get_backend cursor in
-  let revert , reverted_to , replay = revert_replay backend.rev_commands cursor.rev_prefix in
-  let toplevel = backend.toplevel in
+  let (rollback_sid, rev_processed, prefix) =
+    let processed = List.rev backend.rev_processed in
+    let prefix = List.rev d.rev_prefix in
+    common_prefix [] [] processed prefix
+  in
+  (* Bringing the top-level to a common state. *)
+  backend.rev_processed <- rev_processed;
   let sid =
-    match revert with
-    | Some revert ->
-      assert (Rocq_toplevel.back_to toplevel ~sid:revert = Ok ());
-      revert
-    | _ ->
-      Rocq_toplevel.StateID.current toplevel
+    match rollback_sid with
+    | None      -> Rocq_toplevel.StateID.current backend.top
+    | Some(sid) ->
+    match Rocq_toplevel.back_to backend.top ~sid with
+    | Error(_) -> assert false
+    | Ok(_)    -> sid
   in
-  backend.rev_commands <- reverted_to ;
-  let _ =
-    List.fold_left (fun sid -> function
-        | Blanks _ -> sid
-        | Command {off;text;visible;index;_} ->
-          match Rocq_toplevel.run toplevel ~off ~text with
-          | Ok _ ->
-            backend.rev_commands <- Command {off;text;visible;index;sid_before=sid} :: backend.rev_commands ;
-            Rocq_toplevel.StateID.current toplevel
-          | Error _ -> assert false
-    ) sid replay
+  (* Replaying the remaining prefix commands. *)
+  let replay sid_before processed =
+    backend.rev_processed <- {processed; sid_before} :: backend.rev_processed;
+    let run ~off ~text =
+      match Rocq_toplevel.run backend.top ~off ~text with
+      | Ok(_)      -> Rocq_toplevel.StateID.current backend.top
+      | Error(_,_) -> assert false
+    in
+    match processed with
+    | Blanks(_)               -> sid_before
+    | Command({off; text; _}) -> run ~off ~text
+    | Ghost({text; _})        -> run ~off:0 ~text
   in
-  backend
+  ignore (List.fold_left replay sid prefix); backend
 
-let focus_run : t -> off:int -> text:string -> visible:bool -> _ result * backend =
-  fun d ~off ~text ~visible ->
-    let backend = focused d in
-    let sid_before = Rocq_toplevel.StateID.current backend.toplevel in
-    let res = Rocq_toplevel.run backend.toplevel ~off ~text in
-    let _ =
-      match res with
-      | Ok _ ->
-        backend.rev_commands <- Command {index=0;off;sid_before;text;visible} :: backend.rev_commands
-      | Error _ -> ()
-    in res, backend
+let sync : t -> unit = fun d ->
+  ignore (get_synced_backend d)
 
 let cursor_index : t -> int = fun d ->
   if d.backend = None then raise Stopped;
@@ -186,6 +123,7 @@ let cursor_index : t -> int = fun d ->
   | []                       -> 0
   | Blanks({index; _})  :: _ -> index + 1
   | Command({index; _}) :: _ -> index + 1
+  | Ghost({index; _})   :: _ -> index + 1
 
 let to_unprocessed : Rocq_split_api.sentence -> unprocessed = fun s ->
   let text = s.Rocq_split_api.text in
@@ -208,88 +146,96 @@ type command_data = Rocq_toplevel.run_data
 type command_error = Rocq_toplevel.run_error
 
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
-  let backend = get_backend d in
+  let backend = get_synced_backend d in
+  backend.synced <- [d];
   let len = String.length text in
   if len = 0 then () else
   match d.rev_prefix with
   | Blanks({index; off; text = blanks}) :: rev_prefix ->
-      let text = blanks ^ text in
-      let elem = Blanks({index; off; text}) in
-      backend.rev_commands <- elem :: backend.rev_commands ;
-      d.rev_prefix <- elem :: rev_prefix;
+      let processed = Blanks({index; off; text = blanks ^ text}) in
+      let (sid_before, rev_processed) =
+        match backend.rev_processed with
+        | {sid_before; _} :: rev_commands -> (sid_before, rev_commands)
+        | _                               -> assert false
+      in
+      backend.rev_processed <- {sid_before; processed} :: rev_processed;
+      d.rev_prefix <- processed :: rev_prefix;
       d.cursor_off <- d.cursor_off + len
   | _                                                 ->
       let index = cursor_index d in
-      let off = d.cursor_off in
-      backend.rev_commands <- Blanks({index; off; text}) :: backend.rev_commands;
-      d.rev_prefix <- Blanks({index; off; text}) :: d.rev_prefix;
+      let processed = Blanks({index; off = d.cursor_off; text}) in
+      let sid_before = Rocq_toplevel.StateID.current backend.top in
+      backend.rev_processed <-
+        {sid_before; processed} :: backend.rev_processed;
+      d.rev_prefix <- processed :: d.rev_prefix;
       d.cursor_off <- d.cursor_off + len
 
 let insert_command : t -> text:string ->
     (command_data, string * command_error) result = fun d ~text ->
-  let backend = focused d in
+  let backend = get_synced_backend d in
+  backend.synced <- [d];
   let off = d.cursor_off in
-  let sid_before = Rocq_toplevel.StateID.current backend.toplevel in
-  let res = Rocq_toplevel.run backend.toplevel ~off ~text in
-  match res with
-  | Error _ as res -> res
-  | _ ->
-    let index = cursor_index d in
-    let elem sid_before = Command({index; off; sid_before; text; visible=true}) in
-    backend.rev_commands <- elem sid_before :: backend.rev_commands;
-    d.rev_prefix <- elem () :: d.rev_prefix;
-    d.cursor_off <- d.cursor_off + String.length text;
-    res
+  let sid_before = Rocq_toplevel.StateID.current backend.top in
+  let res = Rocq_toplevel.run backend.top ~off ~text in
+  match res with Error(_,_) -> res | Ok(_) ->
+  let processed = Command({index = cursor_index d; off; text}) in
+  backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
+  d.rev_prefix <- processed :: d.rev_prefix;
+  d.cursor_off <- d.cursor_off + String.length text;
+  res
 
 let run_command : t -> text:string -> (command_data, string) result =
     fun d ~text ->
-  match fst (focus_run d ~off:0 ~text ~visible:false) with
+  let backend = get_synced_backend d in
+  backend.synced <- [d];
+  let sid_before = Rocq_toplevel.StateID.current backend.top in
+  match Rocq_toplevel.run backend.top ~off:0 ~text with
   | Error(s,_) -> Error(s)
   | Ok(data)   ->
-      d.rev_prefix <- Command{off=0;index=1+List.length d.rev_prefix;sid_before=();text;visible=false}::d.rev_prefix;
-      Ok(data)
+  let processed = Ghost({index = cursor_index d; off = d.cursor_off; text}) in
+  backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
+  d.rev_prefix <- processed :: d.rev_prefix;
+  Ok(data)
 
 let revert_before : ?erase:bool -> t -> index:int -> unit =
     fun ?(erase=false) d ~index:i ->
   let cur_index = cursor_index d in
   if i < 0 || cur_index < i then invalid_arg "index out of bounds";
-  if i = cur_index then () else
+  match i = cur_index with true -> () | false ->
+  unsync (get_backend d) d;
   let rec revert rev_prefix suffix off =
     match rev_prefix with
-    | Blanks({index; text; off})              :: rev_prefix ->
-      let suffix = if not erase then RemBlanks({text}) :: suffix else suffix in
-      if index = i then
-        (rev_prefix, suffix, off)
-      else
-        revert rev_prefix suffix off
-    | Command({index; text; off; visible;_}) :: rev_prefix ->
-      let suffix = if not erase && visible then RemCommand({text}) :: suffix else suffix in
-      if index = i then
-        (rev_prefix, suffix, off)
-      else
-        revert rev_prefix suffix off
-    | []                                                  ->
-      assert (i = 0);
+    | []              -> assert (i = 0); (rev_prefix, suffix, off)
+    | p :: rev_prefix ->
+    let (index, off, item) =
+      match p with
+      | Blanks({index; text; off})  -> (index, off, RemBlanks({text}) )
+      | Command({index; text; off}) -> (index, off, RemCommand({text}))
+      | Ghost({index; text; off})   -> (index, off, RemGhost({text})  )
+    in
+    let suffix = item :: suffix in
+    if index = i then
       (rev_prefix, suffix, off)
+    else
+      revert rev_prefix suffix off
   in
   let (rev_prefix, suffix, off) = revert d.rev_prefix d.suffix d.cursor_off in
-  (* NOTE: We don't actually need to re-focus the document because this returns a unit
-  let _ = focused { d with rev_prefix; suffix; cursor_sid=sid } in
-  *)
+  (* NOTE: no need to re-focus, the toplevel just gets out of sync. *)
   d.rev_prefix <- rev_prefix;
   d.cursor_off <- off ;
   (* TODO: this offset is not correct if the last command was inserted by [run_command] *)
   if not erase then d.suffix <- suffix
 
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
-  let _ = focused d in
+  let backend = get_synced_backend d in
   let rev_prefix = d.rev_prefix in
   let cursor_off = d.cursor_off in
   let suffix = d.suffix in
   let v = f () in
   d.rev_prefix <- rev_prefix;
   d.cursor_off <- cursor_off;
-  d.suffix <- suffix; v
+  d.suffix <- suffix;
+  unsync backend d; v
 
 let clear_suffix : t -> unit = fun d ->
   if d.backend = None then raise Stopped;
@@ -299,10 +245,11 @@ type byte_loc = {off : int; len : int}
 
 let byte_loc_of_last_step : t -> byte_loc option = fun d ->
   if d.backend = None then raise Stopped;
-  match d.rev_prefix with [] -> None
+  match d.rev_prefix with
+  | []                           -> None
   | Blanks({off; text; _})  :: _
-  | Command({off; text; _}) :: _ ->
-      Some({off; len = String.length text})
+  | Command({off; text; _}) :: _ -> Some({off; len = String.length text})
+  | Ghost(_)                :: _ -> None
 
 let run_step : t ->
     (command_data option, string * command_error option) result = fun d ->
@@ -313,9 +260,17 @@ let run_step : t ->
       d.suffix <- suffix;
       insert_blanks d ~text; Ok(None)
   | RemCommand({text}) :: suffix ->
-      match insert_command d ~text with
-      | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
-      | Error(s,d) -> Error(s, Some(d))
+      begin
+        match insert_command d ~text with
+        | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
+        | Error(s,d) -> Error(s, Some(d))
+      end
+  | RemGhost({text})   :: suffix ->
+      begin
+        match run_command d ~text with
+        | Ok(v)    -> d.suffix <- suffix; Ok(Some(v))
+        | Error(s) -> Error(s, None)
+      end
 
 let advance_to : t -> index:int -> (unit, string * command_error) result =
     fun d ~index ->
@@ -341,7 +296,7 @@ let go_to : t -> index:int -> (unit, string * command_error) result =
 
 type processed_item = {
   index : int;
-  kind : [`Blanks | `Command];
+  kind : [`Blanks | `Command | `Ghost];
   off : int;
   text : string;
 }
@@ -349,15 +304,17 @@ type processed_item = {
 let last_processed_item : t -> processed_item option = fun d ->
   if d.backend = None then raise Stopped;
   match d.rev_prefix with
-  | Blanks({index; off; text}) :: _     ->
+  | Blanks({index; off; text})  :: _ ->
       Some({index; kind = `Blanks; off; text})
-  | Command({index; off; text; _}) :: _ ->
+  | Command({index; off; text}) :: _ ->
       Some({index; kind = `Command; off; text})
-  | []                                  ->
+  | Ghost({index; off; text})   :: _ ->
+      Some({index; kind = `Ghost; off; text})
+  | []                               ->
       None
 
 type unprocessed_item = {
-  kind : [`Blanks | `Command];
+  kind : [`Blanks | `Command | `Ghost];
   text : string;
 }
 
@@ -365,8 +322,9 @@ let first_unprocessed_item : t -> unprocessed_item option = fun d ->
   if d.backend = None then raise Stopped;
   match d.suffix with
   | []                      -> None
-  | RemBlanks({text})  :: _ -> Some({kind = `Blanks; text})
+  | RemBlanks({text})  :: _ -> Some({kind = `Blanks ; text})
   | RemCommand({text}) :: _ -> Some({kind = `Command; text})
+  | RemGhost({text})   :: _ -> Some({kind = `Ghost  ; text})
 
 let doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a)
      -> 'a list = fun d f ->
@@ -378,6 +336,8 @@ let doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a)
         build (f ~kind:"blanks" ~off ~text :: acc) rev_prefix
     | Command({off; text; _}) :: rev_prefix ->
         build (f ~kind:"command" ~off ~text :: acc) rev_prefix
+    | Ghost({off; text; _})   :: rev_prefix ->
+        build (f ~kind:"ghost" ~off ~text :: acc) rev_prefix
   in
   build [] d.rev_prefix
 
@@ -391,6 +351,8 @@ let doc_suffix : t -> (kind:string -> text:string -> 'a)
         f ~kind:"blanks"  ~text :: build suffix
     | RemCommand({text}) :: suffix ->
         f ~kind:"command" ~text :: build suffix
+    | RemGhost({text})   :: suffix ->
+        f ~kind:"ghost"   ~text :: build suffix
   in
   build d.suffix
 
@@ -403,27 +365,21 @@ let commit : t -> include_suffix:bool -> unit = fun d ~include_suffix ->
   Out_channel.with_open_text backend.file @@ fun oc ->
   let output_processed p =
     match p with
-    | Blanks({text; _}) -> Out_channel.output_string oc text
-    | Command({text; visible;_}) ->
-      if visible then Out_channel.output_string oc text
+    | Blanks({text; _})  -> Out_channel.output_string oc text
+    | Command({text; _}) -> Out_channel.output_string oc text
+    | Ghost(_)           -> ()
   in
   List.iter output_processed (List.rev d.rev_prefix);
   let output_unprocessed u =
-    match u with RemBlanks({text}) | RemCommand({text}) ->
-    Out_channel.output_string oc text
+    match u with
+    | RemBlanks({text})  -> Out_channel.output_string oc text
+    | RemCommand({text}) -> Out_channel.output_string oc text
+    | RemGhost(_)        -> ()
   in
   if include_suffix then List.iter output_unprocessed d.suffix
 
-let read_file file =
-  let buf = Buffer.create 73 in
-  let ic = open_in file in
-  try while true do
-    Buffer.add_string buf (input_line ic);
-    Buffer.add_char buf '\n'
-  done; assert false with End_of_file -> Buffer.contents buf
-
 let compile : t -> (unit, string) result * string * string = fun d ->
-  let {file;args;_} = get_backend d in
+  let {file; args; _} = get_backend d in
   let args = "c" :: args @ [file] in
   let stdout = file ^ ".stdout" in
   let stderr = file ^ ".stderr" in
@@ -435,9 +391,9 @@ let compile : t -> (unit, string) result * string * string = fun d ->
     | Unix.WSIGNALED(i) -> Error(Format.sprintf "Killed with signal %i." i)
     | Unix.WSTOPPED(i)  -> Error(Format.sprintf "Stopped by signal %i." i)
   in
-  let out = read_file stdout in
+  let out = In_channel.with_open_text stdout In_channel.input_all in
   Sys.remove stdout;
-  let err = read_file stderr in
+  let err = In_channel.with_open_text stderr In_channel.input_all in
   Sys.remove stderr;
   (ret, out, err)
 

@@ -38,6 +38,8 @@ val stop : t -> unit
     to running the first operation in the sequence. *)
 val clone : t -> t
 
+val sync : t -> unit
+
 val file : t -> string
 
 val load_file : t -> (unit, string * Rocq_loc.t option) result
@@ -100,7 +102,7 @@ val byte_loc_of_last_step : t -> byte_loc option
 
 type processed_item = {
   index : int;
-  kind : [`Blanks | `Command];
+  kind : [`Blanks | `Command | `Ghost];
   off : int;
   text : string;
 }
@@ -108,7 +110,7 @@ type processed_item = {
 val last_processed_item : t -> processed_item option
 
 type unprocessed_item = {
-  kind : [`Blanks | `Command];
+  kind : [`Blanks | `Command | `Ghost];
   text : string;
 }
 
