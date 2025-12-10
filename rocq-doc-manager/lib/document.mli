@@ -1,7 +1,7 @@
 (** Rocq document API.
 
     A Rocq document can be understood as an in-memory Rocq source file. It may
-    of may not correspond to an existing source file, and may or may not be in
+    or may not correspond to an existing source file, and may or may not be in
     sync with such a source file when it exists.
 
     A document is represented as a list of items, which can be of two kinds: a
@@ -16,15 +16,29 @@ type t
 
 (** [init ~args ~file] initialises a Rocq document for the given [file], using
     the given Rocq command line arguments [args]. Regardless of whether [file]
-    exists on the file system or not, the document starts empty. *)
+    exists on the file system or not, the document starts empty. Upon document
+    creation, a session with a dedicated Rocq top-level is started. *)
 val init : args:string list -> file:string -> t
 
-(** [clone t] creates a new cursor that is independent of [t] but in the same
-    state as [t] *)
+(** Exception raised when running any of the following operation on a document
+    that is already stopped. *)
+exception Stopped
+
+(** [stop d] marks document [d] as stopped, and stops the underlying top-level
+    if it is not still shared with other documents (see [clone]). Note that it
+    is required to eventually call stop on all documents returned by [init] or
+    [clone], in order to free the underlying resources. *)
+val stop : t -> unit
+
+(** [clone d] creates an independent clone of the document [d], that starts in
+    the same state as [d]. While document [d] and the produced clone both have
+    their own state, they share a single underlying Rocq top-level. This means
+    that when one runs a sequence of operations on a document, an initial cost
+    may need to be paid to bring the top-level in sync with the document prior
+    to running the first operation in the sequence. *)
 val clone : t -> t
 
-(** This operation does not have clear semantics if we do not expose the backend. *)
-val stop : t -> unit
+val file : t -> string
 
 val load_file : t -> (unit, string * Rocq_loc.t option) result
 
