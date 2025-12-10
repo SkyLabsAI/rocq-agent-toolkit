@@ -226,7 +226,6 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
   (* NOTE: no need to re-focus, the toplevel just gets out of sync. *)
   d.rev_prefix <- rev_prefix;
   d.cursor_off <- off ;
-  (* TODO: this offset is not correct if the last command was inserted by [run_command] *)
   if not erase then d.suffix <- suffix
 
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
