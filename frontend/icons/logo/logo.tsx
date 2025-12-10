@@ -8,6 +8,7 @@ export const LogoIcon: React.FC<{ className?: string }> = ({ className }) => {
       height='18'
       viewBox='0 0 37 18'
       fill='currentColor'
+      className={className}
     >
       <g clipPath='url(#clip0_18_1342)'>
         <mask

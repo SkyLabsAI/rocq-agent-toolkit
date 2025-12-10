@@ -1,5 +1,6 @@
-import { PlayIcon } from '@/icons/play';
 import React from 'react';
+
+import { PlayIcon } from '@/icons/play';
 
 interface RunHeaderProps {
   title: string;

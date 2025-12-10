@@ -1,13 +1,12 @@
 'use client';
 
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+
 import AgentCompareTable from '@/features/agents-compare';
 import LocalDashboard from '@/features/localdashboard';
 import ComparePage from '@/features/runs-compare';
-import BenchmarksList from '@/features/benchmarks';
 
-import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
-
-export default function Home() {
+const Home = () => {
   return (
     <MemoryRouter initialEntries={['/']}>
       <Routes>
@@ -20,4 +19,6 @@ export default function Home() {
       </Routes>
     </MemoryRouter>
   );
-}
+};
+
+export default Home;

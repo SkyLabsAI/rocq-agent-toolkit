@@ -1,10 +1,12 @@
 import React from 'react';
+
+import { GlobalStickyCompareBar } from '@/components/GlobalStickyCompareBar';
+import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
+
 import { useBenchmarks } from '../../../hooks/use-dataview';
 import { DataItem } from './data-item';
-import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
-import { GlobalStickyCompareBar } from '@/components/GlobalStickyCompareBar';
 
-const DataView: React.FC = ({}) => {
+const DataView: React.FC = () => {
   const { benchmarks } = useBenchmarks();
 
   return (

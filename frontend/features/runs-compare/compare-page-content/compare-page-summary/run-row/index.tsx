@@ -1,5 +1,4 @@
 import { Button } from '@/components/base';
-import { RunStats } from '@/features/runs-compare';
 
 export const TaskRow: React.FC<{
   stats: (number | string | boolean)[];

@@ -1,9 +1,11 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import type { TaskOutput, RunDetailsResponse } from '@/types/types';
-import { ComparePageContent } from './compare-page-content';
+
 import Layout from '@/layouts/common';
+import type { RunDetailsResponse, TaskOutput } from '@/types/types';
+
+import { ComparePageContent } from './compare-page-content';
 
 export interface RunStats {
   id: string;

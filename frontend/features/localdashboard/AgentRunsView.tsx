@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+
 import RunRow from '@/components/RunRow';
 import StickyCompareBar from '@/components/StickyCompareBar';
+import { useSelectedRun } from '@/contexts/SelectedRunContext';
 import { PlayIcon } from '@/icons/play';
-import { AgentRun, Run, RunDetailsResponse } from '@/types/types';
+import { type AgentRun, type Run } from '@/types/types';
 
 type AgentRunsViewProps = {
   runDetails: AgentRun[];
@@ -40,7 +41,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
       const stored = localStorage.getItem(key);
       return stored ? new Set(JSON.parse(stored)) : new Set();
     } catch (error) {
-      console.error('Error loading pinned runs from localStorage:', error);
       return new Set();
     }
   };
@@ -54,8 +54,8 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
     try {
       const key = `pinnedRuns-${agentName}`;
       localStorage.setItem(key, JSON.stringify(Array.from(pinnedRuns)));
-    } catch (error) {
-      console.error('Error saving pinned runs to localStorage:', error);
+    } catch {
+      // Error handling can be added here if needed
     }
   }, [pinnedRuns, agentName]);
 

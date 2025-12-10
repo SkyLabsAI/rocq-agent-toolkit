@@ -1,23 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronUpIcon } from '@/icons/chevron-up';
-import AgentListIcon from '@/icons/agent-list';
-import AgentDetails from './agent-details';
-import { AgentSummaryTemp } from '@/services/dataservice';
-import TaskDetailsModal from '@/features/taskDetailsModal';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import RunDetailsView from '@/components/RunDetailsView';
 import StickyCompareBar from '@/components/StickyCompareBar';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAgents } from '@/hooks/useAgentsSummary';
-import { Run } from '@/types/types';
 import { GlobalCompareProvider } from '@/contexts/GlobalCompareContext';
+import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import TaskDetailsModal from '@/features/taskDetailsModal';
+import { useAgents } from '@/hooks/useAgentsSummary';
+import AgentListIcon from '@/icons/agent-list';
+import { ChevronUpIcon } from '@/icons/chevron-up';
+import { type AgentSummaryTemp } from '@/services/dataservice';
+import { type Run } from '@/types/types';
 
-const AgentView: React.FC = ({}) => {
+import AgentDetails from './agent-details';
+
+const AgentView: React.FC = () => {
   const { agentData, agentDetailData, modalState, closeModal, openCodeModal } =
     useAgents();
 
   const { selectedRun, setSelectedRun } = useSelectedRun();
-  const [activeAgent, setActiveAgent] = React.useState<string | null>(null);
+  const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [selectedAgents, setSelectedAgent] = useState<AgentSummaryTemp[]>([]);
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
 

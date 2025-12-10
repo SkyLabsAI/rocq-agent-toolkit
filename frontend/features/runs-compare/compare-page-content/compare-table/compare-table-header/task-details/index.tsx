@@ -1,14 +1,9 @@
-import { RunTaskCell } from '@/features/runs-compare';
+import { type TaskRowData } from '../../../utils';
 import { ComparisonRow } from './comparison-row';
-import { TaskRowData } from '../../../utils';
 
 export const TaskDetailsTable = ({
-  id,
-  details,
   taskRowData,
 }: {
-  id: string;
-  details: RunTaskCell[];
   taskRowData: TaskRowData;
 }) => {
   const metricRows = extractMetricRows(taskRowData);

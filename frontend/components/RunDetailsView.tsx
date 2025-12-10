@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+
 import { Button } from '@/components/base/ui/button';
-import { getRunDetails } from '@/services/dataservice';
-import type { TaskOutput, RunDetailsResponse } from '@/types/types';
 import { ChevronUpIcon } from '@/icons/chevron-up';
+import { getRunDetails } from '@/services/dataservice';
+import type { TaskOutput } from '@/types/types';
+
 import { StatusBadge } from './base/statusBadge';
 
 interface RunDetailsViewProps {
@@ -38,7 +40,6 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
           setTaskDetails(runDetailsResponse[0].tasks);
         }
       } catch (err) {
-        console.error('Error fetching run details:', err);
         setError(
           err instanceof Error ? err.message : 'Failed to fetch run details'
         );

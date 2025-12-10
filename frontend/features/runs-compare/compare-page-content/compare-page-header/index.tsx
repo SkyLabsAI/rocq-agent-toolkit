@@ -1,5 +1,6 @@
-import { ChevronUpIcon } from '@/icons/chevron-up';
 import { Link } from 'react-router-dom';
+
+import { ChevronUpIcon } from '@/icons/chevron-up';
 
 export const CompareRunsHeader = ({
   title,

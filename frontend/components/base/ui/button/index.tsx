@@ -9,7 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
 }
 
-export function Button({
+export const Button = ({
   leftIcon,
   rightIcon,
   leftDivider = false,
@@ -18,7 +18,7 @@ export function Button({
   children,
   className = '',
   ...props
-}: ButtonProps) {
+}: ButtonProps) => {
   const getBaseClasses = () => {
     const baseStyles =
       'relative rounded-[4px] shrink-0 cursor-pointer overflow-hidden';
@@ -68,6 +68,6 @@ export function Button({
       </div>
     </button>
   );
-}
+};
 
 export default Button;

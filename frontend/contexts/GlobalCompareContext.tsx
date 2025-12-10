@@ -1,9 +1,9 @@
 import React, {
   createContext,
+  type ReactNode,
+  useCallback,
   useContext,
   useState,
-  useCallback,
-  ReactNode,
 } from 'react';
 
 export interface GlobalSelection {
@@ -53,7 +53,7 @@ export const GlobalCompareProvider: React.FC<GlobalCompareProviderProps> = ({
     activeDatasetId: null,
   });
 
-  const clearOtherDatasets = useCallback((currentDatasetId: string) => {
+  const _clearOtherDatasets = useCallback((currentDatasetId: string) => {
     setSelections(prev => ({
       ...prev,
       selectedAgents: prev.selectedAgents.filter(

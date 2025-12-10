@@ -1,5 +1,6 @@
-import { RunDetailsResponse, TaskOutput } from '@/types/types';
-import { RunStats } from '..';
+import { type RunDetailsResponse, type TaskOutput } from '@/types/types';
+
+import { type RunStats } from '..';
 
 export const computeRunStats = (run: RunDetailsResponse): RunStats => {
   const tasks = run.tasks.length;
@@ -25,31 +26,6 @@ export const computeRunStats = (run: RunDetailsResponse): RunStats => {
             0
           ) / tasks,
   };
-};
-
-const normalizeFailureReason = (fr: unknown): string => {
-  if (fr == null) return '';
-  if (Array.isArray(fr)) {
-    return fr
-      .map(x => (typeof x === 'string' ? x : JSON.stringify(x)))
-      .join(' | ');
-  }
-  if (typeof fr === 'object') {
-    const obj = fr as { kind?: string; value?: unknown };
-    if (obj.kind) {
-      return (
-        obj.kind +
-        (obj.value
-          ? ': ' +
-            (typeof obj.value === 'object'
-              ? JSON.stringify(obj.value)
-              : String(obj.value))
-          : '')
-      );
-    }
-    return JSON.stringify(fr);
-  }
-  return String(fr);
 };
 
 export interface TaskRowData {

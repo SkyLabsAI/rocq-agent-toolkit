@@ -1,16 +1,18 @@
-import { ChevronUpIcon } from '@/icons/chevron-up';
-import { Benchmark, Run } from '@/types/types';
-import { cn } from '@/utils/cn';
 import { useEffect, useState } from 'react';
-import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAgents } from '@/hooks/useAgentsSummary';
-import TaskDetailsModal from '@/features/taskDetailsModal';
+
 import RunDetailsView from '@/components/RunDetailsView';
-import AgentDetails from './agent-details';
-import AgentListIcon from '@/icons/agent-list';
 import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
+import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import TaskDetailsModal from '@/features/taskDetailsModal';
+import { useAgents } from '@/hooks/useAgentsSummary';
+import AgentListIcon from '@/icons/agent-list';
+import { ChevronUpIcon } from '@/icons/chevron-up';
+import { type Benchmark, type Run } from '@/types/types';
+import { cn } from '@/utils/cn';
+
+import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
+import AgentDetails from './agent-details';
 
 interface DataItemProps {
   benchmark: Benchmark;
@@ -24,7 +26,6 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
   const { modalState, closeModal, openCodeModal } = useAgents();
 
   const { selectedRun, setSelectedRun } = useSelectedRun();
-  const [activeAgent, setActiveAgent] = useState<string | null>(null);
 
   // Use global compare context instead of local state
   const {
@@ -32,7 +33,6 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
     deselectAgent,
     selectRun,
     deselectRun,
-    getSelectedAgentsForDataset,
     getSelectedRunsForDataset,
     isAgentSelected,
     isRunSelected,
@@ -234,7 +234,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
                       Actions
                     </td>
                   </tr>
-                  {getSortedAgents().map((agent, index) => (
+                  {getSortedAgents().map(agent => (
                     <AgentDetails
                       key={agent.agent_name}
                       agent={agent}

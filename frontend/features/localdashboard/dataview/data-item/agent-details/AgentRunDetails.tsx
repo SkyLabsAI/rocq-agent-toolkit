@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { getRunDetails, getObservabilityLogs } from '@/services/dataservice';
-import { RunDetailsResponse, TaskOutput } from '@/types/types';
+import React, { useEffect, useState } from 'react';
+
 import { Button } from '@/components/base';
 import TaskDetailsModal from '@/features/taskDetailsModal';
+import { getObservabilityLogs, getRunDetails } from '@/services/dataservice';
+import { type RunDetailsResponse, type TaskOutput } from '@/types/types';
 
 interface AgentRunDetailsProps {
   runId: string;
-  agentName: string;
   isExpanded: boolean;
 }
 
 const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
   runId,
-  agentName,
   isExpanded,
 }) => {
   const [runDetails, setRunDetails] = useState<RunDetailsResponse | null>(null);
@@ -42,7 +41,6 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
       const details = await getRunDetails([runId]);
       setRunDetails(details[0]);
     } catch (err) {
-      console.error('Error fetching run details:', err);
       setError(
         err instanceof Error ? err.message : 'Failed to fetch run details'
       );
@@ -63,8 +61,7 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
         selectedTask: task,
         logs: logs,
       });
-    } catch (error) {
-      console.error('Error fetching observability logs:', error);
+    } catch {
       setModalState({
         isOpen: true,
         selectedTask: task,
@@ -81,17 +78,6 @@ const AgentRunDetails: React.FC<AgentRunDetailsProps> = ({
       selectedTask: null,
       logs: null,
     });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'success':
-        return 'text-green-400 bg-green-400/10';
-      case 'failure':
-        return 'text-red-400 bg-red-400/10';
-      default:
-        return 'text-gray-400 bg-gray-400/10';
-    }
   };
 
   const formatMetricValue = (value: number, unit?: string) => {

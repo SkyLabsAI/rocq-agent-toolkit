@@ -1,11 +1,13 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
 import AgentRunsView from '@/features/localdashboard/AgentRunsView';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { Benchmark, Run } from '@/types/types';
+import { type Benchmark, type Run } from '@/types/types';
 import { cn } from '@/utils/cn';
-import { useState } from 'react';
+
 import { useAgentBenchmarks } from './use-benchmark-runs';
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
-import { useNavigate } from 'react-router-dom';
 
 interface AgentBenchMarkProps {
   benchmark: Benchmark;
@@ -17,7 +19,7 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
   agentName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { runs, isLoading, error, fetchRuns } = useAgentBenchmarks(
+  const { runs, isLoading, fetchRuns } = useAgentBenchmarks(
     agentName,
     benchmark.dataset_id
   );

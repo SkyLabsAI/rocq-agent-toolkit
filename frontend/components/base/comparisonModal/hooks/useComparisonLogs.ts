@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+
 import { getObservabilityLogs } from '@/services/dataservice';
 import type { TaskOutput } from '@/types/types';
 

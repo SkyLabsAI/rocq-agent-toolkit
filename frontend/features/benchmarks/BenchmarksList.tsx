@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Layout from '@/layouts/common';
-import { getBenchmarks } from '@/services/dataservice';
-import { Benchmark } from '@/types/types';
+
 import Button from '@/components/base/ui/button';
 import { RefreshIcon } from '@/icons/refresh';
+import Layout from '@/layouts/common';
+import { getBenchmarks } from '@/services/dataservice';
+import { type Benchmark } from '@/types/types';
 
 const BenchmarksList: React.FC = () => {
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
@@ -21,7 +22,6 @@ const BenchmarksList: React.FC = () => {
       const data = await getBenchmarks();
       setBenchmarks(data);
     } catch (err) {
-      console.error('Error loading benchmarks:', err);
       setError('Failed to load benchmarks');
     } finally {
       setLoading(false);
