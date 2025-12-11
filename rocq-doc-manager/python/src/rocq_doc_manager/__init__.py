@@ -4,11 +4,8 @@ This package provides a Python interface to interact with the Rocq document
 manager.
 """
 
-from jsonrpc_tp import JsonRPCTP
-
 from .dune_util import DuneUtil, dune_env_hack
 from .rocq_cursor import RocqCursor
-from .rocq_doc_manager_api import RocqDocManagerAPI
 from .rocq_doc_manager import RocqDocManager
 
 
