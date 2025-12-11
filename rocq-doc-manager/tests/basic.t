@@ -107,11 +107,8 @@
         "offset": 0,
         "text": "Require Import Stdlib.ZArith.BinInt."
       },
-      {
-        "kind": "blanks",
-        "offset": 36,
-        "text": "\n\n\n(* inserted comment *)\n"
-      },
+      { "kind": "blanks", "offset": 36, "text": "\n\n" },
+      { "kind": "blanks", "offset": 38, "text": "\n(* inserted comment *)\n" },
       {
         "kind": "command",
         "offset": 62,

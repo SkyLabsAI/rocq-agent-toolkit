@@ -152,56 +152,45 @@ type command_data = Rocq_toplevel.run_data
 type command_error = Rocq_toplevel.run_error
 
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
-  let backend = get_synced_backend d in
-  backend.synced <- [d];
-  let len = String.length text in
-  if len = 0 then () else
-  match d.rev_prefix with
-  | p :: rev_prefix when p.kind = `Blanks ->
-      let processed = {p with text = p.text ^ text} in
-      let (sid_before, rev_processed) =
-        match backend.rev_processed with
-        | {sid_before; _} :: rev_commands -> (sid_before, rev_commands)
-        | _                               -> assert false
-      in
-      backend.rev_processed <- {sid_before; processed} :: rev_processed;
-      d.rev_prefix <- processed :: rev_prefix;
-      d.cursor_off <- d.cursor_off + len
-  | _                                     ->
-      let index = cursor_index d in
-      let processed = {index; kind = `Blanks; off = d.cursor_off; text} in
-      let sid_before = Rocq_toplevel.StateID.current backend.top in
-      backend.rev_processed <-
-        {sid_before; processed} :: backend.rev_processed;
-      d.rev_prefix <- processed :: d.rev_prefix;
-      d.cursor_off <- d.cursor_off + len
+  let backend = get_backend d in
+  let processed =
+    let index = cursor_index d in
+    {index; kind = `Blanks; off = d.cursor_off; text}
+  in
+  d.rev_prefix <- processed :: d.rev_prefix;
+  d.cursor_off <- d.cursor_off + String.length text;
+  (* NOTE: only update the backend if we were in sync before inserting. *)
+  if synced backend d then begin
+    let sid_before = Rocq_toplevel.StateID.current backend.top in
+    backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
+    backend.synced <- [d]
+  end
 
 let insert_command : t -> text:string ->
     (command_data, string * command_error) result = fun d ~text ->
   let backend = get_synced_backend d in
-  backend.synced <- [d];
   let off = d.cursor_off in
   let sid_before = Rocq_toplevel.StateID.current backend.top in
   let res = Rocq_toplevel.run backend.top ~off ~text in
   match res with Error(_,_) -> res | Ok(_) ->
   let processed = {index = cursor_index d; kind = `Command; off; text} in
-  backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
   d.rev_prefix <- processed :: d.rev_prefix;
   d.cursor_off <- d.cursor_off + String.length text;
+  backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
+  backend.synced <- [d];
   res
 
 let run_command : t -> text:string -> (command_data, string) result =
     fun d ~text ->
   let backend = get_synced_backend d in
-  backend.synced <- [d];
   let sid_before = Rocq_toplevel.StateID.current backend.top in
-  match Rocq_toplevel.run backend.top ~off:0 ~text with
-  | Error(s,_) -> Error(s)
-  | Ok(data)   ->
-  let index = cursor_index d in
-  let processed = {index; kind = `Ghost; off = d.cursor_off; text} in
-  backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
+  let res = Rocq_toplevel.run backend.top ~off:0 ~text in
+  match res with Error(s,_) -> Error(s) | Ok(data) ->
+  let off = d.cursor_off in
+  let processed = {index = cursor_index d; kind = `Ghost; off; text} in
   d.rev_prefix <- processed :: d.rev_prefix;
+  backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
+  backend.synced <- [d];
   Ok(data)
 
 let revert_before : ?erase:bool -> t -> index:int -> unit =
