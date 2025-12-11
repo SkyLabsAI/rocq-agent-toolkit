@@ -25,6 +25,7 @@ def if_decide_then_else_extract(text: str) -> tuple[str, str, str] | None:
         return match.group(1), match.group(2), match.group(3)
     return None
 
+
 class BrickGoal(IrisGoal):
     """Single Brick goal, consisting of structured goal parts.
 
