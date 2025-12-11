@@ -72,7 +72,6 @@ let clone : t -> t = fun d ->
   d_clone
 
 let file : t -> string = fun d ->
-  if d.backend = None then raise Stopped;
   (get_backend d).file
 
 let get_synced_backend : t -> backend = fun d ->
@@ -128,7 +127,7 @@ let is_synced : t -> bool = fun d ->
   synced (get_backend d) d
 
 let cursor_index : t -> int = fun d ->
-  if d.backend = None then raise Stopped;
+  ignore (get_backend d);
   match d.rev_prefix with [] -> 0 | p :: _ -> p.index + 1
 
 let to_unprocessed : Rocq_split_api.sentence -> unprocessed_item = fun s ->
@@ -230,12 +229,11 @@ let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
   unsync backend d; v
 
 let clear_suffix : t -> unit = fun d ->
-  if d.backend = None then raise Stopped;
-  d.suffix <- []
+  ignore (get_backend d); d.suffix <- []
 
 let run_step : t ->
     (command_data option, string * command_error option) result = fun d ->
-  if d.backend = None then raise Stopped;
+  ignore (get_backend d);
   match d.suffix with
   | []                                -> Error("no step left to run", None)
   | {kind = `Blanks ; text} :: suffix ->
@@ -277,12 +275,10 @@ let go_to : t -> index:int -> (unit, string * command_error) result =
   | false -> advance_to d ~index
 
 let rev_prefix : t -> processed_item list = fun d ->
-  if d.backend = None then raise Stopped;
-  d.rev_prefix
+  ignore (get_backend d); d.rev_prefix
 
 let suffix : t -> unprocessed_item list = fun d ->
-  if d.backend = None then raise Stopped;
-  d.suffix
+  ignore (get_backend d); d.suffix
 
 let commit : t -> include_suffix:bool -> unit = fun d ~include_suffix ->
   let backend = get_backend d in
