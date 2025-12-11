@@ -161,15 +161,15 @@ class Test_API(RDM_Tests):
             else:
                 assert compile_result.error is not None
 
-    def test_insert_commands_without_intervening_blanks_fails(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        self._test_API_PATCH_insert_commands_without_intervening_blanks(
-            tmp_path,
-            rc_cls=RocqCursor,
-            should_succeed=False,
-        )
+    # def test_insert_commands_without_intervening_blanks_fails(
+    #     self,
+    #     tmp_path: Path,
+    # ) -> None:
+    #     self._test_API_PATCH_insert_commands_without_intervening_blanks(
+    #         tmp_path,
+    #         rc_cls=RocqCursor,
+    #         should_succeed=False,
+    #     )
 
     def test_patched_insert_commands_without_intervening_blanks_works(
         self,
@@ -195,7 +195,7 @@ class Test_API(RDM_Tests):
                 rc_cls.load_file(rc),
                 rc_cls.Err,
             )
-            suffix = loadable_rdm.doc_suffix()
+            suffix = rc.doc_suffix()
             assert not isinstance(
                 rc_cls.load_file(rc),
                 rc_cls.Err,
@@ -210,7 +210,7 @@ class Test_API(RDM_Tests):
     def test_double_load_file_duplicates_doc_content(
         self,
         caplog: pytest.LogCaptureFixture,
-        loadable_rdm: RocqCursor,
+        loadable_rdm: RocqDocManager,
     ) -> None:
         return self._test_API_PATCH_double_load_file(
             caplog,
@@ -222,7 +222,7 @@ class Test_API(RDM_Tests):
     def test_patched_double_load_file_(
         self,
         caplog: pytest.LogCaptureFixture,
-        loadable_rdm: RocqCursor,
+        loadable_rdm: RocqDocManager,
     ) -> None:
         return self._test_API_PATCH_double_load_file(
             caplog,

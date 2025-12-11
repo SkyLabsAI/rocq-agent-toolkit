@@ -22,14 +22,14 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
     def test_advance_to_first_match_none(
         self,
         steps: int,
-        loaded_shared_rdm: RocqCursor,
+        loaded_shared_rdm: RocqDocManager,
     ) -> None:
-        with RDM_Tests.starting_from(loaded_shared_rdm, idx=0) as rdm:
+        with RDM_Tests.starting_from(loaded_shared_rdm.cursor(), idx=0) as rc:
             assert not isinstance(
-                rdm.advance_to(steps),
+                rc.advance_to(steps),
                 RocqCursor.Err,
             )
-            assert not rdm.advance_to_first_match(
+            assert not rc.advance_to_first_match(
                 self._no_match,
             )
 
@@ -45,9 +45,9 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
         self,
         steps: int,
         step_over_match: bool,
-        loaded_shared_rdm: RocqCursor,
+        loaded_shared_rdm: RocqDocManager,
     ) -> None:
-        with RDM_Tests.starting_from(loaded_shared_rdm, idx=0) as rdm:
+        with RDM_Tests.starting_from(loaded_shared_rdm.cursor(), idx=0) as rdm:
             assert not isinstance(
                 rdm.advance_to(steps),
                 RocqCursor.Err,

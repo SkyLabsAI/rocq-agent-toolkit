@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import logging
-from typing import Any, override
+from typing import Any, Callable, Iterator, Self, override, Sequence, Literal
 
 from rocq_doc_manager.cursor_mixin import CursorMixin
 
-from .rocq_doc_manager_api import RocqDocManagerAPI
+from .rocq_doc_manager_api import RocqDocManagerAPI as API
 
 logger = logging.getLogger(__name__)
 
@@ -15,36 +16,36 @@ class RocqCursor(CursorMixin):
     Cursors represent a pointer into a Rocq document.
     """
 
-    def __init__(self, rdm: RocqDocManagerAPI, cursor: int) -> None:
-        self._the_rdm: RocqDocManagerAPI | None = rdm
+    def __init__(self, rdm: API, cursor: int) -> None:
+        self._the_rdm: API | None = rdm
         self._cursor = cursor
 
     _NO_CURSOR_ERROR: str = "Unknown cursor"
 
     def _check_cursor[T, U](
-        self, result: T | RocqDocManagerAPI.Err[None | U]
-    ) -> T | RocqDocManagerAPI.Err[U]:
-        if isinstance(result, RocqDocManagerAPI.Err):
+        self, result: T | RocqCursor.Err[None | U]
+    ) -> T | RocqCursor.Err[U]:
+        if isinstance(result, RocqCursor.Err):
             if result.message == RocqCursor._NO_CURSOR_ERROR:
                 raise Exception(f"Unknown cursor {self._cursor}")
         return result  # type: ignore
 
     def _check_cursor_keep[T, U](
-        self, result: T | RocqDocManagerAPI.Err[None | U]
-    ) -> T | RocqDocManagerAPI.Err[None | U]:
-        if isinstance(result, RocqDocManagerAPI.Err):
+        self, result: T | RocqCursor.Err[None | U]
+    ) -> T | RocqCursor.Err[None | U]:
+        if isinstance(result, RocqCursor.Err):
             if result.message == RocqCursor._NO_CURSOR_ERROR:
                 raise Exception(f"Unknown cursor {self._cursor}")
         return result
 
-    def _take_cursor[T](self, result: T | RocqDocManagerAPI.Err[None]) -> T:
-        if isinstance(result, RocqDocManagerAPI.Err):
+    def _take_cursor[T](self, result: T | RocqCursor.Err[None]) -> T:
+        if isinstance(result, RocqCursor.Err):
             assert result.message == RocqCursor._NO_CURSOR_ERROR
             raise Exception(f"Unknown cursor: {self._cursor}")
         return result
 
     @property
-    def _rdm(self) -> RocqDocManagerAPI:
+    def _rdm(self) -> API:
         if self._the_rdm is None:
             raise Exception(f"Using disposed cursor: {self._cursor}")
         return self._the_rdm
@@ -52,7 +53,7 @@ class RocqCursor(CursorMixin):
     @override
     def advance_to(
         self, index: int
-    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]:
+    ) -> None | RocqCursor.Err[RocqCursor.CommandError | None]:
         """Advance the cursor before the indicated unprocessed item."""
         return self._check_cursor(self._rdm.advance_to(self._cursor, index))
 
@@ -77,7 +78,7 @@ class RocqCursor(CursorMixin):
         return self._take_cursor(self._rdm.commit(self._cursor, include_suffix))
 
     @override
-    def compile(self) -> RocqDocManagerAPI.CompileResult:
+    def compile(self) -> RocqCursor.CompileResult:
         return self._take_cursor(self._rdm.compile(self._cursor))
 
     @override
@@ -90,17 +91,15 @@ class RocqCursor(CursorMixin):
         self._the_rdm = None
 
     @override
-    def doc_prefix(self) -> list[RocqDocManagerAPI.PrefixItem]:
+    def doc_prefix(self) -> list[RocqCursor.PrefixItem]:
         return self._take_cursor(self._rdm.doc_prefix(self._cursor))
 
     @override
-    def doc_suffix(self) -> list[RocqDocManagerAPI.SuffixItem]:
+    def doc_suffix(self) -> list[RocqCursor.SuffixItem]:
         return self._take_cursor(self._rdm.doc_suffix(self._cursor))
 
     @override
-    def go_to(
-        self, index: int
-    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
+    def go_to(self, index: int) -> None | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.go_to(self._cursor, index))
 
     @override
@@ -111,17 +110,44 @@ class RocqCursor(CursorMixin):
     def insert_blanks(self, text: str) -> None:
         return self._take_cursor(self._rdm.insert_blanks(self._cursor, text))
 
-    @override
-    def insert_command(
-        self, text: str, blanks: str | None = "\n"
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
-    ):
+    def _insert_command(
+        self, text: str
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.insert_command(self._cursor, text))
 
     @override
-    def load_file(self) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc]:
+    def insert_command(
+        self, text: str, blanks: str | None = "\n", safe: bool = True
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        if safe:
+            prefix_reply = self.doc_prefix()
+            if isinstance(prefix_reply, API.Err):
+                # This is okay because the error is a cursor error
+                return prefix_reply
+            prefix: list[API.PrefixItem] = prefix_reply
+            if prefix != [] and prefix[-1].kind != "blanks":
+                self.insert_blanks(" ")
+                revert = True
+            else:
+                revert = False
+        else:
+            revert = False
+
+        try:
+            result = self._insert_command(text)
+            if isinstance(result, API.CommandError):
+                if revert:
+                    self.revert_before(erase=True, index=len(prefix))
+            elif blanks is not None:
+                self.insert_blanks(blanks)
+            return result
+        except API.Error:
+            if revert:
+                self.revert_before(erase=True, index=len(prefix))
+            raise
+
+    @override
+    def load_file(self) -> None | RocqCursor.Err[RocqCursor.RocqLoc]:
         return self._check_cursor(self._rdm.load_file(self._cursor))
 
     # TODO: we should really reduce the repetition on [query],
@@ -129,57 +155,337 @@ class RocqCursor(CursorMixin):
     @override
     def query(
         self, text: str
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
-    ):
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.query(self._cursor, text))
 
     @override
     def query_json(
         self, text: str, index: int
-    ) -> Any | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
+    ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.query_json(self._cursor, text, index))
 
     @override
     def query_json_all(
         self, text: str, indices: list[int] | None = None
-    ) -> list[Any] | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
+    ) -> list[Any] | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.query_json_all(self._cursor, text, indices))
 
     @override
     def query_text(
         self, text: str, index: int
-    ) -> str | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
+    ) -> str | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.query_text(self._cursor, text, index))
 
     @override
     def query_text_all(
         self, text: str, indices: list[int] | None = None
-    ) -> list[str] | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
+    ) -> list[str] | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.query_text_all(self._cursor, text, indices))
 
     @override
-    def revert_before(
-        self, erase: bool, index: int
-    ) -> None | RocqDocManagerAPI.Err[None]:
+    def revert_before(self, erase: bool, index: int) -> None | RocqCursor.Err[None]:
         return self._check_cursor(self._rdm.revert_before(self._cursor, erase, index))
 
     @override
     def run_command(
         self, text: str
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
-    ):
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.run_command(self._cursor, text))
 
     @override
     def run_step(
         self,
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | None
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
-    ):
+    ) -> RocqCursor.CommandData | None | RocqCursor.Err[RocqCursor.CommandError]:
         return self._check_cursor(self._rdm.run_step(self._cursor))
+
+    # ===== BEGIN: contextmanagers ============================================
+    @contextmanager
+    def ctx(self, rollback: bool = True) -> Iterator[Self]:
+        """Base RDM context manager supporting optional doc rollback."""
+        current_idx: int = 0  # satisfies pyright.
+        if rollback:
+            current_idx = self.cursor_index()
+            # NOTE: blanks are fused, so inserting blanks at the beginning
+            # of a rollback context can leave the document in a modified state.
+            # By inserting a real (but trivial) command that we rollback, we
+            # ensure that the document is left unchanged.
+            marker_cmd = "Check tt."
+            insert_command_reply = self.insert_command(marker_cmd)
+            if isinstance(insert_command_reply, RocqCursor.Err):
+                raise RocqCursor.Error(
+                    " ".join(
+                        [
+                            f"RocqDocManager failed to insert {marker_cmd}:",
+                            str(insert_command_reply),
+                        ]
+                    )
+                )
+
+        yield self
+
+        if rollback:
+            revert_reply = self.revert_before(True, current_idx)
+            if isinstance(revert_reply, RocqCursor.Err):
+                raise RocqCursor.Error(
+                    " ".join(
+                        [
+                            "RocqDocManager failed to rollback to",
+                            f"{current_idx}: {revert_reply}",
+                        ]
+                    )
+                )
+
+    @contextmanager
+    def aborted_goal_ctx(
+        self, goal: str = "True", rollback: bool = True
+    ) -> Iterator[Self]:
+        """RDM context manager that sets up an aborted goal."""
+        with self.ctx(rollback=rollback):
+            goal_reply = self.insert_command(f"Goal {goal}.")
+            if isinstance(goal_reply, RocqCursor.Err):
+                raise RocqCursor.Error(goal_reply)
+
+            yield self
+
+            abort_reply = self.insert_command("Abort.")
+            if isinstance(abort_reply, RocqCursor.Err):
+                raise RocqCursor.Error(abort_reply)
+
+    # NOTE: we could expose a more structured way to build the context list.
+    @contextmanager
+    def Section(
+        self,
+        name: str,
+        context: list[str] | None = None,
+        rollback: bool = False,
+    ) -> Iterator[Self]:
+        with self.ctx(rollback=rollback):
+            begin_section_reply = self.insert_command(f"Section {name}.")
+            if isinstance(begin_section_reply, RocqCursor.Err):
+                raise RocqCursor.Error(begin_section_reply)
+
+            if context is not None:
+                context_reply = self.insert_command(f"Context {' '.join(context)}.")
+                if isinstance(context_reply, RocqCursor.Err):
+                    raise RocqCursor.Error(context_reply)
+
+            yield self
+
+            end_section_reply = self.insert_command(f"End {name}.")
+            if isinstance(end_section_reply, RocqCursor.Err):
+                raise RocqCursor.Error(end_section_reply)
+
+    # ===== END: contextmanagers ==============================================
+
+    # ===== BEGIN: visitors ===================================================
+    # TODOS:
+    # - expose smarter and more efficient visitors (e.g. skipping
+    #   non side-effecting proof sentences, batching visits, etc...)
+    # - update rocq-doc-manager API to reflect that kind must be
+    #   "command" or "blanks".
+    def advance_to_first_match(
+        self,
+        fn: Callable[[str, str], bool],
+        step_over_match: bool = False,
+    ) -> bool:
+        """Move to the first matching point. NOTE: proofs are not skipped."""
+        prefix = self.doc_prefix()
+        suffix = self.doc_suffix()
+
+        candidate_prefix_matches = [
+            (idx, item) for idx, item in enumerate(prefix) if fn(item.text, item.kind)
+        ]
+        candidate_suffix_matches = [
+            (idx + len(prefix), item)
+            for idx, item in enumerate(suffix)
+            if fn(item.text, item.kind)
+        ]
+
+        def pretty_match_candidates(
+            candidates: Sequence[
+                tuple[int, RocqCursor.PrefixItem | RocqCursor.SuffixItem]
+            ],
+        ) -> str:
+            return "\n".join(
+                [
+                    f"\t- {item.text} of {item.kind} @ idx {idx}"
+                    for idx, item in candidates
+                ]
+            )
+
+        # 1a. fast pass: warn if the prefix contains candidate matches;
+        # currently, we only advance through the suffix and ignore the prefix
+        if candidate_prefix_matches:
+            logger.warning(
+                "\n".join(
+                    [
+                        "Candidate match(es) in the doc prefix are skipped:",
+                        pretty_match_candidates(candidate_prefix_matches),
+                        "",
+                    ]
+                )
+            )
+
+        # 1b. fast pass: return False if the suffix doesn't contain any matches
+        if not candidate_suffix_matches:
+            return False
+
+        # 1c. fast pass: warn if the suffix contains multiple candidate
+        # matches; currently we only use the first match
+        match_idx, match_item = candidate_suffix_matches[0]
+        pretty_match = f"{match_item.text} of {match_item.kind} @ idx {match_idx}"
+        if len(candidate_suffix_matches) != 1:
+            logger.warning(
+                "\n".join(
+                    [
+                        f"Using first candidate match ({pretty_match}); skipping:",
+                        pretty_match_candidates(candidate_suffix_matches[1:]),
+                        "",
+                    ]
+                )
+            )
+
+        # 2. advance_to the match
+        #
+        # NOTE: proofs are not skipped
+        advance_to_reply = self.advance_to(match_idx)
+        if isinstance(advance_to_reply, RocqCursor.Err):
+            logger.warning(
+                " ".join(
+                    [
+                        f"Failed to advance to the match ({pretty_match}):",
+                        str(advance_to_reply),
+                    ]
+                )
+            )
+            return False
+
+        if step_over_match:
+            run_step_reply = self.run_step()
+            if isinstance(run_step_reply, RocqCursor.Err):
+                logger.warning(
+                    "Failed to step over the match: {run_step_repl}",
+                )
+                return False
+
+        return True
+
+    # ===== END: visitors =====================================================
+
+    # ===== BEGIN: macros =====================================================
+    def Compute(
+        self,
+        term: str,
+        rollback: bool = True,
+    ) -> (
+        tuple[str, str]
+        | RocqCursor.Err[RocqCursor.CommandError]
+        | RocqCursor.Err[list[str]]
+        | RocqCursor.Err[None]
+    ):
+        """Run [Compute {term}.] and return the resulting value and type.
+
+        Arguments:
+            - term (str): the term to compute
+            - rollback (bool=True): whether to rollback the command
+
+        Raises:
+            - RocqDocManager.Error: if inserting the requested command fails
+
+        Returns:
+            - a tuple containing:
+                - the computed value
+                - the type of the computed value
+        """
+        with self.aborted_goal_ctx(goal=f"exists v, v = ({term})", rollback=rollback):
+            command_reply = self.insert_command("vm_compute.")
+            if isinstance(command_reply, RocqCursor.Err):
+                return command_reply
+
+            query_reply = self.query_text_all(
+                """match goal with
+| |- context[@ex ?TY (fun x => x = ?RESULT)] => idtac RESULT; idtac TY
+end.""",
+                indices=None,
+            )
+            if isinstance(query_reply, RocqCursor.Err):
+                return query_reply
+
+            if len(query_reply) != 2:
+                return RocqCursor.Err(
+                    message="RocqDocManager.Compute: expected a term and type",
+                    data=query_reply,
+                )
+
+            return (query_reply[0], query_reply[1])
+
+    def current_goal(self) -> RocqCursor.ProofState | None:
+        result = self.query("About nat.")
+        assert not isinstance(result, RocqCursor.Err)
+        return result.proof_state
+
+    def _import_export_cmd(
+        self,
+        kind: Literal["Import"] | Literal["Export"],
+        logpath: str,
+        require: bool = True,
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        cmd: str = f"{'Require ' if require else ''}{kind} {logpath}."
+        return self.insert_command(cmd)
+
+    def Import(
+        self,
+        logpath: str,
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        return self._import_export_cmd("Import", logpath, require=False)
+
+    def Export(
+        self,
+        logpath: str,
+        require: bool = True,
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        return self._import_export_cmd("Export", logpath, require=False)
+
+    def RequireImport(
+        self,
+        logpath: str,
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        return self._import_export_cmd("Import", logpath, require=True)
+
+    def RequireExport(
+        self,
+        logpath: str,
+        require: bool = True,
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        return self._import_export_cmd("Export", logpath, require=True)
+
+    def fresh_ident(self, ident: str) -> str | RocqCursor.Err[None]:
+        """Return a fresh name based on [ident].
+
+        Arguments:
+            - mgr (RocqDocManager): the document manager to send the request to
+            - ident (str): the base for the fresh name
+
+        Raises:
+            - RocqDocManager.Error: if inserting the requested command fails.
+
+        Returns:
+            - a Rocq name which is guaranteed to be fresh at the
+                  current loc. within [mgr]
+        """
+        result = self.query_text(
+            f'Eval lazy in ltac:(let nm := fresh "{ident}" in idtac nm).', 0
+        )
+        if isinstance(result, RocqCursor.Err):
+            return RocqCursor.Err("Not in proof mode", None)
+        return result
+
+    # ===== END: macros =======================================================
+
+    # ===== BEGIN: contextmanagers ============================================
+    @contextmanager
+    def sess(self) -> Iterator[Self]:
+        yield self
+        self.dispose()
+
+    # ===== END: contextmanagers ===============================================

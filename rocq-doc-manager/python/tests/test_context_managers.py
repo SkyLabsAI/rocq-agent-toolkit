@@ -8,20 +8,21 @@ from .util import RDM_Tests
 
 
 class Test_RDM_sess(RDM_Tests):
-    @pytest.mark.parametrize("rdm_fixture", ["loadable_rdm", "transient_rdm"])
+    @pytest.mark.parametrize("rdm_fixture", ["loadable_rc", "transient_rc"])
     def test_sess_no_load(
         self,
         rdm_fixture: str,
         request: pytest.FixtureRequest,
     ) -> None:
-        rdm = request.getfixturevalue(rdm_fixture)
-        with rdm.sess(load_file=False):
+        rdm: RocqCursor = request.getfixturevalue(rdm_fixture)
+        with rdm.sess():
             RDM_Tests.assert_check_ok(rdm)
 
     def test_sess_load(self, loadable_rdm: RocqDocManager) -> None:
         with loadable_rdm.sess():
-            assert not isinstance(loadable_rdm.cursor().run_step(), RocqCursor.Resp)
-            RDM_Tests.assert_check_ok(loadable_rdm.cursor(), term="N", lhs="N")
+            rc = loadable_rdm.cursor()
+            assert not isinstance(rc.run_step(), RocqCursor.Resp)
+            RDM_Tests.assert_check_ok(rc, term="N", lhs="N")
 
     def test_sess_load_nonexistent(self, transient_rdm: RocqDocManager) -> None:
         with pytest.raises(RocqCursor.Error) as exc_info:
@@ -33,24 +34,23 @@ class Test_RDM_sess(RDM_Tests):
 class Test_RDM_ctx(RDM_Tests):
     @pytest.mark.parametrize(
         "rdm_fixture, rollback",
-        itertools.product(["loadable_rdm", "transient_rdm"], [True, False]),
+        itertools.product(["loadable_rc", "transient_rc"], [True, False]),
     )
     def test_side_effects(
         self, rdm_fixture: str, rollback: bool, request: pytest.FixtureRequest
     ) -> None:
-        rdm = request.getfixturevalue(rdm_fixture)
-        print(rdm)
+        rc: RocqCursor = request.getfixturevalue(rdm_fixture)
         cmds = [f"Compute ({i}+{i})." for i in range(100)]
 
         with (
-            RDM_Tests.assert_doc_unchanged(rdm)
+            RDM_Tests.assert_doc_unchanged(rc)
             if rollback
-            else RDM_Tests.assert_commands_inserted(rdm, cmds=cmds)
+            else RDM_Tests.assert_commands_inserted(rc, cmds=cmds)
         ):
-            with rdm.ctx(rollback=rollback):
-                with RDM_Tests.assert_commands_inserted(rdm, cmds=cmds):
+            with rc.ctx(rollback=rollback):
+                with RDM_Tests.assert_commands_inserted(rc, cmds=cmds):
                     for cmd in cmds:
-                        assert not isinstance(rdm.insert_command(cmd), RocqCursor.Err)
+                        assert not isinstance(rc.insert_command(cmd), RocqCursor.Err)
 
     @given(
         prefix=RDM_Tests.rocq_trivial_blank_cmd_sequence_strategy(),
@@ -60,29 +60,28 @@ class Test_RDM_ctx(RDM_Tests):
     @settings(deadline=None)
     def test_property_rollback_ignores_blanks(
         self,
-        transient_shared_rdm: RocqDocManager,
+        transient_shared_rc: RocqCursor,
         prefix: list[tuple[str, bool]],
         rollback: list[tuple[str, bool]],
         suffix: list[tuple[str, bool]],
     ) -> None:
-        rc = transient_shared_rdm.cursor()
         def _process(items: list[tuple[str, bool]]) -> None:
             for text, is_cmd in items:
                 if is_cmd:
                     assert not isinstance(
-                        rc.insert_command(text), RocqCursor.Err
+                        transient_shared_rc.insert_command(text), RocqCursor.Err
                     )
                 else:
-                    rc.insert_blanks(text)
+                    transient_shared_rc.insert_blanks(text)
 
         # Set up the document to contain a suffix and prefix of interleaved
         # blanks/commands
         _process(suffix)
-        rc.revert_before(False, 0)
+        transient_shared_rc.revert_before(False, 0)
         _process(prefix)
 
-        with RDM_Tests.assert_doc_unchanged(rc):
-            with rc.ctx(rollback=True):
+        with RDM_Tests.assert_doc_unchanged(transient_shared_rc):
+            with transient_shared_rc.ctx(rollback=True):
                 _process(rollback)
 
 

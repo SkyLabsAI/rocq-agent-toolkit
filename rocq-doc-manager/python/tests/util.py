@@ -45,6 +45,12 @@ class RDM_Tests:
 
     @pytest.fixture(scope="class")
     @staticmethod
+    def transient_shared_rc() -> RocqCursor:
+        """A RocqCursor for a fake file that can't be loaded."""
+        return RDM_Tests.mk_rdm().cursor()
+
+    @pytest.fixture(scope="class")
+    @staticmethod
     def loaded_shared_rdm() -> RocqDocManager:
         """A RocqCursor for a real file that can be loaded."""
         rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
@@ -53,6 +59,17 @@ class RDM_Tests:
             RocqDocManager.Err,
         )
         return rdm
+
+    @pytest.fixture(scope="class")
+    @staticmethod
+    def loaded_shared_rc() -> RocqCursor:
+        """A RocqCursor for a real file that can be loaded."""
+        rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
+        assert not isinstance(
+            rdm.cursor().load_file(),
+            RocqDocManager.Err,
+        )
+        return rdm.cursor()
 
     @contextmanager
     @staticmethod
@@ -75,9 +92,21 @@ class RDM_Tests:
 
     @pytest.fixture
     @staticmethod
+    def transient_rc() -> RocqCursor:
+        """A RocqCursor for a fake file that can't be loaded."""
+        return RDM_Tests.mk_rdm().cursor()
+
+    @pytest.fixture
+    @staticmethod
     def loadable_rdm() -> RocqDocManager:
         """A RocqCursor for a real file that can be loaded."""
         return RDM_Tests.mk_rdm(path="./tests/test.v")
+
+    @pytest.fixture
+    @staticmethod
+    def loadable_rc() -> RocqCursor:
+        """A RocqCursor for a real file that can be loaded."""
+        return RDM_Tests.mk_rdm(path="./tests/test.v").cursor()
 
     @staticmethod
     def rocq_whitespace_strategy() -> st.SearchStrategy[str]:

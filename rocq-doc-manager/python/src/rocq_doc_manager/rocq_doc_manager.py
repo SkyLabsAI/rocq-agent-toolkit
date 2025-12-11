@@ -2,13 +2,13 @@ import logging
 import re
 from collections.abc import Iterator
 from contextlib import contextmanager
+from sys import prefix
 from typing import Self, override
 
 from jsonrpc_tp import JsonRPCTP
 
-from rocq_doc_manager.rocq_cursor import RocqCursor
-
 from .dune_util import dune_env_hack
+from .rocq_cursor import RocqCursor
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
 
 logger = logging.getLogger(__name__)
@@ -78,30 +78,40 @@ class RocqDocManager(API):
     def quit(self) -> None:
         self._rpc.quit()
 
-    # Note: patch insert_command since it is unsafe to
-    # insert multiple commands without intervening blanks.
-    @override
-    def insert_command(
-        self,
-        cursor: int,
-        text: str,
-        blanks: str | None = "\n",
-    ) -> API.CommandData | API.Err[API.CommandError | None]:
-        insert_reply = super().insert_command(cursor, text)
-        if isinstance(insert_reply, API.Err):
-            return insert_reply
-        if blanks is not None:
-            if not re.match(r"\s+|\(\*.*\*\)", blanks):
-                logger.warning(
-                    " ".join(
-                        [
-                            "blanks should be whitespace or Rocq comments:",
-                            f'"{blanks}"',
-                        ]
-                    )
-                )
-            self.insert_blanks(cursor, blanks)
-        return insert_reply
+    # Note: we used to patch the command here, but this introduces a circularity
+    # between RocqDocManager and RocqCursor.
+    # There are alternatives to this, e.g. to factor our the class reference,
+    # but we ignore those for now.
+    # @override
+    # def insert_command(
+    #     self, cursor: int, text: str, blanks: str | None = "\n", safe: bool = True
+    # ) -> API.CommandData | API.Err[API.CommandError | None]:
+    #     if safe:
+    #         prefix_reply = self.doc_prefix(cursor)
+    #         if isinstance(prefix_reply, API.Err):
+    #             # This is okay because the error is a cursor error
+    #             return prefix_reply
+    #         prefix: list[API.PrefixItem] = prefix_reply
+    #         if prefix != [] and prefix[-1].kind != "blanks":
+    #             self.insert_blanks(cursor, " ")
+    #             revert = True
+    #         else:
+    #             revert = False
+    #     else:
+    #         revert = False
+
+    #     try:
+    #         result = super().insert_command(cursor, text)
+    #         if isinstance(result, API.CommandError):
+    #             if revert:
+    #                 self.revert_before(cursor, erase=True, index=len(prefix))
+    #         elif blanks is not None:
+    #             self.insert_blanks(cursor, blanks)
+    #         return result
+    #     except API.Error:
+    #         if revert:
+    #             self.revert_before(cursor, erase=True, index=len(prefix))
+    #         raise
 
     # ===== END: API patches ==================================================
 
