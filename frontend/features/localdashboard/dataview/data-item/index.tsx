@@ -16,10 +16,11 @@ import AgentDetails from './agent-details';
 
 interface DataItemProps {
   benchmark: Benchmark;
+  index: number;
 }
 
-export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
+  const [isOpen, setIsOpen] = useState(index === 0);
 
   const { agents: agentData } = useBenchmarkAgents(benchmark.dataset_id);
 
@@ -123,7 +124,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
   }, [location.pathname, benchmark.dataset_id, clearDatasetSelections]);
 
   return (
-    <div>
+    <div data-testid='dataset-row'>
       <div
         className='bg-elevation-surface-raised overflow-hidden px-4.5 py-5 flex justify-between items-center'
         onClick={() => setIsOpen(!isOpen)}

@@ -176,6 +176,8 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
         tags: {
           run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
           task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+          hehe: 'hehe',
+          somethingelse: 'somethingelse',
         },
       },
     });
@@ -226,6 +228,8 @@ const getDetailsForDatasetMock = async (
           dataset_id: datasetId,
           run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
           task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+          hehe: 'hehe',
+          somethingelse: 'somethingelse',
         },
       },
     });
