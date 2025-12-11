@@ -82,6 +82,11 @@ class SafeTacticStrategy(Strategy):
             (prob, TacticApplication(tac)) for prob, tac in [(self._prob, self._tactic)]
         )
 
+class LocalHintResolveStrategy(SafeTacticStrategy):
+    """A simple strategy that installs a local hint."""
+
+    def __init__(self, lemma:str, cost: str, db:str, prob: float = 1.0) -> None:
+        super().__init__(f"#[local] Hint Resolve {lemma} | {cost} : {db}")
 
 class CutAssertStrategy(Strategy):
     """A simple strategy that cuts a Rocq lemma.

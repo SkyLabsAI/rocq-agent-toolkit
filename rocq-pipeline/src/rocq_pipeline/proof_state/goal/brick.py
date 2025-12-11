@@ -16,6 +16,15 @@ def head_ast(s: str, constructs: list[str]) -> bool:
     return False
 
 
+def if_decide_then_else_extract(text: str) -> tuple[str, str, str] | None:
+    pattern = r"if\s+decide\s*\(([^)]+)\)\s+then\s+(.+?)\s+else\s+(.+)"
+
+    match = re.search(pattern, text, re.DOTALL)
+
+    if match:
+        return match.group(1), match.group(2), match.group(3)
+    return None
+
 class BrickGoal(IrisGoal):
     """Single Brick goal, consisting of structured goal parts.
 
@@ -44,3 +53,9 @@ class BrickGoal(IrisGoal):
         Checks if the spatial conclusion contains a 'if' AST node.
         """
         return head_ast(self.parts.iris_spat_concl, ["Sif"])
+
+    def is_if_decide_then_else_goal(self) -> tuple[str, str, str] | None:
+        """
+        Checks if the spatial conclusion contains a 'if decide (xxx) then yyy else zzz' term.
+        """
+        return if_decide_then_else_extract(self.parts.iris_spat_concl)
