@@ -16,7 +16,7 @@ from observability import (
     get_logger,
     setup_logging,
 )
-from rocq_doc_manager import DuneUtil, RocqDocManager, RocqCursor
+from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, locator, util

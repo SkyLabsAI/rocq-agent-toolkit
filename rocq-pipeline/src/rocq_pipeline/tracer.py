@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from rocq_doc_manager import DuneUtil, RocqDocManager, RocqCursor
+from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, locator, rocq_args, util
