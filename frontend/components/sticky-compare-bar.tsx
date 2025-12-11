@@ -32,11 +32,17 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
   }
 
   return createPortal(
-    <div className='fixed bottom-0 left-0 right-0 bg-elevation-surface-raised backdrop-blur-sm border-t border-t-elevation-surface-overlay  z-50 shadow-lg px-10 py-3 flex justify-between items-center'>
+    <div
+      className='fixed bottom-0 left-0 right-0 bg-elevation-surface-raised backdrop-blur-sm border-t border-t-elevation-surface-overlay  z-50 shadow-lg px-10 py-3 flex justify-between items-center'
+      data-testid='sticky-compare-bar'
+    >
       <div className=' flex items-center justify-center'>
         <div className='flex items-center gap-3.5 w-full max-w-2xl h-[42px]'>
           <div className='w-px h-5 bg-text'></div>
-          <p className='text-text-disabled text-[14px] whitespace-nowrap'>
+          <p
+            className='text-text-disabled text-[14px] whitespace-nowrap'
+            data-testid='selected-count'
+          >
             Selected {selectedItems.length} {attribute}
           </p>
         </div>
@@ -49,6 +55,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
             e.stopPropagation();
             onClearSelection();
           }}
+          data-testid='clear-selection-button'
         >
           Clear Selection
         </Button>
@@ -59,6 +66,7 @@ const StickyCompareBar: React.FC<StickyCompareBarProps> = ({
             e.stopPropagation();
             onCompareSelected();
           }}
+          data-testid='compare-button'
         >
           {selectedItems.length < 2
             ? `Select 1 more ${attribute}`

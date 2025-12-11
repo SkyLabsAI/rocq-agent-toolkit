@@ -24,6 +24,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
           'hover:bg-white/5 cursor-pointer transition-colors duration-200'
         )}
         onClick={toggleDetails}
+        data-testid={`agent-row-${agent.agent_name}`}
       >
         <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3'>
@@ -32,7 +33,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
                 {agent.agent_name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className='truncate'>{agent.agent_name}</span>
+            <span className='truncate' data-testid='agent-name'>
+              {agent.agent_name}
+            </span>
           </div>
         </td>
         <td className='px-6 py-4 text-text font-medium'>
@@ -92,18 +95,24 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
       </tr>
 
       {isOpen && (
-        <tr>
+        <tr data-testid={`agent-expanded-${agent.agent_name}`}>
           <td colSpan={7}>
-            <div className='px-6'>
+            <div className='px-6' data-testid='agent-expanded-content'>
               {loading ? (
-                <div className='flex items-center justify-center py-8'>
+                <div
+                  className='flex items-center justify-center py-8'
+                  data-testid='agent-loading'
+                >
                   <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
                   <span className='ml-3 text-text'>
                     Loading task details...
                   </span>
                 </div>
               ) : runDetails.length === 0 ? (
-                <div className='text-center py-8 text-text'>
+                <div
+                  className='text-center py-8 text-text'
+                  data-testid='agent-no-details'
+                >
                   No run details available.
                 </div>
               ) : (
