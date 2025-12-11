@@ -22,6 +22,8 @@ module List = struct
     filter [] xs
 end
 
+type byte_loc = {off : int; len : int}
+
 let main : Document.t -> unit = fun state ->
   let json_items = ref [] in
   let _ =
@@ -50,7 +52,7 @@ let main : Document.t -> unit = fun state ->
     let s = Names.Constant.to_string c in
     Hashtbl.add removed_constants s loc
   in
-  let handle_added_inductive Document.{off; len} i =
+  let handle_added_inductive {off; len} i =
     let s = Names.MutInd.to_string i in
     let json () =
       if Hashtbl.mem removed_inductives s then None else
@@ -63,7 +65,7 @@ let main : Document.t -> unit = fun state ->
     in
     json_items := Lazy.from_fun json :: !json_items
   in
-  let handle_added_constant Document.{off; len} c =
+  let handle_added_constant {off; len} c =
     let s = Names.Constant.to_string c in
     let json () =
       if Hashtbl.mem removed_constants s then None else
@@ -94,7 +96,11 @@ let main : Document.t -> unit = fun state ->
     | Error(s, _) -> panic "Error: %s" s
     | Ok(None)    -> loop ()
     | Ok(Some(d)) ->
-    let loc = Option.get (Document.byte_loc_of_last_step state) in
+    let loc =
+      match Document.rev_prefix state with
+      | p :: _ -> {off = p.off; len = String.length p.text}
+      | []     -> assert false
+    in
     let open Rocq_toplevel in
     let diff = d.globrefs_diff in
     List.iter (handle_removed_inductive loc) diff.removed_inductives;

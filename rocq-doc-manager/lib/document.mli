@@ -121,10 +121,6 @@ val advance_to : t -> index:int -> (unit, string * command_error) result
     index of the last item in the document's suffix. *)
 val go_to : t -> index:int -> (unit, string * command_error) result
 
-type byte_loc = {off : int; len : int}
-
-val byte_loc_of_last_step : t -> byte_loc option
-
 type processed_item = {
   index : int;
   kind : [`Blanks | `Command | `Ghost];

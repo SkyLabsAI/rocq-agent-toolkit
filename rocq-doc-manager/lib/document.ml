@@ -233,15 +233,6 @@ let clear_suffix : t -> unit = fun d ->
   if d.backend = None then raise Stopped;
   d.suffix <- []
 
-type byte_loc = {off : int; len : int}
-
-let byte_loc_of_last_step : t -> byte_loc option = fun d ->
-  if d.backend = None then raise Stopped;
-  match d.rev_prefix with
-  | []                      -> None
-  | {kind = `Ghost; _} :: _ -> None
-  | {off; text; _}     :: _ -> Some({off; len = String.length text})
-
 let run_step : t ->
     (command_data option, string * command_error option) result = fun d ->
   if d.backend = None then raise Stopped;
