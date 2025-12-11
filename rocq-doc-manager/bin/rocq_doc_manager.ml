@@ -473,6 +473,11 @@ let _ =
   (d, Result.map_error (fun s -> (s, ())) res)
 
 let _ =
+  WithCursor.declare ~name:"dump" ~descr:"dump the document contents (debug)"
+    ~args:A.nil ~ret:S.any @@ fun d () ->
+  (d, Document.dump d)
+
+let _ =
   let args =
     A.add ~name:"cursor" ~descr:"the cursor to clone" S.int @@
     A.nil

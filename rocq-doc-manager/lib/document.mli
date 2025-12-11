@@ -182,3 +182,5 @@ val query_json : ?index:int -> t -> text:string -> (json, string) result
 
 val query_json_all : ?indices:int list -> t -> text:string
   -> (json list, string) result
+
+val dump : t -> json

@@ -182,6 +182,14 @@ class RocqDocManagerAPI:
             return RocqDocManagerAPI.Err(result.message, data)
         return [self.SuffixItem.from_dict(v1) for v1 in result.result]
 
+    def dump(self, cursor: int) -> Any | RocqDocManagerAPI.Err[None]:
+        """Dump the document contents (debug)."""
+        result = self._rpc.raw_request("dump", [cursor])
+        if isinstance(result, JsonRPCTP.Err):
+            data = None
+            return RocqDocManagerAPI.Err(result.message, data)
+        return result.result
+
     def go_to(self, cursor: int, index: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]:
         """Move the cursor right before the indicated item (whether it is already processed or not)."""
         result = self._rpc.raw_request("go_to", [cursor, index])

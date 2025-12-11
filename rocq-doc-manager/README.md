@@ -200,6 +200,15 @@ API Methods
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
+### `dump`
+
+- Description: dump the document contents (debug).
+- Arguments (in order, or named):
+  - cursor: the cursor to perform the operation on (as an integer).
+- Response payload: a JSON value.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
 ### `go_to`
 
 - Description: move the cursor right before the indicated item (whether it is already processed or not).

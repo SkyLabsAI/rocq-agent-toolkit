@@ -1,6 +1,7 @@
 type sid = Rocq_toplevel.StateID.t
 
 type item_kind = [`Blanks | `Command | `Ghost]
+[@@deriving to_yojson]
 
 type processed_item = {
   index : int;
@@ -8,11 +9,13 @@ type processed_item = {
   off : int;
   text : string;
 }
+[@@deriving to_yojson]
 
 type unprocessed_item = {
   kind : item_kind;
   text : string;
 }
+[@@deriving to_yojson]
 
 type in_toplevel = {
   processed : processed_item;
@@ -392,3 +395,22 @@ let query_json_all : ?indices:int list -> t -> text:string ->
   match query_text_all ?indices d ~text with Error(s) -> Error(s) | Ok(l) ->
   try Ok(List.map Yojson.Safe.from_string l) with Yojson.Json_error(_) ->
   Error("Not all results of the query contain valid JSON")
+
+type dump = {
+  rev_processed : (int * processed_item) list option;
+  rev_prefix : processed_item list;
+  cursor_off : int;
+  suffix : unprocessed_item list;
+}
+[@@deriving to_yojson]
+
+let dump : t -> Yojson.Safe.t = fun d ->
+  let {backend; rev_prefix; cursor_off; suffix} = d in
+  let get_processed {top; rev_processed; _} =
+    let explicit_sid {processed; sid_before} =
+      (Rocq_toplevel.StateID.to_int top sid_before, processed)
+    in
+    List.map explicit_sid rev_processed
+  in
+  let rev_processed = Option.map get_processed backend in
+  dump_to_yojson {rev_processed; rev_prefix; cursor_off; suffix}
