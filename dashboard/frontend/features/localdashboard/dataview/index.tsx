@@ -11,9 +11,13 @@ const DataView: React.FC = () => {
 
   return (
     <GlobalCompareProvider>
-      <div className='flex flex-col gap-4'>
-        {benchmarks.map(benchmark => (
-          <DataItem key={benchmark.dataset_id} benchmark={benchmark} />
+      <div className='flex flex-col gap-4' data-testid='datasets-view'>
+        {benchmarks.map((benchmark, index) => (
+          <DataItem
+            key={benchmark.dataset_id}
+            benchmark={benchmark}
+            index={index}
+          />
         ))}
       </div>
       <GlobalStickyCompareBar />

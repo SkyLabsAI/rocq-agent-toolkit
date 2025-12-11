@@ -34,6 +34,7 @@ const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        event.stopPropagation();
         onClose();
       }
     };
@@ -54,7 +55,10 @@ const Modal: React.FC<ModalProps> = ({
       {/* Backdrop */}
       <div
         className='absolute inset-0 bg-black/50 backdrop-blur-sm'
-        onClick={onClose}
+        onClick={(e: React.MouseEvent) => {
+          e.stopPropagation();
+          onClose();
+        }}
       />
 
       {/* Modal */}
@@ -72,7 +76,10 @@ const Modal: React.FC<ModalProps> = ({
           <h2 className='text-xl font-semibold text-text'>{title}</h2>
           <button
             title='back'
-            onClick={onClose}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className='p-2 rounded-lg overflow-hidden transition-colors duration-200 w-[38px] h-[38px] flex items-center justify-center hover:bg-background-neutral-hovered'
           >
             <svg
