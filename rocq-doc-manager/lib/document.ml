@@ -218,7 +218,7 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
   unsync (get_backend d) d
 
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
-  let backend = get_synced_backend d in
+  let backend = get_backend d in
   let rev_prefix = d.rev_prefix in
   let cursor_off = d.cursor_off in
   let suffix = d.suffix in
