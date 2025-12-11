@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, override
 
-from rocq_doc_manager.rocq_doc_manager import RocqCursor
+from rocq_doc_manager import RocqCursor
 
 from .extractor import StateExtractor
 
