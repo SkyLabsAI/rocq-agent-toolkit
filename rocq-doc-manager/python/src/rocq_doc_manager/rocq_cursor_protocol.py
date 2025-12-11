@@ -65,7 +65,7 @@ class RocqCursorProtocol(ABC):
     @abstractmethod
     def go_to(
         self, index: int
-    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]: ...
+    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]: ...
 
     @abstractmethod
     def has_suffix(self) -> bool: ...
@@ -82,37 +82,36 @@ class RocqCursorProtocol(ABC):
     ): ...
 
     @abstractmethod
-    def load_file(self) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc]: ...
+    def load_file(
+        self,
+    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc | None]: ...
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     @abstractmethod
     def query(
         self, text: str
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
-    ): ...
+    ) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def query_json(
         self, text: str, index: int
-    ) -> Any | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]: ...
+    ) -> Any | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def query_json_all(
         self, text: str, indices: list[int] | None
-    ) -> list[Any] | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]: ...
+    ) -> list[Any] | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def query_text(
         self, text: str, index: int
-    ) -> str | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]: ...
+    ) -> str | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def query_text_all(
         self, text: str, indices: list[int] | None
-    ) -> list[str] | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]: ...
+    ) -> list[str] | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def revert_before(
@@ -122,10 +121,7 @@ class RocqCursorProtocol(ABC):
     @abstractmethod
     def run_command(
         self, text: str
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
-    ): ...
+    ) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def run_step(
@@ -133,5 +129,5 @@ class RocqCursorProtocol(ABC):
     ) -> (
         RocqDocManagerAPI.CommandData
         | None
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
+        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]
     ): ...

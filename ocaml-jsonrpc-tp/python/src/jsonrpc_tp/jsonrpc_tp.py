@@ -191,7 +191,18 @@ class JsonRPCTP:
         response = json.loads(response)
         if "error" in response:
             error = response.get("error")
-            return self.Err(error.get("message"), error.get("data"))
+            message = error.get("message")
+            code = error.get("code")
+            match code:
+                # Request failed (taken from the LSP protocol)
+                case -32803:
+                    return self.Err(message, error.get("data"))
+                # Method not found | Invalid params
+                case -32601 | -32602:
+                    raise Exception(message)
+                # Anything else is unexpected.
+                case _:
+                    raise self.Error(f"Unexpected error code {code} ({message})")
         else:
             return self.Resp(response.get("result"))
 

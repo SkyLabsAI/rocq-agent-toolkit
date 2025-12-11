@@ -133,8 +133,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: a `null` value.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `clone`
 
@@ -142,8 +141,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to clone (as an integer).
 - Response payload: the name of the new cursor (as an integer).
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `commit`
 
@@ -152,8 +150,7 @@ API Methods
   - cursor: the cursor to perform the operation on (as an integer).
   - include_suffix: indicate whether he suffix should be included (as a boolean).
 - Response payload: a `null` value.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `compile`
 
@@ -161,8 +158,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: an instance of the `CompileResult` object.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `cursor_index`
 
@@ -170,8 +166,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: an integer.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `dispose`
 
@@ -179,8 +174,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: an integer.
 - Response payload: a `null` value.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `doc_prefix`
 
@@ -188,8 +182,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: a list where each element is an instance of the `PrefixItem` object.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `doc_suffix`
 
@@ -197,8 +190,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: a list where each element is an instance of the `SuffixItem` object.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `dump`
 
@@ -206,8 +198,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: a JSON value.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `go_to`
 
@@ -225,8 +216,7 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: a boolean.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `insert_blanks`
 
@@ -235,8 +225,7 @@ API Methods
   - cursor: the cursor to perform the operation on (as an integer).
   - text: text of the blanks to insert (as a string).
 - Response payload: a `null` value.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `insert_command`
 
@@ -245,7 +234,7 @@ API Methods
   - cursor: the cursor to perform the operation on (as an integer).
   - text: text of the command to insert (as a string).
 - Response payload: an instance of the `CommandData` object.
-- Error payload: optional source code location for the error (as either `null` or an instance of the `CommandError` object).
+- Error payload: optional source code location for the error (as an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
 
 ### `load_file`
@@ -319,8 +308,7 @@ API Methods
   - erase: boolean indicating whether reverted items should be erased (as a boolean).
   - index: index of the item before which the cursor should be revered (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
+- Failure mode: never fails.
 
 ### `run_command`
 

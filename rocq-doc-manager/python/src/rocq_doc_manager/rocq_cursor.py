@@ -23,28 +23,6 @@ class RocqCursor(RocqCursorProtocol):
 
     _NO_CURSOR_ERROR: str = "Unknown cursor"
 
-    def _check_cursor[T, U](
-        self, result: T | RocqCursor.Err[None | U]
-    ) -> T | RocqCursor.Err[U]:
-        if isinstance(result, RocqCursor.Err):
-            if result.message == RocqCursor._NO_CURSOR_ERROR:
-                raise Exception(f"Unknown cursor {self._cursor}")
-        return result  # type: ignore
-
-    def _check_cursor_keep[T, U](
-        self, result: T | RocqCursor.Err[None | U]
-    ) -> T | RocqCursor.Err[None | U]:
-        if isinstance(result, RocqCursor.Err):
-            if result.message == RocqCursor._NO_CURSOR_ERROR:
-                raise Exception(f"Unknown cursor {self._cursor}")
-        return result
-
-    def _take_cursor[T](self, result: T | RocqCursor.Err[None]) -> T:
-        if isinstance(result, RocqCursor.Err):
-            assert result.message == RocqCursor._NO_CURSOR_ERROR
-            raise Exception(f"Unknown cursor: {self._cursor}")
-        return result
-
     @property
     def _rdm(self) -> API:
         if self._the_rdm is None:
@@ -56,11 +34,11 @@ class RocqCursor(RocqCursorProtocol):
         self, index: int
     ) -> None | RocqCursor.Err[RocqCursor.CommandError | None]:
         """Advance the cursor before the indicated unprocessed item."""
-        return self._check_cursor(self._rdm.advance_to(self._cursor, index))
+        return self._rdm.advance_to(self._cursor, index)
 
     @override
     def clear_suffix(self) -> None:
-        return self._take_cursor(self._rdm.clear_suffix(self._cursor))
+        return self._rdm.clear_suffix(self._cursor)
 
     @override
     def materialize(self) -> None:
@@ -69,52 +47,54 @@ class RocqCursor(RocqCursorProtocol):
 
     @override
     def clone(self, materialize: bool = False) -> RocqCursor:
-        result = RocqCursor(self._rdm, self._take_cursor(self._rdm.clone(self._cursor)))
+        result = RocqCursor(self._rdm, self._rdm.clone(self._cursor))
         if materialize:
             result.materialize()
         return result
 
     @override
     def commit(self, include_suffix: bool) -> None:
-        return self._take_cursor(self._rdm.commit(self._cursor, include_suffix))
+        return self._rdm.commit(self._cursor, include_suffix)
 
     @override
     def compile(self) -> RocqCursor.CompileResult:
-        return self._take_cursor(self._rdm.compile(self._cursor))
+        return self._rdm.compile(self._cursor)
 
     @override
     def cursor_index(self) -> int:
-        return self._take_cursor(self._rdm.cursor_index(self._cursor))
+        return self._rdm.cursor_index(self._cursor)
 
     @override
     def dispose(self) -> None:
-        self._take_cursor(self._rdm.dispose(self._cursor))
+        self._rdm.dispose(self._cursor)
         self._the_rdm = None
 
     @override
     def doc_prefix(self) -> list[RocqCursor.PrefixItem]:
-        return self._take_cursor(self._rdm.doc_prefix(self._cursor))
+        return self._rdm.doc_prefix(self._cursor)
 
     @override
     def doc_suffix(self) -> list[RocqCursor.SuffixItem]:
-        return self._take_cursor(self._rdm.doc_suffix(self._cursor))
+        return self._rdm.doc_suffix(self._cursor)
 
     @override
-    def go_to(self, index: int) -> None | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.go_to(self._cursor, index))
+    def go_to(
+        self, index: int
+    ) -> None | RocqCursor.Err[RocqCursor.CommandError | None]:
+        return self._rdm.go_to(self._cursor, index)
 
     @override
     def has_suffix(self) -> bool:
-        return self._take_cursor(self._rdm.has_suffix(self._cursor))
+        return self._rdm.has_suffix(self._cursor)
 
     @override
     def insert_blanks(self, text: str) -> None:
-        return self._take_cursor(self._rdm.insert_blanks(self._cursor, text))
+        return self._rdm.insert_blanks(self._cursor, text)
 
     def _insert_command(
         self, text: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.insert_command(self._cursor, text))
+        return self._rdm.insert_command(self._cursor, text)
 
     @override
     def insert_command(
@@ -148,56 +128,50 @@ class RocqCursor(RocqCursorProtocol):
             raise
 
     @override
-    def load_file(self) -> None | RocqCursor.Err[RocqCursor.RocqLoc]:
-        return self._check_cursor(self._rdm.load_file(self._cursor))
+    def load_file(self) -> None | RocqCursor.Err[RocqCursor.RocqLoc | None]:
+        return self._rdm.load_file(self._cursor)
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     @override
-    def query(
-        self, text: str
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.query(self._cursor, text))
+    def query(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
+        return self._rdm.query(self._cursor, text)
 
     @override
     def query_json(
         self, text: str, index: int
     ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.query_json(self._cursor, text, index))
+        return self._rdm.query_json(self._cursor, text, index)
 
     @override
     def query_json_all(
         self, text: str, indices: list[int] | None = None
-    ) -> list[Any] | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.query_json_all(self._cursor, text, indices))
+    ) -> list[Any] | RocqCursor.Err[None]:
+        return self._rdm.query_json_all(self._cursor, text, indices)
 
     @override
-    def query_text(
-        self, text: str, index: int
-    ) -> str | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.query_text(self._cursor, text, index))
+    def query_text(self, text: str, index: int) -> str | RocqCursor.Err[None]:
+        return self._rdm.query_text(self._cursor, text, index)
 
     @override
     def query_text_all(
         self, text: str, indices: list[int] | None = None
-    ) -> list[str] | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.query_text_all(self._cursor, text, indices))
+    ) -> list[str] | RocqCursor.Err[None]:
+        return self._rdm.query_text_all(self._cursor, text, indices)
 
     @override
-    def revert_before(self, erase: bool, index: int) -> None | RocqCursor.Err[None]:
-        return self._check_cursor(self._rdm.revert_before(self._cursor, erase, index))
+    def revert_before(self, erase: bool, index: int) -> None:
+        return self._rdm.revert_before(self._cursor, erase, index)
 
     @override
-    def run_command(
-        self, text: str
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.run_command(self._cursor, text))
+    def run_command(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
+        return self._rdm.run_command(self._cursor, text)
 
     @override
     def run_step(
         self,
-    ) -> RocqCursor.CommandData | None | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._check_cursor(self._rdm.run_step(self._cursor))
+    ) -> RocqCursor.CommandData | None | RocqCursor.Err[RocqCursor.CommandError | None]:
+        return self._rdm.run_step(self._cursor)
 
     # ===== BEGIN: contextmanagers ============================================
     @contextmanager

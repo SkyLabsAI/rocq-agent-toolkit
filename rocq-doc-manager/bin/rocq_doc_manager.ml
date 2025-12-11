@@ -13,6 +13,8 @@ module S = API.Schema
 
 module IntMap = Map.Make(Int)
 
+(* NOTE: document update is imperative, so no need to update the map unless we
+   are adding or removing an entry. *)
 type toplevel = {
   cursors: Document.t IntMap.t;
   fresh: int
@@ -28,10 +30,9 @@ module WithCursor : sig
     ret:'b S.t ->
     ?ret_descr:string ->
     err:'c S.t ->
-    default_err:'c ->
     ?err_descr:string ->
     ?recoverable:bool ->
-    (cursor -> 'a -> cursor * ('b, string * 'c) result) ->
+    (cursor -> 'a -> ('b, string * 'c) result) ->
     unit
 
   val declare :
@@ -40,34 +41,30 @@ module WithCursor : sig
     args:'a A.t ->
     ret:'b S.t ->
     ?ret_descr:string ->
-    (cursor -> 'a -> cursor * 'b) ->
+    (cursor -> 'a -> 'b) ->
     unit
 end = struct
-  let at_cursor err f cursor ({cursors;_} as toplevel) =
-    match IntMap.find_opt cursor cursors with
-    | None -> toplevel, err "Unknown cursor"
-    | Some d ->
-      let d, result = f d in
-      (* NOTE: the update here is not necessary since [Document.t] is not functional *)
-      { toplevel with cursors = IntMap.add cursor d cursors }, result
+  let add_cursor_arg rest =
+    let descr = "the cursor to perform the operation on" in
+    A.add ~name:"cursor" ~descr S.int rest
 
-  let with_cursor rest =
-    A.add ~name:"cursor" ~descr:"the cursor to perform the operation on" S.int rest
+  let at_cursor action toplevel (cursor, args) =
+    match IntMap.find_opt cursor toplevel.cursors with
+    | None    -> invalid_arg "unknown cursor"
+    | Some(d) -> (toplevel, action d args)
 
-  (* let lift_full make_err action d (cursor, res) =
-      at_cursor make_err (fun cur -> action cur res) cursor d *)
-
-  let declare_full ~name ?descr ~args ~ret ?ret_descr ~err ~default_err ?err_descr ?recoverable action =
-    API.declare_full api ~name ?descr ~args:(with_cursor args) ~ret ?ret_descr ~err ?err_descr ?recoverable @@
-      fun d (cursor, args) -> at_cursor (fun err -> Error(err, default_err)) (fun cur -> action cur args) cursor d
+  let declare_full ~name ?descr ~args ~ret ?ret_descr ~err ?err_descr
+      ?recoverable action =
+    let args = add_cursor_arg args in
+    API.declare_full api ~name ?descr ~args ~ret ?ret_descr ~err ?err_descr
+      ?recoverable (at_cursor action)
 
   let declare ~name ?descr ~args ~ret ?ret_descr action =
-    (* TODO: this doesn't seem like the best implementation *)
-    let err = S.null in
-    API.declare_full api ~name ?descr ~args:(with_cursor args) ~ret ?ret_descr ~err @@
-      fun d (cursor, args) -> at_cursor (fun err -> Error(err, ()))
-        (fun cur -> let cur, res = action cur args in cur, Ok res) cursor d
+    let args = add_cursor_arg args in
+    API.declare api ~name ?descr ~args ~ret ?ret_descr (at_cursor action)
 end
+
+open WithCursor
 
 let rocq_loc =
   let rocq_source =
@@ -119,23 +116,23 @@ let rocq_loc =
     ~descr:"Rocq source code location" ~encode ~decode fields
 
 let _ =
-  WithCursor.declare_full ~name:"load_file"
-    ~descr:"adds the (unprocessed) file contents to the document (note that \
-      this requires running sentence-splitting, which requires the input \
-      file not to have syntax errors)"
-    ~args:A.nil ~ret:S.null ~err:S.(nullable (obj rocq_loc)) ~default_err:None
-    ~err_descr:"optional source code location for the error" @@
-  fun d () -> d, Document.load_file d
+  declare_full ~name:"load_file" ~descr:"adds the (unprocessed) \
+      file contents to the document (note that this requires running \
+      sentence-splitting, which requires the input file not to have syntax \
+      errors)" ~args:A.nil ~ret:S.null ~err:S.(nullable (obj rocq_loc))
+    ~err_descr:"optional source code location for the error"
+    @@ fun d () ->
+  Document.load_file d
 
 let _ =
   let args =
     A.add ~name:"text" ~descr:"text of the blanks to insert" S.string @@
     A.nil
   in
-  WithCursor.declare ~name:"insert_blanks"
+  declare ~name:"insert_blanks"
     ~descr:"insert and process blanks at the cursor" ~args ~ret:S.null
     @@ fun d (text, ()) ->
-  (d, Document.insert_blanks d ~text)
+  Document.insert_blanks d ~text
 
 let quickfix =
   let fields =
@@ -260,26 +257,26 @@ let text_args =
   A.add ~name:"text" ~descr:"text of the command to insert" S.string A.nil
 
 let _ =
-  WithCursor.declare_full ~name:"insert_command"
+  declare_full ~name:"insert_command"
     ~descr:"insert and process a command at the cursor"
-    ~args:text_args ~ret:S.(obj command_data) ~err:S.(nullable (obj command_error))
-    ~default_err:None
+    ~args:text_args ~ret:S.(obj command_data)
+    ~err:S.(obj command_error)
     ~err_descr:"optional source code location for the error"
     @@ fun d (text, ()) ->
-  (d, Result.map_error (fun (e,v) -> e, Some v) (Document.insert_command d ~text))
+  Document.insert_command d ~text
 
 let _ =
-  WithCursor.declare_full ~name:"run_command"
+  declare_full ~name:"run_command"
     ~descr:"process a command at the cursor without inserting it in the \
-      document" ~args:text_args ~ret:S.(obj command_data) ~err:S.null ~default_err:()
+      document" ~args:text_args ~ret:S.(obj command_data) ~err:S.null
     @@ fun d (text, ()) ->
-  (d, Result.map_error (fun s -> (s, ())) (Document.run_command d ~text))
+  Result.map_error (fun s -> (s, ())) (Document.run_command d ~text)
 
 let _ =
-  WithCursor.declare ~name:"cursor_index"
+  declare ~name:"cursor_index"
     ~descr:"gives the index at the cursor"
     ~args:A.nil ~ret:S.int @@ fun d () ->
-  (d, Document.cursor_index d)
+  Document.cursor_index d
 
 let _ =
   let args =
@@ -289,46 +286,45 @@ let _ =
       should be revered (one-past-the-end index allowed)" S.int @@
     A.nil
   in
-  WithCursor.declare ~name:"revert_before" ~descr:"revert the cursor to an \
+  declare ~name:"revert_before" ~descr:"revert the cursor to an \
     earlier point in the document" ~args ~ret:S.null
     @@ fun d (erase, (index, ())) ->
-  (d, Document.revert_before d ~erase ~index)
+  Document.revert_before d ~erase ~index
 
 let index_before_args =
   A.add ~name:"index" ~descr:"integer index before which to move the cursor \
     (one-past-the-end index allowed)" S.int A.nil
 
 let _ =
-  WithCursor.declare_full ~name:"advance_to" ~descr:"advance the cursor before \
-    the indicated unprocessed item" ~args:index_before_args ~ret:S.null
-    ~err:S.(nullable (obj command_error)) ~default_err:None
+  declare_full ~name:"advance_to" ~descr:"advance the cursor \
+    before the indicated unprocessed item" ~args:index_before_args ~ret:S.null
+    ~err:S.(nullable (obj command_error))
     ~err_descr:"optional source code location for the error"
     @@ fun d (index, ()) ->
-  (d, Result.map_error (fun (e,v) -> e, Some v) @@ Document.advance_to d ~index)
+  Result.map_error (fun (e,v) -> e, Some v) @@ Document.advance_to d ~index
 
 let _ =
-  WithCursor.declare_full ~name:"go_to" ~descr:"move the cursor right before \
+  declare_full ~name:"go_to" ~descr:"move the cursor right before \
     the indicated item (whether it is already processed or not)"
     ~args:index_before_args ~ret:S.null ~err:S.(nullable (obj command_error))
-    ~default_err:None
     ~err_descr:"optional source code location for the error"
     @@ fun d (index, ()) ->
-  (d, Result.map_error (fun (e,v) -> e, Some v) @@ Document.go_to d ~index)
+  Result.map_error (fun (e,v) -> e, Some v) @@ Document.go_to d ~index
 
 let _ =
-  WithCursor.declare ~name:"clear_suffix" ~descr:"remove all unprocessed \
+  declare ~name:"clear_suffix" ~descr:"remove all unprocessed \
     commands from the document" ~args:A.nil ~ret:S.null @@ fun d () ->
-  (d, Document.clear_suffix d)
+  Document.clear_suffix d
 
 let _ =
-  WithCursor.declare_full ~name:"run_step" ~descr:"advance the cursor by \
-    stepping over an unprocessed item" ~args:A.nil
+  declare_full ~name:"run_step" ~descr:"advance the cursor by \
+      stepping over an unprocessed item" ~args:A.nil
     ~ret:S.(nullable (obj command_data))
     ~ret_descr:"data for the command that was run, if any"
     ~err:S.(nullable (obj command_error))
-    ~default_err:None
-    ~err_descr:"error data for the command that was run, if any" @@ fun d () ->
-  (d, Document.run_step d)
+    ~err_descr:"error data for the command that was run, if any"
+    @@ fun d () ->
+  Document.run_step d
 
 let prefix_item =
   let fields =
@@ -348,13 +344,13 @@ let item_kind_to_string kind =
   | `Ghost   -> "ghost"
 
 let _ =
-  WithCursor.declare ~name:"doc_prefix" ~descr:"gives the list of all processed \
-    commands, appearing before the cursor" ~args:A.nil
+  declare ~name:"doc_prefix" ~descr:"gives the list of all \
+      processed commands, appearing before the cursor" ~args:A.nil
     ~ret:S.(list (obj prefix_item)) @@ fun d () ->
   let make (p : Document.processed_item) =
     (item_kind_to_string p.kind, (p.off, (p.text, ())))
   in
-  (d, List.rev_map make (Document.rev_prefix d))
+  List.rev_map make (Document.rev_prefix d)
 
 let suffix_item =
   let fields =
@@ -367,27 +363,29 @@ let suffix_item =
     ~encode:Fun.id ~decode:Fun.id fields
 
 let _ =
-  WithCursor.declare ~name:"doc_suffix" ~descr:"gives the list of all \
-    unprocessed commands, appearing after the cursor" ~args:A.nil
+  declare ~name:"doc_suffix" ~descr:"gives the list of all \
+      unprocessed commands, appearing after the cursor" ~args:A.nil
     ~ret:S.(list (obj suffix_item)) @@ fun d () ->
   let make (u : Document.unprocessed_item) =
     (item_kind_to_string u.kind, (u.text, ()))
   in
-  (d, List.map make (Document.suffix d))
+  List.map make (Document.suffix d)
 
 let _ =
-  WithCursor.declare ~name:"has_suffix" ~descr:"indicates whether the document \
-    has a suffix (unprocessed items)" ~args:A.nil ~ret:S.bool @@ fun d () ->
-  (d, Document.suffix d <> [])
+  declare ~name:"has_suffix" ~descr:"indicates whether the \
+      document has a suffix (unprocessed items)" ~args:A.nil ~ret:S.bool
+    @@ fun d () ->
+  Document.suffix d <> []
 
 let _ =
   let args =
     A.add ~name:"include_suffix" ~descr:"indicate whether he suffix should \
       be included" S.bool A.nil
   in
-  WithCursor.declare ~name:"commit" ~descr:"write the current document contents \
-    to the file" ~args ~ret:S.null @@ fun d (include_suffix, ()) ->
-  (d, Document.commit ~include_suffix d)
+  declare ~name:"commit" ~descr:"write the current document \
+      contents to the file" ~args ~ret:S.null
+    @@ fun d (include_suffix, ()) ->
+  Document.commit ~include_suffix d
 
 let compile_result =
   let fields =
@@ -417,18 +415,18 @@ let compile_result =
     ~descr:"result of the `compile` method" ~encode ~decode fields
 
 let _ =
-  WithCursor.declare ~name:"compile" ~descr:"compile the current contents of \
+  declare ~name:"compile" ~descr:"compile the current contents of \
     the file with `rocq compile`" ~args:A.nil
     ~ret:S.(obj compile_result) @@ fun d () ->
-  (d, Document.compile d)
+  Document.compile d
 
 let _ =
   let args = A.add ~name:"text" ~descr:"text of the query" S.string A.nil in
-  WithCursor.declare_full ~name:"query" ~descr:"runs the given query at \
-    the cursor, not updating the state" ~args ~ret:S.(obj command_data)
-    ~err:S.null ~default_err:() @@ fun d (text, ()) ->
+  declare_full ~name:"query" ~descr:"runs the given query at \
+      the cursor, not updating the state" ~args ~ret:S.(obj command_data)
+    ~err:S.null @@ fun d (text, ()) ->
   let res = Document.query ~text d in
-  (d, Result.map_error (fun s -> (s, ())) res)
+  Result.map_error (fun s -> (s, ())) res
 
 let query_args =
   A.add ~name:"text" ~descr:"text of the query" S.string @@
@@ -436,12 +434,13 @@ let query_args =
   A.nil
 
 let _ =
-  WithCursor.declare_full ~name:"query_text" ~descr:"runs the given query at \
-    the cursor, not updating the state" ~args:query_args ~ret:S.string
+  declare_full ~name:"query_text" ~descr:"runs the given query at \
+      the cursor, not updating the state" ~args:query_args ~ret:S.string
     ~ret_descr:"query's result, as taken from the \"info\" \ \"notice\" \
-      feedback at the given index" ~err:S.null ~default_err:() @@ fun d (text, (index, ())) ->
+      feedback at the given index" ~err:S.null
+    @@ fun d (text, (index, ())) ->
   let res = Document.query_text d ~text ~index in
-  (d, Result.map_error (fun s -> (s, ())) res)
+  Result.map_error (fun s -> (s, ())) res
 
 let query_all_args =
   A.add ~name:"text" ~descr:"text of the query" S.string @@
@@ -450,61 +449,63 @@ let query_all_args =
   A.nil
 
 let _ =
-  WithCursor.declare_full ~name:"query_text_all" ~descr:"runs the given query \
-    at the cursor, not updating the state" ~args:query_all_args
-    ~ret:S.(list string) ~err:S.null ~default_err:() @@ fun d (text, (indices, ())) ->
+  declare_full ~name:"query_text_all" ~descr:"runs the given \
+      query at the cursor, not updating the state" ~args:query_all_args
+    ~ret:S.(list string) ~err:S.null
+    @@ fun d (text, (indices, ())) ->
   let res = Document.query_text_all d ~text ?indices in
-  (d, Result.map_error (fun s -> (s, ())) res)
+  Result.map_error (fun s -> (s, ())) res
 
 let _ =
-  WithCursor.declare_full ~name:"query_json" ~descr:"runs the given query at \
-    the cursor, not updating the state" ~args:query_args ~ret:S.any
+  declare_full ~name:"query_json" ~descr:"runs the given query at \
+      the cursor, not updating the state" ~args:query_args ~ret:S.any
     ~ret_descr:"arbitrary JSON data, as returned by the query as JSON text, \
-    taken from the \"info\" / \"notice\" feedback with the given index"
-    ~err:S.null ~default_err:() @@ fun d (text, (index, ())) ->
+      taken from the \"info\" / \"notice\" feedback with the given index"
+    ~err:S.null @@ fun d (text, (index, ())) ->
   let res = Document.query_json d ~text ~index in
-  (d, Result.map_error (fun s -> (s, ())) res)
+  Result.map_error (fun s -> (s, ())) res
 
 let _ =
-  WithCursor.declare_full ~name:"query_json_all" ~descr:"runs the given query \
-    at the cursor, not updating the state" ~args:query_all_args
-    ~ret:S.(list any) ~err:S.null ~default_err:() @@ fun d (text, (indices, ())) ->
+  declare_full ~name:"query_json_all" ~descr:"runs the given \
+      query at the cursor, not updating the state" ~args:query_all_args
+    ~ret:S.(list any) ~err:S.null
+    @@ fun d (text, (indices, ())) ->
   let res = Document.query_json_all d ~text ?indices in
-  (d, Result.map_error (fun s -> (s, ())) res)
+  Result.map_error (fun s -> (s, ())) res
 
 let _ =
-  WithCursor.declare ~name:"dump" ~descr:"dump the document contents (debug)"
+  declare ~name:"dump" ~descr:"dump the document contents (debug)"
     ~args:A.nil ~ret:S.any @@ fun d () ->
-  (d, Document.dump d)
+  Document.dump d
 
 let _ =
   let args =
     A.add ~name:"cursor" ~descr:"the cursor to clone" S.int @@
     A.nil
   in
-  API.declare_full api ~name:"clone" ~descr:"clones the given cursor"
-    ~args ~ret:S.int ~ret_descr:"the name of the new cursor" ~err:S.null
+  API.declare api ~name:"clone" ~descr:"clones the given cursor"
+    ~args ~ret:S.int ~ret_descr:"the name of the new cursor"
     @@ fun d (cursor, ()) ->
   match IntMap.find_opt cursor d.cursors with
-  | None    -> (d, Error("cursor does not exist", ()))
+  | None    -> invalid_arg "unknown cursor"
   | Some(c) ->
   let new_cursor = Document.clone c in
   let index = d.fresh in
   let cursors = IntMap.add index new_cursor d.cursors in
-  ({fresh = index + 1; cursors}, Ok(index))
+  ({fresh = index + 1; cursors}, index)
 
 let _ =
   let args =
     A.add ~name:"cursor" S.int @@
     A.nil
   in
-  API.declare_full api ~name:"dispose" ~descr:"destroys the cursor"
-    ~args ~ret:S.null ~err:S.null @@ fun d (cursor, ()) ->
+  API.declare api ~name:"dispose" ~descr:"destroys the cursor"
+    ~args ~ret:S.null @@ fun d (cursor, ()) ->
   match IntMap.find_opt cursor d.cursors with
-  | None    -> (d, Error("cursor does not exist", ()))
+  | None    -> invalid_arg "unknown cursor"
   | Some(c) ->
   Document.stop c;
-  ({d with cursors = IntMap.remove cursor d.cursors}, Ok(()))
+  ({d with cursors = IntMap.remove cursor d.cursors}, ())
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in
