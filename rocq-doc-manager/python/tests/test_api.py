@@ -2,9 +2,8 @@ import logging
 from pathlib import Path
 
 import pytest
-from rocq_doc_manager import RocqDocManager, RocqCursor
+from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocol
-from rocq_doc_manager.rocq_doc_manager_api import RocqDocManagerAPI
 
 from .util import RDM_Tests
 

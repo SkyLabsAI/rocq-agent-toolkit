@@ -4,9 +4,8 @@ from contextlib import contextmanager
 from typing import Any
 
 import pytest
-from hypothesis import strategies as st
-
 import rocq_doc_manager
+from hypothesis import strategies as st
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager.rocq_doc_manager import RocqDocManager
 

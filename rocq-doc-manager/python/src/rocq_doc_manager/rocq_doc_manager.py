@@ -1,8 +1,6 @@
 import logging
-import re
 from collections.abc import Iterator
 from contextlib import contextmanager
-from sys import prefix
 from typing import Self, override
 
 from jsonrpc_tp import JsonRPCTP

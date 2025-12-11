@@ -2,7 +2,7 @@ import itertools
 
 import pytest
 from hypothesis import given, settings
-from rocq_doc_manager import RocqDocManager, RocqCursor
+from rocq_doc_manager import RocqCursor, RocqDocManager
 
 from .util import RDM_Tests
 

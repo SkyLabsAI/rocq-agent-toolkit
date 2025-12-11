@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
 import logging
-from typing import Any, Callable, Iterator, Self, override, Sequence, Literal
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
+from typing import Any, Literal, Self, override
 
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocol
 

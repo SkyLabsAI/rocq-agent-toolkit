@@ -1,9 +1,7 @@
 # import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager.rocq_doc_manager import RocqDocManager
 
 from .util import RDM_Tests
 

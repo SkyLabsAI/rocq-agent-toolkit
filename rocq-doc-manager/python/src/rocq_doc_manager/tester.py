@@ -1,6 +1,6 @@
 import sys
 
-from rocq_doc_manager import create, RocqCursor
+from rocq_doc_manager import RocqCursor, create
 
 
 def cram_test1() -> None:
