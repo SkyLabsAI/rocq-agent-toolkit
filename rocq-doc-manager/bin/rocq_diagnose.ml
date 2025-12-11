@@ -26,9 +26,9 @@ let main : Document.t -> unit = fun state ->
   in
   let prev_data = ref None in
   let rec loop () =
-    match Document.has_suffix state with
-    | false -> `Assoc([("status", `String("success"))])
-    | true  ->
+    match Document.suffix state with
+    | [] -> `Assoc([("status", `String("success"))])
+    | _  ->
     match Document.run_step state with
     | Error(s,err) ->
         let loc =

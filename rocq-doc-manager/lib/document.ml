@@ -1,17 +1,21 @@
 type sid = Rocq_toplevel.StateID.t
 
-type processed =
-  | Blanks of {index : int; off : int; text : string}
-  | Command of {index : int; off : int; text : string}
-  | Ghost of {index : int; off : int; text : string}
+type item_kind = [`Blanks | `Command | `Ghost]
 
-type unprocessed =
-  | RemBlanks of {text : string}
-  | RemCommand of {text : string}
-  | RemGhost of {text : string}
+type processed_item = {
+  index : int;
+  kind : item_kind;
+  off : int;
+  text : string;
+}
+
+type unprocessed_item = {
+  kind : item_kind;
+  text : string;
+}
 
 type in_toplevel = {
-  processed : processed;
+  processed : processed_item;
   sid_before : sid;
 }
 
@@ -26,9 +30,9 @@ type backend = {
 
 and t = {
   mutable backend : backend option;
-  mutable rev_prefix : processed list;
+  mutable rev_prefix : processed_item list;
   mutable cursor_off : int;
-  mutable suffix : unprocessed list;
+  mutable suffix : unprocessed_item list;
 }
 
 let unsync : backend -> t -> unit = fun b d ->
@@ -102,15 +106,15 @@ let get_synced_backend : t -> backend = fun d ->
   (* Replaying the remaining prefix commands. *)
   let replay sid_before processed =
     backend.rev_processed <- {processed; sid_before} :: backend.rev_processed;
-    let run ~off ~text =
+    let run off text =
       match Rocq_toplevel.run backend.top ~off ~text with
       | Ok(_)      -> Rocq_toplevel.StateID.current backend.top
       | Error(_,_) -> assert false
     in
-    match processed with
-    | Blanks(_)               -> sid_before
-    | Command({off; text; _}) -> run ~off ~text
-    | Ghost({text; _})        -> run ~off:0 ~text
+    match processed.kind with
+    | `Blanks  -> sid_before
+    | `Command -> run processed.off processed.text
+    | `Ghost   -> run 0 processed.text
   in
   ignore (List.fold_left replay sid prefix); backend
 
@@ -122,17 +126,13 @@ let is_synced : t -> bool = fun d ->
 
 let cursor_index : t -> int = fun d ->
   if d.backend = None then raise Stopped;
-  match d.rev_prefix with
-  | []                       -> 0
-  | Blanks({index; _})  :: _ -> index + 1
-  | Command({index; _}) :: _ -> index + 1
-  | Ghost({index; _})   :: _ -> index + 1
+  match d.rev_prefix with [] -> 0 | p :: _ -> p.index + 1
 
-let to_unprocessed : Rocq_split_api.sentence -> unprocessed = fun s ->
+let to_unprocessed : Rocq_split_api.sentence -> unprocessed_item = fun s ->
   let text = s.Rocq_split_api.text in
   match s.Rocq_split_api.kind with
-  | "blanks" -> RemBlanks({text})
-  | _        -> RemCommand({text})
+  | "blanks" -> {kind = `Blanks ; text}
+  | _        -> {kind = `Command; text}
 
 type loc = Rocq_loc.t option
 
@@ -154,8 +154,8 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
   let len = String.length text in
   if len = 0 then () else
   match d.rev_prefix with
-  | Blanks({index; off; text = blanks}) :: rev_prefix ->
-      let processed = Blanks({index; off; text = blanks ^ text}) in
+  | p :: rev_prefix when p.kind = `Blanks ->
+      let processed = {p with text = p.text ^ text} in
       let (sid_before, rev_processed) =
         match backend.rev_processed with
         | {sid_before; _} :: rev_commands -> (sid_before, rev_commands)
@@ -164,9 +164,9 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
       backend.rev_processed <- {sid_before; processed} :: rev_processed;
       d.rev_prefix <- processed :: rev_prefix;
       d.cursor_off <- d.cursor_off + len
-  | _                                                 ->
+  | _                                     ->
       let index = cursor_index d in
-      let processed = Blanks({index; off = d.cursor_off; text}) in
+      let processed = {index; kind = `Blanks; off = d.cursor_off; text} in
       let sid_before = Rocq_toplevel.StateID.current backend.top in
       backend.rev_processed <-
         {sid_before; processed} :: backend.rev_processed;
@@ -181,7 +181,7 @@ let insert_command : t -> text:string ->
   let sid_before = Rocq_toplevel.StateID.current backend.top in
   let res = Rocq_toplevel.run backend.top ~off ~text in
   match res with Error(_,_) -> res | Ok(_) ->
-  let processed = Command({index = cursor_index d; off; text}) in
+  let processed = {index = cursor_index d; kind = `Command; off; text} in
   backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
   d.rev_prefix <- processed :: d.rev_prefix;
   d.cursor_off <- d.cursor_off + String.length text;
@@ -195,7 +195,8 @@ let run_command : t -> text:string -> (command_data, string) result =
   match Rocq_toplevel.run backend.top ~off:0 ~text with
   | Error(s,_) -> Error(s)
   | Ok(data)   ->
-  let processed = Ghost({index = cursor_index d; off = d.cursor_off; text}) in
+  let index = cursor_index d in
+  let processed = {index; kind = `Ghost; off = d.cursor_off; text} in
   backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
   d.rev_prefix <- processed :: d.rev_prefix;
   Ok(data)
@@ -205,28 +206,25 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
   let cur_index = cursor_index d in
   if i < 0 || cur_index < i then invalid_arg "index out of bounds";
   match i = cur_index with true -> () | false ->
-  unsync (get_backend d) d;
-  let rec revert rev_prefix suffix off =
+  let rec revert (rev_prefix : processed_item list) suffix =
     match rev_prefix with
-    | []              -> assert (i = 0); (rev_prefix, suffix, off)
+    | []              -> assert (i = 0); (rev_prefix, suffix, d.cursor_off)
     | p :: rev_prefix ->
-    let (index, off, item) =
-      match p with
-      | Blanks({index; text; off})  -> (index, off, RemBlanks({text}) )
-      | Command({index; text; off}) -> (index, off, RemCommand({text}))
-      | Ghost({index; text; off})   -> (index, off, RemGhost({text})  )
+    let suffix =
+      match erase with
+      | false -> {kind = p.kind; text = p.text} :: suffix
+      | true  -> suffix
     in
-    let suffix = item :: suffix in
-    if index = i then
-      (rev_prefix, suffix, off)
-    else
-      revert rev_prefix suffix off
+    match p.index = i with
+    | true  -> (rev_prefix, suffix, p.off)
+    | false -> revert rev_prefix suffix
   in
-  let (rev_prefix, suffix, off) = revert d.rev_prefix d.suffix d.cursor_off in
+  let (rev_prefix, suffix, off) = revert d.rev_prefix d.suffix in
   (* NOTE: no need to re-focus, the toplevel just gets out of sync. *)
   d.rev_prefix <- rev_prefix;
-  d.cursor_off <- off ;
-  if not erase then d.suffix <- suffix
+  d.cursor_off <- off;
+  d.suffix <- suffix;
+  unsync (get_backend d) d
 
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
   let backend = get_synced_backend d in
@@ -248,26 +246,25 @@ type byte_loc = {off : int; len : int}
 let byte_loc_of_last_step : t -> byte_loc option = fun d ->
   if d.backend = None then raise Stopped;
   match d.rev_prefix with
-  | []                           -> None
-  | Blanks({off; text; _})  :: _
-  | Command({off; text; _}) :: _ -> Some({off; len = String.length text})
-  | Ghost(_)                :: _ -> None
+  | []                      -> None
+  | {kind = `Ghost; _} :: _ -> None
+  | {off; text; _}     :: _ -> Some({off; len = String.length text})
 
 let run_step : t ->
     (command_data option, string * command_error option) result = fun d ->
   if d.backend = None then raise Stopped;
   match d.suffix with
-  | []                           -> Error("no step left to run", None)
-  | RemBlanks({text})  :: suffix ->
+  | []                                -> Error("no step left to run", None)
+  | {kind = `Blanks ; text} :: suffix ->
       d.suffix <- suffix;
       insert_blanks d ~text; Ok(None)
-  | RemCommand({text}) :: suffix ->
+  | {kind = `Command; text} :: suffix ->
       begin
         match insert_command d ~text with
         | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
         | Error(s,d) -> Error(s, Some(d))
       end
-  | RemGhost({text})   :: suffix ->
+  | {kind = `Ghost  ; text} :: suffix ->
       begin
         match run_command d ~text with
         | Ok(v)    -> d.suffix <- suffix; Ok(Some(v))
@@ -296,87 +293,27 @@ let go_to : t -> index:int -> (unit, string * command_error) result =
   | true  -> revert_before d ~index ~erase:false; Ok(())
   | false -> advance_to d ~index
 
-type processed_item = {
-  index : int;
-  kind : [`Blanks | `Command | `Ghost];
-  off : int;
-  text : string;
-}
-
-let last_processed_item : t -> processed_item option = fun d ->
+let rev_prefix : t -> processed_item list = fun d ->
   if d.backend = None then raise Stopped;
-  match d.rev_prefix with
-  | Blanks({index; off; text})  :: _ ->
-      Some({index; kind = `Blanks; off; text})
-  | Command({index; off; text}) :: _ ->
-      Some({index; kind = `Command; off; text})
-  | Ghost({index; off; text})   :: _ ->
-      Some({index; kind = `Ghost; off; text})
-  | []                               ->
-      None
+  d.rev_prefix
 
-type unprocessed_item = {
-  kind : [`Blanks | `Command | `Ghost];
-  text : string;
-}
-
-let first_unprocessed_item : t -> unprocessed_item option = fun d ->
+let suffix : t -> unprocessed_item list = fun d ->
   if d.backend = None then raise Stopped;
-  match d.suffix with
-  | []                      -> None
-  | RemBlanks({text})  :: _ -> Some({kind = `Blanks ; text})
-  | RemCommand({text}) :: _ -> Some({kind = `Command; text})
-  | RemGhost({text})   :: _ -> Some({kind = `Ghost  ; text})
-
-let doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a)
-     -> 'a list = fun d f ->
-  if d.backend = None then raise Stopped;
-  let rec build acc rev_prefix =
-    match rev_prefix with
-    | []                                    -> acc
-    | Blanks({off; text; _})  :: rev_prefix ->
-        build (f ~kind:"blanks" ~off ~text :: acc) rev_prefix
-    | Command({off; text; _}) :: rev_prefix ->
-        build (f ~kind:"command" ~off ~text :: acc) rev_prefix
-    | Ghost({off; text; _})   :: rev_prefix ->
-        build (f ~kind:"ghost" ~off ~text :: acc) rev_prefix
-  in
-  build [] d.rev_prefix
-
-let doc_suffix : t -> (kind:string -> text:string -> 'a)
-    -> 'a list = fun d f ->
-  if d.backend = None then raise Stopped;
-  let rec build suffix =
-    match suffix with
-    | []                           -> []
-    | RemBlanks({text})  :: suffix ->
-        f ~kind:"blanks"  ~text :: build suffix
-    | RemCommand({text}) :: suffix ->
-        f ~kind:"command" ~text :: build suffix
-    | RemGhost({text})   :: suffix ->
-        f ~kind:"ghost"   ~text :: build suffix
-  in
-  build d.suffix
-
-let has_suffix : t -> bool = fun d ->
-  if d.backend = None then raise Stopped;
-  d.suffix <> []
+  d.suffix
 
 let commit : t -> include_suffix:bool -> unit = fun d ~include_suffix ->
   let backend = get_backend d in
   Out_channel.with_open_text backend.file @@ fun oc ->
-  let output_processed p =
-    match p with
-    | Blanks({text; _})  -> Out_channel.output_string oc text
-    | Command({text; _}) -> Out_channel.output_string oc text
-    | Ghost(_)           -> ()
+  let output_processed (p : processed_item) =
+    match p.kind with
+    | `Ghost -> ()
+    | _      -> Out_channel.output_string oc p.text
   in
   List.iter output_processed (List.rev d.rev_prefix);
   let output_unprocessed u =
-    match u with
-    | RemBlanks({text})  -> Out_channel.output_string oc text
-    | RemCommand({text}) -> Out_channel.output_string oc text
-    | RemGhost(_)        -> ()
+    match u.kind with
+    | `Ghost -> ()
+    | _      -> Out_channel.output_string oc u.text
   in
   if include_suffix then List.iter output_unprocessed d.suffix
 

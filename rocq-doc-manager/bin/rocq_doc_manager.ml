@@ -341,12 +341,20 @@ let prefix_item =
     ~descr:"document prefix item, appearing before the cursor"
     ~encode:Fun.id ~decode:Fun.id fields
 
+let item_kind_to_string kind =
+  match kind with
+  | `Blanks  -> "blanks"
+  | `Command -> "command"
+  | `Ghost   -> "ghost"
+
 let _ =
   WithCursor.declare ~name:"doc_prefix" ~descr:"gives the list of all processed \
     commands, appearing before the cursor" ~args:A.nil
     ~ret:S.(list (obj prefix_item)) @@ fun d () ->
-  let make ~kind ~off ~text = (kind, (off, (text, ()))) in
-  (d, Document.doc_prefix d make)
+  let make (p : Document.processed_item) =
+    (item_kind_to_string p.kind, (p.off, (p.text, ())))
+  in
+  (d, List.rev_map make (Document.rev_prefix d))
 
 let suffix_item =
   let fields =
@@ -362,13 +370,15 @@ let _ =
   WithCursor.declare ~name:"doc_suffix" ~descr:"gives the list of all \
     unprocessed commands, appearing after the cursor" ~args:A.nil
     ~ret:S.(list (obj suffix_item)) @@ fun d () ->
-  let make ~kind ~text = (kind, (text, ())) in
-  (d, Document.doc_suffix d make)
+  let make (u : Document.unprocessed_item) =
+    (item_kind_to_string u.kind, (u.text, ()))
+  in
+  (d, List.map make (Document.suffix d))
 
 let _ =
   WithCursor.declare ~name:"has_suffix" ~descr:"indicates whether the document \
     has a suffix (unprocessed items)" ~args:A.nil ~ret:S.bool @@ fun d () ->
-  (d, Document.has_suffix d)
+  (d, Document.suffix d <> [])
 
 let _ =
   let args =

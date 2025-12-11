@@ -87,9 +87,9 @@ let main : Document.t -> unit = fun state ->
     json_items := Lazy.from_fun json :: !json_items;
   in
   let rec loop () =
-    match Document.has_suffix state with
-    | false -> ()
-    | true  ->
+    match Document.suffix state with
+    | [] -> ()
+    | _  ->
     match Document.run_step state with
     | Error(s, _) -> panic "Error: %s" s
     | Ok(None)    -> loop ()

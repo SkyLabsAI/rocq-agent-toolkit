@@ -14,9 +14,9 @@ let main : Document.t -> unit = fun state ->
     | Error(s,_) -> panic "Error: failed to load the file.\n%s" s
   in
   let rec loop last_data =
-    match Document.has_suffix state with
-    | false -> last_data
-    | true  ->
+    match Document.suffix state with
+    | [] -> last_data
+    | _  ->
     match Document.run_step state with
     | Ok(None)   -> loop last_data
     | Ok(data)   -> loop data

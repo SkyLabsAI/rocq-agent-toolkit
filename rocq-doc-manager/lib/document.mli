@@ -66,8 +66,14 @@ type command_data = Rocq_toplevel.run_data
 (** Data returned upon failure of the top-level when running a command. *)
 type command_error = Rocq_toplevel.run_error
 
+(** [insert_blanks d ~text] inserts the sequence of blank characters [text] at
+    the cursor in document [d], and advances the cursor past them. *)
 val insert_blanks : t -> text:string -> unit
 
+(** [insert_command d ~text] inserts, and processes the Rocq command [text] at
+    the cursor in document [d]. The cursor is advanced past the command if and
+    only if it is processed successfully. In case of failure, an error message
+    is returned together with additional information. *)
 val insert_command : t -> text:string
   -> (command_data, string * command_error) result
 
@@ -126,20 +132,14 @@ type processed_item = {
   text : string;
 }
 
-val last_processed_item : t -> processed_item option
-
 type unprocessed_item = {
   kind : [`Blanks | `Command | `Ghost];
   text : string;
 }
 
-val first_unprocessed_item : t -> unprocessed_item option
+val rev_prefix : t -> processed_item list
 
-val doc_prefix : t -> (kind:string -> off:int -> text:string -> 'a) -> 'a list
-
-val doc_suffix : t -> (kind:string -> text:string -> 'a) -> 'a list
-
-val has_suffix : t -> bool
+val suffix : t -> unprocessed_item list
 
 val commit : t -> include_suffix:bool -> unit
 
