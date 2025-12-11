@@ -1,7 +1,7 @@
 import logging
 from typing import override
 
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import (
     AgentBuilder,
@@ -39,7 +39,7 @@ class OneShotAgent(TraceAgent):
         return f"{self._tactic}."
 
     @override
-    def next_tac(self, rdm: RocqDocManager) -> str | TaskResult:
+    def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
         """Get the next tactic string, but only allow one application."""
         return self.tactic_sentence
 

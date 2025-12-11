@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, override
 
-from rocq_doc_manager.rocq_doc_manager import RocqDocManager
+from rocq_doc_manager.rocq_doc_manager import RocqCursor
 
 from .extractor import StateExtractor
 
@@ -27,9 +27,9 @@ class JsonGoal(StateExtractor[list[Any]]):
     def _tactic(self) -> str:
         return f"all: {self._mod()}.goal_to_json."
 
-    def _check_iris(self, rdm: RocqDocManager) -> bool:
+    def _check_iris(self, rdm: RocqCursor) -> bool:
         result = rdm.query_text("Locate iris.proofmode.environments.envs_entails.", 0)
-        assert not isinstance(result, RocqDocManager.Err)
+        assert not isinstance(result, RocqCursor.Err)
         return not result.startswith("No object")
 
     @override
@@ -49,13 +49,13 @@ class JsonGoal(StateExtractor[list[Any]]):
         ]
         return {k: ext(user, k.split(".")) for k in PATHS}
 
-    def start_proof(self, rdm: RocqDocManager) -> None:
+    def start_proof(self, rdm: RocqCursor) -> None:
         # Detect iris
         if self._iris is None:
             self._iris = self._check_iris(rdm)
 
         result = rdm.run_command(f"Require {self._mod()}.")
-        if isinstance(result, RocqDocManager.Err):
+        if isinstance(result, RocqCursor.Err):
             raise RuntimeError(f"Failed to initialize JsonGoal extractor: {result}")
 
     _NO_GOAL_PREFIXES: list[str] = [
@@ -64,7 +64,7 @@ class JsonGoal(StateExtractor[list[Any]]):
         "All the remaining goals are on the shelf",
     ]
 
-    def __call__(self, rdm: RocqDocManager) -> list[Any] | None:
+    def __call__(self, rdm: RocqCursor) -> list[Any] | None:
         result = rdm.query_text_all(self._tactic(), indices=None)
         if isinstance(result, rdm.Err):
             if "Init.Not_focussed" in result.message:

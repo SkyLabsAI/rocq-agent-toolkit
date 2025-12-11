@@ -1,7 +1,7 @@
 from typing import Any, override
 
 from observability import get_logger
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import (
     ProofAgent,
@@ -32,7 +32,7 @@ class TraceAgent(ProofAgent):
         self._stop_on_failure = stop_on_failure
         self._history: list[TacticApplication] = []
 
-    def next_tac(self, rdm: RocqDocManager) -> str | TaskResult:
+    def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
         """Get the next tactic string from the agent, or a TaskResult if the agent gives up."""
         return self.give_up(rdm, message="Not implemented")
 
@@ -52,12 +52,12 @@ class TraceAgent(ProofAgent):
         self._history.append(tac_app)
 
     @override
-    def prove(self, rdm: RocqDocManager) -> TaskResult:
+    def prove(self, rdm: RocqCursor) -> TaskResult:
         """Keep trying to prove via next tactic prediction."""
 
         while True:
             pf_state_reply = self.current_proof_state(rdm)
-            if isinstance(pf_state_reply, RocqDocManager.Err):
+            if isinstance(pf_state_reply, RocqCursor.Err):
                 return self.give_up(
                     rdm,
                     message="{self.name()}: couldn't get current proof state",
@@ -100,7 +100,7 @@ class TraceAgent(ProofAgent):
     @override
     def finished(
         self,
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         message: str = "",
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
@@ -116,9 +116,9 @@ class TraceAgent(ProofAgent):
     @override
     def give_up(
         self,
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         message: str = "",
-        reason: FailureReason | RocqDocManager.Err[Any] | BaseException | None = None,
+        reason: FailureReason | RocqCursor.Err[Any] | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
@@ -132,7 +132,7 @@ class TraceAgent(ProofAgent):
         )
 
     def _extend_side_effects(
-        self, rdm: RocqDocManager, side_effects: dict[str, Any]
+        self, rdm: RocqCursor, side_effects: dict[str, Any]
     ) -> None:
         assert side_effects is not None and isinstance(side_effects, dict)
         for k, v in {
@@ -149,27 +149,27 @@ class TraceAgent(ProofAgent):
 
     def _task_holes(
         self,
-        rdm: RocqDocManager,
-    ) -> ProofState | RocqDocManager.Err[Any]:
+        rdm: RocqCursor,
+    ) -> ProofState | RocqCursor.Err[Any]:
         current_goal_reply = rdm.current_goal()
-        if isinstance(current_goal_reply, RocqDocManager.Err):
+        if isinstance(current_goal_reply, RocqCursor.Err):
             return current_goal_reply
         return ProofState(
             current_goal_reply,
             goal_ty_upperbound=self._goal_ty_upperbound,
         )
 
-    def _task_holes_json(self, rdm: RocqDocManager) -> dict[str, Any] | str:
+    def _task_holes_json(self, rdm: RocqCursor) -> dict[str, Any] | str:
         holes = self._task_holes(rdm)
-        if isinstance(holes, RocqDocManager.Err):
+        if isinstance(holes, RocqCursor.Err):
             return str(holes)
         else:
             return holes.to_json()
 
-    def _task_doc_interaction(self, rdm: RocqDocManager) -> str:
+    def _task_doc_interaction(self, rdm: RocqCursor) -> str:
         return "\n".join(
             [tac_app.tactic for tac_app in self._history if not tac_app.err]
         )
 
-    def _task_doc_interaction_json(self, rdm: RocqDocManager) -> Any:
+    def _task_doc_interaction_json(self, rdm: RocqCursor) -> Any:
         return self._task_doc_interaction(rdm)

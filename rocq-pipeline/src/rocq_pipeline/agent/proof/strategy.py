@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from typing import override
 
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import TacticApplication
 
@@ -17,7 +17,7 @@ class Strategy(ABC):
     type Rollout = Generator[tuple[float, Action]]
 
     @abstractmethod
-    def rollout(self, rdm: RocqDocManager, max_rollout: int | None = None) -> Rollout:
+    def rollout(self, rdm: RocqCursor, max_rollout: int | None = None) -> Rollout:
         """
         Given the goal `G`, generates `(Pr,A)` such that:
         - `Pr` is the probability that `A` is (the next/a necessary) step in an
@@ -36,11 +36,11 @@ class CompositeStrategy(Strategy):
     """A (fair) combination of strategies"""
 
     def __init__(self, children: list[Strategy]) -> None:
-        self._children = children
+        self._children: list[Strategy] = children
 
     @override
     def rollout(
-        self, rdm: RocqDocManager, max_rollout: int | None = None
+        self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
         def combine() -> Strategy.Rollout:
             queue: list[tuple[float, int, Strategy.Action, Strategy.Rollout]] = []
@@ -71,19 +71,19 @@ class SafeTacticStrategy(Strategy):
     """A simple strategy that always returns a tactic."""
 
     def __init__(self, tactic: str, prob: float = 1.0) -> None:
-        self._tactic = tactic
-        self._prob = prob
+        self._tactic: str = tactic
+        self._prob: float = prob
 
     @override
     def rollout(
-        self, rdm: RocqDocManager, max_rollout: int | None = None
+        self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
         return (
             (prob, TacticApplication(tac)) for prob, tac in [(self._prob, self._tactic)]
         )
 
 
-class CutAssertStrategy(SafeTacticStrategy):
+class CutAssertStrategy(Strategy):
     """A simple strategy that cuts a Rocq lemma.
     The success probability 1.0 is not necessarily appropriate."""
 
@@ -94,10 +94,10 @@ class CutAssertStrategy(SafeTacticStrategy):
 
     @override
     def rollout(
-        self, rdm: RocqDocManager, max_rollout: int | None = None
+        self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
-        name: str | RocqDocManager.Err = rdm.fresh_ident(self._name)
-        if isinstance(name, RocqDocManager.Err):
+        name: str | RocqCursor.Err = rdm.fresh_ident(self._name)
+        if isinstance(name, RocqCursor.Err):
             return empty_Rollout()
         tac: str = f"assert ({self._lemma}) as {name}"
 
@@ -116,7 +116,7 @@ class FailStrategy(Strategy):
 
     @override
     def rollout(
-        self, rdm: RocqDocManager, max_rollout: int | None = None
+        self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
         return empty_Rollout()
 
@@ -135,11 +135,11 @@ class FirstTacticStrategy(Strategy):
     The success probability 1.0 is tha max of the individual strategies."""
 
     def __init__(self, tactics: list[tuple[float, str]]) -> None:
-        self._tactics = tactics
+        self._tactics: list[tuple[float, str]] = tactics
 
     @override
     def rollout(
-        self, rdm: RocqDocManager, max_rollout: int | None = None
+        self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
         maxprob = max(prob for prob, _ in self._tactics)
         tacs = [item[1] for item in self._tactics]

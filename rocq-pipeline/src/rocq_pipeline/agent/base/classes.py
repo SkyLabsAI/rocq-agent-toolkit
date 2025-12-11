@@ -1,7 +1,7 @@
 from typing import Any, override
 
 from observability import get_logger
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema import task_output
@@ -19,7 +19,7 @@ logger = get_logger("rocq_agent")
 class Agent:
     """Abstract base class for Rocq Agent Toolkit agents."""
 
-    def run(self, rdm: RocqDocManager) -> TaskResult:
+    def run(self, rdm: RocqCursor) -> TaskResult:
         """Entrypoint; use rdm to attempt a task and report the result."""
         return self.give_up(rdm, message="Not implemented")
 
@@ -34,7 +34,7 @@ class Agent:
 
     def finished(
         self,
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         message: str = "",
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
@@ -47,9 +47,9 @@ class Agent:
 
     def give_up(
         self,
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         message: str = "",
-        reason: FailureReason | RocqDocManager.Err | BaseException | None = None,
+        reason: FailureReason | RocqCursor.Err | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         """Create a TaskResult when the agent gives up."""
@@ -106,7 +106,7 @@ class ProofAgent(Agent):
             raise RuntimeError(f"{goal_ty_upperbound} is not a subclass of RocqGoal")
         self._goal_ty_upperbound = goal_ty_upperbound
 
-    def prove(self, rdm: RocqDocManager) -> TaskResult:
+    def prove(self, rdm: RocqCursor) -> TaskResult:
         """Prove the current goal using the restricted proof session.
 
         This method is called by run() after setting up a RocqProofSession.
@@ -115,28 +115,28 @@ class ProofAgent(Agent):
         return self.give_up(rdm, message="Not implemented")
 
     @override
-    def run(self, rdm: RocqDocManager) -> TaskResult:
+    def run(self, rdm: RocqCursor) -> TaskResult:
         """Run the agent after ensuring there is a goal to prove."""
         goal_reply = rdm.current_goal()
         if goal_reply is None:
             return self.finished(rdm, message="No goal to prove")
-        if isinstance(goal_reply, RocqDocManager.Err):
+        if isinstance(goal_reply, RocqCursor.Err):
             return self.give_up(rdm, message="No goal to prove", reason=goal_reply)
         # TODO: validate that no goals remain.
         return self.prove(rdm)
 
     def current_proof_state(
         self,
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         goal_ty_upperbound: type[RocqGoal] | None = None,
-    ) -> ProofState | RocqDocManager.Err[None]:
+    ) -> ProofState | RocqCursor.Err[None]:
         """Structured view of the current proof state (via RDM.current_goal).
 
         Note: self._goal_ty_upperbound can be overriden."""
         if goal_ty_upperbound is None:
             goal_ty_upperbound = self._goal_ty_upperbound
         goal_reply = rdm.current_goal()
-        if isinstance(goal_reply, RocqDocManager.Err):
+        if isinstance(goal_reply, RocqCursor.Err):
             return goal_reply
         return ProofState(
             goal_reply,
@@ -145,14 +145,14 @@ class ProofAgent(Agent):
 
     def run_tactic(
         self,
-        rdm: RocqDocManager,
+        rdm: RocqCursor,
         tac: str,
     ) -> TacticApplication:
         """Get the result of running tac using rdm, tracing the interaction."""
         tac_app = TacticApplication(tactic=tac)
 
         pre_pf_state_reply = self.current_proof_state(rdm)
-        if isinstance(pre_pf_state_reply, RocqDocManager.Err):
+        if isinstance(pre_pf_state_reply, RocqCursor.Err):
             tac_app.err = pre_pf_state_reply
             return tac_app
         else:
@@ -167,7 +167,7 @@ class ProofAgent(Agent):
             tactic_application_tactic=tac,
         )
         tac_reply = rdm.run_command(tac)
-        if isinstance(tac_reply, RocqDocManager.Err):
+        if isinstance(tac_reply, RocqCursor.Err):
             logger.info(
                 "Tactic Application Status",
                 status="Failure",
@@ -182,7 +182,7 @@ class ProofAgent(Agent):
         )
 
         post_pf_state_reply = self.current_proof_state(rdm)
-        if isinstance(post_pf_state_reply, RocqDocManager.Err):
+        if isinstance(post_pf_state_reply, RocqCursor.Err):
             tac_app.err = post_pf_state_reply
             return tac_app
         tac_app.pf_state_post = post_pf_state_reply

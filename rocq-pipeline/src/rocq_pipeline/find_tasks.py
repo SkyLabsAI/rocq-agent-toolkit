@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from rocq_doc_manager import DuneUtil, RocqDocManager
+from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 from rocq_pipeline.locator import NotFound
 from rocq_pipeline.taggers.tactic_tagger import extract_tactics
@@ -24,7 +24,7 @@ class ProofTask:
     proof_tactics: list[str]
 
 
-def scan_proof(suffix: list[RocqDocManager.SuffixItem]) -> ProofTask:
+def scan_proof(suffix: list[RocqCursor.SuffixItem]) -> ProofTask:
     tactics: list[str] = []
     start = 0
     for i, sentence in enumerate(suffix):
@@ -53,9 +53,10 @@ def find_tasks(
     with RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True).sess(
         load_file=True
     ) as rdm:
+        rc: RocqCursor = rdm.cursor()
         tasks: list[dict[str, Any]] = []
 
-        suffix = rdm.doc_suffix()
+        suffix = rc.doc_suffix()
         total_sentences = len(suffix)
         idx = 0
         mtch = re.compile("(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from rocq_doc_manager import DuneUtil, RocqDocManager
+from rocq_doc_manager import DuneUtil, RocqDocManager, RocqCursor
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, locator, rocq_args, util
@@ -18,7 +18,7 @@ from rocq_pipeline.tracers.json_goal import JsonGoal
 
 def trace_proof[T](
     extractor: TacticExtractor[T],
-    rdm: RocqDocManager,
+    rdm: RocqCursor,
     progress: util.ProgressCallback,
     progress_min: float = 0.0,
     progress_max: float = 1.0,
@@ -103,15 +103,16 @@ def run(
                 str(task_file),
                 dune=True,
             ).sess(load_file=True) as rdm:
-                tracer.setup(rdm)
+                rc = rdm.cursor()
+                tracer.setup(rc)
                 progress.status(0.05, "🔃")
 
-                if not locator.parse_locator(task["locator"])(rdm):
+                if not locator.parse_locator(task["locator"])(rc):
                     print(f"Failed to find task: {task_id}")
                     return False
                 progress.status(0.1, "💭")
 
-                trace = trace_proof(tracer, rdm, progress, 0.1, 0.95)
+                trace = trace_proof(tracer, rc, progress, 0.1, 0.95)
                 progress.status(0.95, "💭")
 
             with open(output_file, "w") as output:

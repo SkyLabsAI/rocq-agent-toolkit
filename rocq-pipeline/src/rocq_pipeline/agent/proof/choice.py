@@ -1,6 +1,6 @@
 from typing import override
 
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import TaskResult
 
@@ -14,7 +14,7 @@ class ChoiceAgent(MarkovAgent):
         self._check_index: int = 0
 
     @override
-    def next_tac(self, rdm: RocqDocManager) -> str | TaskResult:
+    def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
         if self.last_failed():
             self._check_index += 1
         else:

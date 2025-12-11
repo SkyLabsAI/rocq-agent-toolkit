@@ -16,7 +16,7 @@ from observability import (
     get_logger,
     setup_logging,
 )
-from rocq_doc_manager import DuneUtil, RocqDocManager
+from rocq_doc_manager import DuneUtil, RocqDocManager, RocqCursor
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, locator, util
@@ -175,12 +175,13 @@ def run_task(
             str(task_file),
             dune=True,
         ).sess(load_file=True) as rdm:
+            rc = rdm.cursor()
             progress.status(0.05, "🔃")
-            if not task.locator(rdm):
+            if not task.locator(rc):
                 progress.log(f"{task_id}: locator returned false")
                 return None
             progress.status(0.1, "💭")
-            task_result = agent.run(rdm)
+            task_result = agent.run(rc)
     except Exception as e:
         progress.log(f"Failure with {e}")
         task_result = TaskResult.from_exception(e)

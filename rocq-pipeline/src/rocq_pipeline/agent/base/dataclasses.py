@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Self
 
 from observability import get_logger
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.proof_state import ProofState
 from rocq_pipeline.schema import task_output
@@ -52,12 +52,12 @@ class TaskResult:
     def give_up(
         cls,
         message: str,
-        reason: RocqDocManager.Err[Any] | task_output.FailureReason | None = None,
+        reason: RocqCursor.Err[Any] | task_output.FailureReason | None = None,
         side_effects: dict[str, Any] | None = None,
         _metrics: task_output.Metrics | None = None,
     ) -> Self:
         """Create a TaskResult when the agent gives up."""
-        if isinstance(reason, RocqDocManager.Err):
+        if isinstance(reason, RocqCursor.Err):
             failure_reason = task_output.FailureReason(
                 task_output.ExecutionError(str(reason))
             )
@@ -164,4 +164,4 @@ class TacticApplication:
     tactic: str
     pf_state_pre: ProofState | None = None
     pf_state_post: ProofState | None = None
-    err: RocqDocManager.Err | None = None
+    err: RocqCursor.Err | None = None

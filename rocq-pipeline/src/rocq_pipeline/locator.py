@@ -2,7 +2,7 @@ import logging
 import re
 from typing import override
 
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.schema import task_output
 
@@ -15,7 +15,7 @@ class NotFound(Exception):
 
 
 class Locator:
-    def __call__(self, rdm: RocqDocManager) -> bool:
+    def __call__(self, rdm: RocqCursor) -> bool:
         return False
 
     def task_kind(self) -> task_output.TaskKind:
@@ -27,7 +27,7 @@ class FirstAdmit(Locator):
         return "admit"
 
     @override
-    def __call__(self, rdm: RocqDocManager) -> bool:
+    def __call__(self, rdm: RocqCursor) -> bool:
         def is_admit(
             text: str,
             kind: str,
@@ -52,7 +52,7 @@ class FirstLemma(Locator):
         self._style = style
 
     @override
-    def __call__(self, rdm: RocqDocManager) -> bool:
+    def __call__(self, rdm: RocqCursor) -> bool:
         if self._style is None:
             prefix = "Lemma|Theorem"
         else:
@@ -72,10 +72,8 @@ class FirstLemma(Locator):
                     cmd.kind == "command" and cmd.text.startswith("Proof")
                 ):
                     run_step_reply = rdm.run_step()
-                    if isinstance(run_step_reply, RocqDocManager.Err):
-                        logger.warning(
-                            f"RocqDocManager.run_step failed: {run_step_reply}"
-                        )
+                    if isinstance(run_step_reply, RocqCursor.Err):
+                        logger.warning(f"RocqCursor.run_step failed: {run_step_reply}")
                         return False
                 else:
                     return True

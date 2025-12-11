@@ -2,7 +2,7 @@ from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any, override
 
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor
 from rocq_pipeline.proof_state import ProofState
 
 
@@ -17,7 +17,7 @@ class DocumentWatcher:
     def extra_paths(self) -> dict[str, Path]:
         return {}
 
-    def setup(self, rdm: RocqDocManager) -> None:
+    def setup(self, rdm: RocqCursor) -> None:
         """
         Sets up the infrastructure necessary to run the extractor.
 
@@ -27,7 +27,7 @@ class DocumentWatcher:
         """
         _ = rdm
 
-    def start_proof(self, rdm: RocqDocManager) -> None:
+    def start_proof(self, rdm: RocqCursor) -> None:
         """
         Function called at the start of a proof.
 
@@ -35,7 +35,7 @@ class DocumentWatcher:
         """
         _ = rdm
 
-    def end_proof(self, rdm: RocqDocManager) -> None:
+    def end_proof(self, rdm: RocqCursor) -> None:
         """
         Function called at the end of the proof.
 
@@ -50,7 +50,7 @@ class StateExtractor[T](DocumentWatcher):
     A StateExtractor extracts state from a Rocq proof.
     """
 
-    def __call__(self, rdm: RocqDocManager) -> T | None:
+    def __call__(self, rdm: RocqCursor) -> T | None:
         """
         Extract a feature from the current state.
         """
@@ -87,20 +87,20 @@ class AllStateExtractor(StateExtractor[dict[str, Any]]):
             (x.extra_paths() for x in self._extractors.values()), super().extra_paths()
         )
 
-    def setup(self, rdm: RocqDocManager) -> None:
+    def setup(self, rdm: RocqCursor) -> None:
         for _, e in self._extractors.items():
             e.setup(rdm)
 
-    def start_proof(self, rdm: RocqDocManager) -> None:
+    def start_proof(self, rdm: RocqCursor) -> None:
         for _, e in self._extractors.items():
             e.start_proof(rdm)
 
-    def end_proof(self, rdm: RocqDocManager) -> None:
+    def end_proof(self, rdm: RocqCursor) -> None:
         for _, e in self._extractors.items():
             e.end_proof(rdm)
 
     @override
-    def __call__(self, rdm: RocqDocManager) -> dict[str, Any]:
+    def __call__(self, rdm: RocqCursor) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for k, extract in self._extractors.items():
             # TODO: for now, we assume that extractors are hygeinic in the sense that they do revert any effects they might have on the document.
@@ -117,7 +117,7 @@ class AllStateExtractor(StateExtractor[dict[str, Any]]):
 class GoalAsString(StateExtractor[str]):
     """A simple extractor that just gets the current goal the way it is printed in Rocq."""
 
-    def __call__(self, rdm: RocqDocManager) -> str:
+    def __call__(self, rdm: RocqCursor) -> str:
         result = rdm.current_goal()
         if isinstance(result, rdm.Err):
             raise RuntimeError("Failed to parse goal: {result}")
@@ -134,10 +134,10 @@ class TacticExtractor[T](DocumentWatcher):
     from the before to the after using the class state.
     """
 
-    def before(self, rdm: RocqDocManager, tactic: str) -> T | None:
+    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
         return None
 
-    def after(self, rdm: RocqDocManager, tactic: str) -> T | None:
+    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
         return None
 
 
@@ -151,19 +151,19 @@ class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
             (x.extra_paths() for x in self._extractors.values()), super().extra_paths()
         )
 
-    def setup(self, rdm: RocqDocManager) -> None:
+    def setup(self, rdm: RocqCursor) -> None:
         for _, e in self._extractors.items():
             e.setup(rdm)
 
-    def start_proof(self, rdm: RocqDocManager) -> None:
+    def start_proof(self, rdm: RocqCursor) -> None:
         for _, e in self._extractors.items():
             e.start_proof(rdm)
 
-    def end_proof(self, rdm: RocqDocManager) -> None:
+    def end_proof(self, rdm: RocqCursor) -> None:
         for _, e in self._extractors.items():
             e.end_proof(rdm)
 
-    def before(self, rdm: RocqDocManager, tactic: str) -> dict[str, Any] | None:
+    def before(self, rdm: RocqCursor, tactic: str) -> dict[str, Any] | None:
         def go[T](e: TacticExtractor[T]) -> T | None:
             try:
                 return e.before(rdm, tactic)
@@ -172,7 +172,7 @@ class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
 
         return {key: go(e) for key, e in self._extractors.items()}
 
-    def after(self, rdm: RocqDocManager, tactic: str) -> dict[str, Any] | None:
+    def after(self, rdm: RocqCursor, tactic: str) -> dict[str, Any] | None:
         def go[T](e: TacticExtractor[T]) -> T | None:
             try:
                 return e.after(rdm, tactic)
@@ -192,17 +192,17 @@ class Before[T](TacticExtractor[T]):
     def extra_paths(self) -> dict[str, Path]:
         return self._extractor.extra_paths()
 
-    def setup(self, rdm: RocqDocManager) -> None:
+    def setup(self, rdm: RocqCursor) -> None:
         self._extractor.setup(rdm)
 
-    def start_proof(self, rdm: RocqDocManager) -> None:
+    def start_proof(self, rdm: RocqCursor) -> None:
         self._extractor.start_proof(rdm)
 
-    def end_proof(self, rdm: RocqDocManager) -> None:
+    def end_proof(self, rdm: RocqCursor) -> None:
         self._extractor.end_proof(rdm)
 
     @override
-    def before(self, rdm: RocqDocManager, tactic: str) -> T | None:
+    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
         return self._extractor(rdm)
 
 
@@ -216,17 +216,17 @@ class After[T](TacticExtractor[T]):
     def extra_paths(self) -> dict[str, Path]:
         return self._extractor.extra_paths()
 
-    def setup(self, rdm: RocqDocManager) -> None:
+    def setup(self, rdm: RocqCursor) -> None:
         self._extractor.setup(rdm)
 
-    def start_proof(self, rdm: RocqDocManager) -> None:
+    def start_proof(self, rdm: RocqCursor) -> None:
         self._extractor.start_proof(rdm)
 
-    def end_proof(self, rdm: RocqDocManager) -> None:
+    def end_proof(self, rdm: RocqCursor) -> None:
         self._extractor.end_proof(rdm)
 
     @override
-    def after(self, rdm: RocqDocManager, tactic: str) -> T | None:
+    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
         return self._extractor(rdm)
 
 
@@ -240,21 +240,21 @@ class BeforeAndAfter[T](TacticExtractor[T]):
     def extra_paths(self) -> dict[str, Path]:
         return self._extractor.extra_paths()
 
-    def setup(self, rdm: RocqDocManager) -> None:
+    def setup(self, rdm: RocqCursor) -> None:
         self._extractor.setup(rdm)
 
-    def start_proof(self, rdm: RocqDocManager) -> None:
+    def start_proof(self, rdm: RocqCursor) -> None:
         self._extractor.start_proof(rdm)
 
-    def end_proof(self, rdm: RocqDocManager) -> None:
+    def end_proof(self, rdm: RocqCursor) -> None:
         self._extractor.end_proof(rdm)
 
     @override
-    def before(self, rdm: RocqDocManager, tactic: str) -> T | None:
+    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
         return self._extractor(rdm)
 
     @override
-    def after(self, rdm: RocqDocManager, tactic: str) -> T | None:
+    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
         return self._extractor(rdm)
 
 
