@@ -20,6 +20,7 @@ def create(
 
 
 __all__ = [
+    "create",
     "dune_env_hack",
     "DuneUtil",
     "RocqDocManager",
