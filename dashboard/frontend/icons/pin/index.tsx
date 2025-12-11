@@ -16,5 +16,3 @@ export const PinIcon: React.FC<{ className?: string }> = ({ className }) => {
     </svg>
   );
 };
-// Add this CSS to your global styles (e.g., globals.css or a relevant CSS module):
-// .icon-center { display: block; margin: auto; }

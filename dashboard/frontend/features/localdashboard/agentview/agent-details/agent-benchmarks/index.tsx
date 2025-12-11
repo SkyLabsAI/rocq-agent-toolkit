@@ -62,21 +62,26 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
   };
 
   return (
-    <div>
+    <div data-testid={`dataset-card-${benchmark.dataset_id}`}>
       <div
         className='bg-elevation-surface-raised overflow-hidden py-5 flex justify-between items-center cursor-pointer'
         onClick={handleToggle}
       >
         <div className='flex gap-1 items-center text-text'>
           <ChevronUpIcon className={cn('size-6', { 'rotate-180': isOpen })} />
-          <span className='text-[16px] '>{benchmark.dataset_id}</span>
+          <span className='text-[16px] ' data-testid='dataset-name'>
+            {benchmark.dataset_id}
+          </span>
         </div>
 
         <span className='text-text-disabled text-sm '>{''}</span>
       </div>
       {isOpen &&
         (isLoading ? (
-          <div className='flex justify-center p-4'>
+          <div
+            className='flex justify-center p-4'
+            data-testid='dataset-loading'
+          >
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
           </div>
         ) : (

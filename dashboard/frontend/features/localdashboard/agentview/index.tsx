@@ -126,12 +126,16 @@ const AgentView: React.FC = () => {
   return (
     <GlobalCompareProvider>
       {!selectedRun && (
-        <div className=''>
-          <table className='w-full text-left border-collapse'>
+        <div className='' data-testid='agent-view'>
+          <table
+            className='w-full text-left border-collapse'
+            data-testid='agents-table'
+          >
             <tbody className='divide-y divide-elevation-surface-overlay'>
-              <tr className='text-text'>
+              <tr className='text-text' data-testid='agents-header-row'>
                 <td>
                   <button
+                    data-testid='sort-by-agent-name'
                     onClick={() => handleSort('agent_name')}
                     className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
                   >
@@ -150,6 +154,7 @@ const AgentView: React.FC = () => {
                 </td>
                 <td>
                   <button
+                    data-testid='sort-by-success-rate'
                     onClick={() => handleSort('success_rate')}
                     className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                   >
@@ -167,6 +172,7 @@ const AgentView: React.FC = () => {
                 </td>
                 <td>
                   <button
+                    data-testid='sort-by-avg-time'
                     onClick={() => handleSort('avg_cpu_time_sec')}
                     className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                   >
@@ -184,6 +190,7 @@ const AgentView: React.FC = () => {
                 </td>
                 <td>
                   <button
+                    data-testid='sort-by-avg-tokens'
                     onClick={() => handleSort('avg_total_tokens')}
                     className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                   >
@@ -201,6 +208,7 @@ const AgentView: React.FC = () => {
                 </td>
                 <td>
                   <button
+                    data-testid='sort-by-llm-calls'
                     onClick={() => handleSort('avg_llm_invocation_count')}
                     className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                   >
@@ -216,9 +224,6 @@ const AgentView: React.FC = () => {
                     />
                   </button>
                 </td>
-                {/* <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
-                  Actions
-                </td> */}
               </tr>
               {getSortedAgents().map(agent => (
                 <AgentDetails key={agent.agent_name} agent={agent} />

@@ -38,14 +38,17 @@ export default defineConfig({
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
         trace: 'on-first-retry',
 
-        /* Screenshot on failure */
-        screenshot: 'only-on-failure',
+        /* Screenshot on failure and success for flow documentation */
+        screenshot: 'on',
 
-        /* Video on failure */
-        video: 'retain-on-failure',
+        /* Video recording for all tests to document flows */
+        video: 'on',
 
         /* Maximum time each action such as `click()` can take */
         actionTimeout: 30000,
+
+        /* Capture viewport screenshots */
+        viewport: { width: 1280, height: 720 },
     },
 
     /* Configure projects for major browsers */
@@ -64,26 +67,6 @@ export default defineConfig({
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
         },
-
-        /* Test against mobile viewports. */
-        // {
-        //   name: 'Mobile Chrome',
-        //   use: { ...devices['Pixel 5'] },
-        // },
-        // {
-        //   name: 'Mobile Safari',
-        //   use: { ...devices['iPhone 12'] },
-        // },
-
-        /* Test against branded browsers. */
-        // {
-        //   name: 'Microsoft Edge',
-        //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-        // },
-        // {
-        //   name: 'Google Chrome',
-        //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-        // },
     ],
 
     /* Run your local dev server before starting the tests */

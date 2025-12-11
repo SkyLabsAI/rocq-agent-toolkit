@@ -152,6 +152,7 @@ const RunRow: React.FC<RunRowProps> = ({
       className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-2.5 hover:bg-white/10 transition-colors cursor-pointer rounded-lg overflow-hidden bg-elevation-surface-raised'
       style={{ top: 78 * index + 0 }}
       onClick={handleRowClick}
+      data-testid={`run-row-${run.run_id}`}
     >
       {/* Run ID column with chevron */}
       <div className='flex gap-2 items-center min-w-0'>
@@ -173,6 +174,7 @@ const RunRow: React.FC<RunRowProps> = ({
           <p
             className='font-noto-sans font-normal text-[14px] leading-5 text-text text-sm truncate'
             title={run.run_id}
+            data-testid='run-id'
           >
             {run.run_id}
           </p>
@@ -217,6 +219,7 @@ const RunRow: React.FC<RunRowProps> = ({
           variant={isSelected ? 'danger' : 'default'}
           onClick={handleSelectionClick}
           className='text-sm whitespace-nowrap text-[14px] font-normal'
+          data-testid={`run-compare-button-${run.run_id}`}
         >
           {isSelected ? 'Deselect' : 'Add to Compare'}
         </Button>
