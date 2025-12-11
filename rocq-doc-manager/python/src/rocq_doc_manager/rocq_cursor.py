@@ -4,14 +4,14 @@ from contextlib import contextmanager
 import logging
 from typing import Any, Callable, Iterator, Self, override, Sequence, Literal
 
-from rocq_doc_manager.cursor_mixin import CursorMixin
+from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocol
 
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
 
 logger = logging.getLogger(__name__)
 
 
-class RocqCursor(CursorMixin):
+class RocqCursor(RocqCursorProtocol):
     """
     Cursors represent a pointer into a Rocq document.
     """
