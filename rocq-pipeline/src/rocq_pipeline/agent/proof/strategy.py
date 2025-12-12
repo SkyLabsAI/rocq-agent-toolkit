@@ -84,7 +84,7 @@ class SafeTacticStrategy(Strategy):
         self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
         return (
-            (prob, TacticApplication(tac)) for prob, tac in [(self._prob, self._tactic)]
+            (prob, TacticApplication(f"progress {tac}")) for prob, tac in [(self._prob, self._tactic)]
         )
 
 
@@ -104,7 +104,10 @@ class CutAssertStrategy(Strategy):
         name: str | RocqCursor.Err[None] = rdm.fresh_ident(self._name)
         if isinstance(name, RocqCursor.Err):
             return empty_Rollout()
-        tac: str = f"assert ({self._lemma}) as {name}"
+
+        # For now, it is important that we fail if this fact is already known,
+        # otherwise we risk looping here
+        tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
         return ((prob, TacticApplication(t)) for prob, t in [(self._prob, tac)])
 
