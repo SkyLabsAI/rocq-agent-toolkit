@@ -96,6 +96,7 @@ def test_BrickGoal_is_loop_goal1(proof_state) -> None:
         is True
     )
 
+
 def test_BrickGoal_is_loop_goal3(proof_state) -> None:
     goal = proof_state.goal(3, strict=True, cast_to=BrickGoal)
 
@@ -105,6 +106,7 @@ def test_BrickGoal_is_loop_goal3(proof_state) -> None:
         )
         is False
     )
+
 
 def test_proof_state_None() -> None:
     pf_state = ProofState(None)
