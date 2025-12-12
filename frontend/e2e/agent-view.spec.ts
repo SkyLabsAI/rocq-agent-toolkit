@@ -71,4 +71,27 @@ test.describe('Agent View - Agents → Datasets → Runs Flow', () => {
       expect(count).toBeGreaterThanOrEqual(0);
     });
   });
+
+  test.describe('Agent Expansion', () => {
+    test('should load datasets for the first agent when clicked', async ({
+      page,
+    }) => {
+      // Wait for agent rows to load
+      await page.waitForTimeout(1000);
+      const agentRows = page.locator('[data-testid^="agent-row-"]');
+      const firstAgent = agentRows.first();
+      await expect(firstAgent).toBeVisible();
+
+      // Click the first agent row
+      await firstAgent.click();
+      // Wait for datasets to load (adjust timeout as needed for your app)
+      await page.waitForTimeout(1000);
+
+      // Check for dataset rows under the agent (assuming data-testid="dataset-row" for each dataset)
+      const datasetRows = page.locator('[data-testid="dataset-row"]');
+      await expect(datasetRows.count()).toBeGreaterThan(0);
+      // Optionally, take a screenshot
+      await takeScreenshot(page, 'agent-view', 'agent-datasets-expanded');
+    });
+  });
 });
