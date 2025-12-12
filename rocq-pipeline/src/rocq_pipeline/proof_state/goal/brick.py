@@ -5,27 +5,6 @@ from rocq_pipeline.proof_state.goal import IrisGoal
 from rocq_pipeline.proof_state.goal_parts import BrickGoalParts
 
 
-def head_ast(s: str, constructs: list[str]) -> bool:
-    for ast in constructs:
-        if re.search(
-            rf"::wpS\s+\[.*?\]\s+\({ast}",
-            s,
-            re.DOTALL,  # "." should match everything, including newlines
-        ):
-            return True
-    return False
-
-
-def if_decide_then_else_extract(text: str) -> tuple[str, str, str] | None:
-    pattern = r"if\s+decide\s*\(([^)]+)\)\s+then\s+(.+?)\s+else\s+(.+)"
-
-    match = re.search(pattern, text, re.DOTALL)
-
-    if match:
-        return match.group(1), match.group(2), match.group(3)
-    return None
-
-
 class BrickGoal(IrisGoal):
     """Single Brick goal, consisting of structured goal parts.
 
@@ -37,6 +16,27 @@ class BrickGoal(IrisGoal):
     # Override the PartsDataclass to point to the Brick version
     PartsDataclass: type[BrickGoalParts] = BrickGoalParts
 
+    @staticmethod
+    def wpS_head_stmt_matches(s: str, constructs: list[str]) -> bool:
+        for ast in constructs:
+            if re.search(
+                rf"::wpS\s+\[.*?\]\s+\({ast}",
+                s,
+                re.DOTALL,  # "." should match everything, including newlines
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def if_decide_then_else_extract(text: str) -> tuple[str, str, str] | None:
+        pattern = r"if\s+decide\s*\(([^)]+)\)\s+then\s+(.+?)\s+else\s+(.+)"
+
+        match = re.search(pattern, text, re.DOTALL)
+
+        if match:
+            return match.group(1), match.group(2), match.group(3)
+        return None
+
     @property
     @override
     def parts(self) -> BrickGoalParts:
@@ -47,16 +47,18 @@ class BrickGoal(IrisGoal):
         """
         Checks if the spatial conclusion contains a loop AST node.
         """
-        return head_ast(self.parts.iris_spat_concl, ["Sdo_while", "Sfor", "Swhile"])
+        return BrickGoal.wpS_head_stmt_matches(
+            self.parts.iris_spat_concl, ["Sdo_while", "Sfor", "Swhile"]
+        )
 
     def is_conditional_goal(self) -> bool:
         """
         Checks if the spatial conclusion contains a 'if' AST node.
         """
-        return head_ast(self.parts.iris_spat_concl, ["Sif"])
+        return BrickGoal.wpS_head_stmt_matches(self.parts.iris_spat_concl, ["Sif"])
 
     def is_if_decide_then_else_goal(self) -> tuple[str, str, str] | None:
         """
         Checks if the spatial conclusion contains a 'if decide (xxx) then yyy else zzz' term.
         """
-        return if_decide_then_else_extract(self.parts.iris_spat_concl)
+        return BrickGoal.if_decide_then_else_extract(self.parts.iris_spat_concl)
