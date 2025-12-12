@@ -474,6 +474,12 @@ let _ =
   Result.map_error (fun s -> (s, ())) res
 
 let _ =
+  declare_full ~name:"materialize" ~descr:"materializes the cursor, \
+    giving it its own dedicated top-level" ~args:A.nil ~ret:S.null ~err:S.null
+    @@ fun d () ->
+  Result.map_error (fun s -> (s, ())) (Document.materialize d)
+
+let _ =
   declare ~name:"dump" ~descr:"dump the document contents (debug)"
     ~args:A.nil ~ret:S.any @@ fun d () ->
   Document.dump d

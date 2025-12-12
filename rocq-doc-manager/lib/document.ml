@@ -71,6 +71,24 @@ let clone : t -> t = fun d ->
   if synced backend d then backend.synced <- d_clone :: backend.synced;
   d_clone
 
+let materialize : t -> (unit, string) result = fun d ->
+  let backend = get_backend d in
+  match backend.top_refs with
+  | 0 -> assert false
+  | 1 -> Ok(())
+  | _ ->
+  match Rocq_toplevel.fork backend.top with
+  | Error(s) -> Error(s)
+  | Ok(top)  ->
+  let new_backend =
+    let synced = if synced backend d then [d] else [] in
+    {backend with top; top_refs = 1; synced}
+  in
+  d.backend <- Some(new_backend);
+  backend.top_refs <- backend.top_refs - 1;
+  unsync backend d;
+  Ok(())
+
 let file : t -> string = fun d ->
   (get_backend d).file
 

@@ -246,6 +246,15 @@ API Methods
 - Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
 
+### `materialize`
+
+- Description: materializes the cursor, giving it its own dedicated top-level.
+- Arguments (in order, or named):
+  - cursor: the cursor to perform the operation on (as an integer).
+- Response payload: a `null` value.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
+
 ### `query`
 
 - Description: runs the given query at the cursor, not updating the state.

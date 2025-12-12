@@ -208,6 +208,14 @@ class RocqDocManagerAPI:
             return RocqDocManagerAPI.Err(result.message, data)
         return None
 
+    def materialize(self, cursor: int) -> None | RocqDocManagerAPI.Err[None]:
+        """Materializes the cursor, giving it its own dedicated top-level."""
+        result = self._rpc.raw_request("materialize", [cursor])
+        if isinstance(result, JsonRPCTP.Err):
+            data = None
+            return RocqDocManagerAPI.Err(result.message, data)
+        return None
+
     def query(self, cursor: int, text: str) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
         result = self._rpc.raw_request("query", [cursor, text])

@@ -38,6 +38,14 @@ val stop : t -> unit
     to running the first operation in the sequence. *)
 val clone : t -> t
 
+(** [materialize d] spaws a new, dedicated Rocq top-level for [d], that starts
+    in the same state as the current top-level of [d]. In particular, this new
+    top-level is initially only used by [d], and not shared with any clone. If
+    the top-level of [d] is not currently shared with any clone, the operation
+    is successful but does nothing. An error is returned in case of error when
+    spawning the new top-level. *)
+val materialize : t -> (unit, string) result
+
 (** [sync d] enforces that the Rocq top-level that is relied on by [d] (and is
     possibly shared with other documents) is in sync with [d]. After a call to
     [sync d], subsequent operations on [d] can be run without paying any extra
