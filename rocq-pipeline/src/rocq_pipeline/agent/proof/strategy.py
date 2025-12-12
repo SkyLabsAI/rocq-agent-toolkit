@@ -84,7 +84,8 @@ class SafeTacticStrategy(Strategy):
         self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
         return (
-            (prob, TacticApplication(f"progress {tac}")) for prob, tac in [(self._prob, self._tactic)]
+            (prob, TacticApplication(f"progress {tac}"))
+            for prob, tac in [(self._prob, self._tactic)]
         )
 
 
