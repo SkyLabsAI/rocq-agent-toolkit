@@ -45,7 +45,7 @@
   > run_step [0]
   > run_step [0]
   > non-existent [0]
-  > commit [0,true]
+  > commit [0,null,true]
   > compile [0]
   > EOF
 

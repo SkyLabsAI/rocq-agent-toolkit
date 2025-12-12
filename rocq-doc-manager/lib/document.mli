@@ -145,7 +145,13 @@ val rev_prefix : t -> processed_item list
 
 val suffix : t -> unprocessed_item list
 
-val commit : t -> include_suffix:bool -> unit
+(** [commit ?file ?include_suffix d] commits the contents of document [d] to a
+    file. If not target file is specified with [file], the file name specified
+    upon document creation is used. Note that if the file exists, it is simply
+    overwritten. If [include_suffix] is [true], which is the default, commands
+    from the (unprocessed) suffix are also included. The [Sys_error] exception
+    is raised upon file system errors. *)
+val commit : ?file:string -> ?include_suffix:bool -> t -> unit
 
 val compile : t -> (unit, string) result * string * string
 

@@ -56,8 +56,8 @@ class RocqCursor(RocqCursorProtocol):
         return result
 
     @override
-    def commit(self, include_suffix: bool) -> None:
-        return self._rdm.commit(self._cursor, include_suffix)
+    def commit(self, file: str | None, include_suffix: bool) -> None:
+        return self._rdm.commit(self._cursor, file, include_suffix)
 
     @override
     def compile(self) -> RocqCursor.CompileResult:

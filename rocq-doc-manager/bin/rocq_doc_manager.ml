@@ -379,13 +379,15 @@ let _ =
 
 let _ =
   let args =
+    A.add ~name:"file" ~descr:"optional target file" S.(nullable string) @@
     A.add ~name:"include_suffix" ~descr:"indicate whether he suffix should \
-      be included" S.bool A.nil
+      be included" S.bool @@
+    A.nil
   in
   declare ~name:"commit" ~descr:"write the current document \
       contents to the file" ~args ~ret:S.null
-    @@ fun d (include_suffix, ()) ->
-  Document.commit ~include_suffix d
+    @@ fun d (file, (include_suffix, ())) ->
+  Document.commit ?file ~include_suffix d
 
 let compile_result =
   let fields =

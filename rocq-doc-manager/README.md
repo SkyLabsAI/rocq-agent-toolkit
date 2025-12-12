@@ -148,6 +148,7 @@ API Methods
 - Description: write the current document contents to the file.
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
+  - file: optional target file (as either `null` or a string).
   - include_suffix: indicate whether he suffix should be included (as a boolean).
 - Response payload: a `null` value.
 - Failure mode: never fails.

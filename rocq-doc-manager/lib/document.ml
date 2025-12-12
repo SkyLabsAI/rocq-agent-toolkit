@@ -298,9 +298,11 @@ let rev_prefix : t -> processed_item list = fun d ->
 let suffix : t -> unprocessed_item list = fun d ->
   ignore (get_backend d); d.suffix
 
-let commit : t -> include_suffix:bool -> unit = fun d ~include_suffix ->
+let commit : ?file:string -> ?include_suffix:bool -> t -> unit =
+    fun ?file ?(include_suffix=true) d ->
   let backend = get_backend d in
-  Out_channel.with_open_text backend.file @@ fun oc ->
+  let file = Stdlib.Option.value file ~default:backend.file in
+  Out_channel.with_open_text file @@ fun oc ->
   let output_processed (p : processed_item) =
     match p.kind with
     | `Ghost -> ()

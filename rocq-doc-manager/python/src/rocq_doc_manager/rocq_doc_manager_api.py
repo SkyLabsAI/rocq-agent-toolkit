@@ -130,9 +130,9 @@ class RocqDocManagerAPI:
         assert not isinstance(result, JsonRPCTP.Err)
         return int(result.result)
 
-    def commit(self, cursor: int, include_suffix: bool) -> None:
+    def commit(self, cursor: int, file: str | None, include_suffix: bool) -> None:
         """Write the current document contents to the file."""
-        result = self._rpc.raw_request("commit", [cursor, include_suffix])
+        result = self._rpc.raw_request("commit", [cursor, file, include_suffix])
         assert not isinstance(result, JsonRPCTP.Err)
         return None
 
