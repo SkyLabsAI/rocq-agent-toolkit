@@ -12,38 +12,39 @@
   > EOF
 
   $ cat commands.txt | rocq-toplevel-api.tester
+  [0] 1 > run 0 "Module foo."
   {
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module foo started" }
     ]
   }
-  OK
+  [0] 2 > run 0 "Definition a := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.a" ] },
     "feedback_messages": [ { "level": "info", "text": "a is defined" } ]
   }
-  OK
+  [0] 3 > run 0 "Module Type bar."
   {
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module Type bar started" }
     ]
   }
-  OK
+  [0] 4 > run 0 "Definition b := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.bar.b" ] },
     "feedback_messages": [ { "level": "info", "text": "b is defined" } ]
   }
-  OK
+  [0] 5 > run 0 "End bar."
   {
     "globrefs_diff": { "removed_constants": [ "Top.foo.bar.b" ] },
     "feedback_messages": [
       { "level": "info", "text": "Module Type bar is defined" }
     ]
   }
-  OK
+  [0] 6 > run 0 "End foo."
   {
     "feedback_messages": [
       { "level": "info", "text": "Module foo is defined" }
     ]
   }
-  OK
+  [0] 7 > [EOF]

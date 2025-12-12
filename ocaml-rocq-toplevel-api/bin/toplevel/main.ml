@@ -166,14 +166,37 @@ let run state off text =
     let feedback_messages = Feed.collect feedback_filter in
     (state, Error(msg, {error_loc; feedback_messages}))
 
+let fork : state -> pipe_in:string -> pipe_out:string ->
+    state * (int, string) result = fun state ~pipe_in ~pipe_out ->
+  let setup () =
+    try
+      let stdin_fd = Unix.descr_of_in_channel stdin in
+      let stdout_fd = Unix.descr_of_out_channel stdout in
+      let ifd = Unix.openfile pipe_in [Unix.O_RDONLY] 0o600 in
+      let ofd = Unix.openfile pipe_out [Unix.O_WRONLY] 0o600 in
+      Unix.dup2 ifd stdin_fd;
+      Unix.dup2 ofd stdout_fd;
+      Ok(0)
+    with Unix.Unix_error(_,_,_) ->
+      assert false (* Not much we can do if pipes are broken... *)
+  in
+  try
+    match Unix.fork () with
+    | 0   -> (state, setup ())
+    | pid -> (state, Ok(pid) )
+  with Unix.Unix_error(e,_,_) ->
+    (state, Error(Unix.error_message e))
+
 let run_command : type r e. state -> (r, e) command -> state * (r, e) result =
     fun state c ->
   match c with
-  | Run({off; text}) -> run state off text
-  | BackTo({sid})    -> back_to state sid
+  | Run({off; text})          -> run state off text
+  | BackTo({sid})             -> back_to state sid
+  | Fork({pipe_in; pipe_out}) -> fork state ~pipe_in ~pipe_out
 
 let interact : state -> unit = fun state ->
-  Marshal.to_channel stdout (Stateid.to_int state.Vernac.State.sid) [];
+  let pid = Unix.getpid () in
+  Marshal.to_channel stdout (pid, Stateid.to_int state.Vernac.State.sid) [];
   Out_channel.flush stdout;
   let rec loop state =
     let c = Marshal.from_channel stdin in

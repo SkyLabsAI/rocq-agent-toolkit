@@ -4,6 +4,8 @@ type toplevel = {
   uid : int;
   oc : Out_channel.t;
   ic : In_channel.t;
+  pid : int;
+  is_fork : bool;
   mutable stopped : bool;
   mutable sid : int;
 }
@@ -18,18 +20,27 @@ let init : args:string list -> toplevel = fun ~args ->
   let argv = Array.of_list (prog :: args) in
   let (ic, oc) = Unix.open_process_args prog argv in
   let uid = next_toplevel_uid () in
-  let sid = Marshal.from_channel ic in
-  {uid; oc; ic; stopped = false; sid}
+  let (pid, sid) = Marshal.from_channel ic in
+  {uid; oc; ic; pid; is_fork = false; stopped = false; sid}
 
 exception Stopped
 
 let check_not_stopped s =
   if s.stopped then raise Stopped
 
+let kill pid =
+  try Unix.kill pid Sys.sigkill with Unix.Unix_error(_,_,_) -> ()
+
 let stop : toplevel -> unit = fun t ->
   check_not_stopped t;
   t.stopped <- true;
-  ignore (Unix.close_process (t.ic, t.oc))
+  match t.is_fork with
+  | false -> ignore (Unix.close_process (t.ic, t.oc))
+  | true  ->
+      kill t.pid; In_channel.close_noerr t.ic; Out_channel.close_noerr t.oc
+
+let get_pid : toplevel -> int = fun t ->
+  check_not_stopped t; t.pid
 
 exception Toplevel_mismatch
 
@@ -61,3 +72,32 @@ let back_to : toplevel -> sid:StateID.t -> (unit, string) result =
 let run : toplevel -> off:int -> text:string ->
     (run_data, string * run_error) result = fun s ~off ~text ->
   request s (Run({off; text}))
+
+let unlink file =
+  try Unix.unlink file with Unix.Unix_error(_,_,_) -> ()
+
+let fork : toplevel -> (toplevel, string) result = fun s ->
+  let base = Filename.temp_file "rocq_toplevel" "" in
+  let pipe_in = base ^ ".in" in
+  let pipe_out = base ^ ".out" in
+  let cleanup_files () = unlink base; unlink pipe_in; unlink pipe_out in
+  Unix.mkfifo pipe_in 0o600;
+  Unix.mkfifo pipe_out 0o600;
+  match request s (Fork({pipe_in; pipe_out})) with
+  | Error(s) -> unlink base; unlink pipe_in; unlink pipe_out; Error(s)
+  | Ok(pid)  ->
+  match Out_channel.open_bin pipe_in with
+  | exception Sys_error(s) ->
+      kill pid; cleanup_files (); Error(s)
+  | oc                     ->
+  match In_channel.open_bin pipe_out with
+  | exception Sys_error(s) ->
+      kill pid; cleanup_files (); Out_channel.close_noerr oc; Error(s)
+  | ic                     ->
+  cleanup_files ();
+  match snd (Marshal.from_channel ic) with
+  | Ok(_)    -> Ok({s with oc; ic; pid; is_fork = true})
+  | Error(s) ->
+      Out_channel.close_noerr oc;
+      In_channel.close_noerr ic;
+      Error(s)

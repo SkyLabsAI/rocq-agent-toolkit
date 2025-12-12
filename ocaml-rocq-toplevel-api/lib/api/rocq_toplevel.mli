@@ -16,6 +16,17 @@ exception Stopped
     previous call to [stop] was made on [t]. *)
 val stop : toplevel -> unit
 
+(** [fork t] creates a new top-level, initially in the same state as [t]. Note
+    that the created top-level is completely independent from [t], and thus it
+    can be used concurrently. An error message is given in case of error while
+    creating the top-level. *)
+val fork : toplevel -> (toplevel, string) result
+
+(** [get_pid t] gives the process identifier of the Rocq top-level attached to
+    [t], which should only be useful for debugging. The [Stopped] exception is
+    raised if [t] is stopped. *)
+val get_pid : toplevel -> int
+
 (** {2 State identifier and backtracking} *)
 
 (** Exception raised if a state identifier is used with the wrong toplevel. *)

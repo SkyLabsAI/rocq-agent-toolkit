@@ -13,10 +13,12 @@
   > run 0 "Qed."
   > run 37 "About test."
   > back_to 3
+  > back_to 8
   > run 37 "About test."
   > EOF
 
   $ cat commands.txt | rocq-toplevel-api.tester
+  [0] 1 > run 0 "Inductive n := Zero : n | Succ : n -> n."
   {
     "globrefs_diff": {
       "added_constants": [
@@ -32,9 +34,11 @@
       { "level": "info", "text": "n_sind is defined" }
     ]
   }
-  OK
+  [0] 2 > run 0 "Require Import Stdlib.ZArith.BinInt."
   {}
-  OK
+  [0] 3 > run 0 "Require Import Stdlib.ZArith.BinIntt"
+  Error: while processing the command.
+  Syntax error: '.' expected after [gallina_ext] (in [vernac_aux]).
   {
     "error_loc": {
       "fname": [ "ToplevelInput" ],
@@ -46,7 +50,9 @@
       "ep": 37
     }
   }
-  Error: Syntax error: '.' expected after [gallina_ext] (in [vernac_aux]).
+  [0] 3 > run 0 "Require Import Stdlib.ZArith.BinInk."
+  Error: while processing the command.
+  Unable to locate library Stdlib.ZArith.BinInk.
   {
     "error_loc": {
       "fname": [ "ToplevelInput" ],
@@ -73,23 +79,23 @@
       }
     ]
   }
-  Error: Unable to locate library Stdlib.ZArith.BinInk.
+  [0] 3 > run 0 "Lemma test : 0 = 0."
   {
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
-  OK
+  [0] 5 > run 0 "Proof."
   {
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
-  OK
+  [0] 6 > run 0 "reflexivity."
   { "proof_state": {} }
-  OK
+  [0] 7 > run 0 "Qed."
   { "globrefs_diff": { "added_constants": [ "Top.test" ] } }
-  OK
+  [0] 8 > run 37 "About test."
   {
     "feedback_messages": [
       {
@@ -98,11 +104,14 @@
       }
     ]
   }
-  OK
-  OK
+  [0] 9 > back_to 3
+  [0] 3 > back_to 8
+  Error while processing the command.
+  Unknown state 8.
+  [0] 3 > run 37 "About test."
   {
     "feedback_messages": [
       { "level": "notice", "text": "test not a defined object." }
     ]
   }
-  OK
+  [0] 10 > [EOF]

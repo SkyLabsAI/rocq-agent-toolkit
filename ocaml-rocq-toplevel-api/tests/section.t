@@ -11,20 +11,21 @@
   > EOF
 
   $ cat commands.txt | rocq-toplevel-api.tester
+  [0] 1 > run 0 "Section test."
   {}
-  OK
+  [0] 2 > run 0 "Context (n : nat)."
   { "feedback_messages": [ { "level": "info", "text": "n is declared" } ] }
-  OK
+  [0] 3 > run 0 "Definition get := n."
   {
     "globrefs_diff": { "added_constants": [ "Top.get" ] },
     "feedback_messages": [ { "level": "info", "text": "get is defined" } ]
   }
-  OK
+  [0] 4 > run 0 "End test."
   {}
-  OK
+  [0] 5 > run 0 "Check get."
   {
     "feedback_messages": [
       { "level": "notice", "text": "get\n     : nat -> nat" }
     ]
   }
-  OK
+  [0] 6 > [EOF]
