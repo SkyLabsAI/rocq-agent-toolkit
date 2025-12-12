@@ -10,10 +10,11 @@ from typing import Any, overload
 from rocq_doc_manager import RocqDocManager as RDM
 
 from rocq_pipeline.proof_state import parse
-from rocq_pipeline.proof_state.goal import BrickGoal, IrisGoal, RocqGoal
+from rocq_pipeline.proof_state.goal import BrickGoal, IrisGoal, RocqGoal, head_ast
 
 __all__ = [
     "goal_parts",
+    "head_ast",
     "RocqGoal",
     "IrisGoal",
     "BrickGoal",

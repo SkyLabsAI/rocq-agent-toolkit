@@ -1,6 +1,7 @@
 import pytest
 from rocq_doc_manager import RocqDocManager as RDM
 from rocq_pipeline.proof_state import (
+    head_ast,
     BrickGoal,
     IrisGoal,
     ProofState,
@@ -85,6 +86,15 @@ def proof_state() -> ProofState:
 
 # --- Tests ---
 
+def test_BrickGoal_is_loop_goal1() -> None:
+    # Note: this is really a unit test of what could be staticmethods on `BrickGoal`
+    # Note: do we have both `wp_do` and `wp_do_while` tactics?
+    iris_spat_concl = "::wpS\n  [region: \"i\" @ i_addr; \"sum\" @ sum_addr; \"n\" @ n_addr; return {?: \"int\"}]\n  (Sfor None\n     (Some\n        (Ebinop Ble (Ecast Cl2r (Evar \"i\" \"int\"))\n           (Ecast Cl2r (Evar \"n\" \"int\")) \"bool\"))\n     (Some (Epreinc (Evar \"i\" \"int\") \"int\"))\n     (Sseq\n        [Sexpr\n           (Eassign_op Badd (Evar \"sum\" \"int\") (Ecast Cl2r (Evar \"i\" \"int\"))\n              \"int\")]))"
+    assert head_ast(iris_spat_concl, ["Sdo_while", "Sfor", "Swhile"])
+
+def test_BrickGoal_is_loop_goal2() -> None:
+    iris_spat_concl = "::wpS\n  [region: \"i\" @ i_addr; \"sum\" @ sum_addr; \"n\" @ n_addr; return {?: \"int\"}]\n  (Sfor None\n     (Some\n        (Ebinop Ble (Ecast Cl2r (Evar \"i\" \"int\"))\n           (Ecast Cl2r (Evar \"n\" \"int\")) \"bool\"))\n     (Some (Epreinc (Evar \"i\" \"int\") \"int\"))\n     (Sseq\n        [Sexpr\n           (Eassign_op Badd (Evar \"sum\" \"int\") (Ecast Cl2r (Evar \"i\" \"int\"))\n              \"int\")]))"
+    assert head_ast(iris_spat_concl, ["Sdo_while", "Sfor", "Swhile"])
 
 def test_proof_state_None() -> None:
     pf_state = ProofState(None)

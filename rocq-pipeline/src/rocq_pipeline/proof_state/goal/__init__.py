@@ -20,10 +20,11 @@ utilities for interacting with structured goals of a given kind.
 # alphabetical order.
 from rocq_pipeline.proof_state.goal.rocq import RocqGoal  # isort:skip
 from rocq_pipeline.proof_state.goal.iris import IrisGoal  # isort:skip
-from rocq_pipeline.proof_state.goal.brick import BrickGoal  # isort:skip
+from rocq_pipeline.proof_state.goal.brick import BrickGoal, head_ast  # isort:skip
 
 
 __all__ = [
+    "head_ast",
     "RocqGoal",
     "IrisGoal",
     "BrickGoal",
