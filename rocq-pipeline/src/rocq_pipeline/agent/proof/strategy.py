@@ -59,7 +59,7 @@ class CompositeStrategy(Strategy):
 
             while True:
                 try:
-                    (pr, i, act, gen) = queue.pop(0)
+                    (pr, i, act, gen) = heapq.heappop(queue)
                 except IndexError:
                     return
                 yield (pr, act)
