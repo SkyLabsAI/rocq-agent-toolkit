@@ -24,6 +24,6 @@ class StrategyAgent(TraceAgent):
             self._rollout = self._strategy.rollout(rdm)
         try:
             _, action = next(self._rollout)
-            return action.tactic
+            return action
         except StopIteration:
             return self.give_up(rdm, message="No more tactics in rollout after failure")

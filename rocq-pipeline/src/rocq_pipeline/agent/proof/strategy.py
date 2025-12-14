@@ -5,15 +5,13 @@ from typing import override
 
 from rocq_doc_manager import RocqCursor
 
-from rocq_pipeline.agent.base import TacticApplication
-
 
 class Strategy(ABC):
     """
     A `Strategy` proposes actions to take
     """
 
-    type Action = TacticApplication
+    type Action = str
     # TODO: make [Rollout] into a class
     type Rollout = Generator[tuple[float, Action]]
 
@@ -83,10 +81,7 @@ class SafeTacticStrategy(Strategy):
     def rollout(
         self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
-        return (
-            (prob, TacticApplication(f"progress {tac}"))
-            for prob, tac in [(self._prob, self._tactic)]
-        )
+        return ((prob, f"progress {tac}") for prob, tac in [(self._prob, self._tactic)])
 
 
 class CutAssertStrategy(Strategy):
@@ -110,7 +105,7 @@ class CutAssertStrategy(Strategy):
         # otherwise we risk looping here
         tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
-        return ((prob, TacticApplication(t)) for prob, t in [(self._prob, tac)])
+        return ((prob, t) for prob, t in [(self._prob, tac)])
 
 
 class FailStrategy(Strategy):
@@ -133,7 +128,7 @@ class FirstTacticStrategy(Strategy):
     def rollout(
         self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
-        return ((prob, TacticApplication(tac)) for prob, tac in self._tactics)
+        return ((prob, tac) for prob, tac in self._tactics)
 
 
 class GuardStrategy[T](FailStrategy, ABC):
