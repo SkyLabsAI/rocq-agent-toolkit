@@ -101,7 +101,7 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
         "--env",
         type=str,
         default="none",
-        help="Deployment environment (e.g., 'local', 'staging'). Default: none",
+        help="Deployment environment (e.g., 'local', 'staging', 'ci'). Default: none",
     )
 
     return parser

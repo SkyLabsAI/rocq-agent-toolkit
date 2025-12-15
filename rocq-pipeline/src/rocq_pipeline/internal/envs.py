@@ -14,14 +14,14 @@ import httpx
 
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 
-DEFAULT_SERVER = "172.31.0.1"
-OTLP_ENDPOINT_SERVER = "http://172.31.0.1:4327"
-OTLP_ENDPOINT_LOCAL = "http://0.0.0.0:4327"
+DEFAULT_SERVER_IP = os.environ.get("DEFAULT_SERVER_IP", "172.31.0.1")
+DEFAULT_PUBLIC_IP = os.environ.get("DEFAULT_PUBLIC_IP", "213.248.100.43:9010")
 
-DEFAULT_DATA_PATH = "/data/skylabs/rocq-agent-runner/data/"
-DEFAULT_FRONTEND_PORT = 3005
-DEFAULT_BACKEND_PORT = 8010
-DEFAULT_GRAFANA_PORT = 3010
+
+DEFAULT_FRONTEND_PORT = os.environ.get("DEFAULT_FRONTEND_PORT", 3005)
+DEFAULT_BACKEND_PORT = os.environ.get("DEFAULT_BACKEND_PORT", 8010)
+DEFAULT_GRAFANA_PORT = os.environ.get("DEFAULT_GRAFANA_PORT", 3010)
+DEFAULT_ALLOY_PORT = os.environ.get("DEFAULT_ALLOY_PORT", 4327)
 
 
 def ingest_results_file(
@@ -329,7 +329,7 @@ class LocalEnvironment(Environment):
         )
 
     def get_otlp_endpoint(self) -> str:
-        return OTLP_ENDPOINT_LOCAL
+        return f"http://localhost:{DEFAULT_ALLOY_PORT}"
 
 
 class StagingEnvironment(Environment):
@@ -338,13 +338,12 @@ class StagingEnvironment(Environment):
     """
 
     def __init__(self) -> None:
-        self.server = DEFAULT_SERVER
-        self.data_path = DEFAULT_DATA_PATH
+        self.server = DEFAULT_SERVER_IP
         self.frontend_port = DEFAULT_FRONTEND_PORT
         self.grafana_port = DEFAULT_GRAFANA_PORT
 
     def get_otlp_endpoint(self) -> str:
-        return OTLP_ENDPOINT_SERVER
+        return f"http://{self.server}:{DEFAULT_ALLOY_PORT}"
 
     def setup(self) -> bool:
         """Check if staging server is reachable"""
@@ -391,6 +390,39 @@ class StagingEnvironment(Environment):
         )
 
 
+class GithubActionsEnvironment(Environment):
+    """
+    Github Actions Environment.
+    """
+
+    def __init__(self) -> None:
+        self.server = DEFAULT_PUBLIC_IP
+        self.frontend_port = DEFAULT_FRONTEND_PORT
+        self.grafana_port = DEFAULT_GRAFANA_PORT
+
+    def get_otlp_endpoint(self) -> str:
+        return f"http://{self.server}/"
+
+    def setup(self) -> bool:
+        """Check if github actions environment is reachable"""
+        return True
+
+    def post_run(self, result_file: Path) -> None:
+        """Upload results file to github actions backend via HTTP ingest."""
+        print("Uploading results to backend via HTTP ingest...")
+        base_url = f"http://{self.server}/rat"
+        ingest_results_file(
+            result_file=result_file,
+            base_url=base_url,
+            source_file_name=result_file.name,
+        )
+        print(f"View results at: http://{self.server}:{self.frontend_port}/")
+        print(
+            f"Raw Logs can be viewed at Grafana Dashboard at: http://{self.server}:{self.grafana_port}/explore"
+        )
+
+
 # Register environments
 EnvironmentRegistry.register("local", LocalEnvironment)
 EnvironmentRegistry.register("staging", StagingEnvironment)
+EnvironmentRegistry.register("ci", GithubActionsEnvironment)
