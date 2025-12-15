@@ -1,70 +1,143 @@
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import ThemeSwitcher from './ThemeSwitcher';
-import { useTheme } from '@/contexts/ThemeContext';
 
-// Mock the useTheme hook
-jest.mock('@/contexts/ThemeContext', () => ({
-  useTheme: jest.fn(),
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+
+import ThemeSwitcher from './theme-switcher';
+
+// Mock the ThemeContext
+const mockToggleTheme = jest.fn();
+const mockUseTheme = jest.fn();
+
+jest.mock('@/contexts/theme-context', () => ({
+  useTheme: () => mockUseTheme(),
 }));
 
-describe('ThemeSwitcher', () => {
-  const mockToggleTheme = jest.fn();
-
+describe('ThemeSwitcher component', () => {
   beforeEach(() => {
-    mockToggleTheme.mockClear();
+    jest.clearAllMocks();
   });
 
-  it('renders correctly in light mode', () => {
-    (useTheme as jest.Mock).mockReturnValue({
-      theme: 'light',
-      toggleTheme: mockToggleTheme,
+  describe('Rendering', () => {
+    it('should render as a button', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'light',
+        toggleTheme: mockToggleTheme,
+      });
+
+      render(<ThemeSwitcher />);
+      expect(screen.getByRole('button')).toBeInTheDocument();
     });
 
-    render(<ThemeSwitcher />);
+    it('should have correct aria-label for light mode', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'light',
+        toggleTheme: mockToggleTheme,
+      });
 
-    const button = screen.getByRole('button', { name: /switch to dark mode/i });
-    expect(button).toBeInTheDocument();
-    // Check for sun icon (light mode shows sun, button switches to dark)
-    // Actually looking at code: theme === 'light' ? renders sun icon : renders moon icon
-    // And aria-label is `Switch to ${theme === 'light' ? 'dark' : 'light'} mode`
+      render(<ThemeSwitcher />);
+      expect(screen.getByLabelText('Switch to dark mode')).toBeInTheDocument();
+    });
+
+    it('should have correct aria-label for dark mode', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'dark',
+        toggleTheme: mockToggleTheme,
+      });
+
+      render(<ThemeSwitcher />);
+      expect(screen.getByLabelText('Switch to light mode')).toBeInTheDocument();
+    });
   });
 
-  it('renders correctly in dark mode', () => {
-    (useTheme as jest.Mock).mockReturnValue({
-      theme: 'dark',
-      toggleTheme: mockToggleTheme,
+  describe('Icon display', () => {
+    it('should render sun icon in light mode', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'light',
+        toggleTheme: mockToggleTheme,
+      });
+
+      const { container } = render(<ThemeSwitcher />);
+      const svg = container.querySelector('svg');
+      expect(svg).toBeInTheDocument();
+      // Sun icon has multiple path segments
+      expect(
+        container.querySelector('path[fill-rule="evenodd"]')
+      ).toBeInTheDocument();
     });
 
-    render(<ThemeSwitcher />);
+    it('should render moon icon in dark mode', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'dark',
+        toggleTheme: mockToggleTheme,
+      });
 
-    const button = screen.getByRole('button', { name: /switch to light mode/i });
-    expect(button).toBeInTheDocument();
+      const { container } = render(<ThemeSwitcher />);
+      const svg = container.querySelector('svg');
+      expect(svg).toBeInTheDocument();
+      // Moon icon has a simpler path
+      expect(
+        container.querySelector('path:not([fill-rule])')
+      ).toBeInTheDocument();
+    });
   });
 
-  it('toggles theme when clicked', () => {
-    (useTheme as jest.Mock).mockReturnValue({
-      theme: 'light',
-      toggleTheme: mockToggleTheme,
+  describe('Interactions', () => {
+    it('should call toggleTheme when clicked', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'light',
+        toggleTheme: mockToggleTheme,
+      });
+
+      render(<ThemeSwitcher />);
+      fireEvent.click(screen.getByRole('button'));
+      expect(mockToggleTheme).toHaveBeenCalledTimes(1);
     });
-
-    render(<ThemeSwitcher />);
-
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
-
-    expect(mockToggleTheme).toHaveBeenCalledTimes(1);
   });
 
-  it('applies custom className', () => {
-    (useTheme as jest.Mock).mockReturnValue({
-      theme: 'light',
-      toggleTheme: mockToggleTheme,
+  describe('Custom className', () => {
+    it('should apply custom className', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'light',
+        toggleTheme: mockToggleTheme,
+      });
+
+      render(<ThemeSwitcher className='custom-class' />);
+      expect(screen.getByRole('button')).toHaveClass('custom-class');
     });
 
-    render(<ThemeSwitcher className="custom-class" />);
+    it('should merge with existing classes', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'light',
+        toggleTheme: mockToggleTheme,
+      });
 
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('custom-class');
+      render(<ThemeSwitcher className='custom-class' />);
+      const button = screen.getByRole('button');
+      expect(button).toHaveClass('custom-class');
+      expect(button).toHaveClass('rounded');
+    });
+  });
+
+  describe('Title attribute', () => {
+    it('should have correct title for light mode', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'light',
+        toggleTheme: mockToggleTheme,
+      });
+
+      render(<ThemeSwitcher />);
+      expect(screen.getByTitle('Switch to dark mode')).toBeInTheDocument();
+    });
+
+    it('should have correct title for dark mode', () => {
+      mockUseTheme.mockReturnValue({
+        theme: 'dark',
+        toggleTheme: mockToggleTheme,
+      });
+
+      render(<ThemeSwitcher />);
+      expect(screen.getByTitle('Switch to light mode')).toBeInTheDocument();
+    });
   });
 });

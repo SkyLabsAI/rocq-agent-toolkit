@@ -1,19 +1,18 @@
-import ComparisonModal from '@/components/base/comparisonModal';
-import Layout from '@/layouts/common';
-import { getRunDetails } from '@/services/dataservice';
-import { RunDetailsResponse } from '@/types/types';
-import { useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { RunStats, RunTaskCell } from '..';
+import { useSearchParams } from 'react-router-dom';
+
+import ComparisonModal from '@/components/base/comparisonModal';
+import { getRunDetails } from '@/services/dataservice';
+import { type RunDetailsResponse } from '@/types/types';
+
+import { type RunTaskCell } from '..';
 import { CompareRunsHeader } from './compare-page-header';
 import { RunSummary } from './compare-page-summary';
 import { ComparisonTable } from './compare-table';
 import { computeRunStats, transformRunsToTaskRows } from './utils';
 
-
 export const ComparePageContent: React.FC = () => {
   const [sp] = useSearchParams();
-  const agentName = sp.get('agent') || '';
   const runsParam = sp.get('runs') || '';
 
   const runIds = useMemo(() => {
@@ -41,7 +40,6 @@ export const ComparePageContent: React.FC = () => {
         const runDetails = await getRunDetails(runIds);
         setSelectedRuns(runDetails);
       } catch (err) {
-        console.error('Error fetching run details:', err);
         setError(
           err instanceof Error ? err.message : 'Failed to fetch run details'
         );
@@ -86,12 +84,15 @@ export const ComparePageContent: React.FC = () => {
     setSelectedTaskId(prev => (prev === taskId ? null : taskId));
   };
 
-  const taskRows = useMemo(() => transformRunsToTaskRows(selectedRuns), [selectedRuns]);
+  const taskRows = useMemo(
+    () => transformRunsToTaskRows(selectedRuns),
+    [selectedRuns]
+  );
 
   return (
     <>
       {/* Header */}
-      <CompareRunsHeader title='Compare Runs' secondary={``}/>
+      <CompareRunsHeader title='Compare Runs' secondary={``} />
       {!loading && !error && stats.length > 0 && (
         <>
           <RunSummary runStats={stats} />

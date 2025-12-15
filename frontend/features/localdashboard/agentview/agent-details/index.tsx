@@ -1,43 +1,21 @@
 import cn from 'classnames';
-import { useAgentDetails } from '@/hooks/useAgentDetails';
-import AgentRunsView from '../../AgentRunsView';
-import { useEffect, useState } from 'react';
-import { AgentSummary, Run } from '@/types/types';
-import { AgentSummaryTemp } from '@/services/dataservice';
-import { Button } from '@/components/base';
-import { ChevronUpIcon } from '@/icons/chevron-up';
-import { AgentBenchmark } from './agent-benchmarks';
+
+import { useAgentDetails } from '@/hooks/use-agent-details';
 import { useBenchmarks } from '@/hooks/use-dataview';
+import { type AgentSummary } from '@/types/types';
+
+import { AgentBenchmark } from './agent-benchmarks';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
-  activeAgent?: boolean;
-  setActiveAgent: (agent: string) => void;
-  agentDetailData: AgentSummaryTemp;
-  isSelected: boolean;
-  toggleSelection: () => void;
-  selectedRuns: string[];
-  toggleRunSelection: (run: Run) => void;
-  clearSelectedRuns: () => void;
-  compareSelectedRuns: () => void;
 }
 
-const AgentDetails: React.FC<AgentDetailsProps> = ({
-  agent,
-  agentDetailData,
-  isSelected,
-  toggleSelection,
-  selectedRuns,
-  toggleRunSelection,
-  clearSelectedRuns,
-  compareSelectedRuns,
-}) => {
+const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
   const { loading, runDetails, isOpen, toggleDetails } = useAgentDetails(
     agent.agent_name
   );
 
-  const {benchmarks} = useBenchmarks();
-
+  const { benchmarks } = useBenchmarks();
 
   return (
     <>
@@ -46,6 +24,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           'hover:bg-white/5 cursor-pointer transition-colors duration-200'
         )}
         onClick={toggleDetails}
+        data-testid={`agent-row-${agent.agent_name}`}
       >
         <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3'>
@@ -54,7 +33,9 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                 {agent.agent_name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className='truncate'>{agent.agent_name}</span>
+            <span className='truncate' data-testid='agent-name'>
+              {agent.agent_name}
+            </span>
           </div>
         </td>
         <td className='px-6 py-4 text-text font-medium'>
@@ -94,44 +75,38 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
             </div>
           </div>
         </td>
-        {/* <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3 justify-center'>
-          
-
-            <Button
-              variant={isSelected ? 'danger' : 'default'}
-              onClick={e => {
-             e.stopPropagation();
-                toggleSelection();
-              }}
-              className='text-sm whitespace-nowrap text-[14px] font-normal float-end w-[100px] flex justify-center'
-            >
-              {isSelected ? 'Deselect' : 'Compare'}
-            </Button>
-        
-          </div>
-        </td> */}
       </tr>
 
       {isOpen && (
-        <tr>
+        <tr data-testid={`agent-expanded-${agent.agent_name}`}>
           <td colSpan={7}>
-            <div className='px-6'>
+            <div className='px-6' data-testid='agent-expanded-content'>
               {loading ? (
-                <div className='flex items-center justify-center py-8'>
+                <div
+                  className='flex items-center justify-center py-8'
+                  data-testid='agent-loading'
+                >
                   <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
                   <span className='ml-3 text-text'>
                     Loading task details...
                   </span>
                 </div>
               ) : runDetails.length === 0 ? (
-                <div className='text-center py-8 text-text'>
+                <div
+                  className='text-center py-8 text-text'
+                  data-testid='agent-no-details'
+                >
                   No run details available.
                 </div>
-              ) :
-                benchmarks.map((benchmark) => (<AgentBenchmark key={benchmark.dataset_id} benchmark={benchmark} agentName={agent.agent_name} />))
-                
-              }
+              ) : (
+                benchmarks.map(benchmark => (
+                  <AgentBenchmark
+                    key={benchmark.dataset_id}
+                    benchmark={benchmark}
+                    agentName={agent.agent_name}
+                  />
+                ))
+              )}
             </div>
           </td>
         </tr>

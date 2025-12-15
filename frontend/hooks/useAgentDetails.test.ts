@@ -1,197 +1,269 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAgentDetails } from './useAgentDetails';
+import { act, renderHook, waitFor } from '@testing-library/react';
+
 import { getDetails, getRunDetails } from '@/services/dataservice';
+import { type AgentRun, type TaskOutput } from '@/types/types';
 
-// Mock dependencies
-jest.mock('react-router-dom', () => ({
-    useNavigate: jest.fn(),
-}));
+import { useAgentDetails } from './use-agent-details';
 
+// Mock the dataservice
 jest.mock('@/services/dataservice', () => ({
-    getDetails: jest.fn(),
-    getRunDetails: jest.fn(),
-    getObservabilityLogs: jest.fn(),
+  getDetails: jest.fn(),
+  getRunDetails: jest.fn(),
 }));
+
+const mockGetDetails = getDetails as jest.MockedFunction<typeof getDetails>;
+const mockGetRunDetails = getRunDetails as jest.MockedFunction<
+  typeof getRunDetails
+>;
 
 describe('useAgentDetails', () => {
-    const mockAgentName = 'TestAgent';
-    const mockSetActiveAgent = jest.fn();
+  const mockAgentName = 'test-agent';
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-        (require('react-router-dom').useNavigate as jest.Mock).mockReturnValue(jest.fn());
+  const mockRunDetails: AgentRun[] = [
+    {
+      run_id: 'run-1',
+      agent_name: 'test-agent',
+      timestamp_utc: '2024-01-01T00:00:00Z',
+      total_tasks: 10,
+      success_count: 8,
+      failure_count: 2,
+      dataset_id: 'dataset-1',
+      metadata: { tags: {} },
+    },
+    {
+      run_id: 'run-2',
+      agent_name: 'test-agent',
+      timestamp_utc: '2024-01-02T00:00:00Z',
+      total_tasks: 15,
+      success_count: 12,
+      failure_count: 3,
+      dataset_id: 'dataset-1',
+      metadata: { tags: {} },
+    },
+  ];
+
+  const mockTaskOutputs: TaskOutput[] = [
+    {
+      run_id: 'run-1',
+      task_kind: 'FullProofTask',
+      task_id: 'task-1',
+      timestamp_utc: '2024-01-01T00:00:00Z',
+      agent_name: 'test-agent',
+      status: 'Success',
+      results: null,
+      metrics: {
+        llm_invocation_count: 5,
+        token_counts: {
+          input_tokens: 100,
+          output_tokens: 50,
+          total_tokens: 150,
+        },
+        resource_usage: {
+          execution_time_sec: 1.5,
+          cpu_time_sec: 1.0,
+          gpu_time_sec: 0.5,
+        },
+        custom: null,
+      },
+    },
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should initialize with default values', () => {
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.taskDetails).toEqual([]);
+    expect(result.current.runDetails).toEqual([]);
+    expect(result.current.runTaskDetails.size).toBe(0);
+    expect(result.current.loadingRunDetails.size).toBe(0);
+  });
+
+  it('should fetch agent details on openDetails', async () => {
+    mockGetDetails.mockResolvedValue(mockRunDetails);
+
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
+
+    await act(async () => {
+      await result.current.openDetails();
     });
 
-    it('initializes with default state', () => {
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
+    expect(mockGetDetails).toHaveBeenCalledWith(mockAgentName);
+    expect(result.current.runDetails).toEqual(mockRunDetails);
+    expect(result.current.loading).toBe(false);
+  });
 
-        expect(result.current.loading).toBe(false);
-        expect(result.current.taskDetails).toEqual([]);
-        expect(result.current.runDetails).toEqual([]);
-        expect(result.current.isOpen).toBe(false);
-        expect(result.current.selectedRuns).toEqual([]);
+  it('should toggle details open and closed', async () => {
+    mockGetDetails.mockResolvedValue(mockRunDetails);
+
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
+
+    expect(result.current.isOpen).toBe(false);
+
+    // Open details
+    await act(async () => {
+      await result.current.toggleDetails();
     });
 
-    it('opens details and fetches data', async () => {
-        const mockData = [{ run_id: 'run1', agent_name: mockAgentName }];
-        (getDetails as jest.Mock).mockResolvedValue(mockData);
+    expect(result.current.isOpen).toBe(true);
+    expect(mockGetDetails).toHaveBeenCalledWith(mockAgentName);
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
-
-        await act(async () => {
-            await result.current.openDetails();
-        });
-
-        expect(result.current.loading).toBe(false);
-        expect(result.current.runDetails).toEqual(mockData);
-        expect(getDetails).toHaveBeenCalledWith(mockAgentName);
+    // Close details
+    await act(async () => {
+      result.current.toggleDetails();
     });
 
-    it('toggles details open/close', async () => {
-        const mockData = [{ run_id: 'run1' }];
-        (getDetails as jest.Mock).mockResolvedValue(mockData);
+    expect(result.current.isOpen).toBe(false);
+  });
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
+  it('should fetch run details for given run IDs', async () => {
+    const mockRunDetailsResponse = [
+      {
+        run_id: 'run-1',
+        agent_name: 'test-agent',
+        total_tasks: 1,
+        tasks: mockTaskOutputs,
+      },
+    ];
+    mockGetRunDetails.mockResolvedValue(mockRunDetailsResponse);
 
-        // Open
-        await act(async () => {
-            await result.current.toggleDetails();
-        });
-        expect(result.current.isOpen).toBe(true);
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
 
-        // Close
-        act(() => {
-            result.current.toggleDetails();
-        });
-        expect(result.current.isOpen).toBe(false);
+    await act(async () => {
+      await result.current.fetchRunDetails(['run-1']);
     });
 
-    it('toggles run selection', () => {
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
-        const mockRun = { run_id: 'run1' } as any;
+    expect(mockGetRunDetails).toHaveBeenCalledWith(['run-1']);
+    expect(result.current.runTaskDetails.get('run-1')).toEqual(mockTaskOutputs);
+  });
 
-        // Select
-        act(() => {
-            result.current.toggleRunSelection(mockRun);
-        });
-        expect(result.current.selectedRuns).toContain('run1');
-        expect(mockSetActiveAgent).toHaveBeenCalledWith(mockAgentName);
+  it('should not fetch run details for already cached runs', async () => {
+    const mockRunDetailsResponse = [
+      {
+        run_id: 'run-1',
+        agent_name: 'test-agent',
+        total_tasks: 1,
+        tasks: mockTaskOutputs,
+      },
+    ];
+    mockGetRunDetails.mockResolvedValue(mockRunDetailsResponse);
 
-        // Deselect
-        act(() => {
-            result.current.toggleRunSelection(mockRun);
-        });
-        expect(result.current.selectedRuns).not.toContain('run1');
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
+
+    // First fetch
+    await act(async () => {
+      await result.current.fetchRunDetails(['run-1']);
     });
 
-    it('clears selected runs', () => {
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
-        const mockRun = { run_id: 'run1' } as any;
+    expect(mockGetRunDetails).toHaveBeenCalledTimes(1);
 
-        act(() => {
-            result.current.toggleRunSelection(mockRun);
-        });
-        expect(result.current.selectedRuns).toHaveLength(1);
-
-        act(() => {
-            result.current.clearSelectedRuns();
-        });
-        expect(result.current.selectedRuns).toHaveLength(0);
+    // Second fetch with same ID - should not call API again
+    await act(async () => {
+      await result.current.fetchRunDetails(['run-1']);
     });
 
-    it('fetches run details for unique ids', async () => {
-        const mockRunDetails = [{ run_id: 'run1', tasks: [] }];
-        (getRunDetails as jest.Mock).mockResolvedValue(mockRunDetails);
+    expect(mockGetRunDetails).toHaveBeenCalledTimes(1);
+  });
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
+  it('should only fetch uncached run details when mixed IDs provided', async () => {
+    const mockRunDetailsResponse1 = [
+      {
+        run_id: 'run-1',
+        agent_name: 'test-agent',
+        total_tasks: 1,
+        tasks: mockTaskOutputs,
+      },
+    ];
+    const mockRunDetailsResponse2 = [
+      {
+        run_id: 'run-2',
+        agent_name: 'test-agent',
+        total_tasks: 1,
+        tasks: mockTaskOutputs,
+      },
+    ];
+    mockGetRunDetails
+      .mockResolvedValueOnce(mockRunDetailsResponse1)
+      .mockResolvedValueOnce(mockRunDetailsResponse2);
 
-        await act(async () => {
-            await result.current.fetchRunDetails(['run1']);
-        });
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
 
-        expect(getRunDetails).toHaveBeenCalledWith(['run1']);
-        expect(result.current.runTaskDetails.get('run1')).toEqual([]);
+    // First fetch run-1
+    await act(async () => {
+      await result.current.fetchRunDetails(['run-1']);
     });
 
-    it('does not fetch run details if already loaded', async () => {
-        const mockRunDetails = [{ run_id: 'run1', tasks: [] }];
-        (getRunDetails as jest.Mock).mockResolvedValue(mockRunDetails);
+    expect(mockGetRunDetails).toHaveBeenCalledWith(['run-1']);
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
-
-        // First fetch
-        await act(async () => {
-            await result.current.fetchRunDetails(['run1']);
-        });
-        expect(getRunDetails).toHaveBeenCalledTimes(1);
-
-        // Second fetch with same ID
-        await act(async () => {
-            await result.current.fetchRunDetails(['run1']);
-        });
-        expect(getRunDetails).toHaveBeenCalledTimes(1); // Should not increase
+    // Second fetch with run-1 (cached) and run-2 (new)
+    await act(async () => {
+      await result.current.fetchRunDetails(['run-1', 'run-2']);
     });
 
-    it('handles error when opening details', async () => {
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-        (getDetails as jest.Mock).mockRejectedValue(new Error('Fetch error'));
+    expect(mockGetRunDetails).toHaveBeenCalledWith(['run-2']);
+  });
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
+  it('should handle errors when fetching agent details', async () => {
+    mockGetDetails.mockRejectedValue(new Error('API Error'));
 
-        await act(async () => {
-            await result.current.openDetails();
-        });
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
 
-        expect(result.current.loading).toBe(false);
-        expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error));
-        consoleSpy.mockRestore();
+    await act(async () => {
+      await result.current.openDetails();
     });
 
-    it('handles error when fetching run details', async () => {
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-        (getRunDetails as jest.Mock).mockRejectedValue(new Error('Fetch error'));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.runDetails).toEqual([]);
+  });
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
+  it('should handle errors when fetching run details', async () => {
+    mockGetRunDetails.mockRejectedValue(new Error('API Error'));
 
-        await act(async () => {
-            await result.current.fetchRunDetails(['run1']);
-        });
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
 
-        expect(consoleSpy).toHaveBeenCalledWith('Error fetching run details:', expect.any(Error));
-        consoleSpy.mockRestore();
+    await act(async () => {
+      await result.current.fetchRunDetails(['run-1']);
     });
 
-    it('navigates to compare page when runs are selected', () => {
-        const mockNavigate = jest.fn();
-        (require('react-router-dom').useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    expect(result.current.loadingRunDetails.size).toBe(0);
+    expect(result.current.runTaskDetails.has('run-1')).toBe(false);
+  });
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
-        const mockRun = { run_id: 'run1' } as any;
+  it('should track loading state for run details', async () => {
+    let resolvePromise: (value: unknown) => void;
+    const promise = new Promise(resolve => {
+      resolvePromise = resolve;
+    });
+    mockGetRunDetails.mockReturnValue(promise as Promise<never>);
 
-        act(() => {
-            result.current.toggleRunSelection(mockRun);
-        });
+    const { result } = renderHook(() => useAgentDetails(mockAgentName));
 
-        act(() => {
-            result.current.compareSelected();
-        });
-
-        expect(mockNavigate).toHaveBeenCalledWith({
-            pathname: '/compare',
-            search: `?agent=${mockAgentName}&runs=run1`,
-        });
+    // Start fetching
+    act(() => {
+      result.current.fetchRunDetails(['run-1']);
     });
 
-    it('does not navigate if no runs selected', () => {
-        const mockNavigate = jest.fn();
-        (require('react-router-dom').useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    // Should be loading
+    expect(result.current.loadingRunDetails.has('run-1')).toBe(true);
 
-        const { result } = renderHook(() => useAgentDetails(mockAgentName, mockSetActiveAgent));
-
-        act(() => {
-            result.current.compareSelected();
-        });
-
-        expect(mockNavigate).not.toHaveBeenCalled();
+    // Resolve the promise
+    await act(async () => {
+      resolvePromise!([
+        {
+          run_id: 'run-1',
+          agent_name: 'test-agent',
+          total_tasks: 1,
+          tasks: [],
+        },
+      ]);
+      await promise;
     });
+
+    // Should no longer be loading
+    expect(result.current.loadingRunDetails.has('run-1')).toBe(false);
+  });
 });

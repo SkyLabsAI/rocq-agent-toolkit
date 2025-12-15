@@ -1,43 +1,43 @@
-import { ChevronUpIcon } from '@/icons/chevron-up';
-import { Benchmark, Run } from '@/types/types';
-import { cn } from '@/utils/cn';
 import { useEffect, useState } from 'react';
-import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
-import {  useSelectedRun } from '@/contexts/SelectedRunContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAgents } from '@/hooks/useAgentsSummary';
-import TaskDetailsModal from '@/features/taskDetailsModal';
-import RunDetailsView from '@/components/RunDetailsView';
-import AgentDetails from "./agent-details"
+
+import RunDetailsView from '@/components/run-details-view';
+import { useGlobalCompare } from '@/contexts/global-compare-context';
+import { useSelectedRun } from '@/contexts/selected-run-context';
+import TaskDetailsModal from '@/features/task-details-modal';
+import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
+import { ChevronUpIcon } from '@/icons/chevron-up';
+import { type Benchmark, type Run } from '@/types/types';
+import { cn } from '@/utils/cn';
+
+import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
+import AgentDetails from './agent-details';
 
 interface DataItemProps {
   benchmark: Benchmark;
+  index: number;
 }
 
-export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
+  const [isOpen, setIsOpen] = useState(index === 0);
 
   const { agents: agentData } = useBenchmarkAgents(benchmark.dataset_id);
 
-  const {  modalState, closeModal, openCodeModal } =
-    useAgents();
+  const { modalState, closeModal, openCodeModal } = useAgents();
 
   const { selectedRun, setSelectedRun } = useSelectedRun();
-  const [activeAgent, setActiveAgent] = useState<string | null>(null);
-  
+
   // Use global compare context instead of local state
   const {
     selectAgent,
     deselectAgent,
     selectRun,
     deselectRun,
-    getSelectedAgentsForDataset,
     getSelectedRunsForDataset,
     isAgentSelected,
     isRunSelected,
-    clearDatasetSelections
+    clearDatasetSelections,
   } = useGlobalCompare();
 
   type SortableKey =
@@ -124,14 +124,16 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
   }, [location.pathname, benchmark.dataset_id, clearDatasetSelections]);
 
   return (
-    <div>
+    <div data-testid='dataset-row'>
       <div
         className='bg-elevation-surface-raised overflow-hidden px-4.5 py-5 flex justify-between items-center'
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className='flex gap-1 items-center text-text'>
           <ChevronUpIcon className={cn('size-6', { 'rotate-180': isOpen })} />
-          <span className='text-[16px] cursor-pointer '>{benchmark.dataset_id}</span>
+          <span className='text-[16px] cursor-pointer '>
+            {benchmark.dataset_id}
+          </span>
         </div>
 
         <span className='text-text-disabled text-sm '>{''}</span>
@@ -233,24 +235,38 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark }) => {
                       Actions
                     </td>
                   </tr>
-                  {getSortedAgents().map((agent, index) => (
+                  {getSortedAgents().map(agent => (
                     <AgentDetails
                       key={agent.agent_name}
                       agent={agent}
                       datasetId={benchmark.dataset_id}
-                      isSelected={isAgentSelected(agent.agent_name, benchmark.dataset_id)}
+                      isSelected={isAgentSelected(
+                        agent.agent_name,
+                        benchmark.dataset_id
+                      )}
                       toggleSelection={() => {
-                        if (isAgentSelected(agent.agent_name, benchmark.dataset_id)) {
+                        if (
+                          isAgentSelected(
+                            agent.agent_name,
+                            benchmark.dataset_id
+                          )
+                        ) {
                           deselectAgent(agent.agent_name, benchmark.dataset_id);
                         } else {
                           selectAgent(agent.agent_name, benchmark.dataset_id);
                         }
                       }}
-                      selectedRuns={getSelectedRunsForDataset(benchmark.dataset_id)}
+                      selectedRuns={getSelectedRunsForDataset(
+                        benchmark.dataset_id
+                      )}
                       toggleRunSelection={toggleRunSelection}
-                      clearSelectedRuns={() => clearDatasetSelections(benchmark.dataset_id)}
+                      clearSelectedRuns={() =>
+                        clearDatasetSelections(benchmark.dataset_id)
+                      }
                       compareSelectedRuns={() => {
-                        const selectedRunIds = getSelectedRunsForDataset(benchmark.dataset_id);
+                        const selectedRunIds = getSelectedRunsForDataset(
+                          benchmark.dataset_id
+                        );
                         if (selectedRunIds.length < 1) return;
                         const query = new URLSearchParams({
                           runs: selectedRunIds.join(','),

@@ -1,15 +1,17 @@
-import {
-  AgentRun,
-  AgentSummary,
-  Benchmark,
-  RunDetailsResponse,
-  TaskOutput,
-} from '@/types/types';
 import axios from 'axios';
-import { config } from '@/config/env';
+
+import {
+  type AgentRun,
+  type AgentSummary,
+  type Benchmark,
+  type RunDetailsResponse,
+  type TaskOutput,
+} from '@/types/types';
+
+import { config } from '../../config/environment';
 
 // Check if we should use mock data
-const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+const USE_MOCK_DATA = config.USE_MOCK_DATA;
 
 // Mock data generator functions
 const generateMockTaskOutput = (
@@ -32,10 +34,10 @@ const generateMockTaskOutput = (
     status: isSuccess ? 'Success' : 'Failure',
     failure_reason: !isSuccess
       ? [
-        'Proof step failed during execution',
-        'Timeout exceeded after 30 seconds',
-        'Unable to find valid tactic sequence',
-      ]
+          'Proof step failed during execution',
+          'Timeout exceeded after 30 seconds',
+          'Unable to find valid tactic sequence',
+        ]
       : undefined,
     results: {
       proof_found: isSuccess,
@@ -138,7 +140,6 @@ const getDataMock: () => Promise<AgentSummary[]> = async () => {
     },
   ];
 
-  console.log('Fetched agent summaries (MOCK):', mockData);
   return mockData;
 };
 
@@ -176,6 +177,8 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
         tags: {
           run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
           task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+          hehe: 'hehe',
+          somethingelse: 'somethingelse',
         },
       },
     });
@@ -226,19 +229,23 @@ const getDetailsForDatasetMock = async (
           dataset_id: datasetId,
           run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
           task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+          hehe: 'hehe',
+          somethingelse: 'somethingelse',
         },
       },
     });
   }
 
-  console.log(`Fetched runs for agent ${agentName} in dataset ${datasetId} (MOCK):`, mockRuns);
+  console.log(
+    `Fetched runs for agent ${agentName} in dataset ${datasetId} (MOCK):`,
+    mockRuns
+  );
   return mockRuns;
 };
 
 export const getDetailsForDataset = USE_MOCK_DATA
   ? getDetailsForDatasetMock
   : getDetailsForDatasetReal;
-
 
 const getRunDetailsReal = async (
   runIds: string[]
@@ -247,7 +254,6 @@ const getRunDetailsReal = async (
   const response = await axios.get(
     `${config.DATA_API}/runs/details?run_ids=${runIdsParam}`
   );
-  console.log('Fetched run details:', response.data);
   return response.data as RunDetailsResponse[];
 };
 
@@ -258,12 +264,15 @@ const getRunDetailsMock = async (
 
   // For this mock, always return 2 runs: agentA and agentB
   // Each has 6 tasks: 3 common (task_001, task_002, task_003), 3 unique
-  const agentRunMap: Record<string, { agentName: string; uniqueTasks: string[] }> = {
-    'run_agentA_001': {
+  const agentRunMap: Record<
+    string,
+    { agentName: string; uniqueTasks: string[] }
+  > = {
+    run_agentA_001: {
       agentName: 'agentA',
       uniqueTasks: ['task_A1', 'task_A2', 'task_A3'],
     },
-    'run_agentB_001': {
+    run_agentB_001: {
       agentName: 'agentB',
       uniqueTasks: ['task_B1', 'task_B2', 'task_B3'],
     },
@@ -272,7 +281,10 @@ const getRunDetailsMock = async (
   const commonTasks = ['task_001', 'task_002', 'task_003'];
 
   const mockRunDetails: RunDetailsResponse[] = runIds.map(runId => {
-    const agentInfo = agentRunMap[runId] || { agentName: 'UnknownAgent', uniqueTasks: [] };
+    const agentInfo = agentRunMap[runId] || {
+      agentName: 'UnknownAgent',
+      uniqueTasks: [],
+    };
     const tasks: TaskOutput[] = [];
 
     // Add common tasks
@@ -314,7 +326,6 @@ const getObservabilityLogsReal = async (
   const response = await axios.get(
     `${config.DATA_API}/observability/logs?run_id=${runId}&task_id=${encodedTaskId}`
   );
-  console.log('Fetched observability logs:', response.data);
   return response.data.labels || {};
 };
 
@@ -436,7 +447,6 @@ const refreshDataReal = async (): Promise<{
   total_agents: number;
 }> => {
   const response = await axios.post(`${config.DATA_API}/refresh`);
-  console.log('Refresh response:', response.data);
   return response.data;
 };
 
@@ -473,7 +483,6 @@ export type AgentSummaryTemp = {
 
 export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
   // 1. Fetch all agents
-  console.log('Fetching agent summaries...');
 
   const agentsRes = await getData();
   const agents: AgentSummary[] = agentsRes;
@@ -513,14 +522,11 @@ const getBenchmarksMock = async (): Promise<Benchmark[]> => {
       dataset_id: 'benchmark_001',
       description: 'Collection of mathematical theorem proving tasks',
       created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-
     },
     {
-
       dataset_id: 'benchmark_002',
       description: 'Logical reasoning and puzzle solving challenges',
       created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-
     },
     {
       dataset_id: 'benchmark_003',
@@ -533,28 +539,45 @@ const getBenchmarksMock = async (): Promise<Benchmark[]> => {
   return mockBenchmarks;
 };
 
-export const getBenchmarks = USE_MOCK_DATA ? getBenchmarksMock : getBenchmarksReal;
+export const getBenchmarks = USE_MOCK_DATA
+  ? getBenchmarksMock
+  : getBenchmarksReal;
 
-const getBenchmarkAgentsReal = async (benchmarkId: string): Promise<BenchmarkAgentData> => {
-  console.log("Fetching agents for benchmark:", benchmarkId);
+const getBenchmarkAgentsReal = async (
+  benchmarkId: string
+): Promise<BenchmarkAgentData> => {
   const response = await axios.get(`${config.DATA_API}/${benchmarkId}/agents`);
   return response.data as BenchmarkAgentData;
 };
 
-const getBenchmarkAgentsMock = async (benchmarkId: string): Promise<BenchmarkAgentData> => {
+const getBenchmarkAgentsMock = async (
+  benchmarkId: string
+): Promise<BenchmarkAgentData> => {
   await new Promise(resolve => setTimeout(resolve, 400));
 
-  const agents = ['agentA', 'agentB', 'ProofBot-v2.1', 'CodeGen-Alpha', 'LogicSolver'];
+  const agents = [
+    'agentA',
+    'agentB',
+    'ProofBot-v2.1',
+    'CodeGen-Alpha',
+    'LogicSolver',
+  ];
   const mockAgents: AgentSummary[] = agents.map((agentName, index) => ({
     agent_name: agentName,
     total_runs: Math.floor(Math.random() * 20) + 5,
     best_run: {
       run_id: `run_${agentName}_best_${benchmarkId}`,
       agent_name: agentName,
-      timestamp_utc: new Date(Date.now() - Math.random() * 7 * 86400000).toISOString(),
+      timestamp_utc: new Date(
+        Date.now() - Math.random() * 7 * 86400000
+      ).toISOString(),
       total_tasks: Math.floor(Math.random() * 50) + 20,
-      success_count: Math.floor((Math.random() * 0.4 + 0.6) * (Math.floor(Math.random() * 50) + 20)),
-      failure_count: Math.floor((Math.random() * 0.4) * (Math.floor(Math.random() * 50) + 20)),
+      success_count: Math.floor(
+        (Math.random() * 0.4 + 0.6) * (Math.floor(Math.random() * 50) + 20)
+      ),
+      failure_count: Math.floor(
+        Math.random() * 0.4 * (Math.floor(Math.random() * 50) + 20)
+      ),
       success_rate: Math.random() * 0.4 + 0.6, // 60-100%
       score: Math.random() * 0.4 + 0.6,
       avg_total_tokens: Math.floor(Math.random() * 3000) + 2000,
@@ -570,14 +593,19 @@ const getBenchmarkAgentsMock = async (benchmarkId: string): Promise<BenchmarkAge
     },
   }));
 
-  console.log(`Fetched agents for benchmark ${benchmarkId} (MOCK):`, mockAgents);
+  console.log(
+    `Fetched agents for benchmark ${benchmarkId} (MOCK):`,
+    mockAgents
+  );
   return {
     dataset_id: benchmarkId,
     agents: mockAgents,
-  }
+  };
 };
 
-export const getBenchmarkAgents = USE_MOCK_DATA ? getBenchmarkAgentsMock : getBenchmarkAgentsReal;
+export const getBenchmarkAgents = USE_MOCK_DATA
+  ? getBenchmarkAgentsMock
+  : getBenchmarkAgentsReal;
 
 // Types for benchmarks
 

@@ -1,11 +1,13 @@
-import AgentRunsView from '@/features/localdashboard/AgentRunsView';
-import { ChevronUpIcon } from '@/icons/chevron-up';
-import { Benchmark, Run } from '@/types/types';
-import { cn } from '@/utils/cn';
 import { useState } from 'react';
-import { useAgentBenchmarks } from './use-benchmark-runs';
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
 import { useNavigate } from 'react-router-dom';
+
+import { useGlobalCompare } from '@/contexts/global-compare-context';
+import AgentRunsView from '@/features/localdashboard/agent-runs-view';
+import { ChevronUpIcon } from '@/icons/chevron-up';
+import { type Benchmark, type Run } from '@/types/types';
+import { cn } from '@/utils/cn';
+
+import { useAgentBenchmarks } from './use-benchmark-runs';
 
 interface AgentBenchMarkProps {
   benchmark: Benchmark;
@@ -17,7 +19,10 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
   agentName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { runs, isLoading, error, fetchRuns } = useAgentBenchmarks(agentName, benchmark.dataset_id);
+  const { runs, isLoading, fetchRuns } = useAgentBenchmarks(
+    agentName,
+    benchmark.dataset_id
+  );
   const navigate = useNavigate();
 
   const {
@@ -25,7 +30,7 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
     deselectRun,
     getSelectedRunsForDataset,
     isRunSelected,
-    clearDatasetSelections
+    clearDatasetSelections,
   } = useGlobalCompare();
 
   const handleToggle = () => {
@@ -57,24 +62,27 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
   };
 
   return (
-    <div>
+    <div data-testid={`dataset-card-${benchmark.dataset_id}`}>
       <div
         className='bg-elevation-surface-raised overflow-hidden py-5 flex justify-between items-center cursor-pointer'
         onClick={handleToggle}
       >
         <div className='flex gap-1 items-center text-text'>
           <ChevronUpIcon className={cn('size-6', { 'rotate-180': isOpen })} />
-          <span className='text-[16px] '>
+          <span className='text-[16px] ' data-testid='dataset-name'>
             {benchmark.dataset_id}
           </span>
         </div>
 
         <span className='text-text-disabled text-sm '>{''}</span>
       </div>
-      {isOpen && (
-        isLoading ? (
-          <div className="flex justify-center p-4">
-             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
+      {isOpen &&
+        (isLoading ? (
+          <div
+            className='flex justify-center p-4'
+            data-testid='dataset-loading'
+          >
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
           </div>
         ) : (
           <AgentRunsView
@@ -82,11 +90,12 @@ export const AgentBenchmark: React.FC<AgentBenchMarkProps> = ({
             agentName={agentName}
             selectedRuns={getSelectedRunsForDataset(benchmark.dataset_id)}
             toggleRunSelection={toggleRunSelection}
-            clearSelectedRuns={() => clearDatasetSelections(benchmark.dataset_id)}
+            clearSelectedRuns={() =>
+              clearDatasetSelections(benchmark.dataset_id)
+            }
             compareSelected={compareSelected}
           />
-        )
-      )}
+        ))}
     </div>
   );
 };

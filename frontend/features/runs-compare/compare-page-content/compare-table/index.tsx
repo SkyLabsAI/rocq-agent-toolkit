@@ -1,10 +1,12 @@
-import { RunDetailsResponse } from '@/types/types';
-import { RunTaskCell } from '../..';
-import { TaskComparisonHeaderTop } from './compare-table-header';
 import React, { useState } from 'react';
-import { TaskHeader } from './compare-table-header/task-header';
+
+import { type RunDetailsResponse } from '@/types/types';
+
+import { type RunTaskCell } from '../..';
+import { type TaskRowData } from '../utils';
+import { TaskComparisonHeaderTop } from './compare-table-header';
 import { TaskDetailsTable } from './compare-table-header/task-details';
-import { TaskRowData } from '../utils';
+import { TaskHeader } from './compare-table-header/task-header';
 
 interface ComparisonTableProps {
   runs: RunDetailsResponse[];
@@ -25,7 +27,6 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   onOpenModal,
   taskRowData,
 }) => {
-  console.log('Rendering ComparisonTable with tasks:', taskMap);
   return (
     <>
       <div className='mt-10 border border-elevation-surface-overlay rounded-lg  bg-elevation-surface'>
@@ -62,12 +63,18 @@ const TaskSection: React.FC<TaskSectionProps> = ({
   onOpenModal,
   taskRowData,
 }) => {
-  const [open,setOpen] = useState(true)
+  const [open, setOpen] = useState(true);
 
   return (
     <>
-      <TaskHeader id={id} details={details} onOpenModal={onOpenModal}  onClick={() => setOpen(!open)} isExpanded={open} />
-      {open && <TaskDetailsTable id={id} details={details} taskRowData={taskRowData} />}
+      <TaskHeader
+        id={id}
+        details={details}
+        onOpenModal={onOpenModal}
+        onClick={() => setOpen(!open)}
+        isExpanded={open}
+      />
+      {open && <TaskDetailsTable taskRowData={taskRowData} />}
     </>
   );
 };

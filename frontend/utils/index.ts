@@ -1,4 +1,4 @@
-import { AgentRun } from "@/types/types";
+import { type AgentRun } from '@/types/types';
 
 export function isLatestRun(run: AgentRun, runs: AgentRun[]): boolean {
   if (!runs.length) return false;

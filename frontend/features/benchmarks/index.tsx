@@ -1,1 +1,1 @@
-export { default } from './BenchmarksList';
+export { default } from './benchmark-list';

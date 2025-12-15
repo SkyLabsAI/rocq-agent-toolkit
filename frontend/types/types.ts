@@ -5,14 +5,14 @@
  */
 export type TaskKind =
   | {
-    /** Fully proving a Rocq goal. */
-    kind: 'FullProofTask';
-  }
+      /** Fully proving a Rocq goal. */
+      kind: 'FullProofTask';
+    }
   | {
-    /** User defined task kind. */
-    kind: 'OtherTask';
-    value: string;
-  }
+      /** User defined task kind. */
+      kind: 'OtherTask';
+      value: string;
+    }
   | string;
 
 /**
@@ -27,15 +27,15 @@ export type TaskStatus =
  */
 export type ResourceExhaustionKind =
   | {
-    /** Exceeded timelimit in seconds. */
-    kind: 'Timeout';
-    value: number; // int
-  }
+      /** Exceeded timelimit in seconds. */
+      kind: 'Timeout';
+      value: number; // int
+    }
   | {
-    /** Exceeded LLM call limit. */
-    kind: 'MaxLLMCalls';
-    value: number; // int
-  };
+      /** Exceeded LLM call limit. */
+      kind: 'MaxLLMCalls';
+      value: number; // int
+    };
 
 /**
  * Reason for task failure.
@@ -43,20 +43,20 @@ export type ResourceExhaustionKind =
 export type FailureReason =
   | string[]
   | {
-    /** Resource exhaustion. */
-    kind: 'ResourceExhaustion';
-    value: ResourceExhaustionKind;
-  }
+      /** Resource exhaustion. */
+      kind: 'ResourceExhaustion';
+      value: ResourceExhaustionKind;
+    }
   | {
-    /** Unrecoverable error. */
-    kind: 'ExecutionError';
-    value: string;
-  }
+      /** Unrecoverable error. */
+      kind: 'ExecutionError';
+      value: string;
+    }
   | {
-    /** User defined failure reason. */
-    kind: 'Other';
-    value: string;
-  };
+      /** User defined failure reason. */
+      kind: 'Other';
+      value: string;
+    };
 
 /**
  * Aggregated LLM token metrics for task.
@@ -108,6 +108,26 @@ export interface Details {
 }
 
 /**
+ * Side effects structure containing document interactions and other effects.
+ */
+export interface SideEffects {
+  /** Document interaction results from the agent. */
+  doc_interaction?: unknown;
+  /** Additional side effects. */
+  [key: string]: unknown;
+}
+
+/**
+ * Task results structure containing side effects and other results.
+ */
+export interface TaskResults {
+  /** Side effects produced during task execution. */
+  side_effects?: SideEffects;
+  /** Additional results. */
+  [key: string]: unknown;
+}
+
+/**
  * Agent output for a single task.
  */
 export interface TaskOutput {
@@ -128,7 +148,7 @@ export interface TaskOutput {
   /** Reason for task failure. */
   failure_reason?: FailureReason;
   /** Agent results after task completion. (Mapped from 'abstract') */
-  results: Record<string, unknown> | null;
+  results: TaskResults | null;
   /** Aggregated metrics for task. */
   metrics: Metrics;
 

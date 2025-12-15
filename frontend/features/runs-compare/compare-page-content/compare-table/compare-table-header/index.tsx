@@ -1,15 +1,8 @@
-import { RunDetailsResponse } from '@/types/types';
-import { Button } from '@/components/base';
-import { SortIcon } from '@/icons/sort/sort';
-import { ChevronUpIcon } from '@/icons/chevron-up';
+import { type RunDetailsResponse } from '@/types/types';
 
 interface TaskComparisonHeaderTopProps {
   runs: RunDetailsResponse[];
 }
-
-
-
-
 
 export const getCommonGridStyle = (runCount: number) => {
   return {
@@ -17,10 +10,9 @@ export const getCommonGridStyle = (runCount: number) => {
     // 230px Start | Dynamic Middle | 165px End
     gridTemplateColumns: `350px repeat(${runCount}, minmax(0, 1fr)) 165px`,
     alignItems: 'center',
-    columnGap: '1rem' // This replaces 'gap-4' to be safe
+    columnGap: '1rem', // This replaces 'gap-4' to be safe
   };
 };
-
 
 export const TaskComparisonHeaderTop: React.FC<
   TaskComparisonHeaderTopProps
@@ -32,7 +24,7 @@ export const TaskComparisonHeaderTop: React.FC<
     >
       Taskwise Comparison
     </p>
-    
+
     {runs &&
       runs.map(run => (
         <p
@@ -40,11 +32,9 @@ export const TaskComparisonHeaderTop: React.FC<
           className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5relative shrink-0 text-text text-[14px] text-nowrap whitespace-pre truncate"
           style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
         >
-          { run.run_id}
+          {run.run_id}
         </p>
       ))}
-    <div>
-
-    </div>
+    <div></div>
   </div>
 );
