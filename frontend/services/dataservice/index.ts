@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-import { config } from '@/config/env';
 import {
   type AgentRun,
   type AgentSummary,
@@ -8,6 +7,8 @@ import {
   type RunDetailsResponse,
   type TaskOutput,
 } from '@/types/types';
+
+import { config } from '../../config/env';
 
 // Check if we should use mock data
 const USE_MOCK_DATA = config.USE_MOCK_DATA;

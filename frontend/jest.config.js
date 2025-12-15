@@ -26,6 +26,9 @@ const customJestConfig = {
     'features/**/*.(ts|tsx)',
     '!**/*.d.ts',
   ],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(react-syntax-highlighter|refractor|hastscript|hast-util-.*|unist-util-.*|property-information|space-separated-tokens|comma-separated-tokens|vfile.*|unified|bail|is-plain-obj|trough|remark-.*|rehype-.*)/)',
+  ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

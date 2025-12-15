@@ -153,6 +153,9 @@ export default [
       '*.config.mjs',
       '.eslintrc.js',
       'jest.setup.js',
+      '**/*.test.{ts,tsx,js,jsx}',
+      '**/*.spec.{ts,tsx,js,jsx}',
+      'e2e/**/*',
     ],
   },
 ];
