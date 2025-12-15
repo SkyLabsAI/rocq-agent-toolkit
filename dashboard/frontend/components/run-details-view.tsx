@@ -28,6 +28,21 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedResults, setExpandedResults] = useState<Set<string>>(
+    new Set()
+  );
+
+  const toggleResultExpansion = (taskId: string) => {
+    setExpandedResults(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     const fetchRunDetails = async () => {
@@ -299,14 +314,33 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
 
                   {/* Task Result */}
                   <div className='space-y-4'>
-                    <p className='font-inter font-normal text-sm text-text-disabled'>
+                    <button
+                      onClick={() => toggleResultExpansion(task.task_id)}
+                      className='flex items-center gap-2 font-inter font-normal text-sm text-text-disabled hover:text-text transition-colors'
+                    >
+                      <ChevronUpIcon
+                        className={`size-4 transition-transform ${
+                          expandedResults.has(task.task_id) ? 'rotate-180' : ''
+                        }`}
+                      />
                       Task Result
-                    </p>
+                      {expandedResults.has(task.task_id) ? ' (Full JSON)' : ''}
+                    </button>
                     <div className='bg-elevation-surface-sunken rounded p-4 h-fit overflow-auto'>
                       <pre className='font-inter font-normal text-sm text-text whitespace-pre-wrap'>
-                        {(task.results &&
-                          JSON.stringify(task.results, null, 2)) ||
-                          'No results available.'}
+                        {expandedResults.has(task.task_id)
+                          ? task.results
+                            ? JSON.stringify(task.results, null, 2)
+                            : 'No results available.'
+                          : task.results?.side_effects?.doc_interaction
+                            ? typeof task.results.side_effects.doc_interaction === 'string'
+                              ? task.results.side_effects.doc_interaction
+                              : JSON.stringify(
+                                  task.results.side_effects.doc_interaction,
+                                  null,
+                                  2
+                                )
+                            : 'No doc interaction results available.'}
                       </pre>
                     </div>
                   </div>

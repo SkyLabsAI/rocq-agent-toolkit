@@ -376,7 +376,7 @@ describe('RunDetailsView', () => {
     );
 
     await screen.findByText('task-1');
-    expect(screen.getByText(/No results available/)).toBeInTheDocument();
+    expect(screen.getByText(/No doc interaction results available/)).toBeInTheDocument();
   });
 
   it('calls openCodeModal when View Logs button is clicked', async () => {

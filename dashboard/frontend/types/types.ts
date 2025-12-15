@@ -108,6 +108,26 @@ export interface Details {
 }
 
 /**
+ * Side effects structure containing document interactions and other effects.
+ */
+export interface SideEffects {
+  /** Document interaction results from the agent. */
+  doc_interaction?: unknown;
+  /** Additional side effects. */
+  [key: string]: unknown;
+}
+
+/**
+ * Task results structure containing side effects and other results.
+ */
+export interface TaskResults {
+  /** Side effects produced during task execution. */
+  side_effects?: SideEffects;
+  /** Additional results. */
+  [key: string]: unknown;
+}
+
+/**
  * Agent output for a single task.
  */
 export interface TaskOutput {
@@ -128,7 +148,7 @@ export interface TaskOutput {
   /** Reason for task failure. */
   failure_reason?: FailureReason;
   /** Agent results after task completion. (Mapped from 'abstract') */
-  results: Record<string, unknown> | null;
+  results: TaskResults | null;
   /** Aggregated metrics for task. */
   metrics: Metrics;
 
