@@ -88,8 +88,9 @@ test.describe('Agent View - Agents → Datasets → Runs Flow', () => {
       await page.waitForTimeout(1000);
 
       // Check for dataset rows under the agent (assuming data-testid="dataset-row" for each dataset)
-      const datasetRows = page.locator('[data-testid="dataset-row"]');
-      await expect(datasetRows.count()).toBeGreaterThan(0);
+      const datasetRows = page.locator('[data-testid^="dataset-card"]');
+      const datasetCount = await datasetRows.count();
+      await expect(datasetCount).toBeGreaterThan(0);
       // Optionally, take a screenshot
       await takeScreenshot(page, 'agent-view', 'agent-datasets-expanded');
     });

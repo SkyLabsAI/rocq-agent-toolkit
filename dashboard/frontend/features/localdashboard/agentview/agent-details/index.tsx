@@ -75,23 +75,6 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
             </div>
           </div>
         </td>
-        {/* <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3 justify-center'>
-          
-
-            <Button
-              variant={isSelected ? 'danger' : 'default'}
-              onClick={e => {
-             e.stopPropagation();
-                toggleSelection();
-              }}
-              className='text-sm whitespace-nowrap text-[14px] font-normal float-end w-[100px] flex justify-center'
-            >
-              {isSelected ? 'Deselect' : 'Compare'}
-            </Button>
-        
-          </div>
-        </td> */}
       </tr>
 
       {isOpen && (
