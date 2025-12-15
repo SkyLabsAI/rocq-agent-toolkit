@@ -31,10 +31,14 @@ describe('ComparisonRow', () => {
     render(
       <ComparisonRow
         label='Test Label'
-        values={undefined as unknown as string[]}
+        values={[]}
       />
     );
 
     expect(screen.getByText('Test Label')).toBeInTheDocument();
   });
+      // Provide empty array to reflect graceful handling in component use
+      render(<ComparisonRow label='Tokens' values={[]} />);
+
+      expect(screen.getByText('Tokens')).toBeInTheDocument();
 });

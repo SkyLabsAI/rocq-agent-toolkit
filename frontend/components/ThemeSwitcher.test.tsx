@@ -3,13 +3,13 @@ import React from 'react';
 
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 
-import ThemeSwitcher from './ThemeSwitcher';
+import ThemeSwitcher from './theme-switcher';
 
 // Mock the ThemeContext
 const mockToggleTheme = jest.fn();
 const mockUseTheme = jest.fn();
 
-jest.mock('@/contexts/ThemeContext', () => ({
+jest.mock('@/contexts/theme-context', () => ({
   useTheme: () => mockUseTheme(),
 }));
 

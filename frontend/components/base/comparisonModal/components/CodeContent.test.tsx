@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
-import CodeContent from './CodeContent';
+import CodeContent from './code-content';
 
 jest.mock('@/components/base/codeViewer', () => ({
   __esModule: true,

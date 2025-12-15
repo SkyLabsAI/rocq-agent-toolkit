@@ -2,14 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
+import { useGlobalCompare } from '@/contexts/global-compare-context';
 
 import { AgentBenchmark } from './index';
 import { useAgentBenchmarks } from './use-benchmark-runs';
 
 jest.mock('./use-benchmark-runs');
-jest.mock('@/contexts/GlobalCompareContext');
-jest.mock('@/features/localdashboard/AgentRunsView', () => ({
+jest.mock('@/contexts/global-compare-context');
+jest.mock('@/features/localdashboard/agent-runs-view', () => ({
   __esModule: true,
   default: ({
     agentName,

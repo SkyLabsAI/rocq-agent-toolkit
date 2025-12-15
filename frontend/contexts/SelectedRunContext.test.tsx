@@ -3,7 +3,7 @@ import React from 'react';
 
 import { type Run } from '@/types/types';
 
-import { SelectedRunProvider, useSelectedRun } from './SelectedRunContext';
+import { SelectedRunProvider, useSelectedRun } from './selected-run-context';
 
 describe('SelectedRunContext', () => {
   const mockRun: Run = {

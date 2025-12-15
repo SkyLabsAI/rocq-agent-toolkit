@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import LocalDashboard from './index';
 
-jest.mock('./AgentTable', () => ({
+jest.mock('./agent-table', () => ({
   __esModule: true,
   default: () => <div data-testid='agent-table'>Agent Table</div>,
 }));

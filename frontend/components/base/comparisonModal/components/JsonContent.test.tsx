@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
-import JsonContent from './JsonContent';
+import JsonContent from './json-content';
 
 describe('JsonContent', () => {
   it('should render JSON string', () => {

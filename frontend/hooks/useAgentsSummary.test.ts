@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 
 import {
   fetchAgentSummaries,
@@ -7,7 +7,7 @@ import {
 } from '@/services/dataservice';
 import { type TaskOutput } from '@/types/types';
 
-import { useAgents } from './useAgentsSummary';
+import { useAgents } from './use-agent-summaries';
 
 jest.mock('@/services/dataservice');
 
@@ -109,7 +109,9 @@ describe('useAgents', () => {
       },
     };
 
-    await result.current.openCodeModal(mockTask);
+    await act(async () => {
+      await result.current.openCodeModal(mockTask);
+    });
 
     await waitFor(() => {
       expect(result.current.modalState.isOpen).toBe(true);
@@ -206,7 +208,9 @@ describe('useAgents', () => {
       expect(result.current.modalState.isOpen).toBe(true);
     });
 
-    result.current.closeModal();
+    act(() => {
+      result.current.closeModal();
+    });
 
     expect(result.current.modalState.isOpen).toBe(false);
     expect(result.current.modalState.selectedTask).toBe(null);

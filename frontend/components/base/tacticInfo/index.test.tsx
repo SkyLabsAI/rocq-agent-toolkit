@@ -38,8 +38,12 @@ describe('TacticInfoViewer', () => {
   it('should render tactics', () => {
     render(<TacticInfoViewer tactics={mockTactics} />);
 
-    expect(screen.getByText('Prove theorem 1')).toBeInTheDocument();
-    expect(screen.getByText('Prove theorem 2')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Prove theorem 1' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Prove theorem 2' })
+    ).toBeInTheDocument();
   });
 
   it('should show empty state when no tactics', () => {
@@ -74,15 +78,16 @@ describe('TacticInfoViewer', () => {
   it('should render additional information section', () => {
     render(<TacticInfoViewer tactics={mockTactics} />);
 
-    expect(screen.getByText('Additional Information')).toBeInTheDocument();
+      // Multiple sections exist; assert at least one label is present
+      expect(screen.getAllByText('Additional Information')[0]).toBeInTheDocument();
   });
 
   it('should toggle additional information', () => {
     render(<TacticInfoViewer tactics={mockTactics} />);
 
-    const toggleButton = screen
-      .getByText('Additional Information')
-      .closest('div');
+      const toggleButton = screen
+        .getAllByText('Additional Information')[0]
+        .closest('div');
     if (toggleButton) {
       fireEvent.click(toggleButton);
       // Additional info should expand
@@ -141,9 +146,9 @@ describe('TacticInfoViewer', () => {
   it('should render additional keys', () => {
     render(<TacticInfoViewer tactics={mockTactics} />);
 
-    const toggleButton = screen
-      .getByText('Additional Information')
-      .closest('div');
+      const toggleButton = screen
+        .getAllByText('Additional Information')[0]
+        .closest('div');
     if (toggleButton) {
       fireEvent.click(toggleButton);
       expect(screen.getByText(/custom field/i)).toBeInTheDocument();
@@ -162,7 +167,8 @@ describe('TacticInfoViewer', () => {
 
     render(<TacticInfoViewer tactics={tactics} />);
 
-    expect(screen.getByText('Test')).toBeInTheDocument();
+    // 'Test' appears in multiple nodes; assert the tactic title heading
+    expect(screen.getByRole('heading', { name: 'Test' })).toBeInTheDocument();
   });
 
   it('should handle tactics without explanation', () => {
@@ -176,14 +182,14 @@ describe('TacticInfoViewer', () => {
 
     render(<TacticInfoViewer tactics={tactics} />);
 
-    expect(screen.getByText('Test')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Test' })).toBeInTheDocument();
   });
 
   it('should format additional field values as JSON when not string', () => {
     render(<TacticInfoViewer tactics={mockTactics} />);
 
     const toggleButton = screen
-      .getByText('Additional Information')
+      .getAllByText('Additional Information')[0]
       .closest('div');
     if (toggleButton) {
       fireEvent.click(toggleButton);

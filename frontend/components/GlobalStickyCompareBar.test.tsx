@@ -2,12 +2,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
+import { useGlobalCompare } from '@/contexts/global-compare-context';
 
-import { GlobalStickyCompareBar } from './GlobalStickyCompareBar';
+import { GlobalStickyCompareBar } from './global-sticky-compare-bar';
 
-jest.mock('@/contexts/GlobalCompareContext');
-jest.mock('@/components/StickyCompareBar', () => ({
+jest.mock('@/contexts/global-compare-context');
+jest.mock('@/components/sticky-compare-bar', () => ({
   __esModule: true,
   default: ({
     selectedItems,

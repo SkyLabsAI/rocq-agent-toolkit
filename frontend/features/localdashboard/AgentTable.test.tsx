@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import AgentTable from './AgentTable';
+import AgentTable from './agent-table';
 
 jest.mock('./agentview', () => ({
   __esModule: true,

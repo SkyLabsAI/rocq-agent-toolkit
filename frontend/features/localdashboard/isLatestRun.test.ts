@@ -1,6 +1,6 @@
 import { type AgentRun } from '@/types/types';
 
-import { isLatestRun } from './AgentRunsView';
+import { isLatestRun } from './agent-runs-view';
 
 describe('isLatestRun', () => {
   const createRun = (runId: string, timestamp: string): AgentRun => ({

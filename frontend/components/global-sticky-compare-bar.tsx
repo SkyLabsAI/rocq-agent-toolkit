@@ -59,3 +59,5 @@ export const GlobalStickyCompareBar: React.FC = () => {
 
   return null;
 };
+
+export default GlobalStickyCompareBar;

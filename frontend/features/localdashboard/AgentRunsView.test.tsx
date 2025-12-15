@@ -1,12 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import { useSelectedRun } from '@/contexts/selected-run-context';
 
-import { AgentRunsView, isLatestRun } from './AgentRunsView';
+import AgentRunsView, {isLatestRun} from './agent-runs-view';
 
-jest.mock('@/contexts/SelectedRunContext');
-jest.mock('@/components/RunRow', () => ({
+jest.mock('@/contexts/selected-run-context');
+jest.mock('@/components/run-row', () => ({
   __esModule: true,
   default: ({
     run,
@@ -34,7 +34,7 @@ jest.mock('@/components/RunRow', () => ({
     </div>
   ),
 }));
-jest.mock('@/components/StickyCompareBar', () => ({
+jest.mock('@/components/sticky-compare-bar', () => ({
   __esModule: true,
   default: ({
     selectedItems,

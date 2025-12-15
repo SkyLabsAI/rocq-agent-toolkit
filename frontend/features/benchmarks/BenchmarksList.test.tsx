@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { getBenchmarks } from '@/services/dataservice';
 
-import BenchmarksList from './BenchmarksList';
+import BenchmarksList from './benchmark-list';
 
 jest.mock('@/services/dataservice');
 jest.mock('@/layouts/common', () => {

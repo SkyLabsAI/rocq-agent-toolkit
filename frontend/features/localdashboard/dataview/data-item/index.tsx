@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import RunDetailsView from '@/components/run-details-view';
 import { useGlobalCompare } from '@/contexts/global-compare-context';
 import { useSelectedRun } from '@/contexts/selected-run-context';
-import TaskDetailsModal from '@/features/taskDetailsModal';
+import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
 import { ChevronUpIcon } from '@/icons/chevron-up';

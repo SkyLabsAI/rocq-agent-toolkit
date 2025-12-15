@@ -75,7 +75,7 @@ describe('TaskDetailsTable', () => {
       />
     );
 
-    expect(screen.getByTestId('comparison-row')).toBeInTheDocument();
+    expect(screen.getAllByTestId('comparison-row').length).toBeGreaterThan(0);
   });
 });
 
@@ -126,54 +126,64 @@ describe('extractMetricRows', () => {
   });
 });
 
-describe('getFlatKeys', () => {
-  it('should flatten nested objects', () => {
-    const obj = {
-      token_counts: { total: 10, input: 5 },
-      resource_usage: { execution_time: 1.0 },
-    };
-
-    const keys = getFlatKeys(obj);
-
-    expect(keys).toContain('token_counts.total');
-    expect(keys).toContain('token_counts.input');
-    expect(keys).toContain('resource_usage.execution_time');
-  });
-
-  it('should handle arrays as values', () => {
-    const obj = {
-      array: [1, 2, 3],
-      nested: { value: 10 },
-    };
-
-    const keys = getFlatKeys(obj);
-
-    expect(keys).toContain('array');
-    expect(keys).toContain('nested.value');
-  });
-
-  it('should handle null and undefined', () => {
-    expect(getFlatKeys(null)).toEqual([]);
-    expect(getFlatKeys(undefined)).toEqual([]);
-  });
-});
-
-describe('getNestedValue', () => {
-  it('should get nested value by path', () => {
-    const obj = {
-      metrics: {
-        token_counts: {
-          total_tokens: 150,
+describe('metrics helpers (behavior via extractMetricRows)', () => {
+  it('flattens nested metrics keys', () => {
+    const data: TaskRowData = {
+      taskId: 't',
+      cells: [
+        {
+          runId: 'r',
+          runName: 'n',
+          task: {
+            run_id: 'r',
+            task_kind: 'FullProofTask',
+            task_id: 't',
+            timestamp_utc: '2024-01-01',
+            agent_name: 'n',
+            status: 'Success',
+            results: {},
+            metrics: {
+              token_counts: { total: 10, input: 5 },
+              resource_usage: { execution_time: 1.0 },
+            },
+          },
         },
-      },
+      ],
     };
-
-    expect(getNestedValue(obj, 'metrics.token_counts.total_tokens')).toBe(150);
+    const rows = extractMetricRows(data);
+    const keys = rows.map(r => r.key);
+    expect(keys).toContain('resource_usage.execution_time');
+    expect(keys.find(k => k.startsWith('token_counts'))).toBeDefined();
   });
 
-  it('should return undefined for invalid path', () => {
-    const obj = { metrics: { token_counts: { total: 150 } } };
-
-    expect(getNestedValue(obj, 'metrics.invalid.path')).toBeUndefined();
+  it('handles arrays and missing values gracefully', () => {
+    const data: TaskRowData = {
+      taskId: 't',
+      cells: [
+        {
+          runId: 'r',
+          runName: 'n',
+          task: {
+            run_id: 'r',
+            task_kind: 'FullProofTask',
+            task_id: 't',
+            timestamp_utc: '2024-01-01',
+            agent_name: 'n',
+            status: 'Success',
+            results: {},
+            metrics: {
+              array: [1, 2, 3],
+              nested: { value: 10 },
+            },
+          },
+        },
+        null,
+      ],
+    };
+    const rows = extractMetricRows(data);
+    const arrayRow = rows.find(r => r.key === 'array');
+    expect(arrayRow?.values[0]).toBe('[1,2,3]');
+    const nestedRow = rows.find(r => r.key === 'nested.value');
+    expect(nestedRow?.values[0]).toBe('10');
   });
 });

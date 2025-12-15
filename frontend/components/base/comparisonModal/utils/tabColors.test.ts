@@ -1,4 +1,4 @@
-import { getTabColorClasses } from './tabColors';
+import { getTabColorClasses } from './tab-colors';
 
 describe('getTabColorClasses', () => {
   it('should return active classes when isActive is true', () => {

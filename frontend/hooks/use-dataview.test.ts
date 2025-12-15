@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 
 import { getBenchmarkAgents, getBenchmarks } from '@/services/dataservice';
 
-import { useBenchmarks } from './use-dataview';
+import { useBenchmarks, useBenchmarkAgents } from './use-dataview';
 
 jest.mock('@/services/dataservice');
 
@@ -39,7 +39,6 @@ describe('useBenchmarks', () => {
   });
 
   it('should handle benchmark fetch error', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation();
     mockGetBenchmarks.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() => useBenchmarks());
@@ -48,8 +47,8 @@ describe('useBenchmarks', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(consoleError).toHaveBeenCalled();
-    consoleError.mockRestore();
+    expect(result.current.error).toBe('Network error');
+    expect(result.current.benchmarks).toEqual([]);
   });
 
   it('should fetch agents for a specific benchmark', async () => {
@@ -83,35 +82,27 @@ describe('useBenchmarks', () => {
     mockGetBenchmarks.mockResolvedValue(mockBenchmarks);
     mockGetBenchmarkAgents.mockResolvedValue(mockAgentData);
 
-    const { result } = renderHook(() => useBenchmarks());
+    const { result } = renderHook(() => useBenchmarkAgents('bench1'));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    await result.current.fetchAgentsForBenchmark('bench1');
-
     await waitFor(() => {
-      expect(result.current.benchmarkAgents.get('bench1')).toEqual(
-        mockAgentData.agents
-      );
+      expect(result.current.agents).toEqual(mockAgentData.agents);
     });
   });
 
   it('should handle error when fetching agents for benchmark', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation();
-    mockGetBenchmarks.mockResolvedValue([]);
     mockGetBenchmarkAgents.mockRejectedValue(new Error('Fetch error'));
 
-    const { result } = renderHook(() => useBenchmarks());
+    const { result } = renderHook(() => useBenchmarkAgents('bench1'));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    await result.current.fetchAgentsForBenchmark('bench1');
-
-    expect(consoleError).toHaveBeenCalled();
-    consoleError.mockRestore();
+    expect(result.current.error).toBe('Fetch error');
+    expect(result.current.agents).toEqual([]);
   });
 });
