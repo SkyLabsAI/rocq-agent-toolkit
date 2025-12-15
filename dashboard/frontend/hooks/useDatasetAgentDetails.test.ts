@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { getDetailsForDataset, getRunDetails } from '@/services/dataservice';
 import { type AgentRun, type TaskOutput } from '@/types/types';
 
-import { useDatasetAgentDetails } from './useDatasetAgentDetails';
+import { useDatasetAgentDetails } from './use-data-set-agent-details';
 
 // Mock the dataservice
 jest.mock('@/services/dataservice', () => ({
@@ -172,7 +172,7 @@ describe('useDatasetAgentDetails', () => {
   });
 
   it('should handle errors gracefully', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockGetDetailsForDataset.mockRejectedValue(new Error('API Error'));
 
     const { result } = renderHook(() =>
@@ -183,8 +183,9 @@ describe('useDatasetAgentDetails', () => {
       await result.current.openDetails();
     });
 
-    expect(consoleError).toHaveBeenCalled();
+    // Hook does not expose error; assert loading stops and details unchanged
     expect(result.current.loading).toBe(false);
+    expect(result.current.runDetails).toEqual([]);
     consoleError.mockRestore();
   });
 

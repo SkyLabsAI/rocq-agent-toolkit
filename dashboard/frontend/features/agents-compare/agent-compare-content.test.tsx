@@ -2,12 +2,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, useSearchParams } from 'react-router-dom';
 
-import { useAgents } from '@/hooks/useAgentsSummary';
+import { useAgents } from '@/hooks/use-agent-summaries';
 import { getRunDetails } from '@/services/dataservice';
 
 import { AgentCompareContent } from './agent-compare-content';
 
-jest.mock('@/hooks/useAgentsSummary');
+jest.mock('@/hooks/use-agent-summaries');
 jest.mock('@/services/dataservice');
 jest.mock('../runs-compare/compare-page-content/compare-page-header', () => ({
   CompareRunsHeader: ({ title }: { title: string }) => <div>{title}</div>,
@@ -70,7 +70,10 @@ describe('AgentCompareContent', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Compare Agents')).toBeInTheDocument();
+    // While loading, the header isn't shown; assert loading state
+    expect(
+      screen.getByText('Loading agent comparison data...')
+    ).toBeInTheDocument();
   });
 
   it('should fetch and display best runs for selected agents', async () => {
@@ -275,8 +278,9 @@ describe('AgentCompareContent', () => {
       </MemoryRouter>
     );
 
+    // Assert error message is rendered in the UI
     await waitFor(() => {
-      expect(consoleError).toHaveBeenCalled();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
 
     consoleError.mockRestore();

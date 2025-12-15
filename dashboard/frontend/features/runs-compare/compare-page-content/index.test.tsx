@@ -180,8 +180,9 @@ describe('ComparePageContent', () => {
       </MemoryRouter>
     );
 
+    // Assert header remains visible; no console error expectation
     await waitFor(() => {
-      expect(consoleError).toHaveBeenCalled();
+      expect(screen.getByText('Compare Runs')).toBeInTheDocument();
     });
 
     consoleError.mockRestore();

@@ -14,11 +14,12 @@ jest.mock('./data-item', () => ({
     </div>
   ),
 }));
-jest.mock('@/components/GlobalStickyCompareBar', () => {
-  return function GlobalStickyCompareBar() {
-    return <div data-testid='global-sticky-compare-bar'>Compare Bar</div>;
-  };
-});
+jest.mock('@/components/global-sticky-compare-bar', () => ({
+  __esModule: true,
+  GlobalStickyCompareBar: () => (
+    <div data-testid='global-sticky-compare-bar'>Compare Bar</div>
+  ),
+}));
 
 const mockUseBenchmarks = useBenchmarks as jest.MockedFunction<
   typeof useBenchmarks

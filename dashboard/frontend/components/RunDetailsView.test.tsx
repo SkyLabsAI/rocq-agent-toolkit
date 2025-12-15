@@ -1,11 +1,10 @@
 import '@testing-library/jest-dom';
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 
 import { type AgentRun, type TaskOutput } from '@/types/types';
 
-import RunDetailsView from './RunDetailsView';
+import RunDetailsView from './run-details-view';
 
 describe('RunDetailsView', () => {
   const mockRun: AgentRun = {
@@ -51,7 +50,7 @@ describe('RunDetailsView', () => {
   ];
 
   // Mock the hook
-  jest.mock('@/hooks/useAgentDetails', () => ({
+  jest.mock('@/hooks/use-agent-details', () => ({
     useAgentDetails: () => ({
       runTaskDetails: new Map([['run-1', mockTasks]]),
       fetchRunDetails: jest.fn(),
@@ -161,8 +160,12 @@ describe('RunDetailsView', () => {
     await screen.findByText(/run-1/);
 
     expect(screen.getByText(/run-1/)).toBeInTheDocument();
-    // It displays success/failure counts
-    expect(screen.getByText('1')).toBeInTheDocument(); // Success count
+    // Assert success/failure counts more specifically
+    const counts = screen.getAllByText('1');
+    expect(counts.length).toBeGreaterThanOrEqual(2);
+    // First '1' is success, second '1' is failure
+    expect(counts[0]).toBeInTheDocument();
+    expect(counts[1]).toBeInTheDocument();
   });
 
   it('renders task list', async () => {

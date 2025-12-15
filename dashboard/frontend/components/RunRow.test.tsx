@@ -3,7 +3,7 @@ import React from 'react';
 
 import { type Run } from '@/types/types';
 
-import RunRow from './RunRow';
+import RunRow from './run-row';
 
 describe('RunRow component', () => {
   const mockRun: Run = {

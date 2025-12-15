@@ -218,3 +218,5 @@ export const GlobalCompareProvider: React.FC<GlobalCompareProviderProps> = ({
     </GlobalCompareContext.Provider>
   );
 };
+
+export default GlobalCompareContext;

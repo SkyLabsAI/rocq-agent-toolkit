@@ -3,25 +3,15 @@ import React from 'react';
 
 import CodeViewer from './index';
 
-// Mock react-syntax-highlighter
+// Mock react-syntax-highlighter to provide a usable component
 jest.mock('react-syntax-highlighter', () => ({
-  Prism: {
-    as: jest.fn(() => {
-      return function MockSyntaxHighlighter({
-        children,
-        language,
-      }: {
-        children: string;
-        language: string;
-      }) {
-        return (
-          <pre data-testid='syntax-highlighter' data-language={language}>
-            {children}
-          </pre>
-        );
-      };
-    }),
-  },
+  __esModule: true,
+  Prism: ({ children, language }: { children: string; language: string }) => (
+    <pre data-testid='syntax-highlighter' data-language={language}>{children}</pre>
+  ),
+  default: ({ children }: { children: string }) => (
+    <pre data-testid='syntax-highlighter'>{children}</pre>
+  ),
 }));
 
 jest.mock('react-syntax-highlighter/dist/esm/styles/prism', () => ({

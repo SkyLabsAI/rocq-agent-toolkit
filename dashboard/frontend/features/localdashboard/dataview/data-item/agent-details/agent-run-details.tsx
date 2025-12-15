@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { Button } from '@/components/base';
-import TaskDetailsModal from '@/features/taskDetailsModal';
+import TaskDetailsModal from '@/features/task-details-modal';
 import { getObservabilityLogs, getRunDetails } from '@/services/dataservice';
 import { type RunDetailsResponse, type TaskOutput } from '@/types/types';
 

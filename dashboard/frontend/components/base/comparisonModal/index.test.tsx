@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 
-import { useComparisonLogs } from './hooks/useComparisonLogs';
+import { useComparisonLogs } from './hooks/use-comparison-logs';
 import ComparisonModal from './index';
 
-jest.mock('./hooks/useComparisonLogs');
+jest.mock('./hooks/use-comparison-logs');
 jest.mock('@/components/base/ui/modal', () => ({
   __esModule: true,
   default: ({
@@ -26,13 +26,13 @@ jest.mock('@/components/base/ui/modal', () => ({
       </div>
     ) : null,
 }));
-jest.mock('./components/CodeContent', () => ({
+jest.mock('./components/code-content', () => ({
   __esModule: true,
   default: ({ keyName }: { keyName: string }) => (
     <div data-testid={`code-content-${keyName}`}>Code: {keyName}</div>
   ),
 }));
-jest.mock('./components/JsonContent', () => ({
+jest.mock('./components/json-content', () => ({
   __esModule: true,
   default: ({ value }: { value: unknown }) => (
     <div data-testid='json-content'>{JSON.stringify(value)}</div>
@@ -251,6 +251,8 @@ describe('ComparisonModal', () => {
     const jsonTab = screen.getByText('json_data');
     fireEvent.click(jsonTab);
 
+    const firstCard = screen.getByText('Agent 1').closest('div');
+    if (firstCard) fireEvent.click(firstCard);
     expect(screen.getByTestId('json-content')).toBeInTheDocument();
   });
 
@@ -272,6 +274,8 @@ describe('ComparisonModal', () => {
       />
     );
 
+    const firstCard2 = screen.getByText('Agent 1').closest('div');
+    if (firstCard2) fireEvent.click(firstCard2);
     expect(screen.getByTestId('tactic-info')).toBeInTheDocument();
   });
 
@@ -293,6 +297,8 @@ describe('ComparisonModal', () => {
       />
     );
 
+    const firstCard3 = screen.getByText('Agent 1').closest('div');
+    if (firstCard3) fireEvent.click(firstCard3);
     expect(screen.getByTestId('code-content-cpp_code')).toBeInTheDocument();
   });
 
@@ -314,6 +320,8 @@ describe('ComparisonModal', () => {
       />
     );
 
+    const firstCard4 = screen.getByText('Agent 1').closest('div');
+    if (firstCard4) fireEvent.click(firstCard4);
     expect(screen.getByTestId('json-content')).toBeInTheDocument();
   });
 
@@ -405,6 +413,8 @@ describe('ComparisonModal', () => {
       />
     );
 
+    const firstCard5 = screen.getByText('Agent 1').closest('div');
+    if (firstCard5) fireEvent.click(firstCard5);
     expect(screen.getByTestId('code-content-code')).toBeInTheDocument();
   });
 
@@ -426,6 +436,8 @@ describe('ComparisonModal', () => {
       />
     );
 
+    const firstCard6 = screen.getByText('Agent 1').closest('div');
+    if (firstCard6) fireEvent.click(firstCard6);
     // Should render as string array items
     expect(screen.getByText(/Item 1/)).toBeInTheDocument();
   });

@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { getDetails, getRunDetails } from '@/services/dataservice';
 import { type AgentRun, type TaskOutput } from '@/types/types';
 
-import { useAgentDetails } from './useAgentDetails';
+import { useAgentDetails } from './use-agent-details';
 
 // Mock the dataservice
 jest.mock('@/services/dataservice', () => ({
@@ -208,7 +208,6 @@ describe('useAgentDetails', () => {
   });
 
   it('should handle errors when fetching agent details', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation();
     mockGetDetails.mockRejectedValue(new Error('API Error'));
 
     const { result } = renderHook(() => useAgentDetails(mockAgentName));
@@ -217,13 +216,11 @@ describe('useAgentDetails', () => {
       await result.current.openDetails();
     });
 
-    expect(consoleError).toHaveBeenCalled();
     expect(result.current.loading).toBe(false);
-    consoleError.mockRestore();
+    expect(result.current.runDetails).toEqual([]);
   });
 
   it('should handle errors when fetching run details', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation();
     mockGetRunDetails.mockRejectedValue(new Error('API Error'));
 
     const { result } = renderHook(() => useAgentDetails(mockAgentName));
@@ -232,9 +229,8 @@ describe('useAgentDetails', () => {
       await result.current.fetchRunDetails(['run-1']);
     });
 
-    expect(consoleError).toHaveBeenCalled();
     expect(result.current.loadingRunDetails.size).toBe(0);
-    consoleError.mockRestore();
+    expect(result.current.runTaskDetails.has('run-1')).toBe(false);
   });
 
   it('should track loading state for run details', async () => {

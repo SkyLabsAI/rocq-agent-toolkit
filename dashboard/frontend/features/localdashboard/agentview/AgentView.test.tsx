@@ -8,11 +8,11 @@ import AgentView from './index';
 // import { useSelectedRun } from '@/contexts/SelectedRunContext';
 
 // We need to mock the hooks used in AgentView
-jest.mock('@/hooks/useAgentsSummary', () => ({
+jest.mock('@/hooks/use-agent-summaries', () => ({
   useAgents: jest.fn(),
 }));
 
-jest.mock('@/contexts/SelectedRunContext', () => ({
+jest.mock('@/contexts/selected-run-context', () => ({
   useSelectedRun: jest.fn(),
   SelectedRunProvider: ({ children }: any) => <div>{children}</div>,
 }));
@@ -45,15 +45,15 @@ jest.mock('./agent-details', () => {
 });
 
 // Mock other large components
-jest.mock('@/components/RunDetailsView', () => () => (
+jest.mock('@/components/run-details-view', () => () => (
   <div data-testid='run-details-view'>Run Details</div>
 ));
-jest.mock('@/components/StickyCompareBar', () => () => (
+jest.mock('@/components/sticky-compare-bar', () => () => (
   <div data-testid='sticky-bar'>Sticky Bar</div>
 ));
 
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
-import { useAgents } from '@/hooks/useAgentsSummary';
+import { useSelectedRun } from '@/contexts/selected-run-context';
+import { useAgents } from '@/hooks/use-agent-summaries';
 
 describe('AgentView', () => {
   const mockUseAgents = useAgents as jest.Mock;

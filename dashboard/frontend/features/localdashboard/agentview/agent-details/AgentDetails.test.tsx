@@ -5,15 +5,10 @@ import React from 'react';
 
 import AgentDetails from './index';
 
-// Mock child component AgentRunsView
-jest.mock('@/features/localdashboard/AgentRunsView', () => {
-  return function MockAgentRunsView() {
-    return <div data-testid='agent-runs-view'>Agent Runs View</div>;
-  };
-});
+// No child view to mock; expansion renders benchmarks or an empty state
 
 // Mock hook
-jest.mock('@/hooks/useAgentDetails', () => ({
+jest.mock('@/hooks/use-agent-details', () => ({
   useAgentDetails: () => ({
     openDetails: jest.fn(),
     toggleDetails: jest.fn(),
@@ -93,8 +88,9 @@ describe('AgentDetails (Row)', () => {
 
   it('renders expansion view when active/open', () => {
     renderRow();
-    // Since we mocked hook to interpret isOpen=true,
-    // we expect the expansion row to be visible
-    expect(screen.getByTestId('agent-runs-view')).toBeInTheDocument();
+    // Expansion container should render when isOpen=true
+    expect(screen.getByTestId('agent-expanded-content')).toBeInTheDocument();
+    // With no runDetails provided, it shows the empty state
+    expect(screen.getByTestId('agent-no-details')).toBeInTheDocument();
   });
 });

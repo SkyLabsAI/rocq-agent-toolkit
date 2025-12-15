@@ -4,7 +4,7 @@ import React from 'react';
 import {
   GlobalCompareProvider,
   useGlobalCompare,
-} from './GlobalCompareContext';
+} from './global-compare-context';
 
 // Test component to access context
 const TestComponent = () => {

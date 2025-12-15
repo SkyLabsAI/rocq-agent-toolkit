@@ -2,17 +2,17 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import { useGlobalCompare } from '@/contexts/GlobalCompareContext';
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
+import { useGlobalCompare } from '@/contexts/global-compare-context';
+import { useSelectedRun } from '@/contexts/selected-run-context';
 import { useBenchmarkAgents } from '@/hooks/use-dataview';
-import { useAgents } from '@/hooks/useAgentsSummary';
+import { useAgents } from '@/hooks/use-agent-summaries';
 
 import { DataItem } from './index';
 
 jest.mock('@/hooks/use-dataview');
-jest.mock('@/hooks/useAgentsSummary');
-jest.mock('@/contexts/SelectedRunContext');
-jest.mock('@/contexts/GlobalCompareContext');
+jest.mock('@/hooks/use-agent-summaries');
+jest.mock('@/contexts/selected-run-context');
+jest.mock('@/contexts/global-compare-context');
 jest.mock('./agent-details', () => ({
   __esModule: true,
   default: ({ agent }: { agent: { agent_name: string } }) => (
@@ -21,12 +21,12 @@ jest.mock('./agent-details', () => ({
     </tr>
   ),
 }));
-jest.mock('@/features/taskDetailsModal', () => ({
+jest.mock('@/features/task-details-modal', () => ({
   __esModule: true,
   default: ({ isOpen }: { isOpen: boolean }) =>
     isOpen ? <div data-testid='task-details-modal'>Task Modal</div> : null,
 }));
-jest.mock('@/components/RunDetailsView', () => ({
+jest.mock('@/components/run-details-view', () => ({
   __esModule: true,
   default: ({ run }: { run: { run_id: string } }) => (
     <div data-testid='run-details-view'>Run: {run.run_id}</div>
@@ -123,7 +123,7 @@ describe('DataItem', () => {
   it('should render benchmark header', () => {
     render(
       <MemoryRouter>
-        <DataItem benchmark={mockBenchmark} />
+        <DataItem benchmark={mockBenchmark} index={0} />
       </MemoryRouter>
     );
 
@@ -137,12 +137,11 @@ describe('DataItem', () => {
       </MemoryRouter>
     );
 
-    const header = screen.getByText('bench1').closest('div');
-    if (header) {
-      fireEvent.click(header);
-      // Component should expand
-      expect(screen.getByText('Agents')).toBeInTheDocument();
-    }
+    const container = screen.getByTestId('dataset-row');
+    const header = container.firstChild as HTMLElement;
+    fireEvent.click(header);
+    // Component should expand
+    expect(screen.getByText('Agents')).toBeInTheDocument();
   });
 
   it('should display agents when open', () => {
@@ -225,10 +224,9 @@ describe('DataItem', () => {
 
     render(
       <MemoryRouter>
-        <DataItem benchmark={mockBenchmark} />
+        <DataItem benchmark={mockBenchmark} index={0} />
       </MemoryRouter>
     );
-
     expect(screen.getByTestId('run-details-view')).toBeInTheDocument();
   });
 

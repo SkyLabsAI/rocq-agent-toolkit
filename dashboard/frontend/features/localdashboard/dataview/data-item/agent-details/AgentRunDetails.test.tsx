@@ -3,10 +3,10 @@ import React from 'react';
 
 import { getObservabilityLogs, getRunDetails } from '@/services/dataservice';
 
-import { AgentRunDetails } from './AgentRunDetails';
+import  AgentRunDetails  from './agent-run-details';
 
 jest.mock('@/services/dataservice');
-jest.mock('@/features/taskDetailsModal', () => ({
+jest.mock('@/features/task-details-modal', () => ({
   __esModule: true,
   default: ({ isOpen }: { isOpen: boolean }) =>
     isOpen ? <div data-testid='task-details-modal'>Task Modal</div> : null,
@@ -59,7 +59,11 @@ describe('AgentRunDetails', () => {
     mockGetRunDetails.mockResolvedValue([mockRunDetails]);
 
     render(
-      <AgentRunDetails runId='run1' agentName='agent1' isExpanded={true} />
+      <table>
+        <tbody>
+          <AgentRunDetails runId='run1' agentName='agent1' isExpanded={true} />
+        </tbody>
+      </table>
     );
 
     await waitFor(() => {
@@ -94,8 +98,10 @@ describe('AgentRunDetails', () => {
       <AgentRunDetails runId='run1' agentName='agent1' isExpanded={true} />
     );
 
+    // Assert error UI is shown instead of relying on console.error
     await waitFor(() => {
-      expect(consoleError).toHaveBeenCalled();
+      expect(screen.getByText('Error loading run details')).toBeInTheDocument();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
 
     consoleError.mockRestore();

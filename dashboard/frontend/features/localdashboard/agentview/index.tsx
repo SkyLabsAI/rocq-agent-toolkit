@@ -5,7 +5,7 @@ import RunDetailsView from '@/components/run-details-view';
 import StickyCompareBar from '@/components/sticky-compare-bar';
 import { GlobalCompareProvider } from '@/contexts/global-compare-context';
 import { useSelectedRun } from '@/contexts/selected-run-context';
-import TaskDetailsModal from '@/features/taskDetailsModal';
+import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
 import { ChevronUpIcon } from '@/icons/chevron-up';

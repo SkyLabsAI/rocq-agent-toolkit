@@ -2,13 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import { useSelectedRun } from '@/contexts/SelectedRunContext';
-import { useAgents } from '@/hooks/useAgentsSummary';
+import { useSelectedRun } from '@/contexts/selected-run-context';
+import { useAgents } from '@/hooks/use-agent-summaries';
 
 import AgentView from './index';
 
-jest.mock('@/hooks/useAgentsSummary');
-jest.mock('@/contexts/SelectedRunContext');
+jest.mock('@/hooks/use-agent-summaries');
+jest.mock('@/contexts/selected-run-context');
 jest.mock('./agent-details', () => ({
   __esModule: true,
   default: ({ agent }: { agent: { agent_name: string } }) => (
@@ -17,18 +17,18 @@ jest.mock('./agent-details', () => ({
     </tr>
   ),
 }));
-jest.mock('@/features/taskDetailsModal', () => ({
+jest.mock('@/features/task-details-modal', () => ({
   __esModule: true,
   default: ({ isOpen }: { isOpen: boolean }) =>
     isOpen ? <div data-testid='task-details-modal'>Task Modal</div> : null,
 }));
-jest.mock('@/components/RunDetailsView', () => ({
+jest.mock('@/components/run-details-view', () => ({
   __esModule: true,
   default: ({ run }: { run: { run_id: string } }) => (
     <div data-testid='run-details-view'>Run: {run.run_id}</div>
   ),
 }));
-jest.mock('@/components/StickyCompareBar', () => ({
+jest.mock('@/components/sticky-compare-bar', () => ({
   __esModule: true,
   default: ({
     selectedItems,
