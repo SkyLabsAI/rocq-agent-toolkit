@@ -8,7 +8,7 @@ import {
   type TaskOutput,
 } from '@/types/types';
 
-import { config } from '../../config/env';
+import { config } from '../../config/environment';
 
 // Check if we should use mock data
 const USE_MOCK_DATA = config.USE_MOCK_DATA;
