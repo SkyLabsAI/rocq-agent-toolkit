@@ -127,7 +127,7 @@ const TacticItem: React.FC<TacticItemProps> = ({
                     <div className='text-xs font-medium text-text uppercase tracking-wide mb-1'>
                       {key.replace(/_/g, ' ')}
                     </div>
-                    <pre className='text-sm text-text'>
+                    <pre className='text-sm text-text whitespace-pre-wrap overflow-wrap-anywhere'>
                       {typeof value === 'string'
                         ? value
                         : JSON.stringify(value, null, 2)}
