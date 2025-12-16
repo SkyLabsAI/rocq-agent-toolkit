@@ -12,6 +12,7 @@
  (name rocq-get-env)
  (synopsis "Rocq plugin for extracting the contents of the environment")
  (depends
+  coq-core ; since rocq-core lacks coqpp
   rocq-core))
 
 (subst disabled)

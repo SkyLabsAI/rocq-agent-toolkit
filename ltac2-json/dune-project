@@ -12,6 +12,7 @@
  (name ltac2-json)
  (synopsis "Ltac2 library providing JSON primitives in Ltac2")
  (depends
+  coq-core ; since rocq-core lacks coqpp
   rocq-core rocq-stdlib
   ltac2-derive
   yojson))

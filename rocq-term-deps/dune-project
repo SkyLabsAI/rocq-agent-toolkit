@@ -12,6 +12,7 @@
  (name rocq-term-deps)
  (synopsis "Rocq plugin for computing the dependencies of a constant")
  (depends
+  coq-core ; since rocq-core lacks coqpp
   rocq-core))
 
 (subst disabled)

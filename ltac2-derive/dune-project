@@ -12,6 +12,7 @@
  (name ltac2-derive)
  (synopsis "Support for deriving standard operations on Ltac2 datatypes")
  (depends
+  coq-core ; since rocq-core lacks coqpp
   rocq-core rocq-stdlib))
 
 (subst disabled)
