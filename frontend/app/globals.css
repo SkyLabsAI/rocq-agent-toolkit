@@ -1,0 +1,328 @@
+@import 'tailwindcss';
+
+/* Theme Configuration */
+@theme {
+  --color-text: #292a2eff;
+  --color-text-accent-red: #ae2e24ff;
+  --color-text-accent-red-bolder: #5d1f1aff;
+  --color-text-accent-orange: #9e4c00ff;
+  --color-text-accent-orange-bolder: #693200ff;
+  --color-text-accent-yellow: #7f5f01ff;
+  --color-text-accent-yellow-bolder: #533f04ff;
+  --color-text-accent-green: #216e4eff;
+  --color-text-accent-green-bolder: #164b35ff;
+  --color-text-accent-teal: #206a83ff;
+  --color-text-accent-teal-bolder: #164555ff;
+  --color-text-accent-blue: #1558bcff;
+  --color-text-accent-blue-bolder: #123263ff;
+  --color-text-accent-purple: #803fa5ff;
+  --color-text-accent-purple-bolder: #48245dff;
+  --color-text-accent-magenta: #943d73ff;
+  --color-text-accent-magenta-bolder: #50253fff;
+  --color-text-accent-gray: #505258ff;
+  --color-text-accent-gray-bolder: #1e1f21ff;
+  --color-text-disabled: rgba(8, 15, 33, 0.51);
+  --color-text-inverse: #ffffffff;
+  --color-text-selected: #1868dbff;
+  --color-text-brand: #1868dbff;
+  --color-text-danger: #ae2e24ff;
+  --color-text-warning: #9e4c00ff;
+  --color-text-warning-inverse: #292a2eff;
+  --color-text-success: #4c6b1fff;
+  --color-text-discovery: #803fa5ff;
+  --color-text-information: #1558bcff;
+  --color-text-subtlest: #6b6e76ff;
+  --color-text-subtle: #505258ff;
+  --color-link: #1868dbff;
+  --color-link-pressed: #1558bcff;
+  --color-link-visited: #803fa5ff;
+  --color-icon: #292a2eff;
+  --color-icon-subtle: #505258ff;
+  --color-icon-success: rgba(106, 154, 35, 1);
+  --color-border: #0b122824;
+  --color-border-bold: #7d818aff;
+  --color-border-focused: #4688ecff;
+  --color-border-input: #8c8f97ff;
+  --color-border-brand: #1868dbff;
+  --color-border-danger: #e2483dff;
+  --color-border-warning: #e06c00ff;
+  --color-border-success: #6a9a23ff;
+  --color-background-neutral: #0515240f;
+  --color-background-neutral-hovered: #0b122824;
+  --color-background-neutral-pressed: #080f2147;
+  --color-background-neutral-subtle: #00000000;
+  --color-background-neutral-subtle-hovered: #0515240f;
+  --color-background-neutral-subtle-pressed: #0b122824;
+  --color-background-neutral-bold: #292a2eff;
+  --color-background-neutral-bold-hovered: #3b3d42ff;
+  --color-background-neutral-bold-pressed: #505258ff;
+  --color-background-brand-bold: #1868dbff;
+  --color-background-brand-bold-hovered: #1558bcff;
+  --color-background-brand-bold-pressed: #123263ff;
+  --color-background-danger: #ffecebff;
+  --color-background-danger-bold: #c9372cff;
+  --color-background-warning: #fff5dbff;
+  --color-background-warning-bold: #fbc828ff;
+  --color-background-success: #efffd6ff;
+  --color-background-success-bold: #5b7f24ff;
+  --color-background-accent-gray-subtlest: rgba(240, 241, 242, 1);
+  --color-background-accent-gray-subtler: rgba(221, 222, 225, 1);
+  --color-background-information: rgba(233, 242, 254, 1);
+  --color-elevation-surface: #ffffffff;
+  --color-elevation-surface-hovered: #f0f1f2ff;
+  --color-elevation-surface-pressed: #dddee1ff;
+  --color-elevation-surface-overlay: #ecececff;
+  --color-elevation-surface-raised: #f9fbfdff;
+  --color-elevation-surface-sunken: #f0f2f4ff;
+  --color-background-danger-hovered: rgba(255, 213, 210, 1);
+  --color-chart-categorical-1: rgba(53, 125, 232, 1);
+  --color-chart-categorical-2: rgba(130, 181, 54, 1);
+  --color-chart-categorical-3: rgba(191, 99, 243, 1);
+  --color-chart-categorical-4: rgba(246, 137, 9, 1);
+  --color-chart-categorical-5: rgba(21, 88, 188, 1);
+  --color-chart-categorical-6: rgba(150, 74, 192, 1);
+  --color-chart-categorical-7: rgba(66, 178, 215, 1);
+  --color-chart-categorical-8: rgba(189, 91, 0, 1);
+  --color-chart-categorical-9: rgba(140, 143, 151, 1);
+  --color-chart-categorical-10: rgba(241, 91, 80, 1);
+}
+
+/* Dark Theme */
+.dark {
+  --color-text: #cecfd2ff;
+  --color-text-accent-red: #fd9891ff;
+  --color-text-accent-red-bolder: #ffd5d2ff;
+  --color-text-accent-orange: #fbc828ff;
+  --color-text-accent-orange-bolder: #fce4a6ff;
+  --color-text-accent-yellow: #eed12bff;
+  --color-text-accent-yellow-bolder: #f5e989ff;
+  --color-text-accent-green: #7ee2b8ff;
+  --color-text-accent-green-bolder: #baf3dbff;
+  --color-text-accent-teal: #9dd9eeff;
+  --color-text-accent-teal-bolder: #c6edfbff;
+  --color-text-accent-blue: #8fb8f6ff;
+  --color-text-accent-blue-bolder: #cfe1fdff;
+  --color-text-accent-purple: #d8a0f7ff;
+  --color-text-accent-purple-bolder: #eed7fcff;
+  --color-text-accent-magenta: #f797d2ff;
+  --color-text-accent-magenta-bolder: #fdd0ecff;
+  --color-text-accent-gray: #a9abafff;
+  --color-text-accent-gray-bolder: #e2e3e4ff;
+  --color-text-disabled: rgba(229, 233, 246, 0.51);
+  --color-text-inverse: #1f1f21ff;
+  --color-text-selected: #669df1ff;
+  --color-text-brand: #669df1ff;
+  --color-text-danger: #ff383cff;
+  --color-text-warning: #fbc828ff;
+  --color-text-warning-inverse: #1f1f21ff;
+  --color-text-success: #82b536ff;
+  --color-text-discovery: #d8a0f7ff;
+  --color-text-information: #4583e2ff;
+  --color-text-subtlest: #96999eff;
+  --color-text-subtle: #a9abafff;
+  --color-background-danger-hovered: rgba(93, 31, 26, 1);
+  --color-link: #669df1ff;
+  --color-link-pressed: #8fb8f6ff;
+  --color-link-visited: #d8a0f7ff;
+  --color-icon: #cecfd2ff;
+  --color-icon-subtle: #96999eff;
+  --color-icon-success: rgba(130, 181, 54, 1);
+  --color-border: #e3e4f21f;
+  --color-border-bold: #7e8188ff;
+  --color-border-focused: #8fb8f6ff;
+  --color-border-input: #7e8188ff;
+  --color-border-brand: #669df1ff;
+  --color-border-danger: #f15b50ff;
+  --color-border-warning: #f68909ff;
+  --color-border-success: #82b536ff;
+  --color-background-neutral: #ceced912;
+  --color-background-neutral-hovered: #e3e4f21f;
+  --color-background-neutral-pressed: #e5e9f640;
+  --color-background-neutral-subtle: #ffffff00;
+  --color-background-neutral-subtle-hovered: #ceced912;
+  --color-background-neutral-subtle-pressed: #e3e4f21f;
+  --color-background-neutral-bold: #cecfd2ff;
+  --color-background-neutral-bold-hovered: #bfc1c4ff;
+  --color-background-neutral-bold-pressed: #a9abafff;
+  --color-background-brand-bold: #669df1ff;
+  --color-background-brand-bold-hovered: #8fb8f6ff;
+  --color-background-brand-bold-pressed: #cfe1fdff;
+  --color-background-danger: #42221fff;
+  --color-background-danger-bold: #f87168ff;
+  --color-background-warning: #3a2c1fff;
+  --color-background-warning-bold: #fbc828ff;
+  --color-background-success: #28311bff;
+  --color-background-success-bold: #94c748ff;
+  --color-background-accent-gray-subtlest: rgba(57, 61, 70, 1);
+  --color-background-accent-gray-subtler: rgba(82, 88, 101, 1);
+  --color-background-information: rgba(28, 43, 66, 1);
+  --color-elevation-surface: #1d1e20ff;
+  --color-elevation-surface-hovered: #242528ff;
+  --color-elevation-surface-pressed: #2b2c2fff;
+  --color-elevation-surface-overlay: #2b2c2fff;
+  --color-elevation-surface-raised: #222326ff;
+  --color-elevation-surface-sunken: #18191aff;
+  --color-chart-categorical-1: rgba(70, 136, 236, 1);
+  --color-chart-categorical-2: rgba(148, 199, 72, 1);
+  --color-chart-categorical-3: rgba(201, 124, 244, 1);
+  --color-chart-categorical-4: rgba(252, 167, 0, 1);
+  --color-chart-categorical-5: rgba(21, 88, 188, 1);
+  --color-chart-categorical-6: rgba(150, 74, 192, 1);
+  --color-chart-categorical-7: rgba(66, 178, 215, 1);
+  --color-chart-categorical-8: rgba(224, 108, 0, 1);
+  --color-chart-categorical-9: rgba(126, 129, 136, 1);
+  --color-chart-categorical-10: rgba(226, 72, 61, 1);
+}
+
+/* Noto Sans Font Definitions */
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/NotoSans-VariableFont_wdth,wght.ttf')
+    format('truetype-variations');
+  font-weight: 100 900;
+  font-stretch: 62.5% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/NotoSans-Italic-VariableFont_wdth,wght.ttf')
+    format('truetype-variations');
+  font-weight: 100 900;
+  font-stretch: 62.5% 100%;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Static Font Fallbacks */
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/Noto_Sans/static/NotoSans-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Noto Sans Condensed Variants */
+@font-face {
+  font-family: 'Noto Sans Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_Condensed-Regular.ttf')
+    format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_Condensed-Bold.ttf')
+    format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Noto Sans Extra Condensed Variants */
+@font-face {
+  font-family: 'Noto Sans Extra Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_ExtraCondensed-Regular.ttf')
+    format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Extra Condensed';
+  src: url('/fonts/Noto_Sans/static/NotoSans_ExtraCondensed-Bold.ttf')
+    format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Material Theme Lighter */
+  --background: #fafafa;
+  --foreground: #546e7a;
+
+  /* Font Variables */
+  --font-noto-sans: 'Noto Sans', system-ui, -apple-system, sans-serif;
+  --font-noto-sans-condensed:
+    'Noto Sans Condensed', system-ui, -apple-system, sans-serif;
+  --font-noto-sans-extra-condensed:
+    'Noto Sans Extra Condensed', system-ui, -apple-system, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-noto-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-noto-sans: var(--font-noto-sans);
+  --font-noto-condensed: var(--font-noto-sans-condensed);
+  --font-noto-extra-condensed: var(--font-noto-sans-extra-condensed);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Material Theme Dark (Default) */
+    --background: #263238;
+    --foreground: #eceff1;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-noto-sans);
+}
