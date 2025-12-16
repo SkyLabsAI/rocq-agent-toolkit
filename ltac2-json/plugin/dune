@@ -2,6 +2,6 @@
  (name ltac2_json_plugin)
  (public_name ltac2-json.plugin)
  (libraries
-  coq-core.plugins.ltac2
+  rocq-runtime.plugins.ltac2
   yojson
   ltac2-derive.plugin))
