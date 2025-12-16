@@ -1,6 +1,6 @@
 (library
  (name ltac2_derive_plugin)
  (public_name ltac2-derive.plugin)
- (libraries coq-core.plugins.ltac2 coq-core.plugins.ltac))
+ (libraries rocq-runtime.plugins.ltac2 rocq-runtime.plugins.ltac))
 
 (coq.pp (modules g_derive))
