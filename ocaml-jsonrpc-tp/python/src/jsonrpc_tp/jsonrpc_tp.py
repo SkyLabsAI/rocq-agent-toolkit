@@ -146,6 +146,7 @@ class JsonRPCTP:
                 args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 cwd=cwd,
                 env=env,
             )
