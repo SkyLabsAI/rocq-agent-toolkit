@@ -1,10 +1,4 @@
-"""Utilities used by provenance-toolkit.
-
-Currently includes:
-- FinalTypeNamespace: metaclass for classes that bundle:
-  + related derivation targets (TypeAlias)
-  + generic utilities for any derivation target (staticmethod)
-"""
+"""Metaclass for building namespaces that expose types+utilities but can't be derived."""
 from __future__ import annotations
 
 from typing import Any
@@ -12,14 +6,14 @@ from typing import Any
 
 class FinalNamespaceMeta(type):
     def __new__(
-        mcs: FinalNamespaceMeta,
+        mcs: type[FinalNamespaceMeta],
         name: str,
         bases: list[type],
         namespace: dict[str, Any],
         *,
         derive_from: dict[str, type] | None = None,
         **kwargs: Any,
-    ):
+    ) -> FinalNamespaceMeta:
         """Prevent deriving from classes that use metaclass=FinalNamespaceMeta.
 
         Arguments: beyond the default __new__ args (mcs, name, bases, namespace)
