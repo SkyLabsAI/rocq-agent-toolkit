@@ -1,9 +1,9 @@
-"""Extensible metaclass for tracking inheritance hierarchy information, including selected methods & computed data.
+"""MROTrackerMeta: extensible metaclass for tracking inheritance hierarchy information.
 
 This module provides a metaclass that can be extended to track and gather
-inheritance hierarchy information from all points. Decorators are used to tag
-methods and computed data as part of the inheritance hierarchy, and these tags are automatically
-propagated to derivers.
+inheritance hierarchy information from all points, including selected methods & computed data.
+Decorators are used to tag methods and computed data as part of the inheritance hierarchy,
+and these tags are automatically propagated to derivers.
 """
 
 from __future__ import annotations
@@ -36,18 +36,6 @@ class MROTrackerMeta(ABCMeta):
     The following decorators are exposed by default:
     - @MROTrackerMeta.track: mark a method or property as tracked
     - @MROTrackerMeta.compute: mark a no-argument method or property as computing extra data
-
-    Public API
-    ----------
-    The following methods provide the public interface for gathering data:
-
-    - `gather_cls_data[T](cls: type[T]) -> MROTrackerData[T]`:
-        Gather class-level data from all classes in the inheritance hierarchy of `cls`.
-        Returns a MROTrackerData object for the class.
-
-    - `gather_instance_data[T](instance: T) -> MROTrackerData[T]`:
-        Gather instance-level data from all classes in the inheritance hierarchy of `instance`.
-        Returns a MROTrackerData object for the instance.
 
     Cooperative Extension
     ---------------------
@@ -250,6 +238,13 @@ class MROTrackerMeta(ABCMeta):
         fn: MethodTypes.PROPERTY,
     ) -> MethodTypes.PROPERTY:
         """Decorator: track property so it is tracked."""
+
+    @staticmethod
+    def compute_classmethod[O, T](
+        fn: MethodTypes.RAW_CLASSMETHOD[O, [], T],
+    ) -> MethodTypes.RAW_CLASSMETHOD[O, [], T]:
+        """Decorator: track + use classmethod fn to compute extra data."""
+        return MROTrackerMeta.compute(fn)
 
     # Note: mypy gets confused since MethodTypes.PROPERTY doesn't take the
     # same number of type parameters as MethodTypes.METHOD[O, P, T]

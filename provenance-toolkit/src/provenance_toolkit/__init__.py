@@ -8,9 +8,7 @@ from typing import TypeAlias
 
 from .meta import (
     FinalNamespaceMeta,
-    MROTrackerData,
-    MROTrackerDatum,
-    MROTrackerMeta,
+    MROTracker,
 )
 from .method_types import MethodTypes
 from .proto import Version, WithProvenance, WithSignature, WithVersionSignature
@@ -46,9 +44,7 @@ __all__: list[str] = [
     "Provenance",
     # meta/
     "FinalNamespaceMeta",
-    "MROTrackerMeta",
-    "MROTrackerData",
-    "MROTrackerDatum",
+    "MROTracker",
     # method_types.py
     "MethodTypes",
 ]
