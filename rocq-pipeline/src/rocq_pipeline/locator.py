@@ -42,14 +42,16 @@ class FirstAdmit(Locator):
 
 class FirstLemma(Locator):
     def __str__(self) -> str:
+        which = f"({self._index})" if self._index != 0 else ""
         if self._style is None:
-            return f"lemma:{self._name}"
+            return f"lemma:{self._name}{which}"
         else:
-            return f"{self._style.lower()}:{self._name}"
+            return f"{self._style}:{self._name}{which}"
 
-    def __init__(self, lemma_name: str, style: str | None = None):
+    def __init__(self, lemma_name: str, style: str | None = None, index: int = 0):
         self._name = lemma_name
         self._style = style
+        self._index = index
 
     @override
     def __call__(self, rdm: RocqCursor) -> bool:
@@ -85,6 +87,14 @@ class FirstLemma(Locator):
 
 
 def parse_locator(s: str) -> Locator:
+    def get_index(s: str) -> tuple[str, int]:
+        ptrn: re.Pattern = re.compile(r"(.+)\(([0-9]+)\)")
+        mtch = ptrn.match(s)
+        if mtch is None:
+            return (s, 0)
+        else:
+            return mtch.group(1), int(mtch.group(2))
+
     if s.startswith("lemma:"):  # Backwards compatibility
         logger.warning(
             " ".join(
@@ -97,9 +107,11 @@ def parse_locator(s: str) -> Locator:
         )
         return FirstLemma(s[len("lemma:") :])
     elif s.startswith("Theorem:"):
-        return FirstLemma(s[len("Theorem:") :], "Theorem")
+        nm, index = get_index(s[len("Theorem:") :])
+        return FirstLemma(nm, "Theorem", index=index)
     elif s.startswith("Lemma:"):
-        return FirstLemma(s[len("Lemma:") :], "Lemma")
+        nm, index = get_index(s[len("Lemma:") :])
+        return FirstLemma(nm, "Lemma", index=index)
     if s == "admit":
         return FirstAdmit()
     return Locator()
