@@ -16,38 +16,38 @@ from typing import Any, cast, final, overload
 
 from provenance_toolkit.method_types import MethodTypes
 
-from .mro_tracker_data import MROTrackerData, MROTrackerDatum, update_dict_of_containers
+from .mro_tracker_data import MROTrackerData, MROTrackerDatum, update_dict_of_dict
 
 logger = logging.getLogger(__name__)
 
 
 class MROTrackerMeta(ABCMeta):
-    """Extensible tracking of inheritance hierarchies, including selected methods & computed data.
+    """Extensible tracking of inheritance hierarchies + selected methods & computed data.
 
-    By default, only class/base information is tracked; method/property tracking is opted into
-    via the use of decorators (and automatic propogation of generated tags).
+    By default, only class/base information is tracked; method/property tracking is
+    opted into via the use of decorators (and automatic propogation of generated tags).
 
     This metaclass provides a framework for tracking inheritance hierarchy information:
     - Derivation hierarchy information
     - Method tracking information
     - Computed data tracking information
 
-    Extensible decorators are exposed to allow derivers to customize the behavior of the framework.
-    The following decorators are exposed by default:
+    Extensible decorators are exposed to allow derivers to customize the behavior of the
+    framework. The following decorators are exposed by default:
     - @MROTrackerMeta.track: mark a method or property as tracked
-    - @MROTrackerMeta.compute: mark a no-argument method or property as computing extra data
+    - @MROTrackerMeta.compute: mark a 0-arg method or property as computing extra data
 
     Cooperative Extension
     ---------------------
-    The framework supports cooperative extension through multiple inheritance of metaclasses.
-    When gathering data, the framework:
-
+    The framework supports cooperative extension through multiple inheritance of
+    metaclasses. When gathering data, the framework:
     1. Walks through the MRO of the class / instance
-    2. Gathers MROTrackerDatum objects for each class / instance in the MRO -- collecting attributes from the
-       MROTrackerDatum.TRACKING_ATTR_PREFIX namespace.
+    2. Gathers MROTrackerDatum objects for each class / instance in the MRO,
+       collecting attributes from the MROTrackerDatum.TRACKING_ATTR_PREFIX namespace.
 
-    This allows multiple metaclasses to extend data gathering by using adding custom attributes via
-    MROTrackerData.add_tag_to; decorator factories exist to help with constructing derived decorators.
+    This allows multiple metaclasses to extend data gathering by using adding custom
+    attributes via MROTrackerData.add_tag_to; decorator factories exist to help with
+    constructing derived decorators.
 
     Example
     -------
@@ -94,11 +94,12 @@ class MROTrackerMeta(ABCMeta):
         for base in bases:
             if base in base_tracking_data:
                 assert base_tracking_data[base] == MROTrackerDatum.build(klass=base), (
-                    f"MROTrackerMeta error: {base_tracking_data[base]} != {MROTrackerDatum.build(klass=base)}"
+                    "MROTrackerMeta error: "
+                    f"{base_tracking_data[base]} != {MROTrackerDatum.build(klass=base)}"
                 )
             else:
                 base_tracking_data[base] = MROTrackerDatum.build(klass=base)
-            update_dict_of_containers(
+            update_dict_of_dict(
                 a=all_tracked_methods,
                 b=base_tracking_data[base].all_tracked_methods,
             )
@@ -120,7 +121,8 @@ class MROTrackerMeta(ABCMeta):
 
                 if not MethodTypes.is_method(method):
                     raise ValueError(
-                        f"MROTrackerMeta error: {name}.{method_name} is not a method; {method}"
+                        "MROTrackerMeta error: "
+                        f"{name}.{method_name} is not a method; {method}"
                     )
 
                 for tracking_attr, value in method_info.items():
@@ -153,11 +155,11 @@ class MROTrackerMeta(ABCMeta):
             ):
                 continue
 
-            update_dict_of_containers(
+            update_dict_of_dict(
                 a=all_tracked_methods,
                 b={method_nm: tracking_attrs},
             )
-            update_dict_of_containers(
+            update_dict_of_dict(
                 a=tracked_methods,
                 b={method_nm: tracking_attrs},
             )
@@ -238,13 +240,6 @@ class MROTrackerMeta(ABCMeta):
         fn: MethodTypes.PROPERTY,
     ) -> MethodTypes.PROPERTY:
         """Decorator: track property so it is tracked."""
-
-    @staticmethod
-    def compute_classmethod[O, T](
-        fn: MethodTypes.RAW_CLASSMETHOD[O, [], T],
-    ) -> MethodTypes.RAW_CLASSMETHOD[O, [], T]:
-        """Decorator: track + use classmethod fn to compute extra data."""
-        return MROTrackerMeta.compute(fn)
 
     # Note: mypy gets confused since MethodTypes.PROPERTY doesn't take the
     # same number of type parameters as MethodTypes.METHOD[O, P, T]
