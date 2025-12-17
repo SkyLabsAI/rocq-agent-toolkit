@@ -168,7 +168,7 @@ class TraceAgent(ProofAgent):
 
     def _task_doc_interaction(self, rdm: RocqCursor) -> str:
         return "\n".join(
-            [tac_app.tactic for tac_app in self._history if not tac_app.err]
+            [tac_app.tactic for tac_app in self.history() if tac_app.err is None]
         )
 
     def _task_doc_interaction_json(self, rdm: RocqCursor) -> Any:
