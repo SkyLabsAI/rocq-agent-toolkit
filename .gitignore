@@ -1,0 +1,14 @@
+# Rocq
+_build/
+_opam/
+_CoqProject
+
+# Python
+_pyenv/
+__pycache__
+*.egg-info
+.hypothesis
+
+# direnv
+.envrc
+.direnv

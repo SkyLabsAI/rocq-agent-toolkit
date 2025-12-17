@@ -1,5 +1,4 @@
 from dataclasses import asdict, dataclass, field
-from functools import cached_property
 from typing import Any, Protocol
 
 
@@ -12,6 +11,7 @@ class RocqGoalParts:
     """
 
     # --- Fields ---
+    rocq_goal_raw: str = field(kw_only=True)
     # Relative goal number
     rocq_rel_goal_num: int = field(default=1, kw_only=True)
     # Number of Rocq evars
@@ -26,23 +26,6 @@ class RocqGoalParts:
     )
     # Rocq conclusion.
     rocq_concl: str = field(kw_only=True)
-
-    @cached_property
-    def rocq_goal_raw(self) -> str:
-        header = f"Goal {self.rocq_rel_goal_num}"
-        if self.rocq_shelved_cnt is not None:
-            header += f" ({self.rocq_shelved_cnt} Shelved)"
-        if self.rocq_goal_id is not None:
-            header += " (ID: self.rocq_goal_id)"
-
-        hypotheses = "\n".join(
-            f"{nm} : {ty}" + ("" if defn is None else f" := {defn}")
-            for nm, (ty, defn) in self.rocq_hyps.items()
-        )
-
-        separator = "=" * 28
-
-        return f"{header}\n\n{hypotheses}\n{separator}\n"
 
     def wellformed(self) -> bool:
         # NOTE: Rocq goals must have a conclusion; a goal of "True" or
