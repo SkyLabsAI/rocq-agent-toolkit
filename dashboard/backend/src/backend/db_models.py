@@ -2,7 +2,7 @@
 SQLModel database models for the RAT Dashboard.
 These models map directly to PostgreSQL tables.
 """
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -18,7 +18,7 @@ class Agent(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True) # auto-generate
     name: str = Field(unique=True, index=True)
     description: str | None = None
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     runs: list["Run"] = Relationship(back_populates="agent")
@@ -38,7 +38,7 @@ class Dataset(SQLModel, table=True):
     )
     name: str = Field(unique=True, index=True)
     description: str | None = None
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     tasks: list["Task"] = Relationship(back_populates="dataset")

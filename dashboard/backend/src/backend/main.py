@@ -120,11 +120,7 @@ async def health_check(session: Session = Depends(get_session)) -> dict[str, Any
     total_agents = len(list_agents_from_db(session))
     return {
         "status": "healthy",
-        "total_agents": total_agents or 0,
-        "config": {
-            "observability_url": settings.observability_url,
-            "Database URL": f"{settings.postgres_host}:{settings.postgres_port}",
-        },
+        "total_agents": total_agents or 0
     }
 
 
