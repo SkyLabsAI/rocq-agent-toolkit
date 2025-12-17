@@ -4,6 +4,7 @@ services:
       context: ./database
       dockerfile: Dockerfile
     container_name: rocq-agent-toolkit-db
+    restart: unless-stopped
     # external port can be removed : communication with in the network.
     ports:
       - "${DB_PORT:-5433}:5432"
@@ -30,12 +31,12 @@ services:
   #   networks:
   #     - rocq-agent-network
 
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: rocq-agent-toolkit-backend
+    restart: unless-stopped
     ports:
       # HOST:CONTAINER
       - "${BACKEND_PORT:-8010}:8000"
@@ -62,6 +63,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_DATA_API: ${NEXT_PUBLIC_DATA_API:-http://localhost:8010/api}
+    restart: unless-stopped
     container_name: rocq-agent-toolkit-frontend
     ports:
       - "${FRONTEND_PORT:-3005}:3005"
