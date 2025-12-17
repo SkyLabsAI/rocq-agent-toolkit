@@ -93,11 +93,7 @@ def proof_state(focused_goal_strings) -> ProofState:
 def test_proof_state_RocqGoal_raw_str(focused_goal_strings, proof_state) -> None:
     for i, focused_goal_string in enumerate(focused_goal_strings, start=1):
         focused_goal: RocqGoal = proof_state.goal(i, strict=True)
-        print(focused_goal.raw_str)
-        print("\n" + "#" * 50)
-        print(focused_goal_string)
-        print("~" * 50)
-        assert focused_goal.raw_str.endswith(focused_goal_string)
+        assert focused_goal.raw_str == focused_goal_string
 
 
 def test_BrickGoal_is_loop_goal1(proof_state) -> None:
