@@ -1,6 +1,4 @@
 import pytest
-from typing import TypeAlias
-
 from provenance_toolkit.util import FinalNamespaceMeta
 
 
@@ -20,5 +18,5 @@ def test_bad_FinalNamespaceMeta() -> None:
 
     with pytest.raises(ValueError) as exc_info:
         class Bad3(metaclass=FinalNamespaceMeta, derive_from={"Foo": type}):
-            Foo: TypeAlias = Foo
+            Foo: type = Foo
     assert "expected Bad3.Foo to have value type, but it is Foo" in str(exc_info.value)
