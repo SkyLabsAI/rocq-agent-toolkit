@@ -34,12 +34,10 @@ class WithVersionSignature(WithSignature, Protocol):
     @classmethod
     def cls_version(cls) -> Version:
         """Compute stable/unique signature of [cls]."""
-        print(f"!!! {cls}")
         return WithVersionSignature._VERSION(cls)
 
     def version(self) -> Version:
         """Compute the stable/unique signature of [self]; default to cls_signature()."""
-        print(f"!!! {self}")
         return self.cls_version()
 
     @override

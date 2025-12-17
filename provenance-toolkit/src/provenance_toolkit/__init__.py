@@ -13,7 +13,7 @@ from .meta import (
     MROTrackerMeta,
 )
 from .method_types import MethodTypes
-from .proto import WithProvenance, WithSignature, WithVersionSignature
+from .proto import Version, WithProvenance, WithSignature, WithVersionSignature
 
 
 class Signature(
@@ -45,6 +45,7 @@ __all__: list[str] = [
     "Signature",
     "Provenance",
     # meta/
+    "FinalNamespaceMeta",
     "MROTrackerMeta",
     "MROTrackerData",
     "MROTrackerDatum",
