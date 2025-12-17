@@ -73,6 +73,7 @@ def focused_goal_strings() -> list[str]:
         ),
     ]
 
+
 @pytest.fixture(scope="module")
 def proof_state(focused_goal_strings) -> ProofState:
     """Parses the main example string and returns the ProofState object."""
