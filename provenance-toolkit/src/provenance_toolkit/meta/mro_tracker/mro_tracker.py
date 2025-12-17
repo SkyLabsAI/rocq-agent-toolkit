@@ -114,9 +114,9 @@ class MROTrackerMeta(type):
                 b=base_tracking_data[base].all_tracked_methods,
             )
             for kind in MROTrackerDatum.mro_tracker_method_kinds():
-                all_tracked_methods_compute_extra[kind] |= (
-                    base_tracking_data[base].all_tracked_methods_compute_extra[kind]
-                )
+                all_tracked_methods_compute_extra[kind] |= base_tracking_data[
+                    base
+                ].all_tracked_methods_compute_extra[kind]
 
         # For all_tracked_methods: add missing attrs to methods present in namespace
         for base_tracking_datum in base_tracking_data.values():
@@ -182,24 +182,18 @@ class MROTrackerMeta(type):
 
                 match kind:
                     case "staticmethod":
-                        assert (
-                            MethodTypes.is_staticmethod(method)
-                            or (
-                                MethodTypes.is_property(method)
-                                and isinstance(method.fget, staticmethod)
-                            )
+                        assert MethodTypes.is_staticmethod(method) or (
+                            MethodTypes.is_property(method)
+                            and isinstance(method.fget, staticmethod)
                         ), f"MROTrackerMeta error: {method} is not a staticmethod"
                     case "classmethod":
                         assert MethodTypes.is_classmethod(method), (
                             f"MROTrackerMeta error: {method} is not a classmethod"
                         )
                     case "boundmethod":
-                        assert (
-                            MethodTypes.is_boundmethod(method)
-                            or (
-                                MethodTypes.is_property(method)
-                                and isinstance(method.fget, FunctionType)
-                            )
+                        assert MethodTypes.is_boundmethod(method) or (
+                            MethodTypes.is_property(method)
+                            and isinstance(method.fget, FunctionType)
                         ), f"MROTrackerMeta error: {method} is not a boundmethod"
                     case "property":
                         assert MethodTypes.is_property(method), (
@@ -373,12 +367,8 @@ class MROTrackerMeta(type):
         try:
             sig = inspect.signature(fn_raw)
             param_list = list(sig.parameters.values())
-            if (
-                MethodTypes.is_staticmethod(fn)
-                or (
-                    MethodTypes.is_property(fn)
-                    and isinstance(fn.fget, staticmethod)
-                )
+            if MethodTypes.is_staticmethod(fn) or (
+                MethodTypes.is_property(fn) and isinstance(fn.fget, staticmethod)
             ):
                 if len(param_list) != 0:
                     raise ValueError(

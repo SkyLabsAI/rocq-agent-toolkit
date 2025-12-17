@@ -6,7 +6,7 @@ import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
 from types import FunctionType
-from typing import Any, Literal, overload, reveal_type
+from typing import Any, Literal, overload
 
 from provenance_toolkit.method_types import MethodTypes
 
@@ -365,12 +365,17 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                         if isinstance(method.fget, FunctionType):
                             raw_boundmethod = method.fget
                         elif isinstance(method.fget, staticmethod):
-                            raise ValueError(f"MROTrackerDatum error: {method} is a static property")
+                            raise ValueError(
+                                f"MROTrackerDatum error: {method} is a static property"
+                            )
                         else:
-                            raise ValueError(f"MROTrackerDatum error: {method} is not bound or static property")
+                            raise ValueError(
+                                f"MROTrackerDatum error: {method} is not bound or static property"
+                            )
                     elif MethodTypes.is_boundmethod(method):
-                        assert not MethodTypes.is_staticmethod(method), \
+                        assert not MethodTypes.is_staticmethod(method), (
                             f"MROTrackerDatum error: expected boundmethod, but {method} is a staticmethod"
+                        )
                         raw_boundmethod = method
                     else:
                         raise ValueError(

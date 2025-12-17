@@ -12,7 +12,9 @@ def test_bad_FinalNamespaceMeta() -> None:
         class Bad1(metaclass=FinalNamespaceMeta, derive_from={}):
             pass
 
-    assert str(exc_info1.value) == "Bad1 should provide a non-empty list for derive_from"
+    assert (
+        str(exc_info1.value) == "Bad1 should provide a non-empty list for derive_from"
+    )
 
     with pytest.raises(AttributeError) as exc_info2:
 
