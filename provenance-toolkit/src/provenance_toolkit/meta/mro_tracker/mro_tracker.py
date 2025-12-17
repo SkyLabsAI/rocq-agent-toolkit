@@ -86,13 +86,11 @@ class MROTrackerMeta(type):
         """Perform transitive code tracking and mutate namespace as necessary."""
         all_tracked_methods: dict[str, dict[str, Any]] = {}
         all_tracked_methods_compute_extra: dict[
-            Literal["staticmethod", "classmethod", "boundmethod", "property"],
-            set[str]
+            Literal["staticmethod", "classmethod", "boundmethod", "property"], set[str]
         ] = {kind: set() for kind in MROTrackerDatum.mro_tracker_method_kinds()}
         tracked_methods: dict[str, dict[str, Any]] = {}
         tracked_methods_compute_extra: dict[
-            Literal["staticmethod", "classmethod", "boundmethod", "property"],
-            set[str]
+            Literal["staticmethod", "classmethod", "boundmethod", "property"], set[str]
         ] = {kind: set() for kind in MROTrackerDatum.mro_tracker_method_kinds()}
 
         attr_prefix = MROTrackerData.mro_tracker_attr_prefix()
@@ -121,15 +119,20 @@ class MROTrackerMeta(type):
                 )
 
         # For all_tracked_methods: add missing attrs to methods present in namespace
-        for base, base_tracking_datum in base_tracking_data.items():
-            for method_name, method_info in base_tracking_datum.all_tracked_methods.items():
+        for base_tracking_datum in base_tracking_data.values():
+            for (
+                method_name,
+                method_info,
+            ) in base_tracking_datum.all_tracked_methods.items():
                 if method_name not in namespace:
                     continue  # not actually in this class
 
                 method = namespace[method_name]
 
                 if not MethodTypes.is_method(method):
-                    raise ValueError(f"MROTrackerMeta error: {name}.{method_name} is not a method; {method}")
+                    raise ValueError(
+                        f"MROTrackerMeta error: {name}.{method_name} is not a method; {method}"
+                    )
 
                 for tracking_attr, value in method_info.items():
                     if hasattr(method, tracking_attr):
@@ -156,7 +159,9 @@ class MROTrackerMeta(type):
 
             tracking_attrs = MROTrackerDatum.mro_tracker_lookup_all(method)
 
-            if not hasattr(method, MROTrackerDatum.mro_tracker_namespaced_attr(attr="tracked")):
+            if not hasattr(
+                method, MROTrackerDatum.mro_tracker_namespaced_attr(attr="tracked")
+            ):
                 continue
 
             update_dict_of_containers(
@@ -169,26 +174,37 @@ class MROTrackerMeta(type):
             )
 
             for kind in MROTrackerDatum.mro_tracker_method_kinds():
-                if MROTrackerDatum.mro_tracker_namespaced_attr(attr=kind) not in tracking_attrs:
+                if (
+                    MROTrackerDatum.mro_tracker_namespaced_attr(attr=kind)
+                    not in tracking_attrs
+                ):
                     continue
 
                 match kind:
                     case "staticmethod":
                         assert (
                             MethodTypes.is_staticmethod(method)
-                            or MethodTypes.is_property(method) and MethodTypes.is_staticmethod(method.fget)
+                            or MethodTypes.is_property(method)
+                            and MethodTypes.is_staticmethod(method.fget)
                         ), f"MROTrackerMeta error: {method} is not a staticmethod"
                     case "classmethod":
-                        assert MethodTypes.is_classmethod(method), f"MROTrackerMeta error: {method} is not a classmethod"
+                        assert MethodTypes.is_classmethod(method), (
+                            f"MROTrackerMeta error: {method} is not a classmethod"
+                        )
                     case "boundmethod":
                         assert (
                             MethodTypes.is_boundmethod(method)
-                            or MethodTypes.is_property(method) and MethodTypes.is_boundmethod(method.fget)
+                            or MethodTypes.is_property(method)
+                            and MethodTypes.is_boundmethod(method.fget)
                         ), f"MROTrackerMeta error: {method} is not a boundmethod"
                     case "property":
-                        assert MethodTypes.is_property(method), f"MROTrackerMeta error: {method} is not a property"
+                        assert MethodTypes.is_property(method), (
+                            f"MROTrackerMeta error: {method} is not a property"
+                        )
                     case _:
-                        raise ValueError(f"MROTrackerMeta error: invalid method kind: {kind}")
+                        raise ValueError(
+                            f"MROTrackerMeta error: invalid method kind: {kind}"
+                        )
 
                 all_tracked_methods_compute_extra[kind].add(method_nm)
                 tracked_methods_compute_extra[kind].add(method_nm)
@@ -266,22 +282,34 @@ class MROTrackerMeta(type):
     ) -> MethodTypes.METHOD[O, P, T]:
         """Decorator: register fn/property so it is tracked."""
         tracking_attrs: set[str]
-        assert MethodTypes.is_method(fn), f"MROTrackerMeta.register: {fn} is not a method"
+        assert MethodTypes.is_method(fn), (
+            f"MROTrackerMeta.register: {fn} is not a method"
+        )
 
         if MethodTypes.is_staticmethod(fn):
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()["staticmethod"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()[
+                "staticmethod"
+            ]
         elif MethodTypes.is_classmethod(fn):
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()["classmethod"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()[
+                "classmethod"
+            ]
         elif MethodTypes.is_boundmethod(fn):
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()["boundmethod"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()[
+                "boundmethod"
+            ]
         elif MethodTypes.is_property(fn):
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()["property"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()[
+                "property"
+            ]
             if MethodTypes.is_staticmethod(fn.fget):
                 tracking_attrs.add("staticmethod")
             elif MethodTypes.is_boundmethod(fn.fget):
                 tracking_attrs.add("boundmethod")
             else:
-                raise RuntimeError(f"MROTrackerMeta.register: {fn} is not a static/bound property")
+                raise RuntimeError(
+                    f"MROTrackerMeta.register: {fn} is not a static/bound property"
+                )
         else:
             raise RuntimeError(f"{fn} is not a static/class/bound method")
 
@@ -298,22 +326,32 @@ class MROTrackerMeta(type):
 
         if MethodTypes.is_staticmethod(fn):
             fn_raw = fn.__func__
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(compute_extra=True)["staticmethod"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(
+                compute_extra=True
+            )["staticmethod"]
         elif MethodTypes.is_classmethod(fn):
             fn_raw = fn.__func__
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(compute_extra=True)["classmethod"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(
+                compute_extra=True
+            )["classmethod"]
         elif MethodTypes.is_boundmethod(fn):
             fn_raw = fn
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(compute_extra=True)["boundmethod"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(
+                compute_extra=True
+            )["boundmethod"]
         elif MethodTypes.is_property(fn):
             fn_raw = fn.fget
-            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(compute_extra=True)["property"]
+            tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs(
+                compute_extra=True
+            )["property"]
             if MethodTypes.is_staticmethod(fn_raw):
                 tracking_attrs.add("staticmethod")
             elif MethodTypes.is_boundmethod(fn_raw):
                 tracking_attrs.add("boundmethod")
             else:
-                raise RuntimeError(f"MROTrackerMeta.compute: {fn} is not a static/bound property")
+                raise RuntimeError(
+                    f"MROTrackerMeta.compute: {fn} is not a static/bound property"
+                )
         else:
             raise RuntimeError(f"{fn} is not a static/class/bound method")
 
@@ -321,7 +359,11 @@ class MROTrackerMeta(type):
         try:
             sig = inspect.signature(fn_raw)
             param_list = list(sig.parameters.values())
-            if MethodTypes.is_staticmethod(fn) or MethodTypes.is_property(fn) and MethodTypes.is_staticmethod(fn_raw):
+            if (
+                MethodTypes.is_staticmethod(fn)
+                or MethodTypes.is_property(fn)
+                and MethodTypes.is_staticmethod(fn_raw)
+            ):
                 if len(param_list) != 0:
                     raise ValueError(
                         f"@MROTrackerMeta.compute requires a 0-arg "

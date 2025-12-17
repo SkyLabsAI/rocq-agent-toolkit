@@ -1,4 +1,5 @@
 """Metaclass for building namespaces that expose types+utilities but can't be derived."""
+
 from __future__ import annotations
 
 from typing import Any

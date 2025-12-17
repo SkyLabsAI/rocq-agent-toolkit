@@ -44,6 +44,7 @@ def test_A() -> None:
     assert A.cls_signature() == A.cls_version()
     assert A().signature() == A().version()
 
+
 def test_B() -> None:
     assert B.cls_version() == Version.parse("0.1.0")
     assert B.cls_signature() == f"{B.cls_version()}-{B.STATIC_DATA}"

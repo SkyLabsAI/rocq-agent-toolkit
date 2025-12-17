@@ -8,8 +8,8 @@ from typing import TypeAlias
 
 from .meta import (
     FinalNamespaceMeta,
-    MROTrackerDatum,
     MROTrackerData,
+    MROTrackerDatum,
     MROTrackerMeta,
 )
 from .method_types import MethodTypes

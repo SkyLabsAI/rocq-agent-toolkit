@@ -57,8 +57,8 @@ class MethodTypes:
             #
             # cf. https://docs.python.org/3/library/typing.html#typing.Annotated
             Callable[[type[O]], T],
-        ] |
-        Annotated[
+        ]
+        | Annotated[
             Callable[[O], T],
             FunctionType,
             # Note: we repeat `Callable[...]` because we want to use it for
@@ -151,7 +151,9 @@ class MethodTypes:
         cls: type[O] | None = None,
     ) -> TypeIs[METHOD[O, P, T]]:
         """Check if maybe_fn is a method."""
-        if not isinstance(maybe_fn, (staticmethod, classmethod, FunctionType, property)):
+        if not isinstance(
+            maybe_fn, (staticmethod, classmethod, FunctionType, property)
+        ):
             return False
 
         def __log_skip_check_return_true(msg: str) -> bool:
