@@ -1,10 +1,12 @@
-"""Data types & utilities used by mro_tracker.py for tracking inheritance hierarchy information."""
+"""Types & utils used by mro_tracker.py for tracking inheritance hierarchy information."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from types import FunctionType
 from typing import Any, Literal, overload
 
@@ -242,6 +244,21 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
         kw_only=True, default=None
     )
 
+    def checksum(self) -> str:
+        """Compute a stable checksum/hash of the MROTrackerDatum.
+
+        Returns an MD5 hash (hex string); this can be used as a pseudo-unique
+        primary key for object identity.
+        """
+        raw = asdict(self)
+        raw["cls"] = raw["cls"].__qualname__
+        raw["bases"] = [base.__qualname__ for base in raw["bases"]]
+
+        # Ensure deterministic serialization by sorting dict keys
+        raw_json = json.dumps(raw, sort_keys=True, ensure_ascii=False)
+        raw_bytes = raw_json.encode("utf-8")
+        return hashlib.md5(raw_bytes).hexdigest()
+
     @classmethod
     def build[X](
         cls: type[MROTrackerDatum[X]],
@@ -469,12 +486,22 @@ class MROTrackerData[T](MROTrackerDataMixin):
         kw_only=True, default_factory=dict
     )
 
-    @classmethod
-    def mro_tracker_datum_cls[X](
-        cls: type[MROTrackerData[X]],
-    ) -> type[MROTrackerDatum[X]]:
-        """The MROTrackerDatum type for the given class."""
-        return MROTrackerDatum[X]
+    def checksum(self) -> str:
+        """Compute a stable checksum/hash of the MROTrackerDatum.
+
+        Returns an MD5 hash (hex string); this can be used as a pseudo-unique
+        primary key for object identity.
+        """
+        # Note: elide self.self since we can't produce a stable checksum of this
+        raw = {
+            "cls": self.cls.__qualname__,
+            "data": {k: datum.checksum() for k, datum in self.data.items()},
+        }
+
+        # Ensure deterministic serialization by sorting dict keys
+        raw_json = json.dumps(raw, sort_keys=True, ensure_ascii=False)
+        raw_bytes = raw_json.encode("utf-8")
+        return hashlib.md5(raw_bytes).hexdigest()
 
     @classmethod
     def build[X](
@@ -508,6 +535,13 @@ class MROTrackerData[T](MROTrackerDataMixin):
                 for base, datum in self.data.items()
             },
         )
+
+    @classmethod
+    def mro_tracker_datum_cls[X](
+        cls: type[MROTrackerData[X]],
+    ) -> type[MROTrackerDatum[X]]:
+        """The MROTrackerDatum type for the given class."""
+        return MROTrackerDatum[X]
 
     def __post_init__(self) -> None:
         """Validate tracking data consistency."""
