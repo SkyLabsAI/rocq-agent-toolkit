@@ -105,7 +105,7 @@ class MROTrackerDataMixin:
         attr_ty: type[X],
         strict: Literal[True] = True,
     ) -> X:
-        """Lookup namespaced_attr(attr) in obj.__dict__, raising error on failure."""
+        """Lookup namespaced_attr(attr) in vars(obj), raising error on failure."""
 
     @classmethod
     @overload
@@ -117,7 +117,7 @@ class MROTrackerDataMixin:
         attr_ty: type[X] | None = None,
         strict: Literal[True] = True,
     ) -> X | None:
-        """Lookup namespaced_attr(attr) in obj.__dict__, returning the value if present."""
+        """Lookup namespaced_attr(attr) in vars(obj), returning the value if present."""
 
     @classmethod
     @overload
@@ -129,7 +129,7 @@ class MROTrackerDataMixin:
         attr_ty: type[X] | None = None,
         strict: bool | Literal[False],
     ) -> X | None:
-        """Lookup namespaced_attr(attr) in obj.__dict__, returning the value if present."""
+        """Lookup namespaced_attr(attr) in vars(obj), returning the value if present."""
 
     @classmethod
     def mro_tracker_lookup[X](
@@ -140,7 +140,7 @@ class MROTrackerDataMixin:
         attr_ty: type[X] | None = None,
         strict: bool | Literal[True] | Literal[False] = True,
     ) -> X | None:
-        """Lookup namespaced_attr(attr) in obj.__dict__, returning the value if present.
+        """Lookup namespaced_attr(attr) in vars(obj), returning the value if present.
 
         Returns:
           - Value of namespaced_attr(attr) for obj, if present
@@ -150,11 +150,16 @@ class MROTrackerDataMixin:
           - ValueError, if namespaced_attr(attr) is missing and strict=True.
           - TypeError, if getattr(obj, namespaced_attr(attr)) is ill-typed and strict=True.
         """
+        if hasattr(obj, "__dict__"):
+            obj_vars = vars(obj)
+        else:
+            obj_vars = {}
+
         attrs = cls.mro_tracker_lookup_all(obj=obj)
         attr = cls.mro_tracker_namespaced_attr(attr=attr)
 
         if attr not in attrs:
-            msg = f"MROTrackerDatum error: {obj.__qualname__} missing {attr}: {obj.__dict__.keys()}"
+            msg = f"MROTrackerDatum error: {obj.__qualname__} missing {attr}: {obj_vars.keys()}"
             if strict:
                 raise ValueError(msg)
             else:
@@ -181,11 +186,16 @@ class MROTrackerDataMixin:
     def mro_tracker_lookup_all(
         cls: type[MROTrackerDataMixin], obj: Any
     ) -> dict[str, Any]:
-        """Lookup all namespaced attributes in obj.__dict__."""
+        """Lookup all namespaced attributes in vars(obj)."""
+        if hasattr(obj, "__dict__"):
+            obj_vars = vars(obj)
+        else:
+            obj_vars = {}
+
         return {
             k: v
-            for k, v in obj.__dict__.items()
-            if k.startswith(cls.mro_tracker_attr_prefix)
+            for k, v in obj_vars.items()
+            if k.startswith(cls.mro_tracker_attr_prefix())
         }
 
 
@@ -251,7 +261,7 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
         for base in klass.__bases__:
             maybe_tracking = cls.mro_tracker_lookup(
                 obj=base,
-                attr_ty=MROTrackerDatum[T],
+                attr_ty=MROTrackerDatum,
                 strict=False,
             )
             if maybe_tracking is not None:
@@ -267,7 +277,7 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
         # 2. Accumulate locally tracked methods
         #
         # Note: adding/propagating attrs is handled mro_tracker.py#MROTracker.
-        for member_name, member_value in klass.__dict__.items():
+        for member_name, member_value in vars(klass).items():
             if not MethodTypes.is_method(member_value):
                 continue
 
@@ -287,7 +297,7 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
 
                 member_info = {
                     attr: value
-                    for attr, value in member_value.__dict__.items()
+                    for attr, value in vars(member_value).items()
                     if attr.startswith(cls.mro_tracker_attr_prefix())
                 }
                 all_tracked_methods = update_dict_of_containers(
@@ -416,18 +426,17 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                     f"MROTrackerDatum error: {value} != {tracked_value}"
                 )
 
-        assert (
-            self.all_tracked_methods_compute_extra.keys()
-            == self.mro_tracker_method_kinds()
+        assert self.all_tracked_methods_compute_extra.keys() == set(
+            self.mro_tracker_method_kinds()
         ), (
             f"MROTrackerDatum error: all_tracked_methods_compute_extra keys != METHOD_KINDS: "
-            f"{self.all_tracked_methods_compute_extra.keys() - self.mro_tracker_method_kinds()}"
+            f"{self.all_tracked_methods_compute_extra.keys()} vs. {self.mro_tracker_method_kinds()}"
         )
-        assert (
-            self.tracked_methods_compute_extra.keys() == self.mro_tracker_method_kinds()
+        assert self.tracked_methods_compute_extra.keys() == set(
+            self.mro_tracker_method_kinds()
         ), (
             f"MROTrackerDatum error: all_tracked_methods_compute_extra keys != METHOD_KINDS: "
-            f"{self.tracked_methods_compute_extra.keys() - self.mro_tracker_method_kinds()}"
+            f"{self.tracked_methods_compute_extra.keys()} vs. {self.mro_tracker_method_kinds()}"
         )
 
         for all_items, items in [

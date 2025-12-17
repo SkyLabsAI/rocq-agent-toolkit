@@ -68,7 +68,7 @@ class FinalNamespaceMeta(type):
         return type.__new__(mcs, name, bases, namespace, **kwargs)
 
     def __init__(
-        mcs: FinalNamespaceMeta,
+        self,
         name: str,
         bases: tuple[type, ...],
         namespace: dict[str, Any],
@@ -76,4 +76,4 @@ class FinalNamespaceMeta(type):
         derive_from: dict[str, type] | None = None,
         **kwargs: Any,
     ) -> None:
-        type.__init__(mcs, name, bases, namespace, **kwargs)
+        type.__init__(self, name, bases, namespace, **kwargs)

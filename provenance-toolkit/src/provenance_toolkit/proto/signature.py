@@ -1,24 +1,31 @@
 from __future__ import annotations
 
 import logging
-from abc import abstractmethod
-from typing import Any, ClassVar, Protocol, override, runtime_checkable
+from abc import ABCMeta, abstractmethod
+from typing import Any, ClassVar, override
 
 from semver import Version
+
+from ..meta.mro_tracker import MROTrackerMeta
 
 logger = logging.getLogger(__name__)
 
 
-@runtime_checkable
-class WithSignature(Protocol):
+class WithSignatureMeta(MROTrackerMeta, ABCMeta):
+    pass
+
+
+class WithSignature(metaclass=WithSignatureMeta):
     """Protocol for types that can produce stable/unique class & instance signatures."""
 
+    @MROTrackerMeta.compute
     @classmethod
     @abstractmethod
     def cls_signature(cls) -> str:
         """Compute stable/unique signature of [cls]."""
         raise NotImplementedError
 
+    @MROTrackerMeta.compute
     def signature(self) -> str:
         """Compute the stable/unique signature of [self]; default to cls_signature()."""
         return self.cls_signature()
@@ -27,15 +34,16 @@ class WithSignature(Protocol):
         return super().__init__(*args, **kwargs)
 
 
-@runtime_checkable
-class WithVersionSignature(WithSignature, Protocol):
+class WithVersionSignature(WithSignature):
     """Protocol for types that use version information for produce signatures."""
 
+    @MROTrackerMeta.compute
     @classmethod
     def cls_version(cls) -> Version:
         """Compute stable/unique signature of [cls]."""
         return WithVersionSignature._VERSION(cls)
 
+    @MROTrackerMeta.compute
     def version(self) -> Version:
         """Compute the stable/unique signature of [self]; default to cls_signature()."""
         return self.cls_version()

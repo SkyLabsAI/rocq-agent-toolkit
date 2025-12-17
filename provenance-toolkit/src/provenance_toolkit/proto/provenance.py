@@ -1,11 +1,10 @@
 from abc import abstractmethod
-from typing import Protocol, override, runtime_checkable
+from typing import override
 
 from .signature import WithSignature
 
 
-@runtime_checkable
-class WithProvenance[PROVENANCE: WithSignature](WithSignature, Protocol):
+class WithProvenance[PROVENANCE: WithSignature](WithSignature):
     @classmethod
     @abstractmethod
     def cls_provenance(cls) -> PROVENANCE:
