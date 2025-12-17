@@ -6,7 +6,7 @@ import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
 from types import FunctionType
-from typing import Any, Literal, overload
+from typing import Any, Literal, overload, reveal_type
 
 from provenance_toolkit.method_types import MethodTypes
 
@@ -215,7 +215,7 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
     """
 
     cls: type[T] = field(kw_only=True)
-    bases: list[type] = field(kw_only=True)
+    bases: tuple[type, ...] = field(kw_only=True)
     all_tracked_methods: dict[str, dict[str, Any]] = field(
         kw_only=True, default_factory=dict
     )
@@ -303,12 +303,12 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                     attr="compute_extra",
                 )
                 if maybe_compute_extra is not None:
-                    all_tracked_methods_compute_extra[kind] |= member_name
-                    tracked_methods_compute_extra[kind] |= member_name
+                    all_tracked_methods_compute_extra[kind].add(member_name)
+                    tracked_methods_compute_extra[kind].add(member_name)
 
         return cls(
             cls=klass,
-            bases=list(klass.__bases__),
+            bases=klass.__bases__,
             all_tracked_methods=all_tracked_methods,
             all_tracked_methods_compute_extra=all_tracked_methods_compute_extra,
             tracked_methods=tracked_methods,
@@ -361,11 +361,16 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                         f"MROTrackerDatum error: instance is None for boundmethod: {method_name}"
                     )
                     raw_boundmethod: MethodTypes.RAW_BOUNDMETHOD[T, [], Any]
-                    if MethodTypes.is_property(method) and isinstance(
-                        method.fget, FunctionType
-                    ):
-                        raw_boundmethod = method.fget
+                    if MethodTypes.is_property(method):
+                        if isinstance(method.fget, FunctionType):
+                            raw_boundmethod = method.fget
+                        elif isinstance(method.fget, staticmethod):
+                            raise ValueError(f"MROTrackerDatum error: {method} is a static property")
+                        else:
+                            raise ValueError(f"MROTrackerDatum error: {method} is not bound or static property")
                     elif MethodTypes.is_boundmethod(method):
+                        assert not MethodTypes.is_staticmethod(method), \
+                            f"MROTrackerDatum error: expected boundmethod, but {method} is a staticmethod"
                         raw_boundmethod = method
                     else:
                         raise ValueError(

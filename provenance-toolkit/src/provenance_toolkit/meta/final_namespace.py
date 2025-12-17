@@ -9,7 +9,7 @@ class FinalNamespaceMeta(type):
     def __new__(
         mcs: type[FinalNamespaceMeta],
         name: str,
-        bases: list[type],
+        bases: tuple[type, ...],
         namespace: dict[str, Any],
         *,
         derive_from: dict[str, type] | None = None,
@@ -70,7 +70,7 @@ class FinalNamespaceMeta(type):
     def __init__(
         mcs: FinalNamespaceMeta,
         name: str,
-        bases: list[type],
+        bases: tuple[type, ...],
         namespace: dict[str, Any],
         *,
         derive_from: dict[str, type] | None = None,
