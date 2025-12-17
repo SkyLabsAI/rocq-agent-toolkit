@@ -63,4 +63,6 @@ class WithVersionSignature(WithSignature, Protocol):
     def _VERSION(cls: type[WithVersionSignature]) -> Version:
         return WithVersionSignature.__WithVersionSignature_VERSIONS[cls]
 
-    __WithVersionSignature_VERSIONS: ClassVar[dict[type[WithVersionSignature], Version]] = {}
+    __WithVersionSignature_VERSIONS: ClassVar[
+        dict[type[WithVersionSignature], Version]
+    ] = {}

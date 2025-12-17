@@ -12,6 +12,7 @@ from provenance_toolkit.method_types import MethodTypes
 
 logger = logging.getLogger(__name__)
 
+
 def update_dict_of_containers[C: dict[str, dict[str, Any]]](a: C, b: C) -> C:
     """Update dict of containers (a) with the contents of another dict of containers (b)."""
     for k, v in b.items():
@@ -177,9 +178,15 @@ class MROTrackerDataMixin:
         return attr_value
 
     @classmethod
-    def mro_tracker_lookup_all(cls: type[MROTrackerDataMixin], obj: Any) -> dict[str, Any]:
+    def mro_tracker_lookup_all(
+        cls: type[MROTrackerDataMixin], obj: Any
+    ) -> dict[str, Any]:
         """Lookup all namespaced attributes in obj.__dict__."""
-        return {k: v for k, v in obj.__dict__.items() if k.startswith(cls.mro_tracker_attr_prefix)}
+        return {
+            k: v
+            for k, v in obj.__dict__.items()
+            if k.startswith(cls.mro_tracker_attr_prefix)
+        }
 
 
 @dataclass(frozen=True)
@@ -209,11 +216,21 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
 
     cls: type[T] = field(kw_only=True)
     bases: list[type] = field(kw_only=True)
-    all_tracked_methods: dict[str, dict[str, Any]] = field(kw_only=True, default_factory=dict)
-    all_tracked_methods_compute_extra: dict[str, set[str]] = field(kw_only=True, default_factory=dict)
-    tracked_methods: dict[str, dict[str, Any]] = field(kw_only=True, default_factory=dict)
-    tracked_methods_compute_extra: dict[str, set[str]] = field(kw_only=True, default_factory=dict)
-    tracked_methods_compute_extra_data: dict[str, Any] | None = field(kw_only=True, default=None)
+    all_tracked_methods: dict[str, dict[str, Any]] = field(
+        kw_only=True, default_factory=dict
+    )
+    all_tracked_methods_compute_extra: dict[str, set[str]] = field(
+        kw_only=True, default_factory=dict
+    )
+    tracked_methods: dict[str, dict[str, Any]] = field(
+        kw_only=True, default_factory=dict
+    )
+    tracked_methods_compute_extra: dict[str, set[str]] = field(
+        kw_only=True, default_factory=dict
+    )
+    tracked_methods_compute_extra_data: dict[str, Any] | None = field(
+        kw_only=True, default=None
+    )
 
     @classmethod
     def build[X](
@@ -254,7 +271,9 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
             if not MethodTypes.is_method(member_value):
                 continue
 
-            if not hasattr(member_value, cls.mro_tracker_namespaced_attr(attr="tracked")):
+            if not hasattr(
+                member_value, cls.mro_tracker_namespaced_attr(attr="tracked")
+            ):
                 continue
 
             matches: set[str] = set()
@@ -267,13 +286,12 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                 matches.add(kind)
 
                 member_info = {
-                        attr: value
-                        for attr, value in member_value.__dict__.items()
-                        if attr.startswith(cls.mro_tracker_attr_prefix())
+                    attr: value
+                    for attr, value in member_value.__dict__.items()
+                    if attr.startswith(cls.mro_tracker_attr_prefix())
                 }
                 all_tracked_methods = update_dict_of_containers(
-                    a=all_tracked_methods,
-                    b={member_name: member_info}
+                    a=all_tracked_methods, b={member_name: member_info}
                 )
                 tracked_methods = update_dict_of_containers(
                     a=tracked_methods,
@@ -281,7 +299,8 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                 )
 
                 maybe_compute_extra = MROTrackerDatum.mro_tracker_lookup(
-                    obj=member_value, attr="compute_extra",
+                    obj=member_value,
+                    attr="compute_extra",
                 )
                 if maybe_compute_extra is not None:
                     all_tracked_methods_compute_extra[kind] |= member_name
@@ -304,37 +323,61 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
             )
 
         tracked_methods_compute_extra_data: dict[str, Any] = {}
-        kinds = ["staticmethod", "classmethod"] + ([] if instance is None else ["boundmethod"])
+        kinds = ["staticmethod", "classmethod"] + (
+            [] if instance is None else ["boundmethod"]
+        )
         for kind in kinds:
             for method_name in self.tracked_methods_compute_extra[kind]:
                 method: MethodTypes.METHOD[T, [], Any] = getattr(self.cls, method_name)
-                assert MethodTypes.is_method(method), f"MROTrackerDatum error: {method} is not a method"
+                assert MethodTypes.is_method(method), (
+                    f"MROTrackerDatum error: {method} is not a method"
+                )
 
                 if kind == "staticmethod":
                     raw_staticmethod: MethodTypes.RAW_STATICMETHOD[[], Any]
-                    if MethodTypes.is_property(method) and isinstance(method.fget, staticmethod):
+                    if MethodTypes.is_property(method) and isinstance(
+                        method.fget, staticmethod
+                    ):
                         raw_staticmethod = method.fget.__func__
                     elif MethodTypes.is_staticmethod(method):
                         raw_staticmethod = method.__func__
                     else:
-                        raise ValueError(f"MROTrackerDatum error: {method} is not a staticmethod")
+                        raise ValueError(
+                            f"MROTrackerDatum error: {method} is not a staticmethod"
+                        )
                     tracked_methods_compute_extra_data[method_name] = raw_staticmethod()
                 elif kind == "classmethod":
-                    assert MethodTypes.is_classmethod(method), f"MROTrackerDatum error: {method} is not a classmethod"
-                    raw_classmethod: MethodTypes.RAW_CLASSMETHOD[T, [], Any] = method.__func__
-                    tracked_methods_compute_extra_data[method_name] = raw_classmethod(self.cls)
+                    assert MethodTypes.is_classmethod(method), (
+                        f"MROTrackerDatum error: {method} is not a classmethod"
+                    )
+                    raw_classmethod: MethodTypes.RAW_CLASSMETHOD[T, [], Any] = (
+                        method.__func__
+                    )
+                    tracked_methods_compute_extra_data[method_name] = raw_classmethod(
+                        self.cls
+                    )
                 elif kind == "boundmethod":
-                    assert instance is not None, f"MROTrackerDatum error: instance is None for boundmethod: {method_name}"
+                    assert instance is not None, (
+                        f"MROTrackerDatum error: instance is None for boundmethod: {method_name}"
+                    )
                     raw_boundmethod: MethodTypes.RAW_BOUNDMETHOD[T, [], Any]
-                    if MethodTypes.is_property(method) and isinstance(method.fget, FunctionType):
+                    if MethodTypes.is_property(method) and isinstance(
+                        method.fget, FunctionType
+                    ):
                         raw_boundmethod = method.fget
                     elif MethodTypes.is_boundmethod(method):
                         raw_boundmethod = method
                     else:
-                        raise ValueError(f"MROTrackerDatum error: {method} is not a boundmethod")
-                    tracked_methods_compute_extra_data[method_name] = raw_boundmethod(instance)
+                        raise ValueError(
+                            f"MROTrackerDatum error: {method} is not a boundmethod"
+                        )
+                    tracked_methods_compute_extra_data[method_name] = raw_boundmethod(
+                        instance
+                    )
                 else:
-                    raise ValueError(f"MROTrackerDatum error: invalid method kind: {kind}")
+                    raise ValueError(
+                        f"MROTrackerDatum error: invalid method kind: {kind}"
+                    )
 
         return self.__class__(
             cls=self.cls,
@@ -363,11 +406,16 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                     f"MROTrackerDatum error: {value} != {tracked_value}"
                 )
 
-        assert self.all_tracked_methods_compute_extra.keys() == self.mro_tracker_method_kinds(), (
+        assert (
+            self.all_tracked_methods_compute_extra.keys()
+            == self.mro_tracker_method_kinds()
+        ), (
             f"MROTrackerDatum error: all_tracked_methods_compute_extra keys != METHOD_KINDS: "
             f"{self.all_tracked_methods_compute_extra.keys() - self.mro_tracker_method_kinds()}"
         )
-        assert self.tracked_methods_compute_extra.keys() == self.mro_tracker_method_kinds(), (
+        assert (
+            self.tracked_methods_compute_extra.keys() == self.mro_tracker_method_kinds()
+        ), (
             f"MROTrackerDatum error: all_tracked_methods_compute_extra keys != METHOD_KINDS: "
             f"{self.tracked_methods_compute_extra.keys() - self.mro_tracker_method_kinds()}"
         )
@@ -398,7 +446,9 @@ class MROTrackerData[T](MROTrackerDataMixin):
 
     cls: type[T] = field(kw_only=True)
     self: T | None = field(kw_only=True, default=None)
-    data: dict[type[Any], MROTrackerDatum[Any]] = field(kw_only=True, default_factory=dict)
+    data: dict[type[Any], MROTrackerDatum[Any]] = field(
+        kw_only=True, default_factory=dict
+    )
 
     @classmethod
     def mro_tracker_datum_cls[X](
@@ -434,13 +484,18 @@ class MROTrackerData[T](MROTrackerDataMixin):
         return self.__class__(
             cls=self.cls,
             self=self.self,
-            data={base: datum.compute_extra(instance=self.self) for base, datum in self.data.items()},
+            data={
+                base: datum.compute_extra(instance=self.self)
+                for base, datum in self.data.items()
+            },
         )
 
     def __post_init__(self) -> None:
         """Validate tracking data consistency."""
         assert self.cls is not None, "MROTrackerData error: cls is None"
-        assert self.data[self.cls] is not None, "MROTrackerData error: data[self.cls] is None"
+        assert self.data[self.cls] is not None, (
+            "MROTrackerData error: data[self.cls] is None"
+        )
         assert self.data[self.cls].cls == self.cls, (
             "MROTrackerData error: data[self.cls].cls != self.cls:"
             f"{self.data[self.cls].cls} != {self.cls}"
@@ -453,5 +508,6 @@ class MROTrackerData[T](MROTrackerDataMixin):
             )
 
         for base in self.cls.mro():
-            assert base in self.data, \
+            assert base in self.data, (
                 f"MROTrackerData error: {base} not in data: {self.data.keys()}"
+            )
