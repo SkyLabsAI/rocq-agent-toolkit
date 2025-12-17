@@ -42,7 +42,7 @@ class RocqGoalParts:
 
         separator = "=" * 28
 
-        return f"{header}\n\n{hypotheses}\n{separator}\n"
+        return f"{header}\n\n{hypotheses}\n{separator}\n{self.rocq_concl}"
 
     def wellformed(self) -> bool:
         # NOTE: Rocq goals must have a conclusion; a goal of "True" or
