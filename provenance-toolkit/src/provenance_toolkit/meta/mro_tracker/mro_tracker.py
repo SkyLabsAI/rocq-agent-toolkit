@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+from abc import ABCMeta
 from types import FunctionType
 from typing import Any, cast, final, overload
 
@@ -20,7 +21,7 @@ from .mro_tracker_data import MROTrackerData, MROTrackerDatum, update_dict_of_co
 logger = logging.getLogger(__name__)
 
 
-class MROTrackerMeta(type):
+class MROTrackerMeta(ABCMeta):
     """Extensible tracking of inheritance hierarchies, including selected methods & computed data.
 
     By default, only class/base information is tracked; method/property tracking is opted into
@@ -33,7 +34,7 @@ class MROTrackerMeta(type):
 
     Extensible decorators are exposed to allow derivers to customize the behavior of the framework.
     The following decorators are exposed by default:
-    - @MROTrackerMeta.register: mark a method or property as tracked
+    - @MROTrackerMeta.track: mark a method or property as tracked
     - @MROTrackerMeta.compute: mark a no-argument method or property as computing extra data
 
     Public API
@@ -222,33 +223,33 @@ class MROTrackerMeta(type):
     # same number of type parameters as MethodTypes.METHOD[O, P, T]
     @staticmethod  # type: ignore[no-overload-impl]
     @overload
-    def register[**P, T](
+    def track[**P, T](
         fn: MethodTypes.STATICMETHOD[P, T],
     ) -> MethodTypes.STATICMETHOD[P, T]:
-        """Decorator: register staticmethod fn so it is tracked."""
+        """Decorator: track staticmethod fn so it is tracked."""
 
     @staticmethod
     @overload
-    def register[O, **P, T](
+    def track[O, **P, T](
         fn: MethodTypes.CLASSMETHOD[O, P, T],
     ) -> MethodTypes.CLASSMETHOD[O, P, T]:
-        """Decorator: register classmethod fn so it is tracked."""
+        """Decorator: track classmethod fn so it is tracked."""
 
     @staticmethod
     @overload
-    def register[O, **P, T](
+    def track[O, **P, T](
         fn: MethodTypes.BOUNDMETHOD[O, P, T],
     ) -> MethodTypes.BOUNDMETHOD[O, P, T]:
-        """Decorator: register bound method fn so it is tracked."""
+        """Decorator: track bound method fn so it is tracked."""
 
     # Note: mypy gets confused since MethodTypes.PROPERTY doesn't take the
     # same number of type parameters as MethodTypes.METHOD[O, P, T]
     @staticmethod  # type: ignore[no-overload-impl]
     @overload
-    def register(
+    def track(
         fn: MethodTypes.PROPERTY,
     ) -> MethodTypes.PROPERTY:
-        """Decorator: register property so it is tracked."""
+        """Decorator: track property so it is tracked."""
 
     # Note: mypy gets confused since MethodTypes.PROPERTY doesn't take the
     # same number of type parameters as MethodTypes.METHOD[O, P, T]
@@ -257,21 +258,21 @@ class MROTrackerMeta(type):
     def compute[T](
         fn: MethodTypes.STATICMETHOD[[], T],
     ) -> MethodTypes.STATICMETHOD[[], T]:
-        """Decorator: register + use staticmethod fn to compute extra data."""
+        """Decorator: track + use staticmethod fn to compute extra data."""
 
     @staticmethod
     @overload
     def compute[O, T](
         fn: MethodTypes.CLASSMETHOD[O, [], T],
     ) -> MethodTypes.CLASSMETHOD[O, [], T]:
-        """Decorator: register + use classmethod fn to compute extra data."""
+        """Decorator: track + use classmethod fn to compute extra data."""
 
     @staticmethod
     @overload
     def compute[O, T](
         fn: MethodTypes.BOUNDMETHOD[O, [], T],
     ) -> MethodTypes.BOUNDMETHOD[O, [], T]:
-        """Decorator: register + use bound method fn to compute extra data."""
+        """Decorator: track + use bound method fn to compute extra data."""
 
     # Note: mypy gets confused since MethodTypes.PROPERTY doesn't take the
     # same number of type parameters as MethodTypes.METHOD[O, P, T]
@@ -280,18 +281,16 @@ class MROTrackerMeta(type):
     def compute(
         fn: MethodTypes.PROPERTY,
     ) -> MethodTypes.PROPERTY:
-        """Decorator: register + use property to compute extra data."""
+        """Decorator: track + use property to compute extra data."""
 
     @final  # type: ignore[no-redef]
     @staticmethod
-    def register[O, **P, T](
+    def track[O, **P, T](
         fn: MethodTypes.METHOD[O, P, T],
     ) -> MethodTypes.METHOD[O, P, T]:
-        """Decorator: register fn/property so it is tracked."""
+        """Decorator: track fn/property so it is tracked."""
         tracking_attrs: set[str]
-        assert MethodTypes.is_method(fn), (
-            f"MROTrackerMeta.register: {fn} is not a method"
-        )
+        assert MethodTypes.is_method(fn), f"MROTrackerMeta.track: {fn} is not a method"
 
         if MethodTypes.is_staticmethod(fn):
             tracking_attrs = MROTrackerDatum.mro_tracker_method_kind_to_attrs()[
@@ -315,7 +314,7 @@ class MROTrackerMeta(type):
                 tracking_attrs.add("boundmethod")
             else:
                 raise RuntimeError(
-                    f"MROTrackerMeta.register: {fn} is not a static/bound property"
+                    f"MROTrackerMeta.track: {fn} is not a static/bound property"
                 )
         else:
             raise RuntimeError(f"{fn} is not a static/class/bound method")
@@ -327,7 +326,7 @@ class MROTrackerMeta(type):
     def compute[O, T](
         fn: MethodTypes.METHOD[O, [], T],
     ) -> MethodTypes.METHOD[O, [], T]:
-        """Decorator: register + use fn/property to compute extra data."""
+        """Decorator: track + use fn/property to compute extra data."""
         tracking_attrs: set[str]
         fn_raw: MethodTypes.RAW_METHOD[O, [], T]
 
