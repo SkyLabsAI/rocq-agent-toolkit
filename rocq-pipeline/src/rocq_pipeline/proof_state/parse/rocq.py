@@ -71,6 +71,7 @@ def into_RocqGoalParts(
         print(f"Warning (unknown Rocq goal content): {unknown}")
 
     return RocqGoalParts(
+        rocq_goal_raw=goal,
         rocq_goal_id=rocq_goal_id,
         rocq_rel_goal_num=rocq_rel_goal_num,
         rocq_shelved_cnt=rocq_shelved_cnt,
