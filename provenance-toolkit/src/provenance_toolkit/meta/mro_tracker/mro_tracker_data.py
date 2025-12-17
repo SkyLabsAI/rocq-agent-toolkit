@@ -15,8 +15,8 @@ from provenance_toolkit.method_types import MethodTypes
 logger = logging.getLogger(__name__)
 
 
-def update_dict_of_containers[C: dict[str, dict[str, Any]]](a: C, b: C) -> C:
-    """Update dict of containers (a) with the contents of another dict of containers (b)."""
+def update_dict_of_dict[C: dict[str, dict[str, Any]]](a: C, b: C) -> C:
+    """Update dict-of-dict (a) with the contents of another dict-of-dict (b)."""
     for k, v in b.items():
         if k in a:
             a[k].update(v)
@@ -26,7 +26,7 @@ def update_dict_of_containers[C: dict[str, dict[str, Any]]](a: C, b: C) -> C:
 
 
 class MROTrackerDataMixin:
-    """Mixin: utilities for working with tracking attributes in MROTrackerDatum & MROTrackerData."""
+    """Mixin: utils for MROTrackerDatum & MROTrackerData."""
 
     @classmethod
     def mro_tracker_attr_prefix(
@@ -150,7 +150,8 @@ class MROTrackerDataMixin:
 
         Raises:
           - ValueError, if namespaced_attr(attr) is missing and strict=True.
-          - TypeError, if getattr(obj, namespaced_attr(attr)) is ill-typed and strict=True.
+          - TypeError, if getattr(obj, namespaced_attr(attr)) is ill-typed
+            and strict=True.
         """
         if hasattr(obj, "__dict__"):
             obj_vars = vars(obj)
@@ -161,7 +162,10 @@ class MROTrackerDataMixin:
         attr = cls.mro_tracker_namespaced_attr(attr=attr)
 
         if attr not in attrs:
-            msg = f"MROTrackerDatum error: {obj.__qualname__} missing {attr}: {obj_vars.keys()}"
+            msg = (
+                "MROTrackerDatum error: "
+                f"{obj.__qualname__} missing {attr}: {obj_vars.keys()}"
+            )
             if strict:
                 raise ValueError(msg)
             else:
@@ -215,15 +219,15 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
         - transitively defined method/property tracking information:
           - all_tracked_methods: all methods defined and tracked
           - all_tracked_properties: all properties defined and tracked
-          - all_tracked_methods_compute_extra: map from method kind to sets of method/property names
-            that compute extra data
+          - all_tracked_methods_compute_extra: map from method kind to sets of
+            method/property names that compute extra data
         - locally defined method/property tracking information:
-          - tracked_methods: the methods that are tracked; map from method names to tracking attr
-            KV pairs
-          - tracked_properties: the properties that are tracked; map from property names to tracking
-            attr KV pairs
-          - tracked_methods_compute_extra: map from method kind to sets of method/property names
-            that compute extra data
+          - tracked_methods: the methods that are tracked; map from method names
+            to tracking attr KV pairs
+          - tracked_properties: the properties that are tracked; map from property
+            names to tracking attr KV pairs
+          - tracked_methods_compute_extra: map from method kind to sets of
+            method/property names that compute extra data
     """
 
     cls: type[T] = field(kw_only=True)
@@ -282,7 +286,7 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                 strict=False,
             )
             if maybe_tracking is not None:
-                all_tracked_methods = update_dict_of_containers(
+                all_tracked_methods = update_dict_of_dict(
                     a=all_tracked_methods,
                     b=maybe_tracking.all_tracked_methods,
                 )
@@ -317,10 +321,10 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                     for attr, value in vars(member_value).items()
                     if attr.startswith(cls.mro_tracker_attr_prefix())
                 }
-                all_tracked_methods = update_dict_of_containers(
+                all_tracked_methods = update_dict_of_dict(
                     a=all_tracked_methods, b={member_name: member_info}
                 )
-                tracked_methods = update_dict_of_containers(
+                tracked_methods = update_dict_of_dict(
                     a=tracked_methods,
                     b={member_name: member_info},
                 )
@@ -343,10 +347,11 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
         )
 
     def compute_extra(self, instance: T | None = None) -> MROTrackerDatum[T]:
-        """Run the locally defined methods that compute extra data and return a new MROTrackerDatum with the computed data."""
+        """Return a new MROTrackerDatum with dynamically computed data."""
         if instance is not None:
             assert issubclass(type(instance), self.cls), (
-                f"MROTrackerDatum error: instance is not a subclass of cls: {type(instance)} is not a subclass of {self.cls}"
+                "MROTrackerDatum error: instance is not a subclass of cls:"
+                f"{type(instance)} is not a subclass of {self.cls}"
             )
 
         tracked_methods_compute_extra_data: dict[str, Any] = {}
@@ -385,7 +390,8 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                     )
                 elif kind == "boundmethod":
                     assert instance is not None, (
-                        f"MROTrackerDatum error: instance is None for boundmethod: {method_name}"
+                        "MROTrackerDatum error: instance is None for boundmethod: "
+                        f"{method_name}"
                     )
                     raw_boundmethod: MethodTypes.RAW_BOUNDMETHOD[T, [], Any]
                     if MethodTypes.is_property(method):
@@ -397,11 +403,13 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
                             )
                         else:
                             raise ValueError(
-                                f"MROTrackerDatum error: {method} is not bound or static property"
+                                "MROTrackerDatum error: "
+                                f"{method} is not bound or static property"
                             )
                     elif MethodTypes.is_boundmethod(method):
                         assert not MethodTypes.is_staticmethod(method), (
-                            f"MROTrackerDatum error: expected boundmethod, but {method} is a staticmethod"
+                            "MROTrackerDatum error: expected boundmethod, but "
+                            f"{method} is a staticmethod"
                         )
                         raw_boundmethod = method
                     else:
@@ -429,7 +437,8 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
     def __post_init__(self) -> None:
         """Validate tracking data consistency."""
         assert self.tracked_methods.keys() <= self.all_tracked_methods.keys(), (
-            f"MROTrackerDatum error: {self.tracked_methods.keys()} not tracked transitively: "
+            "MROTrackerDatum error: "
+            f" {self.tracked_methods.keys()} not tracked transitively: "
             f"{self.tracked_methods.keys() - self.all_tracked_methods.keys()}"
         )
         for method_name, method_info in self.tracked_methods.items():
@@ -446,14 +455,18 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
         assert self.all_tracked_methods_compute_extra.keys() == set(
             self.mro_tracker_method_kinds()
         ), (
-            f"MROTrackerDatum error: all_tracked_methods_compute_extra keys != METHOD_KINDS: "
-            f"{self.all_tracked_methods_compute_extra.keys()} vs. {self.mro_tracker_method_kinds()}"
+            "MROTrackerDatum error: "
+            "all_tracked_methods_compute_extra keys != METHOD_KINDS: "
+            f"{self.all_tracked_methods_compute_extra.keys()} vs. "
+            f"{self.mro_tracker_method_kinds()}"
         )
         assert self.tracked_methods_compute_extra.keys() == set(
             self.mro_tracker_method_kinds()
         ), (
-            f"MROTrackerDatum error: all_tracked_methods_compute_extra keys != METHOD_KINDS: "
-            f"{self.tracked_methods_compute_extra.keys()} vs. {self.mro_tracker_method_kinds()}"
+            "MROTrackerDatum error: "
+            "all_tracked_methods_compute_extra keys != METHOD_KINDS: "
+            f"{self.tracked_methods_compute_extra.keys()} vs. "
+            f"{self.mro_tracker_method_kinds()}"
         )
 
         for all_items, items in [
@@ -475,9 +488,9 @@ class MROTrackerDatum[T](MROTrackerDataMixin):
 class MROTrackerData[T](MROTrackerDataMixin):
     """Full inheritance hierarchy information for a class or instance.
 
-    This dataclass stores information about the inheritance hierarchy of a class or instance.
-    It's used internally by the framework to track method registration across the inheritance
-    hierarchy.
+    This dataclass stores information about the inheritance hierarchy of a class or
+    instance. It's used internally by the framework to track method registration
+    across the inheritance hierarchy.
     """
 
     cls: type[T] = field(kw_only=True)
@@ -526,7 +539,7 @@ class MROTrackerData[T](MROTrackerDataMixin):
         return cls(cls=klass, self=self, data=data)
 
     def compute_extra(self) -> MROTrackerData[T]:
-        """Run the locally defined methods that compute extra data and return a new MROTrackerData with the computed data."""
+        """Return a new MROTrackerData with dynamically computed data."""
         return self.__class__(
             cls=self.cls,
             self=self.self,
