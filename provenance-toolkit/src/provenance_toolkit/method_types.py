@@ -260,7 +260,9 @@ class MethodWrapper[O, **P, T]:
 
         # Initialize instance attributes with proper types
         self._inst: Any = None
-        self._owner: type[Any] | None = None
+        self._owner: type[Any] | None = (
+            None  # Cached owner class (set on first __get__ call with owner)
+        )
         self._descriptor_type: (
             type[staticmethod] | type[classmethod] | type[property] | None
         ) = None
@@ -497,15 +499,19 @@ class MethodWrapper[O, **P, T]:
             The wrapped method, preserving the original descriptor type
         """
         self._inst = inst
-        self._owner = owner
+        # Cache the owner if we don't have one yet (for later use when owner=None)
+        if self._owner is None and owner is not None:
+            self._owner = owner
         self._is_free_fn = False
 
         # If we don't have a descriptor type yet, check if we're wrapped by one
         # This handles the case where wrap_method is applied before @staticmethod/@classmethod/@property
         assert self._fn is not None, "fn is not set"
         fn_to_wrap: MethodTypes.RAW_METHOD[O, P, T]
-        if owner is not None:
-            self._detect_wrapped_descriptor(owner)
+        # Use the current owner if provided, otherwise fall back to cached owner
+        owner_to_use = owner if owner is not None else self._owner
+        if owner_to_use is not None:
+            self._detect_wrapped_descriptor(owner_to_use)
 
         # Get the underlying function to wrap
         if self._descriptor_type is staticmethod:
@@ -544,9 +550,9 @@ class MethodWrapper[O, **P, T]:
         # Phase 2: Reconstruct the descriptor from the wrapped function
         final_descriptor: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T]
         if self._descriptor_type is staticmethod:
-            final_descriptor = staticmethod(
-                cast(MethodTypes.RAW_STATICMETHOD[P, T], wrapped_fn)
-            )
+            # For staticmethod, always return the wrapped function directly.
+            # staticmethod.__get__ always returns the underlying function, not the staticmethod object.
+            final_descriptor = cast(MethodTypes.RAW_STATICMETHOD[P, T], wrapped_fn)
         elif self._descriptor_type is classmethod:
             cm: MethodTypes.CLASSMETHOD[O, P, T] = classmethod(
                 cast(MethodTypes.RAW_CLASSMETHOD[O, P, T], wrapped_fn)
@@ -644,158 +650,213 @@ class MethodWrapper[O, **P, T]:
         # For staticmethod or other cases, delegate to __get__ with no instance/owner
         # This will return the final descriptor (or wrapped function for free functions),
         # and then we call that.
+        # If descriptor type is not set, try to use cached owner to detect it
+        if self._descriptor_type is None:
+            if self._owner is not None:
+                self._detect_wrapped_descriptor(self._owner)
+            elif self._fn is not None:
+                # If we don't have a cached owner, check if the function's __qualname__
+                # suggests it's a method (has a dot). If so, assume it's a staticmethod
+                # and treat it as such. This handles the case where @staticmethod is
+                # applied after @MethodDecorator.wrap and we're called before __get__
+                # is ever called with an owner.
+                qualname = getattr(self._fn, "__qualname__", None)
+                if qualname and "." in qualname and not qualname.endswith(".<locals>"):
+                    logger.debug(
+                        f"Qualname suggests it's a method: {qualname}, setting descriptor type to staticmethod"
+                    )
+                    # Looks like a method, assume it's a staticmethod
+                    self._set_descriptor_type(staticmethod)
+
         final_descriptor = self.__get__(None, None)
         return final_descriptor(*args, **kwargs)
 
 
-@overload
-def wrap_method[O, **P, T](
-    fn: None = None,
-    *,
-    wrapper_fn: WrapperFunc[O, P, T] | None = None,
-    attribute_setter: AttributeSetter[O, P, T] | None = None,
-    wrapper_fn_args: tuple[Any, ...] | None = None,
-    wrapper_fn_kwargs: dict[str, Any] | None = None,
-    raw: Literal[True],
-) -> Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]:
-    """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
+class MethodDecorator:
+    """Base class for method decorators that use wrap_method functionality."""
 
+    @overload
+    @staticmethod
+    def wrap[O, **P, T](
+        fn: None = None,
+        *,
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+        raw: Literal[True],
+    ) -> Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]:
+        """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
 
-@overload
-def wrap_method[O, **P, T](
-    fn: None = None,
-    *,
-    wrapper_fn: WrapperFunc[O, P, T] | None = None,
-    attribute_setter: AttributeSetter[O, P, T] | None = None,
-    wrapper_fn_args: tuple[Any, ...] | None = None,
-    wrapper_fn_kwargs: dict[str, Any] | None = None,
-    raw: Literal[False] = False,
-) -> Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]:
-    """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
+    @overload
+    @staticmethod
+    def wrap[O, **P, T](
+        fn: None = None,
+        *,
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+        raw: Literal[False] = False,
+    ) -> Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]:
+        """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
 
+    @overload
+    @staticmethod
+    def wrap[O, **P, T](
+        fn: None = None,
+        *,
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+        raw: bool = False,
+    ) -> (
+        Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]
+        | Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]
+    ):
+        """Overload: Decorator factory with wrapper_fn when raw is a general bool."""
 
-# Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
-# MethodTypes.METHOD in the overloads, so we need to use type; pyright
-# successfully typechecks these overloads.
-@overload
-def wrap_method[O, **P, T](  # type: ignore[overload-overlap]
-    fn: MethodTypes.RAW_METHOD[O, P, T],
-    *,
-    wrapper_fn: WrapperFunc[O, P, T] | None = None,
-    attribute_setter: AttributeSetter[O, P, T] | None = None,
-    wrapper_fn_args: tuple[Any, ...] | None = None,
-    wrapper_fn_kwargs: dict[str, Any] | None = None,
-    raw: Literal[True],
-) -> MethodWrapper[O, P, T]:
-    """Overload: Direct call with function and optional keyword arguments."""
+    # Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
+    # MethodTypes.METHOD in the overloads, so we need to use type; pyright
+    # successfully typechecks these overloads.
+    @overload
+    @staticmethod
+    def wrap[O, **P, T](  # type: ignore[overload-overlap]
+        fn: MethodTypes.RAW_METHOD[O, P, T],
+        *,
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+        raw: Literal[True],
+    ) -> MethodWrapper[O, P, T]:
+        """Overload: Direct call with function and optional keyword arguments."""
 
+    @overload
+    @staticmethod
+    def wrap[O, **P, T](
+        fn: MethodTypes.METHOD[O, P, T],
+        *,
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+        raw: Literal[False] = False,
+    ) -> MethodWrapper[O, P, T]:
+        """Overload: Direct call with function and optional keyword arguments."""
 
-@overload
-def wrap_method[O, **P, T](
-    fn: MethodTypes.METHOD[O, P, T],
-    *,
-    wrapper_fn: WrapperFunc[O, P, T] | None = None,
-    attribute_setter: AttributeSetter[O, P, T] | None = None,
-    wrapper_fn_args: tuple[Any, ...] | None = None,
-    wrapper_fn_kwargs: dict[str, Any] | None = None,
-    raw: Literal[False] = False,
-) -> MethodWrapper[O, P, T]:
-    """Overload: Direct call with function and optional keyword arguments."""
+    @overload
+    @staticmethod
+    def wrap[O, **P, T](
+        fn: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | None = None,
+        *,
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+        raw: bool = False,
+    ) -> (
+        MethodWrapper[O, P, T]
+        | Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]
+        | Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]
+    ):
+        """Overload: Direct call when fn and raw are unions/general types."""
 
+    # Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
+    # MethodTypes.METHOD in the overloads, and this causes issues when typechecking
+    # implementation; pyright successfully typechecks this.
+    @staticmethod
+    def wrap[O, **P, T](  # type: ignore[misc]
+        fn: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | None = None,
+        *,
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+        raw: bool | Literal[True] | Literal[False] = False,
+    ) -> (
+        MethodWrapper[O, P, T]
+        | Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]
+        | Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]
+    ):
+        """Wrap a method with a wrapper function, preserving its type; optionally add attributes to the final descriptor.
 
-# Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
-# MethodTypes.METHOD in the overloads, and this causes issues when typechecking
-# implementation; pyright successfully typechecks this.
-def wrap_method[O, **P, T](  # type: ignore[misc]
-    fn: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | None = None,
-    *,
-    wrapper_fn: WrapperFunc[O, P, T] | None = None,
-    attribute_setter: AttributeSetter[O, P, T] | None = None,
-    wrapper_fn_args: tuple[Any, ...] | None = None,
-    wrapper_fn_kwargs: dict[str, Any] | None = None,
-    raw: bool | Literal[True] | Literal[False] = False,
-) -> (
-    MethodWrapper[O, P, T]
-    | Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]
-    | Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]
-):
-    """Wrap a method with a wrapper function, preserving its type.
+        This method creates a MethodWrapper that can handle any method type
+        (staticmethod, classmethod, bound method, property) uniformly while
+        preserving type information for static type checkers.
 
-    This function creates a MethodWrapper that can handle any method type
-    (staticmethod, classmethod, bound method, property) uniformly while
-    preserving type information for static type checkers.
+        Can be used in three ways:
+        1. Direct decoration: ``@MethodDecorator.wrap_method``
+        2. Decorator factory: ``@MethodDecorator.wrap_method(wrapper_fn=...)`` or ``@MethodDecorator.wrap_method(attribute_setter=...)``
+        3. Direct call: ``MethodDecorator.wrap_method(fn, wrapper_fn=...)`` or ``MethodDecorator.wrap_method(fn, attribute_setter=...)``
 
-    Can be used in three ways:
-    1. Direct decoration: ``@wrap_method``
-    2. Decorator factory: ``@wrap_method(wrapper_fn=...)`` or ``@wrap_method(attribute_setter=...)``
-    3. Direct call: ``wrap_method(fn, wrapper_fn=...)`` or ``wrap_method(fn, attribute_setter=...)``
+        Args:
+            fn: The method to wrap (can be any METHOD type). If None, returns a decorator.
+                When used as a decorator factory (fn=None), at least one of wrapper_fn or
+                attribute_setter must be provided.
+            wrapper_fn: Optional function that wraps the raw function (behavior modification).
+                Signature: (raw_fn, descriptor_metadata, wrapper_args, wrapper_kwargs) -> wrapped_fn
+                If not provided, the raw function is returned unchanged.
+            attribute_setter: Optional function that adds attributes to the final descriptor.
+                Signature: (final_descriptor, descriptor_metadata, wrapper_args, wrapper_kwargs) -> None
+                This is called after the descriptor is reconstructed, so attributes are added to the
+                final descriptor that will be returned.
+            wrapper_fn_args: Positional arguments to pass to wrapper_fn and attribute_setter
+            wrapper_fn_kwargs: Keyword arguments to pass to wrapper_fn and attribute_setter
 
-    Args:
-        fn: The method to wrap (can be any METHOD type). If None, returns a decorator.
-            When used as a decorator factory (fn=None), at least one of wrapper_fn or
-            attribute_setter must be provided.
-        wrapper_fn: Optional function that wraps the raw function (behavior modification).
-            Signature: (raw_fn, descriptor_metadata, wrapper_args, wrapper_kwargs) -> wrapped_fn
-            If not provided, the raw function is returned unchanged.
-        attribute_setter: Optional function that adds attributes to the final descriptor.
-            Signature: (final_descriptor, descriptor_metadata, wrapper_args, wrapper_kwargs) -> None
-            This is called after the descriptor is reconstructed, so attributes are added to the
-            final descriptor that will be returned.
-        wrapper_fn_args: Positional arguments to pass to wrapper_fn and attribute_setter
-        wrapper_fn_kwargs: Keyword arguments to pass to wrapper_fn and attribute_setter
+        Returns:
+            A wrapped method of the same type as the input, or a decorator function
+            if `fn` is None.
 
-    Returns:
-        A wrapped method of the same type as the input, or a decorator function
-        if `fn` is None.
-
-    Example:
-        >>> def logging_wrapper(fn, args, kwargs):
-        ...     @wraps(fn)
-        ...     def wrapped(*args, **kwargs):
-        ...         print(f"Calling {fn.__name__}")
-        ...         return fn(*args, **kwargs)
-        ...     return wrapped
-        ...
-        >>> def add_attr(final_desc, metadata, args, kwargs):
-        ...     object.__setattr__(final_desc, "__custom_attr", "value")
-        ...
-        >>> class MyClass:
-        ...     @staticmethod
-        ...     @wrap_method(wrapper_fn=logging_wrapper)
-        ...     def static_method(x: int) -> int:
-        ...         return x * 2
-        ...
-        ...     @classmethod
-        ...     @wrap_method(attribute_setter=add_attr)
-        ...     def class_method(cls) -> str:
-        ...         return cls.__name__
-        ...
-        ...     @wrap_method(wrapper_fn=logging_wrapper)
-        ...     def instance_method(self, x: int) -> int:
-        ...         return x * 3
-    """
-    # If fn is None, we're being called as a decorator factory
-    if fn is None:
-        # For the decorator factory overload, at least one of wrapper_fn or attribute_setter
-        # must be provided
-        assert wrapper_fn is not None or attribute_setter is not None, (
-            "At least one of wrapper_fn or attribute_setter must be provided when fn is None"
-        )
-
-        def decorator(
-            method: MethodTypes.RAW_METHOD[O, P, T],
-        ) -> MethodWrapper[O, P, T]:
-            return MethodWrapper(
-                method,
-                wrapper_fn,
-                attribute_setter,
-                wrapper_fn_args,
-                wrapper_fn_kwargs,
+        Example:
+            >>> def logging_wrapper(fn, args, kwargs):
+            ...     @wraps(fn)
+            ...     def wrapped(*args, **kwargs):
+            ...         print(f"Calling {fn.__name__}")
+            ...         return fn(*args, **kwargs)
+            ...     return wrapped
+            ...
+            >>> def add_attr(final_desc, metadata, args, kwargs):
+            ...     object.__setattr__(final_desc, "__custom_attr", "value")
+            ...
+            >>> class MyClass:
+            ...     @staticmethod
+            ...     @MethodDecorator.wrap_method(wrapper_fn=logging_wrapper)
+            ...     def static_method(x: int) -> int:
+            ...         return x * 2
+            ...
+            ...     @classmethod
+            ...     @MethodDecorator.wrap_method(attribute_setter=add_attr)
+            ...     def class_method(cls) -> str:
+            ...         return cls.__name__
+            ...
+            ...     @MethodDecorator.wrap_method(wrapper_fn=logging_wrapper)
+            ...     def instance_method(self, x: int) -> int:
+            ...         return x * 3
+        """
+        # If fn is None, we're being called as a decorator factory
+        if fn is None:
+            # For the decorator factory overload, at least one of wrapper_fn or attribute_setter
+            # must be provided
+            assert wrapper_fn is not None or attribute_setter is not None, (
+                "At least one of wrapper_fn or attribute_setter must be provided when fn is None"
             )
 
-        return decorator
+            def decorator(
+                method: MethodTypes.RAW_METHOD[O, P, T],
+            ) -> MethodWrapper[O, P, T]:
+                return MethodWrapper(
+                    method,
+                    wrapper_fn,
+                    attribute_setter,
+                    wrapper_fn_args,
+                    wrapper_fn_kwargs,
+                )
 
-    # Otherwise, wrap the function directly
-    return MethodWrapper(
-        fn, wrapper_fn, attribute_setter, wrapper_fn_args, wrapper_fn_kwargs
-    )
+            return decorator
+
+        # Otherwise, wrap the function directly
+        return MethodWrapper(
+            fn, wrapper_fn, attribute_setter, wrapper_fn_args, wrapper_fn_kwargs
+        )

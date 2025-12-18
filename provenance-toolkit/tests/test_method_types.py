@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from functools import lru_cache
 from types import FunctionType
-from typing import Any, Never, cast
+from typing import Any, Never
 
-from provenance_toolkit import MethodTypes, MethodWrapper, wrap_method
+from provenance_toolkit import MethodDecorator, MethodTypes, MethodWrapper
 
 # ============================================================================
 # Test utilities: decorators that assert method types
@@ -34,9 +34,9 @@ def assert_method_type(
     """
 
     def decorator(fn: Any) -> Any:
-        assert isinstance(
-            fn, expected_type
-        ), f"Expected {expected_type}, got {type(fn)}"
+        assert isinstance(fn, expected_type), (
+            f"Expected {expected_type}, got {type(fn)}"
+        )
         return fn
 
     return decorator
@@ -77,21 +77,21 @@ class SomeClass:
 
     @assert_method_type(staticmethod)
     @staticmethod
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
-    @assert_method_type(FunctionType)  # Before @wrap_method: raw function
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
+    @assert_method_type(FunctionType)  # Before @MethodDecorator.wrap: raw function
     def static_with_wrap_method(x: int) -> int:
-        """Static method with @wrap_method decorator."""
+        """Static method with @MethodDecorator.wrap decorator."""
         return x * 4
 
     @assert_method_type(staticmethod)
     @staticmethod
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
     @lru_cache(maxsize=128)
     @assert_method_type(FunctionType)  # Before @lru_cache: raw function
     def static_with_both(x: int) -> int:
-        """Static method with both @lru_cache and @wrap_method."""
+        """Static method with both @lru_cache and @MethodDecorator.wrap."""
         return x * 5
 
     # ========================================================================
@@ -115,21 +115,21 @@ class SomeClass:
 
     @assert_method_type(classmethod)
     @classmethod
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
-    @assert_method_type(FunctionType)  # Before @wrap_method: raw function
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
+    @assert_method_type(FunctionType)  # Before @MethodDecorator.wrap: raw function
     def class_with_wrap_method(cls) -> str:
-        """Class method with @wrap_method decorator."""
+        """Class method with @MethodDecorator.wrap decorator."""
         return f"{cls.__name__}_wrapped"
 
     @assert_method_type(classmethod)
     @classmethod
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
     @lru_cache(maxsize=128)
     @assert_method_type(FunctionType)  # Before @lru_cache: raw function
     def class_with_both(cls) -> str:
-        """Class method with both @lru_cache and @wrap_method."""
+        """Class method with both @lru_cache and @MethodDecorator.wrap."""
         return f"{cls.__name__}_both"
 
     # ========================================================================
@@ -141,18 +141,18 @@ class SomeClass:
         """Bound method with no additional decorators."""
         return self._value + x
 
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
-    @assert_method_type(FunctionType)  # Before @wrap_method: raw function
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
+    @assert_method_type(FunctionType)  # Before @MethodDecorator.wrap: raw function
     def bound_with_wrap_method(self, x: int) -> int:
-        """Bound method with @wrap_method decorator."""
+        """Bound method with @MethodDecorator.wrap decorator."""
         return self._value + x * 3
 
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
-    @assert_method_type(FunctionType)  # Before @wrap_method: raw function
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
+    @assert_method_type(FunctionType)  # Before @MethodDecorator.wrap: raw function
     def bound_with_wrap_method_only(self, x: int) -> int:
-        """Bound method with @wrap_method decorator."""
+        """Bound method with @MethodDecorator.wrap decorator."""
         return self._value + x * 4
 
     # ========================================================================
@@ -172,20 +172,20 @@ class SomeClass:
 
     @assert_method_type(property)  # type: ignore[prop-decorator]
     @property
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
-    @assert_method_type(FunctionType)  # Before @wrap_method: raw function
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
+    @assert_method_type(FunctionType)  # Before @MethodDecorator.wrap: raw function
     def prop_with_wrap_method(self) -> int:
-        """Property with @wrap_method decorator."""
+        """Property with @MethodDecorator.wrap decorator."""
         return self._value * 3
 
     @assert_method_type(property)  # type: ignore[prop-decorator]
     @property
-    @assert_method_type(MethodWrapper)  # After @wrap_method: MethodWrapper
-    @wrap_method
-    @assert_method_type(FunctionType)  # Before @wrap_method: raw function
+    @assert_method_type(MethodWrapper)  # After @MethodDecorator.wrap: MethodWrapper
+    @MethodDecorator.wrap
+    @assert_method_type(FunctionType)  # Before @MethodDecorator.wrap: raw function
     def prop_with_wrap_method_only(self) -> int:
-        """Property with @wrap_method decorator."""
+        """Property with @MethodDecorator.wrap decorator."""
         return self._value * 4
 
 
@@ -203,7 +203,7 @@ def test_static_methods() -> None:
     assert SomeClass.static_with_lru_cache(5) == 15
     assert SomeClass.static_with_lru_cache(5) == 15  # Should be cached
 
-    # With wrap_method
+    # With MethodDecorator.wrap
     assert SomeClass.static_with_wrap_method(5) == 20
 
     # With both
@@ -220,7 +220,7 @@ def test_class_methods() -> None:
     assert SomeClass.class_with_lru_cache() == "SomeClass_cached"
     assert SomeClass.class_with_lru_cache() == "SomeClass_cached"  # Should be cached
 
-    # With wrap_method
+    # With MethodDecorator.wrap
     assert SomeClass.class_with_wrap_method() == "SomeClass_wrapped"
 
     # With both
@@ -235,10 +235,10 @@ def test_bound_methods() -> None:
     # No decorators
     assert obj.bound_no_decorators(5) == 15
 
-    # With wrap_method
+    # With MethodDecorator.wrap
     assert obj.bound_with_wrap_method(5) == 25
 
-    # With wrap_method only
+    # With MethodDecorator.wrap only
     assert obj.bound_with_wrap_method_only(5) == 30
 
 
@@ -249,15 +249,15 @@ def test_properties() -> None:
     # No decorators
     assert obj.prop_no_decorators == 10
 
-    # With wrap_method
+    # With MethodDecorator.wrap
     assert obj.prop_with_wrap_method == 30
 
-    # With wrap_method only
+    # With MethodDecorator.wrap only
     assert obj.prop_with_wrap_method_only == 40
 
 
 def test_wrap_method_with_original_descriptor() -> None:
-    """Test that wrap_method correctly passes original descriptor to wrapper."""
+    """Test that MethodDecorator.wrap correctly passes original descriptor to wrapper."""
     call_count = {"count": 0}
     original_descriptors: list[Any] = []
 
@@ -273,21 +273,21 @@ def test_wrap_method_with_original_descriptor() -> None:
         return raw_fn
 
     class TrackingTest:
-        @wrap_method(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type]
+        @MethodDecorator.wrap(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type]
         @staticmethod
         def static_method(x: int) -> int:
             return x * 2
 
-        @wrap_method(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type]
+        @MethodDecorator.wrap(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type]
         @classmethod
         def class_method(cls) -> str:
             return cls.__name__
 
-        @wrap_method(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type]
+        @MethodDecorator.wrap(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type]
         def bound_method(self, x: int) -> int:
             return x * 3
 
-        @wrap_method(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type,prop-decorator]
+        @MethodDecorator.wrap(wrapper_fn=tracking_wrapper)  # type: ignore[arg-type,prop-decorator]
         @property
         def prop(self) -> int:
             return 42
@@ -311,7 +311,7 @@ def test_wrap_method_with_original_descriptor() -> None:
 
 
 def test_wrap_method_attribute_access() -> None:
-    """Test that wrap_method allows adding attributes to final reconstructed descriptor."""
+    """Test that MethodDecorator.wrap allows adding attributes to final reconstructed descriptor."""
 
     def attribute_setter[O, **P, T](
         final_descriptor: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T],
@@ -323,21 +323,21 @@ def test_wrap_method_attribute_access() -> None:
         object.__setattr__(final_descriptor, "__test_attr", "test_value")
 
     class AttrTest:
-        @wrap_method(attribute_setter=attribute_setter)
+        @MethodDecorator.wrap(attribute_setter=attribute_setter)
         @staticmethod
         def static_method(x: int) -> int:
             return x * 2
 
-        @wrap_method(attribute_setter=attribute_setter)
+        @MethodDecorator.wrap(attribute_setter=attribute_setter)
         @classmethod
         def class_method(cls) -> str:
             return cls.__name__
 
-        @wrap_method(attribute_setter=attribute_setter)
+        @MethodDecorator.wrap(attribute_setter=attribute_setter)
         def bound_method(self, x: int) -> int:
             return x * 3
 
-        @wrap_method(attribute_setter=attribute_setter)  # type: ignore[prop-decorator]
+        @MethodDecorator.wrap(attribute_setter=attribute_setter)  # type: ignore[prop-decorator]
         @property
         def prop(self) -> int:
             return 42
@@ -362,7 +362,7 @@ def test_wrap_method_attribute_access() -> None:
 
 
 def test_wrap_method_decorator_factory() -> None:
-    """Test wrap_method used as a decorator factory with keyword arguments."""
+    """Test MethodDecorator.wrap used as a decorator factory with keyword arguments."""
 
     def simple_wrapper[O, **P, T](
         raw_fn: MethodTypes.RAW_METHOD[O, P, T],
@@ -374,26 +374,26 @@ def test_wrap_method_decorator_factory() -> None:
 
     class FactoryTest:
         @staticmethod
-        @wrap_method(wrapper_fn=simple_wrapper, raw=True)
+        @MethodDecorator.wrap(wrapper_fn=simple_wrapper, raw=True)
         def static_method(x: int) -> int:
             return x * 2
 
         @staticmethod
-        @wrap_method(wrapper_fn=simple_wrapper)
+        @MethodDecorator.wrap(wrapper_fn=simple_wrapper)
         def static_method2(x: int) -> int:
-            return FactoryTest.static_method()
+            return FactoryTest.static_method(x)
 
         @classmethod
-        @wrap_method(wrapper_fn=simple_wrapper, raw=True)
+        @MethodDecorator.wrap(wrapper_fn=simple_wrapper, raw=True)
         def class_method(cls) -> str:
             return cls.__name__
 
-        @wrap_method(wrapper_fn=simple_wrapper)
+        @MethodDecorator.wrap(wrapper_fn=simple_wrapper)
         @classmethod
         def class_method2(cls) -> str:
             return cls.class_method()
 
-        @wrap_method(wrapper_fn=simple_wrapper, raw=True)
+        @MethodDecorator.wrap(wrapper_fn=simple_wrapper, raw=True)
         def bound_method(self, x: int) -> int:
             return x * 3
 
@@ -406,7 +406,7 @@ def test_wrap_method_decorator_factory() -> None:
 
 
 def test_wrap_method_direct_call() -> None:
-    """Test wrap_method used as a direct function call."""
+    """Test MethodDecorator.wrap used as a direct function call."""
 
     def simple_wrapper[O, **P, T](
         raw_fn: MethodTypes.RAW_METHOD[O, P, T],
@@ -420,7 +420,7 @@ def test_wrap_method_direct_call() -> None:
         return x * 2
 
     # Direct call with a function
-    wrapped: MethodWrapper[Never, [int], int] = wrap_method(
+    wrapped: MethodWrapper[Never, [int], int] = MethodDecorator.wrap(
         plain_function,
         wrapper_fn=simple_wrapper,
         raw=True,
@@ -429,24 +429,24 @@ def test_wrap_method_direct_call() -> None:
 
 
 def test_type_preservation() -> None:
-    """Test that wrap_method preserves method types for type checkers."""
+    """Test that MethodDecorator.wrap preserves method types for type checkers."""
 
     class TypeTest:
-        @wrap_method
+        @MethodDecorator.wrap
         @staticmethod
         def static_method(x: int) -> int:
             return x * 2
 
-        @wrap_method
+        @MethodDecorator.wrap
         @classmethod
         def class_method(cls) -> str:
             return cls.__name__
 
-        @wrap_method
+        @MethodDecorator.wrap
         def bound_method(self, x: int) -> int:
             return x * 3
 
-        @wrap_method  # type: ignore[prop-decorator]
+        @MethodDecorator.wrap  # type: ignore[prop-decorator]
         @property
         def prop(self) -> int:
             return 42
