@@ -23,6 +23,11 @@ DEFAULT_BACKEND_PORT = os.environ.get("DEFAULT_BACKEND_PORT", 8010)
 DEFAULT_GRAFANA_PORT = os.environ.get("DEFAULT_GRAFANA_PORT", 3010)
 DEFAULT_ALLOY_PORT = os.environ.get("DEFAULT_ALLOY_PORT", 4327)
 
+OBSERVABILITY_DOCKER_COMPOSE_DIR = (
+    "fmdeps/rocq-agent-toolkit/observability/docker_compose"
+)
+DASHBOARD_DOCKER_COMPOSE_DIR = "fmdeps/rocq-agent-toolkit/dashboard"
+
 
 def ingest_results_file(
     result_file: Path,
@@ -107,10 +112,9 @@ class DockerServiceManager:
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
         self.observability_compose_dir = (
-            workspace_root
-            / "psi/backend/psi_verifier/observability/observability_docker_compose/rocq"
+            workspace_root / OBSERVABILITY_DOCKER_COMPOSE_DIR
         )
-        self.toolkit_dir = workspace_root / "psi/backend/rocq_agent_toolkit"
+        self.toolkit_dir = workspace_root / DASHBOARD_DOCKER_COMPOSE_DIR
 
     def _run_command(
         self, cmd: list[str], cwd: Path | None = None, check: bool = True
