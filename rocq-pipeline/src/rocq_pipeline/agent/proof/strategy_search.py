@@ -8,6 +8,7 @@ from rocq_doc_manager import RocqCursor
 from rocq_pipeline.agent.base import TaskResult
 from rocq_pipeline.agent.base.classes import ProofAgent
 from rocq_pipeline.agent.proof.strategy import Strategy
+from rocq_pipeline.proof_state import ProofState
 
 
 class SearchAgent(ProofAgent):
@@ -52,7 +53,7 @@ class SearchAgent(ProofAgent):
             state = heapq.heappop(states)
 
             try:
-                prob, tac = next(state.rollout)
+                prob, action = next(state.rollout)
                 heapq.heappush(
                     states, state
                 )  # push again in case there are more elements in the rollout
@@ -62,17 +63,18 @@ class SearchAgent(ProofAgent):
                 iteration -= 1
                 continue
 
+            # A more efficient implementation of this might delay the
+            # clone operation and only do it on success and then it would
+            # revert. This avoids the creation of a cursor when the action
+            # ultimately fails (which is probably common).
             fresh_rc = state.cursor.clone()
-            tac_result = super().run_tactic(rc, tac)
-            if tac_result.err is not None:
-                # this tactic application did not succeed
-                # for now, we abandon it, but, in the future, we might look for alternatives
+            if not action.interact(fresh_rc):
+                # the action failed, so we discard this
                 fresh_rc.dispose()
                 continue
 
-            assert tac_result.pf_state_post is not None
-            if tac_result.pf_state_post.closed(proof=True):
-                # TODO: this is an approximation due to shelved goals and such.
+            pf_state = ProofState(fresh_rc.current_goal())
+            if pf_state.closed(proof=True):
                 return self.finished(fresh_rc, "done")
 
             next_state = SearchAgent.State(
