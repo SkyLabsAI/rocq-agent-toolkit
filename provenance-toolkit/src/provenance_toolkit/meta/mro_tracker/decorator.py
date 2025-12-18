@@ -17,15 +17,14 @@ from __future__ import annotations
 
 import inspect
 import logging
-from collections.abc import Callable
 from types import FunctionType
 from typing import Any, Literal, final
 
 from provenance_toolkit.method_types import (
     AttributeSetter,
+    GenericMethodDecoratorT,
     MethodDecorator,
     MethodTypes,
-    MethodWrapper,
     WrapperFunc,
 )
 
@@ -43,11 +42,7 @@ class MROTrackerDecorator(MethodDecorator):
         fn: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | None = None,
         *,
         raw: bool | Literal[True] | Literal[False] = False,
-    ) -> (
-        MethodWrapper[O, P, T]
-        | Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]
-        | Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]
-    ):
+    ) -> GenericMethodDecoratorT[O, P, T]:
         """Decorator: track method/property fn."""
         return MROTrackerDecorator.track_as(fn=fn, compute_extra=False, raw=raw)
 
@@ -59,11 +54,7 @@ class MROTrackerDecorator(MethodDecorator):
         ) = None,
         *,
         raw: bool | Literal[True] | Literal[False] = False,
-    ) -> (
-        MethodWrapper[O, [], T]
-        | Callable[[MethodTypes.RAW_METHOD[O, [], T]], MethodWrapper[O, [], T]]
-        | Callable[[MethodTypes.METHOD[O, [], T]], MethodWrapper[O, [], T]]
-    ):
+    ) -> GenericMethodDecoratorT[O, [], T]:
         """Decorator: track + use fn/property to compute extra data."""
         return MROTrackerDecorator.track_as(
             fn=fn,
@@ -81,11 +72,7 @@ class MROTrackerDecorator(MethodDecorator):
         compute_extra: bool = False,
         extra_tracking_attrs: set[str] | None = None,
         raw: bool | Literal[True] | Literal[False] = False,
-    ) -> (
-        MethodWrapper[O, P, T]
-        | Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]
-        | Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]
-    ):
+    ) -> GenericMethodDecoratorT[O, P, T]:
         """Helper: annotate method with namespaced attrs."""
         return MethodDecorator.wrap(
             fn=fn,
