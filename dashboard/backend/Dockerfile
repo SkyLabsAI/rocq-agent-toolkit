@@ -15,7 +15,7 @@ COPY . .
 
 RUN uv sync --package rocq-agent-toolkit-backend
 
-WORKDIR /app/rocq_agent_toolkit/backend
+WORKDIR /app/dashboard/backend
 
 # Run the FastAPI application with uvicorn
 # Bind to 0.0.0.0 to accept connections from outside the container
