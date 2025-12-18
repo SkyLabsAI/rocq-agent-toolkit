@@ -1,0 +1,92 @@
+# Standalone configuration for local storage with Rocq network integration.
+# Connects to 'rocq-agent-network'.
+# Usage: docker-compose -f docker-compose.rocq.yml up --build -d
+
+name: rocq-agent-toolkit-obs-local
+
+services:
+  # Observability Stack
+  
+  # Grafana Alloy - Unified observability collector
+  alloy:
+    image: grafana/alloy:latest
+    container_name: rocq-alloy-local
+    restart: unless-stopped
+    ports:
+      - "4327:4317"   # OTLP gRPC (Rocq)
+      - "4328:4318"   # OTLP HTTP (Rocq)
+      - "12365:12345" # Alloy HTTP (Rocq)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../alloy/config.alloy:/etc/alloy/config.alloy
+    command: 
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    depends_on:
+      - loki
+    networks:
+      - rocq-agent-network
+
+  # Tempo - Distributed tracing backend
+  tempo:
+    image: grafana/tempo:latest
+    container_name: rocq-tempo-local
+    restart: unless-stopped
+    ports:
+      - "3210:3200"   # Tempo HTTP (Rocq)
+      - "14278:14268" # Jaeger ingest (Rocq)
+    volumes:
+      - tempo-data:/var/tempo
+      - ../tempo/tempo.yaml:/etc/tempo.yaml
+    command: 
+      - -config.file=/etc/tempo.yaml
+    networks:
+      - rocq-agent-network
+
+  # Loki - Log aggregation system
+  loki:
+    image: grafana/loki:latest
+    container_name: rocq-loki-local
+    restart: unless-stopped
+    ports:
+      - "3110:3100"
+    volumes:
+      - loki-data:/loki
+      - ../loki/loki.yml:/etc/loki/loki.yaml
+    command: -config.file=/etc/loki/loki.yaml
+    networks:
+      - rocq-agent-network
+
+  # Grafana - Visualization and dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rocq-grafana-local
+    restart: unless-stopped
+    ports:
+      - "3010:3000"
+    volumes:
+      - ../grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ../grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ../grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_DATAPROXY_TIMEOUT=600  # 10 minutes global timeout
+    depends_on:
+      - loki
+    networks:
+      - rocq-agent-network
+
+networks:
+  rocq-agent-network:
+    driver: bridge
+    name: rocq-agent-network
+
+volumes:
+  grafana-data:
+  loki-data:
+  tempo-data: 

@@ -1,0 +1,46 @@
+import { Button } from '@/components/base';
+
+export const TaskRow: React.FC<{
+  stats: (number | string | boolean)[];
+  onClick: () => void;
+}> = ({ stats, onClick }) => (
+  <div className=' bg-elevation-surface box-border gap-10 content-stretch flex items-center left-10 px-6 py-2.5  top-19 mt-[13px] rounded-lg'>
+    {stats.map((stat, index) => {
+      if (index === 0) {
+        return (
+          <div
+            className='content-stretch flex gap-10 items-center relative shrink-0 w-1/4'
+            key={index}
+          >
+            <p
+              className="font-['Noto_Sans:Regular',sans-serif] font-normal leading-5 relative shrink-0 text-text text-[14px] text-nowrap whitespace-pre"
+              style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
+            >
+              {stat}
+            </p>
+          </div>
+        );
+      } else {
+        return (
+          <div
+            className='content-stretch flex flex-col gap-2.5 items-center justify-center relative shrink-0 w-1/12'
+            key={index}
+          >
+            <p
+              className="font-['Noto_Sans:Regular',sans-serif] font-normal leading-5 relative shrink-0 text-text text-[14px] w-full"
+              style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
+            >
+              {stat}
+            </p>
+          </div>
+        );
+      }
+    })}
+
+    <div className='flex-1'>
+      <Button variant='danger' className='float-end self-end' onClick={onClick}>
+        Remove
+      </Button>
+    </div>
+  </div>
+);
