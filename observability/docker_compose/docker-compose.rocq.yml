@@ -18,7 +18,7 @@ services:
       - "12365:12345" # Alloy HTTP (Rocq)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ../alloy/config.alloy:/etc/alloy/config.alloy
+      - ./alloy/config.alloy:/etc/alloy/config.alloy
     command: 
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -39,7 +39,7 @@ services:
       - "14278:14268" # Jaeger ingest (Rocq)
     volumes:
       - tempo-data:/var/tempo
-      - ../tempo/tempo.yaml:/etc/tempo.yaml
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
     command: 
       - -config.file=/etc/tempo.yaml
     networks:
@@ -54,7 +54,7 @@ services:
       - "3110:3100"
     volumes:
       - loki-data:/loki
-      - ../loki/loki.yml:/etc/loki/loki.yaml
+      - ./loki/loki.yml:/etc/loki/loki.yaml
     command: -config.file=/etc/loki/loki.yaml
     networks:
       - rocq-agent-network
@@ -67,9 +67,9 @@ services:
     ports:
       - "3010:3000"
     volumes:
-      - ../grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
-      - ../grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
-      - ../grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning/datasources/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
       - grafana-data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
