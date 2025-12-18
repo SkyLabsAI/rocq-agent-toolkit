@@ -9,6 +9,13 @@ from rocq_doc_manager import RocqCursor
 
 
 class Action[T]:
+    """
+    Actions capture interactions with documents.
+    In most cases, an action will result in a single interaction, e.g. applying a tactic;
+    however, more flexibility is provided in order to allow for successive queries to the
+    document or applying multiple tactics.
+    """
+
     @abstractmethod
     def interact(self, rc: T) -> bool:
         """
@@ -32,6 +39,27 @@ class RocqTacticAction(Action[RocqCursor]):
         self, rc: RocqCursor, tactic: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
         return rc.insert_command(tactic)
+
+
+def interleave[T](ls: list[Generator[T]]) -> Generator[T]:
+    """Interleave all the values from the generator in a fair manner"""
+    gens: list[tuple[T, int, Generator[T]]] = []
+
+    def pull(g: Generator[T], fresh: int) -> None:
+        nonlocal gens
+        try:
+            n = next(g)
+            heapq.heappush(gens, (n, fresh, g))
+        except StopIteration:
+            pass
+
+    for i, g in enumerate(ls):
+        pull(g, fresh=i)
+
+    while gens:
+        v, i, rest = heapq.heappop(gens)
+        yield v
+        pull(rest, fresh=i)
 
 
 class Strategy[T](ABC):
@@ -70,29 +98,9 @@ class CompositeStrategy[T](Strategy[T]):
 
     @override
     def rollout(self, rdm: T, max_rollout: int | None = None) -> Strategy.Rollout[T]:
-        def combine() -> Strategy.Rollout[T]:
-            queue: list[tuple[float, int, Action[T], Strategy.Rollout[T]]] = []
-            for i, strat in enumerate(self._children):
-                gen = strat.rollout(rdm, max_rollout=max_rollout)
-                try:
-                    pr, act = next(gen)
-                except StopIteration:
-                    continue
-                heapq.heappush(queue, (pr, i, act, gen))
-
-            while True:
-                try:
-                    (pr, i, act, gen) = heapq.heappop(queue)
-                except IndexError:
-                    return
-                yield (pr, act)
-                try:
-                    pr, act = next(gen)
-                except StopIteration:
-                    continue
-                heapq.heappush(queue, (pr, i, act, gen))
-
-        return combine()
+        return interleave(
+            [strat.rollout(rdm, max_rollout=max_rollout) for strat in self._children]
+        )
 
 
 class SafeTacticStrategy(Strategy[RocqCursor]):
