@@ -43,146 +43,18 @@ from observability import get_logger
 logger = get_logger(__name__)
 
 logger.info("User logged in successfully", user_id="12345", tenant_id="acme")
-# Output (JSON):
-# {
-#   "timestamp": 1678886400.0,
-#   "level": "INFO",
-#   "message": "User logged in successfully",
-#   "logger": "__main__",
-#   "file": "my_app.py",
-#   "line": 10,
-#   "function": "main",
-#   "service": "my-cool-service",
-#   "environment": "production",
-#   "user_id": "12345",
-#   "tenant_id": "acme"
-# }
-```
-
-### 3. Contextual Logging
-
-You can add contextual information that will be included in all subsequent log messages within the same execution context (e.g., a request in a web application). This is particularly useful for adding request IDs or other contextual data.
-
-```python
-from observability.logging import add_log_context, get_logger
-
-logger = get_logger(__name__)
-
-def handle_request(request):
-    add_log_context("request_id", request.id)
-    logger.info("Processing request")
-    # ... do some work ...
-    logger.info("Request processed successfully")
-
-# Both log messages will contain `request_id`.
-```
-
-### 4. Event-based Logging with Schemas
-
-For more complex applications, you can define schemas for different event types to ensure consistency. This is useful for logging business events, workflow transitions, or other important events.
-
-First, configure your event schemas at startup:
-
-```python
-from observability import WorkflowEventConfig, LoggingConfig, setup_logging
-
-workflow_cfg = WorkflowEventConfig(
-    extra_fields=[
-        "specification_goals",
-        "structured_nl_spec",
-        "max_user_attempts",
-    ]
-)
-log_config = LoggingConfig(
-    service_name="my-cool-service",
-    log_level="INFO",
-    format_json=True,
-    workflow_event_config = workflow_cfg,
-    environment="production"
-)
-setup_logging(log_config)
-
-```
-
-Then, use the `event_context` to log events that conform to the schema. The logger will automatically add the `event_type` and filter out any fields not defined in the extra_fields list or already defined in the WorkflowEventConfig.
-
-```python
-from observability import get_logger
-
-# Get a logger with a specific event context
-workflow_logger = get_logger(__name__, event_context="workflow")
-
-workflow_logger.info(
-    "Node executed", 
-    node_name="process_input", 
-    status="success"
-    )
-
-# Output (JSON):
-# {
-#   ...
-#   "message": "Node executed",
-#   "node_name": "process_input",
-#   "status": "success"
-# }
-```
-
-## Configuration (For Logging and Tracing)
-
-If you plan to use both logging and tracing, you should use the `setup_observability` function with configuration objects. This gives you more control over the entire system.
-
-```python
-from observability import setup_observability, ObservabilityConfig
-
-# Define the main observability configuration
-obs_config = ObservabilityConfig(
-    service_name="my-cool-service",
-    environment="production",
-    log_level="DEBUG",
-)
-
-# Initialize the system with the config object
-setup_observability(obs_config)
-```
-
-This will also setup tracing and the logger can automatically include `trace_id` and `span_id` in your logs. This allows you to easily correlate logs with traces in your observability platform.
-
-
-## Working with the Docker Compose Files
-
-This directory contains multiple Docker Compose files to configure the observability stack for different environments. The setup is modular, using a base configuration file and override files for specific scenarios.
-
-All commands should be run from the `psi/backend/psi_verifier/observability/observability_docker_compose` directory.
-
-### Configuration Files
-
--   `docker-compose.yml`: The base file that defines all the necessary services.
--   `docker-compose.s3.yml`: An override file to configure services to send logs and telemetry data to an S3 bucket.
--   `docker-compose.local.yml`: An override file to configure services to store logs and telemetry data locally.
--   `docker-compose.rocq.yml`: A specialized configuration for the RoCQ agent. It sets up Loki and Alloy and defines a network to allow communication with other services.
-
-### Usage Examples
-
-#### S3 Deployment
-
-To deploy the stack with S3 storage for logs, use the following command:
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.s3.yml up
-```
-
-#### Local Deployment
-
-For a local setup that stores data on the host machine, use this command:
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.local.yml up 
-```
-
-#### RoCQ Agent Services
-
-To run only the Loki and Alloy services for the RoCQ agent, use the following command. This will start the services in detached mode and build the images if necessary.
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.rocq.yml up  alloy loki grafana
+Output (JSON):
+{
+  "timestamp": 1678886400.0,
+  "level": "INFO",
+  "message": "User logged in successfully",
+  "logger": "__main__",
+  "file": "my_app.py",
+  "line": 10,
+  "function": "main",
+  "service": "my-cool-service",
+  "environment": "production",
+  "user_id": "12345",
+  "tenant_id": "acme"
+}
 ```
