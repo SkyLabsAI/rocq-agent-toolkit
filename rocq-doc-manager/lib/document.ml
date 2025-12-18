@@ -144,12 +144,12 @@ let sync : t -> unit = fun d ->
 let is_synced : t -> bool = fun d ->
   synced (get_backend d) d
 
-let copy : src:t -> dst:t -> unit = fun ~src ~dst ->
-  let backend = get_backend dst in
-  unsync backend dst ;
-  dst.suffix <- src.suffix ;
-  dst.cursor_off <- src.cursor_off ;
-  dst.rev_prefix <- src.rev_prefix
+let copy_contents : from:t -> t -> unit = fun ~from d ->
+  let backend = get_backend d in
+  unsync backend d;
+  d.suffix <- from.suffix;
+  d.cursor_off <- from.cursor_off;
+  d.rev_prefix <- from.rev_prefix
 
 let cursor_index : t -> int = fun d ->
   ignore (get_backend d);

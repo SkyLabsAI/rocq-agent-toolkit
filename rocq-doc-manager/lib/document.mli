@@ -38,10 +38,10 @@ val stop : t -> unit
     to running the first operation in the sequence. *)
 val clone : t -> t
 
-(** [copy from to] copies the cursor state from [from] to [to].
-    This does **not** rebind the backend.
-  *)
-val copy : src:t -> dst:t -> unit
+(** [copy_contents ~from d] copies the contents from document [from] into [d].
+    The underlying Rocq top-level of [d] is not affected, although it gets out
+    of sync with the contents of the document. *)
+val copy_contents : from:t -> t -> unit
 
 (** [materialize d] spaws a new, dedicated Rocq top-level for [d], that starts
     in the same state as the current top-level of [d]. In particular, this new

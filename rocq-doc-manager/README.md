@@ -161,13 +161,13 @@ API Methods
 - Response payload: an instance of the `CompileResult` object.
 - Failure mode: never fails.
 
-### `copy_into`
+### `copy_contents`
 
-- Description: copies src into dst.
+- Description: copies the contents of src into dst.
 - Arguments (in order, or named):
   - src: the source cursor (as an integer).
   - dst: the target cursor (as an integer).
-- Response payload: the name of the new cursor (as a `null` value).
+- Response payload: a `null` value.
 - Failure mode: never fails.
 
 ### `cursor_index`

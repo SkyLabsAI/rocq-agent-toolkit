@@ -508,14 +508,12 @@ let _ =
     A.add ~name:"dst" ~descr:"the target cursor" S.int @@
     A.nil
   in
-  API.declare api ~name:"copy_into" ~descr:"copies src into dst"
-    ~args ~ret:S.null ~ret_descr:"the name of the new cursor"
-    @@ fun d (src, (dst, ())) ->
-  match IntMap.find_opt src d.cursors , IntMap.find_opt dst d.cursors with
-  | None , _ -> invalid_arg "unknown source cursor"
-  | _ , None -> invalid_arg "unknown target cursor"
-  | Some(src), Some(dst) ->
-    d, Document.copy ~src ~dst
+  API.declare api ~name:"copy_contents" ~descr:"copies the contents of src \
+    into dst" ~args ~ret:S.null @@ fun d (src, (dst, ())) ->
+  match (IntMap.find_opt src d.cursors, IntMap.find_opt dst d.cursors) with
+  | (None     , _        ) -> invalid_arg "unknown source cursor"
+  | (_        , None     ) -> invalid_arg "unknown target cursor"
+  | (Some(src), Some(dst)) -> (d, Document.copy_contents ~from:src dst)
 
 let _ =
   let args =
