@@ -1,0 +1,51 @@
+[project]
+name = "observability"
+version = "0.1.0"
+description = "A comprehensive, production-ready observability solution that works with any Python application."
+authors = [{ name = "SkyLabs Team", email = "support@skylabs-ai.com" }]
+requires-python = ">=3.13"
+dependencies = [
+    "opentelemetry-api>=1.33.0,<2",
+    "opentelemetry-sdk>=1.33.0,<2",
+    "opentelemetry-distro>=0.54b0",
+    "opentelemetry-instrumentation>=0.54b0",
+    "opentelemetry-instrumentation-grpc>=0.54b0",
+    "opentelemetry-instrumentation-logging>=0.54b0",
+    "opentelemetry-instrumentation-requests>=0.54b0",
+    "opentelemetry-instrumentation-urllib3>=0.54b0",
+    "opentelemetry-exporter-otlp>=1.33.0,<2",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.33.0,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.33.0,<2",
+    "opentelemetry-propagator-b3>=1.33.0",
+    "opentelemetry-semantic-conventions>=0.54b0",
+    "pydantic>=2.9.0,<3",
+    "structlog>=24.4.0,<25",
+    "rich>=13.8.0",
+    "click>=8.1.7,<9",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.0,<1",
+    "mypy>=1.18.2,<2",
+    "pytest>=8.4.2,<9",
+    "pytest-asyncio>=0.24.0,<0.25",
+    "pytest-cov>=7.0.0,<8",
+    "coverage>=7.3.0,<8",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/observability"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/observability"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/observability" = "observability"
+
+[tool.setuptools.package-data]
+"observability" = ["py.typed"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
