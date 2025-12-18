@@ -6,12 +6,33 @@ from typing import override
 from rocq_doc_manager import RocqCursor
 
 
+class Action:
+    @abstractmethod
+    def interact(self, rc: RocqCursor) -> bool:
+        return False
+
+    def run_tactic(
+        self, rc: RocqCursor, tactic: str
+    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        return rc.insert_command(tactic)
+
+
+class TacticAction(Action):
+    def __init__(self, tactic: str) -> None:
+        self._tactic = tactic
+
+    @override
+    def interact(self, rc: RocqCursor) -> bool:
+        response = super().run_tactic(rc, self._tactic)
+        return not issubclass(type(response), RocqCursor.Err)
+
+
 class Strategy(ABC):
     """
     A `Strategy` proposes actions to take
     """
 
-    type Action = str
+    type Action = Action
     # TODO: make [Rollout] into a class
     type Rollout = Generator[tuple[float, Action]]
 
@@ -81,7 +102,10 @@ class SafeTacticStrategy(Strategy):
     def rollout(
         self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
-        return ((prob, f"progress {tac}") for prob, tac in [(self._prob, self._tactic)])
+        return (
+            (prob, TacticAction(f"progress {tac}"))
+            for prob, tac in [(self._prob, self._tactic)]
+        )
 
 
 class CutAssertStrategy(Strategy):
@@ -105,7 +129,7 @@ class CutAssertStrategy(Strategy):
         # otherwise we risk looping here
         tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
-        return ((prob, t) for prob, t in [(self._prob, tac)])
+        return ((prob, TacticAction(t)) for prob, t in [(self._prob, tac)])
 
 
 class FailStrategy(Strategy):
@@ -121,8 +145,15 @@ class FailStrategy(Strategy):
 class FirstTacticStrategy(Strategy):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
-    def __init__(self, tactics: list[tuple[float, str]]) -> None:
-        self._tactics: list[tuple[float, str]] = sorted(tactics, reverse=True)
+    def __init__(self, tactics: list[tuple[float, str | Action]]) -> None:
+        def mk(x: str | Action) -> Action:
+            if isinstance(x, Action):
+                return x
+            return TacticAction(x)
+
+        self._tactics: list[tuple[float, Action]] = [
+            (prob, mk(tac)) for prob, tac in sorted(tactics, reverse=True)
+        ]
 
     @override
     def rollout(
