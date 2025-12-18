@@ -55,7 +55,12 @@ class BrickGoal(IrisGoal):
         """
         Checks if the spatial conclusion contains a 'if' AST node.
         """
-        return BrickGoal.wpS_head_stmt_matches(self.parts.iris_spat_concl, ["Sif"])
+        #return BrickGoal.wpS_head_stmt_matches(self.parts.iris_spat_concl, ["Sif"])
+        pattern = r"^branch\.(stmt|expr)"
+
+        if re.search(pattern, self.parts.iris_spat_concl):
+            return True
+        return False
 
     def is_if_decide_then_else_goal(self) -> tuple[str, str, str] | None:
         """
