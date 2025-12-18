@@ -1,19 +1,22 @@
 """Utilities and types for uniform metaprogramming on methods of classes."""
 
-# NOTE: this is generic and could potentially be distributed as a separate
-# module.
+# Note: this is generic and could potentially be distributed as a separate module.
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from functools import wraps
 from types import FunctionType
 from typing import (
     Annotated,  # for intersection of types, cf. MethodTypes.RAW_BOUNDMETHOD
     Any,
     Concatenate,
+    Literal,
     TypeIs,
+    cast,
     final,
+    overload,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,29 +72,29 @@ class MethodTypes:
         ]
     )
     type RAW_METHOD[O, **P, T] = (
-        MethodTypes.RAW_STATICMETHOD[P, T]
-        | MethodTypes.RAW_CLASSMETHOD[O, P, T]
-        | MethodTypes.RAW_BOUNDMETHOD[O, P, T]
-        | MethodTypes.RAW_PROPERTY[O, T]
+        "MethodTypes.RAW_STATICMETHOD[P, T]"
+        | "MethodTypes.RAW_CLASSMETHOD[O, P, T]"
+        | "MethodTypes.RAW_BOUNDMETHOD[O, P, T]"
+        | "MethodTypes.RAW_PROPERTY[O, T]"
     )
     type STATICMETHOD[**P, T] = staticmethod[P, T]
     type CLASSMETHOD[O, **P, T] = classmethod[O, P, T]
-    type BOUNDMETHOD[O, **P, T] = MethodTypes.RAW_BOUNDMETHOD[O, P, T]
+    type BOUNDMETHOD[O, **P, T] = "MethodTypes.RAW_BOUNDMETHOD[O, P, T]"
     type PROPERTY = property
     # Note: FunctionType doesn't support generic type annotations, but typecheckers
     # like mypy are smart enough to coerce a `FunctionType` to `RAW_BOUNDMETHOD` if
     # the types actually line up.
     type METHOD[O, **P, T] = (
-        MethodTypes.STATICMETHOD[P, T]
-        | MethodTypes.CLASSMETHOD[O, P, T]
-        | MethodTypes.RAW_BOUNDMETHOD[O, P, T]
-        | MethodTypes.PROPERTY
+        "MethodTypes.STATICMETHOD[P, T]"
+        | "MethodTypes.CLASSMETHOD[O, P, T]"
+        | "MethodTypes.BOUNDMETHOD[O, P, T]"
+        | "MethodTypes.PROPERTY"
     )
 
     @final
     @staticmethod
     def is_staticmethod[O, **P, T](
-        maybe_fn: METHOD[O, P, T],
+        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
         cls: type[O] | None = None,
     ) -> TypeIs[STATICMETHOD[P, T]]:
         """Check if maybe_fn is a static method; narrow the type if it is."""
@@ -105,7 +108,7 @@ class MethodTypes:
     @final
     @staticmethod
     def is_classmethod[O, **P, T](
-        maybe_fn: METHOD[O, P, T],
+        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
         cls: type[O] | None = None,
     ) -> TypeIs[CLASSMETHOD[O, P, T]]:
         """Check if maybe_fn is a class method; narrow the type if it is."""
@@ -119,21 +122,28 @@ class MethodTypes:
     @final
     @staticmethod
     def is_boundmethod[O, **P, T](
-        maybe_fn: METHOD[O, P, T],
+        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
         cls: type[O] | None = None,
     ) -> TypeIs[BOUNDMETHOD[O, P, T]]:
         """Check if maybe_fn is a bound method; narrow the type if it is."""
         if not MethodTypes.is_method(maybe_fn, cls=cls):
             return False
-        elif not isinstance(maybe_fn, FunctionType):
-            return False
-        else:
+        elif isinstance(maybe_fn, FunctionType):
+            # Could be a bound method or a free function
+            # If cls is provided, check if it's in the class dict
+            if cls is not None:
+                for value in cls.__dict__.values():
+                    if value is maybe_fn:
+                        return True
+            # Otherwise, assume it's a bound method if it's a FunctionType
+            # (this is a best-effort approximation)
             return True
+        return False
 
     @final
     @staticmethod
-    def is_property[O, T](
-        maybe_prop: Any,
+    def is_property[O, **P, T](
+        maybe_prop: METHOD[O, P, T] | RAW_METHOD[O, P, T],
         cls: type[O] | None = None,
     ) -> TypeIs[property]:
         """Check if maybe_prop is a property descriptor; narrow the type if it is."""
@@ -147,29 +157,645 @@ class MethodTypes:
     @final
     @staticmethod
     def is_method[O, **P, T](
-        maybe_fn: METHOD[O, P, T],
+        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
         cls: type[O] | None = None,
-    ) -> TypeIs[METHOD[O, P, T]]:
-        """Check if maybe_fn is a method."""
-        if not isinstance(
-            maybe_fn, (staticmethod, classmethod, FunctionType, property)
-        ):
+    ) -> TypeIs[METHOD[O, P, T] | RAW_METHOD[O, P, T]]:
+        """Check if maybe_fn is a method (wrapped or raw)."""
+        if isinstance(maybe_fn, (staticmethod, classmethod, FunctionType, property)):
+            # For callables that might be raw methods, do a best-effort check
+            if callable(maybe_fn) and cls is not None:
+                for value in cls.__dict__.values():
+                    if value is maybe_fn:
+                        return True
             return False
-
-        def __log_skip_check_return_true(msg: str) -> bool:
-            """Log a message and return True."""
-            logger.info(
-                "MethodTypes.is_method returned True w/out check (%s): %s",
-                maybe_fn,
-                msg,
-            )
-            return True
-
-        if cls is None:
-            return __log_skip_check_return_true("no supplied cls type")
         else:
-            for value in cls.__dict__.values():
-                if value is maybe_fn:
-                    return True
-
             return False
+
+
+# Type alias for wrapper function: wraps the raw function (behavior modification)
+# The inputs are:
+#   - raw_fn: RAW_METHOD (the underlying function)
+#   - descriptor_metadata: dict with information about the descriptor type
+#   - wrapper_args: positional arguments for the wrapper
+#   - wrapper_kwargs: keyword arguments for the wrapper
+# Output is a wrapped callable
+type WrapperFunc[O, **P, T] = Callable[
+    [
+        MethodTypes.RAW_METHOD[O, P, T],
+        dict[str, Any],  # descriptor metadata
+        tuple[Any, ...],
+        dict[str, Any],
+    ],
+    MethodTypes.RAW_METHOD[O, P, T],
+]
+
+# Type alias for attribute setter: adds attributes to the final reconstructed descriptor
+# The inputs are:
+#   - final_descriptor: METHOD (the reconstructed descriptor after wrapping)
+#   - descriptor_metadata: dict with information about the descriptor type
+#   - wrapper_args: positional arguments
+#   - wrapper_kwargs: keyword arguments
+# Output is None (modifies descriptor in place)
+type AttributeSetter[O, **P, T] = Callable[
+    [
+        MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T],
+        dict[str, Any],  # descriptor metadata
+        tuple[Any, ...],
+        dict[str, Any],
+    ],
+    None,
+]
+
+
+class MethodWrapper[O, **P, T]:
+    """A descriptor that wraps a function/method and allows uniform decoration.
+
+    This class implements the descriptor protocol to handle all types of methods
+    correctly, including regular methods, static methods, class methods, and
+    properties. It preserves the original method type and works correctly with
+    static type checkers. It also works correctly regarding of the order that
+    classmethod/staticmethod/property decorators are applied.
+
+    Based on: https://asyncmove.com/blog/2025/01/all-decorators-systematically-decorating-python-class-methods/
+    """
+
+    # Constants for special attribute names
+    DUNDER_GET = "__get__"
+    DUNDER_DOC = "__doc__"
+    DUNDER_ABSTRACT = "__isabstractmethod__"
+    DUNDER_MODULE = "__module__"
+    DUNDER_NAME = "__name__"
+    DUNDER_QUALNAME = "__qualname__"
+
+    def __init__(
+        self,
+        fn: MethodTypes.METHOD[O, P, T] | MethodTypes.RAW_METHOD[O, P, T],
+        wrapper_fn: WrapperFunc[O, P, T] | None = None,
+        attribute_setter: AttributeSetter[O, P, T] | None = None,
+        wrapper_fn_args: tuple[Any, ...] | None = None,
+        wrapper_fn_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize the MethodWrapper.
+
+        Args:
+            fn: The function or method to wrap (can be a descriptor or callable)
+            wrapper_fn: Function that wraps the raw function. Signature:
+                (raw_fn, descriptor_metadata, wrapper_args, wrapper_kwargs) -> wrapped_fn
+            attribute_setter: Optional function that adds attributes to the final descriptor.
+                Signature: (final_descriptor, descriptor_metadata, wrapper_args, wrapper_kwargs) -> None
+            wrapper_fn_args: Positional arguments to pass to wrapper_fn and attribute_setter
+            wrapper_fn_kwargs: Keyword arguments to pass to wrapper_fn and attribute_setter
+        """
+        # Copy special attributes from the original function
+        for attr_name in (
+            self.DUNDER_ABSTRACT,
+            self.DUNDER_DOC,
+            self.DUNDER_MODULE,
+            self.DUNDER_NAME,
+            self.DUNDER_QUALNAME,
+        ):
+            attr_value = getattr(fn, attr_name, None)
+            if attr_value is not None:
+                setattr(self, attr_name, attr_value)
+
+        # Initialize instance attributes with proper types
+        self._inst: Any = None
+        self._owner: type[Any] | None = None
+        self._descriptor_type: (
+            type[staticmethod] | type[classmethod] | type[property] | None
+        ) = None
+        self._property_getter_type: type[staticmethod] | type[classmethod] | None = None
+        self._property_fget: Any | None = None
+        self._property_fset: Any | None = None
+        self._property_fdel: Any | None = None
+        self._fn: MethodTypes.RAW_METHOD[O, P, T] | None = None
+        self._is_free_fn: bool = False
+
+        # Store wrapper function and attribute setter
+        if wrapper_fn is None:
+
+            def default_wrapper_fn(
+                raw_fn: MethodTypes.RAW_METHOD[O, P, T],
+                _descriptor_metadata: dict[str, Any],
+                wrapper_args: tuple[Any, ...],
+                wrapper_kwargs: dict[str, Any],
+            ) -> MethodTypes.RAW_METHOD[O, P, T]:
+                if wrapper_args:
+                    logger.warning(
+                        "wrap_method: %s received positional arguments: %s",
+                        raw_fn.__name__ if hasattr(raw_fn, "__name__") else raw_fn,
+                        wrapper_args,
+                    )
+                if wrapper_kwargs:
+                    logger.warning(
+                        "wrap_method: %s received keyword arguments: %s",
+                        raw_fn.__name__ if hasattr(raw_fn, "__name__") else raw_fn,
+                        wrapper_kwargs,
+                    )
+                return raw_fn
+
+            self._wrapper_fn: WrapperFunc[O, P, T] = default_wrapper_fn
+        else:
+            self._wrapper_fn = wrapper_fn
+
+        self._attribute_setter = attribute_setter
+        self._wrapper_fn_args = wrapper_fn_args if wrapper_fn_args is not None else ()
+        self._wrapper_fn_kwargs = (
+            wrapper_fn_kwargs if wrapper_fn_kwargs is not None else {}
+        )
+
+        # Determine if this is a descriptor (staticmethod, classmethod, property) or a function
+        # Store the original descriptor type for reconstruction
+        if isinstance(fn, staticmethod):
+            self._extract_staticmethod_info(fn)
+        elif isinstance(fn, classmethod):
+            self._extract_classmethod_info(fn)
+        elif isinstance(fn, property):
+            self._extract_property_info(fn)
+        elif isinstance(fn, FunctionType):
+            # It's a bound method (FunctionType) or free function
+            self._set_descriptor_type(None)
+            self._fn = fn
+            self._is_free_fn = True
+        else:
+            if not callable(fn):
+                raise ValueError(f"fn is not callable: {fn}")
+            self._set_descriptor_type(None)
+            self._fn = fn
+            self._is_free_fn = not hasattr(fn, self.DUNDER_GET)
+
+    def _set_descriptor_type(
+        self,
+        descriptor_type: type[staticmethod] | type[classmethod] | type[property] | None,
+    ) -> None:
+        """Set the descriptor type with a guard to prevent overwriting.
+
+        Args:
+            descriptor_type: The descriptor type to set
+        """
+        if (
+            self._descriptor_type is not None
+            and self._descriptor_type != descriptor_type
+        ):
+            raise ValueError(
+                f"Cannot overwrite descriptor_type {self._descriptor_type} with {descriptor_type}"
+            )
+        self._descriptor_type = descriptor_type
+
+    def _extract_staticmethod_info(self, static_method: staticmethod[Any, Any]) -> None:
+        """Extract information from a staticmethod descriptor.
+
+        Args:
+            static_method: The staticmethod descriptor to extract info from
+        """
+        self._set_descriptor_type(staticmethod)
+        self._fn = static_method.__func__
+        self._is_free_fn = False
+
+    def _extract_classmethod_info(
+        self, class_method: classmethod[Any, Any, Any]
+    ) -> None:
+        """Extract information from a classmethod descriptor.
+
+        Args:
+            class_method: The classmethod descriptor to extract info from
+        """
+        self._set_descriptor_type(classmethod)
+        self._fn = class_method.__func__
+        self._is_free_fn = False
+
+    def _extract_property_info(self, prop: property) -> None:
+        """Extract information from a property descriptor.
+
+        Args:
+            prop: The property descriptor to extract info from
+        """
+        self._set_descriptor_type(property)
+        # Store property attributes
+        self._property_fget = prop.fget
+        self._property_fset = getattr(prop, "fset", None)
+        self._property_fdel = getattr(prop, "fdel", None)
+        # Check if the getter is itself a staticmethod or classmethod
+        fget = prop.fget
+        if isinstance(fget, staticmethod):
+            self._property_getter_type = staticmethod
+            self._fn = fget.__func__
+        elif isinstance(fget, classmethod):
+            self._property_getter_type = classmethod
+            self._fn = fget.__func__
+        else:
+            self._property_getter_type = None
+            self._fn = fget  # Use fget as the function to wrap
+        self._is_free_fn = False
+
+    def _detect_wrapped_descriptor(self, owner: type[Any]) -> None:
+        """Detect if this MethodWrapper is wrapped by a descriptor in the owner class.
+
+        This handles the case where wrap_method is applied before @staticmethod/@classmethod/@property.
+
+        Args:
+            owner: The class that owns this method
+        """
+        if self._descriptor_type is not None:
+            # Already detected, no need to check again
+            return
+
+        attr_name = getattr(self, "__name__", None)
+        if attr_name is None or attr_name not in owner.__dict__:
+            return
+
+        attr_value = owner.__dict__[attr_name]
+        # Check if attr_value is a staticmethod/classmethod that wraps self
+        if isinstance(attr_value, staticmethod):
+            wrapped_func = getattr(attr_value, "__func__", None)
+            if wrapped_func is self:
+                self._set_descriptor_type(staticmethod)
+                # The function is already stored in self._fn from __init__
+        elif isinstance(attr_value, classmethod):
+            wrapped_func = getattr(attr_value, "__func__", None)
+            if wrapped_func is self:
+                self._set_descriptor_type(classmethod)
+                # The function is already stored in self._fn from __init__
+        elif isinstance(attr_value, property):
+            self._detect_wrapped_property(attr_value)
+
+        # Also check if we're being accessed as the __func__ of a classmethod/staticmethod
+        # This happens when @classmethod/@staticmethod is applied after @wrap_method
+        # In this case, the classmethod/staticmethod object is returned by __get__,
+        # and we need to handle being called from that context
+        # We detect this by checking if we're being called from a classmethod/staticmethod context
+        # via the call stack or by checking if owner has a classmethod/staticmethod with us as __func__
+        if self._descriptor_type is None:
+            # Check if any attribute in the class is a classmethod/staticmethod with us as __func__
+            for value in owner.__dict__.values():
+                if isinstance(value, (classmethod, staticmethod)):
+                    wrapped_func = getattr(value, "__func__", None)
+                    if wrapped_func is self:
+                        if isinstance(value, classmethod):
+                            self._set_descriptor_type(classmethod)
+                        elif isinstance(value, staticmethod):
+                            self._set_descriptor_type(staticmethod)
+                        break
+
+    def _detect_wrapped_property(self, prop: property) -> None:
+        """Detect if this MethodWrapper is wrapped by a property descriptor.
+
+        Args:
+            prop: The property descriptor that might wrap self
+        """
+        # For property, check if fget is self or wraps self
+        fget = getattr(prop, "fget", None)
+        property_getter_type: type[staticmethod] | type[classmethod] | None = None
+
+        if fget is self:
+            property_getter_type = None
+        # Also check if fget is a staticmethod/classmethod wrapping self
+        elif isinstance(fget, staticmethod):
+            if getattr(fget, "__func__", None) is self:
+                property_getter_type = staticmethod
+        elif isinstance(fget, classmethod):
+            if getattr(fget, "__func__", None) is self:
+                property_getter_type = classmethod
+        else:
+            # fget doesn't wrap self, so we're not wrapped by this property
+            return
+
+        # If we get here, we've detected that we're wrapped by this property
+        self._set_descriptor_type(property)
+        # Only set property_getter_type if it hasn't been set yet (guard against overwriting)
+        if self._property_getter_type is None:
+            self._property_getter_type = property_getter_type
+        # Only set fset/fdel if they haven't been set yet (guard against overwriting)
+        if self._property_fset is None:
+            self._property_fset = getattr(prop, "fset", None)
+        if self._property_fdel is None:
+            self._property_fdel = getattr(prop, "fdel", None)
+        # The function is already stored in self._fn from __init__
+
+    def _build_descriptor_metadata(self) -> dict[str, Any]:
+        """Build metadata dictionary about the descriptor type.
+
+        Returns:
+            A dictionary containing information about the descriptor type,
+            property attributes, etc.
+        """
+        return {
+            "descriptor_type": self._descriptor_type,
+            "property_getter_type": self._property_getter_type,
+            "property_fset": self._property_fset,
+            "property_fdel": self._property_fdel,
+        }
+
+    def __get__(self, inst: Any | None, owner: type[Any] | None = None) -> Any:
+        """Implements the descriptor protocol.
+
+        Args:
+            inst: The instance that the method is being accessed from (None for class access)
+            owner: The class that owns the method
+
+        Returns:
+            The wrapped method, preserving the original descriptor type
+        """
+        self._inst = inst
+        self._owner = owner
+        self._is_free_fn = False
+
+        # If we don't have a descriptor type yet, check if we're wrapped by one
+        # This handles the case where wrap_method is applied before @staticmethod/@classmethod/@property
+        assert self._fn is not None, "fn is not set"
+        fn_to_wrap: MethodTypes.RAW_METHOD[O, P, T]
+        if owner is not None:
+            self._detect_wrapped_descriptor(owner)
+
+        # Get the underlying function to wrap
+        if self._descriptor_type is staticmethod:
+            # For staticmethod, use the stored function directly
+            fn_to_wrap = self._fn
+        elif self._descriptor_type is classmethod:
+            # For classmethod, use the stored function directly
+            fn_to_wrap = self._fn
+        elif self._descriptor_type is property:
+            # For property, we need to wrap the getter
+            # Use the stored function (already unwrapped if it was staticmethod/classmethod)
+            fn_to_wrap = self._fn
+            if fn_to_wrap is None:
+                raise AttributeError("property has no getter")
+        else:
+            # Free function or bound method - use directly
+            fn_to_wrap = self._fn
+
+        # Build descriptor metadata
+        descriptor_metadata = self._build_descriptor_metadata()
+
+        # Phase 1: Apply the wrapper function to wrap behavior
+        wrapped_fn: MethodTypes.RAW_METHOD[O, P, T] = self._wrapper_fn(
+            fn_to_wrap,
+            descriptor_metadata,
+            self._wrapper_fn_args,
+            self._wrapper_fn_kwargs,
+        )
+
+        # Preserve metadata
+        if hasattr(fn_to_wrap, "__name__"):
+            wrapped_fn = wraps(cast(Callable[..., Any], fn_to_wrap))(
+                cast(Callable[..., Any], wrapped_fn)
+            )
+
+        # Phase 2: Reconstruct the descriptor from the wrapped function
+        final_descriptor: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T]
+        if self._descriptor_type is staticmethod:
+            final_descriptor = staticmethod(
+                cast(MethodTypes.RAW_STATICMETHOD[P, T], wrapped_fn)
+            )
+        elif self._descriptor_type is classmethod:
+            cm: MethodTypes.CLASSMETHOD[O, P, T] = classmethod(
+                cast(MethodTypes.RAW_CLASSMETHOD[O, P, T], wrapped_fn)
+            )
+            # For classmethod, we need to return the bound method, not the classmethod object
+            # This is because classmethod objects are not directly callable
+            if owner is not None:
+                # Return the bound method by calling classmethod.__get__
+                final_descriptor = cast(
+                    MethodTypes.RAW_CLASSMETHOD[O, P, T], cm.__get__(inst, owner)
+                )
+            else:
+                final_descriptor = cm
+        elif self._descriptor_type is property:
+            # Reconstruct property with wrapped getter
+            # If the original getter was a staticmethod or classmethod, preserve that
+            fget: Any
+            if self._property_getter_type is staticmethod:
+                fget = staticmethod(
+                    cast(MethodTypes.RAW_STATICMETHOD[P, T], wrapped_fn)
+                )
+            elif self._property_getter_type is classmethod:
+                fget = classmethod(
+                    cast(MethodTypes.RAW_CLASSMETHOD[O, P, T], wrapped_fn)
+                )
+            else:
+                fget = wrapped_fn
+            prop = property(
+                fget=fget,
+                fset=self._property_fset,
+                fdel=self._property_fdel,
+            )
+            # For property, we need to return the result of property.__get__, not the property object
+            # This is because property objects are not directly accessible - they need to be accessed
+            # through the descriptor protocol
+            if inst is not None and owner is not None:
+                # Return the value by calling property.__get__
+                final_descriptor = prop.__get__(inst, owner)
+            else:
+                final_descriptor = prop
+        else:
+            # Bound method or free function - return the wrapped function directly
+            # If accessed from an instance, bind it
+            if inst is not None and owner is not None:
+                if not hasattr(wrapped_fn, "__get__"):
+                    raise TypeError(
+                        "wrapped_fn does not have __get__ method and cannot be bound"
+                    )
+                # Create a bound method
+                final_descriptor = object.__getattribute__(wrapped_fn, "__get__")(
+                    inst, owner
+                )
+            else:
+                final_descriptor = wrapped_fn
+
+        # Phase 3: Apply attribute setter to the final reconstructed descriptor
+        if self._attribute_setter is not None:
+            # Only apply attribute setter if the descriptor supports it
+            # Bound methods don't support setting attributes
+            try:
+                self._attribute_setter(
+                    final_descriptor,
+                    descriptor_metadata,
+                    self._wrapper_fn_args,
+                    self._wrapper_fn_kwargs,
+                )
+            except (AttributeError, TypeError):
+                # Bound methods and some other descriptors don't support setting attributes
+                # This is expected and we just skip the attribute setter
+                pass
+
+        return final_descriptor
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        """Calls the wrapped function with the provided arguments.
+
+        This is used when the MethodWrapper instance is called directly
+        (e.g., `wrapper = MethodWrapper(fn); wrapper(args)`).
+
+        For methods on classes, `__get__` is called when accessing the attribute,
+        which returns the final descriptor that handles its own invocation.
+
+        This also handles the case where MethodWrapper is the __func__ of a classmethod/staticmethod.
+        When @classmethod/@staticmethod wraps a MethodWrapper, classmethod.__get__/staticmethod.__get__
+        returns the MethodWrapper instance. When that instance is called, we need to handle it correctly.
+        """
+        # If we're a classmethod, try to infer the class from the first argument
+        if self._descriptor_type is classmethod and args:
+            first_arg = args[0]
+            if isinstance(first_arg, type):
+                # First argument is a class, use it as owner
+                final_descriptor = self.__get__(None, first_arg)
+                return final_descriptor(*args, **kwargs)
+
+        # For staticmethod or other cases, delegate to __get__ with no instance/owner
+        # This will return the final descriptor (or wrapped function for free functions),
+        # and then we call that.
+        final_descriptor = self.__get__(None, None)
+        return final_descriptor(*args, **kwargs)
+
+
+@overload
+def wrap_method[O, **P, T](
+    fn: None = None,
+    *,
+    wrapper_fn: WrapperFunc[O, P, T] | None = None,
+    attribute_setter: AttributeSetter[O, P, T] | None = None,
+    wrapper_fn_args: tuple[Any, ...] | None = None,
+    wrapper_fn_kwargs: dict[str, Any] | None = None,
+    raw: Literal[True],
+) -> Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]:
+    """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
+
+
+@overload
+def wrap_method[O, **P, T](
+    fn: None = None,
+    *,
+    wrapper_fn: WrapperFunc[O, P, T] | None = None,
+    attribute_setter: AttributeSetter[O, P, T] | None = None,
+    wrapper_fn_args: tuple[Any, ...] | None = None,
+    wrapper_fn_kwargs: dict[str, Any] | None = None,
+    raw: Literal[False] = False,
+) -> Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]:
+    """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
+
+
+# Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
+# MethodTypes.METHOD in the overloads, so we need to use type; pyright
+# successfully typechecks these overloads.
+@overload
+def wrap_method[O, **P, T](  # type: ignore[overload-overlap]
+    fn: MethodTypes.RAW_METHOD[O, P, T],
+    *,
+    wrapper_fn: WrapperFunc[O, P, T] | None = None,
+    attribute_setter: AttributeSetter[O, P, T] | None = None,
+    wrapper_fn_args: tuple[Any, ...] | None = None,
+    wrapper_fn_kwargs: dict[str, Any] | None = None,
+    raw: Literal[True],
+) -> MethodWrapper[O, P, T]:
+    """Overload: Direct call with function and optional keyword arguments."""
+
+
+@overload
+def wrap_method[O, **P, T](
+    fn: MethodTypes.METHOD[O, P, T],
+    *,
+    wrapper_fn: WrapperFunc[O, P, T] | None = None,
+    attribute_setter: AttributeSetter[O, P, T] | None = None,
+    wrapper_fn_args: tuple[Any, ...] | None = None,
+    wrapper_fn_kwargs: dict[str, Any] | None = None,
+    raw: Literal[False] = False,
+) -> MethodWrapper[O, P, T]:
+    """Overload: Direct call with function and optional keyword arguments."""
+
+
+# Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
+# MethodTypes.METHOD in the overloads, and this causes issues when typechecking
+# implementation; pyright successfully typechecks this.
+def wrap_method[O, **P, T](  # type: ignore[misc]
+    fn: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | None = None,
+    *,
+    wrapper_fn: WrapperFunc[O, P, T] | None = None,
+    attribute_setter: AttributeSetter[O, P, T] | None = None,
+    wrapper_fn_args: tuple[Any, ...] | None = None,
+    wrapper_fn_kwargs: dict[str, Any] | None = None,
+    raw: bool | Literal[True] | Literal[False] = False,
+) -> (
+    MethodWrapper[O, P, T]
+    | Callable[[MethodTypes.RAW_METHOD[O, P, T]], MethodWrapper[O, P, T]]
+    | Callable[[MethodTypes.METHOD[O, P, T]], MethodWrapper[O, P, T]]
+):
+    """Wrap a method with a wrapper function, preserving its type.
+
+    This function creates a MethodWrapper that can handle any method type
+    (staticmethod, classmethod, bound method, property) uniformly while
+    preserving type information for static type checkers.
+
+    Can be used in three ways:
+    1. Direct decoration: ``@wrap_method``
+    2. Decorator factory: ``@wrap_method(wrapper_fn=...)`` or ``@wrap_method(attribute_setter=...)``
+    3. Direct call: ``wrap_method(fn, wrapper_fn=...)`` or ``wrap_method(fn, attribute_setter=...)``
+
+    Args:
+        fn: The method to wrap (can be any METHOD type). If None, returns a decorator.
+            When used as a decorator factory (fn=None), at least one of wrapper_fn or
+            attribute_setter must be provided.
+        wrapper_fn: Optional function that wraps the raw function (behavior modification).
+            Signature: (raw_fn, descriptor_metadata, wrapper_args, wrapper_kwargs) -> wrapped_fn
+            If not provided, the raw function is returned unchanged.
+        attribute_setter: Optional function that adds attributes to the final descriptor.
+            Signature: (final_descriptor, descriptor_metadata, wrapper_args, wrapper_kwargs) -> None
+            This is called after the descriptor is reconstructed, so attributes are added to the
+            final descriptor that will be returned.
+        wrapper_fn_args: Positional arguments to pass to wrapper_fn and attribute_setter
+        wrapper_fn_kwargs: Keyword arguments to pass to wrapper_fn and attribute_setter
+
+    Returns:
+        A wrapped method of the same type as the input, or a decorator function
+        if `fn` is None.
+
+    Example:
+        >>> def logging_wrapper(fn, args, kwargs):
+        ...     @wraps(fn)
+        ...     def wrapped(*args, **kwargs):
+        ...         print(f"Calling {fn.__name__}")
+        ...         return fn(*args, **kwargs)
+        ...     return wrapped
+        ...
+        >>> def add_attr(final_desc, metadata, args, kwargs):
+        ...     object.__setattr__(final_desc, "__custom_attr", "value")
+        ...
+        >>> class MyClass:
+        ...     @staticmethod
+        ...     @wrap_method(wrapper_fn=logging_wrapper)
+        ...     def static_method(x: int) -> int:
+        ...         return x * 2
+        ...
+        ...     @classmethod
+        ...     @wrap_method(attribute_setter=add_attr)
+        ...     def class_method(cls) -> str:
+        ...         return cls.__name__
+        ...
+        ...     @wrap_method(wrapper_fn=logging_wrapper)
+        ...     def instance_method(self, x: int) -> int:
+        ...         return x * 3
+    """
+    # If fn is None, we're being called as a decorator factory
+    if fn is None:
+        # For the decorator factory overload, at least one of wrapper_fn or attribute_setter
+        # must be provided
+        assert wrapper_fn is not None or attribute_setter is not None, (
+            "At least one of wrapper_fn or attribute_setter must be provided when fn is None"
+        )
+
+        def decorator(
+            method: MethodTypes.RAW_METHOD[O, P, T],
+        ) -> MethodWrapper[O, P, T]:
+            return MethodWrapper(
+                method,
+                wrapper_fn,
+                attribute_setter,
+                wrapper_fn_args,
+                wrapper_fn_kwargs,
+            )
+
+        return decorator
+
+    # Otherwise, wrap the function directly
+    return MethodWrapper(
+        fn, wrapper_fn, attribute_setter, wrapper_fn_args, wrapper_fn_kwargs
+    )
