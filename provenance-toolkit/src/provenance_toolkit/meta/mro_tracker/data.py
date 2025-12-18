@@ -1,4 +1,4 @@
-"""Types & utils used by mro_tracker.py for tracking inheritance hierarchy information."""
+"""Types & utils used for tracking inheritance hierarchy information."""
 
 from __future__ import annotations
 
