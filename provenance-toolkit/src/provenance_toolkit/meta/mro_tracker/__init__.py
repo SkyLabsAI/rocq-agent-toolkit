@@ -43,18 +43,21 @@ See mro_tracker.py for more details.
 from typing import TypeAlias
 
 from ..final_namespace import FinalNamespaceMeta
-from .mro_tracker import MROTrackerMeta
-from .mro_tracker_data import MROTrackerData, MROTrackerDatum
+from .data import MROTrackerData, MROTrackerDatum
+from .decorator import MROTrackerDecorator
+from .meta import MROTrackerMeta
 
 
 class MROTracker(
     metaclass=FinalNamespaceMeta,
     derive_from={
+        "Decorator": MROTrackerDecorator,
         "Meta": MROTrackerMeta,
     },
 ):
     Datum: TypeAlias = MROTrackerDatum  # noqa: UP040
     Data: TypeAlias = MROTrackerData  # noqa: UP040
+    Decorator: TypeAlias = MROTrackerDecorator  # noqa: UP040
     Meta: TypeAlias = MROTrackerMeta  # noqa: UP040
 
 
