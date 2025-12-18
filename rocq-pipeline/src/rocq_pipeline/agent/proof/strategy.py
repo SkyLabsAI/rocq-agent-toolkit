@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import heapq
 from abc import ABC, abstractmethod
 from collections.abc import Generator
@@ -6,18 +8,18 @@ from typing import override
 from rocq_doc_manager import RocqCursor
 
 
-class Action:
+class Action[T]:
     @abstractmethod
-    def interact(self, rc: RocqCursor) -> bool:
+    def interact(self, rc: T) -> bool:
         return False
 
-    def run_tactic(
-        self, rc: RocqCursor, tactic: str
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        return rc.insert_command(tactic)
+    # def run_tactic(
+    #     self, rc: Cursor, tactic: str
+    # ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    #     return rc.insert_command(tactic)
 
 
-class TacticAction(Action):
+class RocqTacticAction(Action[RocqCursor]):
     def __init__(self, tactic: str) -> None:
         self._tactic = tactic
 
@@ -27,17 +29,17 @@ class TacticAction(Action):
         return not issubclass(type(response), RocqCursor.Err)
 
 
-class Strategy(ABC):
+class Strategy[T](ABC):
     """
     A `Strategy` proposes actions to take
     """
 
-    type Action = Action
+    type Action = Action[T]
     # TODO: make [Rollout] into a class
-    type Rollout = Generator[tuple[float, Action]]
+    type Rollout = Generator[tuple[float, Strategy[T].Action]]
 
     @abstractmethod
-    def rollout(self, rdm: RocqCursor, max_rollout: int | None = None) -> Rollout:
+    def rollout(self, cursor: T, max_rollout: int | None = None) -> Rollout:
         """
         Given the goal `G`, generates `(Pr,A)` such that:
         - `Pr` is the probability that `A` is (the next/a necessary) step in an
@@ -52,22 +54,20 @@ class Strategy(ABC):
         pass
 
 
-def empty_Rollout() -> Strategy.Rollout:
+def empty_Rollout[T]() -> Strategy[T].Rollout:
     yield from ()
 
 
-class CompositeStrategy(Strategy):
+class CompositeStrategy[T](Strategy[T]):
     """A (fair) combination of strategies"""
 
-    def __init__(self, children: list[Strategy]) -> None:
-        self._children: list[Strategy] = children
+    def __init__(self, children: list[Strategy[T]]) -> None:
+        self._children: list[Strategy[T]] = children
 
     @override
-    def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
-    ) -> Strategy.Rollout:
-        def combine() -> Strategy.Rollout:
-            queue: list[tuple[float, int, Strategy.Action, Strategy.Rollout]] = []
+    def rollout(self, rdm: T, max_rollout: int | None = None) -> Strategy[T].Rollout:
+        def combine() -> Strategy[T].Rollout:
+            queue: list[tuple[float, int, Strategy[T].Action, Strategy[T].Rollout]] = []
             for i, strat in enumerate(self._children):
                 gen = strat.rollout(rdm, max_rollout=max_rollout)
                 try:
@@ -91,7 +91,7 @@ class CompositeStrategy(Strategy):
         return combine()
 
 
-class SafeTacticStrategy(Strategy):
+class SafeTacticStrategy(Strategy[RocqCursor]):
     """A simple strategy that always returns a tactic."""
 
     def __init__(self, tactic: str, prob: float = 1.0) -> None:
@@ -103,12 +103,12 @@ class SafeTacticStrategy(Strategy):
         self, rdm: RocqCursor, max_rollout: int | None = None
     ) -> Strategy.Rollout:
         return (
-            (prob, TacticAction(f"progress {tac}"))
+            (prob, RocqTacticAction(f"progress {tac}"))
             for prob, tac in [(self._prob, self._tactic)]
         )
 
 
-class CutAssertStrategy(Strategy):
+class CutAssertStrategy(Strategy[RocqCursor]):
     """A simple strategy that cuts a Rocq lemma.
     The success probability 1.0 is not necessarily appropriate."""
 
@@ -129,27 +129,25 @@ class CutAssertStrategy(Strategy):
         # otherwise we risk looping here
         tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
-        return ((prob, TacticAction(t)) for prob, t in [(self._prob, tac)])
+        return ((prob, RocqTacticAction(t)) for prob, t in [(self._prob, tac)])
 
 
-class FailStrategy(Strategy):
+class FailStrategy[T](Strategy[T]):
     """A simple strategy that fails."""
 
     @override
-    def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
-    ) -> Strategy.Rollout:
+    def rollout(self, rdm: T, max_rollout: int | None = None) -> Strategy[T].Rollout:
         return empty_Rollout()
 
 
-class FirstTacticStrategy(Strategy):
+class FirstTacticStrategy(Strategy[RocqCursor]):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
     def __init__(self, tactics: list[tuple[float, str | Action]]) -> None:
         def mk(x: str | Action) -> Action:
             if isinstance(x, Action):
                 return x
-            return TacticAction(x)
+            return RocqTacticAction(x)
 
         self._tactics: list[tuple[float, Action]] = [
             (prob, mk(tac)) for prob, tac in sorted(tactics, reverse=True)
@@ -162,24 +160,22 @@ class FirstTacticStrategy(Strategy):
         return ((prob, tac) for prob, tac in self._tactics)
 
 
-class GuardStrategy[T](FailStrategy, ABC):
+class GuardStrategy[T](FailStrategy[T], ABC):
     """Guard the execution of a strategy.
     If [check] returns [None], then this strategy acts like the [FailStrategy] otherwise
     it does [rollout_with]
     """
 
     @abstractmethod
-    def check(self, rdm: RocqCursor) -> T | None: ...
+    def check(self, rdm: T) -> T | None: ...
 
     @abstractmethod
-    def rollout_with(
-        self, val: T, rdm: RocqCursor, max_rollout: int | None = None
-    ) -> Strategy.Rollout: ...
+    def rollout_with(self, val: T, rdm: T, max_rollout: int | None = None) -> Strategy[
+        T
+    ].Rollout: ...
 
     @override
-    def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
-    ) -> Strategy.Rollout:
+    def rollout(self, rdm: T, max_rollout: int | None = None) -> Strategy[T].Rollout:
         val = self.check(rdm)
         if val is None:
             return super().rollout(rdm, max_rollout)
