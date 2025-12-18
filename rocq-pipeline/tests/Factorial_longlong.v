@@ -1,6 +1,6 @@
 (** BEGIN: SKYLABS DEFAULT PROOF IMPORTS *)
-Require Import bluerock.auto.cpp.prelude.proof.
-Require Import bluerock.cpp.array.
+Require Import skylabs.auto.cpp.prelude.proof.
+Require Import skylabs.cpp.array.
 Import expr_join.
 #[local] Hint Resolve delayed_case.smash_delayed_case_B | 1000 : br_hints.
 #[local] Hint Resolve delayed_case.expr_join.smash_delayed_case_B | 1000 : br_hints.
@@ -8,10 +8,10 @@ Import expr_join.
 
 Import normalize.only_provable_norm.
 
-(** SCOPES: [bluerock.lang.cpp.parser.plugin.cpp2v] opens a scope that interferes
+(** SCOPES: [skylabs.lang.cpp.parser.plugin.cpp2v] opens a scope that interferes
     with IPM tactic notations.
  *)
-Require bluerock.lang.cpp.parser.plugin.cpp2v.
+Require skylabs.lang.cpp.parser.plugin.cpp2v.
 
 Section code.
 

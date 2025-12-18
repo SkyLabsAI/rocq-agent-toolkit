@@ -5,7 +5,7 @@
 ; Use of this file is only permitted subject to a separate written license agreement with BlueRock.
 
 ;(env
-; (br_timing
+; (sl_timing
 ;  (binaries
 ;   (../BRiCk/rocq-tools/bin/coqc_perf.exe as coqc))
 ;  (flags :standard %{read-lines:flags/ocamlc})

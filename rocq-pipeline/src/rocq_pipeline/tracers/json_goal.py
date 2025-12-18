@@ -45,7 +45,7 @@ class JsonGoal(StateExtractor[list[Any]]):
             "skylabs_ai.extractors.goal_to_json",
             "skylabs_ai.ltac2_json",
             "skylabs_ai.ltac2_derive",
-            "bluerock.ltac2.extra",
+            "skylabs.ltac2.extra",
         ]
         return {k: ext(user, k.split(".")) for k in PATHS}
 

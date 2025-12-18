@@ -2,7 +2,7 @@ Require Import iris.proofmode.base.
 Require Import iris.proofmode.environments.
 Require Import iris.bi.bi.
 
-Require Import bluerock.ltac2.extra.extra.
+Require Import skylabs.ltac2.extra.extra.
 Require skylabs_ai.ltac2_json.JSON.
 Import Ltac2 Control.Notations Ltac2.Printf.
 
