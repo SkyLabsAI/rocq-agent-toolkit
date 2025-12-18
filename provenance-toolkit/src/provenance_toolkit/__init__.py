@@ -10,7 +10,7 @@ from .meta import (
     FinalNamespaceMeta,
     MROTracker,
 )
-from .method_types import MethodTypes
+from .method_types import MethodTypes, MethodWrapper, wrap_method
 from .proto import Version, WithProvenance, WithSignature, WithVersionSignature
 
 
@@ -47,4 +47,6 @@ __all__: list[str] = [
     "MROTracker",
     # method_types.py
     "MethodTypes",
+    "MethodWrapper",
+    "wrap_method",
 ]
