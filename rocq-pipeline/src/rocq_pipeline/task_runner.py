@@ -137,6 +137,7 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
             tags[tag_key] = value
     return task_output.Tags(tags)
 
+
 @trace(name="run_task")
 def run_task(
     build_agent: AgentBuilder,
@@ -313,6 +314,7 @@ def parse_arguments(
         deployment_env,
     )
 
+
 @trace(name="Running pipeline")
 def run_config(config: RunConfiguration) -> bool:
     # Setup environment based on deployment mode
@@ -370,6 +372,7 @@ def run_config(config: RunConfiguration) -> bool:
         config.deployment_env.post_run(tasks_result_file)
 
     return True
+
 
 def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bool:
     """
