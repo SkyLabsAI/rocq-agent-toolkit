@@ -3,15 +3,16 @@ import json
 import re
 import sys
 from argparse import ArgumentParser, Namespace
+from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
-from rocq_pipeline.locator import NotFound
+from rocq_pipeline.locator import FirstLemma, NotFound
 from rocq_pipeline.taggers.tactic_tagger import extract_tactics
 from rocq_pipeline.util import parallel_runner
 
@@ -20,7 +21,7 @@ from rocq_pipeline.util import parallel_runner
 class ProofTask:
     start: int
     end: int
-    admitted: bool
+    final: Literal["aborted", "qed", "admitted"]
     proof_tactics: list[str]
 
 
@@ -33,16 +34,14 @@ def scan_proof(suffix: list[RocqCursor.SuffixItem]) -> ProofTask:
         txt: str = sentence.text
         if txt.startswith("Proof"):
             start = i + 1
-            continue
-        proof_ended: bool = (
-            txt.startswith("Qed")
-            or txt.startswith("Admitted")
-            or txt.startswith("Abort")
-            or txt.startswith("Defined")
-        )
-        if proof_ended:
-            return ProofTask(start, i, not txt.startswith("Qed"), tactics)
-        tactics.append(txt)
+        elif txt.startswith("Qed") or txt.startswith("Defined"):
+            return ProofTask(start, i, "qed", tactics)
+        elif txt.startswith("Abort"):
+            return ProofTask(start, i, "aborted", tactics)
+        elif txt.startswith("Admitted"):
+            return ProofTask(start, i, "admitted", tactics)
+        else:
+            tactics.append(txt)
     raise NotFound
 
 
@@ -55,6 +54,7 @@ def find_tasks(
     ) as rdm:
         rc: RocqCursor = rdm.cursor()
         tasks: list[dict[str, Any]] = []
+        counts: dict[str, int] = defaultdict(int)
 
         suffix = rc.doc_suffix()
         total_sentences = len(suffix)
@@ -67,6 +67,9 @@ def find_tasks(
                 continue
             m = mtch.match(sentence.text)
             if m is not None:
+                canon_name = f"{m.group(1)}:{m.group(2)}"
+                current = counts[canon_name]
+                counts[canon_name] += 1
                 try:
                     proof: ProofTask = scan_proof(suffix[idx:])
                     idx += proof.end
@@ -75,13 +78,14 @@ def find_tasks(
                         tags.update(tagger(proof))
                 except NotFound:
                     print(f"{m.group(1)} {m.group(2)} does not end", file=sys.stderr)
-                    tags = {"proof", "incomplete"}
+                    # tags = {"proof", "incomplete"}
+                    break
                 task_json: dict[str, Any] = {
-                    "locator": f"{m.group(1)}:{m.group(2)}",
+                    "locator": str(FirstLemma(m.group(2), m.group(1), current)),
                     "tags": list(tags),
                 }
                 tasks.append(task_json)
-                continue
+
         return tasks
 
 
@@ -113,8 +117,7 @@ def my_tagger(task: ProofTask) -> set[str]:
 
     tags.add(f"NumTactics={numtactics}")
 
-    if task.admitted:
-        tags.add("admitted")
+    tags.add(task.final)
 
     if omitted:
         tags.add(f"UnmatchedTactics={sorted(omitted)}")

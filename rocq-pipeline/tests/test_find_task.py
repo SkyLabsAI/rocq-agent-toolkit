@@ -30,6 +30,7 @@ def test_factorial_longlong() -> None:
     tags = test_ok_inv_task["tags"]
     assert set(tags) == {
         "proof",
+        "qed",
         "Arith.arith_simpl",
         "rewrite",
         "intros",
