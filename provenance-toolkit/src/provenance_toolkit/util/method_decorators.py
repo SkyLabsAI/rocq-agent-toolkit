@@ -19,157 +19,9 @@ from typing import (
     overload,
 )
 
+from .method_types import *
+
 logger = logging.getLogger(__name__)
-
-
-class MethodTypes:
-    """Utilities and types for metaprogramming with methods of classes.
-
-    Functionality is implemented in a best-effort way; underapproximations
-    are either logged or raised as exception, depending on [strict: bool] args.
-    """
-
-    # Python `def`s in classes are one of:
-    # 1. static: staticmethod[P, T]       ~=   Callable[                       P , T]
-    # 2. class:  classmethod[CLS, P, T]   ~=   Callable[Concatenate[type[CLS], P], T]
-    # 3. bound:  FunctionType  (on CLS)   ~=   Callable[Concatenate[     CLS,  P], T]
-    #
-    # The following `type`s are used to capture/propagate precise typing information
-    # when building decorators (e.g. `Provenance.register`+`Provenance.extend{_as}`,
-    # cf. __init__.py)
-    type RAW_STATICMETHOD[**P, T] = Callable[P, T]
-    type RAW_CLASSMETHOD[O, **P, T] = Callable[Concatenate[type[O], P], T]
-    type RAW_BOUNDMETHOD[O, **P, T] = Annotated[
-        Callable[Concatenate[O, P], T],
-        FunctionType,
-        # Note: we repeat `Callable[...]` because we want to use it for
-        # the annotation, and as the raw underlying type.
-        #
-        # cf. https://docs.python.org/3/library/typing.html#typing.Annotated
-        Callable[Concatenate[O, P], T],
-    ]
-    # Note: since python 3.13, @classmethod and @property cannot be combined
-    #
-    # cf. https://docs.python.org/3/library/functions.html#classmethod
-    type RAW_PROPERTY[O, T] = (
-        Annotated[
-            Callable[[type[O]], T],
-            FunctionType,
-            # Note: we repeat `Callable[...]` because we want to use it for
-            # the annotation, and as the raw underlying type.
-            #
-            # cf. https://docs.python.org/3/library/typing.html#typing.Annotated
-            Callable[[type[O]], T],
-        ]
-        | Annotated[
-            Callable[[O], T],
-            FunctionType,
-            # Note: we repeat `Callable[...]` because we want to use it for
-            # the annotation, and as the raw underlying type.
-            #
-            # cf. https://docs.python.org/3/library/typing.html#typing.Annotated
-            Callable[[O], T],
-        ]
-    )
-    type RAW_METHOD[O, **P, T] = (
-        "MethodTypes.RAW_STATICMETHOD[P, T]"
-        | "MethodTypes.RAW_CLASSMETHOD[O, P, T]"
-        | "MethodTypes.RAW_BOUNDMETHOD[O, P, T]"
-        | "MethodTypes.RAW_PROPERTY[O, T]"
-    )
-    type STATICMETHOD[**P, T] = staticmethod[P, T]
-    type CLASSMETHOD[O, **P, T] = classmethod[O, P, T]
-    type BOUNDMETHOD[O, **P, T] = "MethodTypes.RAW_BOUNDMETHOD[O, P, T]"
-    type PROPERTY = property
-    # Note: FunctionType doesn't support generic type annotations, but typecheckers
-    # like mypy are smart enough to coerce a `FunctionType` to `RAW_BOUNDMETHOD` if
-    # the types actually line up.
-    type METHOD[O, **P, T] = (
-        "MethodTypes.STATICMETHOD[P, T]"
-        | "MethodTypes.CLASSMETHOD[O, P, T]"
-        | "MethodTypes.BOUNDMETHOD[O, P, T]"
-        | "MethodTypes.PROPERTY"
-    )
-
-    @final
-    @staticmethod
-    def is_staticmethod[O, **P, T](
-        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
-        cls: type[O] | None = None,
-    ) -> TypeIs[STATICMETHOD[P, T]]:
-        """Check if maybe_fn is a static method; narrow the type if it is."""
-        if MethodTypes.is_method(maybe_fn, cls=cls):
-            return False
-        elif not isinstance(maybe_fn, staticmethod):
-            return False
-        else:
-            return True
-
-    @final
-    @staticmethod
-    def is_classmethod[O, **P, T](
-        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
-        cls: type[O] | None = None,
-    ) -> TypeIs[CLASSMETHOD[O, P, T]]:
-        """Check if maybe_fn is a class method; narrow the type if it is."""
-        if not MethodTypes.is_method(maybe_fn, cls=cls):
-            return False
-        elif not isinstance(maybe_fn, classmethod):
-            return False
-        else:
-            return True
-
-    @final
-    @staticmethod
-    def is_boundmethod[O, **P, T](
-        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
-        cls: type[O] | None = None,
-    ) -> TypeIs[BOUNDMETHOD[O, P, T]]:
-        """Check if maybe_fn is a bound method; narrow the type if it is."""
-        if not MethodTypes.is_method(maybe_fn, cls=cls):
-            return False
-        elif isinstance(maybe_fn, FunctionType):
-            # Could be a bound method or a free function
-            # If cls is provided, check if it's in the class dict
-            if cls is not None:
-                for value in cls.__dict__.values():
-                    if value is maybe_fn:
-                        return True
-            # Otherwise, assume it's a bound method if it's a FunctionType
-            # (this is a best-effort approximation)
-            return True
-        return False
-
-    @final
-    @staticmethod
-    def is_property[O, **P, T](
-        maybe_prop: METHOD[O, P, T] | RAW_METHOD[O, P, T],
-        cls: type[O] | None = None,
-    ) -> TypeIs[property]:
-        """Check if maybe_prop is a property descriptor; narrow the type if it is."""
-        if not MethodTypes.is_method(maybe_prop, cls=cls):
-            return False
-        elif not isinstance(maybe_prop, property):
-            return False
-        else:
-            return True
-
-    @final
-    @staticmethod
-    def is_method[O, **P, T](
-        maybe_fn: METHOD[O, P, T] | RAW_METHOD[O, P, T],
-        cls: type[O] | None = None,
-    ) -> TypeIs[METHOD[O, P, T] | RAW_METHOD[O, P, T]]:
-        """Check if maybe_fn is a method (wrapped or raw)."""
-        if isinstance(maybe_fn, (staticmethod, classmethod, FunctionType, property)):
-            # For callables that might be raw methods, do a best-effort check
-            if callable(maybe_fn) and cls is not None:
-                for value in cls.__dict__.values():
-                    if value is maybe_fn:
-                        return True
-            return False
-        else:
-            return False
 
 
 # Type alias for wrapper function: wraps the raw function (behavior modification)
@@ -774,26 +626,7 @@ class MethodWrapper[O, **P, T, METH_TV]:
                 raise TypeError("Cannot call method without function or instance")
 
 
-type AnyMethodWrapperT[O, **P, T] = MethodWrapper[
-    O, P, T, MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | T
-]
-type RawMethodDecoratorT[O, **P, T] = Callable[
-    [MethodTypes.RAW_METHOD[O, P, T]],
-    MethodWrapper[O, P, T, MethodTypes.RAW_METHOD[O, P, T] | T],
-]
-type MethodDecoratorT[O, **P, T] = Callable[
-    [MethodTypes.METHOD[O, P, T]],
-    MethodWrapper[O, P, T, MethodTypes.METHOD[O, P, T] | T],
-]
-type GenericMethodDecoratorT[O, **P, T] = (
-    AnyMethodWrapperT[O, P, T]
-    | Callable[
-        [MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T]],
-        AnyMethodWrapperT[O, P, T],
-    ]
-    | RawMethodDecoratorT[O, P, T]
-    | MethodDecoratorT[O, P, T]
-)
+type METH[O, **P, T] = MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | T
 
 
 class MethodDecorator:
@@ -809,7 +642,10 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: Literal[True],
-    ) -> RawMethodDecoratorT[O, P, T]:
+    ) -> Callable[
+        [MethodTypes.RAW_METHOD[O, P, T]],
+        MethodWrapper[O, P, T, MethodTypes.RAW_METHOD[O, P, T] | T],
+    ]:
         """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
 
     @overload
@@ -822,7 +658,10 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: Literal[False] = False,
-    ) -> MethodDecoratorT[O, P, T]:
+    ) -> Callable[
+        [MethodTypes.METHOD[O, P, T]],
+        MethodWrapper[O, P, T, MethodTypes.METHOD[O, P, T] | T],
+    ]:
         """Overload: Decorator factory with wrapper_fn (and optional attribute_setter)."""
 
     @overload
@@ -835,7 +674,21 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: bool = False,
-    ) -> RawMethodDecoratorT[O, P, T] | MethodDecoratorT[O, P, T]:
+    ) -> (
+        Callable[
+            [MethodTypes.RAW_METHOD[O, P, T]],
+            MethodWrapper[O, P, T, MethodTypes.RAW_METHOD[O, P, T] | T],
+        ]
+        | Callable[
+            [MethodTypes.METHOD[O, P, T]],
+            MethodWrapper[
+                O,
+                P,
+                T,
+                MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | T,
+            ],
+        ]
+    ):
         """Overload: Decorator factory with wrapper_fn when raw is a general bool."""
 
     # Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
@@ -843,7 +696,6 @@ class MethodDecorator:
     # successfully typechecks these overloads.
 
     # Overloads for specific method types to infer the descriptor return type
-    # These must come before the general METHOD overload to avoid overlap
     @overload
     @staticmethod
     def wrap[O, **P, T](
@@ -854,8 +706,8 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: Literal[False] = False,
-    ) -> MethodWrapper[O, P, T, MethodTypes.CLASSMETHOD[O, P, T]]:
-        """Overload: classmethod -> returns CLASSMETHOD from __get__."""
+    ) -> MethodWrapper[O, P, T, MethodTypes.RAW_CLASSMETHOD[O, P, T]]:
+        """Overload: classmethod -> returns RAW_CLASSMETHOD from __get__."""
 
     @overload
     @staticmethod
@@ -867,8 +719,8 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: Literal[False] = False,
-    ) -> MethodWrapper[Any, P, T, MethodTypes.STATICMETHOD[P, T]]:
-        """Overload: staticmethod -> returns STATICMETHOD from __get__."""
+    ) -> MethodWrapper[Any, P, T, MethodTypes.RAW_STATICMETHOD[P, T]]:
+        """Overload: staticmethod -> returns RAW_STATICMETHOD from __get__."""
 
     @overload
     @staticmethod
@@ -880,8 +732,8 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: Literal[False] = False,
-    ) -> MethodWrapper[O, P, T, MethodTypes.BOUNDMETHOD[O, P, T]]:
-        """Overload: bound method -> returns BOUNDMETHOD from __get__."""
+    ) -> MethodWrapper[O, P, T, MethodTypes.RAW_BOUNDMETHOD[O, P, T]]:
+        """Overload: bound method -> returns RAW_BOUNDMETHOD from __get__."""
 
     @overload
     @staticmethod
@@ -893,8 +745,8 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: Literal[False] = False,
-    ) -> MethodWrapper[O, P, T, MethodTypes.PROPERTY]:
-        """Overload: property -> returns property from __get__."""
+    ) -> MethodWrapper[O, P, T, T]:
+        """Overload: property -> returns T (property value) from __get__."""
 
     @overload
     @staticmethod
@@ -919,7 +771,12 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: Literal[False] = False,
-    ) -> MethodWrapper[O, P, T, MethodTypes.METHOD[O, P, T] | T]:
+    ) -> MethodWrapper[
+        O,
+        P,
+        T,
+        MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | T,
+    ]:
         """Overload: METHOD -> returns union of possible descriptor types from __get__."""
 
     @overload
@@ -932,7 +789,22 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: bool = False,
-    ) -> GenericMethodDecoratorT[O, P, T]:
+    ) -> (
+        MethodWrapper[O, P, T, METH[O, P, T]]
+        | Callable[
+            [MethodTypes.RAW_METHOD[O, P, T]],
+            MethodWrapper[O, P, T, MethodTypes.RAW_METHOD[O, P, T] | T],
+        ]
+        | Callable[
+            [MethodTypes.METHOD[O, P, T]],
+            MethodWrapper[
+                O,
+                P,
+                T,
+                MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T] | T,
+            ],
+        ]
+    ):
         """Overload: Direct call when fn and raw are unions/general types."""
 
     # Note: mypy is unable to distinguish between MethodTypes.RAW_METHOD and
@@ -947,7 +819,22 @@ class MethodDecorator:
         wrapper_fn_args: tuple[Any, ...] | None = None,
         wrapper_fn_kwargs: dict[str, Any] | None = None,
         raw: bool | Literal[True] | Literal[False] = False,
-    ) -> GenericMethodDecoratorT[O, P, T]:
+    ) -> (
+        MethodWrapper[O, P, T, METH[O, P, T]]
+        | Callable[
+            [MethodTypes.RAW_METHOD[O, P, T]],
+            MethodWrapper[
+                O,
+                P,
+                T,
+                MethodTypes.RAW_METHOD[O, P, T] | T,
+            ],
+        ]
+        | Callable[
+            [MethodTypes.METHOD[O, P, T]],
+            MethodWrapper[O, P, T, METH[O, P, T]],
+        ]
+    ):
         """Wrap a method with a wrapper function, preserving its type; optionally add attributes to the final descriptor.
 
         This method creates a MethodWrapper that can handle any method type
@@ -1007,13 +894,13 @@ class MethodDecorator:
         if fn is None:
             # For the decorator factory overload, at least one of wrapper_fn or attribute_setter
             # must be provided
-            assert wrapper_fn is not None or attribute_setter is not None, (
-                "At least one of wrapper_fn or attribute_setter must be provided when fn is None"
-            )
+            assert (
+                wrapper_fn is not None or attribute_setter is not None
+            ), "At least one of wrapper_fn or attribute_setter must be provided when fn is None"
 
             def decorator(
-                method: MethodTypes.RAW_METHOD[O, P, T] | MethodTypes.METHOD[O, P, T],
-            ) -> AnyMethodWrapperT[O, P, T]:
+                method: MethodTypes.METHOD[O, P, T] | MethodTypes.RAW_METHOD[O, P, T],
+            ) -> MethodWrapper[O, P, T, METH[O, P, T]]:
                 # The descriptor type will be inferred by overloads based on the input type
                 return MethodWrapper(
                     method,
