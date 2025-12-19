@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import LocalDashboard from './index';
+import Dashboard from './index';
 
 jest.mock('./agent-table', () => ({
   __esModule: true,
@@ -25,11 +25,11 @@ jest.mock('@/layouts/common', () => {
   };
 });
 
-describe('LocalDashboard', () => {
+describe('Dashboard', () => {
   it('should render with layout and title', () => {
     render(
       <MemoryRouter>
-        <LocalDashboard />
+        <Dashboard />
       </MemoryRouter>
     );
 
@@ -39,7 +39,7 @@ describe('LocalDashboard', () => {
   it('should render AgentTable', () => {
     render(
       <MemoryRouter>
-        <LocalDashboard />
+        <Dashboard />
       </MemoryRouter>
     );
 

@@ -15,7 +15,7 @@ const Layout = ({
     <div className='min-h-screen bg-elevation-surface-sunken text-text flex flex-col'>
       {/* Header */}
       <div className='justify-center border-b border-elevation-surface-overlay bg-elevation-surface'>
-        <div className='flex items-center justify-between gap-4 backdrop-blur-sm  px-10 py-[10px]'>
+        <div className='flex items-center justify-between gap-4 backdrop-blur-sm  px-10 py-2.5'>
           <div className='flex items-center'>
             <Link to={'/'}>
               <div
