@@ -1,9 +1,9 @@
 from typing import Any, ClassVar, override
 
-from provenance_toolkit import Signature, Version
+from provenance_toolkit import Provenance, Version
 
 
-class A(Signature.VersionProto, VERSION=Version.parse("0.0.1")):
+class A(Provenance.Version, VERSION=Version.parse("0.0.1")):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 

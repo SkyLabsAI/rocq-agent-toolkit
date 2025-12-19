@@ -1,19 +1,21 @@
+from __future__ import annotations
+
+import logging
 from abc import abstractmethod
 from typing import override
 
-from ..meta.mro_tracker import MROTracker
 from .signature import WithSignature
+
+logger = logging.getLogger(__name__)
 
 
 class WithProvenance[PROVENANCE: WithSignature](WithSignature):
-    @MROTracker.Meta.compute
     @classmethod
     @abstractmethod
     def cls_provenance(cls) -> PROVENANCE:
         """Compute rich provenance of [cls]."""
         raise NotImplementedError
 
-    @MROTracker.Meta.compute
     def provenance(self) -> PROVENANCE:
         """Compute rich provenance of [cls]; default to cls_provenance()."""
         return self.cls_provenance()

@@ -1,13 +1,9 @@
-from semver import Version
-
 from .provenance import WithProvenance
-from .signature import WithSignature, WithVersionSignature
+from .signature import WithSignature
 
 __all__: list[str] = [
+    # signature/
+    "WithSignature",
     # provenance/
     "WithProvenance",
-    # signature/
-    "Version",
-    "WithSignature",
-    "WithVersionSignature",
 ]
