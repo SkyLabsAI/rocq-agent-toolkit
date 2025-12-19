@@ -1,33 +1,56 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import override
+from typing import Callable, Tuple, Dict, Any, TypeVar, List, override
 
 from rocq_doc_manager import RocqCursor
 
+# Import the Generic Protocols
+from ...search_foundation.protocols import Guidance as GuidanceProtocol
+from ...search_foundation.types import BeamNode
 
-class Guidance[T, U](ABC):
+# Import your Local Adapter
+from .beam import RocqStateAdapter
+
+# U is the return type of the internal scoring logic (usually float)
+U = TypeVar("U")
+
+class Guidance(GuidanceProtocol[RocqStateAdapter], ABC):
+    """
+    Abstract base class for Rocq Guidance.
+    Implements the generic protocol but delegates to a cleaner interface.
+    """
+    
     @abstractmethod
-    def score(self, cursor: T, logprob: float | None = None) -> U:
-        """The score of the node."""
+    def score(self, state: RocqStateAdapter, node: BeamNode) -> Tuple[float, Dict[str, Any]]:
+        """
+        Required by ActionBeamSearch.
+        We return (score, metadata_dict).
+        """
         ...
 
-
-class LLMGuidance(Guidance[RocqCursor, float]):
+class LLMGuidance(Guidance):
     @override
-    def score(self, cursor: RocqCursor, logprob: float | None = None) -> float:
-        return -float("inf")
+    def score(self, state: RocqStateAdapter, node: BeamNode) -> Tuple[float, Dict[str, Any]]:
+        # 1. Unwrap the cursor
+        cursor = state.cursor
+        
+        # 2. Your original logic
+        # (Returning -inf as placeholder, plus empty metadata)
+        return -float("inf"), {}
 
-
-class GoalBasedGuidance[U](Guidance[RocqCursor, U]):
+class GoalBasedGuidance(Guidance):
+    """
+    Computes scores based on subgoals using an inner guidance strategy.
+    """
     def __init__(
-        self, guidance: Guidance[RocqCursor, U], combine: Callable[[list[U]], U] = min
+        self, 
+        guidance: Guidance, 
+        combine: Callable[[List[float]], float] = min
     ) -> None:
         self._guidance = guidance
         self._combine = combine
 
     @override
-    def score(self, cursor: RocqCursor, logprob: float | None = None) -> U:
+    def score(self, state: RocqStateAdapter, node: BeamNode) -> Tuple[float, Dict[str, Any]]:
+        cursor = state.cursor
+        
         raise NotImplementedError()
-        # return self.combine(
-        #     [llm.score(goal) for goal in cursor.current_goal().subgoals]
-        # )
