@@ -9,7 +9,8 @@ a single, unified, generic approach.
 import functools
 import logging
 import time
-from typing import Any, Callable, Dict, Optional, Type, Union
+from collections.abc import Callable
+from typing import Any
 
 from opentelemetry import metrics
 from opentelemetry import trace as otel_trace
@@ -22,12 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 def trace(
-    name: Optional[str] = None,
+    name: str | None = None,
     *,
-    extractor: Optional[
-        Union[str, Type[AttributeExtractor], AttributeExtractor]
-    ] = None,
-    attributes: Optional[Dict[str, Any]] = None,
+    extractor: str | type[AttributeExtractor] | AttributeExtractor | None = None,
+    attributes: dict[str, Any] | None = None,
     metrics_enabled: bool = True,
     include_args: bool = False,
     include_result: bool = False,
@@ -217,7 +216,7 @@ def _set_basic_attributes(
                 span.set_attribute("function.args.names", ",".join(arg_names))
 
 
-def _set_custom_attributes(span: Any, attributes: Dict[str, Any]) -> None:
+def _set_custom_attributes(span: Any, attributes: dict[str, Any]) -> None:
     """Set custom attributes on the span."""
     for key, value in attributes.items():
         if value is not None:

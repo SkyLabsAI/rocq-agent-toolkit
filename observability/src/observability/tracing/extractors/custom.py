@@ -5,7 +5,8 @@ This extractor provides a flexible way to create custom observability patterns
 for specific business operations or domain-specific functionality.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from collections.abc import Callable
+from typing import Any
 
 from .base import AttributeExtractor
 
@@ -37,10 +38,10 @@ class CustomExtractor(AttributeExtractor):
     def __init__(
         self,
         operation_type: str = "custom",
-        attributes: Optional[Dict[str, Any]] = None,
-        attribute_extractors: Optional[Dict[str, Callable]] = None,
-        span_name_template: Optional[str] = None,
-        metrics_labels: Optional[Dict[str, Union[str, Callable]]] = None,
+        attributes: dict[str, Any] | None = None,
+        attribute_extractors: dict[str, Callable] | None = None,
+        span_name_template: str | None = None,
+        metrics_labels: dict[str, str | Callable] | None = None,
     ):
         """
         Initialize custom extractor.
@@ -62,8 +63,8 @@ class CustomExtractor(AttributeExtractor):
         self.metrics_labels = metrics_labels or {}
 
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract custom attributes from function call."""
         attrs = {
             "operation.type": self.operation_type,
@@ -85,15 +86,15 @@ class CustomExtractor(AttributeExtractor):
 
         return attrs
 
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """Generate span name using template."""
         return self.span_name_template.format(
             operation_type=self.operation_type, func_name=func.__name__
         )
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """Generate metrics labels using static and dynamic values."""
         labels = {
             "operation": func.__name__,
@@ -135,11 +136,11 @@ class BusinessOperationExtractor(CustomExtractor):
     def __init__(
         self,
         operation_name: str,
-        business_context: Optional[str] = None,
+        business_context: str | None = None,
         include_user_id: bool = False,
         include_tenant_id: bool = False,
-        user_id_extractor: Optional[Callable] = None,
-        tenant_id_extractor: Optional[Callable] = None,
+        user_id_extractor: Callable | None = None,
+        tenant_id_extractor: Callable | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -198,8 +199,8 @@ class BusinessOperationExtractor(CustomExtractor):
         )
 
     def _default_user_id_extractor(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Optional[str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> str | None:
         """Default user ID extractor."""
         # Check kwargs for common user ID field names
         for field in ["user_id", "userId", "user", "uid"]:
@@ -219,8 +220,8 @@ class BusinessOperationExtractor(CustomExtractor):
         return None
 
     def _default_tenant_id_extractor(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Optional[str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> str | None:
         """Default tenant ID extractor."""
         # Check kwargs for common tenant ID field names
         for field in ["tenant_id", "tenantId", "tenant", "org_id", "organization_id"]:
@@ -263,7 +264,7 @@ class MLOperationExtractor(CustomExtractor):
     def __init__(
         self,
         model_name: str,
-        model_version: Optional[str] = None,
+        model_version: str | None = None,
         operation_type: str = "inference",
         include_input_shape: bool = True,
         include_batch_size: bool = True,
@@ -314,8 +315,8 @@ class MLOperationExtractor(CustomExtractor):
         )
 
     def _extract_input_shape(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Optional[str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> str | None:
         """Extract input tensor shape."""
         if args:
             first_arg = args[0]
@@ -324,8 +325,8 @@ class MLOperationExtractor(CustomExtractor):
         return None
 
     def _extract_batch_size(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Optional[str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> str | None:
         """Extract batch size from input."""
         if args:
             first_arg = args[0]

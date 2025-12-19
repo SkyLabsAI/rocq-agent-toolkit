@@ -5,7 +5,8 @@ This extractor understands RPC calls and extracts standard RPC attributes for tr
 It supports gRPC and can be extended for other RPC systems.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from .base import AttributeExtractor
 
@@ -32,7 +33,7 @@ class RpcExtractor(AttributeExtractor):
     def __init__(
         self,
         system: str = "grpc",
-        service_name: Optional[str] = None,
+        service_name: str | None = None,
         include_request_data: bool = False,
         include_response_data: bool = False,
         max_data_length: int = 1000,
@@ -55,8 +56,8 @@ class RpcExtractor(AttributeExtractor):
         self.max_data_length = max_data_length
 
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract RPC attributes from function call."""
         attrs = {
             "rpc.system": self.system,
@@ -88,7 +89,7 @@ class RpcExtractor(AttributeExtractor):
 
         return attrs
 
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """Generate span name for RPC call."""
         service_name = self.service_name
         if not service_name and args and hasattr(args[0], "__class__"):
@@ -105,8 +106,8 @@ class RpcExtractor(AttributeExtractor):
             return f"RPC {func.__name__}"
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """Generate metrics labels for RPC operations."""
         labels = {
             "operation": func.__name__,
@@ -128,8 +129,8 @@ class RpcExtractor(AttributeExtractor):
         return labels
 
     def extract_error_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any], exception: Exception
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any], exception: Exception
+    ) -> dict[str, Any]:
         """Extract RPC-specific error attributes."""
         attrs = super().extract_error_attributes(func, args, kwargs, exception)
 
@@ -152,8 +153,8 @@ class RpcExtractor(AttributeExtractor):
         return attrs
 
     def _extract_grpc_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract gRPC-specific attributes."""
         attrs = {}
 
@@ -188,8 +189,8 @@ class RpcExtractor(AttributeExtractor):
         return attrs
 
     def _extract_request_data(
-        self, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract request data for inclusion in spans."""
         attrs = {}
 

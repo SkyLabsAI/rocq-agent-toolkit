@@ -8,7 +8,7 @@ such as instrumenting parts of functions, dynamic operations, or complex control
 import logging
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any
 
 from opentelemetry import metrics, trace
 from opentelemetry.trace import Span, Status, StatusCode
@@ -23,10 +23,8 @@ logger = logging.getLogger(__name__)
 def trace_context(
     name: str,
     *,
-    extractor: Optional[
-        Union[str, Type[AttributeExtractor], AttributeExtractor]
-    ] = None,
-    attributes: Optional[Dict[str, Any]] = None,
+    extractor: str | type[AttributeExtractor] | AttributeExtractor | None = None,
+    attributes: dict[str, Any] | None = None,
     metrics_enabled: bool = True,
     record_exception: bool = True,
     **extractor_kwargs: Any,
@@ -117,7 +115,7 @@ def trace_context(
             raise
 
 
-def get_current_span() -> Optional[Span]:
+def get_current_span() -> Span | None:
     """
     Get the current active span.
 
@@ -148,7 +146,7 @@ def get_current_span() -> Optional[Span]:
     return trace.get_current_span()
 
 
-def add_span_event(name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+def add_span_event(name: str, attributes: dict[str, Any] | None = None) -> None:
     """
     Add an event to the current span.
 
@@ -248,7 +246,7 @@ def _get_operation_extractor(extractor_spec: Any, **kwargs: Any) -> AttributeExt
         return NoOpExtractor()
 
 
-def _set_custom_attributes(span: Span, attributes: Dict[str, Any]) -> None:
+def _set_custom_attributes(span: Span, attributes: dict[str, Any]) -> None:
     """Set custom attributes on the span."""
     for key, value in attributes.items():
         if value is not None:

@@ -13,6 +13,12 @@ from opentelemetry import propagate
 # now handled by opentelemetry-instrumentation-grpc
 from opentelemetry.instrumentation.grpc import aio_server_interceptor
 
+from .context_propagation import (
+    ExecutionContext,
+    bind_execution_context,
+    capture_execution_context,
+)
+
 # Configuration and setup
 from .logging.config import (
     EvaluationEventConfig,
@@ -25,18 +31,18 @@ from .logging.config import (
 # Logging is now integrated as a submodule
 from .logging.core import (
     add_log_context,
+    bind_log_context,
     clear_log_context,
     configure_event_schemas,
     configure_logging,
-    bind_log_context,
     get_global_event_context,
     get_log_context,
     get_logger,
     is_otel_available,
     reset_log_context,
-    set_log_context,
     set_global_event_context,
     set_global_service_name,
+    set_log_context,
 )
 from .logging.setup import setup_logging
 from .tracing.config import ObservabilityConfig
@@ -69,12 +75,6 @@ from .tracing.extractors import (
 # Specialized extractors
 from .tracing.extractors.custom import BusinessOperationExtractor, MLOperationExtractor
 from .tracing.setup import setup_observability
-
-from .context_propagation import (
-    ExecutionContext,
-    bind_execution_context,
-    capture_execution_context,
-)
 
 __version__ = "2.0.0"
 

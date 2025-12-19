@@ -8,6 +8,7 @@ asynchronous processing.
 
 import logging
 import sys
+
 from opentelemetry import _logs
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler

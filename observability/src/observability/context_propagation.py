@@ -14,9 +14,10 @@ fields (e.g. run_id/task_id).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator
+from typing import Any
 
 from opentelemetry import context as otel_context
 
@@ -28,7 +29,7 @@ class ExecutionContext:
     """Snapshot of execution-local observability context."""
 
     otel: otel_context.Context
-    log: Dict[str, Any]
+    log: dict[str, Any]
 
 
 def capture_execution_context() -> ExecutionContext:

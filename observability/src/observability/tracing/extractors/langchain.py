@@ -6,7 +6,8 @@ extracting standard AI/ML attributes for tracing. It works with any LangChain-ba
 application including custom chains and workflows.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from .base import AttributeExtractor
 
@@ -40,8 +41,8 @@ class LangChainExtractor(AttributeExtractor):
 
     def __init__(
         self,
-        chain_type: Optional[str] = None,
-        workflow_type: Optional[str] = None,
+        chain_type: str | None = None,
+        workflow_type: str | None = None,
         include_inputs: bool = True,
         include_outputs: bool = True,
         include_token_usage: bool = True,
@@ -73,8 +74,8 @@ class LangChainExtractor(AttributeExtractor):
         self.max_output_length = max_output_length
 
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract LangChain attributes from function call."""
         attrs = {
             "langchain.operation": func.__name__,
@@ -112,7 +113,7 @@ class LangChainExtractor(AttributeExtractor):
 
         return attrs
 
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """Generate span name for LangChain operation."""
         operation_type = self._determine_operation_type(func, args, kwargs)
 
@@ -126,8 +127,8 @@ class LangChainExtractor(AttributeExtractor):
             return f"langchain.{func.__name__}"
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """Generate metrics labels for LangChain operations."""
         labels = {
             "operation": func.__name__,
@@ -146,8 +147,8 @@ class LangChainExtractor(AttributeExtractor):
         return labels
 
     def extract_error_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any], exception: Exception
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any], exception: Exception
+    ) -> dict[str, Any]:
         """Extract LangChain-specific error attributes."""
         attrs = super().extract_error_attributes(func, args, kwargs, exception)
 
@@ -161,7 +162,7 @@ class LangChainExtractor(AttributeExtractor):
         return attrs
 
     def _determine_operation_type(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
     ) -> str:
         """Determine the type of LangChain operation."""
         func_name = func.__name__.lower()
@@ -181,8 +182,8 @@ class LangChainExtractor(AttributeExtractor):
             return "unknown"
 
     def _extract_component_info(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract information about LangChain components."""
         attrs = {}
 
@@ -202,8 +203,8 @@ class LangChainExtractor(AttributeExtractor):
         return attrs
 
     def _extract_input_info(
-        self, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract input information for the operation."""
         attrs = {}
 
@@ -241,7 +242,7 @@ class LangChainExtractor(AttributeExtractor):
 
         return attrs
 
-    def _is_langgraph_step(self, args: Tuple, kwargs: Dict[str, Any]) -> bool:
+    def _is_langgraph_step(self, args: tuple, kwargs: dict[str, Any]) -> bool:
         """Check if this looks like a LangGraph workflow step."""
         # LangGraph steps typically receive a state dict as first argument
         if args and isinstance(args[0], dict):
@@ -254,8 +255,8 @@ class LangChainExtractor(AttributeExtractor):
         return False
 
     def _extract_langgraph_attributes(
-        self, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract LangGraph-specific attributes."""
         attrs = {}
 

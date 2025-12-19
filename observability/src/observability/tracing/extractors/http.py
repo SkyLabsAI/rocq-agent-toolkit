@@ -6,12 +6,13 @@ Python web frameworks like Flask, FastAPI, Django, etc.
 It extracts standard HTTP attributes for tracing.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from .base import AttributeExtractor
 
 
-def _safe_str(value: Any, max_length: int = 1000) -> Optional[str]:
+def _safe_str(value: Any, max_length: int = 1000) -> str | None:
     """Safely convert value to string with length limit."""
     if value is None:
         return None
@@ -47,7 +48,7 @@ class HttpExtractor(AttributeExtractor):
         request_arg: str = "request",
         include_headers: bool = False,
         include_query_params: bool = True,
-        sensitive_headers: Optional[list] = None,
+        sensitive_headers: list | None = None,
     ):
         """
         Initialize HTTP extractor.
@@ -76,8 +77,8 @@ class HttpExtractor(AttributeExtractor):
         }
 
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract HTTP attributes from request object."""
         request = self._find_request(func, args, kwargs)
         if not request:
@@ -147,7 +148,7 @@ class HttpExtractor(AttributeExtractor):
 
         return {k: v for k, v in attrs.items() if v is not None}
 
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """Generate span name from HTTP method and endpoint."""
         request = self._find_request(func, args, kwargs)
         if not request:
@@ -174,8 +175,8 @@ class HttpExtractor(AttributeExtractor):
         return f"HTTP {method} {endpoint}"
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """Generate metrics labels for HTTP operations."""
         request = self._find_request(func, args, kwargs)
         labels = {"operation": func.__name__}
@@ -194,7 +195,7 @@ class HttpExtractor(AttributeExtractor):
 
         return labels
 
-    def _find_request(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> Any:
+    def _find_request(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> Any:
         """Find the request object in function arguments."""
         # Check kwargs first
         if self.request_arg in kwargs:
@@ -208,7 +209,7 @@ class HttpExtractor(AttributeExtractor):
 
         return None
 
-    def _get_remote_addr(self, request: Any) -> Optional[str]:
+    def _get_remote_addr(self, request: Any) -> str | None:
         """Get remote IP address from request."""
         # Try common attributes for remote address
         for attr in ["remote_addr", "client", "environ"]:
@@ -223,7 +224,7 @@ class HttpExtractor(AttributeExtractor):
 
         return None
 
-    def _get_query_params(self, request: Any) -> Optional[str]:
+    def _get_query_params(self, request: Any) -> str | None:
         """Get query parameters from request."""
         # Try different ways to get query string
         query_string = None
@@ -243,7 +244,7 @@ class HttpExtractor(AttributeExtractor):
 
         return query_string if query_string else None
 
-    def _get_headers(self, request: Any) -> Dict[str, str]:
+    def _get_headers(self, request: Any) -> dict[str, str]:
         """Get headers from request."""
         headers = {}
 
@@ -262,7 +263,7 @@ class HttpExtractor(AttributeExtractor):
 
         return headers
 
-    def _get_user_agent(self, request: Any) -> Optional[str]:
+    def _get_user_agent(self, request: Any) -> str | None:
         """Get user agent from request."""
         # Try different ways to get user agent
         if hasattr(request, "headers") and "user-agent" in request.headers:

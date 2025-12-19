@@ -5,7 +5,8 @@ This extractor understands workflow steps and pipeline operations, extracting
 workflow-specific attributes for tracing. It works with any workflow system.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from .base import AttributeExtractor
 
@@ -35,8 +36,8 @@ class WorkflowExtractor(AttributeExtractor):
 
     def __init__(
         self,
-        workflow_type: Optional[str] = None,
-        step_name: Optional[str] = None,
+        workflow_type: str | None = None,
+        step_name: str | None = None,
         include_state: bool = False,
         include_input: bool = True,
         include_output: bool = True,
@@ -65,8 +66,8 @@ class WorkflowExtractor(AttributeExtractor):
         self.state_arg = state_arg
 
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract workflow attributes from function call."""
         attrs = {
             "workflow.step.name": self.step_name or func.__name__,
@@ -87,7 +88,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return attrs
 
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """Generate span name for workflow step."""
         step_name = self.step_name or func.__name__
 
@@ -97,8 +98,8 @@ class WorkflowExtractor(AttributeExtractor):
             return f"workflow.{step_name}"
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """Generate metrics labels for workflow operations."""
         labels = {
             "operation": func.__name__,
@@ -120,7 +121,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return labels
 
-    def _find_state(self, args: Tuple, kwargs: Dict[str, Any]) -> Any:
+    def _find_state(self, args: tuple, kwargs: dict[str, Any]) -> Any:
         """Find the state object in function arguments."""
         # Check kwargs first
         if self.state_arg in kwargs:
@@ -141,7 +142,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_workflow_info(self, state: Any) -> Dict[str, Any]:
+    def _extract_workflow_info(self, state: Any) -> dict[str, Any]:
         """Extract workflow information from state object."""
         attrs = {}
 
@@ -172,7 +173,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return attrs
 
-    def _extract_workflow_id(self, state: Any) -> Optional[str]:
+    def _extract_workflow_id(self, state: Any) -> str | None:
         """Extract workflow ID from state."""
         if isinstance(state, dict):
             # Try common field names
@@ -189,7 +190,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_execution_id(self, state: Any) -> Optional[str]:
+    def _extract_execution_id(self, state: Any) -> str | None:
         """Extract workflow execution ID from state."""
         if isinstance(state, dict):
             for field in ["execution_id", "run_id", "session_id"]:
@@ -204,7 +205,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_step_index(self, state: Any) -> Optional[int]:
+    def _extract_step_index(self, state: Any) -> int | None:
         """Extract step index/sequence number from state."""
         if isinstance(state, dict):
             for field in ["step_index", "current_step", "step_number"]:
@@ -219,7 +220,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_workflow_status(self, state: Any) -> Optional[str]:
+    def _extract_workflow_status(self, state: Any) -> str | None:
         """Extract workflow status from state."""
         if isinstance(state, dict):
             for field in ["status", "state", "phase"]:
@@ -234,7 +235,7 @@ class WorkflowExtractor(AttributeExtractor):
 
         return None
 
-    def _extract_workflow_metadata(self, state: Any) -> Dict[str, Any]:
+    def _extract_workflow_metadata(self, state: Any) -> dict[str, Any]:
         """Extract additional workflow metadata."""
         attrs = {}
 
