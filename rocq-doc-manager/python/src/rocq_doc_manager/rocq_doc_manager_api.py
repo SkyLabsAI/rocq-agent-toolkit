@@ -142,6 +142,12 @@ class RocqDocManagerAPI:
         assert not isinstance(result, JsonRPCTP.Err)
         return self.CompileResult.from_dict(result.result)
 
+    def copy_contents(self, src: int, dst: int) -> None:
+        """Copies the contents of src into dst."""
+        result = self._rpc.raw_request("copy_contents", [src, dst])
+        assert not isinstance(result, JsonRPCTP.Err)
+        return None
+
     def cursor_index(self, cursor: int) -> int:
         """Gives the index at the cursor."""
         result = self._rpc.raw_request("cursor_index", [cursor])

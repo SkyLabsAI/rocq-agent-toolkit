@@ -45,6 +45,9 @@ class RocqCursorProtocol(ABC):
     def clone(self, materialize: bool = False) -> RocqCursorProtocol: ...
 
     @abstractmethod
+    def copy_contents(self, dest: RocqCursorProtocol) -> None: ...
+
+    @abstractmethod
     def commit(self, file: str | None, include_suffix: bool) -> None: ...
 
     @abstractmethod
