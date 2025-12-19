@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import Dashboard from '../dashboard';
+import LocalDashboard from './index';
 
-jest.mock('../dashboard/agent-table.tsx', () => ({
+jest.mock('./agent-table', () => ({
   __esModule: true,
   default: () => <div data-testid='agent-table'>Agent Table</div>,
 }));
@@ -29,7 +29,7 @@ describe('LocalDashboard', () => {
   it('should render with layout and title', () => {
     render(
       <MemoryRouter>
-        <Dashboard />
+        <LocalDashboard />
       </MemoryRouter>
     );
 
@@ -39,7 +39,7 @@ describe('LocalDashboard', () => {
   it('should render AgentTable', () => {
     render(
       <MemoryRouter>
-        <Dashboard />
+        <LocalDashboard />
       </MemoryRouter>
     );
 

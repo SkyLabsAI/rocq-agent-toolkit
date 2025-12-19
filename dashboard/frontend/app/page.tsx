@@ -3,7 +3,7 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 import AgentCompareTable from '@/features/agents-compare';
-import LocalDashboard from '@/features/localdashboard';
+import LocalDashboard from '@/features/dashboard';
 import ComparePage from '@/features/runs-compare';
 
 const Home = () => {

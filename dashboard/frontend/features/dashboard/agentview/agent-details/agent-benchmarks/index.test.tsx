@@ -9,7 +9,7 @@ import { useAgentBenchmarks } from './use-benchmark-runs';
 
 jest.mock('./use-benchmark-runs');
 jest.mock('@/contexts/global-compare-context');
-jest.mock('@/features/localdashboard/agent-runs-view', () => ({
+jest.mock('@/features/dashboard/agent-runs-view', () => ({
   __esModule: true,
   default: ({
     agentName,

@@ -4,9 +4,9 @@ import React from 'react';
 
 import Layout from '@/layouts/common';
 
-import AgentTable from '../dashboard/agent-table';
+import AgentTable from './agent-table';
 
-const LocalDashboard: React.FC = () => {
+const Dashboard: React.FC = () => {
   return (
     <Layout title='RAT Dashboard'>
       {/* Refresh Message */}
@@ -18,4 +18,4 @@ const LocalDashboard: React.FC = () => {
   );
 };
 
-export default LocalDashboard;
+export default Dashboard;
