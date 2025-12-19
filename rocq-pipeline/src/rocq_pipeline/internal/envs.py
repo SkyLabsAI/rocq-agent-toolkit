@@ -1,6 +1,8 @@
 """
-Internal Environment Implementations for Rocq Pipeline.
-Contains proprietary logic for Local (Docker) and Staging environments.
+Environment Implementations for Rocq Pipeline.
+This registers the environments with the EnvironmentRegistry.
+Contains logic for Local (Docker) and Staging environments.
+We use this to setup observability services and toolkit services.
 """
 
 import os
@@ -155,6 +157,7 @@ class DockerServiceManager:
         services = {
             "alloy": self.check_service_running("rocq-alloy-local"),
             "loki": self.check_service_running("rocq-loki-local"),
+            "tempo": self.check_service_running("rocq-tempo-local"),
             "grafana": self.check_service_running("rocq-grafana-local"),
             "backend": self.check_service_running("rocq-agent-toolkit-backend"),
             "frontend": self.check_service_running("rocq-agent-toolkit-frontend"),
@@ -183,9 +186,6 @@ class DockerServiceManager:
                     "up",
                     "--build",
                     "-d",
-                    "alloy",
-                    "loki",
-                    "grafana",
                 ],
                 cwd=self.observability_compose_dir,
             )

@@ -28,10 +28,13 @@ from .logging.core import (
     clear_log_context,
     configure_event_schemas,
     configure_logging,
+    bind_log_context,
     get_global_event_context,
     get_log_context,
     get_logger,
     is_otel_available,
+    reset_log_context,
+    set_log_context,
     set_global_event_context,
     set_global_service_name,
 )
@@ -67,6 +70,12 @@ from .tracing.extractors import (
 from .tracing.extractors.custom import BusinessOperationExtractor, MLOperationExtractor
 from .tracing.setup import setup_observability
 
+from .context_propagation import (
+    ExecutionContext,
+    bind_execution_context,
+    capture_execution_context,
+)
+
 __version__ = "2.0.0"
 
 __all__ = [
@@ -89,6 +98,9 @@ __all__ = [
     "configure_event_schemas",
     "add_log_context",
     "clear_log_context",
+    "set_log_context",
+    "reset_log_context",
+    "bind_log_context",
     "get_log_context",
     "is_otel_available",
     # Convenience decorators
@@ -101,6 +113,10 @@ __all__ = [
     "aio_server_interceptor",
     # OTel Passthrough
     "propagate",
+    # Context propagation (threads / executors)
+    "ExecutionContext",
+    "capture_execution_context",
+    "bind_execution_context",
     # Extractors (for advanced usage)
     "AttributeExtractor",
     "HttpExtractor",

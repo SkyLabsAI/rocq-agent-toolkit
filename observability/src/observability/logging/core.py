@@ -13,6 +13,8 @@ import socket
 import sys
 import time
 from contextvars import ContextVar  # Async-safe per-task storage
+from contextvars import Token
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
 # Optional OpenTelemetry integration
@@ -460,6 +462,26 @@ def clear_log_context() -> None:
 def get_log_context() -> Dict[str, Any]:
     """Return a *copy* of the current task-local log context."""
     return _log_context_var.get().copy()
+
+def set_log_context(context: Dict[str, Any]) -> Token[Dict[str, Any]]:
+    """Replace the current task-local log context, returning a token for reset()."""
+    # Store a copy to avoid external mutation of the underlying dict.
+    return _log_context_var.set(context.copy())
+
+
+def reset_log_context(token: Token[Dict[str, Any]]) -> None:
+    """Reset the task-local log context using a token from set_log_context()."""
+    _log_context_var.reset(token)
+
+
+@contextmanager
+def bind_log_context(context: Dict[str, Any]) -> Any:
+    """Temporarily bind a full log context dict (useful for thread pool workers)."""
+    token = set_log_context(context)
+    try:
+        yield
+    finally:
+        reset_log_context(token)
 
 
 def is_otel_available() -> bool:

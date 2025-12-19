@@ -1,17 +1,6 @@
 apiVersion: 1
 
 datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
-    editable: true
-    jsonData:
-      httpMethod: POST
-      exemplarTraceIdDestinations:
-        - name: trace_id
-          datasourceUid: tempo
 
   - name: Loki
     type: loki
@@ -21,7 +10,8 @@ datasources:
     jsonData:
       derivedFields:
         - datasourceUid: tempo
-          matcherRegex: "trace_id=([\\w]+)"
+          # Match trace_id inside JSON logs like: ..."trace_id":"<hex>"...
+          matcherRegex: "\"trace_id\"\\s*:\\s*\"([0-9a-fA-F]{16,32})\""
           name: TraceID
           url: "$${__value.raw}"
 
@@ -42,12 +32,6 @@ datasources:
         spanEndTimeShift: '1h'
         filterByTraceID: false
         filterBySpanID: false
-      tracesToMetrics:
-        datasourceUid: prometheus
-        tags: [{ key: 'service.name', value: 'service' }, { key: 'job' }]
-        queries:
-          - name: 'Sample query'
-            query: 'sum(rate(tempo_spanmetrics_latency_bucket{$$__tags}[5m]))'
       nodeGraph:
         enabled: true
       search:
