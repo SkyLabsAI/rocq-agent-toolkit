@@ -5,7 +5,8 @@ This extractor understands database operations and extracts standard database
 attributes for tracing. It works with any database-related function.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from .base import AttributeExtractor
 
@@ -33,10 +34,10 @@ class DatabaseExtractor(AttributeExtractor):
     def __init__(
         self,
         system: str = "sql",
-        table: Optional[str] = None,
-        collection: Optional[str] = None,
-        operation: Optional[str] = None,
-        database_name: Optional[str] = None,
+        table: str | None = None,
+        collection: str | None = None,
+        operation: str | None = None,
+        database_name: str | None = None,
         include_query: bool = False,
         max_query_length: int = 1000,
     ):
@@ -64,8 +65,8 @@ class DatabaseExtractor(AttributeExtractor):
         self.max_query_length = max_query_length
 
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract database attributes from function call."""
         attrs = {
             "db.system": self.system,
@@ -102,7 +103,7 @@ class DatabaseExtractor(AttributeExtractor):
 
         return attrs
 
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """Generate span name for database operation."""
         operation = self.operation or self._infer_operation(func)
         target = self.table or self.collection or "table"
@@ -113,8 +114,8 @@ class DatabaseExtractor(AttributeExtractor):
             return f"db.{func.__name__}"
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """Generate metrics labels for database operations."""
         labels = {
             "operation": func.__name__,
@@ -134,7 +135,7 @@ class DatabaseExtractor(AttributeExtractor):
 
         return labels
 
-    def _infer_operation(self, func: Callable) -> Optional[str]:
+    def _infer_operation(self, func: Callable) -> str | None:
         """Infer database operation from function name."""
         func_name = func.__name__.lower()
 
@@ -162,8 +163,8 @@ class DatabaseExtractor(AttributeExtractor):
         return None
 
     def _extract_query_info(
-        self, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract query information from function arguments."""
         attrs = {}
 
@@ -188,8 +189,8 @@ class DatabaseExtractor(AttributeExtractor):
         return attrs
 
     def _extract_connection_info(
-        self, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract database connection information."""
         attrs = {}
 

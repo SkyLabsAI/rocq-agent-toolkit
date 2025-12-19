@@ -11,10 +11,12 @@ from typing import Any
 
 from dotenv import load_dotenv
 from observability import (
-    LoggingConfig,
+    ObservabilityConfig,
     add_log_context,
     get_logger,
-    setup_logging,
+    set_span_attribute,
+    setup_observability,
+    trace,
 )
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
@@ -43,14 +45,14 @@ def init_logging(env: Environment) -> None:
     so that ``--env`` can influence the OTLP endpoint.
     """
     otlp_endpoint = env.get_otlp_endpoint()
-    log_config = LoggingConfig(
+    observability_config = ObservabilityConfig(
         service_name="rocq_agent",
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         otlp_endpoint=env.get_otlp_endpoint(),
         enable_console_logging=os.getenv("ENABLE_CONSOLE_LOGGING", "false").lower()
         == "true",
     )
-    setup_logging(log_config)
+    setup_observability(observability_config)
     logger.info("Logging configured with OTLP endpoint: %s", otlp_endpoint)
 
 
@@ -136,6 +138,7 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     return task_output.Tags(tags)
 
 
+@trace(name="run_task")
 def run_task(
     build_agent: AgentBuilder,
     task: FullTask,
@@ -154,6 +157,7 @@ def run_task(
     add_log_context("task_id", task_id)
     # TODO: integrate with opentelemetry, properly instrument the agent
     # framework and derived agents
+    set_span_attribute("task.id", task_id)
     trace_id: str | None = None
     timestamp_iso_8601 = datetime.now(UTC).isoformat()
 
@@ -311,6 +315,7 @@ def parse_arguments(
     )
 
 
+@trace(name="Running pipeline")
 def run_config(config: RunConfiguration) -> bool:
     # Setup environment based on deployment mode
     if config.deployment_env:
@@ -325,6 +330,7 @@ def run_config(config: RunConfiguration) -> bool:
         config.output_dir / f"{config.tasks_name}_results_{now_str}.jsonl"
     )
     run_id: str = str(uuid.uuid4())
+    set_span_attribute("run.id", run_id)
     # Here log context is not getting passed in the multithreads
     # # add_log_context("run_id", run_id)
 

@@ -3,6 +3,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from typing import Any
 from warnings import deprecated
 
+from observability import bind_execution_context, capture_execution_context
 from rich.progress import (
     BarColumn,
     Progress,
@@ -74,6 +75,13 @@ def parallel_runner[T, U](
     progress: bool = True,
 ) -> list[U]:
     total_tasks = len(tasks)
+    # Capture a snapshot of the current observability execution context.
+    # - OpenTelemetry tracing context (current span)
+    # - Structured logging context (run_id/task_id/etc.)
+    #
+    # ContextVars do NOT automatically propagate into ThreadPoolExecutor threads,
+    # so we re-bind this snapshot inside each worker.
+    parent_ctx = capture_execution_context()
 
     with (
         Progress(
@@ -102,7 +110,8 @@ def parallel_runner[T, U](
                 feedback = Feedback(show_name, pb, current_task_id, PROGRESS_MAX)
             else:
                 feedback = Feedback(show_name)  # pyright: ignore
-            result = run(val, feedback)
+            with bind_execution_context(parent_ctx):
+                result = run(val, feedback)
             pb.update(
                 current_task_id,
                 completed=PROGRESS_MAX,

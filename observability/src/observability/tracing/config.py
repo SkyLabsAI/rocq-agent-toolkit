@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any
 
 from ..logging.config import LoggingConfig
 
@@ -28,12 +28,12 @@ class ObservabilityConfig(LoggingConfig):
     metric_export_interval_ms: int = 10000
 
     # Global defaults for @trace decorator
-    default_extractor: Optional[str] = None
+    default_extractor: str | None = None
     auto_metrics: bool = True
     trace_sampling_rate: float = 1.0
 
     @classmethod
-    def from_environment(cls, **overrides: Any) -> "ObservabilityConfig":
+    def from_environment(cls, **overrides: Any) -> ObservabilityConfig:
         """
         Create configuration from environment variables.
         """
@@ -124,7 +124,7 @@ class HttpExtractorConfig(ExtractorConfig):
 
     include_headers: bool = False
     include_query_params: bool = True
-    sensitive_headers: List[str] = field(
+    sensitive_headers: list[str] = field(
         default_factory=lambda: [
             "authorization",
             "cookie",

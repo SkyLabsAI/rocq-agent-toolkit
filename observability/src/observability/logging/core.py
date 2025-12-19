@@ -12,8 +12,12 @@ import os
 import socket
 import sys
 import time
-from contextvars import ContextVar  # Async-safe per-task storage
-from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
+from contextvars import (
+    ContextVar,  # Async-safe per-task storage
+    Token,
+)
+from typing import Any
 
 # Optional OpenTelemetry integration
 try:
@@ -36,8 +40,8 @@ class StructuredLogger:
     def __init__(
         self,
         name: str,
-        service_name: Optional[str] = None,
-        event_context: Optional[str] = None,
+        service_name: str | None = None,
+        event_context: str | None = None,
     ):
         """
         Initialize structured logger.
@@ -186,8 +190,8 @@ class StructuredLogger:
                 )
 
     def _apply_event_context(
-        self, event_type: str, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, event_type: str, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Apply event context and schema filtering to log kwargs."""
         # Filter payload using schema if one is configured
         allowed_fields = _event_schemas.get(event_type)
@@ -203,7 +207,7 @@ class StructuredLogger:
 
         return kwargs
 
-    def _add_trace_correlation(self, log_entry: Dict[str, Any]) -> None:
+    def _add_trace_correlation(self, log_entry: dict[str, Any]) -> None:
         """Add OpenTelemetry trace correlation if available."""
         try:
             span = otel_trace.get_current_span()
@@ -216,7 +220,7 @@ class StructuredLogger:
             # Silently ignore trace correlation errors
             pass
 
-    def _get_caller_info(self) -> Dict[str, Any]:
+    def _get_caller_info(self) -> dict[str, Any]:
         """Get caller information by inspecting the call stack."""
         stack = inspect.stack()
 
@@ -267,7 +271,7 @@ class StructuredLogger:
     # ------------------------------------------------------------------
     # Event-based structured logging
     # ------------------------------------------------------------------
-    def set_event_context(self, event_type: Optional[str]) -> None:
+    def set_event_context(self, event_type: str | None) -> None:
         """Set or clear the event context for this logger instance.
 
         Args:
@@ -277,8 +281,8 @@ class StructuredLogger:
 
 
 # Global state
-_loggers: Dict[str, StructuredLogger] = {}
-_global_service_name: Optional[str] = None
+_loggers: dict[str, StructuredLogger] = {}
+_global_service_name: str | None = None
 
 # ---------------------------------------------------------------------------
 # Async-safe, per-task log context
@@ -288,19 +292,30 @@ _global_service_name: Optional[str] = None
 # delivers an *independent* copy for every logical execution context.
 # ---------------------------------------------------------------------------
 
-_log_context_var: ContextVar[Dict[str, Any]] = ContextVar(
-    "_log_context_var", default={}
+_log_context_var: ContextVar[dict[str, Any] | None] = ContextVar(
+    "_log_context_var", default=None
 )
 
+
+def _get_or_init_log_context() -> dict[str, Any]:
+    """Return the current task-local context, initializing it if missing."""
+    ctx = _log_context_var.get()
+    if ctx is None:
+        ctx = {}
+        # Important: ensure the context is stored for this logical execution
+        # context so subsequent reads see the same snapshot.
+        _log_context_var.set(ctx)
+    return ctx
+
 # Per-event schemas. The value is a list of allowed payload keys.
-_event_schemas: Dict[str, List[str]] = {}
+_event_schemas: dict[str, list[str]] = {}
 
 # Global event context configuration
-_global_event_context: Optional[str] = None
+_global_event_context: str | None = None
 
 
 def get_logger(
-    name: str, service_name: Optional[str] = None, event_context: Optional[str] = None
+    name: str, service_name: str | None = None, event_context: str | None = None
 ) -> StructuredLogger:
     """
     Get a structured logger instance.
@@ -340,8 +355,8 @@ def setup_logging(
     service_name: str,
     level: str = "INFO",
     format_json: bool = True,
-    loki_endpoint: Optional[str] = None,
-    environment: Optional[str] = None,
+    loki_endpoint: str | None = None,
+    environment: str | None = None,
 ) -> None:
     """
     Complete logging setup for a service.
@@ -392,7 +407,7 @@ def set_global_service_name(service_name: str) -> None:
     _global_service_name = service_name
 
 
-def set_global_event_context(event_context: Optional[str]) -> None:
+def set_global_event_context(event_context: str | None) -> None:
     """
     Set the global event context for all new loggers.
 
@@ -403,7 +418,7 @@ def set_global_event_context(event_context: Optional[str]) -> None:
     _global_event_context = event_context
 
 
-def get_global_event_context() -> Optional[str]:
+def get_global_event_context() -> str | None:
     """
     Get the current global event context.
 
@@ -447,7 +462,7 @@ def add_log_context(key: str, value: Any) -> None:
     Uses a snapshot copy to avoid mutating the dict another task may be using.
     Safe for threads and asyncio tasks.
     """
-    ctx = _log_context_var.get().copy()
+    ctx = _get_or_init_log_context().copy()
     ctx[key] = value
     _log_context_var.set(ctx)
 
@@ -457,9 +472,29 @@ def clear_log_context() -> None:
     _log_context_var.set({})
 
 
-def get_log_context() -> Dict[str, Any]:
+def get_log_context() -> dict[str, Any]:
     """Return a *copy* of the current task-local log context."""
-    return _log_context_var.get().copy()
+    return _get_or_init_log_context().copy()
+
+def set_log_context(context: dict[str, Any]) -> Token[dict[str, Any] | None]:
+    """Replace the current task-local log context, returning a token for reset()."""
+    # Store a copy to avoid external mutation of the underlying dict.
+    return _log_context_var.set(context.copy())
+
+
+def reset_log_context(token: Token[dict[str, Any] | None]) -> None:
+    """Reset the task-local log context using a token from set_log_context()."""
+    _log_context_var.reset(token)
+
+
+@contextmanager
+def bind_log_context(context: dict[str, Any]) -> Any:
+    """Temporarily bind a full log context dict (useful for thread pool workers)."""
+    token = set_log_context(context)
+    try:
+        yield
+    finally:
+        reset_log_context(token)
 
 
 def is_otel_available() -> bool:
@@ -494,7 +529,7 @@ def _get_hostname() -> str:
     return "unknown"
 
 
-def configure_event_schemas(schema_dict: Dict[str, List[str]]) -> None:
+def configure_event_schemas(schema_dict: dict[str, list[str]]) -> None:
     """Configure the per-event payload schemas.
 
     The *schema_dict* should map *event_type* strings to a list of allowed

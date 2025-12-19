@@ -7,7 +7,8 @@ extracting relevant telemetry attributes from function calls.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Tuple
+from collections.abc import Callable
+from typing import Any
 
 
 class AttributeExtractor(ABC):
@@ -24,8 +25,8 @@ class AttributeExtractor(ABC):
 
     @abstractmethod
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Extract span attributes from a function call.
 
@@ -47,7 +48,7 @@ class AttributeExtractor(ABC):
         pass
 
     @abstractmethod
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """
         Generate a span name for the operation.
 
@@ -65,8 +66,8 @@ class AttributeExtractor(ABC):
         pass
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """
         Generate labels for metrics collection.
 
@@ -87,8 +88,8 @@ class AttributeExtractor(ABC):
         return {"operation": func.__name__}
 
     def extract_error_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any], exception: Exception
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any], exception: Exception
+    ) -> dict[str, Any]:
         """
         Extract additional attributes when an operation fails.
 
@@ -121,20 +122,20 @@ class NoOpExtractor(AttributeExtractor):
     """
 
     def extract_attributes(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Return basic function information."""
         return {
             "function.name": func.__name__,
             "function.module": func.__module__,
         }
 
-    def get_span_name(self, func: Callable, args: Tuple, kwargs: Dict[str, Any]) -> str:
+    def get_span_name(self, func: Callable, args: tuple, kwargs: dict[str, Any]) -> str:
         """Return function name as span name."""
         return func.__name__
 
     def get_metrics_labels(
-        self, func: Callable, args: Tuple, kwargs: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, func: Callable, args: tuple, kwargs: dict[str, Any]
+    ) -> dict[str, str]:
         """Return basic function labels."""
         return {"operation": func.__name__, "module": func.__module__ or "unknown"}
