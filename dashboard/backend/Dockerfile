@@ -10,8 +10,6 @@ RUN pip install uv
 
 COPY . .
 # COPY pyproject.toml ./
-# does not need observability for now
-# COPY psi_verifier/observability/ ./psi_vserviceerifier/observability/
 
 RUN uv sync --package rocq-agent-toolkit-backend
 
