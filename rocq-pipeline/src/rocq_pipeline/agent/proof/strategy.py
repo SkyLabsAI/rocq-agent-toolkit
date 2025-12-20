@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Any, override
 
 from rocq_doc_manager import RocqCursor
@@ -37,7 +37,11 @@ class Strategy(ABC):
     type Action = Action
     # TODO: make [Rollout] into a class
     type Rollout = Generator[tuple[float, Action]]
-    type Context = dict[str, Any]
+
+    # Context information must be read-only and constant in order
+    # for searches to work correctly. Clients should use an
+    # implementation such as `immutabledict` to achieve this.
+    type Context = Mapping[str, Any]
 
     @abstractmethod
     def rollout(
@@ -80,7 +84,7 @@ class CompositeStrategy(Strategy):
         def combine() -> Strategy.Rollout:
             queue: list[tuple[float, int, Strategy.Action, Strategy.Rollout]] = []
             for i, strat in enumerate(self._children):
-                gen = strat.rollout(rdm, max_rollout=max_rollout)
+                gen = strat.rollout(rdm, max_rollout=max_rollout, context=context)
                 try:
                     pr, act = next(gen)
                 except StopIteration:
