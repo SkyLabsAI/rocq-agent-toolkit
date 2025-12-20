@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import heapq
+import random
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -14,6 +15,9 @@ class Frontier[T](ABC):
     def push(self, val: T) -> None: ...
     @abstractmethod
     def take(self, count: int) -> list[T] | None: ...
+
+    @abstractmethod
+    def clear(self) -> None: ...
 
 
 class DFS[T](Frontier[T]):
@@ -41,6 +45,10 @@ class DFS[T](Frontier[T]):
             self._worklist = self._worklist.next
         return result
 
+    @override
+    def clear(self) -> None:
+        self._worklist = None
+
 
 class BFS[T](Frontier[T]):
     def __init__(self) -> None:
@@ -57,6 +65,10 @@ class BFS[T](Frontier[T]):
             self._worklist = self._worklist[count:]
             return result
         return None
+
+    @override
+    def clear(self) -> None:
+        self._worklist = []
 
 
 class PQueue[T](Frontier[T]):
@@ -91,3 +103,62 @@ class PQueue[T](Frontier[T]):
                 result.append(heapq.heappop(self._worklist))
             return result
         return None
+
+    @override
+    def clear(self) -> None:
+        self._worklist = []
+
+
+class SingleDepth[T](Frontier[T]):
+    """
+    This class can be used to implement a beam-like search where we take
+    once per depth.
+    """
+
+    def __init__(self, base: Frontier[T]) -> None:
+        self._base = base
+
+    @override
+    def take(self, count: int) -> list[T] | None:
+        result = self._base.take(count)
+        # once we take, we clear the underlying frontier so that all values
+        # in `self._base` will be at the same depth.
+        self._base.clear()
+        return result
+
+    def push(self, val: T) -> None:
+        return self._base.push(val)
+
+    def clear(self) -> None:
+        return self._base.clear()
+
+
+class Sampled[T](Frontier[T]):
+    def __init__(self, base: Frontier[T], spread: int = 2) -> None:
+        self._base = base
+        self._spread = spread
+
+    @override
+    def take(self, count: int) -> list[T] | None:
+        pulled = self._base.take(self._spread * count)
+        if pulled is None:
+            return None
+        num_pulled = len(pulled)
+        if num_pulled <= count:
+            return pulled
+        indexes = random.sample(range(0, num_pulled), count)
+        result = []
+        for i, v in enumerate(pulled):
+            if i in indexes:
+                result.append(v)
+            else:
+                self._base.push(v)
+        return result
+
+    @override
+    def push(self, val: T) -> None:
+        return self._base.push(val)
+
+    @override
+    def clear(self) -> None:
+        return self._base.clear()

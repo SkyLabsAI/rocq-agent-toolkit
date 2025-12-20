@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import heapq
+import itertools
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-import itertools
+from dataclasses import dataclass
 from re import U
-from typing import Any, Callable, override
+from typing import Any, Callable, Iterable, override
 
 from rocq_doc_manager import RocqCursor
+from rocq_pipeline.agent.proof.strategy import Action, Rollout, Strategy
 
-from rocq_pipeline.agent.proof.strategy import (
-    Action,
-    Strategy,
-    Rollout
-)
 from .frontier import Frontier
+
 
 class Node:
     depth: int
@@ -43,19 +40,26 @@ class Node:
 
 
 class Interleaver[K, T]:
-    def __init__(self, mp:dict[K, Rollout[T]]) -> None:
-        self._gens =
+    def __init__(self, mp: dict[K, Rollout[T]]) -> None:
+        self._gens = mp
 
-    def __iter__(self) -> Interleaver[K,T]:
+    def __iter__(self) -> Iterable[tuple[K, T]]:
         return self
 
-    def __next__(self) -> tuple[K,T] | None:
+    def __next__(self) -> tuple[K, T] | None:
         return self.next()
 
     def next(self) -> tuple[K, T] | None:
         raise NotImplemented
 
-    def stop(self) -> dict[K, tuple[T|None,Rollout[T]]]:
+    def stop(self) -> dict[K, tuple[T | None, Rollout[T]]]:
+        """
+        Returns the remaining generators, i.e. those that have not
+        been pulled. The result is a dictionary with items `(k, (v, vs))`.
+        If `v` is not `None`, then it should be pre-pended to `vs`.
+
+        We return things like this in case the value `v` is useful to clients.
+        """
         raise NotImplemented
 
 
@@ -136,11 +140,10 @@ def search[T: Frontier[Node]](
         # so we need to special case this logic
         for candidate, action in itertools.islice(stream, explore_width):
             process(candidates[candidate], action)
-            # NOTE: not run on break
-            try:
-                stream.send(True)
-                raise AssertionError("True should end the iterator")
-            except StopIteration as remaining:
-                for candidate, rest in remaining.value.items():
-                    candidates[candidate].update_rollout(rest)
-                    worklist.push(candidates[candidate])
+
+        # NOTE: this breaks the "beam-style" frontier where only
+        # nodes at a particular depth are selected
+        for candidate, rest in remaining.value.items():
+            cand = candidates[candidate]
+            cand.update_rollout(rest)
+            worklist.push(cand)
