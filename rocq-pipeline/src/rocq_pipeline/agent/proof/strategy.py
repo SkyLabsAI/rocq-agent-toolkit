@@ -8,10 +8,30 @@ from typing import Any, override
 from rocq_doc_manager import RocqCursor
 
 
-class Action:
+class Action[T]:
+    """
+    Actions abstract actions in Markov Decision Processes.
+
+    They support failure in order to support instances
+    where no action exists. Mathematically, failed actions
+    could be modeled by enriching the MDP with a unique
+    failure state, but explicitly communicating this form
+    of action avoids the need for modifying the MDP.
+    """
+
     @abstractmethod
-    def interact(self, rc: RocqCursor) -> bool:
+    def interact(self, rc: T) -> bool:
         return False
+
+
+class TacticAction(Action[RocqCursor]):
+    def __init__(self, tactic: str) -> None:
+        self._tactic = tactic
+
+    @override
+    def interact(self, rc: RocqCursor) -> bool:
+        response = self.run_tactic(rc, self._tactic)
+        return not issubclass(type(response), RocqCursor.Err)
 
     def run_tactic(
         self, rc: RocqCursor, tactic: str
@@ -19,28 +39,21 @@ class Action:
         return rc.insert_command(tactic)
 
 
-class TacticAction(Action):
-    def __init__(self, tactic: str) -> None:
-        self._tactic = tactic
-
-    @override
-    def interact(self, rc: RocqCursor) -> bool:
-        response = super().run_tactic(rc, self._tactic)
-        return not issubclass(type(response), RocqCursor.Err)
-
-
 class Strategy(ABC):
     """
-    A `Strategy` proposes actions to take
+    A `Strategy` proposes actions to take. The different proposals
+    are captured through a `Generator` in order to enable expressing
+    very large generator spaces, e.g. next tactic prediction in theorem proving.
     """
 
-    type Action = Action
+    type Action = Action[RocqCursor]
     # TODO: make [Rollout] into a class
-    type Rollout = Generator[tuple[float, Action]]
+    type Rollout = Generator[tuple[float, Strategy.Action]]
 
     # Context information must be read-only and constant in order
     # for searches to work correctly. Clients should use an
     # implementation such as `immutabledict` to achieve this.
+    # Mutable information needs to be tracked in the state
     type Context = Mapping[str, Any]
 
     @abstractmethod
