@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import heapq
+import itertools
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 from typing import override
@@ -16,14 +17,17 @@ class Action[T]:
     document or applying multiple tactics.
     """
 
-    @abstractmethod
-    def interact(self, rc: T) -> bool:
-        """
-        Interact with the cursor and leave it in the new state.
+    class FailedAction(Exception):
+        pass
 
-        Returns `True` if the interaction was successful
+    @abstractmethod
+    def step(self, rc: T) -> T:
         """
-        return False
+        Advance to a new state returning the new state.
+
+        Raises `FailedAction` if the step does not apply
+        """
+        raise Action.FailedAction()
 
 
 class RocqTacticAction(Action[RocqCursor]):
@@ -62,16 +66,34 @@ def interleave[T](ls: list[Generator[T]]) -> Generator[T]:
         pull(rest, fresh=i)
 
 
+class Rollout[T]:
+    def logprob(self) -> float:
+        """
+        The returned value is an approximation of the probability of the next action being good
+        """
+        return 0.0
+
+    def next(self, prob_min: float = -float("inf")) -> T:
+        """
+        Get the next action.
+        `prob_min` is the cutoff, the rollout knows that it won't produce a guess better than
+        `prob_min`, then it can delay by returning `None`.
+
+        Raises `StopIteration` when there are no items left.
+        """
+        raise StopIteration
+
+
 class Strategy[T](ABC):
     """
     A `Strategy` proposes actions to take
     """
 
     # TODO: make [Rollout] into a class
-    type Rollout[U] = Generator[tuple[float, Action[U]]]
+    # type Rollout[U] = Generator[tuple[float, Action[U]]]
 
     @abstractmethod
-    def rollout(self, cursor: T, max_rollout: int | None = None) -> Rollout[T]:
+    def rollout(self, cursor: T, max_rollout: int | None = None) -> Rollout[Action[T]]:
         """
         Given the goal `G`, generates `(Pr,A)` such that:
         - `Pr` is the probability that `A` is (the next/a necessary) step in an
