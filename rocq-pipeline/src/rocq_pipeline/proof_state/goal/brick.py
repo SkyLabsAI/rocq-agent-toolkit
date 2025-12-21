@@ -51,15 +51,16 @@ class BrickGoal(IrisGoal):
             )
             for ast in asts
         }
-        print (str(res))
         return res
 
     def is_loop_goal(self) -> bool:
         """
         Checks if the spatial conclusion contains a loop AST node.
         """
-        d:dict[str, re.Match[str] | None] = self.regex_brick_spat_concl_wp("Sdo_while", "Sfor", "Swhile", kind="S")
-        res:bool = any(value is not None for value in d.values())
+        d: dict[str, re.Match[str] | None] = self.regex_brick_spat_concl_wp(
+            "Sdo_while", "Sfor", "Swhile", kind="S"
+        )
+        res: bool = any(value is not None for value in d.values())
         return res
 
     def is_branch_stmt_goal(self) -> bool:
