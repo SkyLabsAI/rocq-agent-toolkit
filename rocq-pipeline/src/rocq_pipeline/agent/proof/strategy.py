@@ -10,13 +10,13 @@ from rocq_doc_manager import RocqCursor
 
 class Action[T]:
     """
-    Actions abstract actions in Markov Decision Processes.
+    An `Action` represents a (potential) action in an MDP.
 
     They support failure in order to support instances
     where no action exists. Mathematically, failed actions
     could be modeled by enriching the MDP with a unique
-    failure state, but explicitly communicating this form
-    of action avoids the need for modifying the MDP.
+    failure state, but explicitly communicating this
+    avoids the need to modify the MDP.
     """
 
     @abstractmethod
@@ -42,8 +42,9 @@ class TacticAction(Action[RocqCursor]):
 class Strategy(ABC):
     """
     A `Strategy` proposes actions to take. The different proposals
-    are captured through a `Generator` in order to enable expressing
-    very large generator spaces, e.g. next tactic prediction in theorem proving.
+    are captured lazily using a `Generator`. This allows capturing
+    very large (even infinite) action spaces such as next tactic
+    prediction in theorem proving.
     """
 
     type Action = Action[RocqCursor]
