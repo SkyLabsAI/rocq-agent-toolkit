@@ -75,6 +75,12 @@ class BrickGoal(IrisGoal):
         """
         return bool(self.regex_brick_spat_concl_wp(r"branch\.expr", kind="E"))
 
+    def is_conditional_goal(self) -> bool:
+        """
+        Checks if the spatial conclusion starts with a 'branch.stmt' or 'branch.expr' node.
+        """
+        return self.is_branch_stmt_goal() or self.is_branch_expr_goal()
+
     def is_if_decide_then_else_goal(self) -> tuple[str, str, str] | None:
         """
         Checks if the spatial conclusion contains a 'if decide (xxx) then yyy else zzz' term.
