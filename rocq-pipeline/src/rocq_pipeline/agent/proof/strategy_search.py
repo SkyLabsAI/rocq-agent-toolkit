@@ -7,8 +7,8 @@ from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import TaskResult
 from rocq_pipeline.agent.base.classes import ProofAgent
-from rocq_pipeline.agent.proof.strategy import Strategy
 from rocq_pipeline.proof_state import ProofState
+from rocq_pipeline.search.strategy import Strategy
 
 
 class SearchAgent(ProofAgent):
