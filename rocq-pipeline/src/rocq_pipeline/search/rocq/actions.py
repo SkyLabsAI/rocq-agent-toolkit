@@ -10,9 +10,16 @@ class TacticAction(Action[RocqCursor]):
         self._tactic = tactic
 
     @override
-    def interact(self, rc: RocqCursor) -> bool:
-        response = self.run_tactic(rc, self._tactic)
-        return not issubclass(type(response), RocqCursor.Err)
+    def interact(self, state: RocqCursor) -> RocqCursor:
+        # TODO: the fact that cursors are not functional is quite annoying here.
+        # It should be the caller that creates a new cursor, but in this case
+        # we will basically always be returning our own cursor.
+        # If cursors were functional, we would just be returning the latest
+        # cursor here.
+        response = self.run_tactic(state, self._tactic)
+        if issubclass(type(response), RocqCursor.Err):
+            raise Action.Failed()
+        return state
 
     def run_tactic(
         self, rc: RocqCursor, tactic: str
