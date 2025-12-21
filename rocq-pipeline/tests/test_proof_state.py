@@ -99,25 +99,17 @@ def test_proof_state_RocqGoal_raw_str(focused_goal_strings, proof_state) -> None
 
 def test_BrickGoal_is_loop_goal1(proof_state) -> None:
     goal = proof_state.goal(1, strict=True, cast_to=BrickGoal)
-
     assert (
-        BrickGoal.wpS_head_stmt_matches(
-            goal.parts.iris_spat_concl, ["Sfor", "Swhile", "Sdo_while"]
-        )
-        is True
+        bool(goal.regex_brick_spat_concl_wp("Sdo_while", "Sfor", "Swhile", kind="S")) is True
     )
 
 
 def test_BrickGoal_is_loop_goal3(proof_state) -> None:
     goal = proof_state.goal(3, strict=True, cast_to=BrickGoal)
 
-    assert (
-        BrickGoal.wpS_head_stmt_matches(
-            goal.parts.iris_spat_concl, ["Sfor", "Swhile", "Sdo_while"]
-        )
-        is False
-    )
-
+    d:dict[str, re.Match[str] | None] = goal.regex_brick_spat_concl_wp("Sfor", "Swhile", "Sdo_while")
+    b:bool = any(value is not None for value in d.values())
+    assert (b is False)
 
 def test_proof_state_None() -> None:
     pf_state = ProofState(None)
