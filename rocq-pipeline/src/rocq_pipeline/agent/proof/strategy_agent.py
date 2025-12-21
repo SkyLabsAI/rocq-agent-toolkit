@@ -8,8 +8,8 @@ from rocq_pipeline.agent import (
     TaskResult,
 )
 from rocq_pipeline.agent.base import ProofAgent
-from rocq_pipeline.agent.proof.strategy import Strategy
 from rocq_pipeline.proof_state import ProofState, RocqGoal
+from rocq_pipeline.search.strategy import Strategy
 
 
 class StrategyAgent(ProofAgent):
