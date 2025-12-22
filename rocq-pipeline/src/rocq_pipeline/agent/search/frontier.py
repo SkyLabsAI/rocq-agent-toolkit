@@ -12,15 +12,20 @@ class Frontier[T](ABC):
     """A collection of values of type `T`."""
 
     @abstractmethod
+    # Insert a new item into the frontier.
     def push(self, val: T) -> None: ...
     @abstractmethod
+    # Remove up to [count] items in frontier order.
     def take(self, count: int) -> list[T] | None: ...
 
     @abstractmethod
+    # Clear all pending items in the frontier.
     def clear(self) -> None: ...
 
 
 class DFS[T](Frontier[T]):
+    """Stack-based frontier (depth-first)."""
+
     @dataclass
     class Node[U]:
         next: DFS.Node | None
@@ -31,6 +36,7 @@ class DFS[T](Frontier[T]):
 
     @override
     def push(self, val: T) -> None:
+        # Prepend to the linked list for LIFO order.
         self._worklist = DFS.Node(self._worklist, val)
 
     @override
@@ -41,26 +47,32 @@ class DFS[T](Frontier[T]):
         while self._worklist and count > 0:
             if count > 0:
                 count -= 1
+            # Pop from the head to maintain stack order.
             result.append(self._worklist.value)
             self._worklist = self._worklist.next
         return result
 
     @override
     def clear(self) -> None:
+        # Drop all nodes in the linked list.
         self._worklist = None
 
 
 class BFS[T](Frontier[T]):
+    """Queue-based frontier (breadth-first)."""
+
     def __init__(self) -> None:
         self._worklist: list[T] = []
 
     @override
     def push(self, val: T) -> None:
+        # Append for FIFO order.
         self._worklist.append(val)
 
     @override
     def take(self, count: int) -> list[T] | None:
         if self._worklist:
+            # Slice out the next [count] items and retain the rest.
             result = self._worklist[:count]
             self._worklist = self._worklist[count:]
             return result
@@ -68,12 +80,17 @@ class BFS[T](Frontier[T]):
 
     @override
     def clear(self) -> None:
+        # Reset queue contents.
         self._worklist = []
 
 
 class PQueue[T](Frontier[T]):
+    """Priority queue frontier with a custom comparator."""
+
     @dataclass
     class Wrapper[U, V]:
+        """Bundle values with scores so heapq can order them."""
+
         value: U
         score: V
         compare: Callable[[V, V], int]  # this isn't very efficient...
@@ -91,6 +108,7 @@ class PQueue[T](Frontier[T]):
 
     @override
     def push(self, val: T) -> None:
+        # Wrap with score so heapq can order items.
         heapq.heappush(
             self._worklist, PQueue.Wrapper(val, self._score(val), self._compare)
         )
@@ -100,12 +118,14 @@ class PQueue[T](Frontier[T]):
         if self._worklist:
             result = []
             while self._worklist and count > 0:
+                # Pop lowest (or highest) priority based on compare.
                 result.append(heapq.heappop(self._worklist))
             return result
         return None
 
     @override
     def clear(self) -> None:
+        # Remove all pending elements.
         self._worklist = []
 
 
@@ -134,6 +154,8 @@ class SingleDepth[T](Frontier[T]):
 
 
 class Sampled[T](Frontier[T]):
+    """Sample from a broader pull while keeping the remainder in the base."""
+
     def __init__(self, base: Frontier[T], spread: int = 2) -> None:
         self._base = base
         self._spread = spread
@@ -146,6 +168,7 @@ class Sampled[T](Frontier[T]):
         num_pulled = len(pulled)
         if num_pulled <= count:
             return pulled
+        # Sample a subset and push back the remainder.
         indexes = random.sample(range(0, num_pulled), count)
         result = []
         for i, v in enumerate(pulled):

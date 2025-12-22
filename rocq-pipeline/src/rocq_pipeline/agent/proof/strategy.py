@@ -29,6 +29,10 @@ class Action[T]:
         """
         raise Action.FailedAction()
 
+    def key(self) -> str:
+        """Stable key for deduplication/repetition checks."""
+        return f"{type(self).__name__}:{id(self)}"
+
 
 class RocqTacticAction(Action[RocqCursor]):
     def __init__(self, tactic: str) -> None:
@@ -43,6 +47,10 @@ class RocqTacticAction(Action[RocqCursor]):
         self, rc: RocqCursor, tactic: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
         return rc.insert_command(tactic)
+
+    @override
+    def key(self) -> str:
+        return self._tactic.strip()
 
 
 def interleave[T](ls: list[Generator[T]]) -> Generator[T]:
