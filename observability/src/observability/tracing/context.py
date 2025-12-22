@@ -7,6 +7,7 @@ such as instrumenting parts of functions, dynamic operations, or complex control
 
 import logging
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
@@ -28,7 +29,7 @@ def trace_context(
     metrics_enabled: bool = True,
     record_exception: bool = True,
     **extractor_kwargs: Any,
-) -> Any:
+) -> Iterator[Span]:
     """
     Context manager for manual tracing of code blocks.
 
@@ -257,7 +258,9 @@ def _set_custom_attributes(span: Span, attributes: dict[str, Any]) -> None:
             span.set_attribute(key, str_value)
 
 
-def _record_context_start_metrics(extractor: AttributeExtractor, operation_name: str) -> None:
+def _record_context_start_metrics(
+    extractor: AttributeExtractor, operation_name: str
+) -> None:
     """Record metrics when context operation starts."""
     try:
         meter = metrics.get_meter(__name__)
