@@ -108,7 +108,7 @@ def test_BrickGoal_is_loop_goal1(proof_state) -> None:
 
 
 def test_BrickGoal_is_loop_goal3(proof_state) -> None:
-    goal:BrickGoal = proof_state.goal(3, strict=True, cast_to=BrickGoal)
+    goal: BrickGoal = proof_state.goal(3, strict=True, cast_to=BrickGoal)
     d: dict[str, re.Match[str] | None] = goal.regex_brick_spat_concl_wp(
         "Sfor", "Swhile", "Sdo_while"
     )
