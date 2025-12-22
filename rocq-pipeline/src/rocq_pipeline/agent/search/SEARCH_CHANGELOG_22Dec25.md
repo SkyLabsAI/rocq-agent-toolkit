@@ -1,6 +1,6 @@
 # Search Changes: Dedup, Repetition, Adapters
 
-## Summary (Technical, Brief)
+## Summary
 
 - Added per-action stable keys (`Action.key()` + `RocqTacticAction.key()`) for local dedup and repetition checks.
 - Added repetition detection with explicit policy injection (`RepetitionPolicy`).
