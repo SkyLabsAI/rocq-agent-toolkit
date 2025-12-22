@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import heapq
 import itertools
-from collections.abc import Generator
+from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
@@ -116,7 +116,7 @@ class Interleaver[K, T]:
         self._done = False
         self._remaining: dict[K, tuple[T, Generator[T]]] = {}
 
-    def __iter__(self) -> Iterable[tuple[K, T]]:
+    def __iter__(self) -> Iterator[tuple[K, T]]:
         return self
 
     def __next__(self) -> tuple[K, T]:
@@ -142,12 +142,13 @@ class Interleaver[K, T]:
         """
         if self._done:
             return self._remaining
-        try:
-            self._remaining = self._stream.send(True)
-        except StopIteration as exc:
-            self._remaining = exc.value or {}
-        self._done = True
-        return self._remaining
+        raise NotImplementedError
+        # try:
+        #     self._remaining = self._stream.send(True)
+        # except StopIteration as exc:
+        #     self._remaining = exc.value or {}
+        # self._done = True
+        # return self._remaining
 
 
 def interleave_continue[K, T](
@@ -186,7 +187,22 @@ def interleave_continue[K, T](
     return {}
 
 
-def search[C, T: Frontier[Node[C]]](
+def _default_clone_state[C](state: C) -> C:
+    if hasattr(state, "clone"):
+        return state.clone()
+    raise RuntimeError("search(...) requires clone_state when state has no clone()")
+
+
+def _default_apply[C](state: C, action: Action[C]) -> C:
+    return action.interact(state)
+
+
+def _default_dispose[C](state: C) -> None:
+    if hasattr(state, "dispose"):
+        state.dispose()
+
+
+def search[C, FNode, T: Frontier[Node[C], FNode]](
     strategy: Strategy[C],
     start: C,
     frontier: type[T],
@@ -196,14 +212,14 @@ def search[C, T: Frontier[Node[C]]](
     repetition_policy: RepetitionPolicy | None = None,
     state_key: Callable[[C], Any] | None = None,
     clone_state: Callable[[C], C] | None = None,
-    apply_action: Callable[[C, Action[C]], C] | None = None,
+    apply_action: Callable[[C, Action[C]], C] | None = None,  # TODO: Why?
     dispose_state: Callable[[C], None] | None = None,
 ) -> T:
     """Expand a frontier by interleaving rollouts and pruning duplicates."""
     assert explore_width > 0
 
     worklist: T = frontier()
-    worklist.push(Node(start, None))
+    worklist.push(Node(start, None), None)
     seen_states: set[Any] = set()
     state_key_fn = state_key
     if state_key_fn is not None:
@@ -214,23 +230,9 @@ def search[C, T: Frontier[Node[C]]](
     history_limit = repetition_policy.history_limit() if repetition_policy else 0
     # Injected hooks keep search domain-agnostic while preserving resource lifetimes.
     # Defaults use duck-typed clone/interact/dispose when available.
-    clone_state_fn = clone_state
-    if clone_state_fn is None:
-        def clone_state_fn(state: C) -> C:
-            if hasattr(state, "clone"):
-                return state.clone()
-            raise RuntimeError("search(...) requires clone_state when state has no clone()")
-
-    apply_action_fn = apply_action
-    if apply_action_fn is None:
-        def apply_action_fn(state: C, action: Action[C]) -> C:
-            return action.interact(state)
-
-    dispose_state_fn = dispose_state
-    if dispose_state_fn is None:
-        def dispose_state_fn(state: C) -> None:
-            if hasattr(state, "dispose"):
-                state.dispose()
+    clone_state_fn = clone_state or _default_clone_state
+    apply_action_fn = apply_action or _default_apply
+    dispose_state_fn = dispose_state or _default_dispose
 
     while True:
         # Sample the beam width from the frontier
@@ -244,7 +246,7 @@ def search[C, T: Frontier[Node[C]]](
         stream = Interleaver(
             {
                 nm: val.rollout(strategy, max_rollout=explore_width)
-                for nm, val in enumerate(candidates)
+                for nm, (val, _) in enumerate(candidates)
             }
         )
 
@@ -278,28 +280,29 @@ def search[C, T: Frontier[Node[C]]](
                         seen_states.add(next_key)
                 new_node = Node(next_state, candidate, action_key=action_key)
                 # Enqueue the child for future expansion.
-                worklist.push(new_node)
+                worklist.push(new_node, candidate)
             except Action.Failed:
                 dispose_state_fn(fresh_state)
 
         # Due to the way that generators work, we can not send a message to the first element
         # so we need to special case this logic
-        for candidate, (_, action) in itertools.islice(stream, explore_width):
-            process(candidates[candidate], action)
+        for i, (_, action) in itertools.islice(stream, explore_width):
+            process(candidates[i][0], action)
 
         # NOTE: this breaks the "beam-style" frontier where only
         # nodes at a particular depth are selected
-        remaining = stream.stop()
-        for candidate, (head, rest) in remaining.items():
+        for candidate, (head, rest) in stream.stop().items():
             cand = candidates[candidate]
             if head is not None:
+
                 def resume(
                     head: tuple[float, Action[C]] = head,
                     rest: Generator[tuple[float, Action[C]]] = rest,
                 ) -> Generator[tuple[float, Action[C]]]:
                     yield head
                     yield from rest
-                cand.update_rollout(resume())
+
+                cand[0].update_rollout(resume(head, rest))
             else:
-                cand.update_rollout(rest)
-            worklist.push(cand)
+                cand[0].update_rollout(rest)
+            worklist.repush(cand)
