@@ -25,3 +25,7 @@ class Action[T]:
         Raises `Action.Failed` if the action fails.
         """
         raise Action.Failed()
+
+    def key(self) -> str:
+        """Stable key for deduplication/repetition checks."""
+        return f"{type(self).__name__}:{id(self)}"

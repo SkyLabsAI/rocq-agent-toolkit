@@ -25,3 +25,7 @@ class TacticAction(Action[RocqCursor]):
         self, rc: RocqCursor, tactic: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
         return rc.insert_command(tactic)
+
+    @override
+    def key(self) -> str:
+        return self._tactic.strip()
