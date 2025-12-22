@@ -244,3 +244,35 @@ class Sampled[T, Node](Frontier[T, Node]):
     @override
     def push(self, val: T, parent: Node | None) -> None:
         return self._base.push(val, parent)
+
+    @override
+    def repush(self, node: Node) -> None:
+        return self._base.repush(node)
+
+
+class Deduplicate[T, Node](Frontier[T, Node]):
+    """
+    A frontier that de-duplicates states
+    """
+
+    def __init__(self, base: Frontier[T, Node], *, cmp: Callable[[T, T], bool]) -> None:
+        self._base = base
+        self._seen: set[T] = set()
+        self._cmp = cmp
+
+    @override
+    def take(self, count: int) -> list[tuple[T, Node]] | None:
+        return self._base.take(count)
+
+    @override
+    def repush(self, node: Node) -> None:
+        return self._base.repush(node)
+
+    @override
+    def push(self, val: T, parent: Node | None) -> None:
+        # TODO: A better implementation of this would be to use
+        # something like a hash table which would require an embedding
+        # into some type.
+        if any(True for x in self._seen if self._cmp(val, x)):
+            # TODO: log message to drop already visited state
+            return self._base.push(val, parent)
