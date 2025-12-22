@@ -112,9 +112,11 @@ class Node[C]:
 
 class Interleaver[K, T]:
     def __init__(self, mp: dict[K, Generator[T]]) -> None:
-        self._stream = interleave_continue(mp)
-        self._done = False
-        self._remaining: dict[K, tuple[T, Generator[T]]] = {}
+        self._gens = mp
+        self._waiting: list[tuple[T, K]] = []
+        self._done: dict[K, tuple[T, Generator[T]]] | None = None
+        for k in mp.keys():
+            self._pull(k)
 
     def __iter__(self) -> Iterator[tuple[K, T]]:
         return self
@@ -122,15 +124,24 @@ class Interleaver[K, T]:
     def __next__(self) -> tuple[K, T]:
         return self.next()
 
+    def _pull(self, nm: K) -> None:
+        try:
+            result = next(self._gens[nm])
+            heapq.heappush(self._waiting, (result, nm))
+        except StopIteration:
+            raise
+        except IndexError as err:
+            raise StopIteration from err
+
     def next(self) -> tuple[K, T]:
-        if self._done:
+        if self._done is not None:
             raise StopIteration
         try:
-            return next(self._stream)
-        except StopIteration as exc:
-            self._done = True
-            self._remaining = exc.value or {}
-            raise
+            v, nm = heapq.heappop(self._waiting)
+            self._pull(nm)
+            return (nm, v)
+        except IndexError as err:
+            raise StopIteration from err
 
     def stop(self) -> dict[K, tuple[T, Generator[T]]]:
         """
@@ -140,51 +151,9 @@ class Interleaver[K, T]:
 
         We return things like this in case the value `v` is useful to clients.
         """
-        if self._done:
-            return self._remaining
-        raise NotImplementedError
-        # try:
-        #     self._remaining = self._stream.send(True)
-        # except StopIteration as exc:
-        #     self._remaining = exc.value or {}
-        # self._done = True
-        # return self._remaining
-
-
-def interleave_continue[K, T](
-    mp: dict[K, Generator[T]],
-) -> Generator[tuple[K, T], bool, dict[K, tuple[T, Generator[T]]]]:
-    """
-    Interleaves multiple generators yielding a single generator.
-    The client can stop the generator and get back a mapping for
-    any non-empty iterators.
-
-    For example, if you have `{ 1: [a,b], 2: [c,d] }`
-    you might first get `a`. Then, if you stop the iterator
-    (by sending `True`) then you will get {1:[b], 2:[c,d]}
-    """
-    gens: list[tuple[T, K, Generator[T]]] = []
-
-    # NOTE: we need to address the problem that arises when [K] is not const
-    def pull(g: Generator[T], name: K) -> None:
-        nonlocal gens
-        try:
-            n = next(g)
-            heapq.heappush(gens, (n, name, g))
-        except StopIteration:
-            pass
-
-    for i, g in mp.items():
-        pull(g, name=i)
-
-    while gens:
-        v, i, rest = heapq.heappop(gens)
-        result = yield (i, v)
-        pull(rest, name=i)
-        if result:
-            # stop the iterator and return the remaining
-            return {name: (val, rest) for val, name, rest in gens}
-    return {}
+        if self._done is None:
+            self._done = {nm: (v, self._gens[nm]) for v, nm in self._waiting}
+        return self._done
 
 
 def _default_clone_state[C](state: C) -> C:
