@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from observability import trace_context
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
 
@@ -79,20 +80,22 @@ class BeamSearch[T]:
 
     def search(self, state: T) -> list[SearchNode[T]]:
         root = SearchNode.make_root(state)
+        with trace_context("search") as span:
+            span.set_attribute("root", root.id)
 
-        frontier: list[SearchNode[T]] = [root]
-        solutions: list[SearchNode[T]] = []
+            frontier: list[SearchNode[T]] = [root]
+            solutions: list[SearchNode[T]] = []
 
-        for _ in range(self._max_depth):
-            nodes_to_expand = self._take(frontier)
-            next_frontier: list[SearchNode[T]] = []
+            for _ in range(self._max_depth):
+                nodes_to_expand = self._take(frontier)
+                next_frontier: list[SearchNode[T]] = []
 
-            for node in nodes_to_expand:
-                expanded = self._expand(node)
-                next_frontier.extend(expanded)
+                for node in nodes_to_expand:
+                    expanded = self._expand(node)
+                    next_frontier.extend(expanded)
 
-            solutions.extend([node for node in next_frontier if node.is_solved()])
-            frontier = next_frontier
+                solutions.extend([node for node in next_frontier if node.is_solved()])
+                frontier = next_frontier
 
         return solutions
 
@@ -105,13 +108,17 @@ class BeamSearch[T]:
         for prob, action in self._strategy.rollout(
             node.state, max_rollout=self._beam_width
         ):
-            fresh_state = self._freshen.freshen(node.state)
-            try:
-                new_state = action.interact(fresh_state)
-            except Action.Failed:
-                self._freshen.dispose(fresh_state)
-                continue
+            with trace_context("expand") as span:
+                span.set_attribute("parent", node.id)
+                fresh_state = self._freshen.freshen(node.state)
+                try:
+                    new_state = action.interact(fresh_state)
+                except Action.Failed:
+                    self._freshen.dispose(fresh_state)
+                    continue
 
-            result.append(node.make_child(new_state, 0, prob))
+                child = node.make_child(new_state, 0, prob)
+                span.set_attribute("id", child.id)
+                result.append(child)
 
         return result
