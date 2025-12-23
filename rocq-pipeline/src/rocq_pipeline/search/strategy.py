@@ -62,28 +62,29 @@ class CompositeStrategy[T](Strategy[T]):
         state: T,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
+    ) -> Strategy.Rollout[T]:
         def combine() -> Strategy.Rollout:
             queue: list[tuple[float, int, Action[T], Strategy.Rollout]] = []
-            for i, strat in enumerate(self._children):
-                gen = strat.rollout(rdm, max_rollout=max_rollout, context=context)
+
+            def push_next(i: int, g: Strategy.Rollout[T]) -> None:
+                nonlocal queue
                 try:
                     pr, act = next(gen)
                 except StopIteration:
-                    continue
-                heapq.heappush(queue, (pr, i, act, gen))
+                    return
+                heapq.heappush(queue, (-pr, i, act, gen))
+
+            for i, strat in enumerate(self._children):
+                gen = strat.rollout(state, max_rollout=max_rollout, context=context)
+                push_next(i, gen)
 
             while True:
                 try:
                     (pr, i, act, gen) = heapq.heappop(queue)
                 except IndexError:
                     return
-                yield (pr, act)
-                try:
-                    pr, act = next(gen)
-                except StopIteration:
-                    continue
-                heapq.heappush(queue, (pr, i, act, gen))
+                yield (-pr, act)
+                push_next(i, gen)
 
         return combine()
 
