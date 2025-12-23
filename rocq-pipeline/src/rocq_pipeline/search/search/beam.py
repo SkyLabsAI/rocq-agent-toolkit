@@ -1,124 +1,149 @@
 from __future__ import annotations
 
-from observability import trace_context
-from rocq_pipeline.search.action import Action
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from observability import trace_context
+else:
+    try:
+        from observability import trace_context
+    except ImportError:
+        from contextlib import contextmanager
+
+        @contextmanager
+        def trace_context(_name: str):  # type: ignore[no-redef]
+            class DummySpan:
+                def set_attribute(self, _key: str, _value: Any) -> None:
+                    pass
+
+            yield DummySpan()
+
+
 from rocq_pipeline.search.strategy import Strategy
 
-
-class SearchNode[T]:
-    id: int  # Unique id
-    parent_id: int | None
-    depth: int
-    state: T
-
-    # Cost information
-    cost_score: float = float("inf")
-    cumulative_log_prob: float = 0.0
-
-    def __init__(self) -> None:
-        pass
-
-    @classmethod
-    def make_root(cls, state: T) -> SearchNode[T]:
-        result: SearchNode[T] = SearchNode()
-        result.id = cls._fresh_id()
-        result.parent_id = None
-        result.depth = 0
-        result.state = state
-        return result
-
-    def make_child(self, state: T, cost_score: float, log_prob: float) -> SearchNode[T]:
-        result: SearchNode[T] = SearchNode()
-        result.id = SearchNode._fresh_id()
-        result.parent_id = self.id
-        result.depth = self.depth + 1
-        result.cost_score = cost_score
-        result.cumulative_log_prob = log_prob
-        result.state = state
-        return result
-
-    def is_solved(self) -> bool:
-        # TODO: implement this. It needs to be a method on the underlying state object or on the dynamics
-        return False
-
-    _counter: int = 0
-
-    @classmethod
-    def _fresh_id(cls) -> int:
-        result = cls._counter
-        cls._counter += 1
-        return result
+from .frontier import PQueue, SavingSolutions, SingleDepth
+from .guidance import Guidance, UniformGuidance
+from .search import Node, search
 
 
 class StateManip[T]:
+    """Helper for managing imperative state (e.g., RocqCursor)."""
+
     def freshen(self, state: T) -> T:
+        """Create a fresh copy of the state for exploration."""
         return state
 
-    def dispose(self, state: T) -> None:
+    def dispose(self, _state: T) -> None:
+        """Clean up a state that's no longer needed."""
         return None
 
 
 class BeamSearch[T]:
     """
-    A simple implementation of the Beam search.
+    Beam search implementation using the frontier/search infrastructure.
 
+    This implementation uses:
+    - PQueue for priority-based ordering with guidance scores
+    - SingleDepth for beam-like behavior (only expand one depth level at a time)
+    - SavingSolutions to track solutions
     """
 
     def __init__(
         self,
         strategy: Strategy[T],
+        guidance: Guidance[T] | None = None,
+        is_solved: Callable[[T], bool] | None = None,
         beam_width: int = 5,
-        beam_count: int = 10,
-        freshen: StateManip[T]
-        | None = None,  # the StateManip is a hack to get around the fact that RocqCursor is imperative
+        explore_width: int = 10,
+        max_depth: int = 10,
+        stop_on_first_solution: bool = False,
+        freshen: StateManip[T] | None = None,
+        state_key: Callable[[T], Any] | None = None,
     ) -> None:
+        """
+        Initialize beam search.
+
+        Args:
+            strategy: Strategy for generating actions
+            guidance: Guidance function for scoring states (lower is better)
+            is_solved: Function to check if a state is a solution
+            beam_width: Number of nodes to expand per depth level
+            explore_width: Number of actions to try per node
+            max_depth: Maximum search depth
+            stop_on_first_solution: Whether to stop after finding first solution
+            freshen: StateManip for cloning/disposing imperative states
+            state_key: Optional function to generate keys for state deduplication
+        """
         self._strategy = strategy
+        self._guidance = guidance or UniformGuidance()
+        self._is_solved = is_solved or (lambda _: False)
         self._beam_width = beam_width
-        self._max_depth = 10
-        self._beam_count = beam_count
+        self._explore_width = explore_width
+        self._max_depth = max_depth
+        self._stop_on_first = stop_on_first_solution
         self._freshen = freshen or StateManip()
+        self._state_key = state_key
 
-    def search(self, state: T) -> list[SearchNode[T]]:
-        root = SearchNode.make_root(state)
-        with trace_context("search") as span:
-            span.set_attribute("root", root.id)
+    def search(self, start_state: T) -> list[T]:
+        """
+        Run beam search from the start state.
 
-            frontier: list[SearchNode[T]] = [root]
-            solutions: list[SearchNode[T]] = []
+        Returns:
+            List of solution states found
+        """
+        with trace_context("beam_search") as span:
+            span.set_attribute("beam_width", self._beam_width)
+            span.set_attribute("explore_width", self._explore_width)
+            span.set_attribute("max_depth", self._max_depth)
 
-            for _ in range(self._max_depth):
-                nodes_to_expand = self._take(frontier)
-                next_frontier: list[SearchNode[T]] = []
+            # Create the solutions frontier that we'll retrieve results from
+            solutions_frontier: SavingSolutions[Node[T], Any] | None = None
 
-                for node in nodes_to_expand:
-                    expanded = self._expand(node)
-                    next_frontier.extend(expanded)
+            def make_frontier() -> SavingSolutions[Node[T], Any]:
+                nonlocal solutions_frontier
 
-                solutions.extend([node for node in next_frontier if node.is_solved()])
-                frontier = next_frontier
+                def scorer(node_with_depth: tuple[Node[T], int]) -> float:
+                    # SingleDepth wraps nodes as (node, depth) tuples for its base frontier
+                    node, depth = node_with_depth
+                    # Combine guidance score with depth for tie-breaking
+                    guidance_score = self._guidance.score(node.state, logprob=None)
+                    # Add small depth penalty to prefer shorter paths
+                    return guidance_score + depth * 0.001
 
-        return solutions
+                def is_solution_node(node: Node[T]) -> bool:
+                    return self._is_solved(node.state)
 
-    def _take(self, frontier: list[SearchNode[T]]) -> list[SearchNode[T]]:
-        frontier.sort(key=lambda n: n.cost_score)
-        return frontier[: self._beam_count]
+                # Create frontier composition
+                # PQueue works on (Node[T], int) tuples because SingleDepth wraps them
+                base = PQueue(scorer, lambda a, b: (a > b) - (a < b))
+                beam = SingleDepth(base)
+                solutions_frontier = SavingSolutions(
+                    beam, is_solution_node, self._stop_on_first
+                )
+                return solutions_frontier
 
-    def _expand(self, node: SearchNode[T]) -> list[SearchNode[T]]:
-        result: list[SearchNode[T]] = []
-        for prob, action in self._strategy.rollout(
-            node.state, max_rollout=self._beam_width
-        ):
-            with trace_context("expand") as span:
-                span.set_attribute("parent", node.id)
-                fresh_state = self._freshen.freshen(node.state)
-                try:
-                    new_state = action.interact(fresh_state)
-                except Action.Failed:
-                    self._freshen.dispose(fresh_state)
-                    continue
+            # State management functions for search
+            def clone_state(state: T) -> T:
+                return self._freshen.freshen(state)
 
-                child = node.make_child(new_state, 0, prob)
-                span.set_attribute("id", child.id)
-                result.append(child)
+            def dispose_state(state: T) -> None:
+                self._freshen.dispose(state)
 
-        return result
+            # Run search - it will loop internally until frontier is empty or solutions found
+            search(
+                strategy=self._strategy,
+                start=start_state,
+                frontier=make_frontier,
+                beam_width=self._beam_width,
+                explore_width=self._explore_width,
+                clone_state=clone_state,
+                dispose_state=dispose_state,
+                max_depth=self._max_depth,
+                state_key=self._state_key,
+            )
+
+            # Extract solution states from the frontier
+            if solutions_frontier is not None:
+                return [node.state for node in solutions_frontier.solutions()]
+            return []

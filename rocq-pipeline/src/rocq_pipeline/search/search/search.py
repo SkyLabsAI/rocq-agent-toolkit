@@ -192,6 +192,7 @@ def search(
     clone_state: Callable[[CState], CState] | None = None,
     apply_action: Callable[[CState, Action[CState]], CState] | None = None,  # TODO: Why?
     dispose_state: Callable[[CState], None] | None = None,
+    max_depth: int | None = None,
 ) -> Frontier[Node[CState], FNode]:
     """Expand a frontier by interleaving rollouts and pruning duplicates."""
     assert explore_width > 0
@@ -231,6 +232,10 @@ def search(
         def process(
             candidate: Node[CState], parent: FNode, action: Action[CState]
         ) -> None:
+            # Check depth limit before processing
+            if max_depth is not None and candidate.depth >= max_depth:
+                return
+
             action_key = action.key().strip()
             # Skip if we've already tried this action from the same node.
             if candidate.remember_action(action_key):
