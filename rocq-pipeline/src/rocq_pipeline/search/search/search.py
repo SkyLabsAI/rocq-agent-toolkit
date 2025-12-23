@@ -181,7 +181,7 @@ def _default_dispose(state: CAny) -> None:  # noqa: UP047
 def search(
     strategy: Strategy[CState],
     start: CState,
-    frontier: type[Frontier[Node[CState], FNode]],
+    frontier: Callable[[], Frontier[Node[CState], FNode]],
     beam_width: int = 1,
     explore_width: int = 1,
     *,
