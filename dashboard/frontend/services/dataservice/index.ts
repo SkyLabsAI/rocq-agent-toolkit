@@ -1,14 +1,21 @@
 import axios from 'axios';
 
 import {
+  type AgentClassProvenance,
+  type AgentClassSummary,
+  type AgentInstanceProvenance,
+  type AgentInstanceSummary,
   type AgentRun,
-  type AgentSummary,
   type Benchmark,
   type RunDetailsResponse,
   type TaskOutput,
 } from '@/types/types';
 
 import { config } from '../../config/environment';
+import {
+  formatAgentClassDisplayName,
+  formatAgentInstanceDisplayName,
+} from '../../utils/agent-display';
 
 // Check if we should use mock data
 const USE_MOCK_DATA = config.USE_MOCK_DATA;
@@ -16,7 +23,8 @@ const USE_MOCK_DATA = config.USE_MOCK_DATA;
 // Mock data generator functions
 const generateMockTaskOutput = (
   runId: string,
-  agentName: string,
+  agentClsChecksum: string,
+  agentChecksum: string,
   taskIndex: number
 ): TaskOutput => {
   const isSuccess = Math.random() > 0.3; // 70% success rate
@@ -30,7 +38,8 @@ const generateMockTaskOutput = (
     timestamp_utc: new Date(
       Date.now() - Math.random() * 86400000
     ).toISOString(),
-    agent_name: agentName,
+    agent_cls_checksum: agentClsChecksum,
+    agent_checksum: agentChecksum,
     status: isSuccess ? 'Success' : 'Failure',
     failure_reason: !isSuccess
       ? [
@@ -81,62 +90,140 @@ const generateMockTaskOutput = (
 };
 
 // Real API functions
-const getDataReal: () => Promise<AgentSummary[]> = async () => {
+const getDataReal: () => Promise<AgentClassSummary[]> = async () => {
   const response = await axios.get(`${config.DATA_API}/agents`);
 
-  return response.data as AgentSummary[];
+  return response.data as AgentClassSummary[];
 };
 
 // Mock API functions
-const getDataMock: () => Promise<AgentSummary[]> = async () => {
+const getDataMock: (
+  view?: 'class' | 'instance'
+) => Promise<AgentClassSummary[] | AgentInstanceSummary[]> = async (
+  view: 'class' | 'instance' = 'class'
+) => {
   await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
 
-  const mockData: AgentSummary[] = [
-    {
-      agent_name: 'agentA',
-      total_runs: 10,
-      best_run: {
-        run_id: 'run_agentA_001',
-        agent_name: 'agentA',
-        timestamp_utc: new Date(Date.now() - 2 * 86400000).toISOString(),
-        total_tasks: 6,
-        success_count: 5,
-        failure_count: 1,
-        success_rate: 0.83,
-        score: 0.9,
-        avg_total_tokens: 5000,
-        avg_cpu_time_sec: 10.0,
-        avg_llm_invocation_count: 7,
-        metadata: {
-          tags: {
-            version: 'A',
-            environment: 'test',
+  if (view === 'instance') {
+    const mockData: AgentInstanceSummary[] = [
+      {
+        agent_checksum: 'agent_instance_a_checksum_12345678',
+        cls_checksum: 'agent_class_a_checksum_12345678',
+        name: 'AgentInstanceA',
+        provenance: {},
+        total_runs: 10,
+        best_run: {
+          run_id: 'run_instance_a_001',
+          agent_cls_checksum: 'agent_class_a_checksum_12345678',
+          agent_checksum: 'agent_instance_a_checksum_12345678',
+          timestamp_utc: new Date(Date.now() - 2 * 86400000).toISOString(),
+          dataset_id: 'dataset_001',
+          total_tasks: 6,
+          success_count: 5,
+          failure_count: 1,
+          success_rate: 0.83,
+          score: 0.9,
+          avg_total_tokens: 5000,
+          avg_cpu_time_sec: 10.0,
+          avg_llm_invocation_count: 7,
+          best_run: false,
+          metadata: {
+            tags: {
+              version: 'A',
+              environment: 'test',
+            },
           },
         },
       },
+      {
+        agent_checksum: 'agent_instance_b_checksum_87654321',
+        cls_checksum: 'agent_class_b_checksum_87654321',
+        name: 'AgentInstanceB',
+        provenance: {},
+        total_runs: 8,
+        best_run: {
+          run_id: 'run_instance_b_001',
+          agent_cls_checksum: 'agent_class_b_checksum_87654321',
+          agent_checksum: 'agent_instance_b_checksum_87654321',
+          timestamp_utc: new Date(Date.now() - 3 * 86400000).toISOString(),
+          dataset_id: 'dataset_002',
+          total_tasks: 6,
+          success_count: 4,
+          failure_count: 2,
+          success_rate: 0.67,
+          score: 0.8,
+          avg_total_tokens: 4800,
+          avg_cpu_time_sec: 12.0,
+          avg_llm_invocation_count: 6,
+          best_run: false,
+          metadata: {
+            tags: {
+              version: 'B',
+              environment: 'test',
+            },
+          },
+        },
+      },
+    ];
+    return mockData;
+  }
+
+  const mockData: AgentClassSummary[] = [
+    {
+      cls_checksum: 'agent_class_a_checksum_12345678',
+      cls_name: 'AgentClassA',
+      cls_provenance: {},
+      total_runs: 10,
+        best_run: {
+          run_id: 'run_agentA_001',
+          agent_cls_checksum: 'agent_class_a_checksum_12345678',
+          agent_checksum: 'agent_instance_a_checksum_12345678',
+          timestamp_utc: new Date(Date.now() - 2 * 86400000).toISOString(),
+          dataset_id: 'dataset_001',
+          total_tasks: 6,
+          success_count: 5,
+          failure_count: 1,
+          success_rate: 0.83,
+          score: 0.9,
+          avg_total_tokens: 5000,
+          avg_cpu_time_sec: 10.0,
+          avg_llm_invocation_count: 7,
+          best_run: false,
+          metadata: {
+            tags: {
+              version: 'A',
+              environment: 'test',
+            },
+          },
+        },
     },
     {
-      agent_name: 'agentB',
+      cls_checksum: 'agent_class_b_checksum_87654321',
+      cls_name: 'AgentClassB',
+      cls_provenance: {},
       total_runs: 8,
-      best_run: {
-        run_id: 'run_agentB_001',
-        agent_name: 'agentB',
-        timestamp_utc: new Date(Date.now() - 3 * 86400000).toISOString(),
-        total_tasks: 6,
-        success_count: 4,
-        failure_count: 2,
-        success_rate: 0.67,
-        score: 0.8,
-        avg_total_tokens: 4800,
-        avg_cpu_time_sec: 12.0,
-        avg_llm_invocation_count: 6,
-        metadata: {
-          tags: {
-            version: 'B',
-            environment: 'test',
+        best_run: {
+          run_id: 'run_agentB_001',
+          agent_cls_checksum: 'agent_class_b_checksum_87654321',
+          agent_checksum: 'agent_instance_b_checksum_87654321',
+          timestamp_utc: new Date(Date.now() - 3 * 86400000).toISOString(),
+          dataset_id: 'dataset_002',
+          total_tasks: 6,
+          success_count: 4,
+          failure_count: 2,
+          success_rate: 0.67,
+          score: 0.8,
+          avg_total_tokens: 4800,
+          avg_cpu_time_sec: 12.0,
+          avg_llm_invocation_count: 6,
+          best_run: false,
+          metadata: {
+            tags: {
+              version: 'B',
+              environment: 'test',
+            },
           },
         },
-      },
     },
   ];
 
@@ -145,27 +232,31 @@ const getDataMock: () => Promise<AgentSummary[]> = async () => {
 
 export const getData = USE_MOCK_DATA ? getDataMock : getDataReal;
 
-const getDetailsReal = async (agentName: string): Promise<AgentRun[]> => {
+const getDetailsReal = async (agentClsChecksum: string): Promise<AgentRun[]> => {
   const response = await axios.get(
-    `${config.DATA_API}/agents/${agentName}/runs`
+    `${config.DATA_API}/agents/${agentClsChecksum}/runs`
   );
 
   return response.data as AgentRun[];
 };
 
-const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
+const getDetailsMock = async (
+  agentClsChecksum: string
+): Promise<AgentRun[]> => {
   await new Promise(resolve => setTimeout(resolve, 300));
 
   const numRuns = Math.floor(Math.random() * 10) + 5; // 5-15 runs
   const mockRuns: AgentRun[] = [];
+  const mockAgentChecksum = `agent_instance@${agentClsChecksum.slice(0, 8)}...`;
 
   for (let i = 0; i < numRuns; i++) {
     const totalTasks = Math.floor(Math.random() * 50) + 20; // 20-70 tasks
     const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3)); // 60-90% success
 
     mockRuns.push({
-      run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
-      agent_name: agentName,
+      run_id: `run_${agentClsChecksum.slice(0, 8)}_${i.toString().padStart(3, '0')}`,
+      agent_cls_checksum: agentClsChecksum,
+      agent_checksum: mockAgentChecksum,
       timestamp_utc: new Date(
         Date.now() - Math.random() * 7 * 86400000
       ).toISOString(), // Last 7 days
@@ -175,8 +266,8 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
       dataset_id: `dataset_${(Math.floor(Math.random() * 3) + 1).toString().padStart(3, '0')}`,
       metadata: {
         tags: {
-          run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
-          task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+          run_id: `run_${agentClsChecksum.slice(0, 8)}_${i.toString().padStart(3, '0')}`,
+          task_id: `task_${agentClsChecksum.slice(0, 8)}_${i.toString().padStart(3, '0')}`,
           hehe: 'hehe',
           somethingelse: 'somethingelse',
         },
@@ -189,13 +280,20 @@ const getDetailsMock = async (agentName: string): Promise<AgentRun[]> => {
 
 export const getDetails = USE_MOCK_DATA ? getDetailsMock : getDetailsReal;
 
-// Get runs for a specific agent within a specific dataset
+// Get runs for a specific agent class within a specific dataset
 const getDetailsForDatasetReal = async (
   datasetId: string,
-  agentName: string
+  agentClsChecksum: string,
+  view?: 'class' | 'instance'
 ): Promise<AgentRun[]> => {
+  if (view === 'instance') {
+    const response = await axios.get(
+      `${config.DATA_API}/${datasetId}/agents/instance/${agentClsChecksum}/runs`
+    );
+    return response.data as AgentRun[];
+  }
   const response = await axios.get(
-    `${config.DATA_API}/${datasetId}/agents/${agentName}/runs`
+    `${config.DATA_API}/${datasetId}/agents/class/${agentClsChecksum}/runs`
   );
 
   return response.data as AgentRun[];
@@ -203,20 +301,22 @@ const getDetailsForDatasetReal = async (
 
 const getDetailsForDatasetMock = async (
   datasetId: string,
-  agentName: string
+  agentClsChecksum: string
 ): Promise<AgentRun[]> => {
   await new Promise(resolve => setTimeout(resolve, 300));
 
   const numRuns = Math.floor(Math.random() * 10) + 5; // 5-15 runs
   const mockRuns: AgentRun[] = [];
+  const mockAgentChecksum = `agent_instance_${agentClsChecksum.slice(0, 8)}`;
 
   for (let i = 0; i < numRuns; i++) {
     const totalTasks = Math.floor(Math.random() * 50) + 20; // 20-70 tasks
     const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3)); // 60-90% success
 
     mockRuns.push({
-      run_id: `run_${agentName}_${i.toString().padStart(3, '0')}_${datasetId}`,
-      agent_name: agentName,
+      run_id: `run_${agentClsChecksum.slice(0, 8)}_${i.toString().padStart(3, '0')}_${datasetId}`,
+      agent_cls_checksum: agentClsChecksum,
+      agent_checksum: mockAgentChecksum,
       timestamp_utc: new Date(
         Date.now() - Math.random() * 7 * 86400000
       ).toISOString(), // Last 7 days
@@ -227,8 +327,8 @@ const getDetailsForDatasetMock = async (
       metadata: {
         tags: {
           dataset_id: datasetId,
-          run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
-          task_id: `task_${agentName}_${i.toString().padStart(3, '0')}`,
+          run_id: `run_${agentClsChecksum.slice(0, 8)}_${i.toString().padStart(3, '0')}`,
+          task_id: `task_${agentClsChecksum.slice(0, 8)}_${i.toString().padStart(3, '0')}`,
           hehe: 'hehe',
           somethingelse: 'somethingelse',
         },
@@ -237,7 +337,7 @@ const getDetailsForDatasetMock = async (
   }
 
   console.log(
-    `Fetched runs for agent ${agentName} in dataset ${datasetId} (MOCK):`,
+    `Fetched runs for agent ${agentClsChecksum} in dataset ${datasetId} (MOCK):`,
     mockRuns
   );
   return mockRuns;
@@ -290,21 +390,32 @@ const getRunDetailsMock = async (
     // Add common tasks
     for (let i = 0; i < commonTasks.length; i++) {
       tasks.push({
-        ...generateMockTaskOutput(runId, agentInfo.agentName, i),
+        ...generateMockTaskOutput(
+          runId,
+          `agent_cls_${agentInfo.agentName}`,
+          `agent_instance_${agentInfo.agentName}`,
+          i
+        ),
         task_id: commonTasks[i],
       });
     }
     // Add unique tasks
     for (let i = 0; i < agentInfo.uniqueTasks.length; i++) {
       tasks.push({
-        ...generateMockTaskOutput(runId, agentInfo.agentName, i + 10),
+        ...generateMockTaskOutput(
+          runId,
+          `agent_cls_${agentInfo.agentName}`,
+          `agent_instance_${agentInfo.agentName}`,
+          i + 10
+        ),
         task_id: agentInfo.uniqueTasks[i],
       });
     }
 
     return {
       run_id: runId,
-      agent_name: agentInfo.agentName,
+      agent_cls_checksum: `agent_cls_${agentInfo.agentName}`,
+      agent_checksum: `agent_instance_${agentInfo.agentName}`,
       total_tasks: tasks.length,
       tasks,
     };
@@ -481,26 +592,46 @@ export type AgentSummaryTemp = {
   tags?: Record<string, string>;
 };
 
-export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
-  // 1. Fetch all agents
+export async function fetchAgentSummaries(
+  view?: 'class' | 'instance'
+): Promise<AgentSummaryTemp[]> {
+  // 1. Fetch all agent classes or instances
 
-  const agentsRes = await getData();
-  const agents: AgentSummary[] = agentsRes;
+  const agentsRes = await getData(view);
 
-  // 2. For each agent, fetch their runs
+  if (view === 'instance') {
+    const agents: AgentInstanceSummary[] = agentsRes as AgentInstanceSummary[];
+    const summaries = await Promise.all(
+      agents.map(async agent => {
+        return {
+          agentName: formatAgentInstanceDisplayName(agent.name, agent.agent_checksum),
+          totalTasks: agent.best_run?.total_tasks || 0,
+          successRate: agent.best_run
+            ? agent.best_run.success_count / agent.best_run.total_tasks
+            : 0,
+          avgTime: (agent.best_run && 'avg_cpu_time_sec' in agent.best_run) ? agent.best_run.avg_cpu_time_sec : 0,
+          avgTokens: (agent.best_run && 'avg_total_tokens' in agent.best_run) ? agent.best_run.avg_total_tokens : 0,
+          avgLlmCalls: (agent.best_run && 'avg_llm_invocation_count' in agent.best_run) ? agent.best_run.avg_llm_invocation_count : 0,
+        };
+      })
+    );
+    return summaries;
+  }
+
+  const agents: AgentClassSummary[] = agentsRes as AgentClassSummary[];
+
+  // 2. For each agent class, fetch their runs
   const summaries = await Promise.all(
     agents.map(async agent => {
       return {
-        agentName: agent.agent_name,
+        agentName: formatAgentClassDisplayName(agent.cls_name, agent.cls_checksum),
         totalTasks: agent.best_run?.total_tasks || 0,
         successRate: agent.best_run
           ? agent.best_run.success_count / agent.best_run.total_tasks
           : 0,
-        avgTime: agent.best_run ? agent.best_run.avg_cpu_time_sec : 0,
-        avgTokens: agent.best_run ? agent.best_run.avg_total_tokens : 0,
-        avgLlmCalls: agent.best_run
-          ? agent.best_run.avg_llm_invocation_count
-          : 0,
+          avgTime: (agent.best_run && 'avg_cpu_time_sec' in agent.best_run) ? (agent.best_run.avg_cpu_time_sec as number) : 0,
+          avgTokens: (agent.best_run && 'avg_total_tokens' in agent.best_run) ? (agent.best_run.avg_total_tokens as number) : 0,
+          avgLlmCalls: (agent.best_run && 'avg_llm_invocation_count' in agent.best_run) ? (agent.best_run.avg_llm_invocation_count as number) : 0,
       };
     })
   );
@@ -562,36 +693,45 @@ const getBenchmarkAgentsMock = async (
     'CodeGen-Alpha',
     'LogicSolver',
   ];
-  const mockAgents: AgentSummary[] = agents.map((agentName, index) => ({
-    agent_name: agentName,
-    total_runs: Math.floor(Math.random() * 20) + 5,
-    best_run: {
-      run_id: `run_${agentName}_best_${benchmarkId}`,
-      agent_name: agentName,
-      timestamp_utc: new Date(
-        Date.now() - Math.random() * 7 * 86400000
-      ).toISOString(),
-      total_tasks: Math.floor(Math.random() * 50) + 20,
-      success_count: Math.floor(
-        (Math.random() * 0.4 + 0.6) * (Math.floor(Math.random() * 50) + 20)
-      ),
-      failure_count: Math.floor(
-        Math.random() * 0.4 * (Math.floor(Math.random() * 50) + 20)
-      ),
-      success_rate: Math.random() * 0.4 + 0.6, // 60-100%
-      score: Math.random() * 0.4 + 0.6,
-      avg_total_tokens: Math.floor(Math.random() * 3000) + 2000,
-      avg_cpu_time_sec: Math.random() * 20 + 5,
-      avg_llm_invocation_count: Math.floor(Math.random() * 15) + 5,
-      metadata: {
-        tags: {
-          benchmark_id: benchmarkId,
-          version: `v${index + 1}.0`,
-          environment: 'benchmark',
+  const mockAgents: AgentClassSummary[] = agents.map((agentName, index) => {
+    const clsChecksum = `agent_cls_${agentName}_${index}`;
+    const clsName = agentName;
+    return {
+      cls_checksum: clsChecksum,
+      cls_name: clsName,
+      cls_provenance: {},
+      total_runs: 10,
+        best_run: {
+          run_id: `run_${agentName}_best_${benchmarkId}`,
+          agent_cls_checksum: clsChecksum,
+          agent_checksum: `agent_instance_${agentName}_${index}`,
+          timestamp_utc: new Date(
+            Date.now() - Math.random() * 7 * 86400000
+          ).toISOString(),
+          dataset_id: benchmarkId,
+          total_tasks: Math.floor(Math.random() * 50) + 20,
+          success_count: Math.floor(
+            (Math.random() * 0.4 + 0.6) * (Math.floor(Math.random() * 50) + 20)
+          ),
+          failure_count: Math.floor(
+            Math.random() * 0.4 * (Math.floor(Math.random() * 50) + 20)
+          ),
+          success_rate: Math.random() * 0.4 + 0.6, // 60-100%
+          score: Math.random() * 0.4 + 0.6,
+          avg_total_tokens: Math.floor(Math.random() * 3000) + 2000,
+          avg_cpu_time_sec: Math.random() * 20 + 5,
+          avg_llm_invocation_count: Math.floor(Math.random() * 15) + 5,
+          best_run: false,
+          metadata: {
+            tags: {
+              benchmark_id: benchmarkId,
+              version: `v${index + 1}.0`,
+              environment: 'benchmark',
+            },
+          },
         },
-      },
-    },
-  }));
+      };
+  });
 
   console.log(
     `Fetched agents for benchmark ${benchmarkId} (MOCK):`,
@@ -607,9 +747,28 @@ export const getBenchmarkAgents = USE_MOCK_DATA
   ? getBenchmarkAgentsMock
   : getBenchmarkAgentsReal;
 
+// Provenance API functions
+export const getAgentClassProvenance = async (
+  clsChecksum: string
+): Promise<AgentClassProvenance> => {
+  const response = await axios.get(
+    `${config.DATA_API}/agents/class/${clsChecksum}/provenance`
+  );
+  return response.data as AgentClassProvenance;
+};
+
+export const getAgentProvenance = async (
+  agentChecksum: string
+): Promise<AgentInstanceProvenance> => {
+  const response = await axios.get(
+    `${config.DATA_API}/agents/instance/${agentChecksum}/provenance`
+  );
+  return response.data as AgentInstanceProvenance;
+};
+
 // Types for benchmarks
 
 interface BenchmarkAgentData {
   dataset_id: string;
-  agents: AgentSummary[];
+  agents: AgentClassSummary[];
 }

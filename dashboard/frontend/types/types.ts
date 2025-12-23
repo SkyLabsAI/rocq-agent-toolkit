@@ -141,8 +141,10 @@ export interface TaskOutput {
   trace_id?: string;
   /** Timestamp when task began (ISO 8601). */
   timestamp_utc: string;
-  /** Unique name of the agent that attempted the task. */
-  agent_name: string;
+  /** Checksum of the agent class that attempted the task. */
+  agent_cls_checksum: string;
+  /** Checksum of the agent instance that attempted the task. */
+  agent_checksum: string;
   /** Task status upon completion. */
   status: TaskStatus;
   /** Reason for task failure. */
@@ -183,30 +185,57 @@ export interface AgentRunOld {
   data: TaskOutput[];
 }
 
-export interface AgentSummary {
-  agent_name: string;
+export interface AgentClassProvenance {
+  cls_checksum: string;
+  cls_name: string;
+  cls_provenance: Record<string, unknown>;
+}
+
+export interface AgentInstanceProvenance {
+  agent_checksum: string;
+  cls_checksum: string;
+  name: string;
+  provenance: Record<string, unknown>;
+}
+
+export interface AgentInstanceSummary {
+  agent_checksum: string;
+  cls_checksum: string;
+  name: string;
+  provenance: Record<string, unknown>;
   total_runs: number;
-  best_run?: {
-    run_id: string;
-    agent_name: string;
-    timestamp_utc: string;
-    total_tasks: number;
-    success_count: number;
-    failure_count: number;
-    success_rate: number;
-    score: number;
-    avg_total_tokens: number;
-    avg_cpu_time_sec: number;
-    avg_llm_invocation_count: number;
-    metadata: {
-      tags: Record<string, unknown>;
-    };
-  };
+  best_run?: RunInfo;
+}
+
+export interface AgentInstanceWithRuns {
+  agent_checksum: string;
+  cls_checksum: string;
+  name: string;
+  provenance: Record<string, unknown>;
+  run_ids: string[];
+  best_run?: RunInfo;
+}
+
+export interface AgentClassSummary {
+  cls_checksum: string;
+  cls_name: string;
+  cls_provenance: Record<string, unknown>;
+  total_runs: number;
+  best_run?: RunInfo;
+}
+
+export interface AgentClassWithRuns {
+  cls_checksum: string;
+  cls_name: string;
+  cls_provenance: Record<string, unknown>;
+  run_ids: string[];
+  best_run?: RunInfo;
 }
 
 export interface AgentRun {
   run_id: string;
-  agent_name: string;
+  agent_cls_checksum: string;
+  agent_checksum: string;
   timestamp_utc: string; // ISO 8601 date-time string
   total_tasks: number;
   success_count: number;
@@ -217,11 +246,32 @@ export interface AgentRun {
   };
 }
 
+export interface RunInfo {
+  run_id: string;
+  agent_cls_checksum: string;
+  agent_checksum: string;
+  timestamp_utc: string;
+  dataset_id: string | null;
+  total_tasks: number;
+  success_count: number;
+  failure_count: number;
+  success_rate: number;
+  score: number;
+  avg_total_tokens: number;
+  avg_llm_invocation_count: number;
+  avg_cpu_time_sec: number;
+  best_run: boolean;
+  metadata: {
+    tags: Record<string, string>;
+  };
+}
+
 export type Run = AgentRun;
 
 export interface RunDetailsResponse {
   run_id: string;
-  agent_name: string;
+  agent_cls_checksum: string;
+  agent_checksum: string;
   total_tasks: number;
   tasks: TaskOutput[];
   metadata?: {

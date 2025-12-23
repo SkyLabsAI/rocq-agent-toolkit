@@ -1,4 +1,4 @@
-from backend.db_models import Agent, Run, TaskResultDB
+from backend.db_models import AgentClassProvenance, AgentProvenance, Run, TaskResultDB
 from sqlmodel import Session, select
 
 
@@ -39,7 +39,9 @@ def test_ingest_happy_path_persists_and_list_agents_and_runs(
         make_task_result_payload(run_id=run_id, task_id="t2", status="Failure"),
     ]
 
-    resp = client.post("/api/ingest", params={"source_file_name": "x.jsonl"}, json=items)
+    resp = client.post(
+        "/api/ingest", params={"source_file_name": "x.jsonl"}, json=items
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["success"] is True
@@ -48,17 +50,22 @@ def test_ingest_happy_path_persists_and_list_agents_and_runs(
 
     agents = client.get("/api/agents")
     assert agents.status_code == 200
-    assert agents.json()[0]["agent_name"] == "agentA"
-    assert agents.json()[0]["total_runs"] == 1
+    agents_data = agents.json()
+    assert len(agents_data) > 0
+    # With fallback, cls_name will be the checksum
+    assert agents_data[0]["cls_name"] == "cls_checksum_test"
+    assert agents_data[0]["total_runs"] == 1
 
-    runs = client.get("/api/agents/agentA/runs")
+    # Use the cls_checksum to get runs (the endpoint expects cls_checksum, not name)
+    runs = client.get(f"/api/agents/class/{agents_data[0]['cls_checksum']}/runs")
     assert runs.status_code == 200
     assert runs.json()[0]["run_id"] == run_id
     assert runs.json()[0]["total_tasks"] == 2
 
     # Spot-check DB state (integration-level confidence)
     with Session(engine) as s:
-        assert len(s.exec(select(Agent)).all()) == 1
+        assert len(s.exec(select(AgentProvenance)).all()) == 1
+        assert len(s.exec(select(AgentClassProvenance)).all()) == 1
         assert len(s.exec(select(Run)).all()) == 1
         assert len(s.exec(select(TaskResultDB)).all()) == 2
 
@@ -66,5 +73,3 @@ def test_ingest_happy_path_persists_and_list_agents_and_runs(
 def test_list_runs_by_agent_unknown_returns_404(client):
     resp = client.get("/api/agents/does-not-exist/runs")
     assert resp.status_code == 404
-
-
