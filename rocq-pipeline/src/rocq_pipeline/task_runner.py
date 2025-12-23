@@ -208,13 +208,23 @@ def run_task(
     for task_tag in task.tags:
         tags.value.update({f"TASK_{task_tag}": task_tag})
 
+    # TODO: avoid re-logging if we've already logged AgentProvenance
+    # with this checksum.
+    logger.info(
+        "AgentProvenance",
+        checksum=agent.checksum(),
+        name=agent.name(),
+        provenance=agent.provenance(),
+    )
+    # TODO: update frontend/backend of dashboard to utilize new checksum/
     return task_result.to_task_output(
         run_id=run_id,
         task_kind=task.locator.task_kind(),
         task_id=task_id,
         dataset_id=dataset_id,
         timestamp_utc=timestamp_iso_8601,
-        agent_name=agent.name(),
+        agent_cls_checksum=agent.cls_checksum(),
+        agent_checksum=agent.checksum(),
         trace_id=trace_id,
         metadata=task_output.Metadata(tags=tags),
     )
