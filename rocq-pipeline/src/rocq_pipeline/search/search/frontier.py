@@ -42,6 +42,11 @@ class Frontier[T, Node](ABC):
         ...
 
     @abstractmethod
+    def clear(self) -> None:
+        """Remove all pending items from the frontier."""
+        ...
+
+    @abstractmethod
     # Remove up to [count] items in frontier order.
     def take(self, count: int) -> list[tuple[T, Node]] | None:
         """
@@ -83,6 +88,10 @@ class DFS[T](Frontier[T, DFSNode[T]]):
         self._worklist = DFSNode(node.id, self._worklist, node.state)
 
     @override
+    def clear(self) -> None:
+        self._worklist = None
+
+    @override
     def take(self, count: int) -> list[tuple[T, DFSNode[T]]] | None:
         if self._worklist is None:
             return None
@@ -115,6 +124,10 @@ class BFS[T](Frontier[T, BasicNode[T]]):
     @override
     def repush(self, node: BasicNode[T]) -> None:
         self._worklist.append(node)
+
+    @override
+    def clear(self) -> None:
+        self._worklist = []
 
     @override
     def take(self, count: int) -> list[tuple[T, BasicNode]] | None:
@@ -172,6 +185,10 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         heapq.heappush(self._worklist, node)
 
     @override
+    def clear(self) -> None:
+        self._worklist = []
+
+    @override
     def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]] | None:
         if self._worklist:
             result: list[Wrapper[T, Any]] = []
@@ -209,13 +226,18 @@ class SingleDepth[T, Node](Frontier[T, WithDepth[Node]]):
     def push(self, val: T, parent: WithDepth[Node] | None) -> None:
         depth = parent.depth + 1 if parent is not None else 0
         if depth > self._max_depth:
-            self._base.clear() # need to add this back
+            self._base.clear()
             self._max_depth = depth
-        self._base.push((val, depth), parent.value if parent is not None or None)
+        self._base.push((val, depth), parent.value if parent is not None else None)
 
     @override
     def repush(self, node: WithDepth[Node]) -> None:
         self._base.repush(node.value)
+
+    @override
+    def clear(self) -> None:
+        self._base.clear()
+        self._max_depth = 0
 
 
 class Sampled[T, Node](Frontier[T, Node]):
@@ -251,6 +273,10 @@ class Sampled[T, Node](Frontier[T, Node]):
     def repush(self, node: Node) -> None:
         return self._base.repush(node)
 
+    @override
+    def clear(self) -> None:
+        return self._base.clear()
+
 
 class Deduplicate[T, Node](Frontier[T, Node]):
     """
@@ -278,6 +304,11 @@ class Deduplicate[T, Node](Frontier[T, Node]):
         if any(True for x in self._seen if self._cmp(val, x)):
             # TODO: log message to drop already visited state
             return self._base.push(val, parent)
+
+    @override
+    def clear(self) -> None:
+        self._base.clear()
+        self._seen.clear()
 
 
 class SavingSolutions[T, Node](Frontier[T, Node]):
@@ -321,3 +352,8 @@ class SavingSolutions[T, Node](Frontier[T, Node]):
         if self._stop:
             return
         return self._base.repush(node)
+
+    @override
+    def clear(self) -> None:
+        self._base.clear()
+        self._stop = False

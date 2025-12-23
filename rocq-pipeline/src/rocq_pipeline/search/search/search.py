@@ -4,12 +4,19 @@ import heapq
 import itertools
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
 
 from .frontier import Frontier
+
+CAny = TypeVar("CAny")
+CNode = TypeVar("CNode")
+CState = TypeVar("CState")
+FNode = TypeVar("FNode")
+K = TypeVar("K")
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -62,18 +69,18 @@ def _has_action_repetition(
     return False, None
 
 
-class Node[C]:
+class Node(Generic[CNode]):  # noqa: UP046
     """Search tree node with minimal action history for pruning."""
 
     depth: int
-    parent: Node[C] | None
-    state: C
-    _rollout: Strategy.Rollout[C] | None
+    parent: Node[CNode] | None
+    state: CNode
+    _rollout: Strategy.Rollout[CNode] | None
     _action_key: str | None
     _seen_action_keys: set[str]
 
     def __init__(
-        self, state: C, parent: Node[C] | None, action_key: str | None = None
+        self, state: CNode, parent: Node[CNode] | None, action_key: str | None = None
     ) -> None:
         self.depth = 0 if parent is None else (1 + parent.depth)
         self.state = state
@@ -82,13 +89,15 @@ class Node[C]:
         self._action_key = action_key
         self._seen_action_keys = set()
 
-    def rollout(self, strategy: Strategy[C], **kwargs) -> Strategy.Rollout[C]:
+    def rollout(
+        self, strategy: Strategy[CNode], **kwargs
+    ) -> Strategy.Rollout[CNode]:
         # Cache the rollout per node to avoid re-asking the strategy.
         if self._rollout is None:
             self._rollout = strategy.rollout(self.state, **kwargs)
         return self._rollout
 
-    def update_rollout(self, rollout: Strategy.Rollout[C]) -> None:
+    def update_rollout(self, rollout: Strategy.Rollout[CNode]) -> None:
         self._rollout = rollout
 
     def remember_action(self, key: str) -> bool:
@@ -100,7 +109,7 @@ class Node[C]:
 
     def recent_action_keys(self, limit: int) -> list[str]:
         keys: list[str] = []
-        node: Node[C] | None = self
+        node: Node[CNode] | None = self
         # Walk parents to recover the last [limit] action keys.
         while node is not None and len(keys) < limit:
             if node._action_key is not None:
@@ -110,7 +119,7 @@ class Node[C]:
         return keys
 
 
-class Interleaver[K, T]:
+class Interleaver(Generic[K, T]):  # noqa: UP046
     def __init__(self, mp: dict[K, Generator[T]]) -> None:
         self._gens = mp
         self._waiting: list[tuple[T, K]] = []
@@ -156,38 +165,38 @@ class Interleaver[K, T]:
         return self._done
 
 
-def _default_clone_state[C](state: C) -> C:
+def _default_clone_state(state: CAny) -> CAny:  # noqa: UP047
     if hasattr(state, "clone"):
         return state.clone()
     raise RuntimeError("search(...) requires clone_state when state has no clone()")
 
 
-def _default_apply[C](state: C, action: Action[C]) -> C:
+def _default_apply(state: CAny, action: Action[CAny]) -> CAny:  # noqa: UP047
     return action.interact(state)
 
 
-def _default_dispose[C](state: C) -> None:
+def _default_dispose(state: CAny) -> None:  # noqa: UP047
     if hasattr(state, "dispose"):
         state.dispose()
 
 
-def search[C, FNode, T: Frontier[Node[C], FNode]](
-    strategy: Strategy[C],
-    start: C,
-    frontier: type[T],
+def search(
+    strategy: Strategy[CState],
+    start: CState,
+    frontier: type[Frontier[Node[CState], FNode]],
     beam_width: int = 1,
     explore_width: int = 1,
     *,
     repetition_policy: RepetitionPolicy | None = None,
-    state_key: Callable[[C], Any] | None = None,
-    clone_state: Callable[[C], C] | None = None,
-    apply_action: Callable[[C, Action[C]], C] | None = None,  # TODO: Why?
-    dispose_state: Callable[[C], None] | None = None,
-) -> T:
+    state_key: Callable[[CState], Any] | None = None,
+    clone_state: Callable[[CState], CState] | None = None,
+    apply_action: Callable[[CState, Action[CState]], CState] | None = None,  # TODO: Why?
+    dispose_state: Callable[[CState], None] | None = None,
+) -> Frontier[Node[CState], FNode]:
     """Expand a frontier by interleaving rollouts and pruning duplicates."""
     assert explore_width > 0
 
-    worklist: T = frontier()
+    worklist: Frontier[Node[CState], FNode] = frontier()
     worklist.push(Node(start, None), None)
     seen_states: set[Any] = set()
     state_key_fn = state_key
@@ -219,7 +228,9 @@ def search[C, FNode, T: Frontier[Node[C], FNode]](
             }
         )
 
-        def process(candidate: Node[C], action: Action[C]) -> None:
+        def process(
+            candidate: Node[CState], parent: FNode, action: Action[CState]
+        ) -> None:
             action_key = action.key().strip()
             # Skip if we've already tried this action from the same node.
             if candidate.remember_action(action_key):
@@ -249,14 +260,14 @@ def search[C, FNode, T: Frontier[Node[C], FNode]](
                         seen_states.add(next_key)
                 new_node = Node(next_state, candidate, action_key=action_key)
                 # Enqueue the child for future expansion.
-                worklist.push(new_node, candidate)
+                worklist.push(new_node, parent)
             except Action.Failed:
                 dispose_state_fn(fresh_state)
 
         # Due to the way that generators work, we can not send a message to the first element
         # so we need to special case this logic
         for i, (_, action) in itertools.islice(stream, explore_width):
-            process(candidates[i][0], action)
+            process(candidates[i][0], candidates[i][1], action)
 
         # NOTE: this breaks the "beam-style" frontier where only
         # nodes at a particular depth are selected
@@ -265,13 +276,13 @@ def search[C, FNode, T: Frontier[Node[C], FNode]](
             if head is not None:
 
                 def resume(
-                    head: tuple[float, Action[C]] = head,
-                    rest: Generator[tuple[float, Action[C]]] = rest,
-                ) -> Generator[tuple[float, Action[C]]]:
+                    head: tuple[float, Action[CState]] = head,
+                    rest: Generator[tuple[float, Action[CState]]] = rest,
+                ) -> Generator[tuple[float, Action[CState]]]:
                     yield head
                     yield from rest
 
                 cand[0].update_rollout(resume(head, rest))
             else:
                 cand[0].update_rollout(rest)
-            worklist.repush(cand)
+            worklist.repush(cand[1])
