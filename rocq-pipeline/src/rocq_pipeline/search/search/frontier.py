@@ -276,3 +276,46 @@ class Deduplicate[T, Node](Frontier[T, Node]):
         if any(True for x in self._seen if self._cmp(val, x)):
             # TODO: log message to drop already visited state
             return self._base.push(val, parent)
+
+
+class SavingSolutions[T, Node](Frontier[T, Node]):
+    """
+    A Frontier that tracks solutions.
+    """
+
+    def __init__(
+        self,
+        base: Frontier[T, Node],
+        is_solution: Callable[[T], bool],
+        stop_on_first_solution: bool,
+    ) -> None:
+        self._base = base
+        self._check_solution = is_solution
+        self._stop_on_first_solution = stop_on_first_solution
+        self._stop = False
+        self._solutions: list[T] = []
+
+    def solutions(self) -> list[T]:
+        return self._solutions
+
+    @override
+    def take(self, count: int) -> list[tuple[T, Node]] | None:
+        if self._stop:
+            return None
+        return self._base.take(count)
+
+    @override
+    def push(self, val: T, parent: Node | None) -> None:
+        if self._check_solution(val):
+            self._solutions.append(val)
+            self._stop = self._stop or self._stop_on_first_solution
+
+        if self._stop:
+            return
+        self._base.push(val, parent)
+
+    @override
+    def repush(self, node: Node) -> None:
+        if self._stop:
+            return
+        return self._base.repush(node)
