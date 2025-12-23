@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import heapq
 import itertools
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from rocq_pipeline.search.action import Action
@@ -115,10 +115,10 @@ class Interleaver[K, T]:
     get the remaining generators back.
     """
 
-    def __init__(self, mp: dict[K, Generator[T]]) -> None:
+    def __init__(self, mp: dict[K, Iterator[T]]) -> None:
         self._gens = mp
         self._waiting: list[tuple[T, K]] = []
-        self._done: dict[K, tuple[T, Generator[T]]] | None = None
+        self._done: dict[K, tuple[T, Iterator[T]]] | None = None
         for k in mp.keys():
             self._pull(k)
 
@@ -147,7 +147,7 @@ class Interleaver[K, T]:
         except IndexError as err:
             raise StopIteration from err
 
-    def stop(self) -> dict[K, tuple[T, Generator[T]]]:
+    def stop(self) -> dict[K, tuple[T, Iterator[T]]]:
         """
         Returns the remaining generators, i.e. those that have not
         been pulled. The result is a dictionary with items `(k, (v, vs))`.

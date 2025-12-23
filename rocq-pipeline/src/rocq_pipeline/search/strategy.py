@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Mapping
+from collections.abc import Iterator, Mapping
 from typing import Any, override
 
 from .action import Action
@@ -17,7 +17,7 @@ class Strategy[T](ABC):
     """
 
     # TODO: make [Rollout] into a class
-    type Rollout[U] = Generator[tuple[float, Action[U]]]
+    type Rollout[U] = Iterator[tuple[float, Action[U]]]
 
     # Context information must be read-only and constant in order
     # for searches to work correctly. Clients should use an
