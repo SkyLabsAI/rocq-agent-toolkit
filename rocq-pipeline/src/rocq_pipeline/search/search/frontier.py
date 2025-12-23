@@ -280,11 +280,12 @@ class Sampled[T, Node](Frontier[T, Node]):
 
 class Deduplicate[T, Node](Frontier[T, Node]):
     """
-    A frontier that de-duplicates states
+    A frontier that de-duplicates states using a comparison function
     """
 
     def __init__(self, base: Frontier[T, Node], *, cmp: Callable[[T, T], bool]) -> None:
         self._base = base
+        # TODO: because we have a total ordering, this should use a balanced binary tree
         self._seen: list[T] = []
         self._cmp = cmp
 
@@ -313,7 +314,11 @@ class Deduplicate[T, Node](Frontier[T, Node]):
 
 class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
     """
-    A frontier that de-duplicates states
+    A frontier that de-duplicates states based on a key function.
+    The key function should return the same value on two state if and only if
+    those two states should be considered equivalent.
+
+    This is more efficient than `Deduplicate`.
     """
 
     def __init__(self, base: Frontier[T, Node], *, key: Callable[[T], U]) -> None:
