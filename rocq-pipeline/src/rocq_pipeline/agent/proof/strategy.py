@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Generator
-from typing import override
+from collections.abc import Generator, Mapping
+from typing import Any, override
 
 from rocq_doc_manager import RocqCursor
 
@@ -36,8 +38,18 @@ class Strategy(ABC):
     # TODO: make [Rollout] into a class
     type Rollout = Generator[tuple[float, Action]]
 
+    # Context information must be read-only and constant in order
+    # for searches to work correctly. Clients should use an
+    # implementation such as `immutabledict` to achieve this.
+    type Context = Mapping[str, Any]
+
     @abstractmethod
-    def rollout(self, rdm: RocqCursor, max_rollout: int | None = None) -> Rollout:
+    def rollout(
+        self,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
+    ) -> Rollout:
         """
         Given the goal `G`, generates `(Pr,A)` such that:
         - `Pr` is the probability that `A` is (the next/a necessary) step in an
@@ -64,12 +76,15 @@ class CompositeStrategy(Strategy):
 
     @override
     def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
+        self,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         def combine() -> Strategy.Rollout:
             queue: list[tuple[float, int, Strategy.Action, Strategy.Rollout]] = []
             for i, strat in enumerate(self._children):
-                gen = strat.rollout(rdm, max_rollout=max_rollout)
+                gen = strat.rollout(rdm, max_rollout=max_rollout, context=context)
                 try:
                     pr, act = next(gen)
                 except StopIteration:
@@ -100,7 +115,10 @@ class SafeTacticStrategy(Strategy):
 
     @override
     def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
+        self,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         return (
             (prob, TacticAction(f"progress {tac}"))
@@ -119,7 +137,10 @@ class CutAssertStrategy(Strategy):
 
     @override
     def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
+        self,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         name: str | RocqCursor.Err[None] = rdm.fresh_ident(self._name)
         if isinstance(name, RocqCursor.Err):
@@ -137,7 +158,10 @@ class FailStrategy(Strategy):
 
     @override
     def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
+        self,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         return empty_Rollout()
 
@@ -157,7 +181,10 @@ class FirstTacticStrategy(Strategy):
 
     @override
     def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
+        self,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         return ((prob, tac) for prob, tac in self._tactics)
 
@@ -169,18 +196,27 @@ class GuardStrategy[T](FailStrategy, ABC):
     """
 
     @abstractmethod
-    def check(self, rdm: RocqCursor) -> T | None: ...
+    def check(
+        self, rdm: RocqCursor, context: Strategy.Context | None = None
+    ) -> T | None: ...
 
     @abstractmethod
     def rollout_with(
-        self, val: T, rdm: RocqCursor, max_rollout: int | None = None
+        self,
+        val: T,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
     ) -> Strategy.Rollout: ...
 
     @override
     def rollout(
-        self, rdm: RocqCursor, max_rollout: int | None = None
+        self,
+        rdm: RocqCursor,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         val = self.check(rdm)
         if val is None:
-            return super().rollout(rdm, max_rollout)
-        return self.rollout_with(val, rdm, max_rollout)
+            return super().rollout(rdm, max_rollout, context)
+        return self.rollout_with(val, rdm, max_rollout, context)
