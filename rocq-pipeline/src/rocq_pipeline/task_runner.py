@@ -218,6 +218,7 @@ def run_task(
     )
     logger.info(
         "AgentProvenance",
+        cls_checksum=agent.cls_checksum(),  # For correlation with class
         checksum=agent.checksum(),
         name=agent.name(),
         provenance=agent.provenance_json(),
