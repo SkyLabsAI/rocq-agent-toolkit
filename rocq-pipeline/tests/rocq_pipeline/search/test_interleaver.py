@@ -1,4 +1,6 @@
-from rocq_pipeline.search.search.search import Interleaver
+from __future__ import annotations
+
+from rocq_pipeline.search.search.iter import Interleaver, RolloutInterleaver
 
 
 def is_empty[K, T](i: Interleaver[K, T]) -> None:
@@ -54,3 +56,53 @@ def test_nonempty_4() -> None:
     assert (2, 4) == next(i)
     assert (1, 8) == next(i)
     is_empty(i)
+
+
+class NonComparable[T]:
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+    def __lt__(self, other: NonComparable[T]) -> bool:
+        raise AssertionError("Comparing NonComparable values")
+
+
+def test_non_comparable() -> None:
+    i = RolloutInterleaver(
+        {
+            1: iter([(0.75, NonComparable(x)) for x in [2, 8]]),
+            2: iter([(0.75, NonComparable(x)) for x in [3, 4]]),
+        }
+    )
+
+    def value_is(who: int, prob: float, val: int) -> None:
+        nonlocal i
+        obs_who, (obs_prob, obs_val) = next(i)
+        assert who == obs_who
+        assert prob == obs_prob
+        assert val == obs_val.value
+
+    value_is(1, 0.75, 2)
+    value_is(1, 0.75, 8)
+    value_is(2, 0.75, 3)
+    value_is(2, 0.75, 4)
+
+
+def test_non_comparable2() -> None:
+    i = RolloutInterleaver(
+        {
+            1: iter([(prob, NonComparable(x)) for prob, x in [(0.75, 2), (0.65, 8)]]),
+            2: iter([(prob, NonComparable(x)) for prob, x in [(0.85, 3), (0.7, 4)]]),
+        }
+    )
+
+    def value_is(who: int, prob: float, val: int) -> None:
+        nonlocal i
+        obs_who, (obs_prob, obs_val) = next(i)
+        assert who == obs_who
+        assert prob == obs_prob
+        assert val == obs_val.value
+
+    value_is(2, 0.85, 3)
+    value_is(1, 0.75, 2)
+    value_is(2, 0.7, 4)
+    value_is(1, 0.65, 8)

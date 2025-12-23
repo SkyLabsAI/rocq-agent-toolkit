@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import heapq
 import itertools
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
 
 from .frontier import Frontier
+from .iter import RolloutInterleaver
 
 
 @dataclass(frozen=True)
@@ -109,68 +109,6 @@ class Node[CNode]:
         return keys
 
 
-class Interleaver[K, T]:
-    """
-    Interleaves multiple generators and provides a `stop` method to
-    get the remaining generators back.
-    """
-
-    def __init__(self, mp: dict[K, Iterator[T]]) -> None:
-        self._gens = mp
-        self._waiting: list[tuple[T, K]] = []
-        self._done: dict[K, tuple[T, Iterator[T]]] | None = None
-        for k in mp.keys():
-            self._pull(k)
-
-    def __iter__(self) -> Iterator[tuple[K, T]]:
-        return self
-
-    def __next__(self) -> tuple[K, T]:
-        return self.next()
-
-    def _pull(self, nm: K) -> None:
-        try:
-            result = next(self._gens[nm])
-            heapq.heappush(self._waiting, (result, nm))
-        except StopIteration:
-            pass
-        except IndexError as err:
-            raise StopIteration from err
-
-    def next(self) -> tuple[K, T]:
-        if self._done is not None:
-            raise StopIteration
-        try:
-            v, nm = heapq.heappop(self._waiting)
-            self._pull(nm)
-            return (nm, v)
-        except IndexError as err:
-            raise StopIteration from err
-
-    def stop(self) -> dict[K, tuple[T, Iterator[T]]]:
-        """
-        Returns the remaining generators, i.e. those that have not
-        been pulled. The result is a dictionary with items `(k, (v, vs))`.
-        If `v` is not `None`, then it should be pre-pended to `vs`.
-
-        We return things like this in case the value `v` is useful to clients.
-        """
-        if self._done is None:
-            self._done = {nm: (v, self._gens[nm]) for v, nm in self._waiting}
-        return self._done
-
-
-def _default_clone_state[T](state: T) -> T:
-    if hasattr(state, "clone"):
-        return state.clone()
-    raise RuntimeError("search(...) requires clone_state when state has no clone()")
-
-
-def _default_dispose[T](state: T) -> None:  # noqa: UP047
-    if hasattr(state, "dispose"):
-        state.dispose()
-
-
 class StateManipulator[T]:
     """
     State manipulators, these can be used to make states with
@@ -238,14 +176,6 @@ class Search[CState, FNode]:
                 # This implies that the frontier is empty
                 return worklist
 
-            # Rollout each node in the tree with fair interleaving.
-            stream = Interleaver(
-                {
-                    nm: val.rollout(strategy, max_rollout=explore_width)
-                    for nm, (val, _) in enumerate(candidates)
-                }
-            )
-
             def process(
                 candidate: Node[CState], parent: FNode, action: Action[CState]
             ) -> None:
@@ -277,6 +207,19 @@ class Search[CState, FNode]:
                     worklist.push(new_node, parent)
                 except Action.Failed:
                     smanip.dispose(fresh_state)
+
+            # Rollout each node in the tree with fair interleaving.
+            stream = RolloutInterleaver(
+                {
+                    nm: (
+                        (prob, act)
+                        for prob, act in val.rollout(
+                            strategy, max_rollout=explore_width
+                        )
+                    )
+                    for nm, (val, _) in enumerate(candidates)
+                }
+            )
 
             # Due to the way that generators work, we can not send a message to the first element
             # so we need to special case this logic
