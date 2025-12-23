@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import functools
+import inspect
+import logging
 from abc import ABC, abstractmethod
-from typing import Any, TypeAlias
+from collections.abc import Callable
+from typing import Any, TypeAlias, overload
 
 from jsonrpc_tp import JsonRPCTP
 
 from .rocq_doc_manager_api import RocqDocManagerAPI
+
+logger = logging.getLogger(__name__)
 
 
 class RocqCursorProtocol(ABC):
@@ -27,6 +33,95 @@ class RocqCursorProtocol(ABC):
     PrefixItem: TypeAlias = RocqDocManagerAPI.PrefixItem  # noqa: UP040
     SuffixItem: TypeAlias = RocqDocManagerAPI.SuffixItem  # noqa: UP040
     CompileResult: TypeAlias = RocqDocManagerAPI.CompileResult  # noqa: UP040
+
+    @staticmethod
+    def ensure_text_endswith_period[**P, T](fn: Callable[P, T]) -> Callable[P, T]:
+        """Decorator (common case): ensure that the "text" argument ends with a period."""
+        return RocqCursorProtocol.ensure_args_endswith_period(fn, "text")
+
+    @overload
+    @staticmethod
+    def ensure_args_endswith_period[**P, T](
+        maybe_fn: Callable[P, T],
+        *argnames: str,
+    ) -> Callable[P, T]:
+        """Decorator overload: narrow type when `maybe_fn` is not `None`."""
+
+    @overload
+    @staticmethod
+    def ensure_args_endswith_period[**P, T](
+        maybe_fn: None,
+        *argnames: str,
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
+        """Decorator overload: narrow type when `maybe_fn` is `None`."""
+
+    # TODO: simplify this+overloads with use of `wrapt` once opentelemetry-python-contrib
+    # relaxes too-strict version constraints.
+    #
+    # cf. https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3930
+    @staticmethod
+    def ensure_args_endswith_period[**P, T](
+        maybe_fn: Callable[P, T] | None = None,
+        *argnames: str,
+    ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
+        """Decorator: ensure that named arguments (in args or kwargs) end with period.
+
+        If a named argument doesn't end with a period, emit a `logger.warning`.
+        """
+        # default to "text"
+        if not argnames:
+            raise ValueError(
+                "RocqCursorProtocol.ensure_args_endswith_period: argnames empty"
+            )
+
+        @functools.cache
+        def _validated_signature(fn: Callable[P, T]) -> inspect.Signature:
+            signature = inspect.signature(fn)
+            # Validate that all requested argnames were found
+            fn_argnames = signature.parameters.keys()
+            missing_argnames = set(argnames) - fn_argnames
+            if missing_argnames:
+                raise ValueError(
+                    f"{missing_argnames} not found in parameters of {fn.__name__}: {signature}"
+                )
+            return signature
+
+        def decorator(fn: Callable[P, T]) -> Callable[P, T]:
+            signature = _validated_signature(fn)
+
+            @functools.wraps(fn)
+            def _wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+                def _ensure_rocq_cmd_endswith_period(argname: str, cmd: str) -> str:
+                    if not cmd.endswith("."):
+                        logger.warning(
+                            "RocqCursorProtocol: %s: argument '%s' doesn't end with period",
+                            fn.__name__,
+                            argname,
+                        )
+                        cmd += "."
+                    return cmd
+
+                bound_args = signature.bind(*args, **kwargs)
+                for argname in argnames:
+                    if argname in bound_args.arguments:
+                        bound_args.arguments[argname] = (
+                            _ensure_rocq_cmd_endswith_period(
+                                argname,
+                                bound_args.arguments[argname],
+                            )
+                        )
+
+                return fn(*bound_args.args, **bound_args.kwargs)
+
+            return _wrapped
+
+        # Note: allow the decorator to work both:
+        # - without any args/parens (default: argnames vararg just contains "text"):
+        #   + `@RocqCursorProtocol.ensure_rocq_cmd_endswith_period`
+        # - with parens or explicit argname overrides:
+        #   + `@RocqCursorProtocol.ensure_rocq_cmd_endswith_period()`
+        #   + `@RocqCursorProtocol.ensure_rocq_cmd_endswith_period("text1", ...)`
+        return decorator if maybe_fn is None else decorator(maybe_fn)
 
     @abstractmethod
     def advance_to(

@@ -100,6 +100,7 @@ class RocqCursor(RocqCursorProtocol):
     def insert_blanks(self, text: str) -> None:
         return self._rdm.insert_blanks(self._cursor, text)
 
+    @RocqCursorProtocol.ensure_text_endswith_period
     def _insert_command(
         self, text: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
@@ -111,15 +112,10 @@ class RocqCursor(RocqCursorProtocol):
         return self._rdm.insert_command(self._cursor, text)
 
     @override
+    @RocqCursorProtocol.ensure_text_endswith_period
     def insert_command(
         self, text: str, blanks: str | None = "\n", safe: bool = True
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor.insert_command: text did not end with a period: '{text}'"
-            )
-
         if safe:
             prefix_reply = self.doc_prefix()
             if isinstance(prefix_reply, API.Err):
@@ -154,54 +150,34 @@ class RocqCursor(RocqCursorProtocol):
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     @override
+    @RocqCursorProtocol.ensure_text_endswith_period
     def query(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor.query: text did not end with a period: '{text}'"
-            )
         return self._rdm.query(self._cursor, text)
 
     @override
+    @RocqCursorProtocol.ensure_text_endswith_period
     def query_json(
         self, text: str, index: int
     ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor.query_json: text did not end with a period: '{text}'"
-            )
         return self._rdm.query_json(self._cursor, text, index)
 
     @override
+    @RocqCursorProtocol.ensure_text_endswith_period
     def query_json_all(
         self, text: str, indices: list[int] | None = None
     ) -> list[Any] | RocqCursor.Err[None]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor.query_json_all: text did not end with a period: '{text}'"
-            )
         return self._rdm.query_json_all(self._cursor, text, indices)
 
     @override
+    @RocqCursorProtocol.ensure_text_endswith_period
     def query_text(self, text: str, index: int) -> str | RocqCursor.Err[None]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor.query_text: text did not end with a period: '{text}'"
-            )
         return self._rdm.query_text(self._cursor, text, index)
 
     @override
+    @RocqCursorProtocol.ensure_text_endswith_period
     def query_text_all(
         self, text: str, indices: list[int] | None = None
     ) -> list[str] | RocqCursor.Err[None]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor.query_text_all: text did not end with a period: '{text}'"
-            )
         return self._rdm.query_text_all(self._cursor, text, indices)
 
     @override
@@ -209,12 +185,8 @@ class RocqCursor(RocqCursorProtocol):
         return self._rdm.revert_before(self._cursor, erase, index)
 
     @override
+    @RocqCursorProtocol.ensure_text_endswith_period
     def run_command(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor.run_command: text did not end with a period: '{text}'"
-            )
         return self._rdm.run_command(self._cursor, text)
 
     @override
