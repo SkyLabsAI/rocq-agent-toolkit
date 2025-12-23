@@ -39,6 +39,9 @@ class GridMoveAction(Action[GridState]):
         self._dy = dy
         self._name = name
 
+    def __str__(self) -> str:
+        return self._name
+
     @override
     def interact(self, state: GridState) -> GridState:
         return GridState(state.x + self._dx, state.y + self._dy)
@@ -81,13 +84,7 @@ class GridStrategy(Strategy[GridState]):
             (0.25, GridMoveAction(0, 1, "up")),
             (0.25, GridMoveAction(0, -1, "down")),
         ]
-
-        count = 0
-        for prob, action in moves:
-            if max_rollout is not None and count >= max_rollout:
-                break
-            yield (prob, action)
-            count += 1
+        return iter(moves)
 
 
 class ManhattanGuidance(Guidance[GridState]):
@@ -138,7 +135,6 @@ def test_grid_longer_path() -> None:
     """Test beam search with a longer path."""
     start = GridState(0, 0)
     target = GridState(3, 2)  # Reduced distance to 5 steps
-
     guidance = ManhattanGuidance(target)
     strategy = GridStrategy()
 
@@ -148,7 +144,7 @@ def test_grid_longer_path() -> None:
         is_solved=lambda s: s == target,
         beam_width=30,  # Large beam to ensure we find path
         explore_width=4,
-        max_depth=15,
+        max_depth=5,
         stop_on_first_solution=True,
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
@@ -177,7 +173,7 @@ def test_grid_no_solution_within_depth() -> None:
         is_solved=lambda s: s == target,
         beam_width=5,
         explore_width=4,
-        max_depth=5,  # Too shallow to reach target
+        max_depth=3,  # Too shallow to reach target
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
 
@@ -190,7 +186,7 @@ def test_grid_no_solution_within_depth() -> None:
 def test_grid_without_guidance() -> None:
     """Test beam search without guidance (uniform exploration)."""
     start = GridState(0, 0)
-    target = GridState(2, 2)
+    target = GridState(1, 2)
 
     strategy = GridStrategy()
 
@@ -199,9 +195,9 @@ def test_grid_without_guidance() -> None:
         strategy=strategy,
         guidance=None,  # Will use UniformGuidance
         is_solved=lambda s: s == target,
-        beam_width=10,
+        beam_width=4,
         explore_width=4,
-        max_depth=15,
+        max_depth=5,
         stop_on_first_solution=True,
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
