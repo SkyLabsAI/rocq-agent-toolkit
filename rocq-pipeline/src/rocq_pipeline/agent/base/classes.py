@@ -17,17 +17,12 @@ from .dataclasses import (
 logger = get_logger("rocq_agent")
 
 
-# TODO: consider moving some of this observability logic into provenance-toolkit
-class AgentProvenance(Provenance.Version):
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-        if issubclass(cls, AgentProvenance) and cls is not AgentProvenance:
-            logger.info(
-                "AgentClassProvenance",
-                cls_checksum=cls.cls_checksum(),
-                cls_name=cls.cls_name(),
-                cls_provenance=cls.cls_provenance(),
-            )
+class Agent(Provenance.Version, VERSION="1.0.0"):
+    """Abstract base class for Rocq Agent Toolkit agents."""
+
+    def run(self, rdm: RocqCursor) -> TaskResult:
+        """Entrypoint; use rdm to attempt a task and report the result."""
+        return self.give_up(rdm, message="Not implemented")
 
     @classmethod
     def cls_name(cls) -> str:
@@ -37,14 +32,6 @@ class AgentProvenance(Provenance.Version):
     def name(self) -> str:
         """Return the unique name for an instance of this type of agent."""
         return self.cls_name()
-
-
-class Agent(AgentProvenance, VERSION="1.0.0"):
-    """Abstract base class for Rocq Agent Toolkit agents."""
-
-    def run(self, rdm: RocqCursor) -> TaskResult:
-        """Entrypoint; use rdm to attempt a task and report the result."""
-        return self.give_up(rdm, message="Not implemented")
 
     def finished(
         self,
