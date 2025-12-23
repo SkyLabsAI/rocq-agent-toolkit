@@ -41,7 +41,7 @@ class RocqCursorProtocol(ABC):
             fn
         )
 
-    # TODO: simplify this+overloads with use of `wrapt` once opentelemetry-python-contrib
+    # TODO: simplify this with use of `wrapt` once opentelemetry-python-contrib
     # relaxes too-strict version constraints.
     #
     # cf. https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3930
@@ -201,13 +201,6 @@ class RocqCursorProtocol(ABC):
 
             return _wrapped
 
-        # Note: allow the decorator to work both:
-        # - without any args/parens (must specify argnames or return_):
-        #   + `@RocqCursorProtocol.ensure_endswith_period(argnames="text")`
-        # - with parens or explicit overrides:
-        #   + `@RocqCursorProtocol.ensure_endswith_period(argnames="text")`
-        #   + `@RocqCursorProtocol.ensure_endswith_period(argnames=["text1", "text2"])`
-        #   + `@RocqCursorProtocol.ensure_endswith_period(return_=True)`
         return decorator
 
     @abstractmethod
