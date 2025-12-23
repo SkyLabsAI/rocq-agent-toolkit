@@ -196,6 +196,7 @@ class SingleDepth[T, Node](Frontier[T, WithDepth[Node]]):
 
     def __init__(self, base: Frontier[tuple[T, int], Node]) -> None:
         self._base = base
+        self._max_depth = 0
 
     @override
     def take(self, count: int) -> list[tuple[T, WithDepth[Node]]] | None:
@@ -206,10 +207,11 @@ class SingleDepth[T, Node](Frontier[T, WithDepth[Node]]):
 
     @override
     def push(self, val: T, parent: WithDepth[Node] | None) -> None:
-        if parent is None:
-            return self._base.push((val, 0), None)
-        else:
-            return self._base.push((val, parent.depth), parent.value)
+        depth = parent.depth + 1 if parent is not None else 0
+        if depth > self._max_depth:
+            self._base.clear() # need to add this back
+            self._max_depth = depth
+        self._base.push((val, depth), parent.value if parent is not None or None)
 
     @override
     def repush(self, node: WithDepth[Node]) -> None:
