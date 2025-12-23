@@ -250,7 +250,7 @@ class Search[CState, FNode]:
                 candidate: Node[CState], parent: FNode, action: Action[CState]
             ) -> None:
                 # Check depth limit before processing
-                if max_depth is not None and candidate.depth >= max_depth:
+                if max_depth is not None and candidate.depth > max_depth:
                     return
 
                 action_key = action.key().strip()
