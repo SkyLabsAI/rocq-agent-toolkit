@@ -103,15 +103,22 @@ class RocqCursor(RocqCursorProtocol):
     def _insert_command(
         self, text: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        if not text.endswith("."):
+            text = f"{text}."
+            logger.warning(
+                f"RocqCursor._insert_command: text did not end with a period: '{text}'"
+            )
         return self._rdm.insert_command(self._cursor, text)
 
     @override
     def insert_command(
         self, text: str, blanks: str | None = "\n", safe: bool = True
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        if not text.endswith('.'):
+        if not text.endswith("."):
             text = f"{text}."
-            logger.warning(f"RocqCursor.insert_command: text did not end with a period: '{text}'")
+            logger.warning(
+                f"RocqCursor.insert_command: text did not end with a period: '{text}'"
+            )
 
         if safe:
             prefix_reply = self.doc_prefix()
@@ -148,43 +155,53 @@ class RocqCursor(RocqCursorProtocol):
     # there are 5 functions, but they all do basically the same thing
     @override
     def query(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
-        if not text.endswith('.'):
+        if not text.endswith("."):
             text = f"{text}."
-            logger.warning(f"RocqCursor.query: text did not end with a period: '{text}'")
+            logger.warning(
+                f"RocqCursor.query: text did not end with a period: '{text}'"
+            )
         return self._rdm.query(self._cursor, text)
 
     @override
     def query_json(
         self, text: str, index: int
     ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
-        if not text.endswith('.'):
+        if not text.endswith("."):
             text = f"{text}."
-            logger.warning(f"RocqCursor.query_json: text did not end with a period: '{text}'")
+            logger.warning(
+                f"RocqCursor.query_json: text did not end with a period: '{text}'"
+            )
         return self._rdm.query_json(self._cursor, text, index)
 
     @override
     def query_json_all(
         self, text: str, indices: list[int] | None = None
     ) -> list[Any] | RocqCursor.Err[None]:
-        if not text.endswith('.'):
+        if not text.endswith("."):
             text = f"{text}."
-            logger.warning(f"RocqCursor.query_json_all: text did not end with a period: '{text}'")
+            logger.warning(
+                f"RocqCursor.query_json_all: text did not end with a period: '{text}'"
+            )
         return self._rdm.query_json_all(self._cursor, text, indices)
 
     @override
     def query_text(self, text: str, index: int) -> str | RocqCursor.Err[None]:
-        if not text.endswith('.'):
+        if not text.endswith("."):
             text = f"{text}."
-            logger.warning(f"RocqCursor.query_text: text did not end with a period: '{text}'")
+            logger.warning(
+                f"RocqCursor.query_text: text did not end with a period: '{text}'"
+            )
         return self._rdm.query_text(self._cursor, text, index)
 
     @override
     def query_text_all(
         self, text: str, indices: list[int] | None = None
     ) -> list[str] | RocqCursor.Err[None]:
-        if not text.endswith('.'):
+        if not text.endswith("."):
             text = f"{text}."
-            logger.warning(f"RocqCursor.query_text_all: text did not end with a period: '{text}'")
+            logger.warning(
+                f"RocqCursor.query_text_all: text did not end with a period: '{text}'"
+            )
         return self._rdm.query_text_all(self._cursor, text, indices)
 
     @override
@@ -193,9 +210,11 @@ class RocqCursor(RocqCursorProtocol):
 
     @override
     def run_command(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
-        if not text.endswith('.'):
+        if not text.endswith("."):
             text = f"{text}."
-            logger.warning(f"RocqCursor.run_command: text did not end with a period: '{text}'")
+            logger.warning(
+                f"RocqCursor.run_command: text did not end with a period: '{text}'"
+            )
         return self._rdm.run_command(self._cursor, text)
 
     @override
