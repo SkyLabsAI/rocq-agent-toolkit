@@ -133,7 +133,7 @@ class Interleaver[K, T]:
             result = next(self._gens[nm])
             heapq.heappush(self._waiting, (result, nm))
         except StopIteration:
-            raise
+            pass
         except IndexError as err:
             raise StopIteration from err
 
@@ -283,20 +283,12 @@ class Search[CState, FNode]:
             for i, (_, action) in itertools.islice(stream, explore_width):
                 process(candidates[i][0], candidates[i][1], action)
 
-            # NOTE: this breaks the "beam-style" frontier where only
-            # nodes at a particular depth are selected
+            # The states that we visited might have additional rollouts
+            # so we put them back in the candidate pool using `repush`
             for candidate, (head, rest) in stream.stop().items():
                 cand = candidates[candidate]
                 if head is not None:
-
-                    def resume(
-                        head: tuple[float, Action[CState]] = head,
-                        rest: Generator[tuple[float, Action[CState]]] = rest,
-                    ) -> Generator[tuple[float, Action[CState]]]:
-                        yield head
-                        yield from rest
-
-                    cand[0].update_rollout(resume(head, rest))
+                    cand[0].update_rollout(itertools.chain([head], rest))
                 else:
                     cand[0].update_rollout(rest)
                 worklist.repush(cand[1])
