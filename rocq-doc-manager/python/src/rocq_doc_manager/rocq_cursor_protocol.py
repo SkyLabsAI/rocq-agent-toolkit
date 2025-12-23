@@ -4,8 +4,8 @@ import functools
 import inspect
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import Any, TypeAlias, overload
+from collections.abc import Callable, Collection
+from typing import Any, TypeAlias, get_type_hints, overload
 
 from jsonrpc_tp import JsonRPCTP
 
@@ -37,21 +37,23 @@ class RocqCursorProtocol(ABC):
     @staticmethod
     def ensure_text_endswith_period[**P, T](fn: Callable[P, T]) -> Callable[P, T]:
         """Decorator (common case): ensure that the "text" argument ends with a period."""
-        return RocqCursorProtocol.ensure_args_endswith_period(fn, "text")
+        return RocqCursorProtocol.ensure_args_endswith_period(fn)
 
     @overload
     @staticmethod
     def ensure_args_endswith_period[**P, T](
         maybe_fn: Callable[P, T],
-        *argnames: str,
+        *,
+        argnames: Collection[str] | str,
     ) -> Callable[P, T]:
         """Decorator overload: narrow type when `maybe_fn` is not `None`."""
 
     @overload
     @staticmethod
     def ensure_args_endswith_period[**P, T](
-        maybe_fn: None,
-        *argnames: str,
+        maybe_fn: None = None,
+        *,
+        argnames: Collection[str] | str,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         """Decorator overload: narrow type when `maybe_fn` is `None`."""
 
@@ -62,13 +64,30 @@ class RocqCursorProtocol(ABC):
     @staticmethod
     def ensure_args_endswith_period[**P, T](
         maybe_fn: Callable[P, T] | None = None,
-        *argnames: str,
+        *,
+        argnames: Collection[str] | str = "text",
     ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
         """Decorator: ensure that named arguments (in args or kwargs) end with period.
 
         If a named argument doesn't end with a period, emit a `logger.warning`.
+
+        Args:
+            maybe_fn: The function to decorate, or None if used as @decorator()
+            argnames: Collection of argument names to check, or a single string.
+                     If None, defaults to ["text"].
+                     If a string, converted to [string].
+
+        Examples:
+            @ensure_args_endswith_period  # defaults to ["text"]
+            @ensure_args_endswith_period("text")  # single string
+            @ensure_args_endswith_period(["text"])  # list
+            @ensure_args_endswith_period(["text1", "text2"])  # multiple
         """
-        # default to "text"
+        if isinstance(argnames, str):
+            argnames = {argnames}
+        else:
+            argnames = set(argnames)
+
         if not argnames:
             raise ValueError(
                 "RocqCursorProtocol.ensure_args_endswith_period: argnames empty"
@@ -79,11 +98,35 @@ class RocqCursorProtocol(ABC):
             signature = inspect.signature(fn)
             # Validate that all requested argnames were found
             fn_argnames = signature.parameters.keys()
-            missing_argnames = set(argnames) - fn_argnames
+            missing_argnames = argnames - fn_argnames
             if missing_argnames:
                 raise ValueError(
-                    f"{missing_argnames} not found in parameters of {fn.__name__}: {signature}"
+                    f"{missing_argnames} not found in parameters of "
+                    f"{fn.__name__}: {signature}"
                 )
+
+            for argname in argnames:
+                param = signature.parameters[argname]
+                if (
+                    param.annotation is not None
+                    and param.annotation is not inspect.Parameter.empty
+                ):
+                    # Resolve string annotations (from __future__ import annotations)
+                    # Try to get resolved type hints, fallback to annotation if it fails
+                    try:
+                        type_hints = get_type_hints(fn, include_extras=False)
+                        resolved_annotation = type_hints.get(argname, param.annotation)
+                    except Exception:
+                        # If get_type_hints fails, use the annotation as-is
+                        resolved_annotation = param.annotation
+
+                    # Check if annotation is str type (handle both str type and "str" string)
+                    if resolved_annotation != str and resolved_annotation != "str":
+                        raise ValueError(
+                            f"parameter {argname} of {fn.__name__} "
+                            f"should be str: {resolved_annotation}"
+                        )
+
             return signature
 
         def decorator(fn: Callable[P, T]) -> Callable[P, T]:
@@ -94,7 +137,7 @@ class RocqCursorProtocol(ABC):
                 def _ensure_rocq_cmd_endswith_period(argname: str, cmd: str) -> str:
                     if not cmd.endswith("."):
                         logger.warning(
-                            "RocqCursorProtocol: %s: argument '%s' doesn't end with period",
+                            "RocqCursorProtocol: %s: argument '%s' doesn't end with '.'",
                             fn.__name__,
                             argname,
                         )
@@ -116,11 +159,13 @@ class RocqCursorProtocol(ABC):
             return _wrapped
 
         # Note: allow the decorator to work both:
-        # - without any args/parens (default: argnames vararg just contains "text"):
-        #   + `@RocqCursorProtocol.ensure_rocq_cmd_endswith_period`
+        # - without any args/parens (default: argnames="text"):
+        #   + `@RocqCursorProtocol.ensure_args_endswith_period`
         # - with parens or explicit argname overrides:
-        #   + `@RocqCursorProtocol.ensure_rocq_cmd_endswith_period()`
-        #   + `@RocqCursorProtocol.ensure_rocq_cmd_endswith_period("text1", ...)`
+        #   + `@RocqCursorProtocol.ensure_args_endswith_period()`
+        #   + `@RocqCursorProtocol.ensure_args_endswith_period("text")`
+        #   + `@RocqCursorProtocol.ensure_args_endswith_period(["text1", "text2"])`
+        #   + `@RocqCursorProtocol.ensure_args_endswith_period({"text1", "text2"})`
         return decorator if maybe_fn is None else decorator(maybe_fn)
 
     @abstractmethod

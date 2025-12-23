@@ -104,11 +104,6 @@ class RocqCursor(RocqCursorProtocol):
     def _insert_command(
         self, text: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        if not text.endswith("."):
-            text = f"{text}."
-            logger.warning(
-                f"RocqCursor._insert_command: text did not end with a period: '{text}'"
-            )
         return self._rdm.insert_command(self._cursor, text)
 
     @override
