@@ -44,7 +44,7 @@ class BeamSearch[T]:
         is_solved: Callable[[T], bool] | None = None,
         beam_width: int = 5,
         explore_width: int = 10,
-        max_depth: int = 10,
+        max_depth: int | None = None,
         stop_on_first_solution: bool = False,
         freshen: StateManipulator[T] | None = None,
         state_key: Callable[[T], Any] | None = None,
@@ -83,7 +83,8 @@ class BeamSearch[T]:
         with trace_context("beam_search") as span:
             span.set_attribute("beam_width", self._beam_width)
             span.set_attribute("explore_width", self._explore_width)
-            span.set_attribute("max_depth", self._max_depth)
+            if self._max_depth is not None:
+                span.set_attribute("max_depth", self._max_depth)
 
             # Create the solutions frontier that we'll retrieve results from
 

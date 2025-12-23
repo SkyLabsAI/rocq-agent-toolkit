@@ -25,6 +25,6 @@ class Around(Strategy[int]):
 
 
 def test_test_simple() -> None:
-    search = beam.BeamSearch(Around())
+    search = beam.BeamSearch(Around(), max_depth=5)
     solutions = search.search(0)
     assert len(solutions) == 0
