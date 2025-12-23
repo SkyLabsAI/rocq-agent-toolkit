@@ -167,16 +167,13 @@ def _default_clone_state[T](state: T) -> T:
     raise RuntimeError("search(...) requires clone_state when state has no clone()")
 
 
-def _default_apply[T](state: T, action: Action[T]) -> T:
-    return action.interact(state)
-
-
 def _default_dispose[T](state: T) -> None:  # noqa: UP047
     if hasattr(state, "dispose"):
         state.dispose()
 
 
 class Search[CState, FNode]:
+    # This class seems to just help type checking a bit.
     @staticmethod
     def search[FrontierT: Frontier[Node[CState], FNode]](
         strategy: Strategy[CState],
@@ -187,8 +184,6 @@ class Search[CState, FNode]:
         *,
         repetition_policy: RepetitionPolicy | None = None,
         clone_state: Callable[[CState], CState] | None = None,
-        apply_action: Callable[[CState, Action[CState]], CState]
-        | None = None,  # TODO: Why?
         dispose_state: Callable[[CState], None] | None = None,
         max_depth: int | None = None,
     ) -> FrontierT:
@@ -201,7 +196,6 @@ class Search[CState, FNode]:
             explore_width=explore_width,
             repetition_policy=repetition_policy,
             clone_state=clone_state,
-            apply_action=apply_action,
             dispose_state=dispose_state,
             max_depth=max_depth,
         )
@@ -215,8 +209,6 @@ class Search[CState, FNode]:
         *,
         repetition_policy: RepetitionPolicy | None = None,
         clone_state: Callable[[CState], CState] | None = None,
-        apply_action: Callable[[CState, Action[CState]], CState]
-        | None = None,  # TODO: Why?
         dispose_state: Callable[[CState], None] | None = None,
         max_depth: int | None = None,
     ) -> FrontierT:
@@ -226,7 +218,6 @@ class Search[CState, FNode]:
         # Injected hooks keep search domain-agnostic while preserving resource lifetimes.
         # Defaults use duck-typed clone/interact/dispose when available.
         clone_state_fn = clone_state or _default_clone_state
-        apply_action_fn = apply_action or _default_apply
         dispose_state_fn = dispose_state or _default_dispose
 
         while True:
@@ -270,7 +261,7 @@ class Search[CState, FNode]:
                 # affecting the parent; apply_action should return the state to enqueue.
                 fresh_state = clone_state_fn(candidate.state)
                 try:
-                    next_state = apply_action_fn(fresh_state, action)
+                    next_state = action.interact(fresh_state)
                     new_node = Node(next_state, candidate, action_key=action_key)
                     # Enqueue the child for future expansion.
                     worklist.push(new_node, parent)
