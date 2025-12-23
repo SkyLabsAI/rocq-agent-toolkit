@@ -22,7 +22,7 @@ else:
 
 from rocq_pipeline.search.strategy import Strategy
 
-from .frontier import PQueue, SavingSolutions, SingleDepth
+from .frontier import DeduplicateWithKey, Frontier, PQueue, SavingSolutions, SingleDepth
 from .guidance import Guidance, UniformGuidance
 from .search import Node, search
 
@@ -98,11 +98,8 @@ class BeamSearch[T]:
             span.set_attribute("max_depth", self._max_depth)
 
             # Create the solutions frontier that we'll retrieve results from
-            solutions_frontier: SavingSolutions[Node[T], Any] | None = None
 
             def make_frontier() -> SavingSolutions[Any, Any]:
-                nonlocal solutions_frontier
-
                 def scorer(node_with_depth: tuple[Node[T], int]) -> float:
                     # SingleDepth wraps nodes as (node, depth) tuples for its base frontier
                     node, depth = node_with_depth
@@ -118,10 +115,19 @@ class BeamSearch[T]:
                 # PQueue works on (Node[T], int) tuples because SingleDepth wraps them
                 base = PQueue(scorer, lambda a, b: (a > b) - (a < b))
                 beam = SingleDepth(base)
-                solutions_frontier = SavingSolutions(
-                    beam, is_solution_node, self._stop_on_first
+                if self._state_key is None:
+                    search_frontier: Frontier[Any, Any] = beam
+                else:
+                    state_key = self._state_key
+                    search_frontier = DeduplicateWithKey(
+                        beam, key=lambda x: state_key(x.state)
+                    )
+
+                return SavingSolutions(
+                    search_frontier,
+                    is_solution_node,
+                    self._stop_on_first,
                 )
-                return solutions_frontier
 
             # State management functions for search
             def clone_state(state: T) -> T:
@@ -131,7 +137,7 @@ class BeamSearch[T]:
                 self._freshen.dispose(state)
 
             # Run search - it will loop internally until frontier is empty or solutions found
-            search(
+            result = search(
                 strategy=self._strategy,
                 start=start_state,
                 frontier=make_frontier,
@@ -140,10 +146,7 @@ class BeamSearch[T]:
                 clone_state=clone_state,
                 dispose_state=dispose_state,
                 max_depth=self._max_depth,
-                state_key=self._state_key,
             )
 
             # Extract solution states from the frontier
-            if solutions_frontier is not None:
-                return [node.state for node in solutions_frontier.solutions()]
-            return []
+            return [node.state for node in result.solutions()]

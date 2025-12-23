@@ -186,7 +186,34 @@ class Search[CState, FNode]:
         explore_width: int = 1,
         *,
         repetition_policy: RepetitionPolicy | None = None,
-        state_key: Callable[[CState], Any] | None = None,
+        clone_state: Callable[[CState], CState] | None = None,
+        apply_action: Callable[[CState, Action[CState]], CState]
+        | None = None,  # TODO: Why?
+        dispose_state: Callable[[CState], None] | None = None,
+        max_depth: int | None = None,
+    ) -> FrontierT:
+        worklist: FrontierT = frontier()
+        worklist.push(Node(start, None), None)
+        return Search.continue_search(
+            strategy,
+            worklist,
+            beam_width=beam_width,
+            explore_width=explore_width,
+            repetition_policy=repetition_policy,
+            clone_state=clone_state,
+            apply_action=apply_action,
+            dispose_state=dispose_state,
+            max_depth=max_depth,
+        )
+
+    @staticmethod
+    def continue_search[FrontierT: Frontier[Node[CState], FNode]](
+        strategy: Strategy[CState],
+        worklist: FrontierT,
+        beam_width: int = 1,
+        explore_width: int = 1,
+        *,
+        repetition_policy: RepetitionPolicy | None = None,
         clone_state: Callable[[CState], CState] | None = None,
         apply_action: Callable[[CState, Action[CState]], CState]
         | None = None,  # TODO: Why?
@@ -195,16 +222,6 @@ class Search[CState, FNode]:
     ) -> FrontierT:
         """Expand a frontier by interleaving rollouts and pruning duplicates."""
         assert explore_width > 0
-
-        worklist: FrontierT = frontier()
-        worklist.push(Node(start, None), None)
-        seen_states: set[Any] = set()
-        state_key_fn = state_key
-        if state_key_fn is not None:
-            # Only track states when a key function is provided.
-            root_key = state_key_fn(start)
-            if root_key is not None:
-                seen_states.add(root_key)
         history_limit = repetition_policy.history_limit() if repetition_policy else 0
         # Injected hooks keep search domain-agnostic while preserving resource lifetimes.
         # Defaults use duck-typed clone/interact/dispose when available.
@@ -254,14 +271,6 @@ class Search[CState, FNode]:
                 fresh_state = clone_state_fn(candidate.state)
                 try:
                     next_state = apply_action_fn(fresh_state, action)
-                    if state_key_fn is not None:
-                        # Drop duplicates before they enter the frontier.
-                        next_key = state_key_fn(next_state)
-                        if next_key is not None:
-                            if next_key in seen_states:
-                                dispose_state_fn(next_state)
-                                return
-                            seen_states.add(next_key)
                     new_node = Node(next_state, candidate, action_key=action_key)
                     # Enqueue the child for future expansion.
                     worklist.push(new_node, parent)
@@ -293,3 +302,4 @@ class Search[CState, FNode]:
 
 
 search = Search.search
+continue_search = Search.continue_search
