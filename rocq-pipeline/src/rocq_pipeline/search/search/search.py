@@ -11,13 +11,6 @@ from rocq_pipeline.search.strategy import Strategy
 
 from .frontier import Frontier
 
-CAny = TypeVar("CAny")
-CNode = TypeVar("CNode")
-CState = TypeVar("CState")
-FNode = TypeVar("FNode")
-K = TypeVar("K")
-T = TypeVar("T")
-
 
 @dataclass(frozen=True)
 class RepetitionPolicy:
@@ -69,7 +62,7 @@ def _has_action_repetition(
     return False, None
 
 
-class Node(Generic[CNode]):  # noqa: UP046
+class Node[CNode]:
     """Search tree node with minimal action history for pruning."""
 
     depth: int
@@ -117,7 +110,12 @@ class Node(Generic[CNode]):  # noqa: UP046
         return keys
 
 
-class Interleaver(Generic[K, T]):  # noqa: UP046
+class Interleaver[K, T]:
+    """
+    Interleaves multiple generators and provides a `stop` method to
+    get the remaining generators back.
+    """
+
     def __init__(self, mp: dict[K, Generator[T]]) -> None:
         self._gens = mp
         self._waiting: list[tuple[T, K]] = []
@@ -163,130 +161,135 @@ class Interleaver(Generic[K, T]):  # noqa: UP046
         return self._done
 
 
-def _default_clone_state(state: CAny) -> CAny:  # noqa: UP047
+def _default_clone_state[T](state: T) -> T:
     if hasattr(state, "clone"):
         return state.clone()
     raise RuntimeError("search(...) requires clone_state when state has no clone()")
 
 
-def _default_apply(state: CAny, action: Action[CAny]) -> CAny:  # noqa: UP047
+def _default_apply[T](state: T, action: Action[T]) -> T:
     return action.interact(state)
 
 
-def _default_dispose(state: CAny) -> None:  # noqa: UP047
+def _default_dispose[T](state: T) -> None:  # noqa: UP047
     if hasattr(state, "dispose"):
         state.dispose()
 
 
-def search(
-    strategy: Strategy[CState],
-    start: CState,
-    frontier: Callable[[], Frontier[Node[CState], FNode]],
-    beam_width: int = 1,
-    explore_width: int = 1,
-    *,
-    repetition_policy: RepetitionPolicy | None = None,
-    state_key: Callable[[CState], Any] | None = None,
-    clone_state: Callable[[CState], CState] | None = None,
-    apply_action: Callable[[CState, Action[CState]], CState]
-    | None = None,  # TODO: Why?
-    dispose_state: Callable[[CState], None] | None = None,
-    max_depth: int | None = None,
-) -> Frontier[Node[CState], FNode]:
-    """Expand a frontier by interleaving rollouts and pruning duplicates."""
-    assert explore_width > 0
+class Search[CState, FNode]:
+    @staticmethod
+    def search[FrontierT: Frontier[Node[CState], FNode]](
+        strategy: Strategy[CState],
+        start: CState,
+        frontier: Callable[[], FrontierT],
+        beam_width: int = 1,
+        explore_width: int = 1,
+        *,
+        repetition_policy: RepetitionPolicy | None = None,
+        state_key: Callable[[CState], Any] | None = None,
+        clone_state: Callable[[CState], CState] | None = None,
+        apply_action: Callable[[CState, Action[CState]], CState]
+        | None = None,  # TODO: Why?
+        dispose_state: Callable[[CState], None] | None = None,
+        max_depth: int | None = None,
+    ) -> FrontierT:
+        """Expand a frontier by interleaving rollouts and pruning duplicates."""
+        assert explore_width > 0
 
-    worklist: Frontier[Node[CState], FNode] = frontier()
-    worklist.push(Node(start, None), None)
-    seen_states: set[Any] = set()
-    state_key_fn = state_key
-    if state_key_fn is not None:
-        # Only track states when a key function is provided.
-        root_key = state_key_fn(start)
-        if root_key is not None:
-            seen_states.add(root_key)
-    history_limit = repetition_policy.history_limit() if repetition_policy else 0
-    # Injected hooks keep search domain-agnostic while preserving resource lifetimes.
-    # Defaults use duck-typed clone/interact/dispose when available.
-    clone_state_fn = clone_state or _default_clone_state
-    apply_action_fn = apply_action or _default_apply
-    dispose_state_fn = dispose_state or _default_dispose
+        worklist: FrontierT = frontier()
+        worklist.push(Node(start, None), None)
+        seen_states: set[Any] = set()
+        state_key_fn = state_key
+        if state_key_fn is not None:
+            # Only track states when a key function is provided.
+            root_key = state_key_fn(start)
+            if root_key is not None:
+                seen_states.add(root_key)
+        history_limit = repetition_policy.history_limit() if repetition_policy else 0
+        # Injected hooks keep search domain-agnostic while preserving resource lifetimes.
+        # Defaults use duck-typed clone/interact/dispose when available.
+        clone_state_fn = clone_state or _default_clone_state
+        apply_action_fn = apply_action or _default_apply
+        dispose_state_fn = dispose_state or _default_dispose
 
-    while True:
-        # Sample the beam width from the frontier
-        candidates = worklist.take(count=beam_width)
-        if not candidates:
-            # Terminate if there are no candidates.
-            # This implies that the frontier is empty
-            return worklist
+        while True:
+            # Sample the beam width from the frontier
+            candidates = worklist.take(count=beam_width)
+            if not candidates:
+                # Terminate if there are no candidates.
+                # This implies that the frontier is empty
+                return worklist
 
-        # Rollout each node in the tree with fair interleaving.
-        stream = Interleaver(
-            {
-                nm: val.rollout(strategy, max_rollout=explore_width)
-                for nm, (val, _) in enumerate(candidates)
-            }
-        )
+            # Rollout each node in the tree with fair interleaving.
+            stream = Interleaver(
+                {
+                    nm: val.rollout(strategy, max_rollout=explore_width)
+                    for nm, (val, _) in enumerate(candidates)
+                }
+            )
 
-        def process(
-            candidate: Node[CState], parent: FNode, action: Action[CState]
-        ) -> None:
-            # Check depth limit before processing
-            if max_depth is not None and candidate.depth >= max_depth:
-                return
-
-            action_key = action.key().strip()
-            # Skip if we've already tried this action from the same node.
-            if candidate.remember_action(action_key):
-                return
-
-            if repetition_policy is not None:
-                # Guard against local action loops within a bounded history window.
-                history = candidate.recent_action_keys(history_limit - 1)
-                rep_hit, _ = _has_action_repetition(
-                    history + [action_key], repetition_policy
-                )
-                if rep_hit:
+            def process(
+                candidate: Node[CState], parent: FNode, action: Action[CState]
+            ) -> None:
+                # Check depth limit before processing
+                if max_depth is not None and candidate.depth >= max_depth:
                     return
 
-            # clone_state must return a state that is safe to discard without
-            # affecting the parent; apply_action should return the state to enqueue.
-            fresh_state = clone_state_fn(candidate.state)
-            try:
-                next_state = apply_action_fn(fresh_state, action)
-                if state_key_fn is not None:
-                    # Drop duplicates before they enter the frontier.
-                    next_key = state_key_fn(next_state)
-                    if next_key is not None:
-                        if next_key in seen_states:
-                            dispose_state_fn(next_state)
-                            return
-                        seen_states.add(next_key)
-                new_node = Node(next_state, candidate, action_key=action_key)
-                # Enqueue the child for future expansion.
-                worklist.push(new_node, parent)
-            except Action.Failed:
-                dispose_state_fn(fresh_state)
+                action_key = action.key().strip()
+                # Skip if we've already tried this action from the same node.
+                if candidate.remember_action(action_key):
+                    return
 
-        # Due to the way that generators work, we can not send a message to the first element
-        # so we need to special case this logic
-        for i, (_, action) in itertools.islice(stream, explore_width):
-            process(candidates[i][0], candidates[i][1], action)
+                if repetition_policy is not None:
+                    # Guard against local action loops within a bounded history window.
+                    history = candidate.recent_action_keys(history_limit - 1)
+                    rep_hit, _ = _has_action_repetition(
+                        history + [action_key], repetition_policy
+                    )
+                    if rep_hit:
+                        return
 
-        # NOTE: this breaks the "beam-style" frontier where only
-        # nodes at a particular depth are selected
-        for candidate, (head, rest) in stream.stop().items():
-            cand = candidates[candidate]
-            if head is not None:
+                # clone_state must return a state that is safe to discard without
+                # affecting the parent; apply_action should return the state to enqueue.
+                fresh_state = clone_state_fn(candidate.state)
+                try:
+                    next_state = apply_action_fn(fresh_state, action)
+                    if state_key_fn is not None:
+                        # Drop duplicates before they enter the frontier.
+                        next_key = state_key_fn(next_state)
+                        if next_key is not None:
+                            if next_key in seen_states:
+                                dispose_state_fn(next_state)
+                                return
+                            seen_states.add(next_key)
+                    new_node = Node(next_state, candidate, action_key=action_key)
+                    # Enqueue the child for future expansion.
+                    worklist.push(new_node, parent)
+                except Action.Failed:
+                    dispose_state_fn(fresh_state)
 
-                def resume(
-                    head: tuple[float, Action[CState]] = head,
-                    rest: Generator[tuple[float, Action[CState]]] = rest,
-                ) -> Generator[tuple[float, Action[CState]]]:
-                    yield head
-                    yield from rest
+            # Due to the way that generators work, we can not send a message to the first element
+            # so we need to special case this logic
+            for i, (_, action) in itertools.islice(stream, explore_width):
+                process(candidates[i][0], candidates[i][1], action)
 
-                cand[0].update_rollout(resume(head, rest))
-            else:
-                cand[0].update_rollout(rest)
-            worklist.repush(cand[1])
+            # NOTE: this breaks the "beam-style" frontier where only
+            # nodes at a particular depth are selected
+            for candidate, (head, rest) in stream.stop().items():
+                cand = candidates[candidate]
+                if head is not None:
+
+                    def resume(
+                        head: tuple[float, Action[CState]] = head,
+                        rest: Generator[tuple[float, Action[CState]]] = rest,
+                    ) -> Generator[tuple[float, Action[CState]]]:
+                        yield head
+                        yield from rest
+
+                    cand[0].update_rollout(resume(head, rest))
+                else:
+                    cand[0].update_rollout(rest)
+                worklist.repush(cand[1])
+
+
+search = Search.search

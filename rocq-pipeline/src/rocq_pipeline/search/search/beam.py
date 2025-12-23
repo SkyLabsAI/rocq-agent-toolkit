@@ -100,7 +100,7 @@ class BeamSearch[T]:
             # Create the solutions frontier that we'll retrieve results from
             solutions_frontier: SavingSolutions[Node[T], Any] | None = None
 
-            def make_frontier() -> SavingSolutions[Node[T], Any]:
+            def make_frontier() -> SavingSolutions[Any, Any]:
                 nonlocal solutions_frontier
 
                 def scorer(node_with_depth: tuple[Node[T], int]) -> float:
