@@ -4,7 +4,6 @@ import heapq
 import itertools
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
 
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
@@ -172,6 +171,21 @@ def _default_dispose[T](state: T) -> None:  # noqa: UP047
         state.dispose()
 
 
+class StateManipulator[T]:
+    """
+    State manipulators, these can be used to make states with
+    imperative semantics appear more functional.
+    """
+
+    def copy(self, state: T) -> T:
+        """Copy"""
+        return state
+
+    def dispose(self, state: T) -> None:
+        """Destroy"""
+        return None
+
+
 class Search[CState, FNode]:
     # This class seems to just help type checking a bit.
     @staticmethod
@@ -183,8 +197,7 @@ class Search[CState, FNode]:
         explore_width: int = 1,
         *,
         repetition_policy: RepetitionPolicy | None = None,
-        clone_state: Callable[[CState], CState] | None = None,
-        dispose_state: Callable[[CState], None] | None = None,
+        state_manip: StateManipulator[CState] | None = None,
         max_depth: int | None = None,
     ) -> FrontierT:
         worklist: FrontierT = frontier()
@@ -195,8 +208,7 @@ class Search[CState, FNode]:
             beam_width=beam_width,
             explore_width=explore_width,
             repetition_policy=repetition_policy,
-            clone_state=clone_state,
-            dispose_state=dispose_state,
+            state_manip=state_manip,
             max_depth=max_depth,
         )
 
@@ -208,8 +220,7 @@ class Search[CState, FNode]:
         explore_width: int = 1,
         *,
         repetition_policy: RepetitionPolicy | None = None,
-        clone_state: Callable[[CState], CState] | None = None,
-        dispose_state: Callable[[CState], None] | None = None,
+        state_manip: StateManipulator[CState] | None = None,
         max_depth: int | None = None,
     ) -> FrontierT:
         """Expand a frontier by interleaving rollouts and pruning duplicates."""
@@ -217,8 +228,7 @@ class Search[CState, FNode]:
         history_limit = repetition_policy.history_limit() if repetition_policy else 0
         # Injected hooks keep search domain-agnostic while preserving resource lifetimes.
         # Defaults use duck-typed clone/interact/dispose when available.
-        clone_state_fn = clone_state or _default_clone_state
-        dispose_state_fn = dispose_state or _default_dispose
+        smanip = state_manip or StateManipulator()
 
         while True:
             # Sample the beam width from the frontier
@@ -259,14 +269,14 @@ class Search[CState, FNode]:
 
                 # clone_state must return a state that is safe to discard without
                 # affecting the parent; apply_action should return the state to enqueue.
-                fresh_state = clone_state_fn(candidate.state)
+                fresh_state = smanip.copy(candidate.state)
                 try:
                     next_state = action.interact(fresh_state)
                     new_node = Node(next_state, candidate, action_key=action_key)
                     # Enqueue the child for future expansion.
                     worklist.push(new_node, parent)
                 except Action.Failed:
-                    dispose_state_fn(fresh_state)
+                    smanip.dispose(fresh_state)
 
             # Due to the way that generators work, we can not send a message to the first element
             # so we need to special case this logic

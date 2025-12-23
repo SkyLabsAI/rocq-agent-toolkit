@@ -1,6 +1,6 @@
 """Generic search algorithms (Layer 1)."""
 
-from .beam import BeamSearch, StateManip
+from .beam import BeamSearch
 from .frontier import (
     BFS,
     DFS,
@@ -13,12 +13,12 @@ from .frontier import (
     SingleDepth,
 )
 from .guidance import Guidance, UniformGuidance
-from .search import Node, RepetitionPolicy, search
+from .search import Node, RepetitionPolicy, StateManipulator, search
 
 __all__ = [
     # Beam search
     "BeamSearch",
-    "StateManip",
+    "StateManipulator",
     # Frontiers
     "Frontier",
     "BasicNode",

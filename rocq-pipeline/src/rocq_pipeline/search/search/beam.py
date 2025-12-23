@@ -24,19 +24,7 @@ from rocq_pipeline.search.strategy import Strategy
 
 from .frontier import DeduplicateWithKey, Frontier, PQueue, SavingSolutions, SingleDepth
 from .guidance import Guidance, UniformGuidance
-from .search import Node, search
-
-
-class StateManip[T]:
-    """Helper for managing imperative state (e.g., RocqCursor)."""
-
-    def freshen(self, state: T) -> T:
-        """Create a fresh copy of the state for exploration."""
-        return state
-
-    def dispose(self, _state: T) -> None:
-        """Clean up a state that's no longer needed."""
-        return None
+from .search import Node, StateManipulator, search
 
 
 class BeamSearch[T]:
@@ -58,7 +46,7 @@ class BeamSearch[T]:
         explore_width: int = 10,
         max_depth: int = 10,
         stop_on_first_solution: bool = False,
-        freshen: StateManip[T] | None = None,
+        freshen: StateManipulator[T] | None = None,
         state_key: Callable[[T], Any] | None = None,
     ) -> None:
         """
@@ -82,7 +70,7 @@ class BeamSearch[T]:
         self._explore_width = explore_width
         self._max_depth = max_depth
         self._stop_on_first = stop_on_first_solution
-        self._freshen = freshen or StateManip()
+        self._state_manip = freshen or StateManipulator()
         self._state_key = state_key
 
     def search(self, start_state: T) -> list[T]:
@@ -129,13 +117,6 @@ class BeamSearch[T]:
                     self._stop_on_first,
                 )
 
-            # State management functions for search
-            def clone_state(state: T) -> T:
-                return self._freshen.freshen(state)
-
-            def dispose_state(state: T) -> None:
-                self._freshen.dispose(state)
-
             # Run search - it will loop internally until frontier is empty or solutions found
             result = search(
                 strategy=self._strategy,
@@ -143,8 +124,7 @@ class BeamSearch[T]:
                 frontier=make_frontier,
                 beam_width=self._beam_width,
                 explore_width=self._explore_width,
-                clone_state=clone_state,
-                dispose_state=dispose_state,
+                state_manip=self._state_manip,
                 max_depth=self._max_depth,
             )
 
