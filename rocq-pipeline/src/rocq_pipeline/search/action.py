@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
 
 
-class Action[T]:
+class Action[T_co]:
     """
     An `Action` represents a (potential) action in an MDP.
 
@@ -18,7 +21,7 @@ class Action[T]:
         pass
 
     @abstractmethod
-    def interact(self, state: T) -> T:
+    def interact(self, state: T_co) -> T_co:
         """
         Returns the post state after the action.
 
