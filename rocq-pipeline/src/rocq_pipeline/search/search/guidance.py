@@ -29,4 +29,3 @@ class UniformGuidance[T](Guidance[T]):
     def score(self, state: T, logprob: float | None = None) -> float:
         # Use negative log probability if available, otherwise 0
         return -logprob if logprob is not None else 0.0
-

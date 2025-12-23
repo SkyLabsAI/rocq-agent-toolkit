@@ -236,4 +236,3 @@ def test_grid_multiple_solutions() -> None:
     assert len(solutions) > 0, "Should find at least one solution"
     # Solution should be the target state
     assert target in solutions
-

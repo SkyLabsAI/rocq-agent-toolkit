@@ -89,9 +89,7 @@ class Node(Generic[CNode]):  # noqa: UP046
         self._action_key = action_key
         self._seen_action_keys = set()
 
-    def rollout(
-        self, strategy: Strategy[CNode], **kwargs
-    ) -> Strategy.Rollout[CNode]:
+    def rollout(self, strategy: Strategy[CNode], **kwargs) -> Strategy.Rollout[CNode]:
         # Cache the rollout per node to avoid re-asking the strategy.
         if self._rollout is None:
             self._rollout = strategy.rollout(self.state, **kwargs)
@@ -190,7 +188,8 @@ def search(
     repetition_policy: RepetitionPolicy | None = None,
     state_key: Callable[[CState], Any] | None = None,
     clone_state: Callable[[CState], CState] | None = None,
-    apply_action: Callable[[CState, Action[CState]], CState] | None = None,  # TODO: Why?
+    apply_action: Callable[[CState, Action[CState]], CState]
+    | None = None,  # TODO: Why?
     dispose_state: Callable[[CState], None] | None = None,
     max_depth: int | None = None,
 ) -> Frontier[Node[CState], FNode]:
