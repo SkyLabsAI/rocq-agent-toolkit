@@ -59,12 +59,16 @@ describe('useBenchmarks', () => {
       dataset_id: 'bench1',
       agents: [
         {
-          agent_name: 'agent1',
+          cls_checksum: 'checksum1',
+          cls_name: 'agent1',
+          cls_provenance: {},
           total_runs: 5,
           best_run: {
             run_id: 'run1',
-            agent_name: 'agent1',
+            agent_cls_checksum: 'checksum1',
+            agent_checksum: 'checksum1',
             timestamp_utc: '2024-01-01',
+            dataset_id: 'bench1',
             total_tasks: 10,
             success_count: 8,
             failure_count: 2,
@@ -73,6 +77,7 @@ describe('useBenchmarks', () => {
             avg_total_tokens: 1000,
             avg_cpu_time_sec: 5.5,
             avg_llm_invocation_count: 3,
+            best_run: false,
             metadata: { tags: {} },
           },
         },
@@ -89,7 +94,13 @@ describe('useBenchmarks', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.agents).toEqual(mockAgentData.agents);
+      // The hook converts AgentClassSummary to AgentSummary by adding agent_name
+      expect(result.current.agents).toEqual([
+        {
+          ...mockAgentData.agents[0],
+          agent_name: 'agent1', // Added by the hook conversion
+        },
+      ]);
     });
   });
 

@@ -31,8 +31,9 @@ export const useAgents = () => {
   const fetchData = async () => {
     setIsLoading(true);
     const data = await getData();
+    // getData() when called without arguments defaults to 'class' view and returns AgentSummary[]
     const detailData = await fetchAgentSummaries();
-    setAgentData(data);
+    setAgentData(data as AgentSummary[]);
     setAgentDetailData(detailData);
     setIsLoading(false);
   };

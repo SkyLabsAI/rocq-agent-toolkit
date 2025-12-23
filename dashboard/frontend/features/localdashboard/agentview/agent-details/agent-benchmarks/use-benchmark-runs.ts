@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { getDetailsForDataset } from '@/services/dataservice';
-import { type Run } from '@/types/types';
+import { type AgentRun, type Run } from '@/types/types';
 
 export const useAgentBenchmarks = (agentName: string, datasetId: string) => {
   const [runs, setRuns] = useState<Run[]>([]);
@@ -13,8 +13,13 @@ export const useAgentBenchmarks = (agentName: string, datasetId: string) => {
     setError(null);
 
     try {
-      const data = await getDetailsForDataset(datasetId, agentName);
-      setRuns(data);
+      const data: AgentRun[] = await getDetailsForDataset(datasetId, agentName);
+      // Convert AgentRun[] to Run[] by adding agent_name
+      const runsWithAgentName: Run[] = data.map(run => ({
+        ...run,
+        agent_name: agentName,
+      }));
+      setRuns(runsWithAgentName);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {

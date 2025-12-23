@@ -7,7 +7,8 @@ describe('utils', () => {
     it('should compute stats for a run with tasks', () => {
       const run: RunDetailsResponse = {
         run_id: 'run1',
-        agent_name: 'agent1',
+        agent_cls_checksum: 'checksum1',
+        agent_checksum: 'checksum1',
         total_tasks: 3,
         tasks: [
           {
@@ -15,7 +16,8 @@ describe('utils', () => {
             task_kind: 'FullProofTask',
             task_id: 'task1',
             timestamp_utc: '2024-01-01',
-            agent_name: 'agent1',
+            agent_cls_checksum: 'checksum1',
+            agent_checksum: 'checksum1',
             status: 'Success',
             results: {},
             metrics: {
@@ -38,7 +40,8 @@ describe('utils', () => {
             task_kind: 'FullProofTask',
             task_id: 'task2',
             timestamp_utc: '2024-01-01',
-            agent_name: 'agent1',
+            agent_cls_checksum: 'checksum1',
+            agent_checksum: 'checksum1',
             status: 'Success',
             results: {},
             metrics: {
@@ -61,7 +64,8 @@ describe('utils', () => {
             task_kind: 'FullProofTask',
             task_id: 'task3',
             timestamp_utc: '2024-01-01',
-            agent_name: 'agent1',
+            agent_cls_checksum: 'checksum1',
+            agent_checksum: 'checksum1',
             status: 'Failure',
             results: {},
             metrics: {
@@ -82,7 +86,7 @@ describe('utils', () => {
         ],
       };
 
-      const stats = computeRunStats(run);
+      const stats = computeRunStats(run, 'agent1');
 
       expect(stats.id).toBe('run1');
       expect(stats.name).toBe('agent1');
@@ -96,7 +100,8 @@ describe('utils', () => {
     it('should handle empty tasks array', () => {
       const run: RunDetailsResponse = {
         run_id: 'run1',
-        agent_name: 'agent1',
+        agent_cls_checksum: 'checksum1',
+        agent_checksum: 'checksum1',
         total_tasks: 0,
         tasks: [],
       };
@@ -113,7 +118,8 @@ describe('utils', () => {
     it('should handle tasks with missing metrics', () => {
       const run: RunDetailsResponse = {
         run_id: 'run1',
-        agent_name: 'agent1',
+        agent_cls_checksum: 'checksum1',
+        agent_checksum: 'checksum1',
         total_tasks: 1,
         tasks: [
           {
@@ -121,7 +127,8 @@ describe('utils', () => {
             task_kind: 'FullProofTask',
             task_id: 'task1',
             timestamp_utc: '2024-01-01',
-            agent_name: 'agent1',
+            agent_cls_checksum: 'checksum1',
+            agent_checksum: 'checksum1',
             status: 'Success',
             results: {},
             metrics: {
@@ -155,7 +162,8 @@ describe('utils', () => {
       const runs: RunDetailsResponse[] = [
         {
           run_id: 'run1',
-          agent_name: 'agent1',
+          agent_cls_checksum: 'checksum1',
+          agent_checksum: 'checksum1',
           total_tasks: 2,
           tasks: [
             {
@@ -163,7 +171,8 @@ describe('utils', () => {
               task_kind: 'FullProofTask',
               task_id: 'task1',
               timestamp_utc: '2024-01-01',
-              agent_name: 'agent1',
+              agent_cls_checksum: 'checksum1',
+              agent_checksum: 'checksum1',
               status: 'Success',
               results: {},
               metrics: {
@@ -186,7 +195,8 @@ describe('utils', () => {
               task_kind: 'FullProofTask',
               task_id: 'task2',
               timestamp_utc: '2024-01-01',
-              agent_name: 'agent1',
+              agent_cls_checksum: 'checksum1',
+              agent_checksum: 'checksum1',
               status: 'Success',
               results: {},
               metrics: {
@@ -208,7 +218,8 @@ describe('utils', () => {
         },
         {
           run_id: 'run2',
-          agent_name: 'agent2',
+          agent_cls_checksum: 'checksum2',
+          agent_checksum: 'checksum2',
           total_tasks: 2,
           tasks: [
             {
@@ -216,7 +227,8 @@ describe('utils', () => {
               task_kind: 'FullProofTask',
               task_id: 'task1',
               timestamp_utc: '2024-01-01',
-              agent_name: 'agent2',
+              agent_cls_checksum: 'checksum2',
+              agent_checksum: 'checksum2',
               status: 'Failure',
               results: {},
               metrics: {
@@ -239,7 +251,8 @@ describe('utils', () => {
               task_kind: 'FullProofTask',
               task_id: 'task3',
               timestamp_utc: '2024-01-01',
-              agent_name: 'agent2',
+              agent_cls_checksum: 'checksum2',
+              agent_checksum: 'checksum2',
               status: 'Success',
               results: {},
               metrics: {
@@ -261,15 +274,21 @@ describe('utils', () => {
         },
       ];
 
-      const result = transformRunsToTaskRows(runs);
+      const runIdToNameMap = new Map([
+        ['run1', 'agent1'],
+        ['run2', 'agent2'],
+      ]);
+      const result = transformRunsToTaskRows(runs, runIdToNameMap);
 
       expect(result).toHaveLength(3); // task1, task2, task3
       expect(result[0].taskId).toBe('task1');
       expect(result[0].cells).toHaveLength(2);
       expect(result[0].cells[0]).toBeTruthy();
       expect(result[0].cells[0]?.runId).toBe('run1');
+      expect(result[0].cells[0]?.runName).toBe('agent1');
       expect(result[0].cells[1]).toBeTruthy();
       expect(result[0].cells[1]?.runId).toBe('run2');
+      expect(result[0].cells[1]?.runName).toBe('agent2');
     });
 
     it('should handle empty runs array', () => {
@@ -281,7 +300,8 @@ describe('utils', () => {
       const runs: RunDetailsResponse[] = [
         {
           run_id: 'run1',
-          agent_name: 'agent1',
+          agent_cls_checksum: 'checksum1',
+          agent_checksum: 'checksum1',
           total_tasks: 2,
           tasks: [
             {
@@ -289,7 +309,8 @@ describe('utils', () => {
               task_kind: 'FullProofTask',
               task_id: 'task_z',
               timestamp_utc: '2024-01-01',
-              agent_name: 'agent1',
+              agent_cls_checksum: 'checksum1',
+              agent_checksum: 'checksum1',
               status: 'Success',
               results: {},
               metrics: {
@@ -312,7 +333,8 @@ describe('utils', () => {
               task_kind: 'FullProofTask',
               task_id: 'task_a',
               timestamp_utc: '2024-01-01',
-              agent_name: 'agent1',
+              agent_cls_checksum: 'checksum1',
+              agent_checksum: 'checksum1',
               status: 'Success',
               results: {},
               metrics: {

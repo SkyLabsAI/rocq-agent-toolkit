@@ -9,6 +9,8 @@ describe('SelectedRunContext', () => {
   const mockRun: Run = {
     run_id: 'run-1',
     agent_name: 'test-agent',
+    agent_cls_checksum: 'checksum-1',
+    agent_checksum: 'checksum-1',
     timestamp_utc: '2024-01-01T00:00:00Z',
     total_tasks: 10,
     success_count: 8,
@@ -72,6 +74,8 @@ describe('SelectedRunContext', () => {
       const anotherRun: Run = {
         run_id: 'run-2',
         agent_name: 'another-agent',
+        agent_cls_checksum: 'checksum-2',
+        agent_checksum: 'checksum-2',
         timestamp_utc: '2024-01-02T00:00:00Z',
         total_tasks: 15,
         success_count: 12,

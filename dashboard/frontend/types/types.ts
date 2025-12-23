@@ -224,6 +224,15 @@ export interface AgentClassSummary {
   best_run?: RunInfo;
 }
 
+/**
+ * AgentSummary extends AgentClassSummary with agent_name property.
+ * This is used when the backend returns agent_name directly or when
+ * cls_name is mapped to agent_name for display purposes.
+ */
+export type AgentSummary = AgentClassSummary & {
+  agent_name: string;
+};
+
 export interface AgentClassWithRuns {
   cls_checksum: string;
   cls_name: string;
@@ -266,7 +275,13 @@ export interface RunInfo {
   };
 }
 
-export type Run = AgentRun;
+/**
+ * Run extends AgentRun with agent_name property.
+ * This is used when the run data includes the agent name for display purposes.
+ */
+export type Run = AgentRun & {
+  agent_name: string;
+};
 
 export interface RunDetailsResponse {
   run_id: string;

@@ -6,6 +6,7 @@ import {
   type AgentInstanceProvenance,
   type AgentInstanceSummary,
   type AgentRun,
+  type AgentSummary,
   type Benchmark,
   type RunDetailsResponse,
   type TaskOutput,
@@ -90,16 +91,16 @@ const generateMockTaskOutput = (
 };
 
 // Real API functions
-const getDataReal: () => Promise<AgentClassSummary[]> = async () => {
+const getDataReal: () => Promise<AgentSummary[]> = async () => {
   const response = await axios.get(`${config.DATA_API}/agents`);
 
-  return response.data as AgentClassSummary[];
+  return response.data as AgentSummary[];
 };
 
 // Mock API functions
 const getDataMock: (
   view?: 'class' | 'instance'
-) => Promise<AgentClassSummary[] | AgentInstanceSummary[]> = async (
+) => Promise<AgentSummary[] | AgentInstanceSummary[]> = async (
   view: 'class' | 'instance' = 'class'
 ) => {
   await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
@@ -168,10 +169,11 @@ const getDataMock: (
     return mockData;
   }
 
-  const mockData: AgentClassSummary[] = [
+  const mockData: AgentSummary[] = [
     {
       cls_checksum: 'agent_class_a_checksum_12345678',
       cls_name: 'AgentClassA',
+      agent_name: 'AgentClassA',
       cls_provenance: {},
       total_runs: 10,
         best_run: {
@@ -200,6 +202,7 @@ const getDataMock: (
     {
       cls_checksum: 'agent_class_b_checksum_87654321',
       cls_name: 'AgentClassB',
+      agent_name: 'AgentClassB',
       cls_provenance: {},
       total_runs: 8,
         best_run: {
