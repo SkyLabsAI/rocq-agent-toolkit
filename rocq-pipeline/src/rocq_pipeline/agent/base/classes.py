@@ -1,6 +1,7 @@
 from typing import Any, override
 
 from observability import get_logger
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.proof_state import ProofState, RocqGoal
@@ -16,12 +17,17 @@ from .dataclasses import (
 logger = get_logger("rocq_agent")
 
 
-class Agent:
-    """Abstract base class for Rocq Agent Toolkit agents."""
-
-    def run(self, rdm: RocqCursor) -> TaskResult:
-        """Entrypoint; use rdm to attempt a task and report the result."""
-        return self.give_up(rdm, message="Not implemented")
+# TODO: consider moving some of this observability logic into provenance-toolkit
+class AgentProvenance(Provenance.Version):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if issubclass(cls, AgentProvenance) and cls is not AgentProvenance:
+            logger.info(
+                "AgentClassProvenance",
+                cls_checksum=cls.cls_checksum(),
+                cls_name=cls.cls_name(),
+                cls_provenance=cls.cls_provenance(),
+            )
 
     @classmethod
     def cls_name(cls) -> str:
@@ -31,6 +37,14 @@ class Agent:
     def name(self) -> str:
         """Return the unique name for an instance of this type of agent."""
         return self.cls_name()
+
+
+class Agent(AgentProvenance, VERSION="1.0.0"):
+    """Abstract base class for Rocq Agent Toolkit agents."""
+
+    def run(self, rdm: RocqCursor) -> TaskResult:
+        """Entrypoint; use rdm to attempt a task and report the result."""
+        return self.give_up(rdm, message="Not implemented")
 
     def finished(
         self,
@@ -98,7 +112,7 @@ class AgentBuilder:
 # TODO: integrate proof tree and structured proof states so that
 # task_holes / task_doc_interaction can be defined in a more
 # structured way.
-class ProofAgent(Agent):
+class ProofAgent(Agent, VERSION="1.0.0"):
     """Agents tasked with completing proof obligations."""
 
     def __init__(self, goal_ty_upperbound: type[RocqGoal] = RocqGoal) -> None:

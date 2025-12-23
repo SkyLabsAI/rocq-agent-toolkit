@@ -12,7 +12,7 @@ from rocq_pipeline.agent.proof.strategy import Strategy
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 
 
-class StrategyAgent(ProofAgent):
+class StrategyAgent(ProofAgent, VERSION="0.1.0"):
     """An agent that uses a Strategy to select tactics."""
 
     def __init__(

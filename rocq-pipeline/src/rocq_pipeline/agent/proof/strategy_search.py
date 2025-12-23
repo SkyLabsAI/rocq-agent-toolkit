@@ -11,7 +11,7 @@ from rocq_pipeline.agent.proof.strategy import Strategy
 from rocq_pipeline.proof_state import ProofState
 
 
-class SearchAgent(ProofAgent):
+class SearchAgent(ProofAgent, VERSION="0.1.0"):
     """
     A simple search agent based on strategies.
     """
