@@ -35,6 +35,9 @@ class WithClassProvenance(_ComputeClassProvenance):
     - `cls_checksums()` -> dict[type[WithClassProvenance], str]:
        Compute the checksums of provenance data for cls, keyed by the type of the class
        that computed it.
+    - `cls_provenance_json()` -> dict[str, str]:
+       Compute provenance JSON data for cls, keyed by the type of the class that
+       computed it.
     - `cls_provenance()` -> dict[type[WithClassProvenance], ProvenanceT]:
        Compute provenance data for cls, keyed by the type of the class that
        computed it.
@@ -70,6 +73,22 @@ class WithClassProvenance(_ComputeClassProvenance):
         return {
             klass: provenance.checksum(by=by)
             for klass, provenance in cls.cls_provenance().items()
+        }
+
+    @final
+    @classmethod
+    def cls_provenance_json(
+        cls,
+    ) -> dict[str, str]:
+        """Compute JSON serialized provenance data for cls.
+
+        Returns: dict, mapping each provenance provider type qualname to its serialized provenance data.
+
+        Note: cf. class docstring for more details.
+        """
+        return {
+            klass.__qualname__: prov.stable_serialize()
+            for klass, prov in cls.cls_provenance().items()
         }
 
     @final
