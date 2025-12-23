@@ -2,47 +2,39 @@
 
 from typing import TypeAlias
 
-from semver import Version
-
 from .meta import FinalNamespaceMeta
 from .proto import (
-    ComputeProvenance,
-    ComputeSignature,
-    JoinSignatures,
+    ComputeChecksumProvenanceT,
+    ProvenanceT,
+    WithClassProvenance,
+    WithInstanceProvenance,
     WithProvenance,
-    WithSignature,
 )
-from .provenance import WithVersionProvenance
-
-
-class Signature(
-    metaclass=FinalNamespaceMeta,
-    derive_from={
-        "Proto": WithSignature,
-    },
-):
-    CoreProto: TypeAlias = ComputeSignature  # noqa: UP040
-    Join: TypeAlias = JoinSignatures  # noqa: UP040
-    Proto: TypeAlias = WithSignature  # noqa: UP040
+from .provenance import ProvenanceVersionData, WithVersionProvenance
 
 
 class Provenance(
     metaclass=FinalNamespaceMeta,
     derive_from={
+        # Abstract protocols:
         "Proto": WithProvenance,
+        "ProtoClass": WithClassProvenance,
+        "ProtoInstance": WithInstanceProvenance,
+        # Concrete implementations:
         "Version": WithVersionProvenance,
     },
 ):
-    CoreProto: TypeAlias = ComputeProvenance  # noqa: UP040
+    T: TypeAlias = ProvenanceT  # noqa: UP040
+    ComputeChecksumT: TypeAlias = ComputeChecksumProvenanceT  # noqa: UP040
     Proto: TypeAlias = WithProvenance  # noqa: UP040
+    ProtoClass: TypeAlias = WithClassProvenance  # noqa: UP040
+    ProtoInstance: TypeAlias = WithInstanceProvenance  # noqa: UP040
     Version: TypeAlias = WithVersionProvenance  # noqa: UP040
+    VersionT: TypeAlias = ProvenanceVersionData  # noqa: UP040
 
 
 __all__: list[str] = [
-    # re-export semver.Version
-    "Version",
     # core namespace classes
-    "Signature",
     "Provenance",
     # meta/
     "FinalNamespaceMeta",
