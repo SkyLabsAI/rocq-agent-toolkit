@@ -22,7 +22,7 @@ class BasicNode[T]:  # (HasId[int]):
         return self._state
 
 
-class Frontier[T, Node, Action](ABC):
+class Frontier[T, Node](ABC):
     """
     A collection of values of type `T`.
 
@@ -30,7 +30,8 @@ class Frontier[T, Node, Action](ABC):
     """
 
     @abstractmethod
-    def push(self, val: T, parent: tuple[Node, Action] | None) -> None:
+    # Action metadata is intentionally handled by search-level tracing, not stored in the frontier.
+    def push(self, val: T, parent: Node | None) -> None:
         """Insert a new item into the frontier"""
         ...
 
@@ -193,8 +194,10 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         if self._worklist:
             result: list[Wrapper[T, Any]] = []
             while self._worklist and count > 0:
+                # test_pqueue_respects_count: honor count by decrementing per pop.
                 # Pop lowest (or highest) priority based on compare.
                 result.append(heapq.heappop(self._worklist))
+                count -= 1
             return [(x.state, x) for x in result]
         return None
 
@@ -303,8 +306,12 @@ class Deduplicate[T, Node](Frontier[T, Node]):
         # something like a hash table which would require an embedding
         # into some type.
         if any(True for x in self._seen if self._cmp(val, x)):
-            # TODO: log message to drop already visited state
-            return self._base.push(val, parent)
+            # test_deduplicate_drops_duplicates: drop repeats, keep uniques.
+            # TODO: log message to drop already visited state.
+            return
+        # test_deduplicate_drops_duplicates: record unique values before push.
+        self._seen.append(val)
+        self._base.push(val, parent)
 
     @override
     def clear(self) -> None:
@@ -339,9 +346,14 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
         # TODO: A better implementation of this would be to use
         # something like a hash table which would require an embedding
         # into some type.
-        if self._key(val) not in self._seen:
-            # TODO: log message to drop already visited state
-            return self._base.push(val, parent)
+        key = self._key(val)
+        if key in self._seen:
+            # test_deduplicate_key_drops_duplicates: drop repeats by key.
+            # TODO: log message to drop already visited state.
+            return
+        # test_deduplicate_key_drops_duplicates: record new key before push.
+        self._seen.add(key)
+        self._base.push(val, parent)
 
     @override
     def clear(self) -> None:
@@ -393,8 +405,10 @@ class SavingSolutions[T, Node](Frontier[T, Node]):
 
     @override
     def clear(self) -> None:
+        # Clear cached solutions so a new run does not inherit prior results.
         self._base.clear()
         self._stop = False
+        self._solutions.clear()
 
 
 class RememberTrace[T, Node](Frontier[T, Node]):
@@ -430,4 +444,6 @@ class RememberTrace[T, Node](Frontier[T, Node]):
 
     @override
     def clear(self) -> None:
+        # Clear trace history so visited_nodes reflects only the next run.
         self._base.clear()
+        self._everything.clear()
