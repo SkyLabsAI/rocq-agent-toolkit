@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from typing import Any, TypeVar, override
 
 from .action import Action
@@ -67,8 +67,8 @@ class SingletonStrategy[T_co](Strategy[T_co]):
 
 
 class IteratorStrategy[T_co](Strategy[T_co]):
-    def __init__(self, i: Iterator[tuple[float, Action[T_co]]]) -> None:
-        self._iter = i
+    def __init__(self, i: Iterable[tuple[float, Action[T_co]]]) -> None:
+        self._collection = i
 
     def rollout(
         self,
@@ -76,7 +76,7 @@ class IteratorStrategy[T_co](Strategy[T_co]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Strategy.Rollout[T_co]:
-        return self._iter
+        return iter(self._collection)
 
 
 class CompositeStrategy[T_co](Strategy[T_co]):
@@ -162,3 +162,40 @@ class GuardStrategy[T_co, With](FailStrategy[T_co], ABC):
         if val is None:
             return super().rollout(state, max_rollout, context)
         return self.rollout_with(val, state, max_rollout, context)
+
+
+class ActionWrapper[T_co](Action[T_co]):
+    def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
+        self._fn = fn
+        self._base = base
+
+    def interact(self, state: T_co) -> T_co:
+        self._fn(state)
+        return self._base.interact(state)
+
+
+class TraceStrategy[T_co](Strategy[T_co]):
+    def __init__(self, base: Strategy[T_co]) -> None:
+        self._base = base
+        self._trace = []
+
+    @property
+    def trace(self) -> list[tuple[T_co, Action[T_co]]]:
+        return self._trace
+
+    @override
+    def rollout(
+        self,
+        state: T_co,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
+    ) -> Strategy.Rollout[T_co]:
+        roll = self._base.rollout(state, max_rollout, context)
+
+        def mk(action: Action[T_co]) -> Callable[[T_co], None]:
+            def fn(state: T_co) -> None:
+                self._trace.append((state, action))
+
+            return fn
+
+        return ((prob, ActionWrapper(action, mk(action))) for prob, action in roll)

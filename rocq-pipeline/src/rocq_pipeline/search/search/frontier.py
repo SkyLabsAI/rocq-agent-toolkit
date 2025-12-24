@@ -395,3 +395,39 @@ class SavingSolutions[T, Node](Frontier[T, Node]):
     def clear(self) -> None:
         self._base.clear()
         self._stop = False
+
+
+class RememberTrace[T, Node](Frontier[T, Node]):
+    """
+    A Frontier that remebers every node that gets pushed.
+    """
+
+    def __init__(
+        self,
+        base: Frontier[T, Node],
+        is_solution: Callable[[T], bool],
+        stop_on_first_solution: bool,
+    ) -> None:
+        self._base = base
+        self._everything: list[tuple[T | None, Node | None]] = []
+
+    def visited_nodes(self) -> list[tuple[T | None, Node | None]]:
+        return self._everything
+
+    @override
+    def take(self, count: int) -> list[tuple[T, Node]] | None:
+        return self._base.take(count)
+
+    @override
+    def push(self, val: T, parent: Node | None) -> None:
+        self._everything.append((val, parent))
+        return self._base.push(val, parent)
+
+    @override
+    def repush(self, node: Node) -> None:
+        self._everything.append((None, node))
+        return self._base.repush(node)
+
+    @override
+    def clear(self) -> None:
+        self._base.clear()
