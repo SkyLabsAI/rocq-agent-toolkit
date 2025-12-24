@@ -22,7 +22,7 @@ class BasicNode[T]:  # (HasId[int]):
         return self._state
 
 
-class Frontier[T, Node](ABC):
+class Frontier[T, Node, Action](ABC):
     """
     A collection of values of type `T`.
 
@@ -30,7 +30,7 @@ class Frontier[T, Node](ABC):
     """
 
     @abstractmethod
-    def push(self, val: T, parent: Node | None) -> None:
+    def push(self, val: T, parent: tuple[Node, Action] | None) -> None:
         """Insert a new item into the frontier"""
         ...
 
