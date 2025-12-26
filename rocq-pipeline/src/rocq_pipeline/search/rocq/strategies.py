@@ -6,7 +6,7 @@ from rocq_doc_manager import RocqCursor
 
 from ..action import Action
 from ..strategy import Strategy, empty_Rollout
-from .actions import TacticAction
+from .actions import RocqTacticAction
 
 
 class SafeTacticStrategy(Strategy):
@@ -24,7 +24,7 @@ class SafeTacticStrategy(Strategy):
         context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         return (
-            (prob, TacticAction(f"progress {tac}"))
+            (prob, RocqTacticAction(f"progress {tac}"))
             for prob, tac in [(self._prob, self._tactic)]
         )
 
@@ -53,7 +53,7 @@ class CutAssertStrategy(Strategy):
         # otherwise we risk looping here
         tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
-        return ((prob, TacticAction(t)) for prob, t in [(self._prob, tac)])
+        return ((prob, RocqTacticAction(t)) for prob, t in [(self._prob, tac)])
 
 
 class FirstTacticStrategy(Strategy):
@@ -63,7 +63,7 @@ class FirstTacticStrategy(Strategy):
         def mk(x: str | Action) -> Action:
             if isinstance(x, Action):
                 return x
-            return TacticAction(x)
+            return RocqTacticAction(x)
 
         self._tactics: list[tuple[float, Action]] = [
             (prob, mk(tac)) for prob, tac in sorted(tactics, reverse=True)

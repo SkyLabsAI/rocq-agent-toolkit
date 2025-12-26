@@ -5,7 +5,7 @@ from rocq_doc_manager import RocqCursor
 from ..action import Action
 
 
-class TacticAction(Action[RocqCursor]):
+class RocqTacticAction(Action[RocqCursor]):
     def __init__(self, tactic: str) -> None:
         self._tactic = tactic
 
