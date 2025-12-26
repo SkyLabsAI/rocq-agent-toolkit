@@ -184,11 +184,14 @@ export interface AgentRunOld {
 }
 
 export interface AgentSummary {
-  agent_name: string;
+  cls_checksum: string;
+  cls_name: string;
+  cls_provenance: Record<string, unknown>;
   total_runs: number;
   best_run?: {
     run_id: string;
-    agent_name: string;
+    agent_cls_checksum: string;
+    agent_checksum: string;
     timestamp_utc: string;
     total_tasks: number;
     success_count: number;
@@ -198,6 +201,33 @@ export interface AgentSummary {
     avg_total_tokens: number;
     avg_cpu_time_sec: number;
     avg_llm_invocation_count: number;
+    metadata: {
+      tags: Record<string, unknown>;
+    };
+  };
+}
+
+export interface AgentInstanceSummary {
+  agent_checksum: string;
+  cls_checksum: string;
+  name: string;
+  provenance: Record<string, unknown>;
+  total_runs: number;
+  best_run?: {
+    run_id: string;
+    agent_cls_checksum: string;
+    agent_checksum: string;
+    timestamp_utc: string;
+    dataset_id?: string;
+    total_tasks: number;
+    success_count: number;
+    failure_count: number;
+    success_rate: number;
+    score: number;
+    avg_total_tokens: number;
+    avg_cpu_time_sec: number;
+    avg_llm_invocation_count: number;
+    best_run: boolean;
     metadata: {
       tags: Record<string, unknown>;
     };

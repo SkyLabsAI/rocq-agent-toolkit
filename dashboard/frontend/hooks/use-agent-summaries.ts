@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   type AgentSummaryTemp,
   fetchAgentSummaries,
-  getData,
+  getAgentClassData,
   getObservabilityLogs,
 } from '@/services/dataservice';
 import { type AgentSummary, type TaskOutput } from '@/types/types';
@@ -30,7 +30,7 @@ export const useAgents = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
-    const data = await getData();
+    const data = await getAgentClassData();
     const detailData = await fetchAgentSummaries();
     setAgentData(data);
     setAgentDetailData(detailData);

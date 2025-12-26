@@ -1,21 +1,38 @@
-import cn from 'classnames';
+import { useState } from 'react';
 
-import { useAgentInstances } from '@/hooks/use-agent-instances';
-import { useBenchmarks } from '@/hooks/use-dataview';
+import { Button } from '@/components/base';
 import { type AgentSummary } from '@/types/types';
+import { cn } from '@/utils/cn';
 
-import { AgentInstance } from './agent-instances';
+import { DatasetAgentInstance } from './dataset-agent-instance';
+import { useDatasetAgentClass } from './use-dataset-agent-class';
 
-interface AgentDetailsProps {
+interface DatasetAgentClassProps {
   agent: AgentSummary;
+  datasetId: string;
+  isSelected: boolean;
+  toggleSelection: () => void;
 }
 
-const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
-  const { instances, isLoading, isOpen, toggleDetails } = useAgentInstances(
+export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
+  agent,
+  datasetId,
+  isSelected,
+  toggleSelection,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const { instances, isLoading, fetchInstances } = useDatasetAgentClass(
+    datasetId,
     agent.cls_checksum
   );
 
-  const { benchmarks } = useBenchmarks();
+  const handleToggle = () => {
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
+    if (newIsOpen && instances.length === 0) {
+      fetchInstances();
+    }
+  };
 
   return (
     <>
@@ -23,8 +40,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
         className={cn(
           'hover:bg-white/5 cursor-pointer transition-colors duration-200'
         )}
-        onClick={toggleDetails}
-        data-testid={`agent-row-${agent.cls_checksum}`}
+        onClick={handleToggle}
       >
         <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3'>
@@ -33,9 +49,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
                 {agent.cls_name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className='truncate' data-testid='agent-name'>
-              {agent.cls_name}
-            </span>
+            <span className='truncate'>{agent.cls_name}</span>
           </div>
         </td>
         <td className='px-6 py-4 text-text font-medium'>
@@ -75,36 +89,44 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
             </div>
           </div>
         </td>
+        <td className='px-6 py-4 text-text font-medium'>
+          <div className='flex items-center gap-3 justify-center'>
+            <Button
+              variant={isSelected ? 'danger' : 'default'}
+              onClick={e => {
+                e.stopPropagation();
+                toggleSelection();
+              }}
+              className='text-sm whitespace-nowrap text-[14px] font-normal float-end w-[100px] flex justify-center'
+            >
+              {isSelected ? 'Deselect' : 'Compare'}
+            </Button>
+          </div>
+        </td>
       </tr>
 
       {isOpen && (
-        <tr data-testid={`agent-expanded-${agent.cls_checksum}`}>
+        <tr>
           <td colSpan={7}>
-            <div className='px-6 py-4' data-testid='agent-expanded-content'>
+            <div className='px-6 py-4'>
               {isLoading ? (
-                <div
-                  className='flex items-center justify-center py-8'
-                  data-testid='agent-loading'
-                >
+                <div className='flex items-center justify-center py-8'>
                   <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
                   <span className='ml-3 text-text'>
                     Loading agent instances...
                   </span>
                 </div>
               ) : instances.length === 0 ? (
-                <div
-                  className='text-center py-8 text-text'
-                  data-testid='agent-no-instances'
-                >
+                <div className='text-center py-8 text-text'>
                   No agent instances available.
                 </div>
               ) : (
                 <div className='space-y-2'>
                   {instances.map(instance => (
-                    <AgentInstance
+                    <DatasetAgentInstance
                       key={instance.agent_checksum}
                       instance={instance}
-                      benchmarks={benchmarks}
+                      datasetId={datasetId}
                     />
                   ))}
                 </div>
@@ -116,5 +138,3 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
     </>
   );
 };
-
-export default AgentDetails;
