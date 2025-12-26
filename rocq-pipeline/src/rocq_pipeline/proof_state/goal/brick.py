@@ -1,5 +1,5 @@
 import re
-from typing import cast, override
+from typing import Literal, cast, override
 
 from rocq_pipeline.proof_state.goal import IrisGoal
 from rocq_pipeline.proof_state.goal_parts import BrickGoalParts
@@ -17,17 +17,6 @@ class BrickGoal(IrisGoal):
     PartsDataclass: type[BrickGoalParts] = BrickGoalParts
 
     @staticmethod
-    def wpS_head_stmt_matches(s: str, constructs: list[str]) -> bool:
-        for ast in constructs:
-            if re.search(
-                rf"::wpS\s+\[.*?\]\s+\({ast}",
-                s,
-                re.DOTALL,  # "." should match everything, including newlines
-            ):
-                return True
-        return False
-
-    @staticmethod
     def if_decide_then_else_extract(text: str) -> tuple[str, str, str] | None:
         pattern = r"if\s+decide\s*\(([^)]+)\)\s+then\s+(.+?)\s+else\s+(.+)"
 
@@ -43,19 +32,54 @@ class BrickGoal(IrisGoal):
         # Override property for correct type hinting
         return cast(BrickGoalParts, self._parts)
 
+    def regex_brick_spat_concl_wp(
+        self,
+        *asts: str,
+        kind: Literal[
+            "S", "E"
+        ] = "S",  # Note: various wp forms (ellipses not permitted)
+        search: bool = False,
+        ignore_leading_whitespace: bool = True,
+        re_flags: re.RegexFlag = re.DOTALL,
+    ) -> dict[str, re.Match[str] | None]:
+        res = {
+            ast: self.regex_iris_spat_concl(
+                rf"::wp{kind}\s+\[.*?\]\s+\({ast}",
+                search=search,
+                ignore_leading_whitespace=ignore_leading_whitespace,
+                re_flags=re_flags,
+            )
+            for ast in asts
+        }
+        return res
+
     def is_loop_goal(self) -> bool:
         """
         Checks if the spatial conclusion contains a loop AST node.
         """
-        return BrickGoal.wpS_head_stmt_matches(
-            self.parts.iris_spat_concl, ["Sdo_while", "Sfor", "Swhile"]
+        d: dict[str, re.Match[str] | None] = self.regex_brick_spat_concl_wp(
+            "Sdo_while", "Sfor", "Swhile", kind="S"
         )
+        res: bool = any(value is not None for value in d.values())
+        return res
+
+    def is_branch_stmt_goal(self) -> bool:
+        """
+        Checks if the spatial conclusion starts with a 'branch.stmt' node.
+        """
+        return bool(self.regex_brick_spat_concl_wp(r"branch\.stmt", kind="S"))
+
+    def is_branch_expr_goal(self) -> bool:
+        """
+        Checks if the spatial conclusion contains a 'branch.expr' node.
+        """
+        return bool(self.regex_brick_spat_concl_wp(r"branch\.expr", kind="E"))
 
     def is_conditional_goal(self) -> bool:
         """
-        Checks if the spatial conclusion contains a 'if' AST node.
+        Checks if the spatial conclusion starts with a 'branch.stmt' or 'branch.expr' node.
         """
-        return BrickGoal.wpS_head_stmt_matches(self.parts.iris_spat_concl, ["Sif"])
+        return self.is_branch_stmt_goal() or self.is_branch_expr_goal()
 
     def is_if_decide_then_else_goal(self) -> tuple[str, str, str] | None:
         """
