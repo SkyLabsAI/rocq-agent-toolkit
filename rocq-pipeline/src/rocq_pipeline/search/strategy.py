@@ -177,7 +177,7 @@ class ActionWrapper[T_co](Action[T_co]):
 class TraceStrategy[T_co](Strategy[T_co]):
     def __init__(self, base: Strategy[T_co]) -> None:
         self._base = base
-        self._trace = []
+        self._trace: list[tuple[T_co, Action[T_co]]] = []
 
     @property
     def trace(self) -> list[tuple[T_co, Action[T_co]]]:
