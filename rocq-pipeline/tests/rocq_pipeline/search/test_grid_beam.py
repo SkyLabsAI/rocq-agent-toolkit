@@ -3,11 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-try:
-    from typing import override
-except ImportError:
-    from typing import override
+from typing import override
 
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.beam import BeamSearch

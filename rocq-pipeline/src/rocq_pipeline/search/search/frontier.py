@@ -194,7 +194,7 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         if self._worklist:
             result: list[Wrapper[T, Any]] = []
             while self._worklist and count > 0:
-                # test_pqueue_respects_count: honor count by decrementing per pop.
+                # test_frontier_pqueue.py: honor count by decrementing per pop.
                 # Pop lowest (or highest) priority based on compare.
                 result.append(heapq.heappop(self._worklist))
                 count -= 1
@@ -306,10 +306,10 @@ class Deduplicate[T, Node](Frontier[T, Node]):
         # something like a hash table which would require an embedding
         # into some type.
         if any(True for x in self._seen if self._cmp(val, x)):
-            # test_deduplicate_drops_duplicates: drop repeats, keep uniques.
+            # test_frontier_deduplicate.py: drop repeats, keep uniques.
             # TODO: log message to drop already visited state.
             return
-        # test_deduplicate_drops_duplicates: record unique values before push.
+        # test_frontier_deduplicate.py: record unique values before push.
         self._seen.append(val)
         self._base.push(val, parent)
 
@@ -348,10 +348,10 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
         # into some type.
         key = self._key(val)
         if key in self._seen:
-            # test_deduplicate_key_drops_duplicates: drop repeats by key.
+            # test_frontier_deduplicate.py: drop repeats by key.
             # TODO: log message to drop already visited state.
             return
-        # test_deduplicate_key_drops_duplicates: record new key before push.
+        # test_frontier_deduplicate.py: record new key before push.
         self._seen.add(key)
         self._base.push(val, parent)
 
