@@ -1,0 +1,187 @@
+"""Tests for rollout interleaving and repush behavior in search."""
+
+from __future__ import annotations
+
+from typing import override
+
+from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.search.frontier import Frontier
+from rocq_pipeline.search.search.search import (
+    Node,
+    RepetitionPolicy,
+    Search,
+    StateManipulator,
+)
+from rocq_pipeline.search.strategy import Strategy
+
+
+class RecordingAction(Action[int]):
+    """Action that records when it is executed."""
+
+    def __init__(self, key: str, record: list[str]) -> None:
+        self._key = key
+        self._record = record
+
+    @override
+    def interact(self, state: int) -> int:
+        self._record.append(self._key)
+        return state
+
+    def key(self) -> str:
+        return self._key
+
+
+class FixedStrategy(Strategy[int]):
+    """Strategy that returns fixed rollouts per state and counts calls."""
+
+    def __init__(
+        self, mapping: dict[int, list[tuple[float, Action[int]]]]
+    ) -> None:
+        self._mapping = mapping
+        self.call_counts: dict[int, int] = {}
+
+    @override
+    def rollout(
+        self,
+        state: int,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
+    ) -> Strategy.Rollout[int]:
+        self.call_counts[state] = self.call_counts.get(state, 0) + 1
+        return iter(self._mapping.get(state, []))
+
+
+class OneShotFrontier(Frontier[Node[int], Node[int]]):
+    """Frontier that returns candidates only once, then terminates."""
+
+    def __init__(self, candidates: list[Node[int]]) -> None:
+        self._candidates = list(candidates)
+        self._taken = False
+        self.repush_count = 0
+
+    @override
+    def push(self, val: Node[int], parent: Node[int] | None) -> None:
+        return None
+
+    @override
+    def repush(self, node: Node[int]) -> None:
+        self.repush_count += 1
+
+    @override
+    def clear(self) -> None:
+        return None
+
+    @override
+    def take(self, count: int) -> list[tuple[Node[int], Node[int]]] | None:
+        if self._taken:
+            return None
+        self._taken = True
+        return [(node, node) for node in self._candidates[:count]]
+
+
+class QueueFrontier(Frontier[Node[int], Node[int]]):
+    """FIFO frontier that ignores child pushes to isolate repush behavior."""
+
+    def __init__(self, candidates: list[Node[int]]) -> None:
+        self._queue = list(candidates)
+        self.repush_count = 0
+
+    @override
+    def push(self, val: Node[int], parent: Node[int] | None) -> None:
+        return None
+
+    @override
+    def repush(self, node: Node[int]) -> None:
+        self.repush_count += 1
+        self._queue.append(node)
+
+    @override
+    def clear(self) -> None:
+        self._queue = []
+
+    @override
+    def take(self, count: int) -> list[tuple[Node[int], Node[int]]] | None:
+        if not self._queue:
+            return None
+        pulled = self._queue[:count]
+        self._queue = self._queue[count:]
+        return [(node, node) for node in pulled]
+
+
+def run_search(
+    strategy: Strategy[int],
+    worklist: Frontier[Node[int], Node[int]],
+    beam_width: int = 1,
+    explore_width: int = 1,
+    repetition_policy: RepetitionPolicy | None = None,
+    state_manip: StateManipulator[int] | None = None,
+    max_depth: int | None = None,
+) -> Frontier[Node[int], Node[int]]:
+    """Call continue_search with a concrete Frontier instance (mypy helper)."""
+    return Search.continue_search(
+        strategy,
+        worklist,
+        beam_width=beam_width,
+        explore_width=explore_width,
+        repetition_policy=repetition_policy,
+        state_manip=state_manip,
+        max_depth=max_depth,
+    )  # type: ignore[type-var]
+
+
+def test_explore_width_is_global_budget() -> None:
+    """Verify explore_width limits total actions across the beam per iteration."""
+    record: list[str] = []
+    actions: dict[int, list[tuple[float, Action[int]]]] = {
+        0: [
+            (0.9, RecordingAction("c1_a1", record)),
+            (0.85, RecordingAction("c1_a2", record)),
+        ],
+        1: [
+            (0.8, RecordingAction("c2_a1", record)),
+            (0.7, RecordingAction("c2_a2", record)),
+        ],
+    }
+    strategy = FixedStrategy(actions)
+    frontier = OneShotFrontier([Node(0, None), Node(1, None)])
+
+    frontier_base: Frontier[Node[int], Node[int]] = frontier
+    run_search(strategy, frontier_base, beam_width=2, explore_width=2)
+
+    assert record == ["c1_a1", "c1_a2"]
+
+
+def test_repush_and_rollout_reuse() -> None:
+    """Verify repush happens when rollouts remain and rollouts are reused per node."""
+    record: list[str] = []
+    actions: dict[int, list[tuple[float, Action[int]]]] = {
+        0: [
+            (0.9, RecordingAction("a1", record)),
+            (0.8, RecordingAction("a2", record)),
+        ]
+    }
+    strategy = FixedStrategy(actions)
+    frontier = QueueFrontier([Node(0, None)])
+
+    frontier_base: Frontier[Node[int], Node[int]] = frontier
+    run_search(strategy, frontier_base, beam_width=1, explore_width=1)
+
+    assert record == ["a1", "a2"]
+    assert frontier.repush_count == 1
+    assert strategy.call_counts == {0: 1}
+
+
+def test_no_repush_when_rollout_exhausted() -> None:
+    """Ensure repush is not called once a rollout is exhausted."""
+    record: list[str] = []
+    actions: dict[int, list[tuple[float, Action[int]]]] = {
+        0: [(0.9, RecordingAction("only", record))]
+    }
+    strategy = FixedStrategy(actions)
+    frontier = QueueFrontier([Node(0, None)])
+
+    frontier_base: Frontier[Node[int], Node[int]] = frontier
+    run_search(strategy, frontier_base, beam_width=1, explore_width=1)
+
+    assert record == ["only"]
+    assert frontier.repush_count == 0
