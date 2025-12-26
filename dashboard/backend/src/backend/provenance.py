@@ -6,6 +6,7 @@ and storage in the database with collision detection.
 """
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlmodel import Session, select
@@ -21,29 +22,32 @@ logger = logging.getLogger(__name__)
 
 
 async def extract_provenance_from_logs_async(
-    session: Session, run_id: str, task_id: str
+    run_id: str,
+    task_id: str,
+    estimated_time: datetime | None = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """
     Extract AgentClassProvenance and AgentProvenance from observability logs (async).
 
     Args:
-        session: Database session
         run_id: The run ID to filter logs by
         task_id: The task ID to filter logs by
+        estimated_time: Optional timestamp (UTC) used to narrow the Loki query window.
+            This is important during ingestion because the run/task rows may not be in
+            the database yet, so we cannot estimate time from DB state.
 
     Returns:
         Tuple of (class_provenance_dict, instance_provenance_dict)
         where each dict maps checksum -> {cls_name/cls_provenance or name/provenance}
     """
 
-    from backend.dal import get_estimated_time_for_task_from_db
-
     class_provenance: dict[str, dict[str, Any]] = {}
     instance_provenance: dict[str, dict[str, Any]] = {}
 
     try:
-        # Get estimated time for the task
-        estimated_time = get_estimated_time_for_task_from_db(session, run_id, task_id)
+        # Ensure UTC-awareness
+        if estimated_time is not None and estimated_time.tzinfo is None:
+            estimated_time = estimated_time.replace(tzinfo=UTC)
 
         # Fetch observability logs
         logs = await fetch_observability_logs(
@@ -114,9 +118,12 @@ async def extract_provenance_from_logs_async(
                 # Skip logs that don't match the expected format
                 continue
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning(
-            f"Error extracting provenance from logs for run_id={run_id}, task_id={task_id}: {e}"
+            "Error extracting provenance from logs for run_id=%s, task_id=%s: %s",
+            run_id,
+            task_id,
+            e,
         )
 
     return class_provenance, instance_provenance

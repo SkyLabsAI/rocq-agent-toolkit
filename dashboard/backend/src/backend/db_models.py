@@ -11,24 +11,6 @@ from sqlalchemy import JSON, Column, Integer
 from sqlmodel import Field, Relationship, SQLModel
 
 
-class Agent(SQLModel, table=True):
-    """Agent model - represents an AI agent being tested.
-
-    NOTE: This model is deprecated in favor of AgentClassProvenance.
-    Kept for migration purposes but new code should use AgentClassProvenance.
-    """
-
-    __tablename__ = "agent"
-
-    id: int | None = Field(default=None, primary_key=True)  # auto-generate
-    name: str = Field(unique=True, index=True)
-    description: str | None = None
-    created_at: datetime | None = Field(default_factory=lambda: datetime.now(UTC))
-
-    # Relationships
-    runs: list["Run"] = Relationship(back_populates="agent")
-
-
 class AgentClassProvenance(SQLModel, table=True):
     """Agent class provenance model - stores provenance data for agent classes.
 
@@ -45,7 +27,7 @@ class AgentClassProvenance(SQLModel, table=True):
 
     # Relationships
     instances: list["AgentProvenance"] = Relationship(back_populates="agent_class")
-    task_results: list["TaskResultDB"] = Relationship(back_populates="agent_class")
+    runs: list["Run"] = Relationship(back_populates="agent_class")
 
 
 class AgentProvenance(SQLModel, table=True):
@@ -63,7 +45,6 @@ class AgentProvenance(SQLModel, table=True):
 
     # Relationships
     agent_class: AgentClassProvenance = Relationship()
-    task_results: list["TaskResultDB"] = Relationship(back_populates="agent_instance")
     runs: list["Run"] = Relationship(back_populates="agent_instance")
 
 
@@ -142,11 +123,13 @@ class Run(SQLModel, table=True):
     __tablename__ = "run"
 
     id: UUID = Field(primary_key=True)
-    agent_id: int | None = Field(
-        default=None, foreign_key="agent.id", index=True
-    )  # Deprecated, kept for migration
     agent_checksum: str = Field(
         foreign_key="agent_provenance.agent_checksum", index=True
+    )
+    # Agent class checksum is run-level invariant; kept here for convenience and
+    # to avoid storing run-invariant data on every TaskResult row.
+    agent_cls_checksum: str | None = Field(
+        default=None, foreign_key="agent_class_provenance.cls_checksum", index=True
     )
     dataset_id: int | None = Field(default=None, foreign_key="dataset.id", index=True)
     timestamp_utc: datetime
@@ -170,8 +153,8 @@ class Run(SQLModel, table=True):
     source_file_name: str | None = None
 
     # Relationships
-    agent: Agent | None = Relationship(back_populates="runs")  # Deprecated
     agent_instance: AgentProvenance = Relationship(back_populates="runs")
+    agent_class: "AgentClassProvenance" = Relationship(back_populates="runs")
     results: list["TaskResultDB"] = Relationship(back_populates="run")
     tag_links: list[RunTagLink] = Relationship(back_populates="run")
     dataset: Dataset = Relationship(back_populates="runs")
@@ -191,12 +174,6 @@ class TaskResultDB(SQLModel, table=True):
     run_id: UUID = Field(foreign_key="run.id", index=True)
     task_id: str = Field(foreign_key="task.id", index=True)
     dataset_id: int = Field(foreign_key="dataset.id", index=True)
-    agent_checksum: str = Field(
-        foreign_key="agent_provenance.agent_checksum", index=True
-    )
-    agent_cls_checksum: str | None = Field(
-        default=None, foreign_key="agent_class_provenance.cls_checksum", index=True
-    )
 
     timestamp_utc: datetime
     status: str  # 'Success' or 'Failure'
@@ -211,5 +188,3 @@ class TaskResultDB(SQLModel, table=True):
     run: Run = Relationship(back_populates="results")
     task: Task = Relationship(back_populates="results")
     dataset: Dataset = Relationship(back_populates="results")
-    agent_class: AgentClassProvenance = Relationship(back_populates="task_results")
-    agent_instance: AgentProvenance = Relationship(back_populates="task_results")

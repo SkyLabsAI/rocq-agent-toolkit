@@ -17,8 +17,7 @@ import uvicorn
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import desc
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from backend.config import settings
 from backend.dal import (
@@ -27,31 +26,25 @@ from backend.dal import (
     get_agent_instances_for_dataset_from_db,
     get_agents_for_dataset_from_db,
     get_estimated_time_for_task_from_db,
+    get_instances_for_class_from_db,
+    get_instances_for_class_in_dataset_from_db,
     get_run_details_from_db,
     get_runs_by_agent_and_dataset_from_db,
     get_runs_by_agent_from_db,
+    get_runs_by_agent_instance_and_dataset_from_db,
+    get_runs_by_agent_instance_from_db,
     get_unique_tags_from_db,
     ingest_task_results,
+    list_agent_instances_from_db,
     list_agents_from_db,
     list_datasets_from_db,
     set_best_run_flag_for_run,
 )
 from backend.database import get_session, init_db
-from backend.db_models import (
-    AgentClassProvenance as AgentClassProvenanceDB,
-)
-from backend.db_models import (
-    AgentProvenance,
-    Dataset,
-    Run,
-)
 from backend.models import (
-    AgentClassProvenance,
     AgentClassSummary,
-    AgentInstanceProvenance,
+    AgentInstanceSummary,
     BestRunUpdateResponse,
-    DatasetAgentInstancesResponse,
-    DatasetAgentsResponse,
     DatasetInfo,
     IngestionResponse,
     ObservabilityLabelsResponse,
@@ -286,7 +279,7 @@ async def ingest_jsonl_file(
     )
 
 
-@app.get("/api/agents", response_model=list[AgentClassSummary])
+@app.get("/api/agents/class", response_model=list[AgentClassSummary])
 async def list_agents(
     session: Session = Depends(get_session),
 ) -> list[AgentClassSummary]:
@@ -303,6 +296,63 @@ async def list_agents(
         logger.error(f"Error fetching agents: {e}")
         raise HTTPException(
             status_code=500, detail=f"Error fetching agents: {str(e)}"
+        ) from e
+
+
+@app.get("/api/agents/instances", response_model=list[AgentInstanceSummary])
+async def list_all_agent_instances(
+    session: Session = Depends(get_session),
+) -> list[AgentInstanceSummary]:
+    """
+    List all unique agent instances that have been ingested into the database.
+
+    Returns:
+        List of AgentInstanceSummary objects containing agent instance checksums, names, provenance, and run counts
+    """
+    try:
+        instances = list_agent_instances_from_db(session)
+        return instances
+    except Exception as e:
+        logger.error(f"Error fetching agent instances: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching agent instances: {str(e)}"
+        ) from e
+
+
+@app.get(
+    "/api/agents/class/{agent_cls_checksum}/instances",
+    response_model=list[AgentInstanceSummary],
+)
+async def list_instances_for_class(
+    agent_cls_checksum: str, session: Session = Depends(get_session)
+) -> list[AgentInstanceSummary]:
+    """
+    List all agent instances for a specific agent class.
+
+    Args:
+        agent_cls_checksum: Checksum of the agent class
+
+    Returns:
+        List of AgentInstanceSummary objects for all instances of the specified agent class
+    """
+    try:
+        instances = get_instances_for_class_from_db(session, agent_cls_checksum)
+
+        if instances is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent class with checksum '{agent_cls_checksum}' not found",
+            )
+
+        return instances
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Error fetching instances for agent class '{agent_cls_checksum}': {e}"
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching instances: {str(e)}"
         ) from e
 
 
@@ -353,72 +403,180 @@ async def list_runs_by_agent_instance(
     Returns:
         List of RunInfo objects for the specified agent instance
     """
-    from backend.dal import _get_dataset_name_for_run, _get_tags_for_run, compute_score
-    from backend.models import RunInfo as RunInfoModel
-    from backend.models import TaskMetadata
-
     try:
-        agent_instance = session.exec(
-            select(AgentProvenance).where(
-                AgentProvenance.agent_checksum == agent_checksum
-            )
-        ).first()
+        runs = get_runs_by_agent_instance_from_db(session, agent_checksum)
 
-        if agent_instance is None:
+        if not runs and not agent_instance_exists(session, agent_checksum):
             raise HTTPException(
                 status_code=404,
                 detail=f"Agent instance with checksum '{agent_checksum}' not found",
             )
 
-        runs = session.exec(
-            select(Run)
-            .where(Run.agent_checksum == agent_checksum)
-            .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
-        ).all()
-
-        run_infos: list[RunInfoModel] = []
-
-        for run in runs:
-            run_tags = _get_tags_for_run(session, run.id)
-            dataset_name = _get_dataset_name_for_run(session, run)
-
-            run_infos.append(
-                RunInfoModel(
-                    run_id=str(run.id),
-                    agent_cls_checksum=agent_instance.cls_checksum,
-                    agent_checksum=agent_checksum,
-                    timestamp_utc=run.timestamp_utc.isoformat(),
-                    dataset_id=dataset_name,
-                    total_tasks=run.total_tasks,
-                    success_count=run.success_count,
-                    failure_count=run.failure_count,
-                    success_rate=run.success_rate,
-                    score=compute_score(run),
-                    avg_total_tokens=(
-                        run.total_tokens / run.total_tasks if run.total_tasks else 0.0
-                    ),
-                    avg_llm_invocation_count=(
-                        run.total_llm_invocation_count / run.total_tasks
-                        if run.total_tasks
-                        else 0.0
-                    ),
-                    avg_cpu_time_sec=(
-                        run.total_execution_time_sec / run.total_tasks
-                        if run.total_tasks
-                        else 0.0
-                    ),
-                    best_run=run.is_best_run,
-                    metadata=TaskMetadata(tags=run_tags),
-                )
-            )
-
-        return run_infos
+        return runs
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error fetching runs for agent instance '{agent_checksum}': {e}")
         raise HTTPException(
             status_code=500, detail=f"Error fetching runs: {str(e)}"
+        ) from e
+
+@app.get("/api/datasets", response_model=list[DatasetInfo])
+async def list_datasets(session: Session = Depends(get_session)) -> list[DatasetInfo]:
+    """
+    List all datasets that have been created in the database.
+
+    Each dataset is identified by its logical `dataset_id` (e.g. "loop_corpus")
+    which corresponds to the JSONL field, along with optional description and
+    creation time.
+    """
+    try:
+        return list_datasets_from_db(session)
+    except Exception as e:
+        logger.error("Error fetching datasets: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching datasets: {str(e)}"
+        ) from e
+
+
+@app.get(
+    "/api/{dataset_id}/agents/classes",
+    response_model=list[AgentClassSummary],
+)
+async def list_agent_classes_for_dataset(
+    dataset_id: str,
+    session: Session = Depends(get_session),
+) -> list[AgentClassSummary]:
+    """
+    List all agent classes that have at least one run for the given dataset.
+
+    The dataset is identified by its logical `dataset_id` (e.g. "loop_corpus"),
+    matching the `dataset_id` field in the ingested JSONL.
+
+    Args:
+        dataset_id: Logical dataset identifier
+
+    Returns:
+        List of AgentClassSummary objects for agent classes in this dataset
+    """
+    try:
+        result = get_agents_for_dataset_from_db(session, dataset_id)
+
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset '{dataset_id}' not found",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching agent classes for dataset '%s': %s",
+            dataset_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching agent classes for dataset '{dataset_id}': {str(e)}",
+        ) from e
+
+
+@app.get(
+    "/api/{dataset_id}/agents/instances",
+    response_model=list[AgentInstanceSummary],
+)
+async def list_agent_instances_for_dataset(
+    dataset_id: str,
+    session: Session = Depends(get_session),
+) -> list[AgentInstanceSummary]:
+    """
+    List all agent instances that have at least one run for the given dataset.
+
+    The dataset is identified by its logical `dataset_id` (e.g. "loop_corpus"),
+    matching the `dataset_id` field in the ingested JSONL.
+
+    Args:
+        dataset_id: Logical dataset identifier
+
+    Returns:
+        List of AgentInstanceSummary objects for agent instances in this dataset
+    """
+    try:
+        result = get_agent_instances_for_dataset_from_db(session, dataset_id)
+
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset '{dataset_id}' not found",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching agent instances for dataset '%s': %s",
+            dataset_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching agent instances for dataset '{dataset_id}': {str(e)}",
+        ) from e
+
+
+@app.get(
+    "/api/{dataset_id}/agents/class/{agent_cls_checksum}/instances",
+    response_model=list[AgentInstanceSummary],
+)
+async def list_instances_for_class_in_dataset(
+    dataset_id: str,
+    agent_cls_checksum: str,
+    session: Session = Depends(get_session),
+) -> list[AgentInstanceSummary]:
+    """
+    List all agent instances for a specific agent class within a specific dataset.
+
+    Args:
+        dataset_id: Logical dataset identifier (e.g. "loop_corpus")
+        agent_cls_checksum: Checksum of the agent class
+
+    Returns:
+        List of AgentInstanceSummary objects for instances of the class in this dataset
+    """
+    try:
+        instances = get_instances_for_class_in_dataset_from_db(
+            session, agent_cls_checksum, dataset_id
+        )
+
+        if instances is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset '{dataset_id}' not found",
+            )
+
+        if not instances and not agent_class_exists(session, agent_cls_checksum):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent class with checksum '{agent_cls_checksum}' not found",
+            )
+
+        return instances
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching instances for class '%s' in dataset '%s': %s",
+            agent_cls_checksum,
+            dataset_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching instances for class '{agent_cls_checksum}' in dataset '{dataset_id}': {str(e)}",
         ) from e
 
 
@@ -498,86 +656,24 @@ async def list_runs_by_agent_instance_for_dataset(
     Returns:
         List of RunInfo objects for the specified agent instance in the dataset.
     """
-    from backend.dal import _get_dataset_name_for_run, _get_tags_for_run, compute_score
-    from backend.models import TaskMetadata
-
     try:
-        agent_instance = session.exec(
-            select(AgentProvenance).where(
-                AgentProvenance.agent_checksum == agent_checksum
-            )
-        ).first()
+        runs = get_runs_by_agent_instance_and_dataset_from_db(
+            session, agent_checksum, dataset_id
+        )
 
-        if not agent_instance_exists(session, agent_checksum):
-            raise HTTPException(
-                status_code=404,
-                detail=f"Agent instance with checksum '{agent_checksum}' not found",
-            )
-
-        dataset = session.exec(
-            select(Dataset).where(Dataset.name == dataset_id)
-        ).first()
-        if dataset is None:
+        if runs is None:
+            # Dataset not found
             raise HTTPException(
                 status_code=404, detail=f"Dataset '{dataset_id}' not found"
             )
 
-        # Get all runs for this instance in this dataset
-        runs = session.exec(
-            select(Run)
-            .where(Run.agent_checksum == agent_checksum, Run.dataset_id == dataset.id)
-            .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
-        ).all()
-
-        agent_instance = session.exec(
-            select(AgentProvenance).where(
-                AgentProvenance.agent_checksum == agent_checksum
-            )
-        ).first()
-
-        if agent_instance is None:
+        if not runs and not agent_instance_exists(session, agent_checksum):
             raise HTTPException(
                 status_code=404,
                 detail=f"Agent instance with checksum '{agent_checksum}' not found",
             )
 
-        run_infos: list[RunInfo] = []
-
-        for run in runs:
-            run_tags = _get_tags_for_run(session, run.id)
-            dataset_name = _get_dataset_name_for_run(session, run)
-
-            run_infos.append(
-                RunInfo(
-                    run_id=str(run.id),
-                    agent_cls_checksum=agent_instance.cls_checksum,
-                    agent_checksum=agent_checksum,
-                    timestamp_utc=run.timestamp_utc.isoformat(),
-                    dataset_id=dataset_name,
-                    total_tasks=run.total_tasks,
-                    success_count=run.success_count,
-                    failure_count=run.failure_count,
-                    success_rate=run.success_rate,
-                    score=compute_score(run),
-                    avg_total_tokens=(
-                        run.total_tokens / run.total_tasks if run.total_tasks else 0.0
-                    ),
-                    avg_llm_invocation_count=(
-                        run.total_llm_invocation_count / run.total_tasks
-                        if run.total_tasks
-                        else 0.0
-                    ),
-                    avg_cpu_time_sec=(
-                        run.total_execution_time_sec / run.total_tasks
-                        if run.total_tasks
-                        else 0.0
-                    ),
-                    best_run=run.is_best_run,
-                    metadata=TaskMetadata(tags=run_tags),
-                )
-            )
-
-        return run_infos
+        return runs
     except HTTPException:
         raise
     except Exception as e:
@@ -702,71 +798,6 @@ async def list_tags(session: Session = Depends(get_session)) -> TagsResponse:
         ) from e
 
 
-@app.get("/api/datasets", response_model=list[DatasetInfo])
-async def list_datasets(session: Session = Depends(get_session)) -> list[DatasetInfo]:
-    """
-    List all datasets that have been created in the database.
-
-    Each dataset is identified by its logical `dataset_id` (e.g. "loop_corpus")
-    which corresponds to the JSONL field, along with optional description and
-    creation time.
-    """
-    try:
-        return list_datasets_from_db(session)
-    except Exception as e:
-        logger.error("Error fetching datasets: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching datasets: {str(e)}"
-        ) from e
-
-
-@app.get(
-    "/api/{dataset_id}/agents",
-    response_model=DatasetAgentsResponse | DatasetAgentInstancesResponse,
-)
-async def list_agents_for_dataset(
-    dataset_id: str,
-    view: str = Query(default="class", description="View type: 'class' or 'instance'"),
-    session: Session = Depends(get_session),
-) -> DatasetAgentsResponse | DatasetAgentInstancesResponse:
-    """
-    List all agent classes or instances that have at least one run for the given dataset.
-
-    The dataset is identified by its logical `dataset_id` (e.g. "loop_corpus"),
-    matching the `dataset_id` field in the ingested JSONL.
-
-    Args:
-        dataset_id: Logical dataset identifier
-        view: Either 'class' for class-level aggregation or 'instance' for instance-level
-
-    Returns:
-        DatasetAgentsResponse (for class view) or DatasetAgentInstancesResponse (for instance view)
-    """
-    try:
-        if view == "instance":
-            result: DatasetAgentsResponse | DatasetAgentInstancesResponse | None = (
-                get_agent_instances_for_dataset_from_db(session, dataset_id)
-            )
-        else:
-            result = get_agents_for_dataset_from_db(session, dataset_id)
-
-        if result is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Dataset '{dataset_id}' not found",
-            )
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            "Error fetching agents for dataset '%s': %s", dataset_id, e, exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error fetching agents for dataset '{dataset_id}': {str(e)}",
-        ) from e
-
 
 @app.get("/api/observability/logs/raw", response_model=ObservabilityLogsResponse)
 async def get_observability_logs_raw(
@@ -864,98 +895,90 @@ async def get_observability_logs(
             status_code=500, detail=f"Error fetching log labels: {str(e)}"
         ) from e
 
+# If agent class and agent instacne summary have provenance we might not need them here
+# @app.get(
+#     "/api/agents/class/{cls_checksum}/provenance", response_model=AgentClassProvenance
+# )
+# async def get_agent_class_provenance(
+#     cls_checksum: str, session: Session = Depends(get_session)
+# ) -> AgentClassProvenance:
+#     """
+#     Get agent class provenance by checksum.
 
-@app.get(
-    "/api/agents/class/{cls_checksum}/provenance", response_model=AgentClassProvenance
-)
-async def get_agent_class_provenance(
-    cls_checksum: str, session: Session = Depends(get_session)
-) -> AgentClassProvenance:
-    """
-    Get agent class provenance by checksum.
+#     Args:
+#         cls_checksum: The agent class checksum
 
-    Args:
-        cls_checksum: The agent class checksum
+#     Returns:
+#         AgentClassProvenance object containing class name and provenance data
 
-    Returns:
-        AgentClassProvenance object containing class name and provenance data
+#     Raises:
+#         HTTPException: If the agent class is not found
+#     """
+#     try:
+#         agent_class = get_agent_class_provenance_from_db(session, cls_checksum)
 
-    Raises:
-        HTTPException: If the agent class is not found
-    """
-    try:
-        agent_class = session.exec(
-            select(AgentClassProvenanceDB).where(
-                AgentClassProvenanceDB.cls_checksum == cls_checksum
-            )
-        ).first()
+#         if agent_class is None:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail=f"Agent class with checksum '{cls_checksum}' not found",
+#             )
 
-        if agent_class is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Agent class with checksum '{cls_checksum}' not found",
-            )
-
-        return AgentClassProvenance(
-            cls_checksum=agent_class.cls_checksum,
-            cls_name=agent_class.cls_name,
-            cls_provenance=agent_class.cls_provenance,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching agent class provenance: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching agent class provenance: {str(e)}"
-        ) from e
+#         return AgentClassProvenance(
+#             cls_checksum=agent_class.cls_checksum,
+#             cls_name=agent_class.cls_name,
+#             cls_provenance=agent_class.cls_provenance,
+#         )
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Error fetching agent class provenance: {e}", exc_info=True)
+#         raise HTTPException(
+#             status_code=500, detail=f"Error fetching agent class provenance: {str(e)}"
+#         ) from e
 
 
-@app.get(
-    "/api/agents/instance/{agent_checksum}/provenance",
-    response_model=AgentInstanceProvenance,
-)
-async def get_agent_provenance(
-    agent_checksum: str, session: Session = Depends(get_session)
-) -> AgentInstanceProvenance:
-    """
-    Get agent instance provenance by checksum.
+# @app.get(
+#     "/api/agents/instance/{agent_checksum}/provenance",
+#     response_model=AgentInstanceProvenance,
+# )
+# async def get_agent_provenance(
+#     agent_checksum: str, session: Session = Depends(get_session)
+# ) -> AgentInstanceProvenance:
+#     """
+#     Get agent instance provenance by checksum.
 
-    Args:
-        agent_checksum: The agent instance checksum
+#     Args:
+#         agent_checksum: The agent instance checksum
 
-    Returns:
-        AgentInstanceProvenance object containing instance name and provenance data
+#     Returns:
+#         AgentInstanceProvenance object containing instance name and provenance data
 
-    Raises:
-        HTTPException: If the agent instance is not found
-    """
-    try:
-        agent_instance = session.exec(
-            select(AgentProvenance).where(
-                AgentProvenance.agent_checksum == agent_checksum
-            )
-        ).first()
+#     Raises:
+#         HTTPException: If the agent instance is not found
+#     """
+#     try:
+#         agent_instance = get_agent_instance_provenance_from_db(session, agent_checksum)
 
-        if agent_instance is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Agent instance with checksum '{agent_checksum}' not found",
-            )
+#         if agent_instance is None:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail=f"Agent instance with checksum '{agent_checksum}' not found",
+#             )
 
-        return AgentInstanceProvenance(
-            agent_checksum=agent_instance.agent_checksum,
-            cls_checksum=agent_instance.cls_checksum,
-            name=agent_instance.name,
-            provenance=agent_instance.provenance,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching agent instance provenance: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error fetching agent instance provenance: {str(e)}",
-        ) from e
+#         return AgentInstanceProvenance(
+#             agent_checksum=agent_instance.agent_checksum,
+#             cls_checksum=agent_instance.cls_checksum,
+#             name=agent_instance.name,
+#             provenance=agent_instance.provenance,
+#         )
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Error fetching agent instance provenance: {e}", exc_info=True)
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Error fetching agent instance provenance: {str(e)}",
+#         ) from e
 
 
 def start() -> None:

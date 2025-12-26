@@ -120,21 +120,21 @@ class RunInfo(BaseModel):
     metadata: TaskMetadata = TaskMetadata()
 
 
-class AgentClassProvenance(BaseModel):
-    """Agent class provenance data."""
+# class AgentClassProvenance(BaseModel):
+#     """Agent class provenance data."""
 
-    cls_checksum: str
-    cls_name: str
-    cls_provenance: dict[str, Any]
+#     cls_checksum: str
+#     cls_name: str
+#     cls_provenance: dict[str, Any]
 
 
-class AgentInstanceProvenance(BaseModel):
-    """Agent instance provenance data."""
+# class AgentInstanceProvenance(BaseModel):
+#     """Agent instance provenance data."""
 
-    agent_checksum: str
-    cls_checksum: str
-    name: str
-    provenance: dict[str, Any]
+#     agent_checksum: str
+#     cls_checksum: str
+#     name: str
+#     provenance: dict[str, Any]
 
 
 class AgentInstanceSummary(BaseModel):
@@ -149,27 +149,6 @@ class AgentInstanceSummary(BaseModel):
     provenance: dict[str, Any]
     total_runs: int
     best_run: RunInfo | None = None
-
-
-class AgentInstanceWithRuns(BaseModel):
-    """Agent instance with its associated runs.
-
-    Similar to AgentClassWithRuns but for individual instances.
-    """
-
-    agent_checksum: str
-    cls_checksum: str
-    name: str
-    provenance: dict[str, Any]
-    run_ids: list[str]
-    best_run: RunInfo | None = None
-
-
-class DatasetAgentInstancesResponse(BaseModel):
-    """Response containing agent instances for a dataset."""
-
-    dataset_id: str
-    agents: list[AgentInstanceWithRuns]
 
 
 class AgentClassSummary(BaseModel):
@@ -254,26 +233,6 @@ class DatasetInfo(BaseModel):
     dataset_id: str
     description: str | None = None
     created_at: str | None = None
-
-
-class AgentClassWithRuns(BaseModel):
-    """An agent class that has runs for a given dataset, plus its run IDs.
-
-    Replaces AgentWithRuns - combines provenance data with run information.
-    """
-
-    cls_checksum: str
-    cls_name: str
-    cls_provenance: dict[str, Any]
-    run_ids: list[str]
-    best_run: RunInfo | None = None
-
-
-class DatasetAgentsResponse(BaseModel):
-    """Agents and their runs associated with a specific dataset."""
-
-    dataset_id: str
-    agents: list[AgentClassWithRuns]
 
 
 class BestRunUpdateResponse(BaseModel):

@@ -10,7 +10,12 @@ from .proto import (
     WithInstanceProvenance,
     WithProvenance,
 )
-from .provenance import ProvenanceVersionData, WithVersionProvenance
+from .provenance import (
+    ProvenanceClassIdentityData,
+    ProvenanceVersionData,
+    WithClassIdentityProvenance,
+    WithVersionProvenance,
+)
 
 
 class Provenance(
@@ -21,6 +26,7 @@ class Provenance(
         "ProtoClass": WithClassProvenance,
         "ProtoInstance": WithInstanceProvenance,
         # Concrete implementations:
+        "ClassIdentity": WithClassIdentityProvenance,
         "Version": WithVersionProvenance,
     },
 ):
@@ -29,6 +35,8 @@ class Provenance(
     Proto: TypeAlias = WithProvenance  # noqa: UP040
     ProtoClass: TypeAlias = WithClassProvenance  # noqa: UP040
     ProtoInstance: TypeAlias = WithInstanceProvenance  # noqa: UP040
+    ClassIdentity: TypeAlias = WithClassIdentityProvenance  # noqa: UP040
+    ClassIdentityT: TypeAlias = ProvenanceClassIdentityData  # noqa: UP040
     Version: TypeAlias = WithVersionProvenance  # noqa: UP040
     VersionT: TypeAlias = ProvenanceVersionData  # noqa: UP040
 

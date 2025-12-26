@@ -19,7 +19,6 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, delete, select
 
 from backend.db_models import (
-    Agent,
     AgentClassProvenance,
     AgentProvenance,
     Dataset,
@@ -31,11 +30,7 @@ from backend.db_models import (
 )
 from backend.models import (
     AgentClassSummary,
-    AgentClassWithRuns,
     AgentInstanceSummary,
-    AgentInstanceWithRuns,
-    DatasetAgentInstancesResponse,
-    DatasetAgentsResponse,
     DatasetInfo,
     Metrics,
     RunDetailsResponse,
@@ -79,23 +74,6 @@ def _parse_timestamp_utc(ts: str) -> datetime:
 def compute_score(run: Run) -> float:
     weight = math.log(1 + run.total_tasks) if run.total_tasks > 0 else 0.0
     return run.success_rate * weight
-
-
-def get_or_create_agent(
-    session: Session, name: str, description: str | None = None
-) -> Agent:
-    """Fetch an Agent by name or create it if missing."""
-    stmt = select(Agent).where(Agent.name == name)
-    agent = session.exec(stmt).first()
-    if agent:
-        if description and agent.description != description:
-            agent.description = description
-        return agent
-
-    agent = Agent(name=name, description=description)
-    session.add(agent)
-    session.flush()
-    return agent
 
 
 def get_or_create_dataset(
@@ -193,65 +171,74 @@ async def ingest_task_results_for_run(
     # Extract checksums from first task result (all should have same checksums for a run)
     first_tr = task_results[0]
     agent_checksum = first_tr.agent_checksum  # Run belongs to the instance
+    agent_cls_checksum = first_tr.agent_cls_checksum
+    timestamp_utc = _parse_timestamp_utc(first_tr.timestamp_utc)
+    first_task_id = first_tr.task_id # this is used to extract provenance from logs
 
-    # Extract and ingest provenance from observability logs
-    # We'll extract provenance for each unique task in the run
-    unique_task_ids = {tr.task_id for tr in task_results}
-    for task_id in unique_task_ids:
-        try:
-            class_prov, instance_prov = await extract_provenance_from_logs_async(
-                session, run_id_str, task_id
-            )
+    # Extract and ingest provenance from observability logs.
+    #
+    # For a given run, the agent instance/class checksums are identical across all
+    # TaskResults, so we do not need to query logs for every task in the run.
+    # We use the first task's timestamp as `estimated_time` to narrow the Loki
+    # query window without consulting the DB (which is not yet populated during
+    # ingestion).
+    try:
+        class_prov, instance_prov = await extract_provenance_from_logs_async(
+            run_id_str, first_task_id, estimated_time=timestamp_utc
+        )
 
-            # Ingest class provenance
-            for cls_checksum, prov_data in class_prov.items():
-                try:
-                    ingest_agent_class_provenance(
-                        session,
-                        cls_checksum=cls_checksum,
-                        cls_name=prov_data["cls_name"],
-                        cls_provenance=prov_data["cls_provenance"],
-                    )
-                except ValueError as e:
-                    # Collision detected - log and continue
-                    # The existing record will be used
+        # Ingest class provenance
+        for cls_checksum, prov_data in class_prov.items():
+            try:
+                ingest_agent_class_provenance(
+                    session,
+                    cls_checksum=cls_checksum,
+                    cls_name=prov_data["cls_name"],
+                    cls_provenance=prov_data["cls_provenance"],
+                )
+            except ValueError as e:
+                # Collision detected - log and continue
+                # The existing record will be used
+                import logging
+
+                logging.getLogger(__name__).warning("Provenance collision: %s", e)
+
+        # Ingest instance provenance
+        for agent_checksum_val, prov_data in instance_prov.items():
+            try:
+                # Extract cls_checksum from provenance data (logged in task_runner)
+                cls_checksum = prov_data.get("cls_checksum", "")
+                if not cls_checksum:
+                    # This handles cases where class provenance was logged but instance wasn't
                     import logging
 
-                    logging.getLogger(__name__).warning(f"Provenance collision: {e}")
-
-            # Ingest instance provenance
-            for agent_checksum_val, prov_data in instance_prov.items():
-                try:
-                    # Extract cls_checksum from provenance data (logged in task_runner)
-                    cls_checksum = prov_data.get("cls_checksum", "")
-                    if not cls_checksum:
-                        # Fallback: try to get from class_prov if we have it
-                        # This handles cases where class provenance was logged but instance wasn't
-                        import logging
-
-                        logging.getLogger(__name__).warning(
-                            f"Missing cls_checksum in AgentProvenance for {agent_checksum_val}"
-                        )
-
-                    ingest_agent_provenance(
-                        session,
-                        agent_checksum=agent_checksum_val,
-                        cls_checksum=cls_checksum,
-                        name=prov_data["name"],
-                        provenance=prov_data["provenance"],
+                    logging.getLogger(__name__).warning(
+                        "Missing cls_checksum in AgentProvenance for %s",
+                        agent_checksum_val,
                     )
-                except ValueError as e:
-                    # Collision detected - log and continue
-                    import logging
 
-                    logging.getLogger(__name__).warning(f"Provenance collision: {e}")
-        except Exception as e:
-            # Log error but continue with ingestion
-            import logging
+                ingest_agent_provenance(
+                    session,
+                    agent_checksum=agent_checksum_val,
+                    cls_checksum=cls_checksum,
+                    name=prov_data["name"],
+                    provenance=prov_data["provenance"],
+                )
+            except ValueError as e:
+                # Collision detected - log and continue
+                import logging
 
-            logging.getLogger(__name__).warning(
-                f"Error extracting provenance for run_id={run_id_str}, task_id={task_id}: {e}"
-            )
+                logging.getLogger(__name__).warning("Provenance collision: %s", e)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Log error but continue with ingestion
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Error extracting provenance for run_id=%s, task_id=%s: %s",
+            run_id_str,
+            first_task_id,
+            e,
+        )
 
     # Fallback: Create minimal provenance records from TaskResult data if extraction failed
     # This ensures AgentProvenance records exist even when observability logs aren't available
@@ -300,6 +287,7 @@ async def ingest_task_results_for_run(
         run = Run(
             id=run_uuid,
             agent_checksum=agent_checksum,  # Run belongs to the instance
+            agent_cls_checksum=agent_cls_checksum,
             dataset_id=dataset.id,
             timestamp_utc=earliest_ts,
             source_file_name=source_file_name,
@@ -309,6 +297,7 @@ async def ingest_task_results_for_run(
     else:
         # Update basic fields on re-ingestion
         run.agent_checksum = agent_checksum
+        run.agent_cls_checksum = agent_cls_checksum
         run.dataset_id = dataset.id
         if source_file_name:
             run.source_file_name = source_file_name
@@ -356,22 +345,10 @@ async def ingest_task_results_for_run(
             total_output_tokens += tc.output_tokens
             total_execution_time_sec += ru.execution_time_sec
 
-        # Get cls_checksum from the instance for the optional FK
-        agent_instance = session.exec(
-            select(AgentProvenance).where(
-                AgentProvenance.agent_checksum == tr.agent_checksum
-            )
-        ).first()
-        task_cls_checksum: str | None = (
-            agent_instance.cls_checksum if agent_instance else None
-        )
-
         run_result = TaskResultDB(
             run_id=run.id,
             task_id=task.id,
             dataset_id=dataset.id,
-            agent_checksum=tr.agent_checksum,  # Primary FK to instance
-            agent_cls_checksum=task_cls_checksum,  # Optional FK to class (for convenience/performance)
             timestamp_utc=ts_utc,
             status=tr.status,
             metrics=metrics_dict,
@@ -426,17 +403,16 @@ async def ingest_task_results(
 
     Returns basic statistics about the ingestion.
     """
-    # Group by (run_id, agent_cls_checksum)
-    grouped: dict[tuple[str, str], list[TaskResult]] = defaultdict(list)
+    # Group by run_id. Agent checksums are expected to be run-level invariants.
+    grouped: dict[str, list[TaskResult]] = defaultdict(list)
     total_tasks = 0
 
     for tr in task_results:
-        key = (tr.run_id, tr.agent_cls_checksum)
-        grouped[key].append(tr)
+        grouped[tr.run_id].append(tr)
         total_tasks += 1
 
     runs_ingested = 0
-    for (run_id, _agent_cls_checksum), group in grouped.items():
+    for run_id, group in grouped.items():
         await ingest_task_results_for_run(
             session=session,
             run_id_str=run_id,
@@ -510,23 +486,15 @@ def list_agents_from_db(session: Session) -> list[AgentClassSummary]:
     """
     List all agent classes with their total run counts and best run information.
 
-    Groups by cls_checksum through the instance relationship (Run -> AgentProvenance -> AgentClassProvenance).
+    Uses the direct FK from Run.agent_cls_checksum to AgentClassProvenance.
     """
-    # Load all runs joined with agent instance and class provenance
+    # Load all runs joined directly with agent class provenance
     rows = session.exec(
-        select(Run, AgentProvenance, AgentClassProvenance)
-        .join(
-            AgentProvenance,
-            cast(
-                ColumnElement[bool],
-                Run.agent_checksum == AgentProvenance.agent_checksum,
-            ),
-        )
-        .join(
+        select(Run, AgentClassProvenance).join(
             AgentClassProvenance,
             cast(
                 ColumnElement[bool],
-                AgentProvenance.cls_checksum == AgentClassProvenance.cls_checksum,
+                Run.agent_cls_checksum == AgentClassProvenance.cls_checksum,
             ),
         )
     ).all()
@@ -535,12 +503,13 @@ def list_agents_from_db(session: Session) -> list[AgentClassSummary]:
     grouped: dict[str, list[Run]] = {}
     agent_class_by_checksum: dict[str, AgentClassProvenance] = {}
 
-    for run, _agent_instance, agent_class in rows:
+    for run, agent_class in rows:
         agent_class_by_checksum[agent_class.cls_checksum] = agent_class
         grouped.setdefault(agent_class.cls_checksum, []).append(run)
 
     agent_summaries: list[AgentClassSummary] = []
 
+    # Computing the Best Run for each agent class
     for cls_checksum, runs in sorted(grouped.items(), key=lambda x: x[0]):
         total_runs = len(runs)
         agent_class = agent_class_by_checksum[cls_checksum]
@@ -670,7 +639,7 @@ def get_runs_by_agent_from_db(
     """
     Get all runs for a specific agent class, sorted by timestamp (most recent first).
 
-    Returns all instance runs where the instance's cls_checksum matches.
+    Uses the direct FK from Run.agent_cls_checksum to filter runs.
     """
     agent_class = session.exec(
         select(AgentClassProvenance).where(
@@ -680,20 +649,11 @@ def get_runs_by_agent_from_db(
     if agent_class is None:
         return []
 
-    # Get all runs for instances with this class checksum
+    # Get all runs directly by agent_cls_checksum
     runs = session.exec(
         select(Run)
-        .join(
-            AgentProvenance,
-            cast(
-                ColumnElement[bool],
-                Run.agent_checksum == AgentProvenance.agent_checksum,
-            ),
-        )
         .where(
-            cast(
-                ColumnElement[bool], AgentProvenance.cls_checksum == agent_cls_checksum
-            )
+            cast(ColumnElement[bool], Run.agent_cls_checksum == agent_cls_checksum)
         )
         .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
     ).all()
@@ -703,11 +663,7 @@ def get_runs_by_agent_from_db(
     for run in runs:
         run_tags = _get_tags_for_run(session, run.id)
         dataset_name = _get_dataset_name_for_run(session, run)
-        # Get agent checksum from first task result
-        run_task_result = session.exec(
-            select(TaskResultDB).where(TaskResultDB.run_id == run.id).limit(1)
-        ).first()
-        agent_checksum = run_task_result.agent_checksum if run_task_result else ""
+        agent_checksum = run.agent_checksum
 
         run_infos.append(
             RunInfo(
@@ -749,7 +705,7 @@ def get_runs_by_agent_and_dataset_from_db(
     Get all runs for a specific agent class within a specific dataset, sorted by
     timestamp (most recent first).
 
-    Returns all instance runs where the instance's cls_checksum matches.
+    Uses the direct FK from Run.agent_cls_checksum to filter runs.
     """
     agent_class = session.exec(
         select(AgentClassProvenance).where(
@@ -766,23 +722,14 @@ def get_runs_by_agent_and_dataset_from_db(
         # distinguish it from "no runs yet".
         return None
 
-    # Get all runs for instances with this class checksum in this dataset
+    # Get all runs directly by agent_cls_checksum and dataset
     runs = session.exec(
         select(Run)
-        .join(
-            AgentProvenance,
-            cast(
-                ColumnElement[bool],
-                Run.agent_checksum == AgentProvenance.agent_checksum,
-            ),
-        )
         .where(
-            cast(
-                ColumnElement[bool], AgentProvenance.cls_checksum == agent_cls_checksum
-            ),
+            cast(ColumnElement[bool], Run.agent_cls_checksum == agent_cls_checksum),
             cast(ColumnElement[bool], Run.dataset_id == dataset.id),
         )
-        .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]  # type: ignore[arg-type]
+        .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
     ).all()
 
     run_infos: list[RunInfo] = []
@@ -790,11 +737,7 @@ def get_runs_by_agent_and_dataset_from_db(
     for run in runs:
         run_tags = _get_tags_for_run(session, run.id)
         dataset_name = _get_dataset_name_for_run(session, run)
-        # Get agent checksum from first task result
-        run_task_result = session.exec(
-            select(TaskResultDB).where(TaskResultDB.run_id == run.id).limit(1)
-        ).first()
-        agent_checksum = run_task_result.agent_checksum if run_task_result else ""
+        agent_checksum = run.agent_checksum
 
         run_infos.append(
             RunInfo(
@@ -847,16 +790,19 @@ def get_run_details_from_db(
         if run is None:
             continue
 
-        # Get agent checksum from run (run belongs to instance)
         agent_checksum = run.agent_checksum
 
-        # Get agent class checksum from the instance
+        # Prefer the run-level class checksum (new schema); fall back to the
+        # instance's cls_checksum for older runs.
         agent_instance = session.exec(
             select(AgentProvenance).where(
                 AgentProvenance.agent_checksum == agent_checksum
             )
         ).first()
-        agent_cls_checksum = agent_instance.cls_checksum if agent_instance else ""
+        agent_cls_checksum = (
+            run.agent_cls_checksum
+            or (agent_instance.cls_checksum if agent_instance else "")
+        )
 
         task_results_db = session.exec(
             select(TaskResultDB)
@@ -903,8 +849,8 @@ def get_run_details_from_db(
                     task_id=tr_db.task_id,
                     dataset_id=dataset_name,
                     timestamp_utc=tr_db.timestamp_utc.isoformat(),
-                    agent_cls_checksum=tr_db.agent_cls_checksum or agent_cls_checksum,
-                    agent_checksum=tr_db.agent_checksum,
+                    agent_cls_checksum=agent_cls_checksum,
+                    agent_checksum=agent_checksum,
                     status=tr_db.status,
                     metrics=metrics,
                     metadata=metadata,
@@ -971,6 +917,100 @@ def list_datasets_from_db(session: Session) -> list[DatasetInfo]:
             )
         )
     return result
+
+
+def get_instances_for_class_from_db(
+    session: Session, cls_checksum: str
+) -> list[AgentInstanceSummary] | None:
+    """
+    Get all agent instances for a specific agent class.
+
+    Args:
+        cls_checksum: The agent class checksum to filter by.
+
+    Returns:
+        List of AgentInstanceSummary objects for instances of that class,
+        or None if the class does not exist.
+    """
+    # Check if the class exists
+    agent_class = session.exec(
+        select(AgentClassProvenance).where(
+            AgentClassProvenance.cls_checksum == cls_checksum
+        )
+    ).first()
+    if agent_class is None:
+        return None
+
+    # Get all instances for this class
+    instances = session.exec(
+        select(AgentProvenance).where(AgentProvenance.cls_checksum == cls_checksum)
+    ).all()
+
+    if not instances:
+        return []
+
+    # For each instance, get runs and compute best run
+    instance_summaries: list[AgentInstanceSummary] = []
+
+    for agent_instance in instances:
+        runs = session.exec(
+            select(Run).where(Run.agent_checksum == agent_instance.agent_checksum)
+        ).all()
+
+        total_runs = len(runs)
+
+        # Find best run
+        best_run_obj: Run | None = next((r for r in runs if r.is_best_run), None)
+        if best_run_obj is None and runs:
+            best_run_obj = max(runs, key=compute_score)
+
+        best_run_info: RunInfo | None = None
+        if best_run_obj is not None:
+            best_run_tags = _get_tags_for_run(session, best_run_obj.id)
+            best_run_dataset_name = _get_dataset_name_for_run(session, best_run_obj)
+
+            best_run_info = RunInfo(
+                run_id=str(best_run_obj.id),
+                agent_cls_checksum=cls_checksum,
+                agent_checksum=agent_instance.agent_checksum,
+                timestamp_utc=best_run_obj.timestamp_utc.isoformat(),
+                dataset_id=best_run_dataset_name,
+                total_tasks=best_run_obj.total_tasks,
+                success_count=best_run_obj.success_count,
+                failure_count=best_run_obj.failure_count,
+                success_rate=best_run_obj.success_rate,
+                score=compute_score(best_run_obj),
+                avg_total_tokens=(
+                    best_run_obj.total_tokens / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                avg_llm_invocation_count=(
+                    best_run_obj.total_llm_invocation_count / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                avg_cpu_time_sec=(
+                    best_run_obj.total_execution_time_sec / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                best_run=best_run_obj.is_best_run,
+                metadata=TaskMetadata(tags=best_run_tags),
+            )
+
+        instance_summaries.append(
+            AgentInstanceSummary(
+                agent_checksum=agent_instance.agent_checksum,
+                cls_checksum=cls_checksum,
+                name=agent_instance.name,
+                provenance=agent_instance.provenance,
+                total_runs=total_runs,
+                best_run=best_run_info,
+            )
+        )
+
+    return instance_summaries
 
 
 def list_agent_instances_from_db(session: Session) -> list[AgentInstanceSummary]:
@@ -1060,22 +1100,38 @@ def list_agent_instances_from_db(session: Session) -> list[AgentInstanceSummary]
     return instance_summaries
 
 
-def get_agents_for_dataset_from_db(
-    session: Session, dataset_id: str
-) -> DatasetAgentsResponse | None:
+def get_instances_for_class_in_dataset_from_db(
+    session: Session, cls_checksum: str, dataset_id: str
+) -> list[AgentInstanceSummary] | None:
     """
-    Get all agents that have at least one run for the given dataset.
+    Get all agent instances for a specific agent class within a specific dataset.
 
-    The dataset is identified by its logical identifier (Dataset.name), which
-    corresponds to the JSONL `dataset_id` field (e.g. "loop_corpus").
+    Args:
+        cls_checksum: The agent class checksum to filter by.
+        dataset_id: The logical dataset identifier (e.g. "loop_corpus").
+
+    Returns:
+        List of AgentInstanceSummary objects for instances of that class in that dataset,
+        or None if the dataset does not exist.
+        Returns empty list if the class exists but has no instances with runs in this dataset.
     """
+    # Check if the dataset exists
     dataset = session.exec(select(Dataset).where(Dataset.name == dataset_id)).first()
     if dataset is None:
         return None
 
-    # Load all runs for this dataset joined with agent instance and class provenance
+    # Check if the class exists
+    agent_class = session.exec(
+        select(AgentClassProvenance).where(
+            AgentClassProvenance.cls_checksum == cls_checksum
+        )
+    ).first()
+    if agent_class is None:
+        return []
+
+    # Get all runs for instances of this class in this dataset
     rows = session.exec(
-        select(Run, AgentProvenance, AgentClassProvenance)
+        select(Run, AgentProvenance)
         .join(
             AgentProvenance,
             cast(
@@ -1083,38 +1139,30 @@ def get_agents_for_dataset_from_db(
                 Run.agent_checksum == AgentProvenance.agent_checksum,
             ),
         )
-        .join(
-            AgentClassProvenance,
-            cast(
-                ColumnElement[bool],
-                AgentProvenance.cls_checksum == AgentClassProvenance.cls_checksum,
-            ),
+        .where(
+            cast(ColumnElement[bool], AgentProvenance.cls_checksum == cls_checksum),
+            cast(ColumnElement[bool], Run.dataset_id == dataset.id),
         )
-        .where(cast(ColumnElement[bool], Run.dataset_id == dataset.id))
     ).all()
 
     if not rows:
-        # Dataset exists but currently has no runs; return empty structure.
-        return DatasetAgentsResponse(dataset_id=dataset.name, agents=[])
+        return []
 
-    # Group runs by agent class checksum
-    agents_runs: dict[str, list[Run]] = {}
-    agent_class_by_checksum: dict[str, AgentClassProvenance] = {}
-    for run, _agent_instance, agent_class in rows:
-        agents_runs.setdefault(agent_class.cls_checksum, []).append(run)
-        agent_class_by_checksum[agent_class.cls_checksum] = agent_class
+    # Group runs by agent instance checksum
+    grouped: dict[str, list[Run]] = {}
+    agent_instance_by_checksum: dict[str, AgentProvenance] = {}
 
-    agents: list[AgentClassWithRuns] = []
+    for run, agent_instance in rows:
+        agent_instance_by_checksum[agent_instance.agent_checksum] = agent_instance
+        grouped.setdefault(agent_instance.agent_checksum, []).append(run)
 
-    for cls_checksum, runs in sorted(agents_runs.items(), key=lambda x: x[0]):
-        agent_class = agent_class_by_checksum[cls_checksum]
-        # Collect all run_ids for this agent class within the dataset
-        run_ids = sorted(str(run.id) for run in runs)
+    instance_summaries: list[AgentInstanceSummary] = []
 
-        # Prefer the run explicitly marked as best in the database, if any.
-        # This flag is global per agent; if the best run lives in another
-        # dataset, there may be no flagged run in this subset, in which case
-        # we fall back to the highest-scoring run for this dataset only.
+    for agent_checksum, runs in sorted(grouped.items(), key=lambda x: x[0]):
+        total_runs = len(runs)
+        agent_instance = agent_instance_by_checksum[agent_checksum]
+
+        # Find best run
         best_run_obj: Run | None = next((r for r in runs if r.is_best_run), None)
         if best_run_obj is None and runs:
             best_run_obj = max(runs, key=compute_score)
@@ -1123,15 +1171,6 @@ def get_agents_for_dataset_from_db(
         if best_run_obj is not None:
             best_run_tags = _get_tags_for_run(session, best_run_obj.id)
             best_run_dataset_name = _get_dataset_name_for_run(session, best_run_obj)
-            # Get agent checksum from first task result
-            best_run_task_result = session.exec(
-                select(TaskResultDB)
-                .where(TaskResultDB.run_id == best_run_obj.id)
-                .limit(1)
-            ).first()
-            agent_checksum = (
-                best_run_task_result.agent_checksum if best_run_task_result else ""
-            )
 
             best_run_info = RunInfo(
                 run_id=str(best_run_obj.id),
@@ -1163,22 +1202,125 @@ def get_agents_for_dataset_from_db(
                 metadata=TaskMetadata(tags=best_run_tags),
             )
 
-        agents.append(
-            AgentClassWithRuns(
+        instance_summaries.append(
+            AgentInstanceSummary(
+                agent_checksum=agent_checksum,
                 cls_checksum=cls_checksum,
-                cls_name=agent_class.cls_name,
-                cls_provenance=agent_class.cls_provenance,
-                run_ids=run_ids,
+                name=agent_instance.name,
+                provenance=agent_instance.provenance,
+                total_runs=total_runs,
                 best_run=best_run_info,
             )
         )
 
-    return DatasetAgentsResponse(dataset_id=dataset.name, agents=agents)
+    return instance_summaries
+
+
+def get_agents_for_dataset_from_db(
+    session: Session, dataset_id: str
+) -> list[AgentClassSummary] | None:
+    """
+    Get all agent classes that have at least one run for the given dataset.
+
+    The dataset is identified by its logical identifier (Dataset.name), which
+    corresponds to the JSONL `dataset_id` field (e.g. "loop_corpus").
+
+    Uses the direct FK from Run.agent_cls_checksum to AgentClassProvenance.
+    """
+    dataset = session.exec(select(Dataset).where(Dataset.name == dataset_id)).first()
+    if dataset is None:
+        return None
+
+    # Load all runs for this dataset joined directly with agent class provenance
+    rows = session.exec(
+        select(Run, AgentClassProvenance)
+        .join(
+            AgentClassProvenance,
+            cast(
+                ColumnElement[bool],
+                Run.agent_cls_checksum == AgentClassProvenance.cls_checksum,
+            ),
+        )
+        .where(cast(ColumnElement[bool], Run.dataset_id == dataset.id))
+    ).all()
+
+    if not rows:
+        # Dataset exists but currently has no runs; return empty list.
+        return []
+
+    # Group runs by agent class checksum
+    agents_runs: dict[str, list[Run]] = {}
+    agent_class_by_checksum: dict[str, AgentClassProvenance] = {}
+    for run, agent_class in rows:
+        agents_runs.setdefault(agent_class.cls_checksum, []).append(run)
+        agent_class_by_checksum[agent_class.cls_checksum] = agent_class
+
+    agent_summaries: list[AgentClassSummary] = []
+
+    for cls_checksum, runs in sorted(agents_runs.items(), key=lambda x: x[0]):
+        agent_class = agent_class_by_checksum[cls_checksum]
+        total_runs = len(runs)
+
+        # Prefer the run explicitly marked as best in the database, if any.
+        # This flag is global per agent; if the best run lives in another
+        # dataset, there may be no flagged run in this subset, in which case
+        # we fall back to the highest-scoring run for this dataset only.
+        best_run_obj: Run | None = next((r for r in runs if r.is_best_run), None)
+        if best_run_obj is None and runs:
+            best_run_obj = max(runs, key=compute_score)
+
+        best_run_info: RunInfo | None = None
+        if best_run_obj is not None:
+            best_run_tags = _get_tags_for_run(session, best_run_obj.id)
+            best_run_dataset_name = _get_dataset_name_for_run(session, best_run_obj)
+            agent_checksum = best_run_obj.agent_checksum
+
+            best_run_info = RunInfo(
+                run_id=str(best_run_obj.id),
+                agent_cls_checksum=cls_checksum,
+                agent_checksum=agent_checksum,
+                timestamp_utc=best_run_obj.timestamp_utc.isoformat(),
+                dataset_id=best_run_dataset_name,
+                total_tasks=best_run_obj.total_tasks,
+                success_count=best_run_obj.success_count,
+                failure_count=best_run_obj.failure_count,
+                success_rate=best_run_obj.success_rate,
+                score=compute_score(best_run_obj),
+                avg_total_tokens=(
+                    best_run_obj.total_tokens / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                avg_llm_invocation_count=(
+                    best_run_obj.total_llm_invocation_count / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                avg_cpu_time_sec=(
+                    best_run_obj.total_execution_time_sec / best_run_obj.total_tasks
+                    if best_run_obj.total_tasks
+                    else 0.0
+                ),
+                best_run=best_run_obj.is_best_run,
+                metadata=TaskMetadata(tags=best_run_tags),
+            )
+
+        agent_summaries.append(
+            AgentClassSummary(
+                cls_checksum=cls_checksum,
+                cls_name=agent_class.cls_name,
+                cls_provenance=agent_class.cls_provenance,
+                total_runs=total_runs,
+                best_run=best_run_info,
+            )
+        )
+
+    return agent_summaries
 
 
 def get_agent_instances_for_dataset_from_db(
     session: Session, dataset_id: str
-) -> DatasetAgentInstancesResponse | None:
+) -> list[AgentInstanceSummary] | None:
     """
     Get all agent instances that have at least one run for the given dataset.
 
@@ -1203,8 +1345,8 @@ def get_agent_instances_for_dataset_from_db(
     ).all()
 
     if not rows:
-        # Dataset exists but currently has no runs; return empty structure.
-        return DatasetAgentInstancesResponse(dataset_id=dataset.name, agents=[])
+        # Dataset exists but currently has no runs; return empty list.
+        return []
 
     # Group runs by agent instance checksum
     agents_runs: dict[str, list[Run]] = {}
@@ -1213,11 +1355,11 @@ def get_agent_instances_for_dataset_from_db(
         agents_runs.setdefault(agent_instance.agent_checksum, []).append(run)
         agent_instance_by_checksum[agent_instance.agent_checksum] = agent_instance
 
-    agent_list: list[AgentInstanceWithRuns] = []
+    instance_summaries: list[AgentInstanceSummary] = []
 
     for agent_checksum, runs in sorted(agents_runs.items(), key=lambda x: x[0]):
         agent_instance = agent_instance_by_checksum[agent_checksum]
-        run_ids = [str(r.id) for r in runs]
+        total_runs = len(runs)
 
         # Find best run
         best_run_obj: Run | None = next((r for r in runs if r.is_best_run), None)
@@ -1259,18 +1401,18 @@ def get_agent_instances_for_dataset_from_db(
                 metadata=TaskMetadata(tags=best_run_tags),
             )
 
-        agent_list.append(
-            AgentInstanceWithRuns(
+        instance_summaries.append(
+            AgentInstanceSummary(
                 agent_checksum=agent_checksum,
                 cls_checksum=agent_instance.cls_checksum,
                 name=agent_instance.name,
                 provenance=agent_instance.provenance,
-                run_ids=run_ids,
+                total_runs=total_runs,
                 best_run=best_run_info,
             )
         )
 
-    return DatasetAgentInstancesResponse(dataset_id=dataset.name, agents=agent_list)
+    return instance_summaries
 
 
 def set_best_run_flag_for_run(session: Session, run_id: str, best_run: bool) -> bool:
@@ -1301,6 +1443,125 @@ def set_best_run_flag_for_run(session: Session, run_id: str, best_run: bool) -> 
     # Update the best-run flag
     run.is_best_run = best_run
     return run.is_best_run
+
+
+def get_agent_class_provenance_from_db(
+    session: Session, cls_checksum: str
+) -> AgentClassProvenance | None:
+    """
+    Fetch an AgentClassProvenance record by its checksum.
+
+    Args:
+        session: Database session.
+        cls_checksum: The agent class checksum to look up.
+
+    Returns:
+        The AgentClassProvenance record if found, None otherwise.
+    """
+    return session.exec(
+        select(AgentClassProvenance).where(
+            AgentClassProvenance.cls_checksum == cls_checksum
+        )
+    ).first()
+
+
+def get_agent_instance_provenance_from_db(
+    session: Session, agent_checksum: str
+) -> AgentProvenance | None:
+    """
+    Fetch an AgentProvenance (instance) record by its checksum.
+
+    Args:
+        session: Database session.
+        agent_checksum: The agent instance checksum to look up.
+
+    Returns:
+        The AgentProvenance record if found, None otherwise.
+    """
+    return session.exec(
+        select(AgentProvenance).where(
+            AgentProvenance.agent_checksum == agent_checksum
+        )
+    ).first()
+
+
+def get_runs_by_agent_instance_and_dataset_from_db(
+    session: Session, agent_checksum: str, dataset_id: str
+) -> list[RunInfo] | None:
+    """
+    Get all runs for a specific agent instance within a specific dataset,
+    sorted by timestamp (most recent first).
+
+    Args:
+        session: Database session.
+        agent_checksum: Checksum of the agent instance.
+        dataset_id: Logical dataset identifier (e.g. "loop_corpus").
+
+    Returns:
+        List of RunInfo objects for the specified agent instance in the dataset,
+        or None if the dataset does not exist.
+    """
+    agent_instance = session.exec(
+        select(AgentProvenance).where(
+            AgentProvenance.agent_checksum == agent_checksum
+        )
+    ).first()
+
+    if agent_instance is None:
+        return []
+
+    dataset = session.exec(
+        select(Dataset).where(Dataset.name == dataset_id)
+    ).first()
+
+    if dataset is None:
+        # Dataset does not exist; signal this with None so the caller can
+        # distinguish it from "no runs yet".
+        return None
+
+    runs = session.exec(
+        select(Run)
+        .where(Run.agent_checksum == agent_checksum, Run.dataset_id == dataset.id)
+        .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
+    ).all()
+
+    run_infos: list[RunInfo] = []
+
+    for run in runs:
+        run_tags = _get_tags_for_run(session, run.id)
+        dataset_name = _get_dataset_name_for_run(session, run)
+
+        run_infos.append(
+            RunInfo(
+                run_id=str(run.id),
+                agent_cls_checksum=agent_instance.cls_checksum,
+                agent_checksum=agent_checksum,
+                timestamp_utc=run.timestamp_utc.isoformat(),
+                dataset_id=dataset_name,
+                total_tasks=run.total_tasks,
+                success_count=run.success_count,
+                failure_count=run.failure_count,
+                success_rate=run.success_rate,
+                score=compute_score(run),
+                avg_total_tokens=(
+                    run.total_tokens / run.total_tasks if run.total_tasks else 0.0
+                ),
+                avg_llm_invocation_count=(
+                    run.total_llm_invocation_count / run.total_tasks
+                    if run.total_tasks
+                    else 0.0
+                ),
+                avg_cpu_time_sec=(
+                    run.total_execution_time_sec / run.total_tasks
+                    if run.total_tasks
+                    else 0.0
+                ),
+                best_run=run.is_best_run,
+                metadata=TaskMetadata(tags=run_tags),
+            )
+        )
+
+    return run_infos
 
 
 def get_estimated_time_for_task_from_db(

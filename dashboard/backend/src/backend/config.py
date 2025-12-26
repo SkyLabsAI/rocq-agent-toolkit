@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Server configuration
     server_host: str = "0.0.0.0"
-    server_port: int = 8000
+    server_port: int = 8010
     log_level: str = "info"
 
     # AWS S3 Configuration (Optional - for backup)
