@@ -59,15 +59,11 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
     }
   }, [pinnedRuns, agentName]);
 
-  const handleRunClick = (run: AgentRun) => {
-    const runWithAgentName: Run = {
-      ...run,
-      agent_name: agentName,
-    };
-    setSelectedRun(runWithAgentName);
+  const handleRunClick = (run: Run) => {
+    setSelectedRun(run);
   };
 
-  const toggleOnPin = (run: AgentRun) => {
+  const toggleOnPin = (run: Run) => {
     setPinnedRuns(prev => {
       const newSet = new Set(prev);
       if (newSet.has(run.run_id)) {
@@ -129,30 +125,24 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
             ...runDetails
               .filter(run => !pinnedRuns.has(run.run_id))
               .sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
-          ].map((run, index, arr) => {
-            const runWithAgentName: Run = {
-              ...run,
-              agent_name: agentName,
-            };
-            return (
-              <RunRow
-                run={runWithAgentName}
-                isLatest={isLatestRun(run, arr)}
-                tags={run.metadata?.tags}
-                totalTasks={run.total_tasks}
-                successCount={run.success_count}
-                failureCount={run.failure_count}
-                timestamp={run.timestamp_utc}
-                isSelected={selectedRuns.includes(run.run_id)}
-                onToggleExpansion={handleRunClick}
-                onToggleSelection={toggleRunSelection}
-                onPin={toggleOnPin}
-                isPinned={pinnedRuns.has(run.run_id)}
-                key={run.run_id}
-                index={index}
-              />
-            );
-          })}
+          ].map((run, index, arr) => (
+            <RunRow
+              run={run}
+              isLatest={isLatestRun(run, arr)}
+              tags={run.metadata?.tags}
+              totalTasks={run.total_tasks}
+              successCount={run.success_count}
+              failureCount={run.failure_count}
+              timestamp={run.timestamp_utc}
+              isSelected={selectedRuns.includes(run.run_id)}
+              onToggleExpansion={handleRunClick}
+              onToggleSelection={toggleRunSelection}
+              onPin={toggleOnPin}
+              isPinned={pinnedRuns.has(run.run_id)}
+              key={run.run_id}
+              index={index}
+            />
+          ))}
       </div>
 
       <StickyCompareBar

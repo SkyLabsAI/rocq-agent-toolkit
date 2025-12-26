@@ -53,7 +53,7 @@ export const ComparePageContent: React.FC = () => {
   }, [runIds]);
 
   const stats = useMemo(
-    () => selectedRuns.map(run => computeRunStats(run)),
+    () => selectedRuns.map(computeRunStats),
     [selectedRuns]
   );
 
@@ -120,7 +120,7 @@ export const ComparePageContent: React.FC = () => {
             const cell =
               taskMap[comparisonModalTaskId]?.[selectedRuns.indexOf(run)];
             return {
-              label: run.run_id,
+              label: run.agent_name,
               task: cell?.task || null,
             };
           })}

@@ -90,29 +90,18 @@ export const AgentCompareContent: React.FC = () => {
     fetchBestRuns();
   }, [agentNames, agentData, agentDataLoading]);
 
-  // Create a mapping from run_id to agent_name
-  const runIdToAgentName = useMemo(() => {
-    const map = new Map<string, string>();
-    agentData.forEach(agent => {
-      if (agent.best_run?.run_id && agent.agent_name) {
-        map.set(agent.best_run.run_id, agent.agent_name);
-      }
-    });
-    return map;
-  }, [agentData]);
-
   const stats = useMemo(
     () =>
       bestRuns.map(run => {
-        const agentName = runIdToAgentName.get(run.run_id) || run.run_id;
-        const runStats = computeRunStats(run, agentName);
+        const runStats = computeRunStats(run);
         // For agent comparison, use agent name as both id and name for display
         return {
           ...runStats,
-          id: agentName, // Use agent name for removal
+          id: run.agent_name, // Use agent name for removal
+          name: run.agent_name, // Use agent name for display
         };
       }),
-    [bestRuns, runIdToAgentName]
+    [bestRuns]
   );
 
   // Create task map with only common tasks across all runs
@@ -164,10 +153,7 @@ export const AgentCompareContent: React.FC = () => {
     setSelectedTaskId(prev => (prev === taskId ? null : taskId));
   };
 
-  const taskRows = useMemo(
-    () => transformRunsToTaskRows(bestRuns, runIdToAgentName),
-    [bestRuns, runIdToAgentName]
-  );
+  const taskRows = useMemo(() => transformRunsToTaskRows(bestRuns), [bestRuns]);
 
   if (loading) {
     return (
@@ -219,10 +205,7 @@ export const AgentCompareContent: React.FC = () => {
             <strong>Note:</strong> Only showing {allTaskIds.length} tasks that
             are common across all {bestRuns.length} runs.
             {bestRuns
-              .map(run => {
-                const agentName = runIdToAgentName.get(run.run_id) || run.run_id;
-                return `${agentName}: ${run.tasks.length} tasks`;
-              })
+              .map(run => `${run.agent_name}: ${run.tasks.length} tasks`)
               .join(', ')}
           </p>
         </div>
@@ -237,9 +220,8 @@ export const AgentCompareContent: React.FC = () => {
           items={bestRuns.map(run => {
             const cell =
               taskMap[comparisonModalTaskId]?.[bestRuns.indexOf(run)];
-            const agentName = runIdToAgentName.get(run.run_id) || run.run_id;
             return {
-              label: `${agentName} (${run.run_id})`,
+              label: `${run.agent_name} (${run.run_id})`,
               task: cell?.task || null,
             };
           })}

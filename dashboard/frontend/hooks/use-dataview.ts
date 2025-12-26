@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { getBenchmarkAgents, getBenchmarks } from '@/services/dataservice';
-import {
-  type AgentClassSummary,
-  type AgentSummary,
-  type Benchmark,
-} from '@/types/types';
+import { type AgentSummary, type Benchmark } from '@/types/types';
 
 export const useBenchmarks = () => {
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
@@ -49,14 +45,7 @@ export const useBenchmarkAgents = (benchmarkId: string | null) => {
       setLoading(true);
       setError(null);
       const data = await getBenchmarkAgents(id);
-      // Convert AgentClassSummary[] to AgentSummary[] by adding agent_name
-      const agentsWithName: AgentSummary[] = data.agents.map(
-        (agent: AgentClassSummary) => ({
-          ...agent,
-          agent_name: agent.cls_name,
-        })
-      );
-      setAgents(agentsWithName);
+      setAgents(data.agents);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to fetch benchmark agents'

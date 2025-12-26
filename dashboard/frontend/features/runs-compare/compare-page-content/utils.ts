@@ -2,15 +2,12 @@ import { type RunDetailsResponse, type TaskOutput } from '@/types/types';
 
 import { type RunStats } from '..';
 
-export const computeRunStats = (
-  run: RunDetailsResponse,
-  nameOverride?: string
-): RunStats => {
+export const computeRunStats = (run: RunDetailsResponse): RunStats => {
   const tasks = run.tasks.length;
   const successes = run.tasks.filter(t => t.status === 'Success').length;
   return {
     id: run.run_id,
-    name: nameOverride || run.run_id,
+    name: run.agent_name,
     tasks,
     successRate: tasks === 0 ? 0 : successes / tasks,
     totalLlmCalls: run.tasks.reduce(
@@ -41,8 +38,7 @@ export interface TaskRowData {
 }
 
 export function transformRunsToTaskRows(
-  runs: RunDetailsResponse[],
-  runIdToNameMap?: Map<string, string>
+  runs: RunDetailsResponse[]
 ): TaskRowData[] {
   const taskMap = new Map<string, TaskRowData>();
 
@@ -64,11 +60,9 @@ export function transformRunsToTaskRows(
 
       // 3. Place the data in the correct slot (runIndex)
       const row = taskMap.get(taskId)!;
-      const runName =
-        runIdToNameMap?.get(run.run_id) || run.run_id;
       row.cells[runIndex] = {
         runId: run.run_id,
-        runName,
+        runName: run.agent_name || run.run_id,
         task: task,
       };
     });
