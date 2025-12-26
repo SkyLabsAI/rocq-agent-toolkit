@@ -63,4 +63,3 @@ def test_class_and_instance_checksums_match():
     """Test that class and instance checksums match for agents without instance-specific provenance."""
     agent = SampleAgent()
     assert SampleAgent.cls_checksum() == agent.checksum()
-
