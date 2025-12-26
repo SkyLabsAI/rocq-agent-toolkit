@@ -421,6 +421,7 @@ async def list_runs_by_agent_instance(
             status_code=500, detail=f"Error fetching runs: {str(e)}"
         ) from e
 
+
 @app.get("/api/datasets", response_model=list[DatasetInfo])
 async def list_datasets(session: Session = Depends(get_session)) -> list[DatasetInfo]:
     """
@@ -798,7 +799,6 @@ async def list_tags(session: Session = Depends(get_session)) -> TagsResponse:
         ) from e
 
 
-
 @app.get("/api/observability/logs/raw", response_model=ObservabilityLogsResponse)
 async def get_observability_logs_raw(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
@@ -894,6 +894,7 @@ async def get_observability_logs(
         raise HTTPException(
             status_code=500, detail=f"Error fetching log labels: {str(e)}"
         ) from e
+
 
 # If agent class and agent instacne summary have provenance we might not need them here
 # @app.get(

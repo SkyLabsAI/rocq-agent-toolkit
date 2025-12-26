@@ -48,7 +48,7 @@ def test_ingest_happy_path_persists_and_list_agents_and_runs(
     assert body["runs_ingested"] == 1
     assert body["tasks_ingested"] == 2
 
-    agents = client.get("/api/agents")
+    agents = client.get("/api/agents/class")
     assert agents.status_code == 200
     agents_data = agents.json()
     assert len(agents_data) > 0

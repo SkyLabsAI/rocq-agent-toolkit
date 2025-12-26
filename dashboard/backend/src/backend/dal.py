@@ -173,7 +173,7 @@ async def ingest_task_results_for_run(
     agent_checksum = first_tr.agent_checksum  # Run belongs to the instance
     agent_cls_checksum = first_tr.agent_cls_checksum
     timestamp_utc = _parse_timestamp_utc(first_tr.timestamp_utc)
-    first_task_id = first_tr.task_id # this is used to extract provenance from logs
+    first_task_id = first_tr.task_id  # this is used to extract provenance from logs
 
     # Extract and ingest provenance from observability logs.
     #
@@ -652,9 +652,7 @@ def get_runs_by_agent_from_db(
     # Get all runs directly by agent_cls_checksum
     runs = session.exec(
         select(Run)
-        .where(
-            cast(ColumnElement[bool], Run.agent_cls_checksum == agent_cls_checksum)
-        )
+        .where(cast(ColumnElement[bool], Run.agent_cls_checksum == agent_cls_checksum))
         .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
     ).all()
 
@@ -799,9 +797,8 @@ def get_run_details_from_db(
                 AgentProvenance.agent_checksum == agent_checksum
             )
         ).first()
-        agent_cls_checksum = (
-            run.agent_cls_checksum
-            or (agent_instance.cls_checksum if agent_instance else "")
+        agent_cls_checksum = run.agent_cls_checksum or (
+            agent_instance.cls_checksum if agent_instance else ""
         )
 
         task_results_db = session.exec(
@@ -1479,9 +1476,7 @@ def get_agent_instance_provenance_from_db(
         The AgentProvenance record if found, None otherwise.
     """
     return session.exec(
-        select(AgentProvenance).where(
-            AgentProvenance.agent_checksum == agent_checksum
-        )
+        select(AgentProvenance).where(AgentProvenance.agent_checksum == agent_checksum)
     ).first()
 
 
@@ -1502,17 +1497,13 @@ def get_runs_by_agent_instance_and_dataset_from_db(
         or None if the dataset does not exist.
     """
     agent_instance = session.exec(
-        select(AgentProvenance).where(
-            AgentProvenance.agent_checksum == agent_checksum
-        )
+        select(AgentProvenance).where(AgentProvenance.agent_checksum == agent_checksum)
     ).first()
 
     if agent_instance is None:
         return []
 
-    dataset = session.exec(
-        select(Dataset).where(Dataset.name == dataset_id)
-    ).first()
+    dataset = session.exec(select(Dataset).where(Dataset.name == dataset_id)).first()
 
     if dataset is None:
         # Dataset does not exist; signal this with None so the caller can
