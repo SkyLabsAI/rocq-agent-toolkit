@@ -74,7 +74,7 @@ async def extract_provenance_from_logs_async(
                     cls_checksum = log_data.get("cls_checksum")
                     if cls_checksum:
                         cls_name = log_data.get("cls_name", "")
-                        cls_provenance_json = log_data.get("cls_provenance", "{}")
+                        cls_provenance_json = log_data.get("cls_provenance.cls_provenance", "{}")
 
                         # Parse JSON if it's a string
                         if isinstance(cls_provenance_json, str):
@@ -98,7 +98,7 @@ async def extract_provenance_from_logs_async(
                         cls_checksum = log_data.get(
                             "cls_checksum", ""
                         )  # For correlation
-                        provenance_json = log_data.get("provenance", "{}")
+                        provenance_json = log_data.get("provenance.provenance", "{}")
 
                         # Parse JSON if it's a string
                         if isinstance(provenance_json, str):
