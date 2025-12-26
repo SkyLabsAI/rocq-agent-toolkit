@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { Button } from '@/components/base/ui/button';
 import { TagsDisplay } from '@/components/tags-display';
+import VisualizerModal from '@/components/visualizer-modal';
 import { PinIcon } from '@/icons/pin';
 import { PinOutlineIcon } from '@/icons/pin-outline';
 import { type Run } from '@/types/types';
@@ -48,6 +49,7 @@ const RunRow: React.FC<RunRowProps> = ({
   tags,
 }) => {
   const successRate = ((successCount / totalTasks) * 100).toFixed(1);
+  const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
 
   const handleRowClick = () => {
     onToggleExpansion(run);
@@ -58,13 +60,19 @@ const RunRow: React.FC<RunRowProps> = ({
     onToggleSelection(run);
   };
 
+  const handleVisualizeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsVisualizerOpen(true);
+  };
+
   return (
-    <div
-      className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center p-2.5 hover:bg-white/10 transition-colors cursor-pointer rounded-lg overflow-hidden bg-elevation-surface-raised'
-      style={{ top: 78 * index + 0 }}
-      onClick={handleRowClick}
-      data-testid={`run-row-${run.run_id}`}
-    >
+    <>
+      <div
+        className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto_auto] gap-4 items-center p-2.5 hover:bg-white/10 transition-colors cursor-pointer rounded-lg overflow-hidden bg-elevation-surface-raised'
+        style={{ top: 78 * index + 0 }}
+        onClick={handleRowClick}
+        data-testid={`run-row-${run.run_id}`}
+      >
       {/* Run ID column with chevron */}
       <div className='flex gap-2 items-center min-w-0'>
         <div className='flex items-center gap-2 min-w-0'>
@@ -137,7 +145,27 @@ const RunRow: React.FC<RunRowProps> = ({
           {isSelected ? 'Deselect' : 'Add to Compare'}
         </Button>
       </div>
+
+      {/* Visualize button column */}
+      <div className='flex justify-end'>
+        <Button
+          variant='default'
+          onClick={handleVisualizeClick}
+          className='text-sm whitespace-nowrap text-[14px] font-normal'
+          data-testid={`run-visualize-button-${run.run_id}`}
+        >
+          Visualize
+        </Button>
+      </div>
     </div>
+
+      <VisualizerModal
+        isOpen={isVisualizerOpen}
+        onClose={() => setIsVisualizerOpen(false)}
+        runId={run.run_id}
+        runTimestampUtc={timestamp}
+      />
+    </>
   );
 };
 

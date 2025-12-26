@@ -78,7 +78,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   return (
     <>
       <div
-        className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20 space-y-4 relative '
+        className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto_auto] gap-4 items-center mt-4 mb-3  z-20 space-y-4 relative '
         data-testid='runs-header'
       >
         <div className='flex gap-1 items-center'>
@@ -104,6 +104,11 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
           <p className='font-noto-sans font-normal leading-5 text-text-disabled text-sm'>
             Timestamp
           </p>
+        </div>
+
+        <div>
+          {/* Invisible button to match content row button dimensions */}
+          <div className='bg-transparent relative rounded border border-transparent opacity-0 pointer-events-none'></div>
         </div>
 
         <div>
