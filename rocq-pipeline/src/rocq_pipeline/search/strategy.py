@@ -104,7 +104,7 @@ class CompositeStrategy[T_co](Strategy[T_co]):
 
                 # Lennart:  pr SOMETIMES is of dynamic type 'str', in which case the subsequent -pr
                 # operation raises the dynamic error 'bad operand type for unary - : str'
-                if type(pr) == str:
+                if isinstance(pr, str):
                     pr = float(pr)
                 heapq.heappush(queue, (-pr, i, act, gen))
 
@@ -120,7 +120,7 @@ class CompositeStrategy[T_co](Strategy[T_co]):
 
                 # Lennart:  pr SOMETIMES is of dynamic type 'str', in which case the subsequent -pr
                 # operation raises the dynamic error 'bad operand type for unary - : str'
-                if type(pr) == str:
+                if isinstance(pr, str):
                     pr = float(pr)
                 yield (-pr, act)
                 push_next(i, gen)
