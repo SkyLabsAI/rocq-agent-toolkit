@@ -53,6 +53,20 @@ class BrickGoal(IrisGoal):
         }
         return res
 
+    def regex_brick_spat_concl_nonwp(
+        self,
+        s: str,
+        search: bool = False,
+        ignore_leading_whitespace: bool = True,
+        re_flags: re.RegexFlag = re.DOTALL,
+    ) -> re.Match[str] | None:
+        return self.regex_iris_spat_concl(
+            re.escape(s),
+            search=search,
+            ignore_leading_whitespace=ignore_leading_whitespace,
+            re_flags=re_flags,
+        )
+
     def is_loop_goal(self) -> bool:
         """
         Checks if the spatial conclusion contains a loop AST node.
@@ -67,13 +81,13 @@ class BrickGoal(IrisGoal):
         """
         Checks if the spatial conclusion starts with a 'branch.stmt' node.
         """
-        return bool(self.regex_brick_spat_concl_wp(r"branch\.stmt", kind="S"))
+        return bool(self.regex_brick_spat_concl_nonwp(r"branch.stmt"))
 
     def is_branch_expr_goal(self) -> bool:
         """
         Checks if the spatial conclusion contains a 'branch.expr' node.
         """
-        return bool(self.regex_brick_spat_concl_wp(r"branch\.expr", kind="E"))
+        return bool(self.regex_brick_spat_concl_nonwp(r"branch.expr"))
 
     def is_conditional_goal(self) -> bool:
         """
