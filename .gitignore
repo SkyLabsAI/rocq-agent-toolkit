@@ -12,3 +12,6 @@ __pycache__
 # direnv
 .envrc
 .direnv
+
+# env files
+.env

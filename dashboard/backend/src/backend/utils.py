@@ -14,7 +14,6 @@ from backend.models import LogEntry
 
 logger = logging.getLogger(__name__)
 
-
 # Labels to exclude from log entries
 EXCLUDED_LABELS = {
     "code_file_path",
@@ -43,7 +42,13 @@ EXCLUDED_LABELS = {
     "telemetry_sdk_name",
     "telemetry_sdk_version",
     "timestamp",
-    "message",
+    "span_id",
+    "trace_id",
+    "otelSpanID",
+    "otelTraceID",
+    "otelTraceSampled",
+    "otelServiceName",
+    "hostname",
 }
 
 

@@ -218,14 +218,14 @@ def run_task(
         "AgentClassProvenance",
         cls_checksum=agent.cls_checksum(),
         cls_name=agent.cls_name(),
-        cls_provenance={"cls_provenance":class_provenance},
+        cls_provenance={"cls_provenance": class_provenance},
     )
     logger.info(
         "AgentProvenance",
         cls_checksum=agent.cls_checksum(),  # For correlation with class
         checksum=agent.checksum(),
         name=agent.name(),
-        provenance={"provenance":instance_provenance},
+        provenance={"provenance": instance_provenance},
     )
     # TODO: update frontend/backend of dashboard to utilize new checksum/
     return task_result.to_task_output(
