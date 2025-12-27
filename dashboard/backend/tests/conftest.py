@@ -47,6 +47,8 @@ def make_task_result_payload() -> Callable[..., dict]:
         dataset_id: str | None = "ds1",
         timestamp_utc: str = "2025-01-01T00:00:00Z",
         agent_name: str = "agentA",
+        agent_cls_checksum: str = "cls_checksum_test",
+        agent_checksum: str = "agent_checksum_test",
         status: str = "Success",
         tags: dict[str, str] | None = None,
         results: object | None = None,
@@ -67,6 +69,8 @@ def make_task_result_payload() -> Callable[..., dict]:
             "dataset_id": dataset_id,
             "timestamp_utc": timestamp_utc,
             "agent_name": agent_name,
+            "agent_cls_checksum": agent_cls_checksum,
+            "agent_checksum": agent_checksum,
             "status": status,
             "metrics": {
                 "llm_invocation_count": llm_invocation_count,
@@ -117,5 +121,3 @@ def client(engine, monkeypatch) -> Generator[TestClient]:
             yield c
     finally:
         app.dependency_overrides.clear()
-
-

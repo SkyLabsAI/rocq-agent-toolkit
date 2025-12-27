@@ -17,6 +17,7 @@ dependencies = [
     "jmespath>=1.0.1,<2",
     "rocq-doc-manager",
     "observability",
+    "provenance-toolkit",
     "dotenv>=0.9.9",
     "rich>=14.2.0",
     "rich-progress>=0.4.0",
@@ -54,6 +55,7 @@ dev = [
 
 [tool.uv.sources]
 observability = { workspace = true }
+provenance-toolkit = { workspace = true }
 rocq-doc-manager = { workspace = true }
 
 [tool.hatch.build.targets.sdist]

@@ -14,7 +14,7 @@ from .trace import TraceAgent
 logger = logging.getLogger(__name__)
 
 
-class OneShotAgent(TraceAgent):
+class OneShotAgent(TraceAgent, VERSION="1.0.0"):
     """OneShotAgent: Derives from TraceAgent with a restriction on tactic applications (max 1)."""
 
     def __init__(

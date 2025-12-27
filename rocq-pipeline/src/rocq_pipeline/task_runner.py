@@ -208,13 +208,34 @@ def run_task(
     for task_tag in task.tags:
         tags.value.update({f"TASK_{task_tag}": task_tag})
 
+    # TODO: avoid re-logging if we've already logged AgentClassProvenance
+    # or AgentProvenance with this checksum.
+    class_provenance = agent.cls_provenance_json()
+    instance_provenance = agent.provenance_json()
+    # Simply printing the Provenance data make them separate key value pairs in the log.
+    # To keep them together so they are easy to retrieve, we wrap them in a "json".
+    logger.info(
+        "AgentClassProvenance",
+        cls_checksum=agent.cls_checksum(),
+        cls_name=agent.cls_name(),
+        cls_provenance={"cls_provenance": class_provenance},
+    )
+    logger.info(
+        "AgentProvenance",
+        cls_checksum=agent.cls_checksum(),  # For correlation with class
+        checksum=agent.checksum(),
+        name=agent.name(),
+        provenance={"provenance": instance_provenance},
+    )
+    # TODO: update frontend/backend of dashboard to utilize new checksum/
     return task_result.to_task_output(
         run_id=run_id,
         task_kind=task.locator.task_kind(),
         task_id=task_id,
         dataset_id=dataset_id,
         timestamp_utc=timestamp_iso_8601,
-        agent_name=agent.name(),
+        agent_cls_checksum=agent.cls_checksum(),
+        agent_checksum=agent.checksum(),
         trace_id=trace_id,
         metadata=task_output.Metadata(tags=tags),
     )

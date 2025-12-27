@@ -45,7 +45,7 @@ export const useBenchmarkAgents = (benchmarkId: string | null) => {
       setLoading(true);
       setError(null);
       const data = await getBenchmarkAgents(id);
-      setAgents(data.agents);
+      setAgents(data);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to fetch benchmark agents'

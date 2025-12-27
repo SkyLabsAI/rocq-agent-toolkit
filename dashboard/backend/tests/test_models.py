@@ -11,6 +11,8 @@ def _base_payload(*, results):
         "dataset_id": "ds1",
         "timestamp_utc": "2025-01-01T00:00:00Z",
         "agent_name": "agentA",
+        "agent_cls_checksum": "cls_checksum_test",
+        "agent_checksum": "agent_checksum_test",
         "status": "Success",
         "metrics": {
             "llm_invocation_count": 1,
@@ -26,6 +28,7 @@ def _base_payload(*, results):
         "results": results,
         "failure_reason": None,
     }
+
 
 # Different support for the results field in the TaskResult model.
 # Is for the backward compatibility with the old format.
@@ -45,5 +48,3 @@ def test_taskresult_results_wraps_non_json_string_for_backcompat():
     payload = _base_payload(results="some old string format")
     tr = TaskResult.model_validate(payload)
     assert tr.results == {"side_effects": {"doc_interaction": "some old string format"}}
-
-

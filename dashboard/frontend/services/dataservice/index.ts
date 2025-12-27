@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import {
+  type AgentInstanceSummary,
   type AgentRun,
   type AgentSummary,
   type Benchmark,
@@ -81,23 +82,26 @@ const generateMockTaskOutput = (
 };
 
 // Real API functions
-const getDataReal: () => Promise<AgentSummary[]> = async () => {
-  const response = await axios.get(`${config.DATA_API}/agents`);
+const getAgentClassDataReal: () => Promise<AgentSummary[]> = async () => {
+  const response = await axios.get(`${config.DATA_API}/agents/class`);
 
   return response.data as AgentSummary[];
 };
 
 // Mock API functions
-const getDataMock: () => Promise<AgentSummary[]> = async () => {
+const getAgentClassDataMock: () => Promise<AgentSummary[]> = async () => {
   await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
 
   const mockData: AgentSummary[] = [
     {
-      agent_name: 'agentA',
+      cls_name: 'agentA',
+      cls_checksum: 'checksum-1',
+      cls_provenance: {},
       total_runs: 10,
       best_run: {
         run_id: 'run_agentA_001',
-        agent_name: 'agentA',
+        agent_cls_checksum: 'checksum-1',
+        agent_checksum: 'checksum-1',
         timestamp_utc: new Date(Date.now() - 2 * 86400000).toISOString(),
         total_tasks: 6,
         success_count: 5,
@@ -116,11 +120,14 @@ const getDataMock: () => Promise<AgentSummary[]> = async () => {
       },
     },
     {
-      agent_name: 'agentB',
+      cls_name: 'agentB',
+      cls_checksum: 'checksum-2',
+      cls_provenance: {},
       total_runs: 8,
       best_run: {
         run_id: 'run_agentB_001',
-        agent_name: 'agentB',
+        agent_cls_checksum: 'checksum-2',
+        agent_checksum: 'checksum-2',
         timestamp_utc: new Date(Date.now() - 3 * 86400000).toISOString(),
         total_tasks: 6,
         success_count: 4,
@@ -143,7 +150,119 @@ const getDataMock: () => Promise<AgentSummary[]> = async () => {
   return mockData;
 };
 
-export const getData = USE_MOCK_DATA ? getDataMock : getDataReal;
+export const getAgentClassData = USE_MOCK_DATA
+  ? getAgentClassDataMock
+  : getAgentClassDataReal;
+
+// Get agent instances for a specific agent class
+const getAgentInstancesReal = async (
+  agentClsChecksum: string
+): Promise<AgentInstanceSummary[]> => {
+  const response = await axios.get(
+    `${config.DATA_API}/agents/class/${agentClsChecksum}/instances`
+  );
+  return response.data as AgentInstanceSummary[];
+};
+
+const getAgentInstancesMock = async (
+  agentClsChecksum: string
+): Promise<AgentInstanceSummary[]> => {
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const numInstances = Math.floor(Math.random() * 3) + 2; // 2-5 instances
+  const mockInstances: AgentInstanceSummary[] = [];
+
+  for (let i = 0; i < numInstances; i++) {
+    const totalTasks = Math.floor(Math.random() * 50) + 20;
+    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3));
+
+    mockInstances.push({
+      agent_checksum: `instance-${agentClsChecksum}-${i}`,
+      cls_checksum: agentClsChecksum,
+      name: `Instance ${i + 1}`,
+      provenance: {
+        version: `v${i + 1}.0`,
+        created_at: new Date(
+          Date.now() - Math.random() * 30 * 86400000
+        ).toISOString(),
+      },
+      total_runs: Math.floor(Math.random() * 10) + 3,
+      best_run: {
+        run_id: `run_instance_${i}_001`,
+        agent_cls_checksum: agentClsChecksum,
+        agent_checksum: `instance-${agentClsChecksum}-${i}`,
+        timestamp_utc: new Date(
+          Date.now() - Math.random() * 7 * 86400000
+        ).toISOString(),
+        total_tasks: totalTasks,
+        success_count: successCount,
+        failure_count: totalTasks - successCount,
+        success_rate: successCount / totalTasks,
+        score: 0.8 + Math.random() * 0.2,
+        avg_total_tokens: 4000 + Math.random() * 2000,
+        avg_cpu_time_sec: 8 + Math.random() * 8,
+        avg_llm_invocation_count: 5 + Math.random() * 5,
+        best_run: false,
+        metadata: {
+          tags: {},
+        },
+      },
+    });
+  }
+
+  return mockInstances;
+};
+
+export const getAgentInstances = USE_MOCK_DATA
+  ? getAgentInstancesMock
+  : getAgentInstancesReal;
+
+// Get runs for a specific agent instance
+const getRunsByInstanceReal = async (
+  agentChecksum: string
+): Promise<AgentRun[]> => {
+  const response = await axios.get(
+    `${config.DATA_API}/agents/instance/${agentChecksum}/runs`
+  );
+  return response.data as AgentRun[];
+};
+
+const getRunsByInstanceMock = async (
+  agentChecksum: string
+): Promise<AgentRun[]> => {
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const numRuns = Math.floor(Math.random() * 5) + 3; // 3-8 runs
+  const mockRuns: AgentRun[] = [];
+
+  for (let i = 0; i < numRuns; i++) {
+    const totalTasks = Math.floor(Math.random() * 50) + 20;
+    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3));
+
+    mockRuns.push({
+      run_id: `run_${agentChecksum}_${i.toString().padStart(3, '0')}`,
+      agent_name: `Instance-${agentChecksum}`,
+      timestamp_utc: new Date(
+        Date.now() - Math.random() * 7 * 86400000
+      ).toISOString(),
+      total_tasks: totalTasks,
+      success_count: successCount,
+      failure_count: totalTasks - successCount,
+      dataset_id: `dataset_${(Math.floor(Math.random() * 3) + 1).toString().padStart(3, '0')}`,
+      metadata: {
+        tags: {
+          run_id: `run_${agentChecksum}_${i.toString().padStart(3, '0')}`,
+        },
+      },
+    });
+  }
+
+  return mockRuns;
+};
+
+export const getRunsByInstance = USE_MOCK_DATA
+  ? getRunsByInstanceMock
+  : getRunsByInstanceReal;
 
 const getDetailsReal = async (agentName: string): Promise<AgentRun[]> => {
   const response = await axios.get(
@@ -484,14 +603,14 @@ export type AgentSummaryTemp = {
 export async function fetchAgentSummaries(): Promise<AgentSummaryTemp[]> {
   // 1. Fetch all agents
 
-  const agentsRes = await getData();
+  const agentsRes = await getAgentClassData();
   const agents: AgentSummary[] = agentsRes;
 
   // 2. For each agent, fetch their runs
   const summaries = await Promise.all(
     agents.map(async agent => {
       return {
-        agentName: agent.agent_name,
+        agentName: agent.cls_name,
         totalTasks: agent.best_run?.total_tasks || 0,
         successRate: agent.best_run
           ? agent.best_run.success_count / agent.best_run.total_tasks
@@ -546,7 +665,9 @@ export const getBenchmarks = USE_MOCK_DATA
 const getBenchmarkAgentsReal = async (
   benchmarkId: string
 ): Promise<BenchmarkAgentData> => {
-  const response = await axios.get(`${config.DATA_API}/${benchmarkId}/agents`);
+  const response = await axios.get(
+    `${config.DATA_API}/${benchmarkId}/agents/classes`
+  );
   return response.data as BenchmarkAgentData;
 };
 
@@ -563,11 +684,14 @@ const getBenchmarkAgentsMock = async (
     'LogicSolver',
   ];
   const mockAgents: AgentSummary[] = agents.map((agentName, index) => ({
-    agent_name: agentName,
+    cls_name: agentName,
+    cls_checksum: `checksum-${index + 1}`,
+    cls_provenance: {},
     total_runs: Math.floor(Math.random() * 20) + 5,
     best_run: {
       run_id: `run_${agentName}_best_${benchmarkId}`,
-      agent_name: agentName,
+      agent_cls_checksum: `checksum-${index + 1}`,
+      agent_checksum: `checksum-${index + 1}`,
       timestamp_utc: new Date(
         Date.now() - Math.random() * 7 * 86400000
       ).toISOString(),
@@ -597,19 +721,130 @@ const getBenchmarkAgentsMock = async (
     `Fetched agents for benchmark ${benchmarkId} (MOCK):`,
     mockAgents
   );
-  return {
-    dataset_id: benchmarkId,
-    agents: mockAgents,
-  };
+  return mockAgents;
 };
 
 export const getBenchmarkAgents = USE_MOCK_DATA
   ? getBenchmarkAgentsMock
   : getBenchmarkAgentsReal;
 
+// Get agent instances for a specific agent class within a dataset
+const getDatasetAgentInstancesReal = async (
+  datasetId: string,
+  agentClsChecksum: string
+): Promise<AgentInstanceSummary[]> => {
+  const response = await axios.get(
+    `${config.DATA_API}/${datasetId}/agents/class/${agentClsChecksum}/instances`
+  );
+  return response.data as AgentInstanceSummary[];
+};
+
+const getDatasetAgentInstancesMock = async (
+  datasetId: string,
+  agentClsChecksum: string
+): Promise<AgentInstanceSummary[]> => {
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const numInstances = Math.floor(Math.random() * 3) + 2; // 2-5 instances
+  const mockInstances: AgentInstanceSummary[] = [];
+
+  for (let i = 0; i < numInstances; i++) {
+    const totalTasks = Math.floor(Math.random() * 50) + 20;
+    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3));
+
+    mockInstances.push({
+      agent_checksum: `dataset-${datasetId}-instance-${agentClsChecksum}-${i}`,
+      cls_checksum: agentClsChecksum,
+      name: `Instance ${i + 1}`,
+      provenance: {
+        version: `v${i + 1}.0`,
+        dataset: datasetId,
+        created_at: new Date(
+          Date.now() - Math.random() * 30 * 86400000
+        ).toISOString(),
+      },
+      total_runs: Math.floor(Math.random() * 10) + 3,
+      best_run: {
+        run_id: `run_dataset_${datasetId}_instance_${i}_001`,
+        agent_cls_checksum: agentClsChecksum,
+        agent_checksum: `dataset-${datasetId}-instance-${agentClsChecksum}-${i}`,
+        timestamp_utc: new Date(
+          Date.now() - Math.random() * 7 * 86400000
+        ).toISOString(),
+        dataset_id: datasetId,
+        total_tasks: totalTasks,
+        success_count: successCount,
+        failure_count: totalTasks - successCount,
+        success_rate: successCount / totalTasks,
+        score: 0.8 + Math.random() * 0.2,
+        avg_total_tokens: 4000 + Math.random() * 2000,
+        avg_cpu_time_sec: 8 + Math.random() * 8,
+        avg_llm_invocation_count: 5 + Math.random() * 5,
+        best_run: false,
+        metadata: {
+          tags: {},
+        },
+      },
+    });
+  }
+
+  return mockInstances;
+};
+
+export const getDatasetAgentInstances = USE_MOCK_DATA
+  ? getDatasetAgentInstancesMock
+  : getDatasetAgentInstancesReal;
+
+// Get runs for a specific agent instance within a dataset
+const getDatasetInstanceRunsReal = async (
+  datasetId: string,
+  agentChecksum: string
+): Promise<AgentRun[]> => {
+  const response = await axios.get(
+    `${config.DATA_API}/${datasetId}/agents/instance/${agentChecksum}/runs`
+  );
+  return response.data as AgentRun[];
+};
+
+const getDatasetInstanceRunsMock = async (
+  datasetId: string,
+  agentChecksum: string
+): Promise<AgentRun[]> => {
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const numRuns = Math.floor(Math.random() * 5) + 3; // 3-8 runs
+  const mockRuns: AgentRun[] = [];
+
+  for (let i = 0; i < numRuns; i++) {
+    const totalTasks = Math.floor(Math.random() * 50) + 20;
+    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3));
+
+    mockRuns.push({
+      run_id: `run_dataset_${datasetId}_${agentChecksum}_${i.toString().padStart(3, '0')}`,
+      agent_name: `Instance-${agentChecksum}`,
+      timestamp_utc: new Date(
+        Date.now() - Math.random() * 7 * 86400000
+      ).toISOString(),
+      total_tasks: totalTasks,
+      success_count: successCount,
+      failure_count: totalTasks - successCount,
+      dataset_id: datasetId,
+      metadata: {
+        tags: {
+          run_id: `run_dataset_${datasetId}_${agentChecksum}_${i.toString().padStart(3, '0')}`,
+          dataset: datasetId,
+        },
+      },
+    });
+  }
+
+  return mockRuns;
+};
+
+export const getDatasetInstanceRuns = USE_MOCK_DATA
+  ? getDatasetInstanceRunsMock
+  : getDatasetInstanceRunsReal;
+
 // Types for benchmarks
 
-interface BenchmarkAgentData {
-  dataset_id: string;
-  agents: AgentSummary[];
-}
+type BenchmarkAgentData = AgentSummary[];

@@ -1,6 +1,7 @@
 """
 S3 upload utilities.
 """
+
 import io
 import logging
 
@@ -70,4 +71,3 @@ def upload_bytes_to_s3(
     except Exception as e:
         logger.error("Unexpected error during S3 upload: %s", e)
         return None
-

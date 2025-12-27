@@ -13,7 +13,7 @@ from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
 
 
-class StrategyAgent(ProofAgent):
+class StrategyAgent(ProofAgent, VERSION="0.1.0"):
     """An agent that uses a Strategy to select tactics."""
 
     def __init__(

@@ -60,7 +60,7 @@ export const AgentCompareContent: React.FC = () => {
       try {
         // Find the best runs for selected agents
         const agentsToCompare = agentData.filter(agent =>
-          agentNames.includes(agent.agent_name)
+          agentNames.includes(agent.cls_name)
         );
 
         // Get best run IDs

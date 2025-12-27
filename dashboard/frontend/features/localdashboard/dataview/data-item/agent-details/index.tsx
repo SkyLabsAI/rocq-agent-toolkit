@@ -28,7 +28,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
 }) => {
   const { loading, runDetails, isOpen, toggleDetails } = useDatasetAgentDetails(
     datasetId,
-    agent.agent_name
+    agent.cls_name
   );
 
   return (
@@ -43,10 +43,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
           <div className='flex items-center gap-3'>
             <div className='h-6 w-6 bg-background-information rounded-lg flex items-center justify-center'>
               <span className='text-text-information font-semibold text-sm'>
-                {agent.agent_name.charAt(0).toUpperCase()}
+                {agent.cls_name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className='truncate'>{agent.agent_name}</span>
+            <span className='truncate'>{agent.cls_name}</span>
           </div>
         </td>
         <td className='px-6 py-4 text-text font-medium'>
@@ -119,7 +119,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({
                 <div className='space-y-4'>
                   <AgentRunsView
                     runDetails={runDetails}
-                    agentName={agent.agent_name}
+                    agentName={agent.cls_name}
                     selectedRuns={selectedRuns}
                     toggleRunSelection={toggleRunSelection}
                     clearSelectedRuns={clearSelectedRuns}

@@ -2,7 +2,7 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 
 import {
   fetchAgentSummaries,
-  getData,
+  getAgentClassData,
   getObservabilityLogs,
 } from '@/services/dataservice';
 import { type TaskOutput } from '@/types/types';
@@ -11,7 +11,7 @@ import { useAgents } from './use-agent-summaries';
 
 jest.mock('@/services/dataservice');
 
-const mockGetData = getData as jest.MockedFunction<typeof getData>;
+const mockGetData = getAgentClassData as jest.MockedFunction<typeof getAgentClassData>;
 const mockFetchAgentSummaries = fetchAgentSummaries as jest.MockedFunction<
   typeof fetchAgentSummaries
 >;

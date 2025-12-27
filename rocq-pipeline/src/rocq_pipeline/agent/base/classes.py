@@ -1,6 +1,7 @@
 from typing import Any, override
 
 from observability import get_logger
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.proof_state import ProofState, RocqGoal
@@ -15,7 +16,7 @@ from .dataclasses import (
 logger = get_logger("rocq_agent")
 
 
-class Agent:
+class Agent(Provenance.ClassIdentity, Provenance.Version, VERSION="1.0.0"):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
     def run(self, rdm: RocqCursor) -> TaskResult:
@@ -97,7 +98,7 @@ class AgentBuilder:
 # TODO: integrate proof tree and structured proof states so that
 # task_holes / task_doc_interaction can be defined in a more
 # structured way.
-class ProofAgent(Agent):
+class ProofAgent(Agent, VERSION="1.0.0"):
     """Agents tasked with completing proof obligations."""
 
     def __init__(self, goal_ty_upperbound: type[RocqGoal] = RocqGoal) -> None:

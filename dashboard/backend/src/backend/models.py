@@ -1,6 +1,7 @@
 """
 Pydantic models for API request/response validation.
 """
+
 import json
 from typing import Any
 
@@ -51,16 +52,18 @@ class TaskResult(BaseModel):
     run_id: str
     task_kind: str
     task_id: str
-    dataset_id: str | None = None # Can be None for backward compatibility with older ingestions.
+    dataset_id: str | None = (
+        None  # Can be None for backward compatibility with older ingestions.
+    )
     timestamp_utc: str
-    agent_name: str
+    agent_cls_checksum: str
+    agent_checksum: str
     status: str
     metrics: Metrics
     metadata: TaskMetadata = TaskMetadata()
     # Results can be an arbitrary JSON structure or a plain string.
     results: str | dict[str, Any] | None = None
     failure_reason: list[str] | None = None
-
 
     @field_validator("results", mode="before")
     @classmethod
@@ -91,14 +94,17 @@ class TaskResult(BaseModel):
                 # If parsing fails, return the string as a JSON (backward compatibility)
                 return {"side_effects": {"doc_interaction": v}}
 
-        return {"side_effects": {"doc_interaction": v}} # fallback to the JSON-Dict [str:Any] format
+        return {
+            "side_effects": {"doc_interaction": v}
+        }  # fallback to the JSON-Dict [str:Any] format
 
 
 class RunInfo(BaseModel):
     """Summary information about a run, including derived metrics."""
 
     run_id: str
-    agent_name: str
+    agent_cls_checksum: str
+    agent_checksum: str
     timestamp_utc: str
     dataset_id: str | None = None
     total_tasks: int
@@ -106,7 +112,7 @@ class RunInfo(BaseModel):
     failure_count: int
     # Derived metrics
     success_rate: float = 0.0
-    score: float = 0.0 # Dynamically Computed based on the compute_Score function
+    score: float = 0.0  # Dynamically Computed based on the compute_Score function
     avg_total_tokens: float = 0.0
     avg_llm_invocation_count: float = 0.0
     avg_cpu_time_sec: float = 0.0
@@ -114,10 +120,46 @@ class RunInfo(BaseModel):
     metadata: TaskMetadata = TaskMetadata()
 
 
-class AgentInfo(BaseModel):
-    """Information about an agent plus its best-scoring run."""
+# class AgentClassProvenance(BaseModel):
+#     """Agent class provenance data."""
 
-    agent_name: str
+#     cls_checksum: str
+#     cls_name: str
+#     cls_provenance: dict[str, Any]
+
+
+# class AgentInstanceProvenance(BaseModel):
+#     """Agent instance provenance data."""
+
+#     agent_checksum: str
+#     cls_checksum: str
+#     name: str
+#     provenance: dict[str, Any]
+
+
+class AgentInstanceSummary(BaseModel):
+    """Information about an agent instance plus its best-scoring run.
+
+    Similar to AgentClassSummary but for individual instances.
+    """
+
+    agent_checksum: str
+    cls_checksum: str
+    name: str
+    provenance: dict[str, Any]
+    total_runs: int
+    best_run: RunInfo | None = None
+
+
+class AgentClassSummary(BaseModel):
+    """Information about an agent class plus its best-scoring run.
+
+    Replaces AgentInfo - combines provenance data with aggregate stats.
+    """
+
+    cls_checksum: str
+    cls_name: str
+    cls_provenance: dict[str, Any]
     total_runs: int
     best_run: RunInfo | None = None
 
@@ -126,7 +168,8 @@ class RunDetailsResponse(BaseModel):
     """Response containing complete run details."""
 
     run_id: str
-    agent_name: str
+    agent_cls_checksum: str
+    agent_checksum: str
     total_tasks: int
     tasks: list[TaskResult]
 
@@ -186,25 +229,14 @@ class IngestionResponse(BaseModel):
 
 class DatasetInfo(BaseModel):
     """Summary information about a dataset."""
+
     dataset_id: str
     description: str | None = None
     created_at: str | None = None
 
 
-class AgentWithRuns(BaseModel):
-    """An agent that has runs for a given dataset, plus its run IDs."""
-    agent_name: str
-    run_ids: list[str]
-    best_run: RunInfo | None = None
-
-
-class DatasetAgentsResponse(BaseModel):
-    """Agents and their runs associated with a specific dataset."""
-    dataset_id: str
-    agents: list[AgentWithRuns]
-
-
 class BestRunUpdateResponse(BaseModel):
     """Response for endpoints that toggle the best_run flag on a run."""
+
     run_id: str
     best_run: bool

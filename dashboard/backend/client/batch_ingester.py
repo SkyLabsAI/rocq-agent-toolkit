@@ -41,9 +41,7 @@ def batch_ingest(
         print(f"Ingesting {file_path.name}...", end=" ", flush=True)
         try:
             result = ingest_file(
-                file_path=file_path,
-                base_url=base_url,
-                timeout=timeout
+                file_path=file_path, base_url=base_url, timeout=timeout
             )
 
             # Check logical success from the API response if available
@@ -63,6 +61,7 @@ def batch_ingest(
     print("Batch ingestion complete.")
     print(f"Successful: {success_count}")
     print(f"Failed:     {fail_count}")
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -87,6 +86,7 @@ def _parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def main() -> None:
     args = _parse_args()
     batch_ingest(
@@ -95,6 +95,6 @@ def main() -> None:
         timeout=args.timeout,
     )
 
+
 if __name__ == "__main__":
     main()
-

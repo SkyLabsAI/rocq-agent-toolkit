@@ -21,7 +21,7 @@ const AgentView: React.FC = () => {
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
 
   type SortableKey =
-    | 'agent_name'
+    | 'cls_name'
     | 'success_rate'
     | 'avg_cpu_time_sec'
     | 'avg_total_tokens'
@@ -76,7 +76,7 @@ const AgentView: React.FC = () => {
   // Sort the agents based on sortConfig
   const getSortedAgents = () => {
     const sorted = [...agentData].sort((a, b) =>
-      a.agent_name.localeCompare(b.agent_name)
+      a.cls_name.localeCompare(b.cls_name)
     );
 
     if (!sortConfig) return sorted;
@@ -85,9 +85,9 @@ const AgentView: React.FC = () => {
       let aValue: number | string = 0;
       let bValue: number | string = 0;
 
-      if (sortConfig.key === 'agent_name') {
-        aValue = a.agent_name;
-        bValue = b.agent_name;
+      if (sortConfig.key === 'cls_name') {
+        aValue = a.cls_name;
+        bValue = b.cls_name;
       } else {
         // Get values from best_run
         aValue = a.best_run?.[sortConfig.key] ?? 0;
@@ -136,14 +136,14 @@ const AgentView: React.FC = () => {
                 <td>
                   <button
                     data-testid='sort-by-agent-name'
-                    onClick={() => handleSort('agent_name')}
+                    onClick={() => handleSort('cls_name')}
                     className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
                   >
                     <AgentListIcon className='text-icon-success size-4' />
                     Agents
                     <ChevronUpIcon
                       className={`ml-2 transition-transform ${
-                        sortConfig?.key === 'agent_name'
+                        sortConfig?.key === 'cls_name'
                           ? sortConfig.direction === 'desc'
                             ? 'text-primary-default'
                             : 'rotate-180 text-primary-default'
@@ -226,7 +226,7 @@ const AgentView: React.FC = () => {
                 </td>
               </tr>
               {getSortedAgents().map(agent => (
-                <AgentDetails key={agent.agent_name} agent={agent} />
+                <AgentDetails key={agent.cls_checksum} agent={agent} />
               ))}
             </tbody>
           </table>

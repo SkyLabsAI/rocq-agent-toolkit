@@ -94,12 +94,14 @@ class TaskResult:
 
     def to_task_output(
         self,
+        *,
+        agent_cls_checksum: str,
+        agent_checksum: str,
         run_id: str | None = None,
         task_kind: task_output.TaskKind | None = None,
         task_id: str | None = None,
         dataset_id: str | None = None,
         timestamp_utc: str | None = None,
-        agent_name: str | None = None,
         trace_id: str | None = None,
         metadata: task_output.Metadata | None = None,
     ) -> task_output.TaskOutput:
@@ -122,7 +124,6 @@ class TaskResult:
             or task_id is None
             or dataset_id is None
             or timestamp_utc is None
-            or agent_name is None
         ):
             missing = [
                 k
@@ -131,7 +132,6 @@ class TaskResult:
                     "task_kind": task_kind,
                     "task_id": task_id,
                     "timestamp_utc": timestamp_utc,
-                    "agent_name": agent_name,
                 }.items()
                 if v is None
             ]
@@ -144,7 +144,8 @@ class TaskResult:
             dataset_id=dataset_id,
             trace_id=trace_id,
             timestamp_utc=timestamp_utc,
-            agent_name=agent_name,
+            agent_cls_checksum=agent_cls_checksum,
+            agent_checksum=agent_checksum,
             status=status,
             # TODO: remove `self.metrics` once opentelemetry instrumentation is in place
             metrics=self._metrics,

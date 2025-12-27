@@ -1,5 +1,13 @@
 from backend.dal import ingest_task_results
-from backend.db_models import Agent, Dataset, Run, Tag, Task, TaskResultDB
+from backend.db_models import (
+    AgentClassProvenance,
+    AgentProvenance,
+    Dataset,
+    Run,
+    Tag,
+    Task,
+    TaskResultDB,
+)
 from backend.models import TaskResult
 from sqlmodel import Session, select
 
@@ -8,7 +16,9 @@ def _to_task_result(payload: dict) -> TaskResult:
     return TaskResult.model_validate(payload)
 
 
-def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(db_session: Session, make_task_result_payload):
+async def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(
+    db_session: Session, make_task_result_payload
+):
     run_id = "00000000-0000-0000-0000-000000000010"
 
     payloads = [
@@ -37,13 +47,33 @@ def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(db_session: Ses
         ),
     ]
 
-    stats = ingest_task_results(db_session, [_to_task_result(p) for p in payloads], source_file_name="file.jsonl")
+    stats = await ingest_task_results(
+        db_session,
+        [_to_task_result(p) for p in payloads],
+        source_file_name="file.jsonl",
+    )
     db_session.commit()
 
     assert stats == {"runs_ingested": 1, "tasks_ingested": 2}
 
-    agent = db_session.exec(select(Agent)).one()
-    assert agent.name == "agentA"
+    # Check that agent provenance was created (fallback uses checksum as name)
+    agent_instance = db_session.exec(
+        select(AgentProvenance).where(
+            AgentProvenance.agent_checksum == "agent_checksum_test"
+        )
+    ).first()
+    assert agent_instance is not None
+    # With fallback, name will be the checksum
+    assert agent_instance.agent_checksum == "agent_checksum_test"
+
+    # Check that agent class provenance was created
+    agent_class = db_session.exec(
+        select(AgentClassProvenance).where(
+            AgentClassProvenance.cls_checksum == "cls_checksum_test"
+        )
+    ).first()
+    assert agent_class is not None
+    assert agent_class.cls_checksum == "cls_checksum_test"
 
     dataset = db_session.exec(select(Dataset)).one()
     assert dataset.name == "ds1"
@@ -76,23 +106,33 @@ def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(db_session: Ses
     ]
 
 
-def test_reingest_replaces_task_results_for_same_run(db_session: Session, make_task_result_payload):
+async def test_reingest_replaces_task_results_for_same_run(
+    db_session: Session, make_task_result_payload
+):
     run_id = "00000000-0000-0000-0000-000000000020"
 
     first = [
-        _to_task_result(make_task_result_payload(run_id=run_id, task_id="t1", status="Success")),
-        _to_task_result(make_task_result_payload(run_id=run_id, task_id="t2", status="Failure")),
+        _to_task_result(
+            make_task_result_payload(run_id=run_id, task_id="t1", status="Success")
+        ),
+        _to_task_result(
+            make_task_result_payload(run_id=run_id, task_id="t2", status="Failure")
+        ),
     ]
-    ingest_task_results(db_session, first, source_file_name="first.jsonl")
+    await ingest_task_results(db_session, first, source_file_name="first.jsonl")
     db_session.commit()
 
     assert db_session.exec(select(TaskResultDB)).all()
 
     # Re-ingest same run_id with a different task set; old results should be deleted.
     second = [
-        _to_task_result(make_task_result_payload(run_id=run_id, task_id="t3", status="Success", total_tokens=999)),
+        _to_task_result(
+            make_task_result_payload(
+                run_id=run_id, task_id="t3", status="Success", total_tokens=999
+            )
+        ),
     ]
-    ingest_task_results(db_session, second, source_file_name="second.jsonl")
+    await ingest_task_results(db_session, second, source_file_name="second.jsonl")
     db_session.commit()
 
     results = db_session.exec(select(TaskResultDB).order_by(TaskResultDB.task_id)).all()
@@ -102,5 +142,3 @@ def test_reingest_replaces_task_results_for_same_run(db_session: Session, make_t
     assert run.total_tasks == 1
     assert run.total_tokens == 999
     assert run.source_file_name == "second.jsonl"
-
-
