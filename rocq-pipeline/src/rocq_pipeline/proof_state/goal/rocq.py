@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from rocq_pipeline.proof_state.goal_parts import RocqGoalParts
@@ -36,3 +37,34 @@ class RocqGoal:
 
     def wellformed(self) -> bool:
         return self.parts.wellformed()
+
+    # naming the function re confuses mypy
+    def regex(
+        self,
+        re_pat: str,
+        text: str,
+        search: bool = False,
+        ignore_leading_whitespace: bool = True,
+        re_flags: re.RegexFlag = re.DOTALL,  # Note: default may benefit from including more, e.g. `re.MULTILINE`
+    ) -> re.Match[str] | None:
+        if search:
+            return re.search(re_pat, text, re_flags)
+        else:
+            if ignore_leading_whitespace:
+                re_pat = rf"\s*?{re_pat}"
+            return re.match(re_pat, text, re_flags)
+
+    def regex_rocq_concl(
+        self,
+        re_pat: str,
+        search: bool = False,
+        ignore_leading_whitespace: bool = True,
+        re_flags: re.RegexFlag = re.DOTALL,
+    ) -> re.Match[str] | None:
+        return self.regex(
+            re_pat,
+            self.parts.rocq_concl,
+            search=search,
+            ignore_leading_whitespace=ignore_leading_whitespace,
+            re_flags=re_flags,
+        )

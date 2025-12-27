@@ -8,8 +8,9 @@ from rocq_pipeline.agent import (
     TaskResult,
 )
 from rocq_pipeline.agent.base import ProofAgent
-from rocq_pipeline.agent.proof.strategy import Strategy
 from rocq_pipeline.proof_state import ProofState, RocqGoal
+from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.strategy import Strategy
 
 
 class StrategyAgent(ProofAgent, VERSION="0.1.0"):
@@ -69,11 +70,13 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                     if rem_fuel <= 0:
                         return self.give_up(rc, message=f"out of fuel ({self._fuel})")
                 action_rc = rc.clone()
-                if action.interact(action_rc):
+                try:
+                    action.interact(action_rc)
                     rc = action_rc
                     depth += 1
                     break
-                action_rc.dispose()
+                except Action.Failed:
+                    action_rc.dispose()
             else:
                 # not executed if we see a break
                 return self.give_up(

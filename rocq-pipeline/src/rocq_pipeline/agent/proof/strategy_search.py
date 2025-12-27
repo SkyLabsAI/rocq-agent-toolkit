@@ -7,8 +7,9 @@ from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import TaskResult
 from rocq_pipeline.agent.base.classes import ProofAgent
-from rocq_pipeline.agent.proof.strategy import Strategy
 from rocq_pipeline.proof_state import ProofState
+from rocq_pipeline.search import Action
+from rocq_pipeline.search.strategy import Strategy
 
 
 class SearchAgent(ProofAgent, VERSION="0.1.0"):
@@ -68,12 +69,16 @@ class SearchAgent(ProofAgent, VERSION="0.1.0"):
             # revert. This avoids the creation of a cursor when the action
             # ultimately fails (which is probably common).
             fresh_rc = state.cursor.clone()
-            if not action.interact(fresh_rc):
+            try:
+                result_rc = action.interact(fresh_rc)
+            except Action.Failed:
                 # the action failed, so we discard this
                 fresh_rc.dispose()
                 continue
+            if result_rc != fresh_rc:
+                fresh_rc.dispose()
 
-            pf_state = ProofState(fresh_rc.current_goal())
+            pf_state = ProofState(result_rc.current_goal())
             if pf_state.closed(proof=True):
                 return self.finished(fresh_rc, "done")
 
