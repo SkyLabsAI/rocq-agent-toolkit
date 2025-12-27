@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "provenance_toolkit"
+version = "0.1.0"
+description = "Track granular Python code-provenance & compose with custom data-provenance."
+authors = [
+    { name = "Jasper Haag", email = "jasper@skylabs-ai.com" },
+]
+requires-python = ">=3.13"
+readme = "README.md"
+dependencies = [
+    "semver>=3.0.4",
+]
+
+# TODO: change when publishing as a separate module
+[project.urls]
+Repository = "https://github.com/SkylabsAI/skylabs-fm"
+Issues = "https://github.com/SkylabsAI/skylabs-fm/issues"
+Changelog = "https://github.com/SkylabsAI/skylabs-fm/tree/main/changes"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "black>=23.7.0,<24",
+    "isort>=5.12.0,<6",
+    "flake8>=6.0.0,<7",
+    "mypy>=1.18.2,<2",
+    "pyright>=1.1.407",
+    "ruff>=0.14.4",
+    "taskipy>=1.14.1",
+]
+
+[tool.uv]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/provenance_toolkit"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/provenance_toolkit"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/provenance_toolkit" = "provenance_toolkit"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"provenance_toolkit" = ["py.typed"]
+
+[tool.taskipy.tasks]
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy .; pyright ."
+test_ci = "pytest"
