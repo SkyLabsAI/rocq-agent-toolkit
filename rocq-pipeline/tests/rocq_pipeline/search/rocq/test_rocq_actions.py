@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.rocq.actions import RocqRetryAction, RocqTacticAction
 
@@ -89,9 +88,11 @@ class TestRocqRetryAction:
     def test_fails_after_max_retries(self) -> None:
         """Raises Action.Failed after exhausting retries."""
         cursor = MockRocqCursor()
-        cursor.set_failure("always_fails", "Nope")
+        cursor.set_failure("always_fails", "Specific Rocq Error")
 
-        rectifier = MagicMock(return_value="always_fails")  # Keeps returning same bad tactic
+        rectifier = MagicMock(
+            return_value="always_fails"
+        )  # Keeps returning same bad tactic
 
         action = RocqRetryAction("always_fails", rectifier=rectifier, max_retries=2)
 
@@ -99,13 +100,16 @@ class TestRocqRetryAction:
             action.interact(cursor)
 
         assert "Max retries (2) exceeded" in exc_info.value.message
+        assert "Specific Rocq Error" in exc_info.value.message
         # Original + 2 retries = 3 attempts
         assert len(cursor._commands) == 3
+        # Ensure details contains the Rocq error
+        assert exc_info.value.details.message == "Specific Rocq Error"
 
     def test_fails_when_rectifier_returns_none(self) -> None:
         """Raises Action.Failed if rectifier gives up."""
         cursor = MockRocqCursor()
-        cursor.set_failure("bad.", "Error")
+        cursor.set_failure("bad.", "Original Error")
 
         rectifier = MagicMock(return_value=None)  # Gives up
 
@@ -115,9 +119,11 @@ class TestRocqRetryAction:
             action.interact(cursor)
 
         assert "Could not rectify" in exc_info.value.message
+        assert "Original Error" in exc_info.value.message
+        assert exc_info.value.details.message == "Original Error"
 
     def test_no_rectifier_fails_immediately(self) -> None:
-        """Without rectifier, fails on first attempt and retries with same tactic."""
+        """Without rectifier, fails on first attempt and does NOT retry."""
         cursor = MockRocqCursor()
         cursor.set_failure("bad.", "Error")
 
@@ -126,14 +132,26 @@ class TestRocqRetryAction:
         with pytest.raises(Action.Failed):
             action.interact(cursor)
 
-        # Without rectifier, it keeps trying the same tactic
-        # Original + max_retries attempts
-        assert len(cursor._commands) == 4
+        # Without rectifier, it should only try once
+        assert len(cursor._commands) == 1
 
-    def test_key_returns_original_tactic(self) -> None:
-        """key() returns original tactic, not rectified version."""
-        action = RocqRetryAction("  original.  ", rectifier=MagicMock(), max_retries=3)
-        assert action.key() == "original."
+    def test_final_tactic_reset_on_failure(self) -> None:
+        """final_tactic is reset to None if a subsequent interact() fails."""
+        cursor = MockRocqCursor()
+        cursor.set_failure("bad.", "Error")
+
+        # 1. First run succeeds
+        action = RocqRetryAction("good.", rectifier=None)
+        action.interact(cursor)
+        assert action.final_tactic == "good."
+
+        # 2. Second run with same action instance fails
+        action._tactic = "bad."
+        with pytest.raises(Action.Failed):
+            action.interact(cursor)
+
+        # final_tactic should now be None, not "good."
+        assert action.final_tactic is None
 
     def test_final_tactic_none_before_interact(self) -> None:
         """final_tactic is None before interact() is called."""
@@ -159,6 +177,5 @@ class TestRocqRetryAction:
         action = RocqRetryAction("bad.", rectifier=rectifier, max_retries=3)
         action.interact(cursor)
 
-        assert action.key() == "bad."      # Original for dedup
+        assert action.key() == "bad."  # Original for dedup
         assert action.final_tactic == "good."  # What actually ran
-

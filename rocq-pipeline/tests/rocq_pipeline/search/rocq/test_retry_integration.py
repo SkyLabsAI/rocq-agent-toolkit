@@ -200,4 +200,3 @@ class TestRocqRetryActionIntegration:
         assert result is cursor
         assert cursor._commands == ["step1", "step2", "step3", "step4"]
         assert len(correction_history) == 3  # Three corrections made
-

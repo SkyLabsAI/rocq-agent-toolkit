@@ -81,10 +81,15 @@ class RocqRetryAction(RocqTacticAction):
 
     @override
     def interact(self, state: RocqCursor) -> RocqCursor:
+        self._final_tactic = None  # Reset stale state
         tactic = self._tactic
         last_error: str = ""
+        last_response: RocqCursor.Err | None = None
 
-        for attempt in range(self._max_retries + 1):
+        # If no rectifier is provided, we only try once to avoid repeating side effects
+        max_attempts = (self._max_retries + 1) if self._rectifier else 1
+
+        for attempt in range(max_attempts):
             if attempt > 0 and self._rectifier:
                 # Extract goal from cursor for rectification context
                 goal = self._extract_goal(state)
@@ -93,7 +98,8 @@ class RocqRetryAction(RocqTacticAction):
                 rectified = self._rectifier(goal, tactic, last_error)
                 if rectified is None:
                     raise Action.Failed(
-                        message=f"Could not rectify after {attempt} attempts: {last_error}"
+                        message=f"Could not rectify after {attempt} attempts: {last_error}",
+                        details=last_response,
                     )
                 tactic = rectified
 
@@ -103,6 +109,7 @@ class RocqRetryAction(RocqTacticAction):
             if issubclass(type(response), RocqCursor.Err):
                 # Preserve real Rocq error for next rectification attempt
                 last_error = response.message
+                last_response = response
                 continue
 
             # Success! Store what actually worked
@@ -110,7 +117,11 @@ class RocqRetryAction(RocqTacticAction):
             return state
 
         raise Action.Failed(
-            message=f"Max retries ({self._max_retries}) exceeded for '{self._tactic}'"
+            message=(
+                f"Max retries ({self._max_retries}) exceeded for '{self._tactic}'. "
+                f"Last error: {last_error}"
+            ),
+            details=last_response,
         )
 
     def _extract_goal(self, state: RocqCursor) -> str:
