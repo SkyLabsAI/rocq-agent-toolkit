@@ -40,6 +40,7 @@ class RocqTacticAction(Action[RocqCursor]):
     def key(self) -> str:
         return self._tactic.strip()
 
+
 class RocqRetryAction(RocqTacticAction):
     """
     Rocq tactic with LLM-based rectification on failure.
