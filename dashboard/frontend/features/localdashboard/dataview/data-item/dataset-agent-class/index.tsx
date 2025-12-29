@@ -53,13 +53,14 @@ export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
               </span>
               <span className='truncate font-semibold'>{agent.cls_name}</span>
             </div>
+
+            <div className='ml-3'>
+              <TagsDisplay
+                tags={agent.cls_provenance as Record<string, string>}
+                modalTitle={`All Tags for ${agent.cls_name}`}
+              />
+            </div>
           </div>
-        </td>
-        <td className='px-6 py-4 text-text font-medium'>
-          <TagsDisplay
-            tags={agent.cls_provenance as Record<string, string>}
-            modalTitle={`All Tags for ${agent.cls_name}`}
-          />
         </td>
       </tr>
 

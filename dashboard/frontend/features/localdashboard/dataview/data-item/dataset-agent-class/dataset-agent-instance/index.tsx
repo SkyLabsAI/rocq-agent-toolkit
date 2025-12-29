@@ -108,7 +108,7 @@ export const DatasetAgentInstance: React.FC<DatasetAgentInstanceProps> = ({
             <TagsDisplay
               tags={instanceTags}
               modalTitle={`Instance Tags: ${instance.name}`}
-              maxVisible={1}
+              maxVisible={2}
             />
           )}
           <div className='flex gap-3 text-xs bg-elevation-surface-overlay px-3 py-1.5 rounded-md'>

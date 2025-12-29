@@ -125,41 +125,43 @@ const AgentView: React.FC = () => {
 
   return (
     <GlobalCompareProvider>
-      {!selectedRun && (
-        <div className='' data-testid='agent-view'>
-          <table
-            className='w-full text-left border-collapse'
-            data-testid='agents-table'
-          >
-            <tbody className='divide-y divide-elevation-surface-overlay'>
-              <tr className='text-text' data-testid='agents-header-row'>
-                <td>
-                  <button
-                    data-testid='sort-by-agent-name'
-                    onClick={() => handleSort('cls_name')}
-                    className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
-                  >
-                    <AgentListIcon className='text-icon-success size-4' />
-                    Agents
-                    <SortIcon
-                      className={`ml-2 transition-transform size-4 ${
-                        sortConfig?.key === 'cls_name'
-                          ? sortConfig.direction === 'desc'
-                            ? 'text-primary-default'
-                            : 'rotate-180 text-primary-default'
-                          : 'text-text-disabled'
-                      }`}
-                    />
-                  </button>
-                </td>
-              </tr>
-              {getSortedAgents().map(agent => (
-                <AgentDetails key={agent.cls_checksum} agent={agent} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div
+        className={selectedRun ? 'hidden' : 'block'}
+        data-testid='agent-view'
+      >
+        <table
+          className='w-full text-left border-collapse'
+          data-testid='agents-table'
+        >
+          <tbody className='divide-y divide-elevation-surface-overlay'>
+            <tr className='text-text' data-testid='agents-header-row'>
+              <td>
+                <button
+                  data-testid='sort-by-agent-name'
+                  onClick={() => handleSort('cls_name')}
+                  className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
+                >
+                  <AgentListIcon className='text-icon-success size-4' />
+                  Agents
+                  <SortIcon
+                    className={`ml-2 transition-transform size-4 ${
+                      sortConfig?.key === 'cls_name'
+                        ? sortConfig.direction === 'desc'
+                          ? 'text-primary-default'
+                          : 'rotate-180 text-primary-default'
+                        : 'text-text-disabled'
+                    }`}
+                  />
+                </button>
+              </td>
+            </tr>
+            {getSortedAgents().map(agent => (
+              <AgentDetails key={agent.cls_checksum} agent={agent} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       {selectedRun && (
         <RunDetailsView
           run={selectedRun}

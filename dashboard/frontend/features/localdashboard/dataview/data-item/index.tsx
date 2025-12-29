@@ -151,9 +151,6 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         />
                       </button>
                     </td>
-                    <td className='px-6 py-5 text-[16px] text-text font-medium'>
-                      Tags
-                    </td>
                   </tr>
                   {getSortedAgents().map(agent => (
                     <DatasetAgentClass
