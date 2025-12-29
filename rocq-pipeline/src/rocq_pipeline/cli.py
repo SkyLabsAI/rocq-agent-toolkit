@@ -3,7 +3,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Callable
 from typing import Any
 
-from rocq_pipeline import find_tasks, task_manip, task_runner, tracer
+from rocq_pipeline import find_tasks, service_cli, task_manip, task_runner, tracer
 
 # TODO: cleanup these type annotations
 #
@@ -21,6 +21,8 @@ _entrypoints: dict[str, tuple[mk_parserT[Any], run_nsT]] = {
         task_manip.mk_parser,
         task_manip.run_ns,
     ),
+    "service": (service_cli.mk_service_parser, service_cli.service_run_ns),
+    "dashboard": (service_cli.mk_dashboard_parser, service_cli.dashboard_run_ns),
 }
 
 

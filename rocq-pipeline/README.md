@@ -95,3 +95,62 @@ We aspire to instrument the framework with `opentelemetry` so that rich metrics/
 
 ## Analysis
 Forthcoming.
+
+## Dashboard & local services (`rat service`, `rat dashboard`)
+
+The `rocq-pipeline` package provides the `rat` CLI (see `pyproject.toml` `[project.scripts]`).
+If you want the local dashboard + observability stack, you can manage it via these convenience commands.
+
+### Local services (Docker)
+
+Start the local observability stack (Alloy/Loki/Tempo/Grafana) and the dashboard (database/backend/frontend):
+
+```
+uv run rat service --env local start
+```
+
+Stop the local services:
+
+```
+uv run rat service --env local stop
+```
+
+Show container status + the relevant URLs:
+
+```
+uv run rat service --env local status
+```
+
+Open the dashboard (prints URL; opens browser by default):
+
+```
+uv run rat dashboard --env local
+```
+
+Open FastAPI docs for the backend:
+
+```
+uv run rat service --env local doc
+```
+
+### Staging routing (URLs only)
+
+For non-local environments, `rat` won’t start/stop containers; it mainly helps you route to the right endpoints:
+
+```
+uv run rat dashboard --env staging
+uv run rat service doc --env staging
+```
+
+**Note:** If `uv` can’t figure out which project to run (for example in a multi-project repo),
+either `cd rocq-pipeline` first or use `uv run --project rocq-pipeline ...`.
+
+### Environment variables
+
+You can override routing explicitly with environment variables (useful if URLs differ):
+
+- `RAT_ENV`: default environment for `rat service` / `rat dashboard` (e.g. `local`, `staging`)
+- `RAT_DASHBOARD_URL`: override dashboard URL
+- `RAT_BACKEND_URL`: override backend base URL
+- `RAT_DOCS_URL`: override docs URL (defaults to `<backend>/docs`)
+- `RAT_GRAFANA_URL`: override Grafana URL
