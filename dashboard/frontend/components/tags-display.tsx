@@ -95,13 +95,13 @@ const Tag: React.FC<TagProps> = ({ value, attributeProp }) => {
 interface TagsDisplayProps {
   tags: Record<string, string>;
   maxVisible?: number;
-  runId?: string;
+  modalTitle: string;
 }
 
 export const TagsDisplay: React.FC<TagsDisplayProps> = ({
   tags,
   maxVisible = 3,
-  runId = '',
+  modalTitle,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -122,9 +122,11 @@ export const TagsDisplay: React.FC<TagsDisplayProps> = ({
   return (
     <>
       {/* Visible tags */}
-      {visibleTags.map(([key, value]) => (
-        <Tag value={value} key={key} attributeProp={key} />
-      ))}
+      <div className='flex flex-wrap gap-2'>
+        {visibleTags.map(([key, value]) => (
+          <Tag value={value} key={key} attributeProp={key} />
+        ))}
+      </div>
 
       {/* See more button */}
       {hasHiddenTags && (
@@ -142,7 +144,7 @@ export const TagsDisplay: React.FC<TagsDisplayProps> = ({
       <Modal
         isOpen={isModalOpen}
         onClose={handleModalClose}
-        title={`All Tags ${runId && `for ${runId}`}`.trim()}
+        title={modalTitle}
         size='large'
       >
         <div

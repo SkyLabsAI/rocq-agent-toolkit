@@ -151,77 +151,8 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         />
                       </button>
                     </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('success_rate')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Success Rate
-                        <SortIcon
-                          className={`transition-transform size-4 ${
-                            sortConfig?.key === 'success_rate'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_cpu_time_sec')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg Time (s)
-                        <SortIcon
-                          className={`transition-transform size-4 ${
-                            sortConfig?.key === 'avg_cpu_time_sec'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_total_tokens')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg Tokens
-                        <SortIcon
-                          className={`transition-transform size-4 ${
-                            sortConfig?.key === 'avg_total_tokens'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_llm_invocation_count')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg LLM Calls
-                        <SortIcon
-                          className={`transition-transform size-4 ${
-                            sortConfig?.key === 'avg_llm_invocation_count'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
-                      Actions
-                    </td>
+                    <td colSpan={4}>Tags</td>
+                  
                   </tr>
                   {getSortedAgents().map(agent => (
                     <DatasetAgentClass

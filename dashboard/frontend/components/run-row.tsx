@@ -90,7 +90,12 @@ const RunRow: React.FC<RunRowProps> = ({
             {run.run_id}
           </p>
           {isLatest && <LatestBadge />}
-          {tags && <TagsDisplay tags={tags} runId={run.run_id} />}
+          {tags && (
+            <TagsDisplay
+              tags={tags}
+              modalTitle={`All Tags for ${run.run_id}`}
+            />
+          )}
         </div>
       </div>
 

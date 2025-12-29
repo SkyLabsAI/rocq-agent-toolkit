@@ -6,6 +6,7 @@ import { cn } from '@/utils/cn';
 
 import { InstanceBenchmarks } from './instance-benchmarks';
 import { useAgentInstance } from './use-agent-instance';
+import { TagsDisplay } from '@/components/tags-display';
 
 interface AgentInstanceProps {
   instance: AgentInstanceSummary;
@@ -54,28 +55,10 @@ export const AgentInstance: React.FC<AgentInstanceProps> = ({
         </div>
 
         <div className='flex gap-6 text-sm'>
-          <div className='flex flex-col items-end'>
-            <span className='text-text-disabled text-xs'>Success Rate</span>
-            <span className='text-text font-medium'>
-              {((instance.best_run?.success_rate ?? 0) * 100).toFixed(2)}%
-            </span>
-          </div>
-          <div className='flex flex-col items-end'>
-            <span className='text-text-disabled text-xs'>Avg Time</span>
-            <span className='text-text font-medium'>
-              {(instance.best_run?.avg_cpu_time_sec ?? 0).toFixed(2)}s
-            </span>
-          </div>
-          <div className='flex flex-col items-end'>
-            <span className='text-text-disabled text-xs'>Avg Tokens</span>
-            <span className='text-text font-medium'>
-              {(instance.best_run?.avg_total_tokens ?? 0).toFixed(0)}
-            </span>
-          </div>
-          <div className='flex flex-col items-end'>
-            <span className='text-text-disabled text-xs'>Total Runs</span>
-            <span className='text-text font-medium'>{instance.total_runs}</span>
-          </div>
+          <TagsDisplay
+            tags={instance.provenance as Record<string, string>}
+            modalTitle={`All Tags for ${instance.name}`}
+          />
         </div>
       </div>
 

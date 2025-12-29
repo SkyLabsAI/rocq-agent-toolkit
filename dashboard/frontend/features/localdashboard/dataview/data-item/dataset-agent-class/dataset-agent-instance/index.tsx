@@ -8,6 +8,7 @@ import { type AgentInstanceSummary, type Run } from '@/types/types';
 import { cn } from '@/utils/cn';
 
 import { useDatasetAgentInstance } from './use-dataset-agent-instance';
+import { TagsDisplay } from '@/components/tags-display';
 
 interface DatasetAgentInstanceProps {
   instance: AgentInstanceSummary;
@@ -89,6 +90,13 @@ export const DatasetAgentInstance: React.FC<DatasetAgentInstanceProps> = ({
               {instance.name}
             </span>
           </div>
+        </div>
+
+        <div>
+          <TagsDisplay
+            tags={instance.provenance as Record<string, string>}
+            modalTitle={`All Tags for ${instance.name}`}
+          />
         </div>
 
         <div className='flex gap-6 text-sm'>
