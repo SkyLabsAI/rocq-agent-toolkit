@@ -7,26 +7,10 @@ from typing import override
 
 import pytest
 from rocq_pipeline.search.search.frontier import Frontier
-from rocq_pipeline.search.search.search import (
-    Node,
-    RepetitionPolicy,
-    Search,
-    StateManipulator,
-)
-from rocq_pipeline.search.strategy import Strategy
+from rocq_pipeline.search.search.search import Node, Search
+from rocq_pipeline.search.strategy import FailStrategy, Strategy
 
-
-class EmptyStrategy(Strategy[int]):
-    """Strategy that yields no actions."""
-
-    @override
-    def rollout(
-        self,
-        state: int,
-        max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[int]:
-        return iter(())
+from .util import run_search
 
 
 class StaticFrontier(Frontier[Node[int], Node[int]]):
@@ -59,27 +43,6 @@ class StaticFrontier(Frontier[Node[int], Node[int]]):
         return self._take_returns.pop(0)
 
 
-def run_search(
-    strategy: Strategy[int],
-    worklist: Frontier[Node[int], Node[int]],
-    beam_width: int = 1,
-    explore_width: int = 1,
-    repetition_policy: RepetitionPolicy | None = None,
-    state_manip: StateManipulator[int] | None = None,
-    max_depth: int | None = None,
-) -> Frontier[Node[int], Node[int]]:
-    """Call continue_search with a concrete Frontier instance (mypy helper)."""
-    return Search.continue_search(
-        strategy,
-        worklist,
-        beam_width=beam_width,
-        explore_width=explore_width,
-        repetition_policy=repetition_policy,
-        state_manip=state_manip,
-        max_depth=max_depth,
-    )  # type: ignore[type-var]
-
-
 def run_search_with_factory(
     strategy: Strategy[int],
     start: int,
@@ -99,7 +62,7 @@ def test_search_returns_frontier_instance() -> None:
         calls += 1
         return frontier
 
-    result = run_search_with_factory(EmptyStrategy(), 0, make_frontier)
+    result = run_search_with_factory(FailStrategy(), 0, make_frontier)
     assert result is frontier
     assert calls == 1
     assert len(frontier.pushed) == 1
@@ -109,7 +72,7 @@ def test_continue_search_terminates_on_none() -> None:
     """Ensure continue_search returns when take() yields None."""
     frontier = StaticFrontier([None])
     frontier_base: Frontier[Node[int], Node[int]] = frontier
-    result = run_search(EmptyStrategy(), frontier_base, beam_width=2)
+    result = run_search(FailStrategy(), frontier_base, beam_width=2)
     assert result is frontier
     assert frontier.take_calls == [2]
 
@@ -118,7 +81,7 @@ def test_continue_search_terminates_on_empty_list() -> None:
     """Ensure continue_search returns when take() yields an empty list."""
     frontier = StaticFrontier([[]])
     frontier_base: Frontier[Node[int], Node[int]] = frontier
-    result = run_search(EmptyStrategy(), frontier_base, beam_width=1)
+    result = run_search(FailStrategy(), frontier_base, beam_width=1)
     assert result is frontier
     assert frontier.take_calls == [1]
 
@@ -128,12 +91,12 @@ def test_continue_search_asserts_explore_width_positive() -> None:
     frontier = StaticFrontier([None])
     frontier_base: Frontier[Node[int], Node[int]] = frontier
     with pytest.raises(AssertionError):
-        run_search(EmptyStrategy(), frontier_base, explore_width=0)
+        run_search(FailStrategy(), frontier_base, explore_width=0)
 
 
 def test_continue_search_passes_beam_width_to_take() -> None:
     """Ensure beam_width controls the count passed into take()."""
     frontier = StaticFrontier([None])
     frontier_base: Frontier[Node[int], Node[int]] = frontier
-    run_search(EmptyStrategy(), frontier_base, beam_width=3)
+    run_search(FailStrategy(), frontier_base, beam_width=3)
     assert frontier.take_calls == [3]
