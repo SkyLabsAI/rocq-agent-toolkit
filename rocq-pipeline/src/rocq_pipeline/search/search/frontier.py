@@ -54,7 +54,7 @@ class Frontier[T, Node](ABC):
 
     @abstractmethod
     # Remove up to [count] items in frontier order.
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         """
         Take up to count nodes from the frontier.
         Returns None if no elements exist
@@ -99,9 +99,9 @@ class DFS[T](Frontier[T, DFSNode[T]]):
         self._worklist = None
 
     @override
-    def take(self, count: int) -> list[tuple[T, DFSNode[T]]] | None:
+    def take(self, count: int) -> list[tuple[T, DFSNode[T]]]:
         if self._worklist is None:
-            return None
+            return []
         result: list[tuple[T, DFSNode[T]]] = []
         while self._worklist and count > 0:
             if count > 0:
@@ -139,13 +139,13 @@ class BFS[T](Frontier[T, BasicNode[T]]):
         self._worklist = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, BasicNode[T]]] | None:
+    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if self._worklist:
             # Slice out the next [count] items and retain the rest.
             result = self._worklist[:count]
             self._worklist = self._worklist[count:]
             return [(x.state, x) for x in result]
-        return None
+        return []
 
 
 class Wrapper[T, V](BasicNode[T]):
@@ -198,7 +198,7 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         self._worklist = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]] | None:
+    def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]]:
         if self._worklist:
             result: list[Wrapper[T, Any]] = []
             while self._worklist and count > 0:
@@ -207,7 +207,7 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
                 result.append(heapq.heappop(self._worklist))
                 count -= 1
             return [(x.state, x) for x in result]
-        return None
+        return []
 
 
 @dataclass
@@ -231,10 +231,8 @@ class SingleDepth[T, Node: HasId[int]](Frontier[T, WithDepth[Node]]):
         self._max_depth = 0
 
     @override
-    def take(self, count: int) -> list[tuple[T, WithDepth[Node]]] | None:
+    def take(self, count: int) -> list[tuple[T, WithDepth[Node]]]:
         result = self._base.take(count)
-        if result is None:
-            return result
         return [(state, WithDepth(depth, node)) for ((state, depth), node) in result]
 
     @override
@@ -266,10 +264,8 @@ class Sampled[T, Node](Frontier[T, Node]):
         self._spread = spread
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         pulled = self._base.take(self._spread * count)
-        if pulled is None:
-            return None
         num_pulled = len(pulled)
         if num_pulled <= count:
             return pulled
@@ -308,7 +304,7 @@ class Deduplicate[T, Node](Frontier[T, Node]):
         self._cmp = cmp
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         return self._base.take(count)
 
     @override
@@ -349,7 +345,7 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
         self._key = key
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         return self._base.take(count)
 
     @override
@@ -398,9 +394,9 @@ class SavingSolutions[T, Node](Frontier[T, Node]):
         return self._solutions
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         if self._stop:
-            return None
+            return []
         return self._base.take(count)
 
     @override
@@ -443,7 +439,7 @@ class RememberTrace[T, Node](Frontier[T, Node]):
         return self._everything
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         return self._base.take(count)
 
     @override
