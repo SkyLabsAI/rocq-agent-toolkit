@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Button } from '@/components/base';
+import { TagsDisplay } from '@/components/tags-display';
 import { type AgentSummary } from '@/types/types';
 import { cn } from '@/utils/cn';
 
@@ -17,8 +17,6 @@ interface DatasetAgentClassProps {
 export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
   agent,
   datasetId,
-  isSelected,
-  toggleSelection,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { instances, isLoading, fetchInstances } = useDatasetAgentClass(
@@ -49,65 +47,26 @@ export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
                 {agent.cls_name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className='truncate'>{agent.cls_name}</span>
-          </div>
-        </td>
-        <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3'>
-            <div className='h-6   rounded-lg flex items-center justify-center'>
-              <span className='text-text font-semibold text-sm'>
-                {((agent.best_run?.success_rate ?? 0) * 100).toFixed(2)}%
+            <div className='flex flex-col'>
+              <span className='text-xs font-medium text-text-disabled uppercase tracking-wide'>
+                Agent Class
               </span>
+              <span className='truncate font-semibold'>{agent.cls_name}</span>
             </div>
-          </div>
-        </td>
 
-        <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3'>
-            <div className='h-6   rounded-lg flex items-center justify-center'>
-              <span className='text-text font-semibold text-sm'>
-                {(agent.best_run?.avg_cpu_time_sec ?? 0).toFixed(2)}
-              </span>
+            <div className='ml-3'>
+              <TagsDisplay
+                tags={agent.cls_provenance as Record<string, string>}
+                modalTitle={`All Tags for ${agent.cls_name}`}
+              />
             </div>
-          </div>
-        </td>
-        <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3'>
-            <div className='h-6   rounded-lg flex items-center justify-center'>
-              <span className='text-text font-semibold text-sm'>
-                {(agent.best_run?.avg_total_tokens ?? 0).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </td>
-        <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3'>
-            <div className='h-6   rounded-lg flex items-center justify-center'>
-              <span className='text-text font-semibold text-sm'>
-                {(agent.best_run?.avg_llm_invocation_count ?? 0).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </td>
-        <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3 justify-center'>
-            <Button
-              variant={isSelected ? 'danger' : 'default'}
-              onClick={e => {
-                e.stopPropagation();
-                toggleSelection();
-              }}
-              className='text-sm whitespace-nowrap text-[14px] font-normal float-end w-[100px] flex justify-center'
-            >
-              {isSelected ? 'Deselect' : 'Compare'}
-            </Button>
           </div>
         </td>
       </tr>
 
       {isOpen && (
         <tr>
-          <td colSpan={7}>
+          <td colSpan={2}>
             <div className='px-6 py-4'>
               {isLoading ? (
                 <div className='flex items-center justify-center py-8'>

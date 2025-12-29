@@ -6,12 +6,13 @@ import { useGlobalCompare } from '@/contexts/global-compare-context';
 import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
+import { useBenchmarkAgents } from '@/hooks/use-dataview';
 import AgentListIcon from '@/icons/agent-list';
 import { ChevronUpIcon } from '@/icons/chevron-up';
+import { SortIcon } from '@/icons/sort/sort';
 import { type Benchmark } from '@/types/types';
 import { cn } from '@/utils/cn';
 
-import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
 import { DatasetAgentClass } from './dataset-agent-class';
 
 interface DataItemProps {
@@ -139,8 +140,8 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                       >
                         <AgentListIcon className='text-icon-success size-4' />
                         Agents
-                        <ChevronUpIcon
-                          className={`ml-2 transition-transform ${
+                        <SortIcon
+                          className={`ml-2 transition-transform size-4 ${
                             sortConfig?.key === 'cls_name'
                               ? sortConfig.direction === 'desc'
                                 ? 'text-primary-default'
@@ -149,77 +150,6 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                           }`}
                         />
                       </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('success_rate')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Success Rate
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'success_rate'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_cpu_time_sec')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg Time (s)
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'avg_cpu_time_sec'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_total_tokens')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg Tokens
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'avg_total_tokens'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_llm_invocation_count')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg LLM Calls
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'avg_llm_invocation_count'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
-                      Actions
                     </td>
                   </tr>
                   {getSortedAgents().map(agent => (

@@ -8,7 +8,7 @@ import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
-import { ChevronUpIcon } from '@/icons/chevron-up';
+import { SortIcon } from '@/icons/sort/sort';
 import { type AgentSummaryTemp } from '@/services/dataservice';
 
 import AgentDetails from './agent-details';
@@ -125,113 +125,42 @@ const AgentView: React.FC = () => {
 
   return (
     <GlobalCompareProvider>
-      {!selectedRun && (
-        <div className='' data-testid='agent-view'>
-          <table
-            className='w-full text-left border-collapse'
-            data-testid='agents-table'
-          >
-            <tbody className='divide-y divide-elevation-surface-overlay'>
-              <tr className='text-text' data-testid='agents-header-row'>
-                <td>
-                  <button
-                    data-testid='sort-by-agent-name'
-                    onClick={() => handleSort('cls_name')}
-                    className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
-                  >
-                    <AgentListIcon className='text-icon-success size-4' />
-                    Agents
-                    <ChevronUpIcon
-                      className={`ml-2 transition-transform ${
-                        sortConfig?.key === 'cls_name'
-                          ? sortConfig.direction === 'desc'
-                            ? 'text-primary-default'
-                            : 'rotate-180 text-primary-default'
-                          : 'text-text-disabled'
-                      }`}
-                    />
-                  </button>
-                </td>
-                <td>
-                  <button
-                    data-testid='sort-by-success-rate'
-                    onClick={() => handleSort('success_rate')}
-                    className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                  >
-                    Success Rate
-                    <ChevronUpIcon
-                      className={`transition-transform ${
-                        sortConfig?.key === 'success_rate'
-                          ? sortConfig.direction === 'desc'
-                            ? 'text-primary-default'
-                            : 'rotate-180 text-primary-default'
-                          : 'text-text-disabled'
-                      }`}
-                    />
-                  </button>
-                </td>
-                <td>
-                  <button
-                    data-testid='sort-by-avg-time'
-                    onClick={() => handleSort('avg_cpu_time_sec')}
-                    className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                  >
-                    Avg Time (s)
-                    <ChevronUpIcon
-                      className={`transition-transform ${
-                        sortConfig?.key === 'avg_cpu_time_sec'
-                          ? sortConfig.direction === 'desc'
-                            ? 'text-primary-default'
-                            : 'rotate-180 text-primary-default'
-                          : 'text-text-disabled'
-                      }`}
-                    />
-                  </button>
-                </td>
-                <td>
-                  <button
-                    data-testid='sort-by-avg-tokens'
-                    onClick={() => handleSort('avg_total_tokens')}
-                    className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                  >
-                    Avg Tokens
-                    <ChevronUpIcon
-                      className={`transition-transform ${
-                        sortConfig?.key === 'avg_total_tokens'
-                          ? sortConfig.direction === 'desc'
-                            ? 'text-primary-default'
-                            : 'rotate-180 text-primary-default'
-                          : 'text-text-disabled'
-                      }`}
-                    />
-                  </button>
-                </td>
-                <td>
-                  <button
-                    data-testid='sort-by-llm-calls'
-                    onClick={() => handleSort('avg_llm_invocation_count')}
-                    className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                  >
-                    Avg LLM Calls
-                    <ChevronUpIcon
-                      className={`transition-transform ${
-                        sortConfig?.key === 'avg_llm_invocation_count'
-                          ? sortConfig.direction === 'desc'
-                            ? 'text-primary-default'
-                            : 'rotate-180 text-primary-default'
-                          : 'text-text-disabled'
-                      }`}
-                    />
-                  </button>
-                </td>
-              </tr>
-              {getSortedAgents().map(agent => (
-                <AgentDetails key={agent.cls_checksum} agent={agent} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div
+        className={selectedRun ? 'hidden' : 'block'}
+        data-testid='agent-view'
+      >
+        <table
+          className='w-full text-left border-collapse'
+          data-testid='agents-table'
+        >
+          <tbody className='divide-y divide-elevation-surface-overlay'>
+            <tr className='text-text' data-testid='agents-header-row'>
+              <td>
+                <button
+                  data-testid='sort-by-agent-name'
+                  onClick={() => handleSort('cls_name')}
+                  className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
+                >
+                  <AgentListIcon className='text-icon-success size-4' />
+                  Agents
+                  <SortIcon
+                    className={`ml-2 transition-transform size-4 ${
+                      sortConfig?.key === 'cls_name'
+                        ? sortConfig.direction === 'desc'
+                          ? 'text-primary-default'
+                          : 'rotate-180 text-primary-default'
+                        : 'text-text-disabled'
+                    }`}
+                  />
+                </button>
+              </td>
+            </tr>
+            {getSortedAgents().map(agent => (
+              <AgentDetails key={agent.cls_checksum} agent={agent} />
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {selectedRun && (
         <RunDetailsView
