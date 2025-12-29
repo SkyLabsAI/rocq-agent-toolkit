@@ -81,48 +81,51 @@ class RocqRetryAction(RocqTacticAction):
 
     @override
     def interact(self, state: RocqCursor) -> RocqCursor:
-        self._final_tactic = None  # Reset stale state
+        self._final_tactic = None
         tactic = self._tactic
-        last_error: str = ""
-        last_response: RocqCursor.Err | None = None
 
-        # If no rectifier is provided, we only try once to avoid repeating side effects
+        # Total attempts = 1 (original) + N (retries)
         max_attempts = (self._max_retries + 1) if self._rectifier else 1
 
         for attempt in range(max_attempts):
-            if attempt > 0 and self._rectifier:
-                # Extract goal from cursor for rectification context
-                goal = self._extract_goal(state)
-                # NOTE: the rectifier probably doesn't need the goal
-                # but maybe a future implementation could use it for improved rectification
-                rectified = self._rectifier(goal, tactic, last_error)
-                if rectified is None:
-                    raise Action.Failed(
-                        message=f"Could not rectify after {attempt} attempts: {last_error}",
-                        details=last_response,
-                    )
-                tactic = rectified
-
-            # Use inherited run_tactic method
+            # 1. Try the tactic
             response = self.run_tactic(state, tactic)
 
-            if isinstance(response, RocqCursor.Err):
-                # Preserve real Rocq error for next rectification attempt
-                last_error = response.message
-                last_response = response
-                continue
+            # 2. Success path
+            if not isinstance(response, RocqCursor.Err):
+                self._final_tactic = tactic
+                return state
 
-            # Success! Store what actually worked
-            self._final_tactic = tactic
-            return state
+            # 3. Failure path - can we try again?
+            is_last_attempt = attempt == max_attempts - 1
+            if is_last_attempt:
+                raise Action.Failed(
+                    message=(
+                        f"Max retries ({self._max_retries}) exceeded for '{self._tactic}'. "
+                        f"Last error: {response.message}"
+                    ),
+                    details=response,
+                )
 
-        raise Action.Failed(
-            message=(
-                f"Max retries ({self._max_retries}) exceeded for '{self._tactic}'. "
-                f"Last error: {last_error}"
-            ),
-            details=last_response,
-        )
+            # 4. Recovery logic (Rectification)
+            # We know self._rectifier is not None because max_attempts > 1
+            assert self._rectifier is not None
+
+            goal = self._extract_goal(state)
+            # NOTE: the rectifier probably doesn't need the goal
+            # but maybe a future implementation could use it for improved rectification
+            rectified = self._rectifier(goal, tactic, response.message)
+
+            if rectified is None:
+                raise Action.Failed(
+                    message=f"Could not rectify after {attempt + 1} attempts: {response.message}",
+                    details=response,
+                )
+
+            tactic = rectified
+
+        # Unreachable
+        raise Action.Failed("Unexpected loop termination")
 
     def _extract_goal(self, state: RocqCursor) -> str:
         """Extract current goal from cursor for rectification context."""
