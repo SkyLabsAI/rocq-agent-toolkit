@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 import RunDetailsView from '@/components/run-details-view';
 import { useGlobalCompare } from '@/contexts/global-compare-context';
 import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
+import { useBenchmarkAgents } from '@/hooks/use-dataview';
 import AgentListIcon from '@/icons/agent-list';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { type Benchmark, type Run } from '@/types/types';
+import { SortIcon } from '@/icons/sort/sort';
+import { type Benchmark } from '@/types/types';
 import { cn } from '@/utils/cn';
 
-import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
-import AgentDetails from './agent-details';
+import { DatasetAgentClass } from './dataset-agent-class';
 
 interface DataItemProps {
   benchmark: Benchmark;
@@ -32,16 +33,12 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
   const {
     selectAgent,
     deselectAgent,
-    selectRun,
-    deselectRun,
-    getSelectedRunsForDataset,
     isAgentSelected,
-    isRunSelected,
     clearDatasetSelections,
   } = useGlobalCompare();
 
   type SortableKey =
-    | 'agent_name'
+    | 'cls_name'
     | 'success_rate'
     | 'avg_cpu_time_sec'
     | 'avg_total_tokens'
@@ -51,16 +48,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
     key: SortableKey;
     direction: 'asc' | 'desc';
   } | null>(null);
-  const navigate = useNavigate();
   const location = useLocation();
-
-  const toggleRunSelection = (run: Run) => {
-    if (isRunSelected(run.run_id, benchmark.dataset_id)) {
-      deselectRun(run.run_id, benchmark.dataset_id);
-    } else {
-      selectRun(run.run_id, benchmark.dataset_id);
-    }
-  };
 
   // Sorting function
   const handleSort = (key: SortableKey) => {
@@ -78,7 +66,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
   // Sort the agents based on sortConfig
   const getSortedAgents = () => {
     const sorted = [...agentData].sort((a, b) =>
-      a.agent_name.localeCompare(b.agent_name)
+      a.cls_name.localeCompare(b.cls_name)
     );
 
     if (!sortConfig) return sorted;
@@ -87,9 +75,9 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
       let aValue: number | string = 0;
       let bValue: number | string = 0;
 
-      if (sortConfig.key === 'agent_name') {
-        aValue = a.agent_name;
-        bValue = b.agent_name;
+      if (sortConfig.key === 'cls_name') {
+        aValue = a.cls_name;
+        bValue = b.cls_name;
       } else {
         // Get values from best_run
         aValue = a.best_run?.[sortConfig.key] ?? 0;
@@ -147,14 +135,14 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                   <tr className='text-text'>
                     <td>
                       <button
-                        onClick={() => handleSort('agent_name')}
+                        onClick={() => handleSort('cls_name')}
                         className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
                       >
                         <AgentListIcon className='text-icon-success size-4' />
                         Agents
-                        <ChevronUpIcon
-                          className={`ml-2 transition-transform ${
-                            sortConfig?.key === 'agent_name'
+                        <SortIcon
+                          className={`ml-2 transition-transform size-4 ${
+                            sortConfig?.key === 'cls_name'
                               ? sortConfig.direction === 'desc'
                                 ? 'text-primary-default'
                                 : 'rotate-180 text-primary-default'
@@ -162,119 +150,25 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                           }`}
                         />
                       </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('success_rate')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Success Rate
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'success_rate'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_cpu_time_sec')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg Time (s)
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'avg_cpu_time_sec'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_total_tokens')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg Tokens
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'avg_total_tokens'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleSort('avg_llm_invocation_count')}
-                        className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
-                      >
-                        Avg LLM Calls
-                        <ChevronUpIcon
-                          className={`transition-transform ${
-                            sortConfig?.key === 'avg_llm_invocation_count'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td className='px-6 py-4 font-[16px] text-center text-text-disabled'>
-                      Actions
                     </td>
                   </tr>
                   {getSortedAgents().map(agent => (
-                    <AgentDetails
-                      key={agent.agent_name}
+                    <DatasetAgentClass
+                      key={agent.cls_checksum}
                       agent={agent}
                       datasetId={benchmark.dataset_id}
                       isSelected={isAgentSelected(
-                        agent.agent_name,
+                        agent.cls_name,
                         benchmark.dataset_id
                       )}
                       toggleSelection={() => {
                         if (
-                          isAgentSelected(
-                            agent.agent_name,
-                            benchmark.dataset_id
-                          )
+                          isAgentSelected(agent.cls_name, benchmark.dataset_id)
                         ) {
-                          deselectAgent(agent.agent_name, benchmark.dataset_id);
+                          deselectAgent(agent.cls_name, benchmark.dataset_id);
                         } else {
-                          selectAgent(agent.agent_name, benchmark.dataset_id);
+                          selectAgent(agent.cls_name, benchmark.dataset_id);
                         }
-                      }}
-                      selectedRuns={getSelectedRunsForDataset(
-                        benchmark.dataset_id
-                      )}
-                      toggleRunSelection={toggleRunSelection}
-                      clearSelectedRuns={() =>
-                        clearDatasetSelections(benchmark.dataset_id)
-                      }
-                      compareSelectedRuns={() => {
-                        const selectedRunIds = getSelectedRunsForDataset(
-                          benchmark.dataset_id
-                        );
-                        if (selectedRunIds.length < 1) return;
-                        const query = new URLSearchParams({
-                          runs: selectedRunIds.join(','),
-                        }).toString();
-                        navigate({
-                          pathname: '/compare',
-                          search: `?${query}`,
-                        });
                       }}
                     />
                   ))}

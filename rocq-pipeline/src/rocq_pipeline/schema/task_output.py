@@ -749,7 +749,8 @@ class TaskOutput:
     task_id: str
     dataset_id: str
     timestamp_utc: str
-    agent_name: str
+    agent_cls_checksum: str
+    agent_checksum: str
     status: TaskStatus
     metrics: Metrics
     trace_id: Optional[str] = None
@@ -776,9 +777,12 @@ class TaskOutput:
                 timestamp_utc=_atd_read_string(x["timestamp_utc"])
                 if "timestamp_utc" in x
                 else _atd_missing_json_field("TaskOutput", "timestamp_utc"),
-                agent_name=_atd_read_string(x["agent_name"])
-                if "agent_name" in x
-                else _atd_missing_json_field("TaskOutput", "agent_name"),
+                agent_cls_checksum=_atd_read_string(x["agent_cls_checksum"])
+                if "agent_cls_checksum" in x
+                else _atd_missing_json_field("TaskOutput", "agent_cls_checksum"),
+                agent_checksum=_atd_read_string(x["agent_checksum"])
+                if "agent_checksum" in x
+                else _atd_missing_json_field("TaskOutput", "agent_checksum"),
                 status=TaskStatus.from_json(x["status"])
                 if "status" in x
                 else _atd_missing_json_field("TaskOutput", "status"),
@@ -802,7 +806,8 @@ class TaskOutput:
         res["task_id"] = _atd_write_string(self.task_id)
         res["dataset_id"] = _atd_write_string(self.dataset_id)
         res["timestamp_utc"] = _atd_write_string(self.timestamp_utc)
-        res["agent_name"] = _atd_write_string(self.agent_name)
+        res["agent_cls_checksum"] = _atd_write_string(self.agent_cls_checksum)
+        res["agent_checksum"] = _atd_write_string(self.agent_checksum)
         res["status"] = (lambda x: x.to_json())(self.status)
         res["metrics"] = (lambda x: x.to_json())(self.metrics)
         if self.trace_id is not None:

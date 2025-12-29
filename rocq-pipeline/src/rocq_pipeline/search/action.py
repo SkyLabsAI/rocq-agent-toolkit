@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TypeVar
+from typing import Any, TypeVar
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -18,7 +18,12 @@ class Action[T_co]:
     """
 
     class Failed(Exception):
-        pass
+        """Action failure with optional error details."""
+
+        def __init__(self, message: str = "", details: Any = None) -> None:
+            self.message = message
+            self.details = details
+            super().__init__(message)
 
     @abstractmethod
     def interact(self, state: T_co) -> T_co:

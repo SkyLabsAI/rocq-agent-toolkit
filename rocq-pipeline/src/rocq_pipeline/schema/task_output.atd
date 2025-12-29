@@ -58,7 +58,8 @@ type task_output <doc text="Agent output for a single task."> = {
   (* NOTE: in the future we may want to store additional metadata
      for reproducibility/comparison purposes
    *)
-  agent_name <doc text="Unique name of the agent that attempted the task."> : string;
+  agent_cls_checksum <doc text="Pseudo-unique checksum of the Agent class that attempted the task."> : string;
+  agent_checksum <doc text="Pseudo-unique checksum of the Agent instance that attempted the task."> : string;
   status <doc text="Task status upon completion."> : task_status;
   ?failure_reason <doc text="Reason for task failure."> : failure_reason option;
   ~results <doc text="Agent results after task completion."> <python default="None"> : abstract;

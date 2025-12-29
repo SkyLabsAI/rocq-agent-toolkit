@@ -7,7 +7,7 @@ from rocq_pipeline.agent.base import TaskResult
 from .markov import MarkovAgent
 
 
-class ChoiceAgent(MarkovAgent):
+class ChoiceAgent(MarkovAgent, VERSION="1.0.0"):
     def __init__(self, choices: list[str]):
         super().__init__()
         self._all_choices = choices

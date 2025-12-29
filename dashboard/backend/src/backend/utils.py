@@ -1,6 +1,7 @@
 """
 Utility functions for the backend.
 """
+
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -12,7 +13,6 @@ from backend.config import settings
 from backend.models import LogEntry
 
 logger = logging.getLogger(__name__)
-
 
 # Labels to exclude from log entries
 EXCLUDED_LABELS = {
@@ -42,7 +42,13 @@ EXCLUDED_LABELS = {
     "telemetry_sdk_name",
     "telemetry_sdk_version",
     "timestamp",
-    "message",
+    "span_id",
+    "trace_id",
+    "otelSpanID",
+    "otelTraceID",
+    "otelTraceSampled",
+    "otelServiceName",
+    "hostname",
 }
 
 
@@ -57,8 +63,6 @@ def filter_log_labels(labels: dict[str, Any]) -> dict[str, Any]:
         Filtered dictionary with excluded labels removed
     """
     return {key: value for key, value in labels.items() if key not in EXCLUDED_LABELS}
-
-
 
 
 def get_labels_grouped_by_log(
@@ -113,6 +117,7 @@ def get_labels_grouped_by_log(
 
     return {group_name: groups}
 
+
 async def fetch_observability_logs(
     run_id: str,
     task_id: str,
@@ -139,9 +144,7 @@ async def fetch_observability_logs(
     try:
         # Construct LogQL query to filter logs
         # run_id and task_id are JSON fields, not labels, so we need to parse JSON and filter
-        logql_query = (
-            f'{{service_name="rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
-        )
+        logql_query = f'{{service_name="rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
 
         # Calculate time range based on the task's estimated time (if provided).
         # We take a symmetric window of ±delta_hours around the task timestamp.
@@ -156,7 +159,7 @@ async def fetch_observability_logs(
             start_time = end_time - timedelta(days=settings.log_query_time_delta_days)
 
         # Query parameters for Loki
-        params : dict[str, str | int | bool | float] = {
+        params: dict[str, str | int | bool | float] = {
             "query": logql_query,
             "start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "end": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -164,9 +167,7 @@ async def fetch_observability_logs(
             "limit": 5000,  # Maximum number of logs to return
         }
 
-        logger.info(
-            "Querying Loki for logs: run_id=%s, task_id=%s", run_id, task_id
-        )
+        logger.info("Querying Loki for logs: run_id=%s, task_id=%s", run_id, task_id)
         logger.info("LogQL query: %s", logql_query)
 
         # Make request to Loki

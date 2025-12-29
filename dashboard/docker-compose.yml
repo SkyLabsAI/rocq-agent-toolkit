@@ -13,7 +13,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rat_password}
       - POSTGRES_DB=${POSTGRES_DB:-rat_db}
     volumes:
-      - rat_db_data:/var/lib/postgresql/data
+      - rat_database_data:/var/lib/postgresql/data
     networks:
       - rocq-agent-network
 
@@ -76,4 +76,4 @@ networks:
     name: rocq-agent-network
 
 volumes:
-  rat_db_data:
+  rat_database_data:

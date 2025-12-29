@@ -43,6 +43,7 @@ build-backend = "hatchling.build"
 dev = [
     "mypy>=1.18.2,<2",
     "pytest>=8.4.2",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.14.2",
     "taskipy>=1.14.1",
 ]
@@ -51,8 +52,11 @@ dev = [
 pythonpath = [
   "src"
 ]
+asyncio_mode = "auto"
 
 [tool.taskipy.tasks]
-format_ci = "ruff check"
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
 typecheck_ci = "mypy ."
-test_ci = "pytest tests/"
+test_ci = "pytest"
