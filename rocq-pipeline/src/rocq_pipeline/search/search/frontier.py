@@ -5,10 +5,15 @@ import random
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, override
+from typing import Any, Protocol, override
 
 
-class BasicNode[T]:  # (HasId[int]):
+class HasId[T](Protocol):
+    @property
+    def id(self) -> T: ...
+
+
+class BasicNode[T](HasId[int]):
     def __init__(self, id: int, state: T) -> None:
         self._id = id
         self._state = state
@@ -206,12 +211,16 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
 
 
 @dataclass
-class WithDepth[T]:
+class WithDepth[T: HasId[int]]:
     depth: int
     value: T
 
+    @property
+    def id(self) -> int:
+        return self.value.id
 
-class SingleDepth[T, Node](Frontier[T, WithDepth[Node]]):
+
+class SingleDepth[T, Node: HasId[int]](Frontier[T, WithDepth[Node]]):
     """
     This class can be used to implement a beam-like search where we take
     once per depth.
