@@ -22,15 +22,18 @@ class RocqTacticAction(Action[RocqCursor]):
         response = self.run_tactic(state, self._tactic)
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
+            print(f"  RocqTacticAction: '{self._tactic}' failed.")
             raise Action.Failed(
                 message=response.message,
                 details=response,
             )
+        print(f"  RocqTacticAction: '{self._tactic}' succeeded.")
         return state
 
     def run_tactic(
         self, rc: RocqCursor, tactic: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+        #print(f"RocqTacticAction running tactic: {tactic}")
         return rc.insert_command(tactic)
 
     @override

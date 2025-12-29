@@ -97,6 +97,7 @@ class CompositeStrategy[T_co](Strategy[T_co]):
 
             def push_next(i: int, g: Strategy.Rollout[T_co]) -> None:
                 nonlocal queue
+                print(f"push_next for i={i}, gen={str(gen)}")
                 try:
                     pr, act = next(g)
                 except StopIteration:
@@ -112,6 +113,7 @@ class CompositeStrategy[T_co](Strategy[T_co]):
                     (pr, i, act, gen) = heapq.heappop(queue)
                 except IndexError:
                     return
+                print(f"CompositeStrategy yielding '{act.toString()}' at i = {i}.")
                 yield (-pr, act)
                 push_next(i, gen)
 

@@ -37,7 +37,6 @@ class Action[T_co]:
         """Stable key for deduplication/repetition checks."""
         return f"{type(self).__name__}:{id(self)}"
 
-
 class LoggingAction[T_co](Action[T_co]):
     """
     An action that logs itself when it is invoked.
