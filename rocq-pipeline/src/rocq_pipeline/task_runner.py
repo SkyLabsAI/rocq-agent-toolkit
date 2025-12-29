@@ -29,6 +29,7 @@ from rocq_pipeline.agent import (
     OneShotBuilder,
     TaskResult,
 )
+from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.locator import Locator
 from rocq_pipeline.schema import task_output
@@ -179,7 +180,7 @@ def run_task(
             str(task_file),
             dune=True,
         ).sess(load_file=True) as rdm:
-            rc = rdm.cursor()
+            rc = TracingCursor.of_cursor(rdm.cursor())
             progress.status(0.05, "🔃")
             if not task.locator(rc):
                 progress.log(f"{task_id}: locator returned false")

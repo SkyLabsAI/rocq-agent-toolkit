@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import hashlib
 from collections.abc import Callable
@@ -61,6 +63,11 @@ class TracingCursor(RocqCursor):
     An implementation of the RocqCursor API that traces all document interactions recording
     a state_id.
     """
+
+    @staticmethod
+    def of_cursor(rc: RocqCursor) -> TracingCursor:
+        assert rc._the_rdm is not None
+        return TracingCursor(rc._the_rdm, rc._cursor)
 
     def __init__(self, rdm: RocqDocManagerAPI, cursor: int) -> None:
         super().__init__(rdm, cursor)
