@@ -112,7 +112,6 @@ class CompositeStrategy[T_co](Strategy[T_co]):
                     (pr, i, act, gen) = heapq.heappop(queue)
                 except IndexError:
                     return
-                print(f"CompositeStrategy yielding '{act.key()}' at i = {i}.")
                 yield (-pr, act)
                 push_next(i, gen)
 
