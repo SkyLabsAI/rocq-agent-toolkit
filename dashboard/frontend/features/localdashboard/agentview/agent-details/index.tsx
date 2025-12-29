@@ -1,11 +1,11 @@
 import cn from 'classnames';
 
+import { TagsDisplay } from '@/components/tags-display';
 import { useAgentInstances } from '@/hooks/use-agent-instances';
 import { useBenchmarks } from '@/hooks/use-dataview';
 import { type AgentSummary } from '@/types/types';
 
 import { AgentInstance } from './agent-instances';
-import { TagsDisplay } from '@/components/tags-display';
 
 interface AgentDetailsProps {
   agent: AgentSummary;
@@ -34,16 +34,21 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
                 {agent.cls_name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className='truncate' data-testid='agent-name'>
-              {agent.cls_name}
-            </span>
+            <div className='flex flex-col'>
+              <span className='text-xs font-medium text-text-disabled uppercase tracking-wide'>
+                Agent Class
+              </span>
+              <span className='truncate font-semibold' data-testid='agent-name'>
+                {agent.cls_name}
+              </span>
+            </div>
+            <div className='ml-3'>
+              <TagsDisplay
+                tags={agent.cls_provenance as Record<string, string>}
+                modalTitle={`All Tags for ${agent.cls_name}`}
+              />
+            </div>
           </div>
-        </td>
-        <td className=' py-4 text-text font-medium'>
-          <TagsDisplay
-            tags={agent.cls_provenance as Record<string, string>}
-            modalTitle={`All Tags for ${agent.cls_name}`}
-          />
         </td>
       </tr>
 

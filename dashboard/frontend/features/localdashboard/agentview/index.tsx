@@ -8,10 +8,10 @@ import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
+import { SortIcon } from '@/icons/sort/sort';
 import { type AgentSummaryTemp } from '@/services/dataservice';
 
 import AgentDetails from './agent-details';
-import { SortIcon } from '@/icons/sort/sort';
 
 const AgentView: React.FC = () => {
   const { agentData, modalState, closeModal, openCodeModal } = useAgents();
@@ -152,7 +152,6 @@ const AgentView: React.FC = () => {
                     />
                   </button>
                 </td>
-                <td colSpan={4}>Tags</td>
               </tr>
               {getSortedAgents().map(agent => (
                 <AgentDetails key={agent.cls_checksum} agent={agent} />

@@ -1,12 +1,11 @@
 import { useState } from 'react';
 
-import { Button } from '@/components/base';
+import { TagsDisplay } from '@/components/tags-display';
 import { type AgentSummary } from '@/types/types';
 import { cn } from '@/utils/cn';
 
 import { DatasetAgentInstance } from './dataset-agent-instance';
 import { useDatasetAgentClass } from './use-dataset-agent-class';
-import { TagsDisplay } from '@/components/tags-display';
 
 interface DatasetAgentClassProps {
   agent: AgentSummary;
@@ -18,8 +17,6 @@ interface DatasetAgentClassProps {
 export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
   agent,
   datasetId,
-  isSelected,
-  toggleSelection,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { instances, isLoading, fetchInstances } = useDatasetAgentClass(
@@ -50,10 +47,15 @@ export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
                 {agent.cls_name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <span className='truncate'>{agent.cls_name}</span>
+            <div className='flex flex-col'>
+              <span className='text-xs font-medium text-text-disabled uppercase tracking-wide'>
+                Agent Class
+              </span>
+              <span className='truncate font-semibold'>{agent.cls_name}</span>
+            </div>
           </div>
         </td>
-        <td>
+        <td className='px-6 py-4 text-text font-medium'>
           <TagsDisplay
             tags={agent.cls_provenance as Record<string, string>}
             modalTitle={`All Tags for ${agent.cls_name}`}
@@ -63,7 +65,7 @@ export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
 
       {isOpen && (
         <tr>
-          <td colSpan={7}>
+          <td colSpan={2}>
             <div className='px-6 py-4'>
               {isLoading ? (
                 <div className='flex items-center justify-center py-8'>

@@ -333,7 +333,8 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                             ? JSON.stringify(task.results, null, 2)
                             : 'No results available.'
                           : task.results?.side_effects?.doc_interaction
-                            ? typeof task.results.side_effects.doc_interaction === 'string'
+                            ? typeof task.results.side_effects
+                                .doc_interaction === 'string'
                               ? task.results.side_effects.doc_interaction
                               : JSON.stringify(
                                   task.results.side_effects.doc_interaction,

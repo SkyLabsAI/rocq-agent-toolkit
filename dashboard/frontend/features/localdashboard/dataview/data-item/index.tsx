@@ -6,14 +6,14 @@ import { useGlobalCompare } from '@/contexts/global-compare-context';
 import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
+import { useBenchmarkAgents } from '@/hooks/use-dataview';
 import AgentListIcon from '@/icons/agent-list';
 import { ChevronUpIcon } from '@/icons/chevron-up';
+import { SortIcon } from '@/icons/sort/sort';
 import { type Benchmark } from '@/types/types';
 import { cn } from '@/utils/cn';
 
-import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
 import { DatasetAgentClass } from './dataset-agent-class';
-import { SortIcon } from '@/icons/sort/sort';
 
 interface DataItemProps {
   benchmark: Benchmark;
@@ -151,8 +151,9 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         />
                       </button>
                     </td>
-                    <td colSpan={4}>Tags</td>
-                  
+                    <td className='px-6 py-5 text-[16px] text-text font-medium'>
+                      Tags
+                    </td>
                   </tr>
                   {getSortedAgents().map(agent => (
                     <DatasetAgentClass
