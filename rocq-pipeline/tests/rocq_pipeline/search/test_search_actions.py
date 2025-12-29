@@ -15,14 +15,14 @@ from .util import FixedStrategy, OneShotFrontier, run_search
 class KeyedAction(Action[int]):
     """Action with an explicit key and recorded execution tag."""
 
-    def __init__(self, key: str, tag: str, on_record: Callable[[str], None]) -> None:
+    def __init__(self, key: str, tag: str, record: Callable[[str], None]) -> None:
         self._key = key
         self._tag = tag
-        self._on_record = on_record
+        self._record = record
 
     @override
     def interact(self, state: int) -> int:
-        self._on_record(self._tag)
+        self._record(self._tag)
         return state
 
     def key(self) -> str:
