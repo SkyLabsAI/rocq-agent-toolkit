@@ -125,7 +125,6 @@ class ProofAgent(Agent, VERSION="1.0.0"):
             return self.finished(rc, message="No goal to prove")
         if isinstance(goal_reply, RocqCursor.Err):
             return self.give_up(rc, message="No goal to prove", reason=goal_reply)
-        self.prove(rc)
         # TODO: validate that no goals remain.
         return self.prove(rc)
 
