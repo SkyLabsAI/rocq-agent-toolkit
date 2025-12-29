@@ -8,6 +8,8 @@ These tests demonstrate the full flow of:
 4. Corrected tactic is retried
 """
 
+from typing import Any, cast
+
 from rocq_pipeline.search.rocq.actions import RocqRetryAction, RocqTacticAction
 
 from .conftest import MockRocqCursor
@@ -24,7 +26,7 @@ class TestRocqRetryActionIntegration:
         and a rectifier that fixes it based on the error message.
         """
         # Setup: cursor that fails on "autoo." but succeeds on "auto."
-        cursor = MockRocqCursor(goal="∀ n : nat, n = n")
+        cursor: Any = MockRocqCursor(goal="∀ n : nat, n = n")
         cursor.set_failure("autoo.", "Unknown tactic: autoo")
 
         # Mock LLM generator that produces a tactic with a typo
@@ -46,7 +48,7 @@ class TestRocqRetryActionIntegration:
             return None  # Can't fix
 
         # Create action with rectifier
-        generated_tactics = mock_generator(cursor.current_goal())
+        generated_tactics = mock_generator(cast(str, cursor.current_goal()))
         first_tactic = generated_tactics[0][1]  # "autoo."
 
         action = RocqRetryAction(
@@ -69,7 +71,7 @@ class TestRocqRetryActionIntegration:
         In real code, GeneratorStrategy yields (prob, Action) pairs.
         Here we simulate that flow with retry-enabled actions.
         """
-        cursor = MockRocqCursor(goal="n + 0 = n")
+        cursor: Any = MockRocqCursor(goal="n + 0 = n")
         cursor.set_failure("simpl;", "Syntax error: ';' instead of '.'")
 
         # Track rectifier calls for verification
@@ -113,7 +115,7 @@ class TestRocqRetryActionIntegration:
         Useful when you want retry for LLM-generated tactics
         but not for mechanical/hardcoded tactics.
         """
-        cursor = MockRocqCursor(goal="goal")
+        cursor: Any = MockRocqCursor(goal="goal")
         cursor.set_failure("llm_tactic", "Error from LLM tactic")
 
         # LLM tactic with retry
@@ -142,7 +144,7 @@ class TestRocqRetryActionIntegration:
         This is important because the goal may change between attempts
         if using checkpoint-based state (though not in this mock).
         """
-        cursor = MockRocqCursor(goal="current goal state")
+        cursor: Any = MockRocqCursor(goal="current goal state")
         cursor.set_failure("tactic1", "First error")
 
         received_goals: list[str] = []
@@ -169,7 +171,7 @@ class TestRocqRetryActionIntegration:
         Simulates an LLM that gradually improves the tactic
         based on successive error messages.
         """
-        cursor = MockRocqCursor(goal="complex goal")
+        cursor: Any = MockRocqCursor(goal="complex goal")
         cursor.set_failure("step1", "Missing argument")
         cursor.set_failure("step2", "Type mismatch")
         cursor.set_failure("step3", "Almost there")

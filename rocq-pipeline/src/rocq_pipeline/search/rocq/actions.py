@@ -20,7 +20,7 @@ class RocqTacticAction(Action[RocqCursor]):
         # If cursors were functional, we would just be returning the latest
         # cursor here.
         response = self.run_tactic(state, self._tactic)
-        if issubclass(type(response), RocqCursor.Err):
+        if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
             raise Action.Failed(
                 message=response.message,
@@ -106,7 +106,7 @@ class RocqRetryAction(RocqTacticAction):
             # Use inherited run_tactic method
             response = self.run_tactic(state, tactic)
 
-            if issubclass(type(response), RocqCursor.Err):
+            if isinstance(response, RocqCursor.Err):
                 # Preserve real Rocq error for next rectification attempt
                 last_error = response.message
                 last_response = response
@@ -129,7 +129,7 @@ class RocqRetryAction(RocqTacticAction):
         goal = state.current_goal()
         if goal is None or isinstance(goal, RocqCursor.Err):
             return ""
-        return goal
+        return str(goal)
 
     @override
     def key(self) -> str:

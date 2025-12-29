@@ -1,5 +1,6 @@
 """Unit tests for RocqTacticAction and RocqRetryAction."""
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,7 +15,7 @@ class TestRocqTacticAction:
 
     def test_successful_tactic(self) -> None:
         """Action succeeds when tactic succeeds."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         action = RocqTacticAction("auto.")
 
         result = action.interact(cursor)
@@ -24,7 +25,7 @@ class TestRocqTacticAction:
 
     def test_failed_tactic_raises_with_message(self) -> None:
         """Action.Failed includes error message from Rocq."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         cursor.set_failure("bad_tactic", "Unknown tactic: bad_tactic")
         action = RocqTacticAction("bad_tactic")
 
@@ -44,7 +45,7 @@ class TestRocqRetryAction:
 
     def test_succeeds_on_first_attempt(self) -> None:
         """No rectification needed when first attempt succeeds."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         rectifier = MagicMock(return_value="fixed.")
         action = RocqRetryAction("auto.", rectifier=rectifier, max_retries=3)
 
@@ -56,7 +57,7 @@ class TestRocqRetryAction:
 
     def test_rectifies_on_failure(self) -> None:
         """Rectifier is called with goal, tactic, and error on failure."""
-        cursor = MockRocqCursor(goal="my test goal")
+        cursor: Any = MockRocqCursor(goal="my test goal")
         cursor.set_failure("bad.", "Syntax error")
 
         # Rectifier returns fixed tactic
@@ -71,7 +72,7 @@ class TestRocqRetryAction:
 
     def test_multiple_rectification_attempts(self) -> None:
         """Rectifier is called multiple times if needed."""
-        cursor = MockRocqCursor(goal="goal")
+        cursor: Any = MockRocqCursor(goal="goal")
         cursor.set_failure("try1", "Error 1")
         cursor.set_failure("try2", "Error 2")
 
@@ -87,7 +88,7 @@ class TestRocqRetryAction:
 
     def test_fails_after_max_retries(self) -> None:
         """Raises Action.Failed after exhausting retries."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         cursor.set_failure("always_fails", "Specific Rocq Error")
 
         rectifier = MagicMock(
@@ -108,7 +109,7 @@ class TestRocqRetryAction:
 
     def test_fails_when_rectifier_returns_none(self) -> None:
         """Raises Action.Failed if rectifier gives up."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         cursor.set_failure("bad.", "Original Error")
 
         rectifier = MagicMock(return_value=None)  # Gives up
@@ -124,7 +125,7 @@ class TestRocqRetryAction:
 
     def test_no_rectifier_fails_immediately(self) -> None:
         """Without rectifier, fails on first attempt and does NOT retry."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         cursor.set_failure("bad.", "Error")
 
         action = RocqRetryAction("bad.", rectifier=None, max_retries=3)
@@ -137,7 +138,7 @@ class TestRocqRetryAction:
 
     def test_final_tactic_reset_on_failure(self) -> None:
         """final_tactic is reset to None if a subsequent interact() fails."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         cursor.set_failure("bad.", "Error")
 
         # 1. First run succeeds
@@ -160,7 +161,7 @@ class TestRocqRetryAction:
 
     def test_final_tactic_equals_original_on_success(self) -> None:
         """final_tactic equals original when no rectification needed."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         action = RocqRetryAction("auto.", rectifier=None, max_retries=1)
 
         action.interact(cursor)
@@ -170,7 +171,7 @@ class TestRocqRetryAction:
 
     def test_final_tactic_differs_after_rectification(self) -> None:
         """final_tactic differs from key() after rectification."""
-        cursor = MockRocqCursor()
+        cursor: Any = MockRocqCursor()
         cursor.set_failure("bad.", "Error")
         rectifier = MagicMock(return_value="good.")
 
