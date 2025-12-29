@@ -13,6 +13,7 @@ import { cn } from '@/utils/cn';
 
 import { useBenchmarkAgents } from '../../../../hooks/use-dataview';
 import { DatasetAgentClass } from './dataset-agent-class';
+import { SortIcon } from '@/icons/sort/sort';
 
 interface DataItemProps {
   benchmark: Benchmark;
@@ -139,8 +140,8 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                       >
                         <AgentListIcon className='text-icon-success size-4' />
                         Agents
-                        <ChevronUpIcon
-                          className={`ml-2 transition-transform ${
+                        <SortIcon
+                          className={`ml-2 transition-transform size-4 ${
                             sortConfig?.key === 'cls_name'
                               ? sortConfig.direction === 'desc'
                                 ? 'text-primary-default'
@@ -156,8 +157,8 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                       >
                         Success Rate
-                        <ChevronUpIcon
-                          className={`transition-transform ${
+                        <SortIcon
+                          className={`transition-transform size-4 ${
                             sortConfig?.key === 'success_rate'
                               ? sortConfig.direction === 'desc'
                                 ? 'text-primary-default'
@@ -173,8 +174,8 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                       >
                         Avg Time (s)
-                        <ChevronUpIcon
-                          className={`transition-transform ${
+                        <SortIcon
+                          className={`transition-transform size-4 ${
                             sortConfig?.key === 'avg_cpu_time_sec'
                               ? sortConfig.direction === 'desc'
                                 ? 'text-primary-default'
@@ -190,8 +191,8 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                       >
                         Avg Tokens
-                        <ChevronUpIcon
-                          className={`transition-transform ${
+                        <SortIcon
+                          className={`transition-transform size-4 ${
                             sortConfig?.key === 'avg_total_tokens'
                               ? sortConfig.direction === 'desc'
                                 ? 'text-primary-default'
@@ -207,8 +208,8 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         className='px-6 py-4 font-[16px] text-text-disabled hover:text-primary-default transition-colors cursor-pointer flex items-center gap-1'
                       >
                         Avg LLM Calls
-                        <ChevronUpIcon
-                          className={`transition-transform ${
+                        <SortIcon
+                          className={`transition-transform size-4 ${
                             sortConfig?.key === 'avg_llm_invocation_count'
                               ? sortConfig.direction === 'desc'
                                 ? 'text-primary-default'
