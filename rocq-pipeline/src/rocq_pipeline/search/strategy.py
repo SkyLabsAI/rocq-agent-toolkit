@@ -97,7 +97,6 @@ class CompositeStrategy[T_co](Strategy[T_co]):
 
             def push_next(i: int, g: Strategy.Rollout[T_co]) -> None:
                 nonlocal queue
-                print(f"push_next for i={i}, gen={str(gen)}")
                 try:
                     pr, act = next(g)
                 except StopIteration:
