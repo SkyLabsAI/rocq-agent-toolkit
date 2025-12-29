@@ -71,8 +71,7 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                         return self.give_up(rc, message=f"out of fuel ({self._fuel})")
                 action_rc = rc.clone()
                 try:
-                    action.interact(action_rc)
-                    rc = action_rc
+                    rc = action.interact(action_rc)
                     depth += 1
                     break
                 except Action.Failed:
