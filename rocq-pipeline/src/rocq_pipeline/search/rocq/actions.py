@@ -33,13 +33,12 @@ class RocqTacticAction(Action[RocqCursor]):
     def run_tactic(
         self, rc: RocqCursor, tactic: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        #print(f"RocqTacticAction running tactic: {tactic}")
+        # print(f"RocqTacticAction running tactic: {tactic}")
         return rc.insert_command(tactic)
 
     @override
     def key(self) -> str:
         return self._tactic.strip()
-
 
 class RocqRetryAction(RocqTacticAction):
     """
