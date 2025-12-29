@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
 
-from .frontier import Frontier
+from .frontier import BasicNode, Frontier
 from .iter import RolloutInterleaver
 
 
@@ -124,7 +124,7 @@ class StateManipulator[T]:
         return None
 
 
-class Search[CState, FNode]:
+class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
     # This class seems to just help type checking a bit.
     @staticmethod
     def search[FrontierT: Frontier[Node[CState], FNode]](
