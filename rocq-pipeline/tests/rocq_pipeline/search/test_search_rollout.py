@@ -15,9 +15,7 @@ from .util import FixedStrategy, RecordingAction, run_search
 class CountingStrategy(Strategy[int]):
     """Strategy that returns fixed rollouts per state and counts calls."""
 
-    def __init__(
-        self, mapping: dict[int, list[tuple[float, Action[int]]]]
-    ) -> None:
+    def __init__(self, mapping: dict[int, list[tuple[float, Action[int]]]]) -> None:
         self._mapping = mapping
         self.call_counts: dict[int, int] = {}
 

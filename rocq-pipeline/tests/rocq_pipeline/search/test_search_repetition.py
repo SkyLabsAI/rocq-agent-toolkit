@@ -49,7 +49,9 @@ def test_repetition_policy_skips_repeated_action() -> None:
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
     frontier = seeded_bfs([candidate])
-    run_search(strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy)
+    run_search(
+        strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy
+    )
 
     assert record == []
 
@@ -66,6 +68,8 @@ def test_repetition_policy_uses_bounded_history() -> None:
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
     frontier = seeded_bfs([candidate])
-    run_search(strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy)
+    run_search(
+        strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy
+    )
 
     assert record == ["a"]

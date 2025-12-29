@@ -15,9 +15,7 @@ from .util import FixedStrategy, run_search
 class KeyedAction(Action[int]):
     """Action with an explicit key and recorded execution tag."""
 
-    def __init__(
-        self, key: str, tag: str, on_record: Callable[[str], None]
-    ) -> None:
+    def __init__(self, key: str, tag: str, on_record: Callable[[str], None]) -> None:
         self._key = key
         self._tag = tag
         self._on_record = on_record

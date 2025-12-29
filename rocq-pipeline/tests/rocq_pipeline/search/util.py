@@ -68,7 +68,7 @@ def make_chain(keys: list[str]) -> Node[int]:
     return parent
 
 
-def seeded_bfs(candidates: list[Node[S]]) -> BFS[Node[S]]:
+def seeded_bfs[S](candidates: list[Node[S]]) -> BFS[Node[S]]:
     """Create a BFS frontier seeded with the provided search nodes."""
     frontier: BFS[Node[S]] = BFS()
     for candidate in candidates:
