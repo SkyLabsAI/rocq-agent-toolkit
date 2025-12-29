@@ -95,3 +95,30 @@ def run_search(
         state_manip=state_manip,
         max_depth=max_depth,
     )  # type: ignore[type-var]
+
+
+class OneShotFrontier[T](Frontier[T, T]):
+    """Frontier that returns candidates only once, then terminates."""
+
+    def __init__(self, candidates: list[T]) -> None:
+        self._candidates = list(candidates)
+        self._taken = False
+
+    @override
+    def push(self, val: T, parent: T | None) -> None:
+        return None
+
+    @override
+    def repush(self, node: T) -> None:
+        return None
+
+    @override
+    def clear(self) -> None:
+        return None
+
+    @override
+    def take(self, count: int) -> list[tuple[T, T]] | None:
+        if self._taken:
+            return None
+        self._taken = True
+        return [(node, node) for node in self._candidates[:count]]

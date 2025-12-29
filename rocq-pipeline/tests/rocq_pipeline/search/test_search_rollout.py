@@ -9,7 +9,7 @@ from rocq_pipeline.search.search.frontier import Frontier
 from rocq_pipeline.search.search.search import Node
 from rocq_pipeline.search.strategy import Strategy
 
-from .util import FixedStrategy, RecordingAction, run_search
+from .util import FixedStrategy, OneShotFrontier, RecordingAction, run_search
 
 
 class CountingStrategy(Strategy[int]):
@@ -28,34 +28,6 @@ class CountingStrategy(Strategy[int]):
     ) -> Strategy.Rollout[int]:
         self.call_counts[state] = self.call_counts.get(state, 0) + 1
         return iter(self._mapping.get(state, []))
-
-
-class OneShotFrontier[T](Frontier[T, T]):
-    """Frontier that returns candidates only once, then terminates."""
-
-    def __init__(self, candidates: list[T]) -> None:
-        self._candidates = list(candidates)
-        self._taken = False
-        self.repush_count = 0
-
-    @override
-    def push(self, val: T, parent: T | None) -> None:
-        return None
-
-    @override
-    def repush(self, node: T) -> None:
-        self.repush_count += 1
-
-    @override
-    def clear(self) -> None:
-        return None
-
-    @override
-    def take(self, count: int) -> list[tuple[T, T]] | None:
-        if self._taken:
-            return None
-        self._taken = True
-        return [(node, node) for node in self._candidates[:count]]
 
 
 class QueueFrontier[T](Frontier[T, T]):

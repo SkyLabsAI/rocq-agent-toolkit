@@ -9,7 +9,7 @@ from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.frontier import Frontier
 from rocq_pipeline.search.search.search import Node
 
-from .util import FixedStrategy, run_search
+from .util import FixedStrategy, OneShotFrontier, run_search
 
 
 class KeyedAction(Action[int]):
@@ -27,33 +27,6 @@ class KeyedAction(Action[int]):
 
     def key(self) -> str:
         return self._key
-
-
-class OneShotFrontier[T](Frontier[T, T]):
-    """Frontier that returns candidates only once, then terminates."""
-
-    def __init__(self, candidates: list[T]) -> None:
-        self._candidates = list(candidates)
-        self._taken = False
-
-    @override
-    def push(self, val: T, parent: T | None) -> None:
-        return None
-
-    @override
-    def repush(self, node: T) -> None:
-        return None
-
-    @override
-    def clear(self) -> None:
-        return None
-
-    @override
-    def take(self, count: int) -> list[tuple[T, T]] | None:
-        if self._taken:
-            return None
-        self._taken = True
-        return [(node, node) for node in self._candidates[:count]]
 
 
 def test_action_dedup_per_node() -> None:
