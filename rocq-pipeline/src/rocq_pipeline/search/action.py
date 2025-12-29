@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar, override
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -35,3 +36,18 @@ class Action[T_co]:
     def key(self) -> str:
         """Stable key for deduplication/repetition checks."""
         return f"{type(self).__name__}:{id(self)}"
+
+
+class LoggingAction[T_co](Action[T_co]):
+    """
+    An action that logs itself when it is invoked.
+    """
+
+    def __init__(self, base: Action[T_co], record: Callable[[T_co], None]) -> None:
+        self._record = record
+        self._base = base
+
+    @override
+    def interact(self, state: T_co) -> T_co:
+        self._record(state)
+        return self._base.interact(state)
