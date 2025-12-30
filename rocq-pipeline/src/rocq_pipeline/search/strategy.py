@@ -118,6 +118,72 @@ class CompositeStrategy[T_co](Strategy[T_co]):
         return combine()
 
 
+class StagedStrategy[T_co](Strategy[T_co]):
+    """
+    Combine two strategies by preferring the first.
+
+    All results from `strat1` that are great than or equal to `prob` will
+    be returned before `strat2` is rolled out. This can be used to sequence
+    cheap strategies in front of more expensive strategies.
+    """
+
+    def __init__(
+        self, strat1: Strategy[T_co], strat2: Strategy[T_co], prob: float | None = None
+    ) -> None:
+        """
+        If `prob = None`, then `strat1` will be entirely consumed before
+        `strat2` is invoked.
+        """
+        self._strat1 = strat1
+        self._strat2 = strat2
+        self._prob = prob
+        super().__init__()
+
+    def rollout(
+        self,
+        state: T_co,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
+    ) -> Strategy.Rollout[T_co]:
+        def combine2(
+            r1: Strategy.Rollout[T_co],
+            pr2: float,
+            act2: Action[T_co],
+            r2: Strategy.Rollout[T_co],
+        ) -> Strategy.Rollout[T_co]:
+            try:
+                pr1, act1 = next(r1)
+                if pr2 <= pr1:
+                    yield (pr1, act1)
+                    yield from combine2(r1, pr2, act2, r2)
+                else:
+                    yield (pr2, act2)
+                    yield from combine2(r2, pr1, act1, r1)
+            except StopIteration:
+                yield (pr2, act2)
+                yield from r2
+
+        def combine(r: Strategy.Rollout[T_co]) -> Strategy.Rollout[T_co]:
+            while True:
+                try:
+                    pr, result = next(r)
+                    if self._prob is None or pr >= self._prob:
+                        yield (pr, result)
+                    else:
+                        yield from combine2(
+                            self._strat2.rollout(state, max_rollout, context),
+                            pr,
+                            result,
+                            r,
+                        )
+                        return
+                except StopIteration:
+                    yield from self._strat2.rollout(state, max_rollout, context)
+                    return
+
+        return combine(self._strat1.rollout(state, max_rollout, context))
+
+
 class FailStrategy[T_co](Strategy[T_co]):
     """A simple strategy that fails."""
 
