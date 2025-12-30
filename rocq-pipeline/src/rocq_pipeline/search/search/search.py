@@ -143,7 +143,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
         worklist: FrontierT = frontier()
         with trace_context("search") as span:
             root = worklist.push(Node(start, None), None)
-            span.set_attribute("root_id", root.id)
+            span.set_attribute("root_id", root.ident)
             return Search.continue_search(
                 strategy,
                 worklist,
@@ -184,7 +184,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                 candidate: Node[CState], parent: FNode, action: Action[CState]
             ) -> None:
                 with trace_context("search/process") as span:
-                    span.set_attribute("parent", parent.id)
+                    span.set_attribute("parent", parent.ident)
                     span.set_attribute("action", action.key())
                     # Check depth limit before processing
                     if max_depth is not None and candidate.depth > max_depth:
@@ -212,7 +212,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                         new_node = Node(next_state, candidate, action_key=action_key)
                         # Enqueue the child for future expansion.
                         node = worklist.push(new_node, parent)
-                        span.set_attribute("id", node.id)
+                        span.set_attribute("id", node.ident)
                     except Action.Failed:
                         smanip.dispose(fresh_state)
 
