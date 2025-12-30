@@ -5,10 +5,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.rollout import InterleaveRollout, MapRollout, Rollout
 from rocq_pipeline.search.strategy import Strategy
 
 from .frontier import Frontier
-from .iter import RolloutInterleaver
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ class Node[CNode]:
     depth: int
     parent: Node[CNode] | None
     state: CNode
-    _rollout: Strategy.Rollout[CNode] | None
+    _rollout: Rollout[Action[CNode]] | None
     _action_key: str | None
     _seen_action_keys: set[str]
 
@@ -81,13 +81,13 @@ class Node[CNode]:
         self._action_key = action_key
         self._seen_action_keys = set()
 
-    def rollout(self, strategy: Strategy[CNode], **kwargs) -> Strategy.Rollout[CNode]:
+    def rollout(self, strategy: Strategy[CNode], **kwargs) -> Rollout[Action[CNode]]:
         # Cache the rollout per node to avoid re-asking the strategy.
         if self._rollout is None:
             self._rollout = strategy.rollout(self.state, **kwargs)
         return self._rollout
 
-    def update_rollout(self, rollout: Strategy.Rollout[CNode]) -> None:
+    def update_rollout(self, rollout: Rollout[Action[CNode]]) -> None:
         self._rollout = rollout
 
     def remember_action(self, key: str) -> bool:
@@ -209,32 +209,33 @@ class Search[CState, FNode]:
                     smanip.dispose(fresh_state)
 
             # Rollout each node in the tree with fair interleaving.
-            stream = RolloutInterleaver(
-                {
-                    nm: (
-                        (prob, act)
-                        for prob, act in val.rollout(
-                            strategy, max_rollout=explore_width
-                        )
-                    )
+            def mk[T](nm: int) -> Callable[[T], tuple[int, T]]:
+                return lambda x: (nm, x)
+
+            stream = InterleaveRollout(
+                [
+                    MapRollout(val.rollout(strategy, max_rollout=explore_width), mk(nm))
                     for nm, (val, _) in enumerate(candidates)
-                }
+                ]
             )
 
             # Due to the way that generators work, we can not send a message to the first element
             # so we need to special case this logic
-            for i, (_, action) in itertools.islice(stream, explore_width):
-                process(candidates[i][0], candidates[i][1], action)
+            for _, (i, action) in itertools.islice(stream, beam_width):
+                node, fnode = candidates[i]
+                process(node, fnode, action)
 
             # The states that we visited might have additional rollouts
             # so we put them back in the candidate pool using `repush`
-            for candidate, (head, rest) in stream.stop().items():
-                cand = candidates[candidate]
-                if head is not None:
-                    cand[0].update_rollout(itertools.chain([head], rest))
-                else:
-                    cand[0].update_rollout(rest)
-                worklist.repush(cand[1])
+            for candidate, rest in stream.stop().items():
+                node, fnode = candidates[candidate]
+
+                def snd[X](a_b: tuple[int, X]) -> X:
+                    _, b = a_b
+                    return b
+
+                node.update_rollout(MapRollout(rest, snd))
+                worklist.repush(fnode)
 
 
 search = Search.search

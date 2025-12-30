@@ -2,6 +2,7 @@ from typing import override
 
 # Import the function we want to test
 from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.rollout import Rollout
 from rocq_pipeline.search.strategy import (
     CompositeStrategy,
     FailStrategy,
@@ -20,7 +21,7 @@ class SimpleAction[T](Action[list[T]]):
         return state + [self._value]
 
 
-def is_empty[T](x: Strategy.Rollout[T]) -> None:
+def is_empty[T](x: Rollout[T]) -> None:
     try:
         elem = next(x)
         raise AssertionError(f"empty contains element {elem}")

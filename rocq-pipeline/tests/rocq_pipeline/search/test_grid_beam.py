@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import override
 
 from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.rollout import IterableRollout, IteratorRollout, Rollout
 from rocq_pipeline.search.search.beam import BeamSearch
 from rocq_pipeline.search.search.guidance import Guidance
 from rocq_pipeline.search.strategy import Strategy
@@ -72,7 +73,7 @@ class GridStrategy(Strategy[GridState]):
         state: GridState,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[GridState]:
+    ) -> Rollout[Action[GridState]]:
         """Yield all four possible moves with equal probability."""
         moves = [
             (0.25, GridMoveAction(1, 0, "right")),
@@ -80,7 +81,7 @@ class GridStrategy(Strategy[GridState]):
             (0.25, GridMoveAction(0, 1, "up")),
             (0.25, GridMoveAction(0, -1, "down")),
         ]
-        return iter(moves)
+        return IterableRollout(moves)
 
 
 class ManhattanGuidance(Guidance[GridState]):

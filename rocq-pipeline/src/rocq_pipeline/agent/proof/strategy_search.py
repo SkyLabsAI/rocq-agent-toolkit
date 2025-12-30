@@ -9,6 +9,7 @@ from rocq_pipeline.agent.base import TaskResult
 from rocq_pipeline.agent.base.classes import ProofAgent
 from rocq_pipeline.proof_state import ProofState
 from rocq_pipeline.search import Action
+from rocq_pipeline.search.rollout import Rollout
 from rocq_pipeline.search.strategy import Strategy
 
 
@@ -27,7 +28,7 @@ class SearchAgent(ProofAgent, VERSION="0.1.0"):
         depth: int  # negative
         fresh: int  # just to break ties
         cursor: RocqCursor
-        rollout: Strategy.Rollout
+        rollout: Rollout[Action[RocqCursor]]
 
     @override
     def prove(self, rc: RocqCursor) -> TaskResult:

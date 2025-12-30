@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import math
 from typing import override
 
 from rocq_doc_manager import RocqCursor
 
 from ..action import Action
-from ..strategy import Strategy, empty_Rollout
+from ..rollout import EmptyRollout, IteratorRollout, Rollout, SingletonRollout
+from ..strategy import Strategy
 from .actions import RocqTacticAction
 
 
@@ -14,7 +16,7 @@ class SafeTacticStrategy(Strategy):
 
     def __init__(self, tactic: str, prob: float = 1.0) -> None:
         self._tactic: str = tactic
-        self._prob: float = prob
+        self._logprob: float = math.log(prob)
 
     @override
     def rollout(
@@ -22,10 +24,9 @@ class SafeTacticStrategy(Strategy):
         rdm: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
-        return (
-            (prob, RocqTacticAction(f"progress {tac}"))
-            for prob, tac in [(self._prob, self._tactic)]
+    ) -> Rollout[Action[RocqCursor]]:
+        return SingletonRollout(
+            RocqTacticAction("progress {tac}"), logprob=self._logprob
         )
 
 
@@ -36,7 +37,7 @@ class CutAssertStrategy(Strategy):
     def __init__(self, name: str, lemma: str, prob: float = 1.0) -> None:
         self._name: str = name
         self._lemma: str = lemma
-        self._prob: float = prob
+        self._logprob: float = math.log(prob)
 
     @override
     def rollout(
@@ -44,29 +45,29 @@ class CutAssertStrategy(Strategy):
         rdm: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
+    ) -> Rollout[Action[RocqCursor]]:
         name: str | RocqCursor.Err[None] = rdm.fresh_ident(self._name)
         if isinstance(name, RocqCursor.Err):
-            return empty_Rollout()
+            return EmptyRollout()
 
         # For now, it is important that we fail if this fact is already known,
         # otherwise we risk looping here
         tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
-        return ((prob, RocqTacticAction(t)) for prob, t in [(self._prob, tac)])
+        return SingletonRollout(RocqTacticAction(tac), logprob=math.log(self._logprob))
 
 
 class FirstTacticStrategy(Strategy):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
-    def __init__(self, tactics: list[tuple[float, str | Action]]) -> None:
-        def mk(x: str | Action) -> Action:
+    def __init__(self, tactics: list[tuple[float, str | Action[RocqCursor]]]) -> None:
+        def mk(x: str | Action[RocqCursor]) -> Action[RocqCursor]:
             if isinstance(x, Action):
                 return x
             return RocqTacticAction(x)
 
-        self._tactics: list[tuple[float, Action]] = [
-            (prob, mk(tac)) for prob, tac in sorted(tactics, reverse=True)
+        self._tactics: list[Rollout.Approx[Action[RocqCursor]]] = [
+            Rollout.Approx(prob, mk(tac)) for prob, tac in sorted(tactics, reverse=True)
         ]
 
     @override
@@ -75,5 +76,5 @@ class FirstTacticStrategy(Strategy):
         rdm: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
-        return ((prob, tac) for prob, tac in self._tactics)
+    ) -> Rollout[Action[RocqCursor]]:
+        return IteratorRollout(iter(self._tactics))
