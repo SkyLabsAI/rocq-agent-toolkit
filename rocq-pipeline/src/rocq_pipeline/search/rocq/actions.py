@@ -26,7 +26,6 @@ class RocqTacticAction(Action[RocqCursor]):
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
             logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
-            # print(f"  RocqTacticAction: '{self._tactic}' failed.")
             raise Action.Failed(
                 message=response.message,
                 details=response,
