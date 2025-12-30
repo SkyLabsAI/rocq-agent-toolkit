@@ -43,7 +43,7 @@ class RocqRetryAction(RocqTacticAction):
     Rocq tactic with LLM-based rectification on failure.
 
     Inherits tactic execution from RocqTacticAction and adds:
-    - Goal extraction from cursor for rectification context
+    - Cursor passed to rectifier for goal/context access
     - Real Rocq error message preservation
     - Retry loop with rectifier callback
 
@@ -55,13 +55,13 @@ class RocqRetryAction(RocqTacticAction):
     def __init__(
         self,
         tactic: str,
-        rectifier: Callable[[str, str, str], str | None] | None,
+        rectifier: Callable[[RocqCursor, str, str], str | None] | None,
         max_retries: int = 3,
     ) -> None:
         """
         Args:
             tactic: Initial tactic string to try
-            rectifier: Function (goal, tactic, error) -> rectified_tactic | None
+            rectifier: Function (cursor, tactic, error) -> rectified_tactic | None
             max_retries: Maximum number of rectification attempts
         """
         super().__init__(tactic)
@@ -110,11 +110,7 @@ class RocqRetryAction(RocqTacticAction):
             # 4. Recovery logic (Rectification)
             # We know self._rectifier is not None because max_attempts > 1
             assert self._rectifier is not None
-
-            goal = self._extract_goal(state)
-            # NOTE: the rectifier probably doesn't need the goal
-            # but maybe a future implementation could use it for improved rectification
-            rectified = self._rectifier(goal, tactic, response.message)
+            rectified = self._rectifier(state, tactic, response.message)
 
             if rectified is None:
                 raise Action.Failed(
@@ -126,13 +122,6 @@ class RocqRetryAction(RocqTacticAction):
 
         # Unreachable
         raise Action.Failed("Unexpected loop termination")
-
-    def _extract_goal(self, state: RocqCursor) -> str:
-        """Extract current goal from cursor for rectification context."""
-        goal = state.current_goal()
-        if goal is None or isinstance(goal, RocqCursor.Err):
-            return ""
-        return str(goal)
 
     @override
     def key(self) -> str:

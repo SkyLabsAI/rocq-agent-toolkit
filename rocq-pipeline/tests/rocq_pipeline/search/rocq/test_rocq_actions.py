@@ -56,7 +56,7 @@ class TestRocqRetryAction:
         rectifier.assert_not_called()
 
     def test_rectifies_on_failure(self) -> None:
-        """Rectifier is called with goal, tactic, and error on failure."""
+        """Rectifier is called with cursor, tactic, and error on failure."""
         cursor: Any = MockRocqCursor(goal="my test goal")
         cursor.set_failure("bad.", "Syntax error")
 
@@ -68,7 +68,7 @@ class TestRocqRetryAction:
 
         assert result is cursor
         assert cursor._commands == ["bad.", "good."]
-        rectifier.assert_called_once_with("my test goal", "bad.", "Syntax error")
+        rectifier.assert_called_once_with(cursor, "bad.", "Syntax error")
 
     def test_multiple_rectification_attempts(self) -> None:
         """Rectifier is called multiple times if needed."""

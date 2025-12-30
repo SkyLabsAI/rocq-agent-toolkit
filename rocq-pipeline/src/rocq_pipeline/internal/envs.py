@@ -25,10 +25,12 @@ DEFAULT_BACKEND_PORT = os.environ.get("DEFAULT_BACKEND_PORT", 8010)
 DEFAULT_GRAFANA_PORT = os.environ.get("DEFAULT_GRAFANA_PORT", 3010)
 DEFAULT_ALLOY_PORT = os.environ.get("DEFAULT_ALLOY_PORT", 4327)
 
-OBSERVABILITY_DOCKER_COMPOSE_DIR = (
+OBSERVABILITY_DOCKER_COMPOSE_DIR = "observability/docker_compose"
+DASHBOARD_DOCKER_COMPOSE_DIR = "dashboard"
+_FALLBACK_OBSERVABILITY_DOCKER_COMPOSE_DIR = (
     "fmdeps/rocq-agent-toolkit/observability/docker_compose"
 )
-DASHBOARD_DOCKER_COMPOSE_DIR = "fmdeps/rocq-agent-toolkit/dashboard"
+_FALLBACK_DASHBOARD_DOCKER_COMPOSE_DIR = "fmdeps/rocq-agent-toolkit/dashboard"
 
 
 def ingest_results_file(
@@ -113,10 +115,15 @@ class DockerServiceManager:
 
     def __init__(self, workspace_root: Path):
         self.workspace_root = workspace_root
-        self.observability_compose_dir = (
-            workspace_root / OBSERVABILITY_DOCKER_COMPOSE_DIR
-        )
-        self.toolkit_dir = workspace_root / DASHBOARD_DOCKER_COMPOSE_DIR
+        obs = workspace_root / OBSERVABILITY_DOCKER_COMPOSE_DIR
+        if not obs.exists():
+            obs = workspace_root / _FALLBACK_OBSERVABILITY_DOCKER_COMPOSE_DIR
+        self.observability_compose_dir = obs
+
+        toolkit = workspace_root / DASHBOARD_DOCKER_COMPOSE_DIR
+        if not toolkit.exists():
+            toolkit = workspace_root / _FALLBACK_DASHBOARD_DOCKER_COMPOSE_DIR
+        self.toolkit_dir = toolkit
 
     def _run_command(
         self, cmd: list[str], cwd: Path | None = None, check: bool = True
@@ -164,6 +171,50 @@ class DockerServiceManager:
             "database": self.check_service_running("rocq-agent-toolkit-db"),
         }
         return services
+
+    def stop_observability_services(self, *, remove_volumes: bool = False) -> bool:
+        """Stop observability services (Alloy/Loki/Tempo/Grafana)."""
+        if not self.observability_compose_dir.exists():
+            print(
+                f"Error: Observability compose directory not found: {self.observability_compose_dir}",
+                file=sys.stderr,
+            )
+            return False
+        try:
+            cmd = ["docker", "compose", "-f", "docker-compose.rocq.yml", "down"]
+            if remove_volumes:
+                cmd.append("--volumes")
+            self._run_command(cmd, cwd=self.observability_compose_dir)
+            print("Observability services stopped successfully")
+            return True
+        except Exception as e:
+            print(f"Error: Failed to stop observability services: {e}", file=sys.stderr)
+            return False
+
+    def stop_toolkit_services(self, *, remove_volumes: bool = False) -> bool:
+        """Stop dashboard services (frontend/backend/database)."""
+        if not self.toolkit_dir.exists():
+            print(
+                f"Error: Toolkit directory not found: {self.toolkit_dir}",
+                file=sys.stderr,
+            )
+            return False
+        try:
+            cmd = ["docker", "compose", "down"]
+            if remove_volumes:
+                cmd.append("--volumes")
+            self._run_command(cmd, cwd=self.toolkit_dir)
+            print("Toolkit services stopped successfully")
+            return True
+        except Exception as e:
+            print(f"Error: Failed to stop toolkit services: {e}", file=sys.stderr)
+            return False
+
+    def stop_all_services(self, *, remove_volumes: bool = False) -> bool:
+        """Stop both toolkit and observability services."""
+        ok_toolkit = self.stop_toolkit_services(remove_volumes=remove_volumes)
+        ok_obs = self.stop_observability_services(remove_volumes=remove_volumes)
+        return ok_toolkit and ok_obs
 
     def start_observability_services(self) -> bool:
         """Start Alloy and Loki services for observability"""
@@ -305,7 +356,15 @@ class LocalEnvironment(Environment):
 
         # Go up until we find the workspace root indicators
         for parent in current.parents:
+            # Monorepo layout
             if (parent / "psi").exists() and (parent / "fmdeps").exists():
+                return parent
+            # Standalone repo layout (this workspace)
+            if (
+                (parent / "dashboard").exists()
+                and (parent / "observability").exists()
+                and (parent / "rocq-pipeline").exists()
+            ):
                 return parent
 
         print(

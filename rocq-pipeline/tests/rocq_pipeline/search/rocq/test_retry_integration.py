@@ -10,6 +10,7 @@ These tests demonstrate the full flow of:
 
 from typing import Any, cast
 
+from rocq_doc_manager import RocqCursor
 from rocq_pipeline.search.rocq.actions import RocqRetryAction, RocqTacticAction
 
 from .conftest import MockRocqCursor
@@ -38,7 +39,7 @@ class TestRocqRetryActionIntegration:
             ]
 
         # Mock LLM rectifier that fixes the typo
-        def mock_rectifier(goal: str, tactic: str, error: str) -> str | None:
+        def mock_rectifier(rc: RocqCursor, tactic: str, error: str) -> str | None:
             """
             Simulates LLM fixing a tactic based on error.
             In real usage, this would call the LLM with context.
@@ -77,8 +78,8 @@ class TestRocqRetryActionIntegration:
         # Track rectifier calls for verification
         rectifier_calls: list[tuple[str, str, str]] = []
 
-        def tracking_rectifier(goal: str, tactic: str, error: str) -> str | None:
-            rectifier_calls.append((goal, tactic, error))
+        def tracking_rectifier(rc: RocqCursor, tactic: str, error: str) -> str | None:
+            rectifier_calls.append((cast(str, rc.current_goal()), tactic, error))
             if "Syntax error" in error and ";" in tactic:
                 return tactic.replace(";", ".")  # Fix semicolon to period
             return None
@@ -121,7 +122,7 @@ class TestRocqRetryActionIntegration:
         # LLM tactic with retry
         llm_action = RocqRetryAction(
             tactic="llm_tactic",
-            rectifier=lambda g, t, e: "fixed_tactic",
+            rectifier=lambda rc, t, e: "fixed_tactic",
             max_retries=2,
         )
 
@@ -139,18 +140,20 @@ class TestRocqRetryActionIntegration:
 
     def test_rectifier_receives_updated_goal_context(self) -> None:
         """
-        Verifies that rectifier receives the current goal from cursor.
+        Verifies that rectifier receives the cursor to read the current goal.
 
-        This is important because the goal may change between attempts
-        if using checkpoint-based state (though not in this mock).
+        This is important because the goal may change between attempts if using
+        checkpoint-based state (though not in this mock).
         """
         cursor: Any = MockRocqCursor(goal="current goal state")
         cursor.set_failure("tactic1", "First error")
 
         received_goals: list[str] = []
 
-        def goal_tracking_rectifier(goal: str, tactic: str, error: str) -> str | None:
-            received_goals.append(goal)
+        def goal_tracking_rectifier(
+            rc: RocqCursor, tactic: str, error: str
+        ) -> str | None:
+            received_goals.append(cast(str, rc.current_goal()))
             return "tactic2"  # Fixed
 
         action = RocqRetryAction(
@@ -179,7 +182,7 @@ class TestRocqRetryActionIntegration:
 
         correction_history: list[str] = []
 
-        def iterative_rectifier(goal: str, tactic: str, error: str) -> str | None:
+        def iterative_rectifier(_rc: RocqCursor, tactic: str, error: str) -> str | None:
             correction_history.append(f"{tactic} -> error: {error}")
 
             # Simulate progressive fixing
