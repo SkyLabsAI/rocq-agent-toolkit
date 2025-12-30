@@ -81,7 +81,9 @@ class Node[CNode]:
         self._action_key = action_key
         self._seen_action_keys = set()
 
-    def rollout(self, strategy: Strategy[CNode], **kwargs) -> Rollout[Action[CNode]]:
+    def rollout(
+        self, strategy: Strategy[CNode, Action[CNode]], **kwargs
+    ) -> Rollout[Action[CNode]]:
         # Cache the rollout per node to avoid re-asking the strategy.
         if self._rollout is None:
             self._rollout = strategy.rollout(self.state, **kwargs)
@@ -128,7 +130,7 @@ class Search[CState, FNode]:
     # This class seems to just help type checking a bit.
     @staticmethod
     def search[FrontierT: Frontier[Node[CState], FNode]](
-        strategy: Strategy[CState],
+        strategy: Strategy[CState, Action[CState]],
         start: CState,
         frontier: Callable[[], FrontierT],
         beam_width: int = 1,
@@ -152,7 +154,7 @@ class Search[CState, FNode]:
 
     @staticmethod
     def continue_search[FrontierT: Frontier[Node[CState], FNode]](
-        strategy: Strategy[CState],
+        strategy: Strategy[CState, Action[CState]],
         worklist: FrontierT,
         beam_width: int = 1,
         explore_width: int = 1,

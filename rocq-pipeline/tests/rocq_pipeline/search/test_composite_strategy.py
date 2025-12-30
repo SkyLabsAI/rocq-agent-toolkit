@@ -29,28 +29,29 @@ def is_empty[T](x: Rollout[T]) -> None:
         pass
 
 
+type ActionStrategy = Strategy[list[int], Action[list[int]]]
+
+
 def test_empty() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy([])
+    strat: ActionStrategy = CompositeStrategy([])
     actions = strat.rollout([])
     is_empty(actions)
 
 
 def test_empty_empty() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy([FailStrategy()])
+    strat: ActionStrategy = CompositeStrategy([FailStrategy()])
     actions = strat.rollout([])
     is_empty(actions)
 
 
 def test_empty_empty_empty() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy([FailStrategy(), FailStrategy()])
+    strat: ActionStrategy = CompositeStrategy([FailStrategy(), FailStrategy()])
     actions = strat.rollout([])
     is_empty(actions)
 
 
 def test_singleton() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy(
-        [SingletonStrategy(SimpleAction(0), 0.5)]
-    )
+    strat: ActionStrategy = CompositeStrategy([SingletonStrategy(SimpleAction(0), 0.5)])
     actions = strat.rollout([])
 
     assert [(prob, n.interact([])) for prob, n in actions] == [(0.5, [0])]
@@ -59,7 +60,7 @@ def test_singleton() -> None:
 
 
 def test_multi() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy(
+    strat: ActionStrategy = CompositeStrategy(
         [
             SingletonStrategy(SimpleAction(0), 0.5),
             SingletonStrategy(SimpleAction(1), 0.75),
@@ -73,11 +74,11 @@ def test_multi() -> None:
 
 
 def test_multi2() -> None:
-    ls: list[Strategy[list[int]]] = [
+    ls: list[ActionStrategy] = [
         IteratorStrategy(iter([(0.5, SimpleAction(0)), (0.25, SimpleAction(2))])),
         SingletonStrategy(SimpleAction(1), 0.75),
     ]
-    strat: Strategy[list[int]] = CompositeStrategy(ls)
+    strat = CompositeStrategy(ls)
     actions = strat.rollout([])
 
     assert [(prob, n.interact([])) for prob, n in actions] == [
@@ -90,12 +91,12 @@ def test_multi2() -> None:
 
 
 def test_multi_same() -> None:
-    ls: list[Strategy[list[int]]] = [
+    ls: list[ActionStrategy] = [
         SingletonStrategy(SimpleAction(1), 0.75),
         SingletonStrategy(SimpleAction(2), 0.75),
         SingletonStrategy(SimpleAction(3), 0.75),
     ]
-    strat: Strategy[list[int]] = CompositeStrategy(ls)
+    strat = CompositeStrategy(ls)
     actions = strat.rollout([])
 
     result = [(prob, n.interact([])) for prob, n in actions]

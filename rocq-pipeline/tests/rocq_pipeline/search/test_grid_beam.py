@@ -64,7 +64,7 @@ class GridMoveAction(Action[GridState]):
         return hash((self._dx, self._dy, self._name))
 
 
-class GridStrategy(Strategy[GridState]):
+class GridStrategy(Strategy[GridState, Action[GridState]]):
     """Strategy that proposes moves in all four cardinal directions."""
 
     @override

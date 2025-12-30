@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping
 from typing import Any, TypeVar, override
 
-from .action import Action
 from .rollout import (
     EmptyRollout,
     InterleaveRollout,
@@ -16,10 +15,10 @@ from .rollout import (
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Strategy[T_co](ABC):
+class Strategy[State, Action](ABC):
     """
     A `Strategy` proposes actions to take. The different proposals
-    are captured lazily using a `Generator`. This allows capturing
+    are captured lazily using a `Rollout`. This allows capturing
     very large (even infinite) action spaces such as next tactic
     prediction in theorem proving.
     """
@@ -33,10 +32,10 @@ class Strategy[T_co](ABC):
     @abstractmethod
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[Action[T_co]]:
+    ) -> Rollout[Action]:
         """
         Given the goal `G`, generates `(Pr,A)` such that:
         - `Pr` is the probability that `A` is (the next/a necessary) step in an
@@ -51,48 +50,48 @@ class Strategy[T_co](ABC):
         pass
 
 
-class SingletonStrategy[T_co](Strategy[T_co]):
-    def __init__(self, value: Action[T_co], logprob: float = 1.0) -> None:
+class SingletonStrategy[State, Action](Strategy[State, Action]):
+    def __init__(self, value: Action, logprob: float = 1.0) -> None:
         self._value = value
         self._logprob = logprob
 
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[Action[T_co]]:
+    ) -> Rollout[Action]:
         return SingletonRollout(self._value, logprob=self._logprob)
 
 
-class IteratorStrategy[T_co](Strategy[T_co]):
-    def __init__(self, i: Iterable[tuple[float, Action[T_co]]]) -> None:
+class IteratorStrategy[State, Action](Strategy[State, Action]):
+    def __init__(self, i: Iterable[tuple[float, Action]]) -> None:
         self._collection = i
 
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[Action[T_co]]:
+    ) -> Rollout[Action]:
         return IteratorRollout(
             (Rollout.Approx(logprob, act) for logprob, act in self._collection)
         )
 
 
-class CompositeStrategy[T_co](Strategy[T_co]):
+class CompositeStrategy[State, Action](Strategy[State, Action]):
     """A (fair) combination of strategies"""
 
-    def __init__(self, children: list[Strategy[T_co]]) -> None:
-        self._children: list[Strategy[T_co]] = children
+    def __init__(self, children: list[Strategy[State, Action]]) -> None:
+        self._children = children
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[Action[T_co]]:
+    ) -> Rollout[Action]:
         return InterleaveRollout(
             [
                 strat.rollout(state, max_rollout, context=context)
@@ -101,20 +100,20 @@ class CompositeStrategy[T_co](Strategy[T_co]):
         )
 
 
-class FailStrategy[T_co](Strategy[T_co]):
+class FailStrategy[State, Action](Strategy[State, Action]):
     """A simple strategy that fails."""
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[Action[T_co]]:
+    ) -> Rollout[Action]:
         return EmptyRollout()
 
 
-class GuardStrategy[T_co, With](FailStrategy[T_co], ABC):
+class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
     """Guard the execution of a strategy.
     If [check] returns [None], then this strategy acts like the [FailStrategy] otherwise
     it does [rollout_with]
@@ -122,25 +121,25 @@ class GuardStrategy[T_co, With](FailStrategy[T_co], ABC):
 
     @abstractmethod
     def check(
-        self, state: T_co, context: Strategy.Context | None = None
+        self, state: State, context: Strategy.Context | None = None
     ) -> With | None: ...
 
     @abstractmethod
     def rollout_with(
         self,
         val: With,
-        rdm: T_co,
+        rdm: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[Action[T_co]]: ...
+    ) -> Rollout[Action]: ...
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[Action[T_co]]:
+    ) -> Rollout[Action]:
         val = self.check(state)
         if val is None:
             return super().rollout(state, max_rollout, context)

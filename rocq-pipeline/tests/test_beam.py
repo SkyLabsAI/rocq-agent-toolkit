@@ -14,7 +14,7 @@ class MoveAction(Action[int]):
         return state + self._delta
 
 
-class Around(Strategy[int]):
+class Around(Strategy[int, Action[int]]):
     @override
     def rollout(
         self,
