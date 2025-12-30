@@ -4,6 +4,7 @@ from typing import override
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import (
     FailStrategy,
+    IteratorStrategy,
     SingletonStrategy,
     StagedStrategy,
     Strategy,
@@ -93,6 +94,19 @@ def test_both_3() -> None:
     is_empty(actions)
 
 
+def test_both_4() -> None:
+    strat: Strategy[list[int]] = StagedStrategy(
+        IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
+        SingletonStrategy(SimpleAction(2), 0.75),
+        prob=0.2,
+    )
+    actions = strat.rollout([])
+    assert (0.5, [0]) == next_eval(actions, [])
+    assert (0.4, [1]) == next_eval(actions, [])
+    assert (0.75, [2]) == next_eval(actions, [])
+    is_empty(actions)
+
+
 class NeverStrategy[T](Strategy[T]):
     @override
     def rollout(
@@ -122,3 +136,14 @@ def test_delayed_edge() -> None:
     )
     actions = strat.rollout([])
     assert (0.5, [0]) == next_eval(actions, [])
+
+
+def test_delayed_edge2() -> None:
+    strat: Strategy[list[int]] = StagedStrategy(
+        IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
+        NeverStrategy(),
+        prob=0.2,
+    )
+    actions = strat.rollout([])
+    assert (0.5, [0]) == next_eval(actions, [])
+    assert (0.4, [1]) == next_eval(actions, [])
