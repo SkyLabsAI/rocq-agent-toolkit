@@ -197,12 +197,14 @@ class InterleaveRollout[U](Rollout[U]):
         # Also, the highest item will be first
         stashed: list[InterleaveRollout.Node[U]] = []
         candidate: InterleaveRollout.Node[U] | None = None
+        highest: float = min_logprob
         while True:
             try:
                 result = heapq.heappop(self._queue)
             except IndexError:
                 break
 
+            highest = result.logprob
             if result.action is None:
                 if result.logprob < min_logprob:
                     # This is the highest node and it has a probability less than the query
@@ -220,7 +222,6 @@ class InterleaveRollout[U](Rollout[U]):
 
         # TODO: Find the highest action in stashed and candidate (down to `min_logprob`)
         #
-        highest = candidate.logprob if candidate is not None else min_logprob
         for n in stashed:
             try:
                 xxx = n.rest.next(highest)
@@ -261,7 +262,9 @@ class InterleaveRollout[U](Rollout[U]):
             assert candidate.action is not None
             return Rollout.Approx(candidate.logprob, candidate.action)
         else:
-            return Rollout.Approx(highest, None)
+            if self._queue:
+                return Rollout.Approx(highest, None)
+            raise StopIteration()
 
     def stop(self) -> dict[int, Rollout[U]]:
         def mk(logprob: float, act: U | None, rest: Rollout[U]) -> Rollout[U]:
