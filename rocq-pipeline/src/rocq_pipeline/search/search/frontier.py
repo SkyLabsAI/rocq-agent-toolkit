@@ -5,12 +5,13 @@ import random
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Protocol, override
+from typing import Any, Protocol, override, runtime_checkable
 
 
+@runtime_checkable
 class HasId[T](Protocol):
     @property
-    def id(self) -> T: ...
+    def ident(self) -> T: ...
 
 
 class BasicNode[T](HasId[int]):
@@ -19,7 +20,7 @@ class BasicNode[T](HasId[int]):
         self._state = state
 
     @property
-    def id(self) -> int:
+    def ident(self) -> int:
         return self._id
 
     @property
@@ -92,7 +93,7 @@ class DFS[T](Frontier[T, DFSNode[T]]):
 
     @override
     def repush(self, node: DFSNode[T]) -> None:
-        self._worklist = DFSNode(node.id, self._worklist, node.state)
+        self._worklist = DFSNode(node.ident, self._worklist, node.state)
 
     @override
     def clear(self) -> None:
@@ -162,7 +163,7 @@ class Wrapper[T, V](BasicNode[T]):
         assert self._compare == other._compare
         cmp = self._compare(self._score, other._score)
         if cmp == 0:
-            return self.id < other.id
+            return self.ident < other.ident
         else:
             return cmp < 0
 
@@ -211,13 +212,13 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
 
 
 @dataclass
-class WithDepth[T: HasId[int]]:
+class WithDepth[T: HasId[int]](HasId[int]):
     depth: int
     value: T
 
     @property
-    def id(self) -> int:
-        return self.value.id
+    def ident(self) -> int:
+        return self.value.ident
 
 
 class SingleDepth[T, Node: HasId[int]](Frontier[T, WithDepth[Node]]):
