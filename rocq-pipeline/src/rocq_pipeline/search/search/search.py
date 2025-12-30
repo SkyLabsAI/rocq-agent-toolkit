@@ -221,8 +221,6 @@ class Search[CState, FNode]:
                 }
             )
 
-            # Due to the way that generators work, we can not send a message to the first element
-            # so we need to special case this logic
             for i, (_, action) in itertools.islice(stream, explore_width):
                 process(candidates[i][0], candidates[i][1], action)
 
