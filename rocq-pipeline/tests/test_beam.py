@@ -1,6 +1,7 @@
 from typing import override
 
 from rocq_pipeline.search import Action
+from rocq_pipeline.search.rollout import IterableRollout, Rollout
 from rocq_pipeline.search.search import beam
 from rocq_pipeline.search.strategy import Strategy
 
@@ -13,15 +14,15 @@ class MoveAction(Action[int]):
         return state + self._delta
 
 
-class Around(Strategy[int]):
+class Around(Strategy[int, Action[int]]):
     @override
     def rollout(
         self,
         state: int,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[int]:
-        return ((0.5, MoveAction(delta)) for delta in [1, -1])
+    ) -> Rollout[Action[int]]:
+        return IterableRollout([(0.5, MoveAction(delta)) for delta in [1, -1]])
 
 
 def test_test_simple() -> None:

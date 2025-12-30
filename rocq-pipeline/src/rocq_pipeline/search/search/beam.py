@@ -22,6 +22,7 @@ else:
 
 from rocq_pipeline.search.strategy import Strategy
 
+from ..action import Action
 from .frontier import DeduplicateWithKey, Frontier, PQueue, SavingSolutions, SingleDepth
 from .guidance import Guidance, UniformGuidance
 from .search import Node, StateManipulator, search
@@ -39,7 +40,7 @@ class BeamSearch[T]:
 
     def __init__(
         self,
-        strategy: Strategy[T],
+        strategy: Strategy[T, Action[T]],
         guidance: Guidance[T] | None = None,
         is_solved: Callable[[T], bool] | None = None,
         beam_width: int = 5,

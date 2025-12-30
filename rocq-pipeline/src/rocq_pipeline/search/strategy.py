@@ -1,19 +1,24 @@
 from __future__ import annotations
 
-import heapq
-import inspect
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
 from typing import Annotated, Any, TypeVar, override
 
 from provenance_toolkit import Provenance
 
-from .action import Action
+from .rollout import (
+    EmptyRollout,
+    InterleaveRollout,
+    IteratorRollout,
+    Rollout,
+    SingletonRollout,
+    StagedRollout,
+)
 
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Strategy[T_co](Provenance.Full, ABC):
+class Strategy[State, Action](Provenance.Full, ABC):
     """Interface: producer of ranked _alternative_ `Action`s.
 
     A `Strategy` proposes `Action`s to take. The different proposals
@@ -24,37 +29,10 @@ class Strategy[T_co](Provenance.Full, ABC):
     cf. ./action.py#Action
     """
 
-    type Rollout[U] = Iterator[tuple[float, Action[U]]]
-    """Iterator over ranked _alternative_ actions.
-
-    Elements of `Rollout` are tuples of the form `(Pr_i, Act_i)` where `Pr_i`
-    is the confidence (often captured via a log probability) that `Act_i` is
-    the next `Action` that should be taken to make efficient progress towards
-    completing the overall task. Scores in the `Rollout` (i.e. `Pr_i`):
-    - a) must be interpreted in a consistent manner between all strategies used
-         to produce a given `Rollout` (often as log probabilities)
-    - b) should be returned from "best" to "worst" based on (a), since clients
-         will generally not ask for a new `Action` unless the previous ones did
-         not work
-
-    Every strategy is responsible for implementing `Strategy.rollout` which
-    produces a (potentially infinite) `Rollout`. To avoid performance impacts
-    from eagerly evaluating large rollouts (or from expensive candidate generation):
-    1. implementers of `Strategy.rollout` should use generators unless the result
-       is small+finite (e.g. a singleton list)
-    2. clients of `Strategy.rollout` should lazily draw from `Rollout` and
-       never force the full computation; i.e. DO NOT DO THE FOLLOWING:
-       ```python
-       # BAD: forcing a computation on a potentially infinite rollout
-       for i, (_, a) in enumerate(s.rollout(...)):
-           print(f"{i}: {a}")
-       ```
-
-    Example: a finite `Rollout` that contains `[(0, A_1), (-1, A_2)]`
-    is saying to try `A_1` before `A_2` and associates each with
-    a confidence score.
-    """
-
+    # Context information must be read-only and constant in order
+    # for searches to work correctly. Clients should use an
+    # implementation such as `immutabledict` to achieve this.
+    # Mutable information needs to be tracked in the state
     type Context = Mapping[str, Any]
     """Read-only context information that may be supplied during `Strategy.rollout`.
 
@@ -84,21 +62,13 @@ class Strategy[T_co](Provenance.Full, ABC):
     ```
     """
 
-    @staticmethod
-    def empty_Rollout() -> Strategy.Rollout:
-        """The empty `Rollout` containing no `Action`s.
-
-        If a `Strategy` does not apply it can return `empty_Rollout`.
-        """
-        yield from ()
-
     @abstractmethod
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Rollout[T_co]:
+    ) -> Rollout[Action]:
         """Build `Rollout` of ranked _alternative_ `Action`s for `state`.
 
         Given `state` and optional `context`, generate a `Rollout` containing no more
@@ -119,50 +89,51 @@ class Strategy[T_co](Provenance.Full, ABC):
         pass
 
 
-# Note: backwards-compatible symbol; we could remove this if we want.
-empty_Rollout = Strategy.empty_Rollout
-
-
-class SingletonStrategy[T_co](Strategy[T_co]):
+class SingletonStrategy[State, Action](Strategy[State, Action]):
     """
     A strategy that always returns a single action
     """
 
-    _value: Annotated[Action[T_co], Provenance.Reflect.Field]
+    _value: Annotated[Action, Provenance.Reflect.Field]
     _prob: Annotated[float, Provenance.Reflect.Field]
 
-    def __init__(self, value: Action[T_co], prob: float = 1.0) -> None:
+    def __init__(self, value: Action, logprob: float = 1.0) -> None:
         self._value = value
-        self._prob = prob
+        self._logprob = logprob
 
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[T_co]:
-        return iter([(self._prob, self._value)])
+    ) -> Rollout[Action]:
+        return SingletonRollout(self._value, logprob=self._logprob)
 
 
-class IteratorStrategy[T_co](Strategy[T_co]):
+class IteratorStrategy[State, Action](Strategy[State, Action]):
     _collection: Annotated[
-        Iterable[tuple[float, Action[T_co]]],
+        Iterable[tuple[float, Action]],
         Provenance.Reflect.Field,
     ]
 
-    def __init__(self, i: Iterable[tuple[float, Action[T_co]]]) -> None:
+    def __init__(self, i: Iterable[tuple[float, Action]]) -> None:
         self._collection = i
 
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[T_co]:
-        return iter(self._collection)
+    ) -> Rollout[Action]:
+        return IteratorRollout(
+            (
+                Rollout.Approx(logprob=logprob, result=act)
+                for logprob, act in self._collection
+            )
+        )
 
 
-class CompositeStrategy[T_co](Strategy[T_co]):
+class CompositeStrategy[State, Action](Strategy[State, Action]):
     """Combinator: fair interleaving of strategies.
 
     Each strategy will be asked for its `next` action, and the results
@@ -179,45 +150,27 @@ class CompositeStrategy[T_co](Strategy[T_co]):
     `Strategy`s yields results out of order.
     """
 
-    _children: Annotated[list[Strategy[T_co]], Provenance.Reflect.Field]
+    _children: Annotated[list[Strategy[State, Action]], Provenance.Reflect.Field]
 
-    def __init__(self, children: list[Strategy[T_co]]) -> None:
-        self._children: list[Strategy[T_co]] = children
+    def __init__(self, children: list[Strategy[State, Action]]) -> None:
+        self._children = children
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[T_co]:
-        def combine() -> Strategy.Rollout[T_co]:
-            queue: list[tuple[float, int, Action[T_co], Strategy.Rollout]] = []
-
-            def push_next(i: int, g: Strategy.Rollout[T_co]) -> None:
-                nonlocal queue
-                try:
-                    pr, act = next(g)
-                except StopIteration:
-                    return
-                heapq.heappush(queue, (-pr, i, act, g))
-
-            for i, strat in enumerate(self._children):
-                gen = strat.rollout(state, max_rollout=max_rollout, context=context)
-                push_next(i, gen)
-
-            while True:
-                try:
-                    (pr, i, act, gen) = heapq.heappop(queue)
-                except IndexError:
-                    return
-                yield (-pr, act)
-                push_next(i, gen)
-
-        return combine()
+    ) -> Rollout[Action]:
+        return InterleaveRollout(
+            [
+                strat.rollout(state, max_rollout, context=context)
+                for strat in self._children
+            ]
+        )
 
 
-class StagedStrategy[T_co](Strategy[T_co]):
+class StagedStrategy[State, Action](Strategy[State, Action]):
     """Combinator: biased interleaving of two strategies, preferring the first.
 
     All results from `strat1` that are greater than or equal to `prob` will
@@ -225,12 +178,15 @@ class StagedStrategy[T_co](Strategy[T_co]):
     `strat1` and `strat2` will be interleaved as they are in `CompositeStrategy`.
     """
 
-    _strat1: Annotated[Strategy[T_co], Provenance.Reflect.Field]
-    _strat2: Annotated[Strategy[T_co], Provenance.Reflect.Field]
+    _strat1: Annotated[Strategy[State, Action], Provenance.Reflect.Field]
+    _strat2: Annotated[Strategy[State, Action], Provenance.Reflect.Field]
     _prob: Annotated[float | None, Provenance.Reflect.Field]
 
     def __init__(
-        self, strat1: Strategy[T_co], strat2: Strategy[T_co], prob: float | None = None
+        self,
+        strat1: Strategy[State, Action],
+        strat2: Strategy[State, Action],
+        prob: float | None = None,
     ) -> None:
         """
         If `prob = None`, then `strat1` will be entirely consumed before
@@ -243,52 +199,22 @@ class StagedStrategy[T_co](Strategy[T_co]):
 
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[T_co]:
-        def combine2(
-            r1: Strategy.Rollout[T_co],
-            pr2: float,
-            act2: Action[T_co],
-            r2: Strategy.Rollout[T_co],
-        ) -> Strategy.Rollout[T_co]:
-            try:
-                pr1, act1 = next(r1)
-            except StopIteration:
-                yield (pr2, act2)
-                yield from r2
-                return
-            if pr2 <= pr1:
-                yield (pr1, act1)
-                yield from combine2(r1, pr2, act2, r2)
-            else:
-                yield (pr2, act2)
-                yield from combine2(r2, pr1, act1, r1)
-
-        def combine(r: Strategy.Rollout[T_co]) -> Strategy.Rollout[T_co]:
-            while True:
-                try:
-                    pr, result = next(r)
-                except StopIteration:
-                    yield from self._strat2.rollout(state, max_rollout, context)
-                    return
-
-                if self._prob is None or pr >= self._prob:
-                    yield (pr, result)
-                else:
-                    yield from combine2(
-                        self._strat2.rollout(state, max_rollout, context),
-                        pr,
-                        result,
-                        r,
-                    )
-                    return
-
-        return combine(self._strat1.rollout(state, max_rollout, context))
+    ) -> Rollout[Action]:
+        return StagedRollout(
+            self._strat1.rollout(state, max_rollout=max_rollout, context=context),
+            lambda: self._strat2.rollout(
+                state, max_rollout=max_rollout, context=context
+            ),
+            self._prob,
+        )
 
 
-def staged[T](strats: list[tuple[float | None, Strategy[T]]]) -> Strategy[T]:
+def staged[State, Action](
+    strats: list[tuple[float | None, Strategy[State, Action]]],
+) -> Strategy[State, Action]:
     """
     Build an iterated StagedStrategy.
     If the element `(pr,strat)` exists in the list, then `strat` will start
@@ -303,20 +229,20 @@ def staged[T](strats: list[tuple[float | None, Strategy[T]]]) -> Strategy[T]:
     return current
 
 
-class FailStrategy[T_co](Strategy[T_co]):
+class FailStrategy[State, Action](Strategy[State, Action]):
     """A simple strategy that fails."""
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
-        return empty_Rollout()
+    ) -> Rollout[Action]:
+        return EmptyRollout()
 
 
-class GuardStrategy[T_co, With](FailStrategy[T_co]):
+class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
     """Guard the execution of a strategy.
     If [check] returns [None], then this strategy acts like the [FailStrategy] otherwise
     it does [rollout_with]
@@ -324,71 +250,47 @@ class GuardStrategy[T_co, With](FailStrategy[T_co]):
 
     @abstractmethod
     def check(
-        self, state: T_co, context: Strategy.Context | None = None
+        self, state: State, context: Strategy.Context | None = None
     ) -> With | None: ...
 
     @abstractmethod
     def rollout_with(
         self,
         val: With,
-        rdm: T_co,
+        rdm: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout: ...
+    ) -> Rollout[Action]: ...
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
+    ) -> Rollout[Action]:
         val = self.check(state)
         if val is None:
             return super().rollout(state, max_rollout, context)
         return self.rollout_with(val, state, max_rollout, context)
 
 
-class ActionWrapper[T_co](Action[T_co]):
-    _fn: Annotated[
-        Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
-    ]
-    _base: Annotated[Action[T_co], Provenance.Reflect.Field]
+class TraceStrategy[State, Action](Strategy[State, Action]):
+    _base: Annotated[Strategy[State, Action], Provenance.Reflect.Field]
+    _trace: Annotated[list[tuple[State, Action]], Provenance.Reflect.Field]
 
-    def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
-        self._fn = fn
+    def __init__(
+        self, base: Strategy[State, Action], record: Callable[[State], None]
+    ) -> None:
         self._base = base
-
-    def interact(self, state: T_co) -> T_co:
-        self._fn(state)
-        return self._base.interact(state)
-
-
-class TraceStrategy[T_co](Strategy[T_co]):
-    _base: Annotated[Strategy[T_co], Provenance.Reflect.Field]
-    _trace: Annotated[list[tuple[T_co, Action[T_co]]], Provenance.Reflect.Field]
-
-    def __init__(self, base: Strategy[T_co]) -> None:
-        self._base = base
-        self._trace: list[tuple[T_co, Action[T_co]]] = []
-
-    @property
-    def trace(self) -> list[tuple[T_co, Action[T_co]]]:
-        return self._trace
+        self._record = record
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[T_co]:
-        roll = self._base.rollout(state, max_rollout, context)
-
-        def mk(action: Action[T_co]) -> Callable[[T_co], None]:
-            def fn(state: T_co) -> None:
-                self._trace.append((state, action))
-
-            return fn
-
-        return ((prob, ActionWrapper(action, mk(action))) for prob, action in roll)
+    ) -> Rollout[Action]:
+        self._record(state)
+        return self._base.rollout(state, max_rollout, context)
