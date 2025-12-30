@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import override
 
 import pytest
+from rocq_pipeline.search import Action
 from rocq_pipeline.search.search.frontier import BasicNode, Frontier
 from rocq_pipeline.search.search.search import Node, Search
 from rocq_pipeline.search.strategy import FailStrategy, Strategy
@@ -49,7 +50,7 @@ class StaticFrontier[T](Frontier[T, BasicNode[T]]):
 
 
 def run_search_with_factory[A, B](
-    strategy: Strategy[A],
+    strategy: Strategy[A, Action[A]],
     start: A,
     frontier: Callable[[], Frontier[A, B]],
 ) -> Frontier[A, B]:

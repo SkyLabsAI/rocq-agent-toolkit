@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from observability import trace_context
 
 from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.rollout import Rollout
 from rocq_pipeline.search.strategy import Strategy
 
 from .frontier import BasicNode, Frontier
@@ -68,7 +69,7 @@ class Node[CNode]:
     depth: int
     parent: Node[CNode] | None
     state: CNode
-    _rollout: Strategy.Rollout[CNode] | None
+    _rollout: Rollout[Action[CNode]] | None
     _action_key: str | None
     _seen_action_keys: set[str]
 
@@ -82,13 +83,15 @@ class Node[CNode]:
         self._action_key = action_key
         self._seen_action_keys = set()
 
-    def rollout(self, strategy: Strategy[CNode], **kwargs) -> Strategy.Rollout[CNode]:
+    def rollout(
+        self, strategy: Strategy[CNode, Action[CNode]], **kwargs
+    ) -> Rollout[Action[CNode]]:
         # Cache the rollout per node to avoid re-asking the strategy.
         if self._rollout is None:
             self._rollout = strategy.rollout(self.state, **kwargs)
         return self._rollout
 
-    def update_rollout(self, rollout: Strategy.Rollout[CNode]) -> None:
+    def update_rollout(self, rollout: Rollout[Action[CNode]]) -> None:
         self._rollout = rollout
 
     def remember_action(self, key: str) -> bool:
@@ -129,7 +132,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
     # This class seems to just help type checking a bit.
     @staticmethod
     def search[FrontierT: Frontier[Node[CState], FNode]](
-        strategy: Strategy[CState],
+        strategy: Strategy[CState, Action[CState]],
         start: CState,
         frontier: Callable[[], FrontierT],
         beam_width: int = 1,
@@ -155,7 +158,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
 
     @staticmethod
     def continue_search[FrontierT: Frontier[Node[CState], FNode]](
-        strategy: Strategy[CState],
+        strategy: Strategy[CState, Action[CState]],
         worklist: FrontierT,
         beam_width: int = 1,
         explore_width: int = 1,
@@ -220,19 +223,14 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                 if max_depth is not None and node.depth > max_depth:
                     continue
                 rollout = node.rollout(strategy, max_rollout=explore_width)
-                for _ in range(explore_width):
-                    try:
-                        _, action = next(rollout)
-                    except StopIteration:
-                        break
+                count = 0
+                for _, action in itertools.islice(rollout, explore_width):
+                    count += 1
                     process(node, parent, action)
-                # Peek to see if more actions remain; re-chain to preserve the item.
-                try:
-                    next_item = next(rollout)
-                except StopIteration:
+                # If we got to the end of the iterator, then there might
+                # be more.
+                if count == explore_width:
                     node.update_rollout(rollout)
-                else:
-                    node.update_rollout(itertools.chain([next_item], rollout))
                     worklist.repush(parent)
 
 

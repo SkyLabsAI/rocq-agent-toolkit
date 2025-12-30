@@ -249,7 +249,8 @@ class SingleDepth[T, Node: HasId[int]](Frontier[T, WithDepth[Node]]):
 
     @override
     def repush(self, node: WithDepth[Node]) -> None:
-        self._base.repush(node.value)
+        if node.depth >= self._max_depth:
+            self._base.repush(node.value)
 
     @override
     def clear(self) -> None:

@@ -7,27 +7,26 @@ from typing import override
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.frontier import BasicNode, Frontier
 from rocq_pipeline.search.search.search import Node
-from rocq_pipeline.search.strategy import Strategy
+from rocq_pipeline.search.strategy import MapStategy
 
 from .util import FixedStrategy, OneShotFrontier, RecordingAction, run_search
 
 
-class CountingStrategy(Strategy[int]):
+class CountingStrategy(MapStategy[int, Action[int], int, Action[int]]):
     """Strategy that returns fixed rollouts per state and counts calls."""
 
     def __init__(self, mapping: dict[int, list[tuple[float, Action[int]]]]) -> None:
-        self._mapping = mapping
         self.call_counts: dict[int, int] = {}
+        me = self
 
-    @override
-    def rollout(
-        self,
-        state: int,
-        max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[int]:
-        self.call_counts[state] = self.call_counts.get(state, 0) + 1
-        return iter(self._mapping.get(state, []))
+        def record(state: int) -> int:
+            nonlocal me
+            me.call_counts[state] = me.call_counts.get(state, 0) + 1
+            return state
+
+        super().__init__(
+            FixedStrategy(mapping), record, lambda _state, _state2, act: act
+        )
 
 
 class QueueFrontier[T](Frontier[T, BasicNode[T]]):
@@ -100,20 +99,22 @@ def test_repush_and_rollout_reuse() -> None:
     run_search(strategy, frontier, beam_width=1, explore_width=1)
 
     assert record == ["a1", "a2"]
-    assert frontier.repush_count == 1
+    assert frontier.repush_count == 2
     assert strategy.call_counts == {0: 1}
 
 
-def test_no_repush_when_rollout_exhausted() -> None:
-    """Ensure repush is not called once a rollout is exhausted."""
-    record: list[str] = []
-    actions: dict[int, list[tuple[float, Action[int]]]] = {
-        0: [(0.9, RecordingAction("only", record.append))]
-    }
-    strategy = CountingStrategy(actions)
-    frontier = QueueFrontier([Node(0, None)])
+# This test does not make sense because asking for another solution is an operation
+# that we need to "pay" for.
+# def test_no_repush_when_rollout_exhausted() -> None:
+#     """Ensure repush is not called once a rollout is exhausted."""
+#     record: list[str] = []
+#     actions: dict[int, list[tuple[float, Action[int]]]] = {
+#         0: [(0.9, RecordingAction("only", record.append))]
+#     }
+#     strategy = CountingStrategy(actions)
+#     frontier = QueueFrontier([Node(0, None)])
 
-    run_search(strategy, frontier, beam_width=1, explore_width=1)
+#     run_search(strategy, frontier, beam_width=1, explore_width=1)
 
-    assert record == ["only"]
-    assert frontier.repush_count == 0
+#     assert record == ["only"]
+#     assert frontier.repush_count == 0
