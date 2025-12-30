@@ -140,7 +140,7 @@ class BFS[T](Frontier[T, BasicNode[T]]):
         return None
 
 
-class Wrapper[T, V](BasicNode[T]):
+class _PQueueNode[T, V](BasicNode[T]):
     """Bundle values with scores so heapq can order them."""
 
     def __init__(
@@ -150,7 +150,7 @@ class Wrapper[T, V](BasicNode[T]):
         self._score = score
         self._compare = compare
 
-    def __lt__(self, other: Wrapper[T, V]) -> bool:
+    def __lt__(self, other: _PQueueNode[T, V]) -> bool:
         assert self._compare == other._compare
         cmp = self._compare(self._score, other._score)
         if cmp == 0:
@@ -159,7 +159,7 @@ class Wrapper[T, V](BasicNode[T]):
             return cmp < 0
 
 
-class PQueue[T](Frontier[T, Wrapper[T, Any]]):
+class PQueue[T](Frontier[T, _PQueueNode[T, Any]]):
     """Priority queue frontier with a custom comparator."""
 
     def __init__[U](
@@ -167,7 +167,7 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
     ) -> None:
         self._compare: Callable[[Any, Any], Any] = compare
         self._score: Callable[[T], Any] = score
-        self._worklist: list[Wrapper[T, Any]] = []
+        self._worklist: list[_PQueueNode[T, Any]] = []
         self._next: int = 0
 
     def _fresh(self) -> int:
@@ -175,14 +175,15 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         return self._next
 
     @override
-    def push(self, val: T, parent: Wrapper[T, Any] | None) -> None:
+    def push(self, val: T, parent: _PQueueNode[T, Any] | None) -> None:
         # Wrap with score so heapq can order items.
         heapq.heappush(
-            self._worklist, Wrapper(self._fresh(), val, self._score(val), self._compare)
+            self._worklist,
+            _PQueueNode(self._fresh(), val, self._score(val), self._compare),
         )
 
     @override
-    def repush(self, node: Wrapper[T, Any]) -> None:
+    def repush(self, node: _PQueueNode[T, Any]) -> None:
         heapq.heappush(self._worklist, node)
 
     @override
@@ -190,9 +191,9 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         self._worklist = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]] | None:
+    def take(self, count: int) -> list[tuple[T, _PQueueNode[T, Any]]] | None:
         if self._worklist:
-            result: list[Wrapper[T, Any]] = []
+            result: list[_PQueueNode[T, Any]] = []
             while self._worklist and count > 0:
                 # test_frontier_pqueue.py: honor count by decrementing per pop.
                 # Pop lowest (or highest) priority based on compare.
