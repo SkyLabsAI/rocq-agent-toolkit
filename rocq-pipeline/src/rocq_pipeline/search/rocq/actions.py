@@ -1,9 +1,12 @@
 from collections.abc import Callable
 from typing import override
 
+from observability import get_logger
 from rocq_doc_manager import RocqCursor
 
 from ..action import Action
+
+logger = get_logger("rocq_agent")
 
 
 class RocqTacticAction(Action[RocqCursor]):
@@ -22,18 +25,18 @@ class RocqTacticAction(Action[RocqCursor]):
         response = self.run_tactic(state, self._tactic)
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
-            print(f"  RocqTacticAction: '{self._tactic}' failed.")
+            logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
+            # print(f"  RocqTacticAction: '{self._tactic}' failed.")
             raise Action.Failed(
                 message=response.message,
                 details=response,
             )
-        print(f"  RocqTacticAction: '{self._tactic}' succeeded.")
+        logger.info(f"  RocqTacticAction: '{self._tactic}' succeeded.")
         return state
 
     def run_tactic(
         self, rc: RocqCursor, tactic: str
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        # print(f"RocqTacticAction running tactic: {tactic}")
         return rc.insert_command(tactic)
 
     @override
