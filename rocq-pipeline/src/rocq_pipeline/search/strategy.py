@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any, TypeVar, override
 
 from .action import Action

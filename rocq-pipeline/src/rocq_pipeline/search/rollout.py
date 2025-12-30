@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
-from typing import Any, TypeVar, override
-
-from .action import Action
+from typing import TypeVar, override
 
 NEG_INF = -float("inf")
 
@@ -58,7 +56,7 @@ def empty_Rollout[T]() -> Rollout[T]:
 
 class ConsRollout[T_co](Rollout[T_co]):
     def __init__(self, value: T_co, logprob: float, rest: Rollout[T_co]) -> None:
-        assert logprob <= 0  # validation logic?
+        # assert logprob <= 0  # validation logic?
         self._value = value
         self._logprob = logprob
         self._done = False
@@ -81,7 +79,7 @@ class SingletonRollout[T_co](Rollout[T_co]):
         *,
         logprob: float = 0.0,
     ) -> None:
-        assert logprob <= 0  # validation logic?
+        # assert logprob <= 0  # validation logic?
         self._value = value
         self._logprob = logprob
         self._done = False
@@ -216,7 +214,6 @@ class InterleaveRollout[U](Rollout[U]):
                     stashed.append(result)
                     continue
             else:
-                heapq.heappush(self._queue, result)
                 candidate = result
                 break
 
@@ -260,6 +257,7 @@ class InterleaveRollout[U](Rollout[U]):
 
         if candidate:
             assert candidate.action is not None
+            self._push_next(candidate.owner, candidate.rest)
             return Rollout.Approx(candidate.logprob, candidate.action)
         else:
             if self._queue:

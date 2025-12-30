@@ -3,7 +3,6 @@ from math import log
 
 from rocq_pipeline.search.rollout import (
     InterleaveRollout,
-    IterableRollout,
     IteratorRollout,
     Rollout,
     SingletonRollout,

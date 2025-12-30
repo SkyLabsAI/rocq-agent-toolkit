@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import override
 
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import IterableRollout, IteratorRollout, Rollout
+from rocq_pipeline.search.rollout import IterableRollout, Rollout
 from rocq_pipeline.search.search.beam import BeamSearch
 from rocq_pipeline.search.search.guidance import Guidance
 from rocq_pipeline.search.strategy import Strategy
