@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import override
 
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.search.frontier import Frontier
+from rocq_pipeline.search.search.frontier import BasicNode, Frontier
 from rocq_pipeline.search.search.search import Node
 from rocq_pipeline.search.strategy import Strategy
 
@@ -30,19 +30,24 @@ class CountingStrategy(Strategy[int]):
         return iter(self._mapping.get(state, []))
 
 
-class QueueFrontier[T](Frontier[T, T]):
+class QueueFrontier[T](Frontier[T, BasicNode[T]]):
     """FIFO frontier that ignores child pushes to isolate repush behavior."""
 
     def __init__(self, candidates: list[T]) -> None:
-        self._queue = list(candidates)
+        self._queue = [BasicNode(i, c) for i, c in enumerate(candidates)]
         self.repush_count = 0
+        self._fresh = len(self._queue)
+
+    def _next(self) -> int:
+        self._fresh += 1
+        return self._fresh
 
     @override
-    def push(self, val: T, parent: T | None) -> None:
-        return None
+    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
+        return BasicNode(self._next(), val)
 
     @override
-    def repush(self, node: T) -> None:
+    def repush(self, node: BasicNode[T]) -> None:
         self.repush_count += 1
         self._queue.append(node)
 
@@ -51,12 +56,12 @@ class QueueFrontier[T](Frontier[T, T]):
         self._queue = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, T]] | None:
+    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if not self._queue:
-            return None
+            return []
         pulled = self._queue[:count]
         self._queue = self._queue[count:]
-        return [(node, node) for node in pulled]
+        return [(x.state, x) for x in pulled]
 
 
 def test_explore_width_is_global_budget() -> None:
@@ -75,8 +80,7 @@ def test_explore_width_is_global_budget() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None), Node(1, None)])
 
-    frontier_base: Frontier[Node[int], Node[int]] = frontier
-    run_search(strategy, frontier_base, beam_width=2, explore_width=2)
+    run_search(strategy, frontier, beam_width=2, explore_width=2)
 
     assert record == ["c1_a1", "c1_a2"]
 
@@ -93,8 +97,7 @@ def test_repush_and_rollout_reuse() -> None:
     strategy = CountingStrategy(actions)
     frontier = QueueFrontier([Node(0, None)])
 
-    frontier_base: Frontier[Node[int], Node[int]] = frontier
-    run_search(strategy, frontier_base, beam_width=1, explore_width=1)
+    run_search(strategy, frontier, beam_width=1, explore_width=1)
 
     assert record == ["a1", "a2"]
     assert frontier.repush_count == 1
@@ -110,8 +113,7 @@ def test_no_repush_when_rollout_exhausted() -> None:
     strategy = CountingStrategy(actions)
     frontier = QueueFrontier([Node(0, None)])
 
-    frontier_base: Frontier[Node[int], Node[int]] = frontier
-    run_search(strategy, frontier_base, beam_width=1, explore_width=1)
+    run_search(strategy, frontier, beam_width=1, explore_width=1)
 
     assert record == ["only"]
     assert frontier.repush_count == 0
