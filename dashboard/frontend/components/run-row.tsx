@@ -12,7 +12,6 @@ interface RunRowProps {
   isLatest?: boolean;
   totalTasks: number;
   successCount: number;
-  failureCount: number;
   timestamp: string;
   isSelected: boolean;
   isPinned: boolean;
@@ -38,7 +37,6 @@ const RunRow: React.FC<RunRowProps> = ({
   isLatest,
   totalTasks,
   successCount,
-  failureCount,
   timestamp,
   isSelected,
   onToggleExpansion,

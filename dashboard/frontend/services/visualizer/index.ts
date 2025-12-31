@@ -1,6 +1,12 @@
 import axios from 'axios';
 
 import { config } from '@/config/environment';
+// Import mock data functions
+import {
+  getLogsBySpanMock,
+  getParsedSpansForTraceMock,
+  getTraceIdsForRunMock,
+} from '@/services/mockdata';
 
 const USE_MOCK_DATA = config.USE_MOCK_DATA || process.env.NODE_ENV === 'test';
 
@@ -25,7 +31,11 @@ export type VisualizerSpansResponse = {
   spans: VisualizerSpanLite[];
 };
 
-export async function getTraceIdsForRun(
+// ========================================
+// GET TRACE IDS FOR RUN
+// ========================================
+
+const getTraceIdsForRunReal = async (
   runId: string,
   opts?: {
     startMs?: number;
@@ -33,8 +43,7 @@ export async function getTraceIdsForRun(
     lookbackMinutes?: number;
     limit?: number;
   }
-): Promise<VisualizerTraceIdsResponse> {
-  if (USE_MOCK_DATA) return { run_id: runId, trace_ids: [], total: 0 };
+): Promise<VisualizerTraceIdsResponse> => {
   const lookbackMinutes = opts?.lookbackMinutes ?? 15;
   const limit = opts?.limit ?? 25;
   const url = new URL(
@@ -49,20 +58,49 @@ export async function getTraceIdsForRun(
   }
   const resp = await axios.get(url.toString());
   return resp.data as VisualizerTraceIdsResponse;
+};
+
+export async function getTraceIdsForRun(
+  runId: string,
+  opts?: {
+    startMs?: number;
+    endMs?: number;
+    lookbackMinutes?: number;
+    limit?: number;
+  }
+): Promise<VisualizerTraceIdsResponse> {
+  return USE_MOCK_DATA
+    ? getTraceIdsForRunMock(runId, opts)
+    : getTraceIdsForRunReal(runId, opts);
 }
 
-export async function getParsedSpansForTrace(
+// ========================================
+// GET PARSED SPANS FOR TRACE
+// ========================================
+
+const getParsedSpansForTraceReal = async (
   traceId: string
-): Promise<VisualizerSpansResponse> {
-  if (USE_MOCK_DATA) return { spans: [] };
+): Promise<VisualizerSpansResponse> => {
   const url = `${config.DATA_API}/visualizer/data/tempo/traces/${encodeURIComponent(
     traceId
   )}/spans`;
   const resp = await axios.get(url);
   return resp.data as VisualizerSpansResponse;
+};
+
+export async function getParsedSpansForTrace(
+  traceId: string
+): Promise<VisualizerSpansResponse> {
+  return USE_MOCK_DATA
+    ? getParsedSpansForTraceMock(traceId)
+    : getParsedSpansForTraceReal(traceId);
 }
 
-export async function getLogsBySpan(args: {
+// ========================================
+// GET LOGS BY SPAN
+// ========================================
+
+const getLogsBySpanReal = async (args: {
   service: string;
   traceId: string;
   spanId: string;
@@ -70,8 +108,7 @@ export async function getLogsBySpan(args: {
   endMs: number;
   limit?: number;
   direction?: 'backward' | 'forward';
-}): Promise<Record<string, unknown>> {
-  if (USE_MOCK_DATA) return {};
+}): Promise<Record<string, unknown>> => {
   const url = new URL(`${config.DATA_API}/visualizer/data/logs/by-span`);
   url.searchParams.set('service', args.service);
   url.searchParams.set('trace_id', args.traceId);
@@ -82,4 +119,16 @@ export async function getLogsBySpan(args: {
   url.searchParams.set('direction', args.direction ?? 'backward');
   const resp = await axios.get(url.toString());
   return resp.data as Record<string, unknown>;
+};
+
+export async function getLogsBySpan(args: {
+  service: string;
+  traceId: string;
+  spanId: string;
+  startMs: number;
+  endMs: number;
+  limit?: number;
+  direction?: 'backward' | 'forward';
+}): Promise<Record<string, unknown>> {
+  return USE_MOCK_DATA ? getLogsBySpanMock(args) : getLogsBySpanReal(args);
 }

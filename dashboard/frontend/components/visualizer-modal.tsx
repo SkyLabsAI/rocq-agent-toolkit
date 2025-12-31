@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import Modal from '@/components/base/ui/modal';
 import SpanGraphView from '@/components/visualizer/span-graph-view';
@@ -509,9 +509,11 @@ const LogsDisplay = ({ logs }: { logs: Record<string, unknown> }) => {
         {logEntries.map((entry, idx) => {
           const entryAny = entry as Record<string, unknown>;
           const timestamp =
-            entryAny?.timestamp || entryAny?.time || entryAny?.ts;
+            entryAny?.timestamp ||
+            entryAny?.time ||
+            (entryAny?.ts as ReactNode);
           const message = entryAny?.message || entryAny?.msg || entryAny?.body;
-          const level = entryAny?.level || entryAny?.severity;
+          const level = entryAny?.level || (entryAny?.severity as ReactNode);
 
           return (
             <div

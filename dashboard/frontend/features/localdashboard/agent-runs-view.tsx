@@ -110,8 +110,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
           {/* Invisible button to match content row button dimensions */}
           <div className='bg-transparent relative rounded border border-transparent opacity-0 pointer-events-none w-[230px]'></div>
         </div>
-
-       
       </div>
 
       {/* LocalView view: Runs list with selectable compare actions */}
@@ -134,7 +132,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
               tags={run.metadata?.tags}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
-              failureCount={run.failure_count}
               timestamp={run.timestamp_utc}
               isSelected={selectedRuns.includes(run.run_id)}
               onToggleExpansion={handleRunClick}
