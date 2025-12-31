@@ -27,7 +27,12 @@ export type VisualizerSpansResponse = {
 
 export async function getTraceIdsForRun(
   runId: string,
-  opts?: { startMs?: number; endMs?: number; lookbackMinutes?: number; limit?: number }
+  opts?: {
+    startMs?: number;
+    endMs?: number;
+    lookbackMinutes?: number;
+    limit?: number;
+  }
 ): Promise<VisualizerTraceIdsResponse> {
   if (USE_MOCK_DATA) return { run_id: runId, trace_ids: [], total: 0 };
   const lookbackMinutes = opts?.lookbackMinutes ?? 15;
@@ -78,5 +83,3 @@ export async function getLogsBySpan(args: {
   const resp = await axios.get(url.toString());
   return resp.data as Record<string, unknown>;
 }
-
-

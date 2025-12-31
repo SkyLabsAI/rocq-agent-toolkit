@@ -1,43 +1,124 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
-import dagre from 'dagre';
 import {
   Background,
   Controls,
-  ReactFlow,
   type Edge,
   type Node,
   type NodeMouseHandler,
+  ReactFlow,
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
+import dagre from 'dagre';
+import { useEffect, useMemo } from 'react';
 
+import SpanNode, {
+  type SpanNodeData,
+} from '@/components/visualizer/nodes/span-node';
 import type { VisualizerSpanLite } from '@/services/visualizer';
-import SpanNode, { type SpanNodeData } from '@/components/visualizer/nodes/span-node';
 
 type Props = {
   spans: VisualizerSpanLite[];
   selectedSpanId?: string;
   onSelectSpanId: (spanId: string) => void;
   successPathNodes: Set<string>;
+  collapsedNodes: Set<string>;
+  onToggleCollapse: (spanId: string) => void;
 };
 
 const NODE_W = 260;
 const NODE_H = 78;
 
-export default function SpanGraphView({
+const SpanGraphView = ({
   spans,
   selectedSpanId,
   onSelectSpanId,
   successPathNodes,
-}: Props) {
+  collapsedNodes,
+  onToggleCollapse,
+}: Props) => {
   const computed = useMemo(() => {
     const nodes: Array<Node<SpanNodeData>> = [];
     const edges: Edge[] = [];
 
     const ids = new Set(spans.map(s => s.span_id));
+
+    // Build a map of parent -> children for checking if node has children
+    const childrenMap = new Map<string, string[]>();
     for (const s of spans) {
+      const p = s.parent_span_id ?? undefined;
+      if (p) {
+        if (!childrenMap.has(p)) {
+          childrenMap.set(p, []);
+        }
+        childrenMap.get(p)!.push(s.span_id);
+      }
+    }
+
+    // Calculate depths for all nodes
+    const depthMap = new Map<string, number>();
+    const calculateDepth = (
+      spanId: string,
+      visited = new Set<string>()
+    ): number => {
+      if (depthMap.has(spanId)) return depthMap.get(spanId)!;
+      if (visited.has(spanId)) return 0;
+
+      visited.add(spanId);
+      const span = spans.find(s => s.span_id === spanId);
+      if (!span || !span.parent_span_id) {
+        depthMap.set(spanId, 0);
+        return 0;
+      }
+
+      const parentDepth = calculateDepth(span.parent_span_id, visited);
+      const depth = parentDepth + 1;
+      depthMap.set(spanId, depth);
+      return depth;
+    };
+
+    for (const s of spans) {
+      calculateDepth(s.span_id);
+    }
+
+    // Get all descendants of a node
+    const getDescendants = (spanId: string): Set<string> => {
+      const descendants = new Set<string>();
+      const queue = [spanId];
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        const children = childrenMap.get(current) || [];
+        for (const child of children) {
+          descendants.add(child);
+          queue.push(child);
+        }
+      }
+      return descendants;
+    };
+
+    // Filter out collapsed descendants
+    const visibleSpanIds = new Set<string>();
+    for (const s of spans) {
+      // Check if any ancestor is collapsed
+      let isHidden = false;
+      let current = s.parent_span_id;
+      while (current) {
+        if (collapsedNodes.has(current)) {
+          isHidden = true;
+          break;
+        }
+        const parent = spans.find(sp => sp.span_id === current);
+        current = parent?.parent_span_id;
+      }
+      if (!isHidden) {
+        visibleSpanIds.add(s.span_id);
+      }
+    }
+
+    for (const s of spans) {
+      if (!visibleSpanIds.has(s.span_id)) continue;
+
       const nodeVal =
         typeof s.attributes?.['node'] === 'string'
           ? (s.attributes?.['node'] as string)
@@ -45,6 +126,13 @@ export default function SpanGraphView({
       const isOnPath = nodeVal ? successPathNodes.has(nodeVal) : false;
       const spanShort =
         s.span_id.length > 12 ? `${s.span_id.slice(0, 12)}…` : s.span_id;
+      const children = childrenMap.get(s.span_id) || [];
+      const hasChildren = children.length > 0;
+      const isCollapsed = collapsedNodes.has(s.span_id);
+      const depth = depthMap.get(s.span_id) || 0;
+
+      // Count total descendants (for showing in collapsed state)
+      const totalDescendants = getDescendants(s.span_id).size;
 
       nodes.push({
         id: s.span_id,
@@ -57,6 +145,12 @@ export default function SpanGraphView({
           spanIdShort: spanShort,
           nodeValue: nodeVal,
           isOnPath,
+          hasChildren,
+          isCollapsed,
+          onToggleCollapse: () => onToggleCollapse(s.span_id),
+          depth,
+          childCount: children.length,
+          totalDescendants,
         },
         width: NODE_W,
         height: NODE_H,
@@ -64,7 +158,7 @@ export default function SpanGraphView({
       });
 
       const p = s.parent_span_id ?? undefined;
-      if (p && ids.has(p)) {
+      if (p && ids.has(p) && visibleSpanIds.has(p)) {
         edges.push({
           id: `${p}→${s.span_id}`,
           source: p,
@@ -81,7 +175,13 @@ export default function SpanGraphView({
     }
 
     return layoutDagre(nodes, edges);
-  }, [spans, successPathNodes, selectedSpanId]);
+  }, [
+    spans,
+    successPathNodes,
+    selectedSpanId,
+    collapsedNodes,
+    onToggleCollapse,
+  ]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<SpanNodeData>>(
     []
@@ -97,7 +197,9 @@ export default function SpanGraphView({
   }, [computed.edges, setEdges]);
 
   useEffect(() => {
-    setNodes(prev => prev.map(n => ({ ...n, selected: n.id === selectedSpanId })));
+    setNodes(prev =>
+      prev.map(n => ({ ...n, selected: n.id === selectedSpanId }))
+    );
   }, [selectedSpanId, setNodes]);
 
   const onNodeClick: NodeMouseHandler = (_evt, node) => {
@@ -105,7 +207,9 @@ export default function SpanGraphView({
   };
 
   if (!spans.length) {
-    return <div className='text-sm text-text-disabled'>No spans to render.</div>;
+    return (
+      <div className='text-sm text-text-disabled'>No spans to render.</div>
+    );
   }
 
   if (spans.length > 1000) {
@@ -138,7 +242,7 @@ export default function SpanGraphView({
       </ReactFlow>
     </div>
   );
-}
+};
 
 function durationMs(
   startNs?: string | null,
@@ -177,4 +281,4 @@ function layoutDagre<T extends Record<string, unknown>>(
   return { nodes: outNodes, edges };
 }
 
-
+export default SpanGraphView;
