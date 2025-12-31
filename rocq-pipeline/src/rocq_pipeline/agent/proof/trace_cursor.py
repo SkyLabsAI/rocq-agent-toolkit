@@ -28,7 +28,7 @@ def _trace_log(
         @functools.wraps(func)
         def wrapper(self, **kwargs):
             # it is important that we get the location before we run the function
-            log_args = {"state_id": self._location()}
+            log_args = {"before": self._location()}
             log_args["args"] = fn_input(self, kwargs)
             if cmd:
                 log_args["action"] = cmd(kwargs)
@@ -36,7 +36,7 @@ def _trace_log(
                 result = func(self, **kwargs)
                 log_args["result"] = fn_output(result)
                 if after:
-                    log_args["next_state_id"] = self._location()
+                    log_args["after"] = self._location()
                 logger.info(f"RocqCursor.{func.__name__}", **log_args)
             except Exception as err:
                 log_args["exception"] = fn_except(err)
@@ -59,22 +59,29 @@ class TracingCursor(RocqCursor):
         assert rc._the_rdm is not None
         return TracingCursor(rc._the_rdm, rc._cursor)
 
-    def __init__(self, rdm: RocqDocManagerAPI, cursor: int) -> None:
+    def __init__(
+        self, rdm: RocqDocManagerAPI, cursor: int, *, verbose: bool = True
+    ) -> None:
         super().__init__(rdm, cursor)
+        self._verbose = verbose
 
-    def _location(self) -> str:
+    def _location(self) -> str | dict[str, Any]:
         """Construct a functional location by computing the hash of the effectful commands."""
         raw = "\n".join(
             [elem.text for elem in self.doc_prefix() if elem.kind == "command"]
         )
-        return hashlib.md5(raw.encode("utf-8")).hexdigest()
+        result = {"id": hashlib.md5(raw.encode("utf-8")).hexdigest()}
+        if self._verbose and (goal := self.current_goal()):
+            result["goal"] = goal.to_json()
+        return result
 
     @override
     def clone(self, materialize: bool = False):
-        # We don't trace this because we don't care about the actual cursor, but we do care that the cloned cursor is also traced
+        # We don't trace this because we don't care about the cursor, but
+        # we do care that the result is also traced in the same way
         result = super().clone(materialize=materialize)
         assert result._the_rdm is not None
-        return TracingCursor(result._the_rdm, result._cursor)
+        return TracingCursor(result._the_rdm, result._cursor, verbose=self._verbose)
 
     @override
     @_trace_log(after=True, inputs=lambda _, args: args["text"])
