@@ -2,16 +2,15 @@ import itertools
 from dataclasses import dataclass
 from typing import override
 
-from observability import trace_context
+from opentelemetry.trace import NonRecordingSpan, Span
 from rocq_doc_manager import RocqCursor
-
-from rocq_pipeline.agent import (
-    TaskResult,
-)
+from rocq_pipeline.agent import TaskResult
 from rocq_pipeline.agent.base import ProofAgent
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
+
+from observability import trace_context
 
 
 class StrategyAgent(ProofAgent, VERSION="0.1.0"):
@@ -59,6 +58,11 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
         with trace_context("strategy_agent") as span:
             span.set_attribute("root_id", current_id)
 
+            # We build the trace tree using real span parentage
+            # (not just a custom "parent" attribute).
+            # Each successful step becomes the parent span for the next step.
+            current_parent_span: Span = span
+
             depth: int = 0
             rem_fuel: int | None = self._fuel
             while True:
@@ -84,7 +88,9 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                             return self.give_up(
                                 rc, message=f"out of fuel ({self._fuel})"
                             )
-                    with trace_context("strategy_agent/process") as process:
+                    with trace_context(
+                        "strategy_agent/process", parent=current_parent_span
+                    ) as process:
                         process.set_attribute("parent", current_id)
                         process.set_attribute("action", action.key())
                         action_rc = rc.clone()
@@ -94,6 +100,11 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                                 action_rc.dispose()
                             current_id = fresh()
                             process.set_attribute("id", current_id)
+                            # Ensure the next span is a child of this step,
+                            # even though the span ends when the context exits.
+                            current_parent_span = NonRecordingSpan(
+                                process.get_span_context()
+                            )
                             depth += 1
                             break
                         except Action.Failed:
@@ -101,5 +112,6 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                 else:
                     # not executed if we see a break
                     return self.give_up(
-                        rc, f"No more proposals (max_breath={self._max_breath}"
+                        rc,
+                        f"No more proposals (max_breath={self._max_breath})",
                     )

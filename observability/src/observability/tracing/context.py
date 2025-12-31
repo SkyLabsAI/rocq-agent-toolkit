@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from opentelemetry import metrics, trace
-from opentelemetry.trace import Span, Status, StatusCode
+from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context
 
 from .extractors import get_extractor
 from .extractors.base import AttributeExtractor, NoOpExtractor
@@ -26,6 +26,7 @@ def trace_context(
     *,
     extractor: str | type[AttributeExtractor] | AttributeExtractor | None = None,
     attributes: dict[str, Any] | None = None,
+    parent: Span | None = None,
     metrics_enabled: bool = True,
     record_exception: bool = True,
     **extractor_kwargs: Any,
@@ -40,6 +41,7 @@ def trace_context(
         name: Name for the span
         extractor: Attribute extractor to use (same options as @trace decorator)
         attributes: Static attributes to add to the span
+        parent: Explicit parent span to use (overrides the ambient current span)
         metrics_enabled: Whether to record metrics
         record_exception: Whether to record exceptions
         **extractor_kwargs: Arguments passed to extractor constructor
@@ -78,7 +80,9 @@ def trace_context(
     tracer = trace.get_tracer(__name__)
     start_time = time.time()
 
-    with tracer.start_as_current_span(name) as span:
+    parent_ctx = set_span_in_context(parent) if parent is not None else None
+
+    with tracer.start_as_current_span(name, context=parent_ctx) as span:
         try:
             # Set basic attributes
             span.set_attribute("operation.type", "manual")
