@@ -2,15 +2,15 @@ import itertools
 from dataclasses import dataclass
 from typing import override
 
+from observability import trace_context
 from opentelemetry.trace import NonRecordingSpan, Span
 from rocq_doc_manager import RocqCursor
+
 from rocq_pipeline.agent import TaskResult
 from rocq_pipeline.agent.base import ProofAgent
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
-
-from observability import trace_context
 
 
 class StrategyAgent(ProofAgent, VERSION="0.1.0"):
