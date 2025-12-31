@@ -50,7 +50,7 @@ class RocqCursor(RocqCursorProtocol):
         raise Exception(result.message)
 
     @override
-    def clone(self, materialize: bool = False) -> RocqCursor:
+    def clone(self, *, materialize: bool = False) -> RocqCursor:
         result = RocqCursor(self._rdm, self._rdm.clone(self._cursor))
         if materialize:
             result.materialize()
@@ -63,8 +63,8 @@ class RocqCursor(RocqCursorProtocol):
         self._rdm.copy_contents(src=self._cursor, dst=dst._cursor)
 
     @override
-    def commit(self, file: str | None, include_suffix: bool) -> None:
-        return self._rdm.commit(self._cursor, file, include_suffix)
+    def commit(self, file: str | None, *, include_suffix: bool) -> None:
+        return self._rdm.commit(self._cursor, file, include_suffix=include_suffix)
 
     @override
     def compile(self) -> RocqCursor.CompileResult:

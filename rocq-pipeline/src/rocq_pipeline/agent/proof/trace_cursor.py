@@ -76,7 +76,7 @@ class TracingCursor(RocqCursor):
         return result
 
     @override
-    def clone(self, materialize: bool = False):
+    def clone(self, *, materialize: bool = False):
         # We don't trace this because we don't care about the cursor, but
         # we do care that the result is also traced in the same way
         result = super().clone(materialize=materialize)
