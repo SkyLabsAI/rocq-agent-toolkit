@@ -44,9 +44,10 @@ class RocqCursor(RocqCursorProtocol):
     def materialize(self) -> None:
         """Enable parallel processing on this cursor."""
         result = self._rdm.materialize(self._cursor)
-        if isinstance(result, RocqCursor.Err):
-            raise Exception(result.message)
-        return result
+        if result is None:
+            return None
+        assert isinstance(result, RocqCursor.Err)
+        raise Exception(result.message)
 
     @override
     def clone(self, materialize: bool = False) -> RocqCursor:
