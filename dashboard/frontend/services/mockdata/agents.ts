@@ -104,12 +104,12 @@ export const getAgentInstancesMock = async (
 ): Promise<AgentInstanceSummary[]> => {
   await simulateDelay(200, 500);
 
-  const numInstances = Math.floor(Math.random() * 3) + 2; // 2-4 instances
+  const numInstances = 3; // Fixed: always return 3 instances
   const mockInstances: AgentInstanceSummary[] = [];
 
   for (let i = 0; i < numInstances; i++) {
-    const totalTasks = Math.floor(Math.random() * 50) + 20;
-    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3));
+    const totalTasks = 30 + i * 10; // Fixed: 30, 40, 50
+    const successCount = Math.floor(totalTasks * 0.75); // Fixed: 75% success rate
 
     mockInstances.push({
       agent_checksum: `instance-${agentClsChecksum}-${i}`,
@@ -118,25 +118,25 @@ export const getAgentInstancesMock = async (
       provenance: {
         version: `v${i + 1}.0`,
         created_at: new Date(
-          Date.now() - Math.random() * 30 * 86400000
+          Date.now() - (i + 1) * 7 * 86400000 // Fixed: 7, 14, 21 days ago
         ).toISOString(),
       },
-      total_runs: Math.floor(Math.random() * 10) + 3,
+      total_runs: 5 + i, // Fixed: 5, 6, 7 runs
       best_run: {
         run_id: `run_instance_${i}_001`,
         agent_cls_checksum: agentClsChecksum,
         agent_checksum: `instance-${agentClsChecksum}-${i}`,
         timestamp_utc: new Date(
-          Date.now() - Math.random() * 7 * 86400000
+          Date.now() - (i + 1) * 2 * 86400000 // Fixed: 2, 4, 6 days ago
         ).toISOString(),
         total_tasks: totalTasks,
         success_count: successCount,
         failure_count: totalTasks - successCount,
         success_rate: successCount / totalTasks,
-        score: 0.8 + Math.random() * 0.2,
-        avg_total_tokens: 4000 + Math.random() * 2000,
-        avg_cpu_time_sec: 8 + Math.random() * 8,
-        avg_llm_invocation_count: 5 + Math.random() * 5,
+        score: 0.85 + i * 0.05, // Fixed: 0.85, 0.90, 0.95
+        avg_total_tokens: 4500 + i * 500, // Fixed: 4500, 5000, 5500
+        avg_cpu_time_sec: 10 + i * 2, // Fixed: 10, 12, 14
+        avg_llm_invocation_count: 6 + i, // Fixed: 6, 7, 8
         best_run: false,
         metadata: {
           tags: {},
@@ -157,12 +157,12 @@ export const getDatasetAgentInstancesMock = async (
 ): Promise<AgentInstanceSummary[]> => {
   await simulateDelay(200, 500);
 
-  const numInstances = Math.floor(Math.random() * 3) + 2;
+  const numInstances = 3; // Fixed: always return 3 instances
   const mockInstances: AgentInstanceSummary[] = [];
 
   for (let i = 0; i < numInstances; i++) {
-    const totalTasks = Math.floor(Math.random() * 50) + 20;
-    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3));
+    const totalTasks = 35 + i * 10; // Fixed: 35, 45, 55
+    const successCount = Math.floor(totalTasks * 0.8); // Fixed: 80% success rate
 
     mockInstances.push({
       agent_checksum: `dataset-${datasetId}-instance-${agentClsChecksum}-${i}`,
@@ -172,26 +172,26 @@ export const getDatasetAgentInstancesMock = async (
         version: `v${i + 1}.0`,
         dataset: datasetId,
         created_at: new Date(
-          Date.now() - Math.random() * 30 * 86400000
+          Date.now() - (i + 1) * 10 * 86400000 // Fixed: 10, 20, 30 days ago
         ).toISOString(),
       },
-      total_runs: Math.floor(Math.random() * 10) + 3,
+      total_runs: 4 + i, // Fixed: 4, 5, 6 runs
       best_run: {
         run_id: `run_dataset_${datasetId}_instance_${i}_001`,
         agent_cls_checksum: agentClsChecksum,
         agent_checksum: `dataset-${datasetId}-instance-${agentClsChecksum}-${i}`,
         timestamp_utc: new Date(
-          Date.now() - Math.random() * 7 * 86400000
+          Date.now() - (i + 1) * 3 * 86400000 // Fixed: 3, 6, 9 days ago
         ).toISOString(),
         dataset_id: datasetId,
         total_tasks: totalTasks,
         success_count: successCount,
         failure_count: totalTasks - successCount,
         success_rate: successCount / totalTasks,
-        score: 0.8 + Math.random() * 0.2,
-        avg_total_tokens: 4000 + Math.random() * 2000,
-        avg_cpu_time_sec: 8 + Math.random() * 8,
-        avg_llm_invocation_count: 5 + Math.random() * 5,
+        score: 0.82 + i * 0.06, // Fixed: 0.82, 0.88, 0.94
+        avg_total_tokens: 4200 + i * 600, // Fixed: 4200, 4800, 5400
+        avg_cpu_time_sec: 9 + i * 2, // Fixed: 9, 11, 13
+        avg_llm_invocation_count: 7 + i, // Fixed: 7, 8, 9
         best_run: false,
         metadata: {
           tags: {
@@ -213,23 +213,23 @@ export const getDetailsMock = async (
 ): Promise<AgentRun[]> => {
   await simulateDelay(200, 500);
 
-  const numRuns = Math.floor(Math.random() * 10) + 5; // 5-15 runs
+  const numRuns = 8; // Fixed: always return 8 runs
   const mockRuns: AgentRun[] = [];
 
   for (let i = 0; i < numRuns; i++) {
-    const totalTasks = Math.floor(Math.random() * 50) + 20;
-    const successCount = Math.floor(totalTasks * (0.6 + Math.random() * 0.3));
+    const totalTasks = 25 + i * 5; // Fixed: 25, 30, 35, 40, 45, 50, 55, 60
+    const successCount = Math.floor(totalTasks * 0.7); // Fixed: 70% success rate
 
     mockRuns.push({
       run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,
       agent_name: agentName,
       timestamp_utc: new Date(
-        Date.now() - Math.random() * 7 * 86400000
+        Date.now() - (i + 1) * 1 * 86400000 // Fixed: 1, 2, 3... days ago
       ).toISOString(),
       total_tasks: totalTasks,
       success_count: successCount,
       failure_count: totalTasks - successCount,
-      dataset_id: `benchmark_${(Math.floor(Math.random() * 3) + 1).toString().padStart(3, '0')}`,
+      dataset_id: `benchmark_${((i % 3) + 1).toString().padStart(3, '0')}`, // Fixed: cycles through benchmark_001, 002, 003
       metadata: {
         tags: {
           run_id: `run_${agentName}_${i.toString().padStart(3, '0')}`,

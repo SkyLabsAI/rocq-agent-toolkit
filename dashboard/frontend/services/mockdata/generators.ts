@@ -1,23 +1,23 @@
 import type { TaskOutput } from '@/types/types';
 
 /**
- * Generate a random mock task output with realistic data
+ * Generate a mock task output with static data based on index
  */
 export const generateMockTaskOutput = (
   runId: string,
   agentName: string,
   taskIndex: number
 ): TaskOutput => {
-  const isSuccess = Math.random() > 0.3; // 70% success rate
+  const isSuccess = taskIndex % 3 !== 2; // Fixed: 70% success rate (0,1,3,4,6,7... succeed, 2,5,8... fail)
   const taskId = `task_${taskIndex.toString().padStart(3, '0')}`;
 
   return {
     run_id: runId,
     task_kind: 'FullProofTask',
     task_id: taskId,
-    trace_id: `trace_${Math.random().toString(36).substring(2, 15)}`,
+    trace_id: `trace_${taskIndex.toString().padStart(10, '0')}`, // Fixed: deterministic trace ID
     timestamp_utc: new Date(
-      Date.now() - Math.random() * 86400000
+      Date.now() - taskIndex * 3600000 // Fixed: each task is 1 hour apart
     ).toISOString(),
     agent_name: agentName,
     status: isSuccess ? 'Success' : 'Failure',
@@ -30,30 +30,30 @@ export const generateMockTaskOutput = (
       : undefined,
     results: {
       proof_found: isSuccess,
-      steps_taken: Math.floor(Math.random() * 50) + 1,
+      steps_taken: 10 + taskIndex * 2, // Fixed: 10, 12, 14, 16...
     },
     metrics: {
-      llm_invocation_count: Math.floor(Math.random() * 20) + 5,
+      llm_invocation_count: 8 + taskIndex, // Fixed: 8, 9, 10, 11...
       token_counts: {
-        input_tokens: Math.floor(Math.random() * 5000) + 1000,
-        output_tokens: Math.floor(Math.random() * 2000) + 500,
-        total_tokens: Math.floor(Math.random() * 7000) + 1500,
+        input_tokens: 2000 + taskIndex * 100, // Fixed: 2000, 2100, 2200...
+        output_tokens: 800 + taskIndex * 50, // Fixed: 800, 850, 900...
+        total_tokens: 2800 + taskIndex * 150, // Fixed: 2800, 2950, 3100...
       },
       resource_usage: {
-        execution_time_sec: Math.random() * 30 + 5,
-        cpu_time_sec: Math.random() * 25 + 3,
-        gpu_time_sec: Math.random() * 10 + 1,
+        execution_time_sec: 12 + taskIndex * 1.5, // Fixed: 12, 13.5, 15...
+        cpu_time_sec: 10 + taskIndex * 1.2, // Fixed: 10, 11.2, 12.4...
+        gpu_time_sec: 3 + taskIndex * 0.5, // Fixed: 3, 3.5, 4...
       },
       custom: {
-        proof_complexity: Math.floor(Math.random() * 10) + 1,
-        something_else: Math.random() * 100,
+        proof_complexity: 5 + (taskIndex % 5), // Fixed: 5, 6, 7, 8, 9, 5...
+        something_else: 50 + taskIndex * 5, // Fixed: 50, 55, 60...
         hehe: 'hoho',
         something_array: [1, 2, 3],
         hola: 'hola',
       },
       custom_metrics: {
-        proof_complexity: Math.floor(Math.random() * 10) + 1,
-        something_else: Math.random() * 100,
+        proof_complexity: 5 + (taskIndex % 5), // Fixed: 5, 6, 7, 8, 9, 5...
+        something_else: 50 + taskIndex * 5, // Fixed: 50, 55, 60...
         hehe: 'hoho',
         something_array: [1, 2, 3],
         hola: 'hola',
@@ -70,24 +70,27 @@ export const generateMockTaskOutput = (
 };
 
 /**
- * Generate a random hex string of specified length
+ * Generate a deterministic hex string of specified length based on seed
  */
-export const generateHexString = (length: number): string => {
-  return Array.from({ length }, () =>
-    Math.floor(Math.random() * 16).toString(16)
+export const generateHexString = (length: number, seed: number = 0): string => {
+  return Array.from({ length }, (_, i) =>
+    ((seed + i) % 16).toString(16)
   ).join('');
 };
 
 /**
- * Generate a random timestamp within a range
+ * Generate a deterministic timestamp within a range
  */
 export const generateTimestampInRange = (
   minDaysAgo: number,
-  maxDaysAgo: number
+  maxDaysAgo: number,
+  seed: number = 0
 ): string => {
   const minMs = minDaysAgo * 86400000;
   const maxMs = maxDaysAgo * 86400000;
-  const randomMs = minMs + Math.random() * (maxMs - minMs);
+  // Use seed to generate deterministic offset
+  const ratio = (seed % 100) / 100;
+  const randomMs = minMs + ratio * (maxMs - minMs);
   return new Date(Date.now() - randomMs).toISOString();
 };
 

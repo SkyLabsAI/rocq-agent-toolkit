@@ -278,7 +278,7 @@ const VisualizerModal = ({
       title={`Visualizer - ${runId}`}
       size='full'
     >
-      <div className='flex gap-4 h-[80vh]'>
+      <div className='flex gap-4 h-[80vh]' data-testid='visualizer-modal'>
         <div className='flex-1 flex flex-col gap-3 min-w-0'>
           {/* Control Panel */}
           <div className='flex items-center gap-4 flex-wrap bg-elevation-surface-raised p-4 rounded-lg border border-elevation-surface-overlay'>
