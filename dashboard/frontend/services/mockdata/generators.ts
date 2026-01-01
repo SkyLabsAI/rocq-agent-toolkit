@@ -73,9 +73,9 @@ export const generateMockTaskOutput = (
  * Generate a deterministic hex string of specified length based on seed
  */
 export const generateHexString = (length: number, seed: number = 0): string => {
-  return Array.from({ length }, (_, i) =>
-    ((seed + i) % 16).toString(16)
-  ).join('');
+  return Array.from({ length }, (_, i) => ((seed + i) % 16).toString(16)).join(
+    ''
+  );
 };
 
 /**
