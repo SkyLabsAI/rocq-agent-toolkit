@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import inspect
 from collections.abc import Callable
 from typing import Any, override
 
@@ -25,18 +26,26 @@ def _trace_log(
     fn_except = (lambda x: x) if exception is None else exception
 
     def wrap(func: Callable):
+        sig = inspect.signature(func)
+
         @functools.wraps(func)
-        def wrapper(self, **kwargs):
+        def wrapper(self: TracingCursor, *args, **kwargs):
+            # Bind arguments to the function signature
+            bound_args = sig.bind(self, *args, **kwargs)
+            bound_args.apply_defaults()
+            # Convert to dict
+            args_dict = dict(bound_args.arguments)
+
             # it is important that we get the location before we run the function
-            log_args = {"before": self._location()}
-            log_args["args"] = fn_input(self, kwargs)
+            log_args: dict[str, Any] = {"before": self.location_info()}
+            log_args["args"] = fn_input(self, args_dict)
             if cmd:
-                log_args["action"] = cmd(kwargs)
+                log_args["action"] = cmd(args_dict)
             try:
-                result = func(self, **kwargs)
+                result = func(self, *args, **kwargs)
                 log_args["result"] = fn_output(result)
                 if after:
-                    log_args["after"] = self._location()
+                    log_args["after"] = self.location_info()
                 logger.info(f"RocqCursor.{func.__name__}", **log_args)
             except Exception as err:
                 log_args["exception"] = fn_except(err)
@@ -64,16 +73,6 @@ class TracingCursor(RocqCursor):
     ) -> None:
         super().__init__(rdm, cursor)
         self._verbose = verbose
-
-    def _location(self) -> str | dict[str, Any]:
-        """Construct a functional location by computing the hash of the effectful commands."""
-        raw = "\n".join(
-            [elem.text for elem in self.doc_prefix() if elem.kind == "command"]
-        )
-        result = {"id": hashlib.md5(raw.encode("utf-8")).hexdigest()}
-        if self._verbose and (goal := self.current_goal()):
-            result["goal"] = goal.to_json()
-        return result
 
     @override
     def clone(self, *, materialize: bool = False):
@@ -137,3 +136,23 @@ class TracingCursor(RocqCursor):
         self, text: str, indices: list[int] | None = None
     ) -> list[str] | RocqCursor.Err[None]:
         return super().query_text_all(text, indices)
+
+    def location_info(self) -> dict[str, Any]:
+        """Construct a functional location by computing the hash of the effectful commands."""
+        raw = "\n".join(
+            [elem.text for elem in self.doc_prefix() if elem.kind == "command"]
+        )
+        result = {"id": hashlib.md5(raw.encode("utf-8")).hexdigest()}
+        if self._verbose and (goal := self._untraced_current_goal()):
+            result["goal"] = goal.to_json()
+        return result
+
+    def _untraced_current_goal(self) -> RocqCursor.ProofState | None:
+        # Avoid cycle leading to unbounded recursion & stack overflow:
+        #                         TracingCursor.query
+        # -[via _trace_log]->     TracingCursor.location_info
+        # ------------------>     TracingCursor.current_goal ~= RocqCursor.current_goal
+        # -[via self.query]->     TracingCursor.query
+        result = super().query("About nat.")
+        assert not isinstance(result, RocqCursor.Err)
+        return result.proof_state
