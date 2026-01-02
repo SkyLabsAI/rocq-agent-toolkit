@@ -1,4 +1,5 @@
 import itertools
+import time
 from dataclasses import dataclass
 from typing import override
 
@@ -9,8 +10,11 @@ from rocq_pipeline.agent import (
 )
 from rocq_pipeline.agent.base import ProofAgent
 from rocq_pipeline.proof_state import ProofState, RocqGoal
+from observability import get_logger
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
+
+logger = get_logger("rocq_agent")
 
 
 class StrategyAgent(ProofAgent, VERSION="0.1.0"):
@@ -46,6 +50,7 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
     def prove(self, rc: RocqCursor) -> TaskResult:
         self.prepare(rc)
 
+        start_time = time.monotonic()
         depth: int = 0
         rem_fuel: int | None = self._fuel
         while True:
@@ -69,14 +74,46 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                     rem_fuel -= 1
                     if rem_fuel <= 0:
                         return self.give_up(rc, message=f"out of fuel ({self._fuel})")
+                action_key = action.key()
+                logger.info("Tactic Pre State", pf_state_pre=state.to_json())
+                logger.info(
+                    "Tactic Application",
+                    tactic_application_tactic=action_key,
+                )
                 action_rc = rc.clone()
                 try:
                     action.interact(action_rc)
+                    logger.info(
+                        "Tactic Application Status",
+                        status="Success",
+                    )
+                    try:
+                        post_state = self._current_state(action_rc)
+                        logger.info(
+                            "Tactic Post State",
+                            pf_state_post=post_state.to_json(),
+                        )
+                    except StrategyAgent.NoProofState:
+                        logger.warning(
+                            "Tactic Post State",
+                            error_msg="Failed to read post-state",
+                        )
                     rc = action_rc
                     depth += 1
+                    logger.info(
+                        "Depth Progress",
+                        depth=depth,
+                        elapsed_seconds=time.monotonic() - start_time,
+                        remaining_fuel=rem_fuel,
+                    )
                     break
-                except Action.Failed:
+                except Action.Failed as e:
                     action_rc.dispose()
+                    logger.info(
+                        "Tactic Application Status",
+                        status="Failure",
+                        error_msg=e.message,
+                    )
             else:
                 # not executed if we see a break
                 return self.give_up(

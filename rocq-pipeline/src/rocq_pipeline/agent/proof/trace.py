@@ -1,3 +1,4 @@
+import time
 from typing import Any, override
 
 from observability import get_logger
@@ -55,6 +56,7 @@ class TraceAgent(ProofAgent, VERSION="1.0.0"):
     def prove(self, rdm: RocqCursor) -> TaskResult:
         """Keep trying to prove via next tactic prediction."""
 
+        start_time = time.monotonic()
         while True:
             pf_state_reply = self.current_proof_state(rdm)
             if isinstance(pf_state_reply, RocqCursor.Err):
@@ -94,6 +96,16 @@ class TraceAgent(ProofAgent, VERSION="1.0.0"):
             tac_app: TacticApplication = self.run_tactic(rdm, next_tac)
             self.update_history(tac_app)
             self._tac_app_cnt += 1
+            logger.info(
+                "Depth Progress",
+                depth=self._tac_app_cnt,
+                elapsed_seconds=time.monotonic() - start_time,
+                remaining_fuel=(
+                    None
+                    if self._max_fuel is None
+                    else max(self._max_fuel - self._tac_app_cnt, 0)
+                ),
+            )
 
         return self.finished(rdm)
 
