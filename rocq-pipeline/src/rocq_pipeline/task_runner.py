@@ -197,7 +197,12 @@ def run_task(
 
     # Log the result
     if not task_result.success:
-        progress.log(f"{agent.name()} gave up with message: {task_result.message}")
+        if not task_result.exception:
+            progress.log(f"{agent.name()} gave up with message: {task_result.message}")
+        else:
+            # Note: except block above will handle printing a rich stack trace if
+            # an `ExecutionError` was raised.
+            pass
     else:
         progress.log(f"task completed: {task_result.message}")
 
