@@ -273,22 +273,22 @@ class RocqCursorProtocol(ABC):
 
     @abstractmethod
     def query_json(
-        self, text: str, index: int
+        self, text: str, *, index: int
     ) -> Any | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def query_json_all(
-        self, text: str, indices: list[int] | None
+        self, text: str, *, indices: list[int] | None
     ) -> list[Any] | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def query_text(
-        self, text: str, index: int
+        self, text: str, *, index: int
     ) -> str | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
     def query_text_all(
-        self, text: str, indices: list[int] | None
+        self, text: str, *, indices: list[int] | None
     ) -> list[str] | RocqDocManagerAPI.Err[None]: ...
 
     @abstractmethod
