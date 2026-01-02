@@ -65,9 +65,9 @@ class TracingCursor(RocqCursor):
     """
 
     @staticmethod
-    def of_cursor(rc: RocqCursor) -> TracingCursor:
+    def of_cursor(rc: RocqCursor, *, verbose: bool = False) -> TracingCursor:
         assert rc._the_rdm is not None
-        return TracingCursor(rc._the_rdm, rc._cursor)
+        return TracingCursor(rc._the_rdm, rc._cursor, verbose=verbose)
 
     def __init__(
         self, rdm: RocqDocManagerAPI, cursor: int, *, verbose: bool = True
