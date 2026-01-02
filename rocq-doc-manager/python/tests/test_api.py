@@ -153,7 +153,7 @@ class Test_API(RDM_Tests):
                 rc_cls.insert_command(rc, "Check tt."),
                 rc_cls.Err,
             )
-            rc_cls.commit(rc, None, True)
+            rc_cls.commit(rc, None, include_suffix=True)
             compile_result = rc_cls.compile(rc)
             if should_succeed:
                 assert compile_result.error is None

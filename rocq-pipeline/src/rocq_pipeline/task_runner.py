@@ -29,6 +29,7 @@ from rocq_pipeline.agent import (
     OneShotBuilder,
     TaskResult,
 )
+from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.locator import Locator
 from rocq_pipeline.schema import task_output
@@ -185,7 +186,7 @@ def run_task(
                 progress.log(f"{task_id}: locator returned false")
                 return None
             progress.status(0.1, "💭")
-            task_result = agent.run(rc)
+            task_result = agent.run(TracingCursor.of_cursor(rc))
     except Exception as e:
         progress.log(f"Failure with {e}")
         task_result = TaskResult.from_exception(e)
