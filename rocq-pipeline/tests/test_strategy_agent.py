@@ -11,9 +11,9 @@ from pathlib import Path
 import rocq_pipeline.task_runner
 from rocq_pipeline.agent import AgentBuilder
 from rocq_pipeline.agent.proof.strategy_agent import StrategyAgent
+from rocq_pipeline.schema import task_output
 from rocq_pipeline.search.rocq.strategies import FirstTacticStrategy
 from rocq_pipeline.search.strategy import Strategy
-from rocq_pipeline.schema import task_output
 
 from .util import make_task_str
 
@@ -58,13 +58,13 @@ def test_strategy_agent_doc_interaction() -> None:
 
         # Find the output JSONL file
         result_files = list(output_dir.glob("*_results_*.jsonl"))
-        assert (
-            len(result_files) == 1
-        ), f"Expected 1 result file, found {len(result_files)}"
+        assert len(result_files) == 1, (
+            f"Expected 1 result file, found {len(result_files)}"
+        )
         result_file = result_files[0]
 
         # Read and parse the result
-        with open(result_file, "r", encoding="utf-8") as f:
+        with open(result_file, encoding="utf-8") as f:
             lines = [line for line in f if line.strip()]
             assert len(lines) == 1, f"Expected 1 result line, found {len(lines)}"
 
@@ -72,42 +72,42 @@ def test_strategy_agent_doc_interaction() -> None:
             task_output_obj = task_output.TaskOutput.from_json(task_output_json)
 
         # Verify the task succeeded
-        assert (
-            str(task_output_obj.status.value.kind) == "Success"
-        ), f"Expected Success, got {task_output_obj.status.value.kind}"
+        assert str(task_output_obj.status.value.kind) == "Success", (
+            f"Expected Success, got {task_output_obj.status.value.kind}"
+        )
 
         # Verify results is a dict with side_effects
-        assert isinstance(
-            task_output_obj.results, dict
-        ), f"Expected results to be a dict, got {type(task_output_obj.results)}"
+        assert isinstance(task_output_obj.results, dict), (
+            f"Expected results to be a dict, got {type(task_output_obj.results)}"
+        )
 
         # Verify side_effects exists
-        assert (
-            "side_effects" in task_output_obj.results
-        ), "Expected 'side_effects' key in results"
+        assert "side_effects" in task_output_obj.results, (
+            "Expected 'side_effects' key in results"
+        )
 
         side_effects = task_output_obj.results["side_effects"]
-        assert isinstance(
-            side_effects, dict
-        ), f"Expected side_effects to be a dict, got {type(side_effects)}"
+        assert isinstance(side_effects, dict), (
+            f"Expected side_effects to be a dict, got {type(side_effects)}"
+        )
 
         # TODO: re-enable this in the following PR:
         #   https://github.com/SkyLabsAI/rocq-agent-toolkit/pull/68
         if False:
             # Verify doc_interaction exists in side_effects
-            assert (
-                "doc_interaction" in side_effects
-            ), "Expected 'doc_interaction' key in side_effects"
+            assert "doc_interaction" in side_effects, (
+                "Expected 'doc_interaction' key in side_effects"
+            )
 
             doc_interaction = side_effects["doc_interaction"]
-            assert isinstance(
-                doc_interaction, str
-            ), f"Expected doc_interaction to be a string, got {type(doc_interaction)}"
+            assert isinstance(doc_interaction, str), (
+                f"Expected doc_interaction to be a string, got {type(doc_interaction)}"
+            )
 
             # Verify doc_interaction contains the tactic we applied
-            assert (
-                "auto" in doc_interaction.lower()
-            ), f"Expected 'auto' in doc_interaction, got: {doc_interaction}"
+            assert "auto" in doc_interaction.lower(), (
+                f"Expected 'auto' in doc_interaction, got: {doc_interaction}"
+            )
 
             # Verify doc_interaction is non-empty
             assert len(doc_interaction) > 0, "Expected doc_interaction to be non-empty"
