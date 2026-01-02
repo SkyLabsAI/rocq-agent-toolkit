@@ -47,6 +47,7 @@ def _trace_log(
                 if after:
                     log_args["after"] = self.location_info()
                 logger.info(f"RocqCursor.{func.__name__}", **log_args)
+                return result
             except Exception as err:
                 log_args["exception"] = fn_except(err)
                 logger.info(f"RocqCursor.{func.__name__}", **log_args)
@@ -97,7 +98,7 @@ class TracingCursor(RocqCursor):
     @staticmethod
     def _next_command(me: RocqCursor, args: dict[str, Any]) -> str | None:
         suffix = [item.text for item in me.doc_suffix() if item.kind == "command"]
-        return suffix[0]
+        return suffix[0] if suffix else None
 
     @override
     @_trace_log(after=True, inputs=_next_command)
