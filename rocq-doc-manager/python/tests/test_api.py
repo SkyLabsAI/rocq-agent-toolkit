@@ -42,7 +42,7 @@ class Test_API(RDM_Tests):
         transient_rdm: RocqDocManager,
     ) -> None:
         rc = transient_rdm.cursor()
-        check_reply = rc.query_text("Check nat.", 0)
+        check_reply = rc.query_text("Check nat.", index=0)
         assert not isinstance(check_reply, RocqCursor.Err)
         assert check_reply == "nat\n     : Set"
 

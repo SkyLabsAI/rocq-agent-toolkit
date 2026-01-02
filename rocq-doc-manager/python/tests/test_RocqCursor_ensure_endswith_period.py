@@ -61,7 +61,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         with caplog.at_level(logging.WARNING):
             # Note: query_json may return an error if the query doesn't return JSON,
             # but we're testing the decorator, not the query result
-            rc.query_json("Check nat.", 0)
+            rc.query_json("Check nat.", index=0)
             assert "doesn't end with '.'" not in caplog.text
 
     def test_query_json_without_period_warning(
@@ -72,7 +72,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         with caplog.at_level(logging.WARNING):
             # Note: query_json may return an error if the query doesn't return JSON,
             # but we're testing the decorator, not the query result
-            rc.query_json("Check nat", 0)
+            rc.query_json("Check nat", index=0)
             assert "doesn't end with '.'" in caplog.text
             assert "query_json" in caplog.text
 
@@ -105,7 +105,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         """Test query_text with text ending in period - no warning."""
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
-            result = rc.query_text("Check nat.", 0)
+            result = rc.query_text("Check nat.", index=0)
             assert not isinstance(result, RocqCursor.Err)
             assert "doesn't end with '.'" not in caplog.text
 
@@ -115,7 +115,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         """Test query_text with text not ending in period - warning logged."""
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
-            result = rc.query_text("Check nat", 0)
+            result = rc.query_text("Check nat", index=0)
             assert not isinstance(result, RocqCursor.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "query_text" in caplog.text

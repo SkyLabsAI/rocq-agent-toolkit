@@ -153,28 +153,28 @@ class RocqCursor(RocqCursorProtocol):
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def query_json(
-        self, text: str, index: int
+        self, text: str, *, index: int
     ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
-        return self._rdm.query_json(self._cursor, text, index)
+        return self._rdm.query_json(self._cursor, text, index=index)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def query_json_all(
-        self, text: str, indices: list[int] | None = None
+        self, text: str, *, indices: list[int] | None = None
     ) -> list[Any] | RocqCursor.Err[None]:
-        return self._rdm.query_json_all(self._cursor, text, indices)
+        return self._rdm.query_json_all(self._cursor, text, indices=indices)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
-    def query_text(self, text: str, index: int) -> str | RocqCursor.Err[None]:
-        return self._rdm.query_text(self._cursor, text, index)
+    def query_text(self, text: str, *, index: int) -> str | RocqCursor.Err[None]:
+        return self._rdm.query_text(self._cursor, text, index=index)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def query_text_all(
-        self, text: str, indices: list[int] | None = None
+        self, text: str, *, indices: list[int] | None = None
     ) -> list[str] | RocqCursor.Err[None]:
-        return self._rdm.query_text_all(self._cursor, text, indices)
+        return self._rdm.query_text_all(self._cursor, text, indices=indices)
 
     @override
     def revert_before(self, erase: bool, index: int) -> None:
@@ -467,7 +467,7 @@ end.""",
                   current loc. within [mgr]
         """
         result = self.query_text(
-            f'Eval lazy in ltac:(let nm := fresh "{ident}" in idtac nm).', 0
+            f'Eval lazy in ltac:(let nm := fresh "{ident}" in idtac nm).', index=0
         )
         if isinstance(result, RocqCursor.Err):
             return RocqCursor.Err("Not in proof mode", None)
