@@ -33,6 +33,13 @@ class TaskResult:
         """Whether the task was successful."""
         return self.failure_reason is None
 
+    @property
+    def exception(self) -> bool:
+        """Whether the task was successful."""
+        return self.failure_reason is not None and isinstance(
+            self.failure_reason.value, task_output.ExecutionError
+        )
+
     @classmethod
     def finished(
         cls,

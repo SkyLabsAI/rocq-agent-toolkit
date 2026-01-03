@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import sys
+import traceback
 import uuid
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
@@ -188,7 +189,7 @@ def run_task(
             progress.status(0.1, "💭")
             task_result = agent.run(TracingCursor.of_cursor(rc))
     except Exception as e:
-        progress.log(f"Failure with {e}")
+        progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
         task_result = TaskResult.from_exception(e)
     finally:
         progress.status(0.95, "🔚")
@@ -196,7 +197,12 @@ def run_task(
 
     # Log the result
     if not task_result.success:
-        progress.log(f"{agent.name()} gave up with message: {task_result.message}")
+        if not task_result.exception:
+            progress.log(f"{agent.name()} gave up with message: {task_result.message}")
+        else:
+            # Note: except block above will handle printing a rich stack trace if
+            # an `ExecutionError` was raised.
+            pass
     else:
         progress.log(f"task completed: {task_result.message}")
 
