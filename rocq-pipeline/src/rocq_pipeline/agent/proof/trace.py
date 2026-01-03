@@ -8,7 +8,7 @@ from rocq_pipeline.agent.base import (
     TacticApplication,
     TaskResult,
 )
-from rocq_pipeline.proof_state import ProofState, RocqGoal
+from rocq_pipeline.proof_state import RocqGoal
 from rocq_pipeline.schema.task_output import FailureReason
 
 logger = get_logger("rocq_agent")
@@ -131,40 +131,19 @@ class TraceAgent(ProofAgent, VERSION="1.0.0"):
             side_effects=side_effects,
         )
 
+    # NOTE: cf. similar note for _extend_side_effects + _task_doc_interaction
+    # in ./strategy_agent.py
+
     def _extend_side_effects(
         self, rdm: RocqCursor, side_effects: dict[str, Any]
     ) -> None:
         assert side_effects is not None and isinstance(side_effects, dict)
         for k, v in {
             "doc_interaction": self._task_doc_interaction_json(rdm),
-            "holes": self._task_holes_json(rdm),
         }.items():
             if k in side_effects:
                 logger.warning(f"overriding {k} with {v} in {side_effects}")
             side_effects[k] = v
-
-    # NOTE: _task_holes + _task_doc_interaction are used to report
-    # information about the state of the document when the task
-    # concludes, via `side_effects`
-
-    def _task_holes(
-        self,
-        rdm: RocqCursor,
-    ) -> ProofState | RocqCursor.Err[Any]:
-        current_goal_reply = rdm.current_goal()
-        if isinstance(current_goal_reply, RocqCursor.Err):
-            return current_goal_reply
-        return ProofState(
-            current_goal_reply,
-            goal_ty_upperbound=self._goal_ty_upperbound,
-        )
-
-    def _task_holes_json(self, rdm: RocqCursor) -> dict[str, Any] | str:
-        holes = self._task_holes(rdm)
-        if isinstance(holes, RocqCursor.Err):
-            return str(holes)
-        else:
-            return holes.to_json()
 
     def _task_doc_interaction(self, rdm: RocqCursor) -> str:
         return "\n".join(

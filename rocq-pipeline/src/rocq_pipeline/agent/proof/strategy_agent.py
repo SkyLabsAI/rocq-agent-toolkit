@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import itertools
 from dataclasses import dataclass
-from typing import override
+from typing import Any, override
 
+from observability import get_logger
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent import (
@@ -9,8 +12,11 @@ from rocq_pipeline.agent import (
 )
 from rocq_pipeline.agent.base import ProofAgent
 from rocq_pipeline.proof_state import ProofState, RocqGoal
+from rocq_pipeline.schema.task_output import FailureReason
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
+
+logger = get_logger("rocq_agent")
 
 
 class StrategyAgent(ProofAgent, VERSION="0.1.0"):
@@ -28,9 +34,15 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
         self._max_depth = max_depth
         self._max_breath = max_breath
         self._fuel = fuel
+        self._initial_prove_cursor_index: int | None = None
 
     def prepare(self, rc: RocqCursor) -> None:
-        pass
+        """Pre-hook for prove."""
+        self._initial_prove_cursor_index = rc.cursor_index()
+
+    def conclude(self, rc: RocqCursor) -> None:
+        """Post-hook for prove -- transitively, via finished/give_up."""
+        self._initial_prove_cursor_index = None
 
     @dataclass
     class NoProofState(Exception):
@@ -82,3 +94,76 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                 return self.give_up(
                     rc, f"No more proposals (max_breath={self._max_breath}"
                 )
+
+    @override
+    def finished(
+        self,
+        rc: RocqCursor,
+        message: str = "",
+        side_effects: dict[str, Any] | None = None,
+    ) -> TaskResult:
+        if side_effects is None:
+            side_effects = {}
+        self._extend_side_effects(rc, side_effects)
+        result = super().finished(
+            rc,
+            message=message,
+            side_effects=side_effects,
+        )
+        self.conclude(rc)
+        return result
+
+    @override
+    def give_up(
+        self,
+        rc: RocqCursor,
+        message: str = "",
+        reason: FailureReason | RocqCursor.Err[Any] | BaseException | None = None,
+        side_effects: dict[str, Any] | None = None,
+    ) -> TaskResult:
+        if side_effects is None:
+            side_effects = {}
+        self._extend_side_effects(rc, side_effects)
+        result = super().give_up(
+            rc,
+            message=message,
+            reason=reason,
+            side_effects=side_effects,
+        )
+        self.conclude(rc)
+        return result
+
+    # NOTE:
+    # - _extend_side_effects uses _task_doc_interaction to report information
+    #   about the state of the document when the task concludes, via `side_effects`.
+    #   + This works well enough for StrategyAgent since there is no (parallel)
+    #     exploration and no interesting traversal over (decomposed) goals; the final
+    #     `rc` we supply will always be the "furthest" through the proof.
+    #   + This may work less well for SearchAgent due to parallel exploration;
+    #     we'd need a cursor that captures the "final" document state, but we may
+    #     not have one readily accessible.
+    # - We're going to use telemetry to reconstruct the document interaction(s)
+    #   in a proof-state / action visualizer for the dashboard. We should plan to
+    #   leverage this in order to compute doc-interaction strings on demand, which
+    #   enables us to capture both the "final" and "intermediate" proof scripts.
+
+    def _extend_side_effects(
+        self, rc: RocqCursor, side_effects: dict[str, Any]
+    ) -> None:
+        assert side_effects is not None and isinstance(side_effects, dict)
+        for k, v in {
+            "doc_interaction": self._task_doc_interaction_json(rc),
+        }.items():
+            if k in side_effects:
+                logger.warning(f"overriding {k} with {v} in {side_effects}")
+            side_effects[k] = v
+
+    def _task_doc_interaction(self, rc: RocqCursor) -> str:
+        assert self._initial_prove_cursor_index is not None
+        return "".join(
+            prefix_item.text
+            for prefix_item in rc.doc_prefix()[self._initial_prove_cursor_index :]
+        )
+
+    def _task_doc_interaction_json(self, rc: RocqCursor) -> Any:
+        return self._task_doc_interaction(rc)
