@@ -60,7 +60,7 @@ class RocqRetryAction(RocqTacticAction):
     def __init__(
         self,
         tactic: str,
-        rectifier: Callable[[RocqCursor, str, str], str | None] | None,
+        rectifier: Callable[[RocqCursor, str, str], str | None],
         max_retries: int = 3,
     ) -> None:
         """
@@ -93,17 +93,13 @@ class RocqRetryAction(RocqTacticAction):
         max_attempts = (self._max_retries + 1) if self._rectifier else 1
 
         for attempt in range(max_attempts):
-            # 1. Try the tactic
             response = self.run_tactic(state, tactic)
 
-            # 2. Success path
             if not isinstance(response, RocqCursor.Err):
                 self._final_tactic = tactic
                 return state
 
-            # 3. Failure path - can we try again?
-            is_last_attempt = attempt == max_attempts - 1
-            if is_last_attempt:
+            if attempt == max_attempts - 1:
                 raise Action.Failed(
                     message=(
                         f"Max retries ({self._max_retries}) exceeded for '{self._tactic}'. "
@@ -113,13 +109,11 @@ class RocqRetryAction(RocqTacticAction):
                 )
 
             # 4. Recovery logic (Rectification)
-            # We know self._rectifier is not None because max_attempts > 1
-            assert self._rectifier is not None
             rectified = self._rectifier(state, tactic, response.message)
 
             if rectified is None:
                 raise Action.Failed(
-                    message=f"Could not rectify after {attempt + 1} attempts: {response.message}",
+                    message=f"Failed to rectify tactic '{self._tactic}' after {attempt + 1} attempts: {response.message}",
                     details=response,
                 )
 
