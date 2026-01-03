@@ -91,23 +91,20 @@ def test_strategy_agent_doc_interaction() -> None:
             f"Expected side_effects to be a dict, got {type(side_effects)}"
         )
 
-        # TODO: re-enable this in the following PR:
-        #   https://github.com/SkyLabsAI/rocq-agent-toolkit/pull/68
-        if False:
-            # Verify doc_interaction exists in side_effects
-            assert "doc_interaction" in side_effects, (
-                "Expected 'doc_interaction' key in side_effects"
-            )
+        # Verify doc_interaction exists in side_effects
+        assert "doc_interaction" in side_effects, (
+            "Expected 'doc_interaction' key in side_effects"
+        )
 
-            doc_interaction = side_effects["doc_interaction"]
-            assert isinstance(doc_interaction, str), (
-                f"Expected doc_interaction to be a string, got {type(doc_interaction)}"
-            )
+        doc_interaction = side_effects["doc_interaction"]
+        assert isinstance(doc_interaction, str), (
+            f"Expected doc_interaction to be a string, got {type(doc_interaction)}"
+        )
 
-            # Verify doc_interaction contains the tactic we applied
-            assert "auto" in doc_interaction.lower(), (
-                f"Expected 'auto' in doc_interaction, got: {doc_interaction}"
-            )
+        # Verify doc_interaction contains the tactic we applied
+        assert "auto" in doc_interaction.lower(), (
+            f"Expected 'auto' in doc_interaction, got: {doc_interaction}"
+        )
 
-            # Verify doc_interaction is non-empty
-            assert len(doc_interaction) > 0, "Expected doc_interaction to be non-empty"
+        # Verify doc_interaction is non-empty
+        assert len(doc_interaction) > 0, "Expected doc_interaction to be non-empty"
