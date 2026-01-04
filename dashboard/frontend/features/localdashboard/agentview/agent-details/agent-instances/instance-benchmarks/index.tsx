@@ -1,5 +1,5 @@
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { useGlobalCompare } from '@/contexts/global-compare-context';
 import AgentRunsView from '@/features/localdashboard/agent-runs-view';
@@ -25,7 +25,7 @@ export const InstanceBenchmarks: React.FC<InstanceBenchmarksProps> = ({
     instanceChecksum,
     benchmark.dataset_id
   );
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const {
     selectRun,
@@ -65,10 +65,7 @@ export const InstanceBenchmarks: React.FC<InstanceBenchmarksProps> = ({
     const query = new URLSearchParams({
       runs: selectedRunIds.join(','),
     }).toString();
-    navigate({
-      pathname: '/compare',
-      search: `?${query}`,
-    });
+    router.push(`/compare?${query}`);
   };
 
   return (

@@ -1,9 +1,7 @@
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 
-import RunDetailsView from '@/components/run-details-view';
 import { useGlobalCompare } from '@/contexts/global-compare-context';
-import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
 import { useBenchmarkAgents } from '@/hooks/use-dataview';
@@ -25,9 +23,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
 
   const { agents: agentData } = useBenchmarkAgents(benchmark.dataset_id);
 
-  const { modalState, closeModal, openCodeModal } = useAgents();
-
-  const { selectedRun, setSelectedRun } = useSelectedRun();
+  const { modalState, closeModal } = useAgents();
 
   // Use global compare context instead of local state
   const {
@@ -48,7 +44,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
     key: SortableKey;
     direction: 'asc' | 'desc';
   } | null>(null);
-  const location = useLocation();
+  const pathname = usePathname();
 
   // Sorting function
   const handleSort = (key: SortableKey) => {
@@ -96,20 +92,13 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
     });
   };
 
-  // Clear dataset selections when navigating to run details view
-  useEffect(() => {
-    if (selectedRun) {
-      clearDatasetSelections(benchmark.dataset_id);
-    }
-  }, [selectedRun, benchmark.dataset_id, clearDatasetSelections]);
-
   // Clear dataset selections when navigating to different pages
   useEffect(() => {
-    const isComparePage = location.pathname.startsWith('/compare');
+    const isComparePage = pathname?.startsWith('/compare');
     if (isComparePage) {
       clearDatasetSelections(benchmark.dataset_id);
     }
-  }, [location.pathname, benchmark.dataset_id, clearDatasetSelections]);
+  }, [pathname, benchmark.dataset_id, clearDatasetSelections]);
 
   return (
     <div data-testid='dataset-row'>
@@ -128,62 +117,52 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
       </div>
       {isOpen && (
         <>
-          {!selectedRun && (
-            <div className=''>
-              <table className='w-full text-left border-collapse'>
-                <tbody className='divide-y divide-elevation-surface-overlay'>
-                  <tr className='text-text'>
-                    <td>
-                      <button
-                        onClick={() => handleSort('cls_name')}
-                        className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
-                      >
-                        <AgentListIcon className='text-icon-success size-4' />
-                        Agents
-                        <SortIcon
-                          className={`ml-2 transition-transform size-4 ${
-                            sortConfig?.key === 'cls_name'
-                              ? sortConfig.direction === 'desc'
-                                ? 'text-primary-default'
-                                : 'rotate-180 text-primary-default'
-                              : 'text-text-disabled'
-                          }`}
-                        />
-                      </button>
-                    </td>
-                  </tr>
-                  {getSortedAgents().map(agent => (
-                    <DatasetAgentClass
-                      key={agent.cls_checksum}
-                      agent={agent}
-                      datasetId={benchmark.dataset_id}
-                      isSelected={isAgentSelected(
-                        agent.cls_name,
-                        benchmark.dataset_id
-                      )}
-                      toggleSelection={() => {
-                        if (
-                          isAgentSelected(agent.cls_name, benchmark.dataset_id)
-                        ) {
-                          deselectAgent(agent.cls_name, benchmark.dataset_id);
-                        } else {
-                          selectAgent(agent.cls_name, benchmark.dataset_id);
-                        }
-                      }}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {selectedRun && (
-            <RunDetailsView
-              run={selectedRun}
-              onBack={() => setSelectedRun(null)}
-              openCodeModal={openCodeModal}
-            />
-          )}
+          <div className=''>
+            <table className='w-full text-left border-collapse'>
+              <tbody className='divide-y divide-elevation-surface-overlay'>
+                <tr className='text-text'>
+                  <td>
+                    <button
+                      onClick={() => handleSort('cls_name')}
+                      className='flex gap-1 items-center px-6 text-[16px] py-5 hover:text-primary-default transition-colors cursor-pointer w-full'
+                    >
+                      <AgentListIcon className='text-icon-success size-4' />
+                      Agents
+                      <SortIcon
+                        className={`ml-2 transition-transform size-4 ${
+                          sortConfig?.key === 'cls_name'
+                            ? sortConfig.direction === 'desc'
+                              ? 'text-primary-default'
+                              : 'rotate-180 text-primary-default'
+                            : 'text-text-disabled'
+                        }`}
+                      />
+                    </button>
+                  </td>
+                </tr>
+                {getSortedAgents().map(agent => (
+                  <DatasetAgentClass
+                    key={agent.cls_checksum}
+                    agent={agent}
+                    datasetId={benchmark.dataset_id}
+                    isSelected={isAgentSelected(
+                      agent.cls_name,
+                      benchmark.dataset_id
+                    )}
+                    toggleSelection={() => {
+                      if (
+                        isAgentSelected(agent.cls_name, benchmark.dataset_id)
+                      ) {
+                        deselectAgent(agent.cls_name, benchmark.dataset_id);
+                      } else {
+                        selectAgent(agent.cls_name, benchmark.dataset_id);
+                      }
+                    }}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <TaskDetailsModal
             isOpen={modalState.isOpen}

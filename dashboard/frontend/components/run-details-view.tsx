@@ -1,3 +1,4 @@
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
 import { ChevronUpIcon } from '@/icons/chevron-up';
@@ -18,18 +19,38 @@ interface RunDetailsViewProps {
   };
   onBack: () => void;
   openCodeModal: (task: TaskOutput) => void;
+  initialSelectedTags?: string[];
+  runId: string;
 }
 
 const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   run,
   onBack,
   openCodeModal,
+  initialSelectedTags = [],
+  runId,
 }) => {
+  const router = useRouter();
   const [taskDetails, setTaskDetails] = useState<TaskOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<TaskOutput | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [selectedTags, setSelectedTags] =
+    useState<string[]>(initialSelectedTags);
+
+  // Update URL when tags change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedTags.length > 0) {
+      params.set('tags', selectedTags.join(','));
+    }
+    const queryString = params.toString();
+    const newUrl = queryString
+      ? `/runs/${runId}?${queryString}`
+      : `/runs/${runId}`;
+    router.replace(newUrl, { scroll: false });
+  }, [selectedTags, runId, router]);
 
   const handleTaskClick = (task: TaskOutput) => {
     setSelectedTask(task);
@@ -158,7 +179,12 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
 
           {/* Task table content */}
           <div className='p-6'>
-            <TasksTable tasks={taskDetails} onTaskClick={handleTaskClick} />
+            <TasksTable
+              tasks={taskDetails}
+              onTaskClick={handleTaskClick}
+              initialSelectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+            />
           </div>
         </div>
       </div>

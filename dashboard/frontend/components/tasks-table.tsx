@@ -1,15 +1,73 @@
-import React, { useState, useMemo } from 'react';
-import { StatusBadge } from './base/statusBadge';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import type { TaskOutput } from '@/types/types';
+
+import { StatusBadge } from './base/statusBadge';
+import { TagsDisplay } from './tags-display';
 
 interface TasksTableProps {
   tasks: TaskOutput[];
   onTaskClick: (task: TaskOutput) => void;
+  initialSelectedTags?: string[];
+  onTagsChange?: (tags: string[]) => void;
 }
 
-const TasksTable: React.FC<TasksTableProps> = ({ tasks, onTaskClick }) => {
+const TasksTable: React.FC<TasksTableProps> = ({
+  tasks,
+  onTaskClick,
+  initialSelectedTags = [],
+  onTagsChange,
+}) => {
   const [taskIdFilter, setTaskIdFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'Success' | 'Failure'>('all');
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'Success' | 'Failure'
+  >('all');
+  const [selectedTags, setSelectedTags] =
+    useState<string[]>(initialSelectedTags);
+  const [tagSearchInput, setTagSearchInput] = useState('');
+
+  // Notify parent component when tags change
+  useEffect(() => {
+    if (onTagsChange) {
+      onTagsChange(selectedTags);
+    }
+  }, [selectedTags, onTagsChange]);
+
+  // Extract all unique tags from tasks
+  const availableTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    tasks.forEach(task => {
+      const tags = task.metadata?.tags;
+      if (tags && typeof tags === 'object') {
+        Object.entries(tags).forEach(([key, value]) => {
+          if (typeof value === 'string') {
+            tagsSet.add(`${key}:${value}`);
+          }
+        });
+      }
+    });
+    return Array.from(tagsSet).sort();
+  }, [tasks]);
+
+  // Filter available tags based on search input
+  const filteredAvailableTags = useMemo(() => {
+    if (!tagSearchInput) return availableTags;
+    return availableTags.filter(tag =>
+      tag.toLowerCase().includes(tagSearchInput.toLowerCase())
+    );
+  }, [availableTags, tagSearchInput]);
+
+  // Toggle tag selection
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
+  // Clear all selected tags
+  const clearAllTags = () => {
+    setSelectedTags([]);
+  };
 
   // Filter tasks based on current filters
   const filteredTasks = useMemo(() => {
@@ -17,11 +75,26 @@ const TasksTable: React.FC<TasksTableProps> = ({ tasks, onTaskClick }) => {
       const matchesTaskId = task.task_id
         .toLowerCase()
         .includes(taskIdFilter.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+      const matchesStatus =
+        statusFilter === 'all' || task.status === statusFilter;
 
-      return matchesTaskId && matchesStatus;
+      // Check if task matches selected tags (ALL selected tags must match)
+      let matchesTags = true;
+      if (selectedTags.length > 0) {
+        const taskTags = task.metadata?.tags;
+        if (!taskTags || typeof taskTags !== 'object') {
+          matchesTags = false;
+        } else {
+          matchesTags = selectedTags.every(selectedTag => {
+            const [key, value] = selectedTag.split(':');
+            return taskTags[key] === value;
+          });
+        }
+      }
+
+      return matchesTaskId && matchesStatus && matchesTags;
     });
-  }, [tasks, taskIdFilter, statusFilter]);
+  }, [tasks, taskIdFilter, statusFilter, selectedTags]);
 
   return (
     <div className='space-y-4'>
@@ -30,10 +103,14 @@ const TasksTable: React.FC<TasksTableProps> = ({ tasks, onTaskClick }) => {
         <div className='grid grid-cols-2 gap-4'>
           {/* Task ID Filter */}
           <div className='flex flex-col gap-2'>
-            <label className='font-noto-sans text-sm text-text-disabled'>
+            <label
+              htmlFor='task-id-filter'
+              className='font-noto-sans text-sm text-text-disabled'
+            >
               Filter by Task ID
             </label>
             <input
+              id='task-id-filter'
               type='text'
               value={taskIdFilter}
               onChange={e => setTaskIdFilter(e.target.value)}
@@ -44,18 +121,103 @@ const TasksTable: React.FC<TasksTableProps> = ({ tasks, onTaskClick }) => {
 
           {/* Status Filter */}
           <div className='flex flex-col gap-2'>
-            <label className='font-noto-sans text-sm text-text-disabled'>
+            <label
+              htmlFor='status-filter'
+              className='font-noto-sans text-sm text-text-disabled'
+            >
               Filter by Status
             </label>
             <select
+              id='status-filter'
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as 'all' | 'Success' | 'Failure')}
+              onChange={e =>
+                setStatusFilter(e.target.value as 'all' | 'Success' | 'Failure')
+              }
               className='px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text focus:outline-none focus:ring-2 focus:ring-text-information'
             >
               <option value='all'>All Statuses</option>
               <option value='Success'>Success</option>
               <option value='Failure'>Failure</option>
             </select>
+          </div>
+        </div>
+
+        {/* Tags Filter Section */}
+        <div className='mt-4 pt-4 border-t border-elevation-surface-overlay'>
+          <div className='flex items-center justify-between mb-2'>
+            <label
+              htmlFor='tag-search'
+              className='font-noto-sans text-sm text-text-disabled'
+            >
+              Filter by Tags{' '}
+              {selectedTags.length > 0 && `(${selectedTags.length} selected)`}
+            </label>
+            {selectedTags.length > 0 && (
+              <button
+                onClick={clearAllTags}
+                className='px-2 py-1 text-xs text-text-information hover:text-text-information-hovered transition-colors'
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          {/* Tag Search Input */}
+          <input
+            id='tag-search'
+            type='text'
+            value={tagSearchInput}
+            onChange={e => setTagSearchInput(e.target.value)}
+            placeholder='Search tags...'
+            className='w-full px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-text-information mb-2'
+          />
+
+          {/* Selected Tags */}
+          {selectedTags.length > 0 && (
+            <div className='mb-3 flex flex-wrap gap-2'>
+              {selectedTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className='px-3 py-1.5 bg-text-information text-elevation-surface rounded-full text-xs font-noto-sans flex items-center gap-2 hover:bg-text-information-hovered transition-colors'
+                >
+                  {tag}
+                  <span className='text-xs'>×</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Available Tags */}
+          <div className='max-h-48 overflow-y-auto bg-elevation-surface border border-elevation-surface-overlay rounded p-2'>
+            <div
+              className='flex flex-wrap gap-2'
+              role='group'
+              aria-label='Available tags'
+            >
+              {filteredAvailableTags.length === 0 ? (
+                <p className='text-xs text-text-disabled w-full text-center py-2'>
+                  No tags available
+                </p>
+              ) : (
+                filteredAvailableTags.map(tag => {
+                  const isSelected = selectedTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => toggleTag(tag)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-noto-sans transition-colors ${
+                        isSelected
+                          ? 'bg-text-information text-elevation-surface'
+                          : 'bg-elevation-surface-overlay text-text hover:bg-elevation-surface-sunken'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 
@@ -79,32 +241,51 @@ const TasksTable: React.FC<TasksTableProps> = ({ tasks, onTaskClick }) => {
                 <th className='px-6 py-3 text-left font-noto-sans font-semibold text-sm text-text-disabled'>
                   Status
                 </th>
+                <th className='px-6 py-3 text-left font-noto-sans font-semibold text-sm text-text-disabled'>
+                  Tags
+                </th>
               </tr>
             </thead>
             <tbody className='divide-y divide-elevation-surface-overlay'>
               {filteredTasks.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className='px-6 py-8 text-center'>
+                  <td colSpan={3} className='px-6 py-8 text-center'>
                     <p className='font-noto-sans text-sm text-text-disabled'>
                       No tasks found matching your filters
                     </p>
                   </td>
                 </tr>
               ) : (
-                filteredTasks.map((task, index) => (
-                  <tr
-                    key={task.task_id + index}
-                    onClick={() => onTaskClick(task)}
-                    className='hover:bg-elevation-surface-overlay cursor-pointer transition-colors'
-                  >
-                    <td className='px-6 py-4 font-noto-sans text-sm text-text truncate max-w-xs'>
-                      {task.task_id}
-                    </td>
-                    <td className='px-6 py-4'>
-                      <StatusBadge status={task.status} />
-                    </td>
-                  </tr>
-                ))
+                filteredTasks.map((task, index) => {
+                  const taskTags = task.metadata?.tags || {};
+                  return (
+                    <tr
+                      key={task.task_id + index}
+                      onClick={() => onTaskClick(task)}
+                      className='hover:bg-elevation-surface-overlay cursor-pointer transition-colors'
+                    >
+                      <td className='px-6 py-4 font-noto-sans text-sm text-text truncate max-w-xs'>
+                        {task.task_id}
+                      </td>
+                      <td className='px-6 py-4'>
+                        <StatusBadge status={task.status} />
+                      </td>
+                      <td className='px-6 py-4'>
+                        {Object.keys(taskTags).length > 0 ? (
+                          <TagsDisplay
+                            tags={taskTags}
+                            maxVisible={2}
+                            modalTitle={`Tags for ${task.task_id}`}
+                          />
+                        ) : (
+                          <span className='text-xs text-text-disabled'>
+                            No tags
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -115,4 +296,3 @@ const TasksTable: React.FC<TasksTableProps> = ({ tasks, onTaskClick }) => {
 };
 
 export default TasksTable;
-

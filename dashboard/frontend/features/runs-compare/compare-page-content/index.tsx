@@ -1,5 +1,5 @@
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import ComparisonModal from '@/components/base/comparisonModal';
 import { getRunDetails } from '@/services/dataservice';
@@ -12,8 +12,8 @@ import { ComparisonTable } from './compare-table';
 import { computeRunStats, transformRunsToTaskRows } from './utils';
 
 export const ComparePageContent: React.FC = () => {
-  const [sp] = useSearchParams();
-  const runsParam = sp.get('runs') || '';
+  const sp = useSearchParams();
+  const runsParam = sp?.get('runs') || '';
 
   const runIds = useMemo(() => {
     return runsParam

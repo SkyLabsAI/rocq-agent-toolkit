@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/base/ui/button';
 import { ChevronUpIcon } from '@/icons/chevron-up';
+import type { TaskOutput } from '@/types/types';
 
 import { StatusBadge } from './base/statusBadge';
-
-import type { TaskOutput } from '@/types/types';
 
 interface TaskDetailsPanelProps {
   task: TaskOutput | null;
@@ -158,7 +157,8 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
                     Total Tokens
                   </p>
                   <p className='font-inter font-normal text-sm text-text'>
-                    {task.metrics?.token_counts?.total_tokens?.toLocaleString() || '_'}
+                    {task.metrics?.token_counts?.total_tokens?.toLocaleString() ||
+                      '_'}
                   </p>
                 </div>
 
@@ -186,25 +186,26 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
           </div>
 
           {/* Custom Metrics */}
-          {task.metrics?.custom && Object.keys(task.metrics.custom).length > 0 && (
-            <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-5'>
-              <p className='font-noto-sans font-semibold text-base text-text mb-4'>
-                Custom Metrics
-              </p>
-              <div className='grid grid-cols-2 gap-4'>
-                {Object.entries(task.metrics.custom).map(([key, value]) => (
-                  <div key={key} className='flex flex-col gap-1.5'>
-                    <p className='font-inter font-normal text-sm text-text-disabled'>
-                      {key}
-                    </p>
-                    <p className='font-inter font-normal text-sm text-text'>
-                      {String(value)}
-                    </p>
-                  </div>
-                ))}
+          {task.metrics?.custom &&
+            Object.keys(task.metrics.custom).length > 0 && (
+              <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-5'>
+                <p className='font-noto-sans font-semibold text-base text-text mb-4'>
+                  Custom Metrics
+                </p>
+                <div className='grid grid-cols-2 gap-4'>
+                  {Object.entries(task.metrics.custom).map(([key, value]) => (
+                    <div key={key} className='flex flex-col gap-1.5'>
+                      <p className='font-inter font-normal text-sm text-text-disabled'>
+                        {key}
+                      </p>
+                      <p className='font-inter font-normal text-sm text-text'>
+                        {String(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Task Result */}
           <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-5'>
@@ -246,15 +247,14 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             onClick={() => openCodeModal(task)}
             className='w-full'
           >
-          View Logs
-        </Button>
+            View Logs
+          </Button>
+        </div>
       </div>
-    </div>
-  </>
-);
+    </>
+  );
 
-return createPortal(panelContent, document.body);
+  return createPortal(panelContent, document.body);
 };
 
 export default TaskDetailsPanel;
-

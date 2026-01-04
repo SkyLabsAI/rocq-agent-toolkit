@@ -1,5 +1,5 @@
 'use client';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 import ThemeSwitcher from '@/components/theme-switcher';
 import { LogoIcon } from '@/icons/logo/logo';
@@ -17,7 +17,7 @@ const Layout = ({
       <div className='justify-center border-b border-elevation-surface-overlay bg-elevation-surface'>
         <div className='flex items-center justify-between gap-4 backdrop-blur-sm  px-10 py-[10px]'>
           <div className='flex items-center'>
-            <Link to={'/'}>
+            <Link href={'/'}>
               <div
                 className='flex items-center'
                 onClick={() => window.location.reload()}

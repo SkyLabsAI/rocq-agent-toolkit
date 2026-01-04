@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 import { ChevronUpIcon } from '@/icons/chevron-up';
 
@@ -21,7 +21,7 @@ export const CompareRunsHeader = ({
             } as React.CSSProperties
           }
         >
-          <Link to={'/'}>
+          <Link href={'/'}>
             <div className='flex justify-center items-center rotate-[270deg] scale-y-[-100%] w-[38px] h-[38px] hover:bg-background-neutral-hovered rounded-lg'>
               <ChevronUpIcon className='size-6 m-auto' />
             </div>

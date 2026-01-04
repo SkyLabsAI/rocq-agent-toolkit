@@ -1,10 +1,8 @@
+import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 
-import RunDetailsView from '@/components/run-details-view';
 import StickyCompareBar from '@/components/sticky-compare-bar';
 import { GlobalCompareProvider } from '@/contexts/global-compare-context';
-import { useSelectedRun } from '@/contexts/selected-run-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
@@ -14,9 +12,7 @@ import { type AgentSummaryTemp } from '@/services/dataservice';
 import AgentDetails from './agent-details';
 
 const AgentView: React.FC = () => {
-  const { agentData, modalState, closeModal, openCodeModal } = useAgents();
-
-  const { selectedRun, setSelectedRun } = useSelectedRun();
+  const { agentData, modalState, closeModal } = useAgents();
   const [selectedAgents, setSelectedAgent] = useState<AgentSummaryTemp[]>([]);
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
 
@@ -31,18 +27,15 @@ const AgentView: React.FC = () => {
     key: SortableKey;
     direction: 'asc' | 'desc';
   } | null>(null);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const compareSelected = () => {
     if (selectedAgents.length < 1) return;
     const query = new URLSearchParams({
       agents: selectedAgents.map(a => a.agentName).join(','),
     }).toString();
-    navigate({
-      pathname: '/compare/agents',
-      search: `?${query}`,
-    });
+    router.push(`/compare/agents?${query}`);
   };
 
   const compareSelectedRuns = () => {
@@ -50,10 +43,7 @@ const AgentView: React.FC = () => {
     const query = new URLSearchParams({
       runs: selectedRuns.join(','),
     }).toString();
-    navigate({
-      pathname: '/compare',
-      search: `?${query}`,
-    });
+    router.push(`/compare?${query}`);
   };
 
   const clearSelectedRuns = () => {
@@ -106,29 +96,18 @@ const AgentView: React.FC = () => {
     });
   };
 
-  // Clear selected runs when navigating to run details view
-  useEffect(() => {
-    if (selectedRun) {
-      clearSelectedRuns();
-      setSelectedAgent([]);
-    }
-  }, [selectedRun]);
-
   // Clear selected runs when navigating to different pages
   useEffect(() => {
-    const isComparePage = location.pathname.startsWith('/compare');
+    const isComparePage = pathname?.startsWith('/compare');
     if (isComparePage) {
       clearSelectedRuns();
       setSelectedAgent([]);
     }
-  }, [location.pathname]);
+  }, [pathname]);
 
   return (
     <GlobalCompareProvider>
-      <div
-        className={selectedRun ? 'hidden' : 'block'}
-        data-testid='agent-view'
-      >
+      <div data-testid='agent-view'>
         <table
           className='w-full text-left border-collapse'
           data-testid='agents-table'
@@ -162,14 +141,6 @@ const AgentView: React.FC = () => {
         </table>
       </div>
 
-      {selectedRun && (
-        <RunDetailsView
-          run={selectedRun}
-          onBack={() => setSelectedRun(null)}
-          openCodeModal={openCodeModal}
-        />
-      )}
-
       <TaskDetailsModal
         isOpen={modalState.isOpen}
         onClose={closeModal}
@@ -191,7 +162,7 @@ const AgentView: React.FC = () => {
         attribute='Agents'
       />
 
-      {selectedRuns.length > 0 && !selectedRun && (
+      {selectedRuns.length > 0 && (
         <StickyCompareBar
           selectedItems={selectedRuns}
           onCompareSelected={compareSelectedRuns}

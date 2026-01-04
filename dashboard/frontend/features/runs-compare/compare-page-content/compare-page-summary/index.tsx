@@ -1,6 +1,6 @@
 // Runs Section Components
 
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import type { RunStats } from '../..';
 import { RunsHeader } from './run-header';
@@ -15,18 +15,15 @@ export const RunSummary: React.FC<RunSummaryProps> = ({
   runStats,
   onRemove,
 }) => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const agent = searchParams.get('agent') || '';
   const runs = runStats.map(r => r.id);
-
-  const defaultHandleRemove = (removeId: string) => {
+  const handleRemove = (removeId: string) => {
     const newRuns = runs.filter(id => id !== removeId);
     const url = `/compare?agent=${encodeURIComponent(agent)}&runs=${encodeURIComponent(newRuns.join(','))}`;
-    navigate(url);
+    router.push(url);
   };
-
-  const handleRemove = onRemove || defaultHandleRemove;
 
   return (
     <>

@@ -1,5 +1,5 @@
+import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import ComparisonModal from '@/components/base/comparisonModal';
 import { useAgents } from '@/hooks/use-agent-summaries';
@@ -16,11 +16,11 @@ import {
 } from '../runs-compare/compare-page-content/utils';
 
 export const AgentCompareContent: React.FC = () => {
-  const [sp] = useSearchParams();
-  const navigate = useNavigate();
+  const sp = useSearchParams();
+  const router = useRouter();
   const { agentData, isLoading: agentDataLoading } = useAgents();
 
-  const selectedAgents = sp.get('agents') || '';
+  const selectedAgents = sp?.get('agents') || '';
   const agentNames = useMemo(() => {
     return selectedAgents
       .split(',')
@@ -36,11 +36,11 @@ export const AgentCompareContent: React.FC = () => {
   const handleRemove = (removeId: string) => {
     const newAgents = agentNames.filter(name => name !== removeId);
     if (newAgents.length === 0) {
-      navigate('/');
+      router.push('/');
       return;
     }
     const url = `/compare/agents?agents=${encodeURIComponent(newAgents.join(','))}`;
-    navigate(url);
+    router.push(url);
   };
 
   useEffect(() => {

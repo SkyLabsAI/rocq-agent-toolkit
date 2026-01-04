@@ -1,10 +1,10 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React from 'react';
 
 import RunRow from '@/components/run-row';
 import StickyCompareBar from '@/components/sticky-compare-bar';
-import { useSelectedRun } from '@/contexts/selected-run-context';
 import { PlayIcon } from '@/icons/play';
 import { type AgentRun, type Run } from '@/types/types';
 
@@ -33,7 +33,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   clearSelectedRuns,
   compareSelected,
 }) => {
-  const { setSelectedRun } = useSelectedRun();
+  const router = useRouter();
 
   const loadPinnedRuns = (agentName: string): Set<string> => {
     try {
@@ -60,7 +60,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   }, [pinnedRuns, agentName]);
 
   const handleRunClick = (run: Run) => {
-    setSelectedRun(run);
+    router.push(`/runs/${run.run_id}`);
   };
 
   const toggleOnPin = (run: Run) => {
