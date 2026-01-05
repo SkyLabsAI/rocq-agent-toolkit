@@ -13,7 +13,9 @@ from .proto import (
 from .provenance import (
     ProvenanceClassIdentityData,
     ProvenanceVersionData,
+    ReflectProvenanceData,
     WithClassIdentityProvenance,
+    WithReflectProvenance,
     WithVersionProvenance,
 )
 
@@ -28,6 +30,7 @@ class Provenance(
         # Concrete implementations:
         "ClassIdentity": WithClassIdentityProvenance,
         "Version": WithVersionProvenance,
+        "Reflect": WithReflectProvenance,
     },
 ):
     T: TypeAlias = ProvenanceT  # noqa: UP040
@@ -39,6 +42,8 @@ class Provenance(
     ClassIdentityT: TypeAlias = ProvenanceClassIdentityData  # noqa: UP040
     Version: TypeAlias = WithVersionProvenance  # noqa: UP040
     VersionT: TypeAlias = ProvenanceVersionData  # noqa: UP040
+    Reflect: TypeAlias = WithReflectProvenance  # noqa: UP040
+    ReflectT: TypeAlias = ReflectProvenanceData  # noqa: UP040
 
 
 __all__: list[str] = [
