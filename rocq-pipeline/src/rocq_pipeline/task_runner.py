@@ -233,6 +233,11 @@ def run_task(
                 progress.log(
                     f"{agent.name()} gave up with message: {task_result.message}"
                 )
+                logger.info(
+                    "TaskStatus",
+                    task_status=task_result.success,
+                    task_result_message=task_result.message,
+                )
             else:
                 # Note: except block above will handle printing a rich stack trace and
                 # invoking `span.set_status` if an `ExecutionError` was raised.
@@ -240,6 +245,11 @@ def run_task(
         else:
             span.set_status(Status(StatusCode.OK))
             progress.log(f"task completed: {task_result.message}")
+            logger.info(
+                "TaskStatus",
+                task_status=task_result.success,
+                task_result_message=task_result.message,
+            )
 
         # For the time being taking id from the environment variable
         # TODO: Update it to add automatically
