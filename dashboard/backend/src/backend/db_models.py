@@ -30,6 +30,15 @@ class AgentClassProvenance(SQLModel, table=True):
     runs: list["Run"] = Relationship(back_populates="agent_class")
 
 
+# Notes re data model:
+# - Corresponds to "Agent"
+# - Logged during `TaskResult` construction in `rocq-pipeline`
+# - Ingested when `TaskResult` is uploaded
+# - Re tags:
+#   + some tags may be captured by the `provenance`
+#   + separate agent tags are not crucial in the short term but may become
+#     more useful in the future (e.g. "best_agent" tag)
+# - Primary key: `agent_checksum`, stably computed via `provenance`
 class AgentProvenance(SQLModel, table=True):
     """Agent instance provenance model - stores provenance data for agent instances."""
 
@@ -48,6 +57,9 @@ class AgentProvenance(SQLModel, table=True):
     runs: list["Run"] = Relationship(back_populates="agent_instance")
 
 
+# Notes re data model:
+# - Corresponds to "Project", so we should rename this
+# - 
 class Dataset(SQLModel, table=True):
     """Dataset model - represents a collection of tasks."""
 
@@ -70,6 +82,20 @@ class Dataset(SQLModel, table=True):
     results: list["TaskResultDB"] = Relationship(back_populates="dataset")
 
 
+# Notes re data model:
+# - Primary key:
+#   + tasks are only unique relative to project
+#     ==> project ID must be part of task ID
+#   + (G) might be easiest to use an auto-increment primary key and then maintain
+#     separate indices for efficient lookups based on project ID + task locator
+#   + (E) we could also just use a composite key
+# - Tags:
+#   + currently:
+#     * task tags are inserted into `TaskResult` (with "TASK_" prefix)
+#     * in DB schema, tasks don't directly track tags
+#   + we want:
+#     * a many-to-many relationship
+#     * the ability to modify task tags post facto (e.g. by tagging tasks with a date)
 class Task(SQLModel, table=True):
     """Task model - represents a problem/task being solved."""
 
@@ -113,6 +139,16 @@ class RunTagLink(SQLModel, table=True):
     tag: Tag = Relationship(back_populates="run_links")
 
 
+# Notes re data model:
+# - this seemed mostly OK
+# - `is_best_run` can probably dropped
+# - Q: how important is run concept/visualization for users?
+#   + Gregory: this will be useful for debugging / optimizing our pipeline exeuction
+#     framework, but it is probably less important for agent development
+#   + Ehtesham/Jasper: once the data provenance changes get merged `Run` will be less
+#     important for the frontend
+# - metadata will likely be stripped from this part of the DB schema since we can
+#   compute these aggregates via composite queries.
 class Run(SQLModel, table=True):
     """Run model - represents an execution session.
 
@@ -159,7 +195,11 @@ class Run(SQLModel, table=True):
     tag_links: list[RunTagLink] = Relationship(back_populates="run")
     dataset: Dataset = Relationship(back_populates="runs")
 
-
+# Notes re data model:
+# - we don't need a dataset ID / project ID since task_ID has a uniquely associated
+#   project ID
+# - in the future we may want a richer status type, e.g. to capture execution
+#   in the pipeline vs. agent failure during task attempt
 class TaskResultDB(SQLModel, table=True):
     """
     TaskResultDB model - individual task result within a run.
