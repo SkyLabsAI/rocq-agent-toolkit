@@ -67,6 +67,44 @@ def _b64_to_hex(s: str | None) -> str | None:
         return s
 
 
+def _extract_events(events: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Extract and normalize span events."""
+    if not events or not isinstance(events, list):
+        return []
+
+    result = []
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        result.append(
+            {
+                "time_unix_nano": event.get("timeUnixNano"),
+                "name": event.get("name"),
+                "attributes": _attrs_to_dict(event.get("attributes") or []),
+            }
+        )
+    return result
+
+
+def _extract_links(links: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Extract and normalize span links."""
+    if not links or not isinstance(links, list):
+        return []
+
+    result = []
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        result.append(
+            {
+                "trace_id": _b64_to_hex(link.get("traceId")),
+                "span_id": _b64_to_hex(link.get("spanId")),
+                "attributes": _attrs_to_dict(link.get("attributes") or []),
+            }
+        )
+    return result
+
+
 def extract_spans_best_effort(
     trace_id: str, raw_trace: dict[str, Any]
 ) -> list[VisualizerSpanLite]:
@@ -119,6 +157,8 @@ def extract_spans_best_effort(
                 end_ns = sp.get("endTimeUnixNano")
                 span_attrs = _attrs_to_dict(sp.get("attributes") or [])
                 status = sp.get("status") or {}
+                events = _extract_events(sp.get("events"))
+                links = _extract_links(sp.get("links"))
 
                 service_name = (
                     str(
@@ -147,6 +187,8 @@ def extract_spans_best_effort(
                         else None,
                         end_time_unix_nano=str(end_ns) if end_ns is not None else None,
                         attributes={**resource_attrs, **span_attrs},
+                        events=events,
+                        links=links,
                     )
                 )
 

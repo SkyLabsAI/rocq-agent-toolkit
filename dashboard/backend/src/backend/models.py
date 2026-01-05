@@ -262,6 +262,8 @@ class VisualizerSpanLite(BaseModel):
     start_time_unix_nano: str | None = None
     end_time_unix_nano: str | None = None
     attributes: dict[str, Any] = {}
+    events: list[dict[str, Any]] = []  # span events with timestamps and attributes
+    links: list[dict[str, Any]] = []  # links to other traces/spans
 
 
 class VisualizerSpansResponse(BaseModel):
