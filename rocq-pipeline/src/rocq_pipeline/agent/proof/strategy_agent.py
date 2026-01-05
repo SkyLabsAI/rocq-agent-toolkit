@@ -7,10 +7,10 @@ from typing import Any, override
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
 
-from rocq_pipeline.agent import (
+from rocq_pipeline.agent.base import ProofAgent
+from rocq_pipeline.agent.base.dataclasses import (
     TaskResult,
 )
-from rocq_pipeline.agent.base import ProofAgent
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema.task_output import FailureReason
 from rocq_pipeline.search.action import Action
