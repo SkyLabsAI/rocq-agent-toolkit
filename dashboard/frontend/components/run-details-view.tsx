@@ -20,6 +20,8 @@ interface RunDetailsViewProps {
   onBack: () => void;
   openCodeModal: (task: TaskOutput) => void;
   initialSelectedTags?: string[];
+  initialStatusFilter?: 'all' | 'Success' | 'Failure';
+  initialTaskIdFilter?: string;
   runId: string;
 }
 
@@ -28,6 +30,8 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   onBack,
   openCodeModal,
   initialSelectedTags = [],
+  initialStatusFilter = 'all',
+  initialTaskIdFilter = '',
   runId,
 }) => {
   const router = useRouter();
@@ -38,19 +42,29 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedTags, setSelectedTags] =
     useState<string[]>(initialSelectedTags);
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'Success' | 'Failure'
+  >(initialStatusFilter);
+  const [taskIdFilter, setTaskIdFilter] = useState(initialTaskIdFilter);
 
-  // Update URL when tags change
+  // Update URL when tags, status, or task ID filter change
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedTags.length > 0) {
       params.set('tags', selectedTags.join(','));
+    }
+    if (statusFilter !== 'all') {
+      params.set('status', statusFilter);
+    }
+    if (taskIdFilter.trim() !== '') {
+      params.set('taskId', taskIdFilter);
     }
     const queryString = params.toString();
     const newUrl = queryString
       ? `/runs/${runId}?${queryString}`
       : `/runs/${runId}`;
     router.replace(newUrl, { scroll: false });
-  }, [selectedTags, runId, router]);
+  }, [selectedTags, statusFilter, taskIdFilter, runId, router]);
 
   const handleTaskClick = (task: TaskOutput) => {
     setSelectedTask(task);
@@ -184,6 +198,10 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
               onTaskClick={handleTaskClick}
               initialSelectedTags={selectedTags}
               onTagsChange={setSelectedTags}
+              initialStatusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
+              initialTaskIdFilter={taskIdFilter}
+              onTaskIdChange={setTaskIdFilter}
             />
           </div>
         </div>

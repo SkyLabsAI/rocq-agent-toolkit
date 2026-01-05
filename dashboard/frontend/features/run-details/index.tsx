@@ -36,6 +36,18 @@ const RunDetailsPage: React.FC<RunDetailsPageProps> = ({ runId }) => {
     ? searchParams.get('tags')!.split(',').filter(Boolean)
     : [];
 
+  // Parse status from URL query parameters
+  const initialStatusFilter = (() => {
+    const status = searchParams.get('status');
+    if (status === 'Success' || status === 'Failure') {
+      return status;
+    }
+    return 'all';
+  })();
+
+  // Parse task ID filter from URL query parameters
+  const initialTaskIdFilter = searchParams.get('taskId') || '';
+
   useEffect(() => {
     const fetchRunDetails = async () => {
       setLoading(true);
@@ -129,6 +141,8 @@ const RunDetailsPage: React.FC<RunDetailsPageProps> = ({ runId }) => {
         onBack={handleBack}
         openCodeModal={openCodeModal}
         initialSelectedTags={initialSelectedTags}
+        initialStatusFilter={initialStatusFilter}
+        initialTaskIdFilter={initialTaskIdFilter}
         runId={runId}
       />
 

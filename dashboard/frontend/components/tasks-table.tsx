@@ -10,6 +10,10 @@ interface TasksTableProps {
   onTaskClick: (task: TaskOutput) => void;
   initialSelectedTags?: string[];
   onTagsChange?: (tags: string[]) => void;
+  initialStatusFilter?: 'all' | 'Success' | 'Failure';
+  onStatusChange?: (status: 'all' | 'Success' | 'Failure') => void;
+  initialTaskIdFilter?: string;
+  onTaskIdChange?: (taskId: string) => void;
 }
 
 const TasksTable: React.FC<TasksTableProps> = ({
@@ -17,11 +21,15 @@ const TasksTable: React.FC<TasksTableProps> = ({
   onTaskClick,
   initialSelectedTags = [],
   onTagsChange,
+  initialStatusFilter = 'all',
+  onStatusChange,
+  initialTaskIdFilter = '',
+  onTaskIdChange,
 }) => {
-  const [taskIdFilter, setTaskIdFilter] = useState('');
+  const [taskIdFilter, setTaskIdFilter] = useState(initialTaskIdFilter);
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'Success' | 'Failure'
-  >('all');
+  >(initialStatusFilter);
   const [selectedTags, setSelectedTags] =
     useState<string[]>(initialSelectedTags);
   const [tagSearchInput, setTagSearchInput] = useState('');
@@ -33,6 +41,20 @@ const TasksTable: React.FC<TasksTableProps> = ({
     }
   }, [selectedTags, onTagsChange]);
 
+  // Notify parent component when status changes
+  useEffect(() => {
+    if (onStatusChange) {
+      onStatusChange(statusFilter);
+    }
+  }, [statusFilter, onStatusChange]);
+
+  // Notify parent component when task ID filter changes
+  useEffect(() => {
+    if (onTaskIdChange) {
+      onTaskIdChange(taskIdFilter);
+    }
+  }, [taskIdFilter, onTaskIdChange]);
+
   // Extract all unique tags from tasks
   const availableTags = useMemo(() => {
     const tagsSet = new Set<string>();
@@ -40,8 +62,11 @@ const TasksTable: React.FC<TasksTableProps> = ({
       const tags = task.metadata?.tags;
       if (tags && typeof tags === 'object') {
         Object.entries(tags).forEach(([key, value]) => {
-          if (typeof value === 'string') {
-            tagsSet.add(`${key}:${value}`);
+          // Convert all values to strings to handle numbers, booleans, etc.
+          if (value != null) {
+            // Skip null and undefined
+            const stringValue = String(value);
+            tagsSet.add(`${key}:${stringValue}`);
           }
         });
       }
@@ -87,7 +112,9 @@ const TasksTable: React.FC<TasksTableProps> = ({
         } else {
           matchesTags = selectedTags.every(selectedTag => {
             const [key, value] = selectedTag.split(':');
-            return taskTags[key] === value;
+            // Convert task tag value to string for comparison
+            const taskTagValue = taskTags[key];
+            return taskTagValue != null && String(taskTagValue) === value;
           });
         }
       }
