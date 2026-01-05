@@ -1,3 +1,4 @@
+import itertools
 from typing import override
 
 # Import the function we want to test
@@ -161,6 +162,17 @@ def test_many(lls: list[list[tuple[float, int]]], expected: list[tuple[float, in
     strat = CompositeStrategy(
         [IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]) for x in lls]
     )
-    result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
 
+    result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
     assert result == expected
+
+    # make sure we get the same results a second time
+    result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
+    assert result == expected
+
+    for pre_len in range(0, len(result)):
+        x = [
+            (prob, n.interact([])[0])
+            for prob, n in itertools.islice(strat.rollout([]), pre_len)
+        ]
+        assert x == expected[:pre_len]
