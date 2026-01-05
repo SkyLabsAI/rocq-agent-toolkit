@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import base64
 import logging
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -20,20 +19,9 @@ import httpx
 from fastapi import HTTPException
 
 from backend.config import settings
+from backend.models import VisualizerSpanLite
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class SpanLite:
-    trace_id: str
-    span_id: str
-    parent_span_id: str | None
-    name: str
-    service_name: str
-    start_time_unix_nano: str | None
-    end_time_unix_nano: str | None
-    attributes: dict[str, Any]
 
 
 def _otel_value(v: Any) -> Any:
@@ -79,9 +67,20 @@ def _b64_to_hex(s: str | None) -> str | None:
         return s
 
 
-def extract_spans_best_effort(trace_id: str, raw_trace: dict[str, Any]) -> list[SpanLite]:
-    spans: list[SpanLite] = []
-    batches = raw_trace.get("batches") or raw_trace.get("resourceSpans") or []
+def extract_spans_best_effort(
+    trace_id: str, raw_trace: dict[str, Any]
+) -> list[VisualizerSpanLite]:
+    """
+    Converting the raw tempo trace json to a list of VisualizerSpanLite objects.
+    Here we are added if conditions to support the v2 format of the API response as well.
+    """
+
+    spans: list[VisualizerSpanLite] = []
+    batches = (
+        raw_trace.get("batches")
+        or raw_trace.get("trace", {}).get("resourceSpans", [])
+        or []
+    )
     if not isinstance(batches, list):
         return spans
 
@@ -91,7 +90,9 @@ def extract_spans_best_effort(trace_id: str, raw_trace: dict[str, Any]) -> list[
         resource = batch.get("resource") or {}
         resource_attrs = _attrs_to_dict(resource.get("attributes") or [])
 
-        scopes = batch.get("scopeSpans") or batch.get("instrumentationLibrarySpans") or []
+        scopes = (
+            batch.get("scopeSpans") or batch.get("instrumentationLibrarySpans") or []
+        )
         if not isinstance(scopes, list):
             continue
 
@@ -109,27 +110,41 @@ def extract_spans_best_effort(trace_id: str, raw_trace: dict[str, Any]) -> list[
                 span_id = _b64_to_hex(sp.get("spanId") or sp.get("spanID") or "")
                 if not span_id:
                     continue
-                parent_span_id = _b64_to_hex(sp.get("parentSpanId") or sp.get("parentSpanID"))
+                parent_span_id = _b64_to_hex(
+                    sp.get("parentSpanId") or sp.get("parentSpanID")
+                )
                 name = str(sp.get("name") or "span")
 
                 start_ns = sp.get("startTimeUnixNano")
                 end_ns = sp.get("endTimeUnixNano")
                 span_attrs = _attrs_to_dict(sp.get("attributes") or [])
+                status = sp.get("status") or {}
 
                 service_name = (
-                    str(resource_attrs.get("service.name") or resource_attrs.get("service_name") or "")
-                    or str(span_attrs.get("service.name") or span_attrs.get("service_name") or "")
+                    str(
+                        resource_attrs.get("service.name")
+                        or resource_attrs.get("service_name")
+                        or ""
+                    )
+                    or str(
+                        span_attrs.get("service.name")
+                        or span_attrs.get("service_name")
+                        or ""
+                    )
                     or "unknown"
                 )
 
                 spans.append(
-                    SpanLite(
+                    VisualizerSpanLite(
                         trace_id=trace_id,
                         span_id=span_id,
                         parent_span_id=parent_span_id or None,
                         name=name,
                         service_name=service_name,
-                        start_time_unix_nano=str(start_ns) if start_ns is not None else None,
+                        status=status or None,
+                        start_time_unix_nano=str(start_ns)
+                        if start_ns is not None
+                        else None,
                         end_time_unix_nano=str(end_ns) if end_ns is not None else None,
                         attributes={**resource_attrs, **span_attrs},
                     )
@@ -139,6 +154,51 @@ def extract_spans_best_effort(trace_id: str, raw_trace: dict[str, Any]) -> list[
 
 
 async def tempo_get_trace(trace_id: str) -> dict[str, Any]:
+    """
+    Fetch raw trace data from Tempo.
+
+    Returns a dict following the OTLP JSON format (Tempo API).
+
+    Example of the returned structure:
+    ```json
+    {
+      "batches": [
+        {
+          "resource": {
+            "attributes": [
+              {
+                "key": "service.name",
+                "value": { "stringValue": "rocq_agent" }
+              }
+            ]
+          },
+          "scopeSpans": [
+            {
+              "scope": { "name": "observability.tracing.decorators" },
+              "spans": [
+                {
+                  "traceId": "Y23/W6wzPgKMSGGVtudxnA==", # in base 64 encoding
+                  "spanId": "HHw2Q53cxFY=", # in base 64 encoding
+                  "name": "Running pipeline",
+                  "kind": "SPAN_KIND_INTERNAL",
+                  "startTimeUnixNano": "1767604618978642115",
+                  "endTimeUnixNano": "1767604655930397084",
+                  "attributes": [
+                    {
+                      "key": "run.id",
+                      "value": { "stringValue": "cb1b04cc-..." }
+                    }
+                  ],
+                  "status": { "code": "STATUS_CODE_OK" }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    ```
+    """
     url = f"{settings.tempo_url}/api/traces/{trace_id}"
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(url)
@@ -146,16 +206,6 @@ async def tempo_get_trace(trace_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Trace not found: {trace_id}")
     if resp.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"Tempo error ({resp.status_code})")
-    return resp.json()
-
-
-async def tempo_search(*, q: str, start_s: int, end_s: int, limit: int) -> dict[str, Any]:
-    url = f"{settings.tempo_url}/api/search"
-    params = {"q": q, "start": start_s, "end": end_s, "limit": limit}
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(url, params=params)
-    if resp.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"Tempo search error ({resp.status_code})")
     return resp.json()
 
 
@@ -182,9 +232,12 @@ async def loki_query_range(
         return resp.json()
     except httpx.HTTPStatusError as e:
         logger.error("Loki HTTP error: %s", e)
-        raise HTTPException(status_code=502, detail=f"Loki error ({e.response.status_code})") from e
+        raise HTTPException(
+            status_code=502, detail=f"Loki error ({e.response.status_code})"
+        ) from e
     except httpx.RequestError as e:
         logger.error("Loki request error: %s", e)
-        raise HTTPException(status_code=503, detail=f"Could not connect to Loki at {settings.observability_url}") from e
-
-
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not connect to Loki at {settings.observability_url}",
+        ) from e

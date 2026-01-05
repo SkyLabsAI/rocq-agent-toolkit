@@ -250,47 +250,6 @@ class VisualizerTraceIdsResponse(BaseModel):
     total: int
 
 
-class VisualizerServiceGraphNode(BaseModel):
-    id: str
-    service: str
-    span_count: int
-    trace_count: int
-
-
-class VisualizerServiceGraphEdge(BaseModel):
-    id: str
-    source: str
-    target: str
-    count: int
-
-
-class VisualizerServiceGraphResponse(BaseModel):
-    nodes: list[VisualizerServiceGraphNode]
-    edges: list[VisualizerServiceGraphEdge]
-
-
-class VisualizerSpanNode(BaseModel):
-    id: str
-    span_id: str
-    parent_span_id: str | None = None
-    name: str
-    service_name: str
-    trace_id: str
-    start_time_unix_nano: str | None = None
-    end_time_unix_nano: str | None = None
-
-
-class VisualizerSpanEdge(BaseModel):
-    id: str
-    source: str
-    target: str
-
-
-class VisualizerSpanGraphResponse(BaseModel):
-    nodes: list[VisualizerSpanNode]
-    edges: list[VisualizerSpanEdge]
-
-
 class VisualizerSpanLite(BaseModel):
     """Parsed span record (best-effort) for visualizer use."""
 
@@ -299,6 +258,7 @@ class VisualizerSpanLite(BaseModel):
     parent_span_id: str | None = None
     name: str
     service_name: str
+    status: dict[str, Any] | None = None  # status code and message
     start_time_unix_nano: str | None = None
     end_time_unix_nano: str | None = None
     attributes: dict[str, Any] = {}
@@ -306,13 +266,3 @@ class VisualizerSpanLite(BaseModel):
 
 class VisualizerSpansResponse(BaseModel):
     spans: list[VisualizerSpanLite]
-
-
-class VisualizerServiceSummary(BaseModel):
-    service_name: str
-    span_count: int
-    trace_count: int
-
-
-class VisualizerServicesResponse(BaseModel):
-    services: list[VisualizerServiceSummary]
