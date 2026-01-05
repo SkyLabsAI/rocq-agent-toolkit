@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
 from typing import Any, TypeVar, override
 
 from .action import Action
@@ -25,6 +25,7 @@ class Strategy[T_co](ABC):
     # for searches to work correctly. Clients should use an
     # implementation such as `immutabledict` to achieve this.
     # Mutable information needs to be tracked in the state
+    type MutableContext = MutableMapping[str, Any]
     type Context = Mapping[str, Any]
 
     @abstractmethod

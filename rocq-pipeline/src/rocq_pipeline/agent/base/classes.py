@@ -106,9 +106,6 @@ class ProofAgent(Agent, VERSION="1.0.0"):
             raise RuntimeError(f"{goal_ty_upperbound} is not a subclass of RocqGoal")
         self._goal_ty_upperbound = goal_ty_upperbound
 
-    def prepare(self, rdm: RocqCursor) -> None:
-        pass
-
     def prove(self, rc: RocqCursor) -> TaskResult:
         """Prove the current goal using the restricted proof session.
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, override
 
 from observability import get_logger
@@ -36,9 +37,10 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
         self._fuel = fuel
         self._initial_prove_cursor_index: int | None = None
 
-    def prepare(self, rc: RocqCursor) -> None:
+    def prepare(self, rc: RocqCursor) -> Strategy.MutableContext:
         """Pre-hook for prove."""
         self._initial_prove_cursor_index = rc.cursor_index()
+        return {}
 
     def conclude(self, rc: RocqCursor) -> None:
         """Post-hook for prove -- transitively, via finished/give_up."""
@@ -56,7 +58,10 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
 
     @override
     def prove(self, rc: RocqCursor) -> TaskResult:
-        self.prepare(rc)
+        # Note: `prepare` uses `Strategy.MutableContext` so derivers can incrementalize
+        # construction via super().prepare calls, but prove/rollout promises to leave
+        # it unchanged.
+        strategy_ctx: Strategy.Context = MappingProxyType(self.prepare(rc))
 
         depth: int = 0
         rem_fuel: int | None = self._fuel
@@ -71,7 +76,7 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                     message=f"depth limit exceeded({self._max_depth})",
                 )
 
-            rollout = self._strategy.rollout(rc)
+            rollout = self._strategy.rollout(rc, context=strategy_ctx)
             for _, action in (
                 rollout
                 if self._max_breath is None
