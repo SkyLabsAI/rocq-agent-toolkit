@@ -348,6 +348,7 @@ async def ingest_task_results_for_run(
         run_result = TaskResultDB(
             run_id=run.id,
             task_id=task.id,
+            trace_id=tr.trace_id,
             dataset_id=dataset.id,
             timestamp_utc=ts_utc,
             status=tr.status,
@@ -844,6 +845,7 @@ def get_run_details_from_db(
                     run_id=str(run.id),
                     task_kind=task_kind,
                     task_id=tr_db.task_id,
+                    trace_id=tr_db.trace_id,
                     dataset_id=dataset_name,
                     timestamp_utc=tr_db.timestamp_utc.isoformat(),
                     agent_cls_checksum=agent_cls_checksum,

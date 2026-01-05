@@ -52,6 +52,9 @@ class TaskResult(BaseModel):
     run_id: str
     task_kind: str
     task_id: str
+    trace_id: str | None = (
+        None  # None for backward compatibility with older ingestions.
+    )
     dataset_id: str | None = (
         None  # Can be None for backward compatibility with older ingestions.
     )
