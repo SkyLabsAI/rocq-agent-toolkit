@@ -173,6 +173,7 @@ class TaskResultDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     run_id: UUID = Field(foreign_key="run.id", index=True)
     task_id: str = Field(foreign_key="task.id", index=True)
+    trace_id: str | None = Field(default=None, index=True)
     dataset_id: int = Field(foreign_key="dataset.id", index=True)
 
     timestamp_utc: datetime
