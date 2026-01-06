@@ -11,7 +11,7 @@ from .proto import (
     WithProvenance,
 )
 from .provenance import (
-    ProvenanceClassIdentityData,
+    ClassIdentityProvenanceData,
     ProvenanceVersionData,
     ReflectProvenanceData,
     WithClassIdentityProvenance,
@@ -39,7 +39,7 @@ class Provenance(
     ProtoClass: TypeAlias = WithClassProvenance  # noqa: UP040
     ProtoInstance: TypeAlias = WithInstanceProvenance  # noqa: UP040
     ClassIdentity: TypeAlias = WithClassIdentityProvenance  # noqa: UP040
-    ClassIdentityT: TypeAlias = ProvenanceClassIdentityData  # noqa: UP040
+    ClassIdentityT: TypeAlias = ClassIdentityProvenanceData  # noqa: UP040
     Version: TypeAlias = WithVersionProvenance  # noqa: UP040
     VersionT: TypeAlias = ProvenanceVersionData  # noqa: UP040
     Reflect: TypeAlias = WithReflectProvenance  # noqa: UP040

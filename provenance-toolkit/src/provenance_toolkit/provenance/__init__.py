@@ -1,10 +1,10 @@
-from .identity import ProvenanceClassIdentityData, WithClassIdentityProvenance
+from .identity import ClassIdentityProvenanceData, WithClassIdentityProvenance
 from .reflect import ReflectProvenanceData, WithReflectProvenance
 from .version import ProvenanceVersionData, WithVersionProvenance
 
 __all__: list[str] = [
     # identity.py
-    "ProvenanceClassIdentityData",
+    "ClassIdentityProvenanceData",
     "WithClassIdentityProvenance",
     # reflect.py
     "ReflectProvenanceData",
