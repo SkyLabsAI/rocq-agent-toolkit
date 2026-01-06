@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import (
     Annotated,
@@ -58,8 +58,121 @@ class ReflectProvenanceData(ProvenanceT):
 
     @override
     def stable_serialize(self) -> str:
-        """Serialize data to a stable JSON string."""
-        return json.dumps(self._data, sort_keys=True, ensure_ascii=False)
+        """Serialize data to a stable JSON string.
+
+        Provenance dictionaries (dicts with type keys) are converted to dicts with
+        __qualname__ string keys, following the pattern used in cls_provenance_json.
+        """
+        serializable_data = ReflectProvenanceData._convert_to_json_serializable(
+            self._data
+        )
+        return json.dumps(serializable_data, sort_keys=True, ensure_ascii=False)
+
+    @staticmethod
+    def _convert_to_json_serializable(value: Any) -> Any:
+        """Convert value to JSON-serializable format, handling provenance dictionaries.
+
+        Uses generic_map pattern to recursively process mappings and sequences.
+        """
+        return ReflectProvenanceData._generic_map(
+            value_func=ReflectProvenanceData._convert_value,
+            key_func=ReflectProvenanceData._convert_key,
+            data=value,
+        )
+
+    @staticmethod
+    def _convert_value(value: Any) -> Any:
+        """Convert value to JSON-serializable format.
+
+        If value is a ProvenanceT instance, use stable_serialize(). Otherwise,
+        recursively process the value.
+        """
+        if isinstance(value, ProvenanceT):
+            return value.stable_serialize()
+        if ReflectProvenanceData._is_container_like(value):
+            return ReflectProvenanceData._convert_to_json_serializable(value)
+        return value
+
+    @staticmethod
+    def _convert_key(key: Any) -> Any:
+        """Convert key to JSON-serializable format.
+
+        If key supports < comparison, leave as-is. Otherwise, use __qualname__
+        if it's a type, or str() otherwise.
+        """
+        if ReflectProvenanceData._key_supports_less_than(key):
+            return key
+        if isinstance(key, type):
+            return key.__qualname__
+        return str(key)
+
+    @staticmethod
+    def _key_supports_less_than(key: Any) -> bool:
+        """Check if key supports less-than comparison (used by json.dumps sort_keys=True)."""
+        try:
+            _ = key < key
+            return True
+        except TypeError:
+            return False
+
+    @staticmethod
+    def _is_container_like(value: Any) -> bool:
+        """Check if value is a container-like object (Mapping or Sequence)."""
+        return not isinstance(value, (str, bytes)) and (
+            isinstance(value, Mapping) or isinstance(value, Sequence)
+        )
+
+    @staticmethod
+    def _generic_map(
+        *,
+        value_func: Callable[[Any], Any],
+        key_func: Callable[[Any], Any] | None,
+        data: Any,
+    ) -> Any:
+        """Recursively applies 'value_func' to every leaf element in a Mapping or Sequence.
+
+        Args:
+            value_func: Function to apply to values (and leaf nodes)
+            key_func: Optional function to apply to keys in mappings. If None, keys are left as-is.
+            data: The data structure to process
+
+        Returns:
+            Transformed data structure with the same shape
+        """
+        match data:
+            # Check for strings first to avoid treating them as sequences
+            case str() | bytes():
+                return value_func(data)
+
+            # Handle Mappings (dict-like)
+            case Mapping():
+                if key_func is not None:
+                    return {
+                        key_func(k): ReflectProvenanceData._generic_map(
+                            value_func=value_func, key_func=key_func, data=v
+                        )
+                        for k, v in data.items()
+                    }
+                else:
+                    return {
+                        k: ReflectProvenanceData._generic_map(
+                            value_func=value_func, key_func=key_func, data=v
+                        )
+                        for k, v in data.items()
+                    }
+
+            # Handle Sequences (list-like)
+            case Sequence():
+                return [
+                    ReflectProvenanceData._generic_map(
+                        value_func=value_func, key_func=key_func, data=item
+                    )
+                    for item in data
+                ]
+
+            # Leaf node / Base case
+            case _:
+                return value_func(data)
 
 
 class WithReflectProvenance(WithProvenance):

@@ -363,6 +363,61 @@ class MyClassOnlyInstanceFields(
         self.instance_only = value
 
 
+class MyClassAutoDetectChecksum1(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test class for checksum with auto-detected class provenance (version 1)."""
+
+    cfg: Final[Annotated[Config, Provenance.Reflect.Field]] = Config()
+
+
+class MyClassAutoDetectChecksum2(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test class for checksum with auto-detected class provenance (version 2)."""
+
+    # Different Config instance - should have same checksum since Config has no instance state
+    cfg: Final[Annotated[Config, Provenance.Reflect.Field]] = Config()
+
+
+class ConfigWithValue(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Config class with a value field for testing instance provenance auto-detection."""
+
+    value: Annotated[int, Provenance.Reflect.Field]
+
+    def __init__(self, value: int) -> None:
+        """Initialize with a value."""
+        super().__init__()
+        self.value = value
+
+
+class MyClassInstanceAutoDetect(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test class for instance provenance auto-detection."""
+
+    cfg: Annotated[ConfigWithValue, Provenance.Reflect.Field]
+
+    def __init__(self, cfg: ConfigWithValue) -> None:
+        """Initialize with a config."""
+        super().__init__()
+        self.cfg = cfg
+
+
 class TestWithReflectProvenance:
     """Tests for WithReflectProvenance mixin."""
 
@@ -569,3 +624,58 @@ class TestWithReflectProvenance:
         # Instance field should be present
         assert "instance_only" in reflect_prov.data
         assert reflect_prov.data["instance_only"] == "only_instance"
+
+    def test_class_checksum_with_auto_detected_provenance(self):
+        """Test that class checksum is computed when fields are auto-detected to use cls_provenance()."""
+        checksum = MyClassAutoDetect.cls_checksum()
+        # Should be a valid checksum (non-empty string)
+        assert isinstance(checksum, str)
+        assert len(checksum) > 0
+        # Should be stable
+        checksum2 = MyClassAutoDetect.cls_checksum()
+        assert checksum == checksum2
+
+    def test_class_checksum_with_auto_detected_provenance_stability(self):
+        """Test that class checksums are stable for the same class with auto-detected provenance."""
+        checksum1 = MyClassAutoDetectChecksum1.cls_checksum()
+        checksum2 = MyClassAutoDetectChecksum1.cls_checksum()
+        # Same class should produce same checksum
+        assert checksum1 == checksum2
+        # Verify that the checksum includes the auto-detected provenance
+        # by checking that it's different from a class without the auto-detected field
+        checksum_without = MyClassStability.cls_checksum()
+        assert checksum1 != checksum_without
+
+    def test_instance_checksum_with_auto_detected_provenance(self):
+        """Test that instance checksum is computed when fields are auto-detected to use provenance()."""
+        cfg1 = ConfigWithValue(42)
+        instance1 = MyClassInstanceAutoDetect(cfg1)
+        checksum1 = instance1.checksum()
+        # Should be a valid checksum (non-empty string)
+        assert isinstance(checksum1, str)
+        assert len(checksum1) > 0
+        # Should be stable
+        checksum1_again = instance1.checksum()
+        assert checksum1 == checksum1_again
+
+    def test_instance_checksum_changes_with_auto_detected_provenance(self):
+        """Test that instance checksums change when auto-detected provenance changes."""
+        cfg1 = ConfigWithValue(42)
+        cfg2 = ConfigWithValue(43)
+        instance1 = MyClassInstanceAutoDetect(cfg1)
+        instance2 = MyClassInstanceAutoDetect(cfg2)
+        checksum1 = instance1.checksum()
+        checksum2 = instance2.checksum()
+        # Different config values should produce different checksums
+        assert checksum1 != checksum2
+
+    def test_instance_checksum_same_auto_detected_provenance(self):
+        """Test that instance checksums are the same for same auto-detected provenance."""
+        cfg1 = ConfigWithValue(42)
+        cfg2 = ConfigWithValue(42)
+        instance1 = MyClassInstanceAutoDetect(cfg1)
+        instance2 = MyClassInstanceAutoDetect(cfg2)
+        checksum1 = instance1.checksum()
+        checksum2 = instance2.checksum()
+        # Same config values should produce same checksums
+        assert checksum1 == checksum2
