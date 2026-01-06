@@ -1,8 +1,9 @@
 import heapq
 import math
 from dataclasses import dataclass
-from typing import override
+from typing import Annotated, override
 
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import TaskResult
@@ -16,6 +17,9 @@ class SearchAgent(ProofAgent, VERSION="0.1.0"):
     """
     A simple search agent based on strategies.
     """
+
+    _strategy: Annotated[Strategy, Provenance.Reflect.Field]
+    _fuel: Annotated[int | None, Provenance.Reflect.Field]
 
     def __init__(self, strategy: Strategy, fuel: int | None = 100) -> None:
         self._strategy = strategy

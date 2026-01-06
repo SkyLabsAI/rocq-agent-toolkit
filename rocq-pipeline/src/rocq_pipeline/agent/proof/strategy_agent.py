@@ -3,9 +3,10 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, override
+from typing import Annotated, Any, override
 
 from observability import get_logger, trace_context
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import ProofAgent
@@ -22,6 +23,11 @@ logger = get_logger("rocq_agent")
 
 class StrategyAgent(ProofAgent, VERSION="0.1.0"):
     """An agent that uses a Strategy to select tactics."""
+
+    _strategy: Annotated[Strategy, Provenance.Reflect.Field]
+    _max_depth: Annotated[int | None, Provenance.Reflect.Field]
+    _max_breath: Annotated[int | None, Provenance.Reflect.Field]
+    _fuel: Annotated[int | None, Provenance.Reflect.Field]
 
     def __init__(
         self,

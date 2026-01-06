@@ -18,7 +18,7 @@ from .dataclasses import (
 logger = get_logger("rocq_agent")
 
 
-class Agent(Provenance.ClassIdentity, Provenance.Version, VERSION="1.0.0"):
+class Agent(Provenance.Full, VERSION="1.0.0"):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
     def run(self, rdm: RocqCursor) -> TaskResult:
