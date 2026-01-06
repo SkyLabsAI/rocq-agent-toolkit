@@ -17,9 +17,7 @@ class BrickGoal(IrisGoal):
     PartsDataclass: type[BrickGoalParts] = BrickGoalParts
 
     @staticmethod
-    def parse_decide_statement(
-        text: str, bool_decide: bool = False
-    ) -> tuple[str, str, str] | None:
+    def parse_decide_condition(text: str, bool_decide: bool = False) -> str | None:
         """
         Parses 'if <keyword> (A) then (B) else (C)' logic.
 
@@ -30,6 +28,10 @@ class BrickGoal(IrisGoal):
         Returns:
             re.Match object with groups (Condition, Then-Block, Else-Block) if successful.
             None if parsing fails or if the split creates unbalanced parentheses.
+
+        Note: We could also return all three parts as a tuple, but for now we
+        only return the Condition part since regex matching may not be sufficient
+        for all cases we encounter (cf. test case 9 in test_parse_decide condition.py).
         """
 
         # Escape the keyword just in case it contains special regex chars
@@ -61,7 +63,7 @@ class BrickGoal(IrisGoal):
         # Guard 2: Then-Block (Group 2)
         if then_part.count("(") != then_part.count(")"):
             return None
-        return (match.group(1), match.group(2), match.group(3))
+        return match.group(1)
 
     @property
     @override
@@ -132,18 +134,18 @@ class BrickGoal(IrisGoal):
         """
         return self.is_branch_stmt_goal() or self.is_branch_expr_goal()
 
-    def is_if_decide_then_else_goal(self) -> tuple[str, str, str] | None:
+    def is_if_decide_then_else_goal(self) -> str | None:
         """
         Checks if the spatial conclusion contains a 'if decide xxx then yyy else zzz' term.
         """
-        return BrickGoal.parse_decide_statement(
+        return BrickGoal.parse_decide_condition(
             self.parts.iris_spat_concl, bool_decide=False
         )
 
-    def is_if_bool_decide_then_else_goal(self) -> tuple[str, str, str] | None:
+    def is_if_bool_decide_then_else_goal(self) -> str | None:
         """
         Checks if the spatial conclusion contains a 'if bool_decide xxx then yyy else zzz' term.
         """
-        return BrickGoal.parse_decide_statement(
+        return BrickGoal.parse_decide_condition(
             self.parts.iris_spat_concl, bool_decide=True
         )
