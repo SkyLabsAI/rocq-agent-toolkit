@@ -15,6 +15,9 @@ export type SpanNodeData = {
   depth?: number;
   childCount?: number;
   totalDescendants?: number;
+  isProcessNode?: boolean;
+  processState?: 'root' | 'intermediate' | 'error' | 'success';
+  virtualErrorNode?: boolean;
 };
 
 const SpanNode = (props: NodeProps) => {
@@ -37,14 +40,70 @@ const SpanNode = (props: NodeProps) => {
     return colors[depth % colors.length];
   };
 
+  // Get process node styling - theme-aware
+  const getProcessNodeStyle = () => {
+    if (data.virtualErrorNode) {
+      return {
+        bg: 'bg-background-danger',
+        border: 'border-border-danger',
+        textColor: 'text-text-danger',
+        badgeBg: 'bg-background-danger',
+        badgeBorder: 'border-border-danger',
+      };
+    }
+
+    switch (data.processState) {
+      case 'root':
+        return {
+          bg: 'bg-background-information',
+          border: 'border-border-brand',
+          textColor: 'text-text-information',
+          badgeBg: 'bg-background-information',
+          badgeBorder: 'border-border-brand',
+        };
+      case 'success':
+        return {
+          bg: 'bg-background-success',
+          border: 'border-border-success',
+          textColor: 'text-text-success',
+          badgeBg: 'bg-background-success',
+          badgeBorder: 'border-border-success',
+        };
+      case 'error':
+        return {
+          bg: 'bg-background-warning',
+          border: 'border-border-warning',
+          textColor: 'text-text-warning',
+          badgeBg: 'bg-background-warning',
+          badgeBorder: 'border-border-warning',
+        };
+      case 'intermediate':
+        return {
+          bg: 'bg-background-accent-gray-subtlest',
+          border: 'border-border-bold',
+          textColor: 'text-text-subtle',
+          badgeBg: 'bg-background-accent-gray-subtlest',
+          badgeBorder: 'border-border-bold',
+        };
+      default:
+        return null;
+    }
+  };
+
+  const processStyle = data.isProcessNode ? getProcessNodeStyle() : null;
+
   const base =
     'rounded-lg border-2 px-3 py-2 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)] relative';
   const border = selected
     ? 'border-border-focused'
-    : getDepthBorderColor(data.depth);
-  const bg = data.isOnPath
-    ? 'bg-background-success'
-    : 'bg-elevation-surface-raised';
+    : processStyle
+      ? processStyle.border
+      : getDepthBorderColor(data.depth);
+  const bg = processStyle
+    ? processStyle.bg
+    : data.isOnPath
+      ? 'bg-background-success'
+      : 'bg-elevation-surface-raised';
 
   return (
     <div className={`${base} ${border} ${bg} w-full h-full`}>
@@ -70,9 +129,30 @@ const SpanNode = (props: NodeProps) => {
       />
 
       {/* Depth indicator badge */}
-      {data.depth !== undefined && (
+      {data.depth !== undefined && !data.isProcessNode && (
         <div className='absolute -left-2 -top-2 w-5 h-5 rounded-full bg-elevation-surface-overlay border-2 border-elevation-surface flex items-center justify-center text-[10px] font-bold text-text'>
           {data.depth}
+        </div>
+      )}
+
+      {/* Process state badge */}
+      {data.isProcessNode && (
+        <div
+          className={`absolute -left-2 -top-2 px-2 h-5 rounded-full ${
+            processStyle
+              ? `${processStyle.badgeBg} border-2 ${processStyle.badgeBorder}`
+              : 'bg-elevation-surface-overlay border-2 border-elevation-surface'
+          } flex items-center justify-center text-[10px] font-bold ${processStyle?.textColor || 'text-text'}`}
+        >
+          {data.processState === 'root'
+            ? '🎯'
+            : data.processState === 'success'
+              ? '✓'
+              : data.processState === 'error'
+                ? '⚠'
+                : data.virtualErrorNode
+                  ? '❌'
+                  : '→'}
         </div>
       )}
 

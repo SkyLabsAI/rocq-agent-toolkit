@@ -16,10 +16,10 @@ import { useEffect, useMemo } from 'react';
 import SpanNode, {
   type SpanNodeData,
 } from '@/components/visualizer/nodes/span-node';
-import type { VisualizerSpanLite } from '@/services/visualizer';
+import type { EnhancedSpan } from '@/services/visualizer/process-tree';
 
 type Props = {
-  spans: VisualizerSpanLite[];
+  spans: EnhancedSpan[];
   selectedSpanId?: string;
   onSelectSpanId: (spanId: string) => void;
   successPathNodes: Set<string>;
@@ -151,6 +151,9 @@ const SpanGraphView = ({
           depth,
           childCount: children.length,
           totalDescendants,
+          isProcessNode: s.isProcessNode,
+          processState: s.processState,
+          virtualErrorNode: s.virtualErrorNode,
         },
         width: NODE_W,
         height: NODE_H,

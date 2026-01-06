@@ -10,6 +10,12 @@ import {
   getTraceIdsForRun,
   type VisualizerSpanLite,
 } from '@/services/visualizer';
+import {
+  analyzeProcessNodes,
+  createEnhancedSpans,
+  type EnhancedSpan,
+  rebuildProcessHierarchy,
+} from '@/services/visualizer/process-tree';
 
 type Props = {
   isOpen: boolean;
@@ -31,9 +37,8 @@ const VisualizerModal = ({
   const [selectedTraceId, setSelectedTraceId] = useState<string>('');
 
   const [spans, setSpans] = useState<VisualizerSpanLite[]>([]);
-  const [selectedSpan, setSelectedSpan] = useState<VisualizerSpanLite | null>(
-    null
-  );
+  const [enhancedSpans, setEnhancedSpans] = useState<EnhancedSpan[]>([]);
+  const [selectedSpan, setSelectedSpan] = useState<EnhancedSpan | null>(null);
   const [logs, setLogs] = useState<Record<string, unknown> | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
 
@@ -111,12 +116,20 @@ const VisualizerModal = ({
       setLoading(true);
       setError(null);
       setSpans([]);
+      setEnhancedSpans([]);
       setSelectedSpan(null);
       setLogs(null);
       try {
         const res = await getParsedSpansForTrace(selectedTraceId);
         if (cancelled) return;
-        setSpans(res.spans ?? []);
+        const rawSpans = res.spans ?? [];
+        setSpans(rawSpans);
+
+        // Analyze and enhance process nodes
+        const processNodes = analyzeProcessNodes(rawSpans);
+        let enhanced = createEnhancedSpans(rawSpans, processNodes);
+        enhanced = rebuildProcessHierarchy(enhanced, processNodes);
+        setEnhancedSpans(enhanced);
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : `${e}`);
@@ -141,6 +154,17 @@ const VisualizerModal = ({
     async function loadLogs(spanNonNull: NonNullable<typeof span>) {
       setLogsLoading(true);
       try {
+        // Skip virtual error nodes - they don't have real logs
+        if (spanNonNull.virtualErrorNode) {
+          setLogs({
+            message:
+              'This is a virtual error node indicating incomplete process',
+            note: 'No logs available for virtual nodes',
+          });
+          setLogsLoading(false);
+          return;
+        }
+
         const data = await getLogsBySpan({
           service: spanNonNull.service_name,
           traceId: spanNonNull.trace_id,
@@ -167,13 +191,13 @@ const VisualizerModal = ({
   }, [isOpen, selectedSpan, range.startMs, range.endMs]);
 
   const spansById = useMemo(
-    () => new Map(spans.map(s => [s.span_id, s] as const)),
-    [spans]
+    () => new Map(enhancedSpans.map(s => [s.span_id, s] as const)),
+    [enhancedSpans]
   );
 
   const successPathNodes = useMemo(() => {
     const out = new Set<string>();
-    for (const s of spans) {
+    for (const s of enhancedSpans) {
       const raw = s.attributes?.['search.path'];
       if (!raw) continue;
       const parsed = parsePath(raw);
@@ -181,7 +205,7 @@ const VisualizerModal = ({
       for (const n of parsed) out.add(n);
     }
     return out;
-  }, [spans]);
+  }, [enhancedSpans]);
 
   // Handler to toggle node collapse
   const toggleNodeCollapse = (spanId: string) => {
@@ -194,7 +218,7 @@ const VisualizerModal = ({
         newSet.delete(spanId);
 
         // Auto-collapse direct children (so they appear but are collapsed)
-        const directChildren = spans
+        const directChildren = enhancedSpans
           .filter(s => s.parent_span_id === spanId)
           .map(s => s.span_id);
 
@@ -267,9 +291,9 @@ const VisualizerModal = ({
   };
 
   const maxPossibleDepth = useMemo(() => {
-    const depths = calculateNodeDepths(spans);
+    const depths = calculateNodeDepths(enhancedSpans);
     return depths.size > 0 ? Math.max(...Array.from(depths.values())) : 0;
-  }, [spans]);
+  }, [enhancedSpans]);
 
   return (
     <Modal
@@ -356,9 +380,9 @@ const VisualizerModal = ({
               {error ? (
                 <div className='text-sm text-text-danger'>{error}</div>
               ) : null}
-              {spans.length > 0 && (
+              {enhancedSpans.length > 0 && (
                 <div className='text-xs text-text-disabled'>
-                  {spans.length} spans • {collapsedNodes.size} collapsed
+                  {enhancedSpans.length} spans • {collapsedNodes.size} collapsed
                 </div>
               )}
             </div>
@@ -366,7 +390,7 @@ const VisualizerModal = ({
 
           <div className='flex-1 min-h-0'>
             <SpanGraphView
-              spans={spans}
+              spans={enhancedSpans}
               selectedSpanId={selectedSpan?.span_id}
               onSelectSpanId={spanId =>
                 setSelectedSpan(spansById.get(spanId) ?? null)
