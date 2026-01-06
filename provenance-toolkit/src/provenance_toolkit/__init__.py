@@ -20,6 +20,16 @@ from .provenance import (
 )
 
 
+class WithFullProvenance(
+    WithClassIdentityProvenance,
+    WithVersionProvenance,
+    WithReflectProvenance,
+):
+    """All provenance mixins, for both classes and instances."""
+
+    pass
+
+
 class Provenance(
     metaclass=FinalNamespaceMeta,
     derive_from={
@@ -44,6 +54,7 @@ class Provenance(
     VersionT: TypeAlias = ProvenanceVersionData  # noqa: UP040
     Reflect: TypeAlias = WithReflectProvenance  # noqa: UP040
     ReflectT: TypeAlias = ReflectProvenanceData  # noqa: UP040
+    Full: TypeAlias = WithFullProvenance  # noqa: UP040
 
 
 __all__: list[str] = [
