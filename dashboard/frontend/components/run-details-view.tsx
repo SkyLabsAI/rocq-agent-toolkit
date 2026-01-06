@@ -171,7 +171,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
                 <p className='font-noto-sans font-normal text-sm'>
                   <span className='text-text-success'>{run.success_count}</span>
                   <span className='text-text-disabled'>/</span>
-                  <span className='text-text-danger'>{run.failure_count}</span>
+                  <span className='text-text'>{run.total_tasks}</span>
                   <span className='text-text-disabled'>
                     {' '}
                     ({((run.success_count / run.total_tasks) * 100).toFixed(0)}
