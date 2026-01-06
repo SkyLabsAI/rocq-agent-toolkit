@@ -34,8 +34,9 @@ logger = logging.getLogger(__name__)
 class ReflectProvenanceData(ProvenanceT):
     """Provenance data that holds a dictionary of included field data."""
 
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any], is_cls_provenance: bool = False) -> None:
         self._data = data
+        self._is_cls_provenance = is_cls_provenance
 
     @property
     def data(self) -> dict[str, Any]:
@@ -50,11 +51,11 @@ class ReflectProvenanceData(ProvenanceT):
 
     @override
     def is_cls_provenance(self) -> bool:
-        return True
+        return self._is_cls_provenance
 
     @override
     def is_instance_provenance(self) -> bool:
-        return True
+        return not self._is_cls_provenance
 
     @override
     def stable_serialize(self) -> str:
@@ -63,34 +64,52 @@ class ReflectProvenanceData(ProvenanceT):
         Provenance dictionaries (dicts with type keys) are converted to dicts with
         __qualname__ string keys, following the pattern used in cls_provenance_json.
         """
-        serializable_data = ReflectProvenanceData._convert_to_json_serializable(
-            self._data
-        )
+        serializable_data = self._convert_to_json_serializable(self._data)
         return json.dumps(serializable_data, sort_keys=True, ensure_ascii=False)
 
-    @staticmethod
-    def _convert_to_json_serializable(value: Any) -> Any:
+    def _convert_to_json_serializable(self, value: Any) -> Any:
         """Convert value to JSON-serializable format, handling provenance dictionaries.
 
         Uses generic_map pattern to recursively process mappings and sequences.
         """
         return ReflectProvenanceData._generic_map(
-            value_func=ReflectProvenanceData._convert_value,
+            value_func=self._convert_value,
             key_func=ReflectProvenanceData._convert_key,
             data=value,
         )
 
-    @staticmethod
-    def _convert_value(value: Any) -> Any:
+    def _convert_value(self, value: Any) -> Any:
         """Convert value to JSON-serializable format.
 
-        If value is a ProvenanceT instance, use stable_serialize(). Otherwise,
-        recursively process the value.
+        If value is a ProvenanceT instance, use stable_serialize().
+        If value has instance provenance, get its provenance and recursively process it.
+        If value is container-like, recursively process it.
+        Otherwise, return as-is.
         """
         if isinstance(value, ProvenanceT):
             return value.stable_serialize()
-        if ReflectProvenanceData._is_container_like(value):
-            return ReflectProvenanceData._convert_to_json_serializable(value)
+        elif isinstance(value, WithClassProvenance) or isinstance(
+            value, WithInstanceProvenance
+        ):
+            if self.is_cls_provenance() and isinstance(value, WithClassProvenance):
+                return value.cls_provenance_json()
+            elif self.is_instance_provenance() and isinstance(
+                value, WithInstanceProvenance
+            ):
+                return value.provenance_json()
+            else:
+                if self.is_cls_provenance():
+                    prov_kind = "class"
+                    base_type_name = WithClassProvenance.__qualname__
+                else:
+                    prov_kind = "instance"
+                    base_type_name = WithInstanceProvenance.__qualname__
+                raise ValueError(
+                    f"Invalid value for {prov_kind} provenance: {type(value).__qualname__} "
+                    f"does not derive from {base_type_name}; value={value}"
+                )
+        elif self._is_container_like(value):
+            return self._convert_to_json_serializable(value)
         return value
 
     @staticmethod
@@ -198,7 +217,9 @@ class WithReflectProvenance(WithProvenance):
     def compute_cls_provenance(cls) -> dict[type[WithClassProvenance], ProvenanceT]:
         result = super().compute_cls_provenance()
         data_dict = WithReflectProvenance._collect_annotated_data(cls, instance=None)
-        result[WithReflectProvenance] = ReflectProvenanceData(data_dict)
+        result[WithReflectProvenance] = ReflectProvenanceData(
+            data_dict, is_cls_provenance=True
+        )
         return result
 
     @override
@@ -207,7 +228,9 @@ class WithReflectProvenance(WithProvenance):
         data_dict = WithReflectProvenance._collect_annotated_data(
             type(self), instance=self
         )
-        result[WithReflectProvenance] = ReflectProvenanceData(data_dict)
+        result[WithReflectProvenance] = ReflectProvenanceData(
+            data_dict, is_cls_provenance=False
+        )
         return result
 
     @staticmethod
@@ -287,10 +310,11 @@ class WithReflectProvenance(WithProvenance):
         """Reflect field_value using reflect, or a default policy.
 
         Priority:
-        1. Explicit reflect using reflect.func
+        1. Explicit reflect using reflect.transform
         2. Default:
            a. Best-effort auto-detection: if value has cls_provenance() or provenance()
-           b. Identity function (return value as-is)
+           b. For container-like values, recursively process using _generic_map
+           c. Identity function (return value as-is)
 
         Args:
             value: The value to transform
@@ -322,8 +346,40 @@ class WithReflectProvenance(WithProvenance):
             return value.cls_provenance()
         elif not is_cls_provenance and isinstance(value, WithInstanceProvenance):
             return value.provenance()
+        elif ReflectProvenanceData._is_container_like(value):
+            # For container-like values, recursively process using _generic_map
+            # This handles cases like list[tuple[float, Action]] where Action has provenance
+            return ReflectProvenanceData._generic_map(
+                value_func=lambda v: WithReflectProvenance._reflect_field_value(
+                    v, is_cls_provenance
+                ),
+                key_func=None,
+                data=value,
+            )
         else:
             return value
+
+    @staticmethod
+    def _reflect_field_value(value: Any, is_cls_provenance: bool) -> Any:
+        """Helper function for _reflect_field to process values in container-like structures.
+
+        This applies the same logic as _reflect_field but for individual values within
+        containers, handling objects with provenance recursively.
+
+        Args:
+            value: The value to process
+            is_cls_provenance: Whether we're processing class provenance (True) or instance (False)
+        """
+        if is_cls_provenance and (
+            isinstance(value, WithClassProvenance)
+            or isinstance(value, type)
+            and issubclass(value, WithClassProvenance)
+        ):
+            return value.cls_provenance()
+        elif not is_cls_provenance and isinstance(value, WithInstanceProvenance):
+            return value.provenance()
+        # For other values, return as-is (they'll be processed by _generic_map if container-like)
+        return value
 
     @staticmethod
     def _unwrap_to_annotated(hint: Any) -> Any | None:

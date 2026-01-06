@@ -11,6 +11,14 @@ from provenance_toolkit.provenance.reflect import (
 )
 
 
+def _assert_stable_serialize_no_error(prov: ReflectProvenanceData) -> None:
+    try:
+        assert prov.stable_serialize() == prov.stable_serialize()
+    except Exception as exc:
+        assert False, \
+            f"'ReflectProvenance.stable_serialize' exception for {prov}: {exc}"
+
+
 class Config(Provenance.ClassIdentity, Provenance.Version, VERSION="1.0.0"):
     """Test configuration class with provenance."""
 
@@ -82,10 +90,16 @@ class TestReflectProvenanceData:
         assert prov1 == prov2
         assert prov1 != prov3
 
-    def test_is_provenance(self):
+    def test_is_cls_provenance(self):
+        """Test is_cls_provenance and is_instance_provenance."""
+        prov = ReflectProvenanceData({"x": 42}, is_cls_provenance=True)
+        assert prov.is_cls_provenance()
+        assert not prov.is_instance_provenance()
+
+    def test_is_instance_provenance(self):
         """Test is_cls_provenance and is_instance_provenance."""
         prov = ReflectProvenanceData({"x": 42})
-        assert prov.is_cls_provenance()
+        assert not prov.is_cls_provenance()
         assert prov.is_instance_provenance()
 
 
@@ -427,6 +441,7 @@ class TestWithReflectProvenance:
         assert WithReflectProvenance in cls_prov
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
         assert reflect_prov.data["y"] == 3.14
 
@@ -435,6 +450,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassUnset.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
         # Instance fields (annotated but not assigned at class level) should not appear in class provenance
         assert "model" not in reflect_prov.data
@@ -447,6 +463,7 @@ class TestWithReflectProvenance:
         inst_prov = instance.provenance()
         reflect_prov = inst_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
         assert reflect_prov.data["model"] == "model_gpt-4"
 
@@ -458,6 +475,7 @@ class TestWithReflectProvenance:
         inst_prov = instance.provenance()
         reflect_prov = inst_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
         assert reflect_prov.data["model"] == "none"  # transform(None)
 
@@ -466,6 +484,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassAutoDetect.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         # Should extract checksum from Config's provenance
         assert "cfg" in reflect_prov.data
         assert reflect_prov.data["cfg"] == Config().cls_provenance()
@@ -475,6 +494,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassExplicitTransform.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["cfg"] == "custom_transform"
 
     def test_identity_for_raw_data(self):
@@ -482,6 +502,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassIdentity.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
         assert reflect_prov.data["y"] == "test"
 
@@ -490,6 +511,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassNone.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] is None
 
     def test_class_data_is_instance_data(self):
@@ -502,6 +524,8 @@ class TestWithReflectProvenance:
         inst_reflect = inst_prov[WithReflectProvenance]
         assert isinstance(cls_reflect, ReflectProvenanceData)
         assert isinstance(inst_reflect, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(cls_reflect)
+        _assert_stable_serialize_no_error(inst_reflect)
 
         # Class data should be in instance data
         assert cls_reflect.data["x"] == inst_reflect.data["x"]
@@ -511,6 +535,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassFinal.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
 
     def test_multiple_fields(self):
@@ -518,6 +543,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassMultiple.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert len(reflect_prov.data) == 3
         assert reflect_prov.data["a"] == 1
         assert reflect_prov.data["b"] == "two"
@@ -528,6 +554,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassNonAnnotated.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         assert "x" in reflect_prov.data
         assert "y" not in reflect_prov.data
 
@@ -548,6 +575,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassWithInstanceFields.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         # Class field should be present
         assert "class_field" in reflect_prov.data
         assert reflect_prov.data["class_field"] == 100
@@ -560,6 +588,7 @@ class TestWithReflectProvenance:
         inst_prov = instance.provenance()
         reflect_prov = inst_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         # Class field should be present in instance provenance
         assert "class_field" in reflect_prov.data
         assert reflect_prov.data["class_field"] == 100
@@ -573,6 +602,7 @@ class TestWithReflectProvenance:
         inst_prov = instance.provenance()
         reflect_prov = inst_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         # Instance field should be present
         assert "instance_field" in reflect_prov.data
         assert reflect_prov.data["instance_field"] == "instance_data"
@@ -587,6 +617,8 @@ class TestWithReflectProvenance:
         inst_reflect = inst_prov[WithReflectProvenance]
         assert isinstance(cls_reflect, ReflectProvenanceData)
         assert isinstance(inst_reflect, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(cls_reflect)
+        _assert_stable_serialize_no_error(inst_reflect)
 
         # Class provenance should only have class field
         assert "class_val" in cls_reflect.data
@@ -610,6 +642,7 @@ class TestWithReflectProvenance:
         cls_prov = MyClassOnlyInstanceFields.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         # Should be empty or only contain fields that exist at class level
         assert "instance_only" not in reflect_prov.data
         # If there are no class fields, the data dict should be empty
@@ -621,6 +654,7 @@ class TestWithReflectProvenance:
         inst_prov = instance.provenance()
         reflect_prov = inst_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
         # Instance field should be present
         assert "instance_only" in reflect_prov.data
         assert reflect_prov.data["instance_only"] == "only_instance"
@@ -679,3 +713,298 @@ class TestWithReflectProvenance:
         checksum2 = instance2.checksum()
         # Same config values should produce same checksums
         assert checksum1 == checksum2
+
+
+# Test classes for container-like annotated data with provenance-aware objects
+class ActionWithProvenance(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test action class with provenance for container tests."""
+
+    name: Annotated[str, Provenance.Reflect.Field]
+
+    def __init__(self, name: str) -> None:
+        """Initialize with a name."""
+        super().__init__()
+        self.name = name
+
+
+class StrategyWithContainerList(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test strategy class with a list of actions (container-like annotated data)."""
+
+    actions: Annotated[list[ActionWithProvenance], Provenance.Reflect.Field]
+
+    def __init__(self, actions: list[ActionWithProvenance]) -> None:
+        """Initialize with a list of actions."""
+        super().__init__()
+        self.actions = actions
+
+
+class StrategyWithContainerTuple(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test strategy class with a tuple of (probability, action) pairs."""
+
+    tactics: Annotated[
+        list[tuple[float, ActionWithProvenance]], Provenance.Reflect.Field
+    ]
+
+    def __init__(self, tactics: list[tuple[float, ActionWithProvenance]]) -> None:
+        """Initialize with a list of (probability, action) tuples."""
+        super().__init__()
+        self.tactics = tactics
+
+
+class StrategyWithContainerDict(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test strategy class with a dict mapping names to actions."""
+
+    action_map: Annotated[dict[str, ActionWithProvenance], Provenance.Reflect.Field]
+
+    def __init__(self, action_map: dict[str, ActionWithProvenance]) -> None:
+        """Initialize with a dict of actions."""
+        super().__init__()
+        self.action_map = action_map
+
+
+class StrategyWithNestedContainers(
+    Provenance.ClassIdentity,
+    Provenance.Version,
+    Provenance.Reflect,
+    VERSION="1.0.0",
+):
+    """Test strategy class with nested containers."""
+
+    strategy_groups: Annotated[
+        list[list[ActionWithProvenance]], Provenance.Reflect.Field
+    ]
+
+    def __init__(self, strategy_groups: list[list[ActionWithProvenance]]) -> None:
+        """Initialize with nested lists of actions."""
+        super().__init__()
+        self.strategy_groups = strategy_groups
+
+
+class TestContainerLikeAnnotatedData:
+    """Tests for container-like annotated data containing provenance-aware objects.
+
+    These tests verify that the recursive processing of container-like annotated
+    data works correctly. Without the fix, these tests would fail because the
+    provenance-aware objects inside containers would not be properly processed.
+    """
+
+    def test_list_of_actions_serialization(self):
+        """Test that a list of actions can be serialized correctly."""
+        action1 = ActionWithProvenance("action1")
+        action2 = ActionWithProvenance("action2")
+        strategy = StrategyWithContainerList([action1, action2])
+
+        # This should not raise an exception
+        inst_prov = strategy.provenance()
+        reflect_prov = inst_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # The actions should be recursively processed to their provenance
+        actions_data = reflect_prov.data["actions"]
+        assert isinstance(actions_data, list)
+        assert len(actions_data) == 2
+
+        # Each action should be converted to its provenance data
+        for action_prov in actions_data:
+            assert isinstance(action_prov, dict)
+            # Should contain provenance data from ActionWithProvenance
+            assert WithReflectProvenance in action_prov
+
+        # Serialization should work without errors
+        serialized = reflect_prov.stable_serialize()
+        assert isinstance(serialized, str)
+        assert len(serialized) > 0
+
+    def test_tuple_of_probability_action_pairs_serialization(self):
+        """Test that tuples of (probability, action) pairs can be serialized."""
+        action1 = ActionWithProvenance("auto")
+        action2 = ActionWithProvenance("tauto")
+        strategy = StrategyWithContainerTuple([(1.0, action1), (0.5, action2)])
+
+        # This should not raise an exception
+        inst_prov = strategy.provenance()
+        reflect_prov = inst_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # The tactics should be recursively processed
+        tactics_data = reflect_prov.data["tactics"]
+        assert isinstance(tactics_data, list)
+        assert len(tactics_data) == 2
+
+        # Each tuple should be processed
+        for tactic_tuple in tactics_data:
+            assert isinstance(tactic_tuple, list)  # Tuples become lists in JSON
+            assert len(tactic_tuple) == 2
+            assert isinstance(tactic_tuple[0], float)
+            # The action should be converted to its provenance
+            assert isinstance(tactic_tuple[1], dict)
+            assert WithReflectProvenance in tactic_tuple[1]
+
+        # Serialization should work without errors
+        serialized = reflect_prov.stable_serialize()
+        assert isinstance(serialized, str)
+        assert len(serialized) > 0
+
+    def test_dict_of_actions_serialization(self):
+        """Test that a dict mapping names to actions can be serialized."""
+        action1 = ActionWithProvenance("action1")
+        action2 = ActionWithProvenance("action2")
+        strategy = StrategyWithContainerDict({"first": action1, "second": action2})
+
+        # This should not raise an exception
+        inst_prov = strategy.provenance()
+        reflect_prov = inst_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # The action_map should be recursively processed
+        action_map_data = reflect_prov.data["action_map"]
+        assert isinstance(action_map_data, dict)
+        assert len(action_map_data) == 2
+
+        # Each action should be converted to its provenance
+        for action_prov in action_map_data.values():
+            assert isinstance(action_prov, dict)
+            assert WithReflectProvenance in action_prov
+
+        # Serialization should work without errors
+        serialized = reflect_prov.stable_serialize()
+        assert isinstance(serialized, str)
+        assert len(serialized) > 0
+
+    def test_nested_containers_serialization(self):
+        """Test that nested containers (list of lists) can be serialized."""
+        action1 = ActionWithProvenance("action1")
+        action2 = ActionWithProvenance("action2")
+        action3 = ActionWithProvenance("action3")
+        strategy = StrategyWithNestedContainers([[action1, action2], [action3]])
+
+        # This should not raise an exception
+        inst_prov = strategy.provenance()
+        reflect_prov = inst_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # The nested lists should be recursively processed
+        groups_data = reflect_prov.data["strategy_groups"]
+        assert isinstance(groups_data, list)
+        assert len(groups_data) == 2
+
+        # Each inner list should be processed
+        assert isinstance(groups_data[0], list)
+        assert len(groups_data[0]) == 2
+        assert isinstance(groups_data[1], list)
+        assert len(groups_data[1]) == 1
+
+        # Each action should be converted to its provenance
+        for group in groups_data:
+            for action_prov in group:
+                assert isinstance(action_prov, dict)
+                assert WithReflectProvenance in action_prov
+
+        # Serialization should work without errors
+        serialized = reflect_prov.stable_serialize()
+        assert isinstance(serialized, str)
+        assert len(serialized) > 0
+
+    def test_list_of_actions_class_provenance(self):
+        """Test that class provenance works with container-like data."""
+
+        # For class provenance, we need class-level fields
+        # This test verifies that the is_cls_provenance flag is correctly used
+        class StrategyWithClassLevelList(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Strategy with class-level list of action types."""
+
+            action_types: Final[
+                Annotated[list[type[ActionWithProvenance]], Provenance.Reflect.Field]
+            ] = [ActionWithProvenance]
+
+        cls_prov = StrategyWithClassLevelList.cls_provenance()
+        reflect_prov = cls_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # The action_types should be processed
+        action_types_data = reflect_prov.data["action_types"]
+        assert isinstance(action_types_data, list)
+        assert len(action_types_data) == 1
+
+        # The class should be converted to its class provenance
+        assert isinstance(action_types_data[0], dict)
+        assert WithReflectProvenance in action_types_data[0]
+
+        # Serialization should work without errors
+        serialized = reflect_prov.stable_serialize()
+        assert isinstance(serialized, str)
+        assert len(serialized) > 0
+
+    def test_mixed_container_content(self):
+        """Test container with mixed content (some with provenance, some without)."""
+        action1 = ActionWithProvenance("action1")
+        action2 = ActionWithProvenance("action2")
+
+        class StrategyWithMixedContent(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Strategy with mixed container content."""
+
+            mixed_list: Annotated[
+                list[ActionWithProvenance | str], Provenance.Reflect.Field
+            ]
+
+            def __init__(self, mixed_list: list[ActionWithProvenance | str]) -> None:
+                super().__init__()
+                self.mixed_list = mixed_list
+
+        strategy = StrategyWithMixedContent([action1, "plain_string", action2])
+
+        # This should not raise an exception
+        inst_prov = strategy.provenance()
+        reflect_prov = inst_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # The mixed list should be processed
+        mixed_data = reflect_prov.data["mixed_list"]
+        assert isinstance(mixed_data, list)
+        assert len(mixed_data) == 3
+
+        # Actions should be converted to provenance, strings should remain strings
+        assert isinstance(mixed_data[0], dict)  # action1 provenance
+        assert isinstance(mixed_data[1], str)  # plain_string
+        assert isinstance(mixed_data[2], dict)  # action2 provenance
+
+        # Serialization should work without errors
+        serialized = reflect_prov.stable_serialize()
+        assert isinstance(serialized, str)
+        assert len(serialized) > 0
