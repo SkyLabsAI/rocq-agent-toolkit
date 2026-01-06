@@ -22,7 +22,11 @@ export interface RunTaskCell {
   task?: TaskOutput;
 }
 
-const ComparePage: React.FC = () => {
+interface ComparePageProps {
+  runIds: string[];
+}
+
+const ComparePage: React.FC<ComparePageProps> = ({ runIds }) => {
   return (
     <Layout title='Compare Runs'>
       <div className='  text-text p-8 pt-0'>
@@ -40,7 +44,7 @@ const ComparePage: React.FC = () => {
             </div>
           }
         >
-          <ComparePageContent />
+          <ComparePageContent runIds={runIds} />
         </Suspense>
       </div>
     </Layout>

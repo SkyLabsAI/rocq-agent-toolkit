@@ -1,4 +1,4 @@
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import ComparisonModal from '@/components/base/comparisonModal';
@@ -15,18 +15,17 @@ import {
   transformRunsToTaskRows,
 } from '../runs-compare/compare-page-content/utils';
 
-export const AgentCompareContent: React.FC = () => {
-  const sp = useSearchParams();
+interface AgentCompareContentProps {
+  agentIds: string[];
+}
+
+export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
+  agentIds,
+}) => {
   const router = useRouter();
   const { agentData, isLoading: agentDataLoading } = useAgents();
 
-  const selectedAgents = sp?.get('agents') || '';
-  const agentNames = useMemo(() => {
-    return selectedAgents
-      .split(',')
-      .map(name => name.trim())
-      .filter(Boolean);
-  }, [selectedAgents]);
+  const agentNames = agentIds;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
