@@ -15,8 +15,9 @@ def _assert_stable_serialize_no_error(prov: ReflectProvenanceData) -> None:
     try:
         assert prov.stable_serialize() == prov.stable_serialize()
     except Exception as exc:
-        assert False, \
-            f"'ReflectProvenance.stable_serialize' exception for {prov}: {exc}"
+        raise AssertionError(
+            f"'ReflectProvenance.stable_serialize' exception for {prov}"
+        ) from exc
 
 
 class Config(Provenance.ClassIdentity, Provenance.Version, VERSION="1.0.0"):
