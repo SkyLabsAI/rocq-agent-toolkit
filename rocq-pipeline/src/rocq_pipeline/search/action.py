@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, TypeVar, override
+from typing import Annotated, Any, TypeVar, override
+
+from provenance_toolkit import Provenance
 
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Action[T_co]:
+class Action[T_co](Provenance.Full, VERSION="1.0.0"):
     """
     An `Action` represents a (potential) action in an MDP.
 
@@ -38,10 +40,12 @@ class Action[T_co]:
         return f"{type(self).__name__}:{id(self)}"
 
 
-class LoggingAction[T_co](Action[T_co]):
+class LoggingAction[T_co](Action[T_co], VERSION="1.0.0"):
     """
     An action that logs itself when it is invoked.
     """
+
+    _base: Annotated[Action[T_co], Provenance.Reflect.Field]
 
     def __init__(self, base: Action[T_co], record: Callable[[T_co], None]) -> None:
         self._record = record
