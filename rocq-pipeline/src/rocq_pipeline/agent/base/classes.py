@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, override
 
 from observability import get_logger
@@ -81,7 +83,7 @@ class AgentBuilder:
         self._agent: type[Agent] = agent_type
 
     @staticmethod
-    def of_agent(agent_type: type[Agent]) -> "AgentBuilder":
+    def of_agent(agent_type: type[Agent]) -> AgentBuilder:
         return AgentBuilder(agent_type)
 
     def add_args(self, args: list[str]) -> None:
