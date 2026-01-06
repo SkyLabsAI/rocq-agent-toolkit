@@ -39,6 +39,7 @@ export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
           'hover:bg-white/5 cursor-pointer transition-colors duration-200'
         )}
         onClick={handleToggle}
+        data-testid={`dataset-agent-card-${agent.cls_checksum}`}
       >
         <td className='px-6 py-4 text-text font-medium'>
           <div className='flex items-center gap-3'>

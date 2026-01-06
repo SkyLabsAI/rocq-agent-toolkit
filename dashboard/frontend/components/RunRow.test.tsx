@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 
 import { type Run } from '@/types/types';
@@ -142,6 +142,27 @@ describe('RunRow component', () => {
       // Click on the run ID text (part of the row)
       fireEvent.click(screen.getByText('run-123'));
       expect(onToggleExpansion).toHaveBeenCalledWith(mockRun);
+    });
+  });
+
+  describe('Visualizer modal', () => {
+    it('should open visualizer modal and not propagate to row', async () => {
+      const onToggleExpansion = jest.fn();
+      render(
+        <RunRow {...defaultProps} onToggleExpansion={onToggleExpansion} />
+      );
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByTestId(`run-visualize-button-${mockRun.run_id}`)
+        );
+        await Promise.resolve();
+      });
+
+      expect(
+        screen.getByText(`Visualizer - ${mockRun.run_id}`)
+      ).toBeInTheDocument();
+      expect(onToggleExpansion).not.toHaveBeenCalled();
     });
   });
 

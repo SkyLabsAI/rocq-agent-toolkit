@@ -4,7 +4,11 @@ import Layout from '@/layouts/common';
 
 import { AgentCompareContent } from './agent-compare-content';
 
-const AgentCompareTable: React.FC = () => {
+interface AgentCompareTableProps {
+  agentIds: string[];
+}
+
+const AgentCompareTable: React.FC<AgentCompareTableProps> = ({ agentIds }) => {
   return (
     <Layout title='Compare Agents'>
       <div className='text-text p-8 pt-0'>
@@ -22,7 +26,7 @@ const AgentCompareTable: React.FC = () => {
             </div>
           }
         >
-          <AgentCompareContent />
+          <AgentCompareContent agentIds={agentIds} />
         </Suspense>
       </div>
     </Layout>

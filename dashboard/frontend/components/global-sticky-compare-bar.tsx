@@ -1,11 +1,11 @@
+import { useRouter } from 'next/navigation';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import StickyCompareBar from '@/components/sticky-compare-bar';
 import { useGlobalCompare } from '@/contexts/global-compare-context';
 
 export const GlobalStickyCompareBar: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { selections, clearAllSelections } = useGlobalCompare();
 
   const hasAgentSelections = selections.selectedAgents.length > 0;
@@ -16,10 +16,7 @@ export const GlobalStickyCompareBar: React.FC = () => {
     const query = new URLSearchParams({
       agents: selections.selectedAgents.map(a => a.agentName).join(','),
     }).toString();
-    navigate({
-      pathname: '/compare/agents',
-      search: `?${query}`,
-    });
+    router.push(`/compare/agents?${query}`);
   };
 
   const compareRuns = () => {
@@ -27,10 +24,8 @@ export const GlobalStickyCompareBar: React.FC = () => {
     const query = new URLSearchParams({
       runs: selections.selectedRuns.map(r => r.runId).join(','),
     }).toString();
-    navigate({
-      pathname: '/compare',
-      search: `?${query}`,
-    });
+    router.push(`/compare?${query}`);
+    router.push(`/compare?${query}`);
   };
 
   // Show agent comparison bar if agents are selected

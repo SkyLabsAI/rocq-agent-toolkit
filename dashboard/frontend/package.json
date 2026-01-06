@@ -19,9 +19,11 @@
     "test:e2e:install": "playwright install --with-deps"
   },
   "dependencies": {
+    "@xyflow/react": "^12.10.0",
     "axios": "^1.13.2",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
+    "dagre": "^0.8.5",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.23.25",
     "next": "16.0.1",
@@ -38,6 +40,7 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@types/dagre": "^0.7.53",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",

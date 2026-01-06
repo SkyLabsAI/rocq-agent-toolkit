@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     # Observability stack port
     observability_url: str = "http://0.0.0.0:3110"
+    tempo_url: str = "http://0.0.0.0:3210"
     # Legacy days-based setting (kept for backwards compatibility, not used directly)
     log_query_time_delta_days: int = 7
     # Time window (in hours) around the task timestamp used when querying Loki

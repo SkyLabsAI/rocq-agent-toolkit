@@ -1,5 +1,5 @@
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { useGlobalCompare } from '@/contexts/global-compare-context';
 import AgentRunsView from '@/features/localdashboard/agent-runs-view';
@@ -25,7 +25,7 @@ export const InstanceBenchmarks: React.FC<InstanceBenchmarksProps> = ({
     instanceChecksum,
     benchmark.dataset_id
   );
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const {
     selectRun,
@@ -65,46 +65,8 @@ export const InstanceBenchmarks: React.FC<InstanceBenchmarksProps> = ({
     const query = new URLSearchParams({
       runs: selectedRunIds.join(','),
     }).toString();
-    navigate({
-      pathname: '/compare',
-      search: `?${query}`,
-    });
+    router.push(`/compare?${query}`);
   };
-
-  const handleCompareBestRun = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (runs.length === 0) return;
-
-    // Find the best run (highest success rate)
-    const bestRun = runs.reduce((best, current) => {
-      const bestRate = best.success_count / best.total_tasks;
-      const currentRate = current.success_count / current.total_tasks;
-      if (currentRate > bestRate) return current;
-      return best;
-    }, runs[0]);
-
-    // Toggle selection of the best run
-    if (isRunSelected(bestRun.run_id, benchmark.dataset_id)) {
-      deselectRun(bestRun.run_id, benchmark.dataset_id);
-    } else {
-      selectRun(bestRun.run_id, benchmark.dataset_id);
-    }
-  };
-
-  const getBestRunId = () => {
-    if (runs.length === 0) return null;
-    const bestRun = runs.reduce((best, current) => {
-      const bestRate = best.success_count / best.total_tasks;
-      const currentRate = current.success_count / current.total_tasks;
-      if (currentRate > bestRate) return current;
-      return best;
-    }, runs[0]);
-    return bestRun.run_id;
-  };
-
-  const bestRunId = getBestRunId();
-  const isBestRunSelected =
-    bestRunId && isRunSelected(bestRunId, benchmark.dataset_id);
 
   return (
     <div
@@ -133,24 +95,6 @@ export const InstanceBenchmarks: React.FC<InstanceBenchmarksProps> = ({
           <span className='text-text-disabled text-xs'>
             {runs.length > 0 ? `${runs.length} runs` : ''}
           </span>
-          {runs.length > 0 && (
-            <button
-              onClick={handleCompareBestRun}
-              className={cn(
-                'px-2 py-1 text-xs rounded transition-colors',
-                isBestRunSelected
-                  ? 'bg-primary-default text-white'
-                  : 'bg-elevation-surface-raised text-text-disabled hover:bg-elevation-surface-overlay hover:text-text'
-              )}
-              title={
-                isBestRunSelected
-                  ? 'Remove best run from comparison'
-                  : 'Add best run to comparison'
-              }
-            >
-              {isBestRunSelected ? '✓ Best' : '+ Best'}
-            </button>
-          )}
         </div>
       </div>
       {isOpen &&

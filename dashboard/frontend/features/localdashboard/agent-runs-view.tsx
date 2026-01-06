@@ -1,10 +1,10 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React from 'react';
 
 import RunRow from '@/components/run-row';
 import StickyCompareBar from '@/components/sticky-compare-bar';
-import { useSelectedRun } from '@/contexts/selected-run-context';
 import { PlayIcon } from '@/icons/play';
 import { type AgentRun, type Run } from '@/types/types';
 
@@ -33,7 +33,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   clearSelectedRuns,
   compareSelected,
 }) => {
-  const { setSelectedRun } = useSelectedRun();
+  const router = useRouter();
 
   const loadPinnedRuns = (agentName: string): Set<string> => {
     try {
@@ -60,7 +60,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   }, [pinnedRuns, agentName]);
 
   const handleRunClick = (run: Run) => {
-    setSelectedRun(run);
+    router.push(`/runs/${run.run_id}`);
   };
 
   const toggleOnPin = (run: Run) => {
@@ -78,7 +78,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   return (
     <>
       <div
-        className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20 space-y-4 relative '
+        className='grid grid-cols-[5fr_1fr_1fr_1fr_1.2fr_auto] gap-4 items-center mt-4 mb-3  z-20 space-y-4 relative px-2.5 '
         data-testid='runs-header'
       >
         <div className='flex gap-1 items-center'>
@@ -108,7 +108,7 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
 
         <div>
           {/* Invisible button to match content row button dimensions */}
-          <div className='bg-transparent relative rounded border border-transparent opacity-0 pointer-events-none'></div>
+          <div className='bg-transparent relative rounded border border-transparent opacity-0 pointer-events-none w-[230px]'></div>
         </div>
       </div>
 
@@ -132,7 +132,6 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
               tags={run.metadata?.tags}
               totalTasks={run.total_tasks}
               successCount={run.success_count}
-              failureCount={run.failure_count}
               timestamp={run.timestamp_utc}
               isSelected={selectedRuns.includes(run.run_id)}
               onToggleExpansion={handleRunClick}

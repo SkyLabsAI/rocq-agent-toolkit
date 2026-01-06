@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import ComparisonModal from '@/components/base/comparisonModal';
 import { getRunDetails } from '@/services/dataservice';
@@ -11,17 +10,13 @@ import { RunSummary } from './compare-page-summary';
 import { ComparisonTable } from './compare-table';
 import { computeRunStats, transformRunsToTaskRows } from './utils';
 
-export const ComparePageContent: React.FC = () => {
-  const [sp] = useSearchParams();
-  const runsParam = sp.get('runs') || '';
+interface ComparePageContentProps {
+  runIds: string[];
+}
 
-  const runIds = useMemo(() => {
-    return runsParam
-      .split(',')
-      .map(r => r.trim())
-      .filter(Boolean);
-  }, [runsParam]);
-
+export const ComparePageContent: React.FC<ComparePageContentProps> = ({
+  runIds,
+}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRuns, setSelectedRuns] = useState<RunDetailsResponse[]>([]);
