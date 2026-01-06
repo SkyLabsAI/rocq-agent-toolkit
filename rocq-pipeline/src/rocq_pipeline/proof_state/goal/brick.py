@@ -26,6 +26,16 @@ class BrickGoal(IrisGoal):
             return match.group(1), match.group(2), match.group(3)
         return None
 
+    @staticmethod
+    def if_bool_decide_then_else_extract(text: str) -> tuple[str, str, str] | None:
+        pattern = r"if\s+bool_decide\s*\(([^)]+)\)\s+then\s+(.+?)\s+else\s+(.+)"
+
+        match = re.search(pattern, text, re.DOTALL)
+
+        if match:
+            return match.group(1), match.group(2), match.group(3)
+        return None
+
     @property
     @override
     def parts(self) -> BrickGoalParts:
@@ -100,3 +110,9 @@ class BrickGoal(IrisGoal):
         Checks if the spatial conclusion contains a 'if decide (xxx) then yyy else zzz' term.
         """
         return BrickGoal.if_decide_then_else_extract(self.parts.iris_spat_concl)
+
+    def is_if_bool_decide_then_else_goal(self) -> tuple[str, str, str] | None:
+        """
+        Checks if the spatial conclusion contains a 'if bool_decide (xxx) then yyy else zzz' term.
+        """
+        return BrickGoal.if_bool_decide_then_else_extract(self.parts.iris_spat_concl)
