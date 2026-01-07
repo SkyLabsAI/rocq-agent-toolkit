@@ -217,12 +217,11 @@ def test_many(
             for cutoff, x in lls
         ]
     )
-    result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
-    assert result == expected
 
-    # Make sure we get the same results a second time
-    result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
-    assert result == expected
+    result: list[tuple[float, int]] = []
+    for _ in range(0, 2):
+        result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
+        assert result == expected
 
     for pre_len in range(0, len(result)):
         x = [

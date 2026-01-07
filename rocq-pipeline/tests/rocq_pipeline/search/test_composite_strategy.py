@@ -163,14 +163,12 @@ def test_many(lls: list[list[tuple[float, int]]], expected: list[tuple[float, in
         [IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]) for x in lls]
     )
 
-    result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
-    assert result == expected
+    # make sure we get the same results more than once
+    for _ in range(2):
+        result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
+        assert result == expected
 
-    # make sure we get the same results a second time
-    result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
-    assert result == expected
-
-    for pre_len in range(0, len(result)):
+    for pre_len in range(len(result)):
         x = [
             (prob, n.interact([])[0])
             for prob, n in itertools.islice(strat.rollout([]), pre_len)
