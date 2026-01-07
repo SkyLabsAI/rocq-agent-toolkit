@@ -86,7 +86,9 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                         message=f"depth limit exceeded({self._max_depth})",
                     )
 
-                rollout = self._strategy.rollout(rc, context=strategy_ctx)
+                rollout = self._strategy.rollout(
+                    rc, max_rollout=self._max_breadth, context=strategy_ctx
+                )
                 for _, action in (
                     rollout
                     if self._max_breadth is None
