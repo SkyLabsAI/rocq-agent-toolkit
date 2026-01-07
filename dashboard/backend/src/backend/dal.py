@@ -27,15 +27,22 @@ from backend.db_models import (
     Tag,
     Task,
     TaskResultDB,
+    TaskTagLink,
 )
 from backend.models import (
     AgentClassSummary,
     AgentInstanceSummary,
     DatasetInfo,
+    DatasetResultsAgentInstance,
+    DatasetResultsResponse,
+    DatasetResultsTask,
+    DatasetTaskResult,
+    DatasetTasksResponse,
     Metrics,
     RunDetailsResponse,
     RunInfo,
     TagsResponse,
+    TaskInfo,
     TaskMetadata,
     TaskResult,
 )
@@ -100,32 +107,26 @@ def get_or_create_dataset(
 
 def get_or_create_task(
     session: Session,
-    task_id: str,
+    task_name: str,
+    dataset: Dataset,
     kind: str | None = None,
-    dataset: Dataset | None = None,
 ) -> Task:
-    """Fetch a Task by id or create it if missing.
+    """Fetch a Task by (name, dataset_id) or create it if missing.
 
-    If a Dataset is provided and the Task is newly created, it will be
-    associated with that dataset. Existing tasks keep their dataset
-    association to avoid surprising cross-dataset moves.
+    Tasks are unique per dataset.
     """
-    task = session.get(Task, task_id)
+    # Look up by (name, dataset_id) combination
+    stmt = select(Task).where(Task.name == task_name, Task.dataset_id == dataset.id)
+    task = session.exec(stmt).first()
+
     if task:
-        if kind and task.kind != kind:
-            task.kind = kind
-        # Only set dataset if it's currently unset; avoid overwriting an
-        # existing association.
-        if dataset is not None and task.dataset_id is None and dataset.id is not None:
-            task.dataset_id = dataset.id
+
         return task
 
     task = Task(
-        id=task_id,
+        name=task_name,
         kind=kind,
-        dataset_id=dataset.id
-        if (dataset is not None and dataset.id is not None)
-        else None,
+        dataset_id=dataset.id,
     )
     session.add(task)
     session.flush()
@@ -143,6 +144,42 @@ def get_or_create_tag(session: Session, key: str, value: str) -> Tag:
     session.add(tag)
     session.flush()
     return tag
+
+
+# Prefix used to identify task-level tags in the metadata
+TASK_TAG_PREFIX = "TASK_"
+
+
+def link_tag_to_task(session: Session, task: Task, tag: Tag) -> None:
+    """Create a TaskTagLink if it doesn't already exist."""
+    if task.id is None:
+        return
+
+    link_stmt = select(TaskTagLink).where(
+        TaskTagLink.task_id == task.id,
+        TaskTagLink.tag_id == tag.id,
+    )
+    existing_link = session.exec(link_stmt).first()
+    if existing_link is None:
+        session.add(TaskTagLink(task_id=task.id, tag_id=tag.id))
+
+
+def get_tags_for_task(session: Session, task_id: int) -> dict[str, str]:
+    """
+    Helper to reconstruct metadata tags for a task from Tag/TaskTagLink tables.
+
+    If multiple values exist for the same key, the last one seen wins.
+    """
+    rows = session.exec(
+        select(Tag.key, Tag.value)
+        .join(TaskTagLink, TaskTagLink.tag_id == Tag.id)  # type: ignore[arg-type]
+        .where(TaskTagLink.task_id == task_id)
+    ).all()
+
+    tags: dict[str, str] = {}
+    for key, value in rows:
+        tags[key] = value
+    return tags
 
 
 async def ingest_task_results_for_run(
@@ -294,7 +331,7 @@ async def ingest_task_results_for_run(
         )
         session.add(run)
         session.flush()
-    else:
+    else: # TODO: Will we re ingest a rundata or not
         # Update basic fields on re-ingestion
         run.agent_checksum = agent_checksum
         run.agent_cls_checksum = agent_cls_checksum
@@ -315,8 +352,8 @@ async def ingest_task_results_for_run(
     total_execution_time_sec = 0.0
     total_llm_invocation_count = 0
 
-    # Collect tags across all tasks
-    tag_pairs: set[tuple[str, str]] = set()
+    # Collect run-level tags across all tasks (non-TASK_ prefixed)
+    run_tag_pairs: set[tuple[str, str]] = set()
 
     # Insert TaskResultDB rows
     for tr in task_results:
@@ -328,7 +365,7 @@ async def ingest_task_results_for_run(
 
         # Ensure dataset and task exist
         task = get_or_create_task(
-            session, task_id=tr.task_id, kind=tr.task_kind, dataset=dataset
+            session, task_name=tr.task_id, kind=tr.task_kind, dataset=dataset
         )
 
         ts_utc = _parse_timestamp_utc(tr.timestamp_utc)
@@ -348,8 +385,8 @@ async def ingest_task_results_for_run(
         run_result = TaskResultDB(
             run_id=run.id,
             task_id=task.id,
+            task_name=task.name,  # Store logical name for easier querying
             trace_id=tr.trace_id,
-            dataset_id=dataset.id,
             timestamp_utc=ts_utc,
             status=tr.status,
             metrics=metrics_dict,
@@ -359,10 +396,17 @@ async def ingest_task_results_for_run(
         )
         session.add(run_result)
 
-        # Accumulate tags
+        # Process tags - separate TASK_ prefixed tags from run-level tags
         if tr.metadata and tr.metadata.tags:
             for key, value in tr.metadata.tags.items():
-                tag_pairs.add((key, str(value)))
+                if key.startswith(TASK_TAG_PREFIX):
+                    # Task-level tag: strip prefix and link to task
+                    task_tag_key = key[len(TASK_TAG_PREFIX) :]
+                    tag = get_or_create_tag(session, key=task_tag_key, value=str(value))
+                    link_tag_to_task(session, task, tag)
+                else:
+                    # Run-level tag
+                    run_tag_pairs.add((key, str(value)))
 
     # Compute run-level aggregates
     run.total_tasks = total_tasks
@@ -375,11 +419,11 @@ async def ingest_task_results_for_run(
     run.total_execution_time_sec = total_execution_time_sec
     run.total_llm_invocation_count = total_llm_invocation_count
 
-    # Attach tags at the run level
+    # Attach run-level tags (excluding TASK_ prefixed ones which were handled above)
     # First, clear existing links to avoid duplicates on re-ingestion
     session.exec(delete(RunTagLink).where(RunTagLink.run_id == run.id))  # type: ignore[arg-type]
 
-    for key, value in sorted(tag_pairs):
+    for key, value in sorted(run_tag_pairs):
         tag = get_or_create_tag(session, key=key, value=value)
 
         link_stmt = select(RunTagLink).where(
@@ -812,6 +856,10 @@ def get_run_details_from_db(
         for tr_db in task_results_db:
             task = session.get(Task, tr_db.task_id)
             task_kind = (task.kind or "") if task else ""
+            # Use stored task_name or fall back to task.name
+            task_name = tr_db.task_name or (task.name if task else "")
+            # Get database task ID
+            task_db_id = tr_db.task_id
 
             # Reconstruct dataset identifier as exposed via the JSONL API.
             # Prefer the Task's dataset (and its Dataset.name); if missing,
@@ -844,7 +892,8 @@ def get_run_details_from_db(
                 TaskResult(
                     run_id=str(run.id),
                     task_kind=task_kind,
-                    task_id=tr_db.task_id,
+                    task_id=task_db_id,  # Database integer ID
+                    task_name=task_name,  # Logical task identifier string
                     trace_id=tr_db.trace_id,
                     dataset_id=dataset_name,
                     timestamp_utc=tr_db.timestamp_utc.isoformat(),
@@ -1597,3 +1646,190 @@ def get_estimated_time_for_task_from_db(
     if timestamp.tzinfo is None:
         return timestamp.replace(tzinfo=UTC)
     return timestamp.astimezone(UTC)
+
+
+# ============================================================================
+# Dataset Tasks API Functions
+# ============================================================================
+
+
+def get_tasks_for_dataset_from_db(
+    session: Session, dataset_id: str
+) -> DatasetTasksResponse | None:
+    """
+    Get all tasks in a specific dataset with their tags.
+
+    Args:
+        dataset_id: Logical dataset identifier (e.g. "loop_corpus").
+
+    Returns:
+        DatasetTasksResponse containing all tasks in the dataset,
+        or None if the dataset does not exist.
+    """
+    dataset = session.exec(select(Dataset).where(Dataset.name == dataset_id)).first()
+    if dataset is None:
+        return None
+
+    # Get all tasks for this dataset
+    tasks_db = session.exec(
+        select(Task).where(Task.dataset_id == dataset.id).order_by(Task.name)
+    ).all()
+
+    task_infos: list[TaskInfo] = []
+    for task in tasks_db:
+        # Get tags for this task
+        task_tags = get_tags_for_task(session, task.id) if task.id else {}
+
+        task_infos.append(
+            TaskInfo(
+                task_id=task.id or 0,
+                task_name=task.name,
+                task_kind=task.kind,
+                dataset_id=dataset_id,
+                tags=task_tags,
+            )
+        )
+
+    return DatasetTasksResponse(
+        dataset_id=dataset_id,
+        tasks=task_infos,
+        total_tasks=len(task_infos),
+    )
+
+
+def get_dataset_results_from_db(
+    session: Session, dataset_id: str
+) -> DatasetResultsResponse | None:
+    """
+    Get the complete results matrix for a dataset.
+
+    This is the main API for the dataset details page, showing task results
+    across all agent instances.
+
+    Args:
+        dataset_id: Logical dataset identifier (e.g. "loop_corpus").
+
+    Returns:
+        DatasetResultsResponse containing:
+        - All tasks in the dataset with their tags
+        - All agent instances that have runs on this dataset
+        - Result matrix with success/total counts per (task, agent_instance)
+
+        Returns None if the dataset does not exist.
+    """
+    dataset = session.exec(select(Dataset).where(Dataset.name == dataset_id)).first()
+    if dataset is None:
+        return None
+
+    # Get all tasks for this dataset
+    tasks_db = session.exec(
+        select(Task).where(Task.dataset_id == dataset.id).order_by(Task.name)
+    ).all()
+
+    # Build task info list with tags
+    tasks_list: list[DatasetResultsTask] = []
+    task_id_map: dict[int, DatasetResultsTask] = {}  # Map DB ID to task info
+    for task in tasks_db:
+        if task.id is None:
+            continue
+        task_tags = get_tags_for_task(session, task.id)
+        task_info = DatasetResultsTask(
+            task_id=task.id,
+            task_name=task.name,
+            task_kind=task.kind,
+            dataset_id=dataset_id,
+            tags=task_tags,
+        )
+        tasks_list.append(task_info)
+        task_id_map[task.id] = task_info
+
+    # Get all runs for this dataset with their agent instances
+    rows = session.exec(
+        select(Run, AgentProvenance)
+        .join(
+            AgentProvenance,
+            cast(
+                ColumnElement[bool],
+                Run.agent_checksum == AgentProvenance.agent_checksum,
+            ),
+        )
+        .where(cast(ColumnElement[bool], Run.dataset_id == dataset.id))
+        .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
+    ).all()
+
+    # Build unique agent instances list
+    # Use a dict to track unique agent checksums and their best/latest run
+    agent_instance_map: dict[str, tuple[AgentProvenance, Run]] = {}
+    for run, agent_instance in rows:
+        if agent_instance.agent_checksum not in agent_instance_map:
+            agent_instance_map[agent_instance.agent_checksum] = (agent_instance, run)
+        else:
+            # Keep the best run (is_best_run=True) or the latest one
+            existing_run = agent_instance_map[agent_instance.agent_checksum][1]
+            if run.is_best_run and not existing_run.is_best_run:
+                agent_instance_map[agent_instance.agent_checksum] = (agent_instance, run)
+
+    agent_instances_list: list[DatasetResultsAgentInstance] = []
+    for agent_checksum, (agent_instance, best_run) in sorted(
+        agent_instance_map.items(), key=lambda x: x[1][0].name
+    ):
+        agent_instances_list.append(
+            DatasetResultsAgentInstance(
+                agent_instance_id=agent_checksum,
+                agent_name=agent_instance.name,
+                agent_checksum=agent_checksum,
+                run_id=str(best_run.id),
+            )
+        )
+
+    # Build results matrix: aggregate success/total counts per (task, agent_instance)
+    # across all runs
+    results_map: dict[tuple[int, str], dict[str, int]] = {}
+
+    # Get all task results for tasks in this dataset
+    # We filter by joining with Task to get only results for tasks in this dataset
+    task_ids_in_dataset = list(task_id_map.keys())
+    if task_ids_in_dataset:
+        task_results = session.exec(
+            select(TaskResultDB).where(
+                cast(ColumnElement[bool], TaskResultDB.task_id.in_(task_ids_in_dataset))  # type: ignore[union-attr]
+            )
+        ).all()
+    else:
+        task_results = []
+
+    for tr in task_results:
+        # Get the run to find the agent instance
+        run = session.get(Run, tr.run_id)
+        if run is None:
+            continue
+
+        agent_checksum = run.agent_checksum
+        task_id = tr.task_id
+
+        key = (task_id, agent_checksum)
+        if key not in results_map:
+            results_map[key] = {"success_count": 0, "total_count": 0}
+
+        results_map[key]["total_count"] += 1
+        if tr.status == "Success":
+            results_map[key]["success_count"] += 1
+
+    # Convert to list of DatasetTaskResult
+    results_list: list[DatasetTaskResult] = []
+    for (task_id, agent_checksum), counts in sorted(results_map.items()):
+        results_list.append(
+            DatasetTaskResult(
+                task_id=task_id,
+                agent_instance_id=agent_checksum,
+                success_count=counts["success_count"],
+                total_count=counts["total_count"],
+            )
+        )
+
+    return DatasetResultsResponse(
+        dataset_id=dataset_id,
+        tasks=tasks_list,
+        agent_instances=agent_instances_list,
+        results=results_list,
+    )

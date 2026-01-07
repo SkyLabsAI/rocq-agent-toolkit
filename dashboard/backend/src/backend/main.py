@@ -25,6 +25,7 @@ from backend.dal import (
     agent_instance_exists,
     get_agent_instances_for_dataset_from_db,
     get_agents_for_dataset_from_db,
+    get_dataset_results_from_db,
     get_estimated_time_for_task_from_db,
     get_instances_for_class_from_db,
     get_instances_for_class_in_dataset_from_db,
@@ -33,6 +34,7 @@ from backend.dal import (
     get_runs_by_agent_from_db,
     get_runs_by_agent_instance_and_dataset_from_db,
     get_runs_by_agent_instance_from_db,
+    get_tasks_for_dataset_from_db,
     get_unique_tags_from_db,
     ingest_task_results,
     list_agent_instances_from_db,
@@ -46,6 +48,8 @@ from backend.models import (
     AgentInstanceSummary,
     BestRunUpdateResponse,
     DatasetInfo,
+    DatasetResultsResponse,
+    DatasetTasksResponse,
     IngestionResponse,
     ObservabilityLabelsResponse,
     ObservabilityLogsResponse,
@@ -442,6 +446,91 @@ async def list_datasets(session: Session = Depends(get_session)) -> list[Dataset
         logger.error("Error fetching datasets: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Error fetching datasets: {str(e)}"
+        ) from e
+
+
+@app.get("/api/{dataset_id}/tasks", response_model=DatasetTasksResponse)
+async def list_tasks_for_dataset(
+    dataset_id: str,
+    session: Session = Depends(get_session),
+) -> DatasetTasksResponse:
+    """
+    List all tasks in a specific dataset with their tags.
+
+    The dataset is identified by its logical `dataset_id` (e.g. "loop_corpus"),
+    matching the `dataset_id` field in the ingested JSONL.
+
+    Args:
+        dataset_id: Logical dataset identifier
+
+    Returns:
+        DatasetTasksResponse containing all tasks in the dataset with their tags
+    """
+    try:
+        result = get_tasks_for_dataset_from_db(session, dataset_id)
+
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset '{dataset_id}' not found",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching tasks for dataset '%s': %s",
+            dataset_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching tasks for dataset '{dataset_id}': {str(e)}",
+        ) from e
+
+
+@app.get("/api/{dataset_id}/results", response_model=DatasetResultsResponse)
+async def get_dataset_results(
+    dataset_id: str,
+    session: Session = Depends(get_session),
+) -> DatasetResultsResponse:
+    """
+    Get the complete results matrix for a dataset.
+
+    This is the main API for the dataset details page, showing task results
+    across all agent instances. Returns:
+    - All tasks in the dataset with their tags
+    - All agent instances that have runs on this dataset
+    - Result matrix with success/total counts per (task, agent_instance)
+
+    Args:
+        dataset_id: Logical dataset identifier (e.g. "loop_corpus")
+
+    Returns:
+        DatasetResultsResponse containing tasks, agent instances, and results matrix
+    """
+    try:
+        result = get_dataset_results_from_db(session, dataset_id)
+
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset '{dataset_id}' not found",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching results for dataset '%s': %s",
+            dataset_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching results for dataset '{dataset_id}': {str(e)}",
         ) from e
 
 

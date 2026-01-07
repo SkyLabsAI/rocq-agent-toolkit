@@ -51,7 +51,10 @@ class TaskResult(BaseModel):
 
     run_id: str
     task_kind: str
-    task_id: str
+    # For ingestion: task_id is the logical string identifier
+    # For API responses: task_id is the database integer ID, task_name is the logical string
+    task_id: int | str  # int when returned from API, str when ingested from JSONL
+    task_name: str | None = None  # Logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
     trace_id: str | None = (
         None  # None for backward compatibility with older ingestions.
     )
@@ -271,3 +274,71 @@ class VisualizerSpanLite(BaseModel):
 
 class VisualizerSpansResponse(BaseModel):
     spans: list[VisualizerSpanLite]
+
+
+# ============================================================================
+# Dataset Tasks API Response Models
+# ============================================================================
+
+
+class TaskInfo(BaseModel):
+    """Information about a task in a dataset."""
+
+    task_id: int  # Database primary key
+    task_name: str  # Logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
+    task_kind: str | None = None
+    dataset_id: str | None = None
+    tags: dict[str, str] = {}  # Task-level tags (extracted from TASK_ prefixed tags)
+
+
+class DatasetTasksResponse(BaseModel):
+    """Response containing all tasks in a dataset."""
+
+    dataset_id: str
+    tasks: list[TaskInfo]
+    total_tasks: int
+
+
+class DatasetResultsTask(BaseModel):
+    """Task information for the dataset results matrix."""
+
+    task_id: int  # Database primary key
+    task_name: str  # Logical task identifier
+    task_kind: str | None = None
+    dataset_id: str | None = None
+    tags: dict[str, str] = {}
+
+
+class DatasetResultsAgentInstance(BaseModel):
+    """Agent instance information for the dataset results matrix."""
+
+    agent_instance_id: str  # agent_checksum
+    agent_name: str
+    agent_checksum: str
+    run_id: str  # The latest/best run for this agent on this dataset
+
+
+class DatasetTaskResult(BaseModel):
+    """Individual result in the dataset results matrix.
+
+    Represents the aggregated success/failure counts for a specific
+    task and agent instance combination across all runs.
+    """
+
+    task_id: int  # References a task from tasks array
+    agent_instance_id: str  # References an agent instance (agent_checksum)
+    success_count: int
+    total_count: int
+
+
+class DatasetResultsResponse(BaseModel):
+    """Response containing the complete results matrix for a dataset.
+
+    This is the main API response for the dataset details page,
+    showing task results across all agent instances.
+    """
+
+    dataset_id: str
+    tasks: list[DatasetResultsTask]
+    agent_instances: list[DatasetResultsAgentInstance]
+    results: list[DatasetTaskResult]
