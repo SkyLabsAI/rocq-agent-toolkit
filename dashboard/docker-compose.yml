@@ -16,8 +16,13 @@ services:
       - rat_database_data:/var/lib/postgresql/data
     networks:
       - rocq-agent-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rat_user} -d ${POSTGRES_DB:-rat_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
-  #Adding pg admin for Visualization of the database 
+  # Adding pg admin for Visualization of the database
   # pgadmin:
   #   image: dpage/pgadmin4
   #   container_name: rocq-agent-toolkit-pgadmin
@@ -56,6 +61,9 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+    depends_on:
+      database:
+        condition: service_healthy
     networks:
       - rocq-agent-network
 
@@ -69,6 +77,8 @@ services:
     container_name: rocq-agent-toolkit-frontend
     ports:
       - "${FRONTEND_PORT:-3005}:3005"
+    depends_on:
+      - backend
     networks:
       - rocq-agent-network
 
