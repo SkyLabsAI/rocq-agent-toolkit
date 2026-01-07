@@ -44,7 +44,8 @@ where = ["src"]
 [tool.taskipy.tasks]
 lint_ci = "ruff check"
 format_ci = "ruff format --check"
+reformat = "ruff format"
 typecheck_ci = "mypy ."
 test_ci = "pytest tests/"
 # TODO: consider integrating with precommit hooks
-precommit = "task lint_ci --fix && task format_ci && task typecheck_ci && task test_ci"
+precommit = "task lint_ci --fix && task reformat && task format_ci && task typecheck_ci && task test_ci"
