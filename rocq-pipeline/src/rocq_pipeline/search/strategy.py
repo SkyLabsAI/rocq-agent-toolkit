@@ -13,7 +13,7 @@ from .action import Action
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Strategy[T_co](Provenance.Full, ABC, VERSION="1.0.0"):
+class Strategy[T_co](Provenance.Full, ABC):
     """
     A `Strategy` proposes actions to take. The different proposals
     are captured lazily using a `Generator`. This allows capturing
@@ -56,7 +56,7 @@ def empty_Rollout() -> Strategy.Rollout:
     yield from ()
 
 
-class SingletonStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
+class SingletonStrategy[T_co](Strategy[T_co]):
     _value: Annotated[Action[T_co], Provenance.Reflect.Field]
     _prob: Annotated[float, Provenance.Reflect.Field]
 
@@ -73,7 +73,7 @@ class SingletonStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
         return iter([(self._prob, self._value)])
 
 
-class IteratorStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
+class IteratorStrategy[T_co](Strategy[T_co]):
     _collection: Annotated[
         Iterable[tuple[float, Action[T_co]]],
         Provenance.Reflect.Field,
@@ -91,7 +91,7 @@ class IteratorStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
         return iter(self._collection)
 
 
-class CompositeStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
+class CompositeStrategy[T_co](Strategy[T_co]):
     """A (fair) combination of strategies"""
 
     _children: Annotated[list[Strategy[T_co]], Provenance.Reflect.Field]
@@ -132,7 +132,7 @@ class CompositeStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
         return combine()
 
 
-class StagedStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
+class StagedStrategy[T_co](Strategy[T_co]):
     """
     Combine two strategies by preferring the first.
 
@@ -219,7 +219,7 @@ def staged[T](strats: list[tuple[float | None, Strategy[T]]]) -> Strategy[T]:
     return current
 
 
-class FailStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
+class FailStrategy[T_co](Strategy[T_co]):
     """A simple strategy that fails."""
 
     @override
@@ -232,7 +232,7 @@ class FailStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
         return empty_Rollout()
 
 
-class GuardStrategy[T_co, With](FailStrategy[T_co], VERSION="1.0.0"):
+class GuardStrategy[T_co, With](FailStrategy[T_co]):
     """Guard the execution of a strategy.
     If [check] returns [None], then this strategy acts like the [FailStrategy] otherwise
     it does [rollout_with]
@@ -265,7 +265,7 @@ class GuardStrategy[T_co, With](FailStrategy[T_co], VERSION="1.0.0"):
         return self.rollout_with(val, state, max_rollout, context)
 
 
-class ActionWrapper[T_co](Action[T_co], VERSION="1.0.0"):
+class ActionWrapper[T_co](Action[T_co]):
     _fn: Annotated[
         Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
     ]
@@ -280,7 +280,7 @@ class ActionWrapper[T_co](Action[T_co], VERSION="1.0.0"):
         return self._base.interact(state)
 
 
-class TraceStrategy[T_co](Strategy[T_co], VERSION="1.0.0"):
+class TraceStrategy[T_co](Strategy[T_co]):
     _base: Annotated[Strategy[T_co], Provenance.Reflect.Field]
     _trace: Annotated[list[tuple[T_co, Action[T_co]]], Provenance.Reflect.Field]
 

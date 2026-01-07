@@ -11,7 +11,7 @@ from ..action import Action
 logger = get_logger("rocq_agent")
 
 
-class RocqTacticAction(Action[RocqCursor], VERSION="1.0.0"):
+class RocqTacticAction(Action[RocqCursor]):
     """Execute a single Rocq tactic."""
 
     _tactic: Annotated[str, Provenance.Reflect.Field]
@@ -47,7 +47,7 @@ class RocqTacticAction(Action[RocqCursor], VERSION="1.0.0"):
         return self._tactic.strip()
 
 
-class RocqRetryAction(RocqTacticAction, VERSION="1.0.0"):
+class RocqRetryAction(RocqTacticAction):
     """
     Rocq tactic with LLM-based rectification on failure.
 

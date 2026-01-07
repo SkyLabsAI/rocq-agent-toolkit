@@ -8,7 +8,7 @@ from provenance_toolkit import Provenance
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Action[T_co](Provenance.Full, VERSION="1.0.0"):
+class Action[T_co](Provenance.Full):
     """
     An `Action` represents a (potential) action in an MDP.
 
@@ -40,7 +40,7 @@ class Action[T_co](Provenance.Full, VERSION="1.0.0"):
         return f"{type(self).__name__}:{id(self)}"
 
 
-class LoggingAction[T_co](Action[T_co], VERSION="1.0.0"):
+class LoggingAction[T_co](Action[T_co]):
     """
     An action that logs itself when it is invoked.
     """

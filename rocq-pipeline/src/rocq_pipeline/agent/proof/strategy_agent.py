@@ -21,7 +21,7 @@ from rocq_pipeline.search.strategy import Strategy
 logger = get_logger("rocq_agent")
 
 
-class StrategyAgent(ProofAgent, VERSION="0.1.0"):
+class StrategyAgent(ProofAgent):
     """An agent that uses a Strategy to select tactics."""
 
     _strategy: Annotated[Strategy, Provenance.Reflect.Field]

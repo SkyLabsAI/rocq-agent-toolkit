@@ -8,7 +8,7 @@ from rocq_pipeline.agent.base import TaskResult
 from .markov import MarkovAgent
 
 
-class ChoiceAgent(MarkovAgent, VERSION="1.0.0"):
+class ChoiceAgent(MarkovAgent):
     _all_choices: Annotated[list[str], Provenance.Reflect.Field]
 
     def __init__(self, choices: list[str]):

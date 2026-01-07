@@ -13,7 +13,7 @@ from rocq_pipeline.search import Action
 from rocq_pipeline.search.strategy import Strategy
 
 
-class SearchAgent(ProofAgent, VERSION="0.1.0"):
+class SearchAgent(ProofAgent):
     """
     A simple search agent based on strategies.
     """

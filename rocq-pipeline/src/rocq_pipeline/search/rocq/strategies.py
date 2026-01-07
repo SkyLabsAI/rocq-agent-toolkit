@@ -10,7 +10,7 @@ from ..strategy import Strategy, empty_Rollout
 from .actions import RocqTacticAction
 
 
-class SafeTacticStrategy(Strategy, VERSION="1.0.0"):
+class SafeTacticStrategy(Strategy):
     """A simple strategy that always returns a tactic."""
 
     _tactic: Annotated[str, Provenance.Reflect.Field]
@@ -33,7 +33,7 @@ class SafeTacticStrategy(Strategy, VERSION="1.0.0"):
         )
 
 
-class CutAssertStrategy(Strategy, VERSION="1.0.0"):
+class CutAssertStrategy(Strategy):
     """A simple strategy that cuts a Rocq lemma.
     The success probability 1.0 is not necessarily appropriate."""
 
@@ -60,7 +60,7 @@ class CutAssertStrategy(Strategy, VERSION="1.0.0"):
         return ((prob, RocqTacticAction(t)) for prob, t in [(self._prob, tac)])
 
 
-class FirstTacticStrategy(Strategy, VERSION="1.0.0"):
+class FirstTacticStrategy(Strategy):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
     _tactics: Annotated[list[tuple[float, Action]], Provenance.Reflect.Field]

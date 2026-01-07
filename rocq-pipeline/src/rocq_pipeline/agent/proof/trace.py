@@ -19,7 +19,7 @@ logger = get_logger("rocq_agent")
 # TODOS:
 # - utilize structured proof tree
 # - support (limited) backtracking
-class TraceAgent(ProofAgent, VERSION="1.0.0"):
+class TraceAgent(ProofAgent):
     def __init__(
         self,
         fuel: int | None = None,
