@@ -1,4 +1,4 @@
-import type { AgentRun, RunDetailsResponse } from '@/types/types';
+import type { AgentRun, RunDetailsResponse, TaskOutput } from '@/types/types';
 
 import { generateMockTaskOutput, simulateDelay } from './generators';
 
@@ -320,4 +320,32 @@ export const refreshDataMock = async (): Promise<{
 
   console.log('Refresh response (MOCK):', mockRefreshResponse);
   return mockRefreshResponse;
+};
+
+/**
+ * Mock data for task details within a specific run
+ */
+export const getTaskDetailsMock = async (
+  runId: string,
+  taskId: string
+): Promise<TaskOutput> => {
+  await simulateDelay(200, 400);
+
+  // Extract task index from taskId if possible, otherwise use a hash
+  const taskIndex = taskId.match(/\d+/)?.[0]
+    ? parseInt(taskId.match(/\d+/)?.[0] || '0')
+    : taskId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 20;
+
+  // Extract agent name from runId or use default
+  const agentName =
+    runId.match(/run_(.+?)_/)?.[1] || runId.split('_')[1] || 'UnknownAgent';
+
+  const mockTask = generateMockTaskOutput(runId, agentName, taskIndex);
+  mockTask.task_id = taskId;
+
+  console.log(
+    `Fetched task details for run ${runId}, task ${taskId} (MOCK):`,
+    mockTask
+  );
+  return mockTask;
 };

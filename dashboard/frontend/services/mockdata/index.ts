@@ -20,11 +20,19 @@ export {
   getObservabilityLogsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsMock,
   refreshDataMock,
 } from './runs';
 
 // Benchmark-related mocks
 export { getBenchmarkAgentsMock, getBenchmarksMock } from './benchmarks';
+
+// Project-related mocks
+export {
+  getProjectsMock,
+  getProjectDatasetsMock,
+  getProjectResultsMock,
+} from './projects';
 
 // Visualizer-related mocks (NEW!)
 export {

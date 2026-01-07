@@ -11,8 +11,12 @@ import {
   getDetailsForDatasetMock,
   getDetailsMock,
   getObservabilityLogsMock,
+  getProjectDatasetsMock,
+  getProjectResultsMock,
+  getProjectsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsMock,
   refreshDataMock,
 } from '@/services/mockdata';
 import {
@@ -21,6 +25,9 @@ import {
   type AgentSummary,
   type Benchmark,
   type RunDetailsResponse,
+  type TaskOutput,
+  type TaskSet,
+  type TaskSetResults,
 } from '@/types/types';
 
 // Check if we should use mock data
@@ -121,6 +128,25 @@ const getRunDetailsReal = async (
 export const getRunDetails = USE_MOCK_DATA
   ? getRunDetailsMock
   : getRunDetailsReal;
+
+// ========================================
+// TASK DETAILS API
+// ========================================
+
+const getTaskDetailsReal = async (
+  runId: string,
+  taskId: string
+): Promise<TaskOutput> => {
+  const encodedTaskId = encodeURIComponent(taskId);
+  const response = await axios.get(
+    `${config.DATA_API}/runs/${runId}/tasks/${encodedTaskId}/details`
+  );
+  return response.data as TaskOutput;
+};
+
+export const getTaskDetails = USE_MOCK_DATA
+  ? getTaskDetailsMock
+  : getTaskDetailsReal;
 
 // ========================================
 // OBSERVABILITY LOGS API
@@ -262,6 +288,60 @@ const getDatasetInstanceRunsReal = async (
 export const getDatasetInstanceRuns = USE_MOCK_DATA
   ? getDatasetInstanceRunsMock
   : getDatasetInstanceRunsReal;
+
+// ========================================
+// TASKSETS API
+// ========================================
+
+const getTaskSetsReal = async (): Promise<TaskSet[]> => {
+  const response = await axios.get(`${config.DATA_API}/tasksets`);
+  return response.data as TaskSet[];
+};
+
+export const getTaskSets = USE_MOCK_DATA ? getProjectsMock : getTaskSetsReal;
+
+// Legacy export for backward compatibility
+export const getProjects = getTaskSets;
+
+// ========================================
+// TASKSET DATASETS API
+// ========================================
+
+const getTaskSetDatasetsReal = async (
+  tasksetId: string
+): Promise<Benchmark[]> => {
+  const response = await axios.get(
+    `${config.DATA_API}/tasksets/${tasksetId}/datasets`
+  );
+  return response.data as Benchmark[];
+};
+
+export const getTaskSetDatasets = USE_MOCK_DATA
+  ? getProjectDatasetsMock
+  : getTaskSetDatasetsReal;
+
+// Legacy export for backward compatibility
+export const getProjectDatasets = getTaskSetDatasets;
+
+// ========================================
+// TASKSET RESULTS API
+// ========================================
+
+const getTaskSetResultsReal = async (
+  tasksetId: string
+): Promise<TaskSetResults> => {
+  const response = await axios.get(
+    `${config.DATA_API}/tasksets/${tasksetId}/results`
+  );
+  return response.data as TaskSetResults;
+};
+
+export const getTaskSetResults = USE_MOCK_DATA
+  ? getProjectResultsMock
+  : getTaskSetResultsReal;
+
+// Legacy export for backward compatibility
+export const getProjectResults = getTaskSetResults;
 
 // ========================================
 // VISUALIZER TYPES

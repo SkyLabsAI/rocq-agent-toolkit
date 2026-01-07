@@ -273,3 +273,53 @@ export interface Benchmark {
   description?: string;
   created_at: string;
 }
+
+/**
+ * Represents a project that contains datasets
+ */
+export interface TaskSet {
+  taskset_id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+}
+
+/**
+ * Represents an agent instance in a taskset
+ */
+export interface TaskSetAgentInstance {
+  agent_instance_id: string;
+  agent_name: string;
+  agent_checksum: string;
+  run_id: string;
+}
+
+/**
+ * Represents a task in a taskset
+ */
+export interface TaskSetTask {
+  task_id: string;
+  task_kind?: TaskKind;
+  dataset_id?: string;
+  tags?: Record<string, string>;
+}
+
+/**
+ * Represents a task result for a specific agent instance
+ */
+export interface TaskSetTaskResult {
+  task_id: string;
+  agent_instance_id: string;
+  success_count: number;
+  total_count: number;
+}
+
+/**
+ * Represents the results matrix for a taskset
+ */
+export interface TaskSetResults {
+  taskset_id: string;
+  tasks: TaskSetTask[];
+  agent_instances: TaskSetAgentInstance[];
+  results: TaskSetTaskResult[];
+}
