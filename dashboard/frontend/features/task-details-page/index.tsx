@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/base/statusBadge';
 import { Button } from '@/components/base/ui/button';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { getRunDetails } from '@/services/dataservice';
+import { getObservabilityLogs, getRunDetails } from '@/services/dataservice';
 import type { TaskOutput } from '@/types/types';
 
 interface TaskDetailsPageContentProps {
@@ -25,6 +25,7 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expandedResults, setExpandedResults] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [logs, setLogs] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -63,12 +64,28 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
     setExpandedResults(prev => !prev);
   };
 
-  const openLogsModal = () => {
+  const openLogsModal = async () => {
+    if (!task) return;
+
     setIsLogsModalOpen(true);
+    setLogs(null);
+
+    try {
+      const observabilityLogs = await getObservabilityLogs(
+        task.run_id,
+        task.task_id
+      );
+      setLogs(observabilityLogs);
+    } catch (error) {
+      setLogs({
+        error: error instanceof Error ? error.message : 'Failed to load logs',
+      });
+    }
   };
 
   const closeLogsModal = () => {
     setIsLogsModalOpen(false);
+    setLogs(null);
   };
 
   if (loading) {
@@ -195,7 +212,7 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
             </p>
             <div className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
-                <div className='flex flex-col gap-1.5'>
+                {/* <div className='flex flex-col gap-1.5'>
                   <p className='font-inter font-normal text-sm text-text-disabled'>
                     Execution Time
                   </p>
@@ -220,7 +237,7 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
                   <p className='font-inter font-normal text-sm text-text'>
                     {`${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s`}
                   </p>
-                </div>
+                </div> */}
 
                 <div className='flex flex-col gap-1.5'>
                   <p className='font-inter font-normal text-sm text-text-disabled'>
@@ -342,8 +359,8 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
       <TaskDetailsModal
         isOpen={isLogsModalOpen}
         onClose={closeLogsModal}
-        details={task.results as Record<string, unknown> | null}
-        title={`Task Logs - ${task.task_id}`}
+        details={logs}
+        title={`Observability Logs - ${task.task_id}`}
         taskId={task.task_id}
       />
     </div>

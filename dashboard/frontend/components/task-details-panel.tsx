@@ -115,7 +115,7 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             </p>
             <div className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
-                <div className='flex flex-col gap-1.5'>
+                {/* <div className='flex flex-col gap-1.5'>
                   <p className='font-inter font-normal text-sm text-text-disabled'>
                     Execution Time
                   </p>
@@ -140,7 +140,7 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
                   <p className='font-inter font-normal text-sm text-text'>
                     {`${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s`}
                   </p>
-                </div>
+                </div> */}
 
                 <div className='flex flex-col gap-1.5'>
                   <p className='font-inter font-normal text-sm text-text-disabled'>
