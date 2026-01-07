@@ -136,11 +136,17 @@ class JsonRPCTP:
         """Exception raised in case of protocol error."""
 
     def __init__(
-        self, args: list[str], cwd: str | None = None, env: dict[str, str] | None = None
+        self,
+        args: list[str],
+        *,
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        parse_header_failure_hints: list[str] | None = None,
     ) -> None:
         self._process: subprocess.Popen | None = None
         self._counter: int = -1
 
+        self._parse_header_failure_hints = parse_header_failure_hints or []
         try:
             self._process = subprocess.Popen(
                 args,
@@ -149,6 +155,9 @@ class JsonRPCTP:
                 stderr=subprocess.PIPE,
                 cwd=cwd,
                 env=env,
+            )
+            self._parse_header_failure_hints.append(
+                f"check whether the process (pid={self._process.pid}) crashed or was killed"
             )
         except Exception as e:
             self._process = None
@@ -187,7 +196,10 @@ class JsonRPCTP:
         try:
             nb_bytes = int(header[len(prefix) : -2])
         except Exception as e:
-            raise self.Error(f"Failed to parse response: {header}", e) from e
+            raise self.Error(
+                self._helpful_parse_header_error_msg(header),
+                e,
+            ) from e
         response = self._process.stdout.read(nb_bytes).decode()
         response = json.loads(response)
         if "error" in response:
@@ -213,3 +225,14 @@ class JsonRPCTP:
         _ = self.raw_request("quit", [])
         self._process.wait()
         self._process = None
+
+    def _helpful_parse_header_error_msg(self, header: str) -> str:
+        base_msg: str = f"Failed to parse response: {header}"
+        if self._parse_header_failure_hints:
+            hint_prefix = "\n\t- "
+            hints: str = f"; hints:{hint_prefix}" + hint_prefix.join(
+                self._parse_header_failure_hints
+            )
+        else:
+            hints = ""
+        return base_msg + hints
