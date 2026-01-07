@@ -5,16 +5,22 @@ import random
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, override
+from typing import Any, Protocol, override, runtime_checkable
 
 
-class BasicNode[T]:  # (HasId[int]):
+@runtime_checkable
+class HasId[T](Protocol):
+    @property
+    def ident(self) -> T: ...
+
+
+class BasicNode[T](HasId[int]):
     def __init__(self, id: int, state: T) -> None:
         self._id = id
         self._state = state
 
     @property
-    def id(self) -> int:
+    def ident(self) -> int:
         return self._id
 
     @property
@@ -31,7 +37,7 @@ class Frontier[T, Node](ABC):
 
     @abstractmethod
     # Action metadata is intentionally handled by search-level tracing, not stored in the frontier.
-    def push(self, val: T, parent: Node | None) -> None:
+    def push(self, val: T, parent: Node | None) -> Node:
         """Insert a new item into the frontier"""
         ...
 
@@ -49,7 +55,7 @@ class Frontier[T, Node](ABC):
 
     @abstractmethod
     # Remove up to [count] items in frontier order.
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         """
         Take up to count nodes from the frontier.
         Returns None if no elements exist
@@ -60,7 +66,7 @@ class Frontier[T, Node](ABC):
 ### == Concrete Implementations ======================================
 
 
-class DFSNode[U](BasicNode):
+class DFSNode[U](BasicNode[U]):
     next: DFSNode | None
 
     def __init__(self, id: int, next: DFSNode | None, value: U) -> None:
@@ -80,22 +86,23 @@ class DFS[T](Frontier[T, DFSNode[T]]):
         return self._next
 
     @override
-    def push(self, val: T, parent: DFSNode[T] | None) -> None:
+    def push(self, val: T, parent: DFSNode[T] | None) -> DFSNode[T]:
         # Prepend to the linked list for LIFO order.
         self._worklist = DFSNode(self._fresh(), self._worklist, val)
+        return self._worklist
 
     @override
     def repush(self, node: DFSNode[T]) -> None:
-        self._worklist = DFSNode(node.id, self._worklist, node.state)
+        self._worklist = DFSNode(node.ident, self._worklist, node.state)
 
     @override
     def clear(self) -> None:
         self._worklist = None
 
     @override
-    def take(self, count: int) -> list[tuple[T, DFSNode[T]]] | None:
+    def take(self, count: int) -> list[tuple[T, DFSNode[T]]]:
         if self._worklist is None:
-            return None
+            return []
         result: list[tuple[T, DFSNode[T]]] = []
         while self._worklist and count > 0:
             if count > 0:
@@ -118,9 +125,11 @@ class BFS[T](Frontier[T, BasicNode[T]]):
         return self._next
 
     @override
-    def push(self, val: T, parent: BasicNode | None) -> None:
+    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
         # Append for FIFO order.
-        self._worklist.append(BasicNode(self._fresh(), val))
+        node = BasicNode(self._fresh(), val)
+        self._worklist.append(node)
+        return node
 
     @override
     def repush(self, node: BasicNode[T]) -> None:
@@ -131,13 +140,13 @@ class BFS[T](Frontier[T, BasicNode[T]]):
         self._worklist = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, BasicNode]] | None:
+    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if self._worklist:
             # Slice out the next [count] items and retain the rest.
             result = self._worklist[:count]
             self._worklist = self._worklist[count:]
             return [(x.state, x) for x in result]
-        return None
+        return []
 
 
 class Wrapper[T, V](BasicNode[T]):
@@ -154,7 +163,7 @@ class Wrapper[T, V](BasicNode[T]):
         assert self._compare == other._compare
         cmp = self._compare(self._score, other._score)
         if cmp == 0:
-            return self.id < other.id
+            return self.ident < other.ident
         else:
             return cmp < 0
 
@@ -175,11 +184,11 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         return self._next
 
     @override
-    def push(self, val: T, parent: Wrapper[T, Any] | None) -> None:
+    def push(self, val: T, parent: Wrapper[T, Any] | None) -> Wrapper[T, Any]:
         # Wrap with score so heapq can order items.
-        heapq.heappush(
-            self._worklist, Wrapper(self._fresh(), val, self._score(val), self._compare)
-        )
+        node = Wrapper(self._fresh(), val, self._score(val), self._compare)
+        heapq.heappush(self._worklist, node)
+        return node
 
     @override
     def repush(self, node: Wrapper[T, Any]) -> None:
@@ -190,7 +199,7 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         self._worklist = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]] | None:
+    def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]]:
         if self._worklist:
             result: list[Wrapper[T, Any]] = []
             while self._worklist and count > 0:
@@ -199,16 +208,20 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
                 result.append(heapq.heappop(self._worklist))
                 count -= 1
             return [(x.state, x) for x in result]
-        return None
+        return []
 
 
 @dataclass
-class WithDepth[T]:
+class WithDepth[T: HasId[int]](HasId[int]):
     depth: int
     value: T
 
+    @property
+    def ident(self) -> int:
+        return self.value.ident
 
-class SingleDepth[T, Node](Frontier[T, WithDepth[Node]]):
+
+class SingleDepth[T, Node: HasId[int]](Frontier[T, WithDepth[Node]]):
     """
     This class can be used to implement a beam-like search where we take
     once per depth.
@@ -219,19 +232,20 @@ class SingleDepth[T, Node](Frontier[T, WithDepth[Node]]):
         self._max_depth = 0
 
     @override
-    def take(self, count: int) -> list[tuple[T, WithDepth[Node]]] | None:
+    def take(self, count: int) -> list[tuple[T, WithDepth[Node]]]:
         result = self._base.take(count)
-        if result is None:
-            return result
         return [(state, WithDepth(depth, node)) for ((state, depth), node) in result]
 
     @override
-    def push(self, val: T, parent: WithDepth[Node] | None) -> None:
+    def push(self, val: T, parent: WithDepth[Node] | None) -> WithDepth[Node]:
         depth = parent.depth + 1 if parent is not None else 0
         if depth > self._max_depth:
             self._base.clear()
             self._max_depth = depth
-        self._base.push((val, depth), parent.value if parent is not None else None)
+        node = self._base.push(
+            (val, depth), parent.value if parent is not None else None
+        )
+        return WithDepth(depth, node)
 
     @override
     def repush(self, node: WithDepth[Node]) -> None:
@@ -251,10 +265,8 @@ class Sampled[T, Node](Frontier[T, Node]):
         self._spread = spread
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         pulled = self._base.take(self._spread * count)
-        if pulled is None:
-            return None
         num_pulled = len(pulled)
         if num_pulled <= count:
             return pulled
@@ -269,7 +281,7 @@ class Sampled[T, Node](Frontier[T, Node]):
         return result
 
     @override
-    def push(self, val: T, parent: Node | None) -> None:
+    def push(self, val: T, parent: Node | None) -> Node:
         return self._base.push(val, parent)
 
     @override
@@ -289,11 +301,11 @@ class Deduplicate[T, Node](Frontier[T, Node]):
     def __init__(self, base: Frontier[T, Node], *, cmp: Callable[[T, T], bool]) -> None:
         self._base = base
         # TODO: because we have a total ordering, this should use a balanced binary tree
-        self._seen: list[T] = []
+        self._seen: list[tuple[T, Node]] = []
         self._cmp = cmp
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         return self._base.take(count)
 
     @override
@@ -301,17 +313,17 @@ class Deduplicate[T, Node](Frontier[T, Node]):
         return self._base.repush(node)
 
     @override
-    def push(self, val: T, parent: Node | None) -> None:
+    def push(self, val: T, parent: Node | None) -> Node:
         # TODO: A better implementation of this would be to use
         # something like a hash table which would require an embedding
         # into some type.
-        if any(True for x in self._seen if self._cmp(val, x)):
-            # test_frontier_deduplicate.py: drop repeats, keep uniques.
-            # TODO: log message to drop already visited state.
-            return
+        for x, n in self._seen:
+            if self._cmp(val, x):
+                return n
         # test_frontier_deduplicate.py: record unique values before push.
-        self._seen.append(val)
-        self._base.push(val, parent)
+        node = self._base.push(val, parent)
+        self._seen.append((val, node))
+        return node
 
     @override
     def clear(self) -> None:
@@ -330,11 +342,11 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
 
     def __init__(self, base: Frontier[T, Node], *, key: Callable[[T], U]) -> None:
         self._base = base
-        self._seen: set[U] = set()
+        self._seen: dict[U, Node] = {}
         self._key = key
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         return self._base.take(count)
 
     @override
@@ -342,7 +354,7 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
         return self._base.repush(node)
 
     @override
-    def push(self, val: T, parent: Node | None) -> None:
+    def push(self, val: T, parent: Node | None) -> Node:
         # TODO: A better implementation of this would be to use
         # something like a hash table which would require an embedding
         # into some type.
@@ -350,10 +362,11 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
         if key in self._seen:
             # test_frontier_deduplicate.py: drop repeats by key.
             # TODO: log message to drop already visited state.
-            return
+            return self._seen[key]
         # test_frontier_deduplicate.py: record new key before push.
-        self._seen.add(key)
-        self._base.push(val, parent)
+        node = self._base.push(val, parent)
+        self._seen[key] = node
+        return node
 
     @override
     def clear(self) -> None:
@@ -382,20 +395,18 @@ class SavingSolutions[T, Node](Frontier[T, Node]):
         return self._solutions
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         if self._stop:
-            return None
+            return []
         return self._base.take(count)
 
     @override
-    def push(self, val: T, parent: Node | None) -> None:
+    def push(self, val: T, parent: Node | None) -> Node:
         if self._check_solution(val):
             self._solutions.append(val)
             self._stop = self._stop or self._stop_on_first_solution
 
-        if self._stop:
-            return
-        self._base.push(val, parent)
+        return self._base.push(val, parent)
 
     @override
     def repush(self, node: Node) -> None:
@@ -429,11 +440,11 @@ class RememberTrace[T, Node](Frontier[T, Node]):
         return self._everything
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]] | None:
+    def take(self, count: int) -> list[tuple[T, Node]]:
         return self._base.take(count)
 
     @override
-    def push(self, val: T, parent: Node | None) -> None:
+    def push(self, val: T, parent: Node | None) -> Node:
         self._everything.append((val, parent))
         return self._base.push(val, parent)
 

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import TypeVar, override
 
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.search.frontier import BFS, Frontier
+from rocq_pipeline.search.search.frontier import BFS, BasicNode, Frontier
 from rocq_pipeline.search.search.search import (
     Node,
     RepetitionPolicy,
@@ -97,19 +97,24 @@ def run_search(
     )  # type: ignore[type-var]
 
 
-class OneShotFrontier[T](Frontier[T, T]):
+class OneShotFrontier[T](Frontier[T, BasicNode[T]]):
     """Frontier that returns candidates only once, then terminates."""
 
     def __init__(self, candidates: list[T]) -> None:
-        self._candidates = list(candidates)
+        self._candidates = [(c, BasicNode(i, c)) for i, c in enumerate(candidates)]
         self._taken = False
+        self._fresh = len(candidates)
+
+    def _next(self) -> int:
+        self._fresh += 1
+        return self._fresh
 
     @override
-    def push(self, val: T, parent: T | None) -> None:
-        return None
+    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
+        return BasicNode(self._next(), val)
 
     @override
-    def repush(self, node: T) -> None:
+    def repush(self, node: BasicNode[T]) -> None:
         return None
 
     @override
@@ -117,8 +122,8 @@ class OneShotFrontier[T](Frontier[T, T]):
         return None
 
     @override
-    def take(self, count: int) -> list[tuple[T, T]] | None:
+    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if self._taken:
-            return None
+            return []
         self._taken = True
-        return [(node, node) for node in self._candidates[:count]]
+        return self._candidates[:count]

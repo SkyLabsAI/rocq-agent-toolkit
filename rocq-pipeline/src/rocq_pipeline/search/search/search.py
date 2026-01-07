@@ -4,10 +4,12 @@ import itertools
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from observability import trace_context
+
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
 
-from .frontier import Frontier
+from .frontier import BasicNode, Frontier
 from .iter import RolloutInterleaver
 
 
@@ -124,7 +126,7 @@ class StateManipulator[T]:
         return None
 
 
-class Search[CState, FNode]:
+class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
     # This class seems to just help type checking a bit.
     @staticmethod
     def search[FrontierT: Frontier[Node[CState], FNode]](
@@ -139,16 +141,18 @@ class Search[CState, FNode]:
         max_depth: int | None = None,
     ) -> FrontierT:
         worklist: FrontierT = frontier()
-        worklist.push(Node(start, None), None)
-        return Search.continue_search(
-            strategy,
-            worklist,
-            beam_width=beam_width,
-            explore_width=explore_width,
-            repetition_policy=repetition_policy,
-            state_manip=state_manip,
-            max_depth=max_depth,
-        )
+        with trace_context("search") as span:
+            root = worklist.push(Node(start, None), None)
+            span.set_attribute("root_id", root.ident)
+            return Search.continue_search(
+                strategy,
+                worklist,
+                beam_width=beam_width,
+                explore_width=explore_width,
+                repetition_policy=repetition_policy,
+                state_manip=state_manip,
+                max_depth=max_depth,
+            )
 
     @staticmethod
     def continue_search[FrontierT: Frontier[Node[CState], FNode]](
@@ -179,34 +183,38 @@ class Search[CState, FNode]:
             def process(
                 candidate: Node[CState], parent: FNode, action: Action[CState]
             ) -> None:
-                # Check depth limit before processing
-                if max_depth is not None and candidate.depth > max_depth:
-                    return
-
-                action_key = action.key().strip()
-                # Skip if we've already tried this action from the same node.
-                if candidate.remember_action(action_key):
-                    return
-
-                if repetition_policy is not None:
-                    # Guard against local action loops within a bounded history window.
-                    history = candidate.recent_action_keys(history_limit - 1)
-                    rep_hit, _ = _has_action_repetition(
-                        history + [action_key], repetition_policy
-                    )
-                    if rep_hit:
+                with trace_context("search/process") as span:
+                    span.set_attribute("parent", parent.ident)
+                    span.set_attribute("action", action.key())
+                    # Check depth limit before processing
+                    if max_depth is not None and candidate.depth > max_depth:
                         return
 
-                # clone_state must return a state that is safe to discard without
-                # affecting the parent; apply_action should return the state to enqueue.
-                fresh_state = smanip.copy(candidate.state)
-                try:
-                    next_state = action.interact(fresh_state)
-                    new_node = Node(next_state, candidate, action_key=action_key)
-                    # Enqueue the child for future expansion.
-                    worklist.push(new_node, parent)
-                except Action.Failed:
-                    smanip.dispose(fresh_state)
+                    action_key = action.key().strip()
+                    # Skip if we've already tried this action from the same node.
+                    if candidate.remember_action(action_key):
+                        return
+
+                    if repetition_policy is not None:
+                        # Guard against local action loops within a bounded history window.
+                        history = candidate.recent_action_keys(history_limit - 1)
+                        rep_hit, _ = _has_action_repetition(
+                            history + [action_key], repetition_policy
+                        )
+                        if rep_hit:
+                            return
+
+                    # clone_state must return a state that is safe to discard without
+                    # affecting the parent; apply_action should return the state to enqueue.
+                    fresh_state = smanip.copy(candidate.state)
+                    try:
+                        next_state = action.interact(fresh_state)
+                        new_node = Node(next_state, candidate, action_key=action_key)
+                        # Enqueue the child for future expansion.
+                        node = worklist.push(new_node, parent)
+                        span.set_attribute("id", node.ident)
+                    except Action.Failed:
+                        smanip.dispose(fresh_state)
 
             # Rollout each node in the tree with fair interleaving.
             stream = RolloutInterleaver(

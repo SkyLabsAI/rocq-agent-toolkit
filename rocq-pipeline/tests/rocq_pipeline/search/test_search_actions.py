@@ -6,7 +6,6 @@ from collections.abc import Callable
 from typing import override
 
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.search.frontier import Frontier
 from rocq_pipeline.search.search.search import Node
 
 from .util import FixedStrategy, OneShotFrontier, run_search
@@ -41,8 +40,7 @@ def test_action_dedup_per_node() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None)])
 
-    frontier_base: Frontier[Node[int], Node[int]] = frontier
-    run_search(strategy, frontier_base, beam_width=1, explore_width=2)
+    run_search(strategy, frontier, beam_width=1, explore_width=2)
 
     assert record == ["first"]
 
@@ -59,8 +57,7 @@ def test_action_key_stripping() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None)])
 
-    frontier_base: Frontier[Node[int], Node[int]] = frontier
-    run_search(strategy, frontier_base, beam_width=1, explore_width=2)
+    run_search(strategy, frontier, beam_width=1, explore_width=2)
 
     assert record == ["first"]
 
@@ -75,7 +72,6 @@ def test_action_key_allowed_across_nodes() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None), Node(1, None)])
 
-    frontier_base: Frontier[Node[int], Node[int]] = frontier
-    run_search(strategy, frontier_base, beam_width=2, explore_width=2)
+    run_search(strategy, frontier, beam_width=2, explore_width=2)
 
     assert record == ["node0", "node1"]

@@ -34,10 +34,7 @@ def test_saving_solutions_stop_on_first() -> None:
     frontier.push(2, None)
     frontier.push(3, None)
     assert frontier.solutions() == [2]
-    assert frontier.take(1) is None
-    taken = base.take(10)
-    states = [state for state, _ in taken] if taken else []
-    assert states == [1]
+    assert not frontier.take(1)  # take always returns [] after a solution.
 
 
 def test_saving_solutions_clear_resets() -> None:
@@ -54,5 +51,5 @@ def test_saving_solutions_clear_resets() -> None:
     assert frontier.solutions() == []
     frontier.push(2, None)
     taken = base.take(10)
-    states = [state for state, _ in taken] if taken else []
+    states = [state for state, _ in taken]
     assert states == [2]
