@@ -163,7 +163,7 @@ const SpanNode = (props: NodeProps) => {
             e.stopPropagation();
             data.onToggleCollapse?.();
           }}
-          className='absolute -right-2 top-1/2 -translate-y-1/2 min-w-[20px] h-5 px-1 rounded-full bg-primary-default hover:bg-primary-hovered text-white flex items-center justify-center text-xs font-bold border-2 border-elevation-surface shadow-sm transition-colors z-10'
+          className='absolute -right-2 top-1/2 -translate-y-1/2 min-w-[20px] h-5 px-1 rounded-full bg-primary-default hover:bg-primary-hovered text-text-inverse flex items-center justify-center text-xs font-bold border-2 border-elevation-surface shadow-sm transition-colors z-10'
           title={
             data.isCollapsed
               ? `Expand (${data.childCount} direct, ${data.totalDescendants} total children)`
