@@ -11,6 +11,23 @@ from provenance_toolkit.provenance.reflect import (
 )
 
 
+def test_ReflectProvenanceData_eq() -> None:
+    data1 = ReflectProvenanceData({})
+    data1_id_eq = data1 == data1
+    assert data1_id_eq is not NotImplemented
+    assert data1
+
+    unnamed_data_id_eq = ReflectProvenanceData({}) == ReflectProvenanceData({})
+    assert unnamed_data_id_eq is not NotImplemented
+    assert unnamed_data_id_eq
+
+    data2 = ReflectProvenanceData({"x": "y"}, is_cls_provenance=True)
+    data3 = ReflectProvenanceData({"x": "y"})
+    data2_data3_eq = data2 != data3
+    assert data2_data3_eq is not NotImplemented
+    assert data2_data3_eq
+
+
 def _assert_stable_serialize_no_error(prov: ReflectProvenanceData) -> None:
     try:
         assert prov.stable_serialize() == prov.stable_serialize()

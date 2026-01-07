@@ -347,17 +347,17 @@ class WithReflectProvenance(WithProvenance):
                 return value
 
         # Priority 2: Best-effort auto-detection
-        if is_cls_provenance and (
-            isinstance(value, WithClassProvenance)
-            or isinstance(value, type)
-            and issubclass(value, WithClassProvenance)
+        # For instances with provenance, always use instance provenance (even for class variables)
+        # because the instance has the actual data
+        if isinstance(value, WithInstanceProvenance):
+            return value.provenance()
+        elif is_cls_provenance and (
+            isinstance(value, type) and issubclass(value, WithClassProvenance)
         ):
             return value.cls_provenance()
-        elif not is_cls_provenance and isinstance(value, WithInstanceProvenance):
-            return value.provenance()
         elif ReflectProvenanceData._is_container_like(value):
             # For container-like values, recursively process using _generic_map
-            # This handles cases like list[tuple[float, Action]] where Action has provenance
+            # This handles cases like list[tuple[float, T]] where T has provenance
             return ReflectProvenanceData._generic_map(
                 value_func=lambda v: WithReflectProvenance._reflect_field_value(
                     v, is_cls_provenance
@@ -370,24 +370,25 @@ class WithReflectProvenance(WithProvenance):
 
     @staticmethod
     def _reflect_field_value(value: Any, is_cls_provenance: bool) -> Any:
-        """Helper function for _reflect_field to process values in container-like structures.
+        """Helper: process values in container-like structures.
 
         This applies the same logic as _reflect_field but for individual values within
         containers, handling objects with provenance recursively.
 
         Args:
             value: The value to process
-            is_cls_provenance: Whether we're processing class provenance (True) or instance (False)
+            is_cls_provenance: True iff class provenance, else instance provenance
         """
-        if is_cls_provenance and (
-            isinstance(value, WithClassProvenance)
-            or isinstance(value, type)
-            and issubclass(value, WithClassProvenance)
+        # For instances with provenance, always use instance provenance (even for class variables)
+        # because the instance has the actual data
+        if isinstance(value, WithInstanceProvenance):
+            return value.provenance()
+        elif is_cls_provenance and (
+            isinstance(value, type) and issubclass(value, WithClassProvenance)
         ):
             return value.cls_provenance()
-        elif not is_cls_provenance and isinstance(value, WithInstanceProvenance):
-            return value.provenance()
-        # For other values, return as-is (they'll be processed by _generic_map if container-like)
+        # For other values, return as-is (they'll be processed by _generic_map
+        # if container-like)
         return value
 
     @staticmethod
