@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 
 import RunDetailsView from '@/components/run-details-view';
 import TaskDetailsModal from '@/features/task-details-modal';
-import { getRunDetails } from '@/services/dataservice';
+import { getObservabilityLogs, getRunDetails } from '@/services/dataservice';
 import type { RunDetailsResponse, TaskOutput } from '@/types/types';
 
 interface ModalState {
@@ -72,12 +72,29 @@ const RunDetailsPage: React.FC<RunDetailsPageProps> = ({ runId }) => {
     fetchRunDetails();
   }, [runId]);
 
-  const openCodeModal = (task: TaskOutput) => {
+  const openCodeModal = async (task: TaskOutput) => {
     setModalState({
       isOpen: true,
       logs: null,
       selectedTask: task,
     });
+
+    try {
+      const logs = await getObservabilityLogs(task.run_id, task.task_id);
+      setModalState({
+        isOpen: true,
+        logs: logs,
+        selectedTask: task,
+      });
+    } catch (error) {
+      setModalState({
+        isOpen: true,
+        logs: {
+          error: error instanceof Error ? error.message : 'Failed to load logs',
+        },
+        selectedTask: task,
+      });
+    }
   };
 
   const closeModal = () => {
