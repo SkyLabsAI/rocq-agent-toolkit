@@ -54,5 +54,5 @@ where = ["src"]
 lint_ci = "ruff check"
 format_ci = "ruff format --check"
 reformat = "ruff format"
-typecheck_ci = "mypy .; pyright ."
+typecheck_ci = "mypy --check-untyped-defs .; pyright ."
 test_ci = "pytest"

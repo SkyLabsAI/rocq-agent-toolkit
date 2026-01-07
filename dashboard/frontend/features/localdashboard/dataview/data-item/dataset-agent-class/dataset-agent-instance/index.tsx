@@ -1,5 +1,5 @@
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { TagsDisplay } from '@/components/tags-display';
 import { useGlobalCompare } from '@/contexts/global-compare-context';
@@ -24,7 +24,7 @@ export const DatasetAgentInstance: React.FC<DatasetAgentInstanceProps> = ({
     datasetId,
     instance.agent_checksum
   );
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const {
     selectRun,
@@ -56,10 +56,7 @@ export const DatasetAgentInstance: React.FC<DatasetAgentInstanceProps> = ({
     const query = new URLSearchParams({
       runs: selectedRunIds.join(','),
     }).toString();
-    navigate({
-      pathname: '/compare',
-      search: `?${query}`,
-    });
+    router.push(`/compare?${query}`);
   };
 
   // Check if instance has any unique tags

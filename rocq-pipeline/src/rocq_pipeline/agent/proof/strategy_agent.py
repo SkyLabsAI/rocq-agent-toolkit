@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import itertools
 from dataclasses import dataclass
-from typing import Any, override
+from types import MappingProxyType
+from typing import Annotated, Any, override
 
-from observability import get_logger
+from observability import get_logger, trace_context
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
-from rocq_pipeline.agent import (
-    TaskResult,
-)
 from rocq_pipeline.agent.base import ProofAgent
+from rocq_pipeline.agent.base.dataclasses import TaskResult
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema.task_output import FailureReason
 from rocq_pipeline.search.action import Action
@@ -19,26 +19,32 @@ from rocq_pipeline.search.strategy import Strategy
 logger = get_logger("rocq_agent")
 
 
-class StrategyAgent(ProofAgent, VERSION="0.1.0"):
+class StrategyAgent(ProofAgent):
     """An agent that uses a Strategy to select tactics."""
+
+    _strategy: Annotated[Strategy, Provenance.Reflect.Field]
+    _max_depth: Annotated[int | None, Provenance.Reflect.Field]
+    _max_breath: Annotated[int | None, Provenance.Reflect.Field]
+    _fuel: Annotated[int | None, Provenance.Reflect.Field]
 
     def __init__(
         self,
         strategy: Strategy,
         max_depth: int | None = None,
-        max_breath: int | None = None,
+        max_breadth: int | None = None,
         fuel: int | None = None,
     ) -> None:
         super().__init__(goal_ty_upperbound=RocqGoal)
         self._strategy = strategy
         self._max_depth = max_depth
-        self._max_breath = max_breath
+        self._max_breadth = max_breadth
         self._fuel = fuel
         self._initial_prove_cursor_index: int | None = None
 
-    def prepare(self, rc: RocqCursor) -> None:
+    def prepare(self, rc: RocqCursor) -> Strategy.MutableContext:
         """Pre-hook for prove."""
         self._initial_prove_cursor_index = rc.cursor_index()
+        return {}
 
     def conclude(self, rc: RocqCursor) -> None:
         """Post-hook for prove -- transitively, via finished/give_up."""
@@ -56,81 +62,106 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
 
     @override
     def prove(self, rc: RocqCursor) -> TaskResult:
-        self.prepare(rc)
+        # Note: `prepare` uses `Strategy.MutableContext` so derivers can incrementalize
+        # construction via super().prepare calls, but prove/rollout promises to leave
+        # it unchanged.
+        strategy_ctx: Strategy.Context = MappingProxyType(self.prepare(rc))
 
-        depth: int = 0
-        rem_fuel: int | None = self._fuel
-        while True:
-            state = self._current_state(rc)
-            if state.closed(proof=True):
-                return self.finished(rc)
+        fresh_id: int = 0
 
-            if self._max_depth is not None and depth >= self._max_depth:
-                return self.give_up(
-                    rc,
-                    message=f"depth limit exceeded({self._max_depth})",
+        def fresh() -> int:
+            nonlocal fresh_id
+            t = fresh_id
+            fresh_id += 1
+            return t
+
+        current_id = fresh()
+        with trace_context("strategy_agent") as span:
+            span.set_attribute("root_id", current_id)
+
+            depth: int = 0
+            rem_fuel: int | None = self._fuel
+            while True:
+                state = self._current_state(rc)
+                if state.closed(proof=True):
+                    return self.finished(rc)
+
+                if self._max_depth is not None and depth >= self._max_depth:
+                    return self.give_up(
+                        rc,
+                        message=f"depth limit exceeded({self._max_depth})",
+                    )
+
+                rollout = self._strategy.rollout(
+                    rc, max_rollout=self._max_breadth, context=strategy_ctx
                 )
-
-            rollout = self._strategy.rollout(rc)
-            for _, action in (
-                rollout
-                if self._max_breath is None
-                else itertools.islice(rollout, self._max_breath)
-            ):
-                if rem_fuel is not None:
-                    rem_fuel -= 1
-                    if rem_fuel <= 0:
-                        return self.give_up(rc, message=f"out of fuel ({self._fuel})")
-                action_rc = rc.clone()
-                try:
-                    action.interact(action_rc)
-                    rc = action_rc
-                    depth += 1
-                    break
-                except Action.Failed:
-                    action_rc.dispose()
-            else:
-                # not executed if we see a break
-                return self.give_up(
-                    rc, f"No more proposals (max_breath={self._max_breath}"
-                )
+                for _, action in (
+                    rollout
+                    if self._max_breadth is None
+                    else itertools.islice(rollout, self._max_breadth)
+                ):
+                    if rem_fuel is not None:
+                        rem_fuel -= 1
+                        if rem_fuel <= 0:
+                            return self.give_up(
+                                rc, message=f"out of fuel ({self._fuel})"
+                            )
+                    with trace_context("strategy_agent/process") as process:
+                        process.set_attribute("parent", current_id)
+                        process.set_attribute("action", action.key())
+                        action_rc = rc.clone()
+                        try:
+                            rc = action.interact(action_rc)
+                            if rc is not action_rc:
+                                action_rc.dispose()
+                            current_id = fresh()
+                            process.set_attribute("id", current_id)
+                            depth += 1
+                            break
+                        except Action.Failed:
+                            action_rc.dispose()
+                else:
+                    # not executed if we see a break
+                    return self.give_up(
+                        rc, f"No more proposals (max_breadth={self._max_breadth})"
+                    )
 
     @override
     def finished(
         self,
-        rc: RocqCursor,
+        rdm: RocqCursor,
         message: str = "",
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rc, side_effects)
+        self._extend_side_effects(rdm, side_effects)
         result = super().finished(
-            rc,
+            rdm,
             message=message,
             side_effects=side_effects,
         )
-        self.conclude(rc)
+        self.conclude(rdm)
         return result
 
     @override
     def give_up(
         self,
-        rc: RocqCursor,
+        rdm: RocqCursor,
         message: str = "",
         reason: FailureReason | RocqCursor.Err[Any] | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rc, side_effects)
+        self._extend_side_effects(rdm, side_effects)
         result = super().give_up(
-            rc,
+            rdm,
             message=message,
             reason=reason,
             side_effects=side_effects,
         )
-        self.conclude(rc)
+        self.conclude(rdm)
         return result
 
     # NOTE:

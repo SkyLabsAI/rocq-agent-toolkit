@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import heapq
+import inspect
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, TypeVar, override
+from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
+from typing import Annotated, Any, TypeVar, override
+
+from provenance_toolkit import Provenance
 
 from .action import Action
 
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Strategy[T_co](ABC):
+class Strategy[T_co](Provenance.Full, ABC):
     """
     A `Strategy` proposes actions to take. The different proposals
     are captured lazily using a `Generator`. This allows capturing
@@ -25,6 +28,7 @@ class Strategy[T_co](ABC):
     # for searches to work correctly. Clients should use an
     # implementation such as `immutabledict` to achieve this.
     # Mutable information needs to be tracked in the state
+    type MutableContext = MutableMapping[str, Any]
     type Context = Mapping[str, Any]
 
     @abstractmethod
@@ -53,6 +57,9 @@ def empty_Rollout() -> Strategy.Rollout:
 
 
 class SingletonStrategy[T_co](Strategy[T_co]):
+    _value: Annotated[Action[T_co], Provenance.Reflect.Field]
+    _prob: Annotated[float, Provenance.Reflect.Field]
+
     def __init__(self, value: Action[T_co], prob: float = 1.0) -> None:
         self._value = value
         self._prob = prob
@@ -67,6 +74,11 @@ class SingletonStrategy[T_co](Strategy[T_co]):
 
 
 class IteratorStrategy[T_co](Strategy[T_co]):
+    _collection: Annotated[
+        Iterable[tuple[float, Action[T_co]]],
+        Provenance.Reflect.Field,
+    ]
+
     def __init__(self, i: Iterable[tuple[float, Action[T_co]]]) -> None:
         self._collection = i
 
@@ -81,6 +93,8 @@ class IteratorStrategy[T_co](Strategy[T_co]):
 
 class CompositeStrategy[T_co](Strategy[T_co]):
     """A (fair) combination of strategies"""
+
+    _children: Annotated[list[Strategy[T_co]], Provenance.Reflect.Field]
 
     def __init__(self, children: list[Strategy[T_co]]) -> None:
         self._children: list[Strategy[T_co]] = children
@@ -126,6 +140,10 @@ class StagedStrategy[T_co](Strategy[T_co]):
     be returned before `strat2` is considered, at which point results from
     `strat1` and `strat2` will be interleaved.
     """
+
+    _strat1: Annotated[Strategy[T_co], Provenance.Reflect.Field]
+    _strat2: Annotated[Strategy[T_co], Provenance.Reflect.Field]
+    _prob: Annotated[float | None, Provenance.Reflect.Field]
 
     def __init__(
         self, strat1: Strategy[T_co], strat2: Strategy[T_co], prob: float | None = None
@@ -186,6 +204,21 @@ class StagedStrategy[T_co](Strategy[T_co]):
         return combine(self._strat1.rollout(state, max_rollout, context))
 
 
+def staged[T](strats: list[tuple[float | None, Strategy[T]]]) -> Strategy[T]:
+    """
+    Build an iterated StagedStrategy.
+    If the element `(pr,strat)` exists in the list, then `strat` will start
+    being considered once prior strategies yield a probability less than `pr`.
+    """
+    if not strats:
+        return FailStrategy()
+    last_prob, current = strats[-1]
+    for prob, s in reversed(strats[:-1]):
+        current = StagedStrategy(s, current, last_prob)
+        last_prob = prob
+    return current
+
+
 class FailStrategy[T_co](Strategy[T_co]):
     """A simple strategy that fails."""
 
@@ -199,7 +232,7 @@ class FailStrategy[T_co](Strategy[T_co]):
         return empty_Rollout()
 
 
-class GuardStrategy[T_co, With](FailStrategy[T_co], ABC):
+class GuardStrategy[T_co, With](FailStrategy[T_co]):
     """Guard the execution of a strategy.
     If [check] returns [None], then this strategy acts like the [FailStrategy] otherwise
     it does [rollout_with]
@@ -233,6 +266,11 @@ class GuardStrategy[T_co, With](FailStrategy[T_co], ABC):
 
 
 class ActionWrapper[T_co](Action[T_co]):
+    _fn: Annotated[
+        Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
+    ]
+    _base: Annotated[Action[T_co], Provenance.Reflect.Field]
+
     def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
         self._fn = fn
         self._base = base
@@ -243,6 +281,9 @@ class ActionWrapper[T_co](Action[T_co]):
 
 
 class TraceStrategy[T_co](Strategy[T_co]):
+    _base: Annotated[Strategy[T_co], Provenance.Reflect.Field]
+    _trace: Annotated[list[tuple[T_co, Action[T_co]]], Provenance.Reflect.Field]
+
     def __init__(self, base: Strategy[T_co]) -> None:
         self._base = base
         self._trace: list[tuple[T_co, Action[T_co]]] = []

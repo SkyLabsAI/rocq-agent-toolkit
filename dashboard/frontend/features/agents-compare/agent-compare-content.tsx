@@ -1,5 +1,7 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import ComparisonModal from '@/components/base/comparisonModal';
 import { useAgents } from '@/hooks/use-agent-summaries';
@@ -15,18 +17,17 @@ import {
   transformRunsToTaskRows,
 } from '../runs-compare/compare-page-content/utils';
 
-export const AgentCompareContent: React.FC = () => {
-  const [sp] = useSearchParams();
-  const navigate = useNavigate();
+interface AgentCompareContentProps {
+  agentIds: string[];
+}
+
+export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
+  agentIds,
+}) => {
+  const router = useRouter();
   const { agentData, isLoading: agentDataLoading } = useAgents();
 
-  const selectedAgents = sp.get('agents') || '';
-  const agentNames = useMemo(() => {
-    return selectedAgents
-      .split(',')
-      .map(name => name.trim())
-      .filter(Boolean);
-  }, [selectedAgents]);
+  const agentNames = agentIds;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,11 +37,11 @@ export const AgentCompareContent: React.FC = () => {
   const handleRemove = (removeId: string) => {
     const newAgents = agentNames.filter(name => name !== removeId);
     if (newAgents.length === 0) {
-      navigate('/');
+      router.push('/');
       return;
     }
     const url = `/compare/agents?agents=${encodeURIComponent(newAgents.join(','))}`;
-    navigate(url);
+    router.push(url);
   };
 
   useEffect(() => {

@@ -2,7 +2,10 @@ from .auto import AutoAgent
 from .choice import ChoiceAgent
 from .markov import MarkovAgent
 from .one_shot import OneShotAgent, OneShotBuilder
+from .strategy_agent import StrategyAgent
+from .strategy_search import SearchAgent
 from .trace import TraceAgent
+from .trace_cursor import TracingCursor
 
 __all__: list[str] = [
     # auto.py
@@ -14,6 +17,12 @@ __all__: list[str] = [
     # one_shot.py
     "OneShotAgent",
     "OneShotBuilder",
+    # strategy_agent.py
+    "StrategyAgent",
+    # search_agent.py
+    "SearchAgent",
     # trace.py
     "TraceAgent",
+    # trace_cursor.py
+    "TracingCursor",
 ]

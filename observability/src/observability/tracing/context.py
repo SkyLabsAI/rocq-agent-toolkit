@@ -25,6 +25,7 @@ def trace_context(
     name: str,
     *,
     extractor: str | type[AttributeExtractor] | AttributeExtractor | None = None,
+    tracer_kwargs: dict[str, Any] | None = None,
     attributes: dict[str, Any] | None = None,
     metrics_enabled: bool = True,
     record_exception: bool = True,
@@ -39,6 +40,7 @@ def trace_context(
     Args:
         name: Name for the span
         extractor: Attribute extractor to use (same options as @trace decorator)
+        tracer_kwargs: Custom arguments for tracer.start_as_current_span
         attributes: Static attributes to add to the span
         metrics_enabled: Whether to record metrics
         record_exception: Whether to record exceptions
@@ -78,7 +80,10 @@ def trace_context(
     tracer = trace.get_tracer(__name__)
     start_time = time.time()
 
-    with tracer.start_as_current_span(name) as span:
+    if tracer_kwargs is None:
+        tracer_kwargs = {}
+
+    with tracer.start_as_current_span(name, **tracer_kwargs) as span:
         try:
             # Set basic attributes
             span.set_attribute("operation.type", "manual")

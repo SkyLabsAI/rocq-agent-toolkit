@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, override
 
 from observability import get_logger
@@ -16,7 +18,7 @@ from .dataclasses import (
 logger = get_logger("rocq_agent")
 
 
-class Agent(Provenance.ClassIdentity, Provenance.Version, VERSION="1.0.0"):
+class Agent(Provenance.Full):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
     def run(self, rdm: RocqCursor) -> TaskResult:
@@ -81,7 +83,7 @@ class AgentBuilder:
         self._agent: type[Agent] = agent_type
 
     @staticmethod
-    def of_agent(agent_type: type[Agent]) -> "AgentBuilder":
+    def of_agent(agent_type: type[Agent]) -> AgentBuilder:
         return AgentBuilder(agent_type)
 
     def add_args(self, args: list[str]) -> None:
@@ -98,16 +100,13 @@ class AgentBuilder:
 # TODO: integrate proof tree and structured proof states so that
 # task_holes / task_doc_interaction can be defined in a more
 # structured way.
-class ProofAgent(Agent, VERSION="1.0.0"):
+class ProofAgent(Agent):
     """Agents tasked with completing proof obligations."""
 
     def __init__(self, goal_ty_upperbound: type[RocqGoal] = RocqGoal) -> None:
         if not issubclass(goal_ty_upperbound, RocqGoal):
             raise RuntimeError(f"{goal_ty_upperbound} is not a subclass of RocqGoal")
         self._goal_ty_upperbound = goal_ty_upperbound
-
-    def prepare(self, rdm: RocqCursor) -> None:
-        pass
 
     def prove(self, rc: RocqCursor) -> TaskResult:
         """Prove the current goal using the restricted proof session.

@@ -1,7 +1,9 @@
+import inspect
 from collections.abc import Callable
-from typing import override
+from typing import Annotated, override
 
 from observability import get_logger
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from ..action import Action
@@ -11,6 +13,8 @@ logger = get_logger("rocq_agent")
 
 class RocqTacticAction(Action[RocqCursor]):
     """Execute a single Rocq tactic."""
+
+    _tactic: Annotated[str, Provenance.Reflect.Field]
 
     def __init__(self, tactic: str) -> None:
         self._tactic = tactic
@@ -56,6 +60,15 @@ class RocqRetryAction(RocqTacticAction):
     tactic that actually succeeded (which may differ from the original if
     rectification occurred).
     """
+
+    _rectifier: Annotated[
+        Callable[[RocqCursor, str, str], str | None] | None,
+        Provenance.Reflect.Field(
+            transform=lambda fn: None if fn is None else inspect.getsource(fn)
+        ),
+    ]
+    _max_retries: Annotated[int, Provenance.Reflect.Field]
+    _final_tactic: Annotated[str | None, Provenance.Reflect.Field]
 
     def __init__(
         self,

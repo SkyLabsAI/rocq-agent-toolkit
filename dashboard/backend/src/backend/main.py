@@ -56,6 +56,7 @@ from backend.models import (
 )
 from backend.s3 import upload_bytes_to_s3
 from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
+from backend.visualizer_data import router as visualizer_data_router
 
 # Configure logging
 logging.basicConfig(
@@ -95,6 +96,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Stable visualizer APIs (for dashboard frontend)
+# Prefix: /api/visualizer/data/*
+app.include_router(visualizer_data_router, prefix="/api")
 
 # Configure CORS for frontend access
 app.add_middleware(

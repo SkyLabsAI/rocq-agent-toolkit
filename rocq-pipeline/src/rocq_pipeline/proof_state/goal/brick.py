@@ -17,14 +17,53 @@ class BrickGoal(IrisGoal):
     PartsDataclass: type[BrickGoalParts] = BrickGoalParts
 
     @staticmethod
-    def if_decide_then_else_extract(text: str) -> tuple[str, str, str] | None:
-        pattern = r"if\s+decide\s*\(([^)]+)\)\s+then\s+(.+?)\s+else\s+(.+)"
+    def parse_decide_condition(text: str, bool_decide: bool = False) -> str | None:
+        """
+        Parses 'if <keyword> (A) then (B) else (C)' logic.
+
+        Args:
+            text: The string to parse.
+            bool_decide: Whether to use 'bool_decide' or 'decide'.
+
+        Returns:
+            re.Match object with groups (Condition, Then-Block, Else-Block) if successful.
+            None if parsing fails or if the split creates unbalanced parentheses.
+
+        Note: We could also return all three parts as a tuple, but for now we
+        only return the Condition part since regex matching may not be sufficient
+        for all cases we encounter (cf. test case 9 in test_parse_decide condition.py).
+        """
+
+        # Escape the keyword just in case it contains special regex chars
+        keyword = "bool_decide" if bool_decide else "decide"
+
+        # Dynamically build the pattern
+        # 1. if <keyword> ...   -> Anchor
+        # 2. (.+?) ... then     -> Lazy match for Condition (Group 1)
+        # 3. (.+?) ... else     -> Lazy match for Then-Block (Group 2)
+        # 4. (.+)               -> Greedy match for Else-Block (Group 3)
+        pattern = rf"if\s+{keyword}\s*(.+?)\s+\bthen\b\s+(.+?)\s+\belse\b\s+(.+)"
 
         match = re.search(pattern, text, re.DOTALL)
 
-        if match:
-            return match.group(1), match.group(2), match.group(3)
-        return None
+        if not match:
+            return None
+
+        cond_part = match.group(1).strip()
+        then_part = match.group(2).strip()
+
+        # --- AMBIGUITY GUARDS ---
+        # Heuristic: If we split on a 'fake' delimiter inside a string or nested structure,
+        # the parenthesis count in the preceding block will likely be unequal.
+
+        # Guard 1: Condition (Group 1)
+        if cond_part.count("(") != cond_part.count(")"):
+            return None
+
+        # Guard 2: Then-Block (Group 2)
+        if then_part.count("(") != then_part.count(")"):
+            return None
+        return match.group(1)
 
     @property
     @override
@@ -95,8 +134,18 @@ class BrickGoal(IrisGoal):
         """
         return self.is_branch_stmt_goal() or self.is_branch_expr_goal()
 
-    def is_if_decide_then_else_goal(self) -> tuple[str, str, str] | None:
+    def is_if_decide_then_else_goal(self) -> str | None:
         """
-        Checks if the spatial conclusion contains a 'if decide (xxx) then yyy else zzz' term.
+        Checks if the spatial conclusion contains a 'if decide xxx then yyy else zzz' term.
         """
-        return BrickGoal.if_decide_then_else_extract(self.parts.iris_spat_concl)
+        return BrickGoal.parse_decide_condition(
+            self.parts.iris_spat_concl, bool_decide=False
+        )
+
+    def is_if_bool_decide_then_else_goal(self) -> str | None:
+        """
+        Checks if the spatial conclusion contains a 'if bool_decide xxx then yyy else zzz' term.
+        """
+        return BrickGoal.parse_decide_condition(
+            self.parts.iris_spat_concl, bool_decide=True
+        )

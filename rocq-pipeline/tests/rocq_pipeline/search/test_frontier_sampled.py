@@ -101,4 +101,4 @@ def test_sampled_small_pull(
     assert result is not None
     states = [state for state, _ in result]
     assert states == values
-    assert base.take(1) is None
+    assert not base.take(1)

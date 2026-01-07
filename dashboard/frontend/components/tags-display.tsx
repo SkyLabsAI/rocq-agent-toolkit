@@ -105,9 +105,22 @@ export const TagsDisplay: React.FC<TagsDisplayProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const priorityTags = ['experiment_name'];
+
   const tagEntries = Object.entries(tags);
-  const visibleTags = tagEntries.slice(0, maxVisible);
-  const hiddenCount = tagEntries.length - maxVisible;
+
+  // Sort tags to put priority tags first
+  const sortedTagEntries = tagEntries.sort(([keyA], [keyB]) => {
+    const isPriorityA = priorityTags.includes(keyA);
+    const isPriorityB = priorityTags.includes(keyB);
+
+    if (isPriorityA && !isPriorityB) return -1;
+    if (!isPriorityA && isPriorityB) return 1;
+    return 0; // Keep original order for same priority level
+  });
+
+  const visibleTags = sortedTagEntries.slice(0, maxVisible);
+  const hiddenCount = sortedTagEntries.length - maxVisible;
   const hasHiddenTags = hiddenCount > 0;
 
   const handleSeeMoreClick = (e: React.MouseEvent) => {
@@ -151,7 +164,7 @@ export const TagsDisplay: React.FC<TagsDisplayProps> = ({
           className='flex flex-wrap gap-2'
           onClick={e => e.stopPropagation()}
         >
-          {tagEntries.map(([key, value]) => (
+          {sortedTagEntries.map(([key, value]) => (
             <Tag value={value} key={key} attributeProp={key} />
           ))}
         </div>

@@ -21,31 +21,42 @@ from ..proto import (
 logger = logging.getLogger(__name__)
 
 
-class ProvenanceClassIdentityData(ProvenanceT):
-    """Provenance data that captures the fully qualified class name (module + qualname)."""
+class ClassIdentityProvenanceData(ProvenanceT):
+    """Provenance data that captures the fully qualified class name (module + qualname) and direct base classes."""
 
-    def __init__(self, module: str, qualname: str) -> None:
-        self._module = module
-        self._qualname = qualname
+    def __init__(self, cls: type) -> None:
+        self._cls = cls
 
     def __eq__(self, other: Any) -> Any:
         super_eq = super().__eq__(other)
         if super_eq is NotImplemented:
             return NotImplemented
-        return self.module == other.module and self.qualname == other.qualname
+        elif not super_eq:
+            return False
+        return self._cls is other._cls
+
+    @property
+    def cls(self) -> type:
+        """Return the class reference."""
+        return self._cls
 
     @property
     def module(self) -> str:
-        return self._module
+        return self._cls.__module__
 
     @property
     def qualname(self) -> str:
-        return self._qualname
+        return self._cls.__qualname__
 
     @property
-    def full_qualname(self) -> str:
+    def bases(self) -> tuple[type, ...]:
+        """Return tuple of direct base class types."""
+        return self._cls.__bases__
+
+    @staticmethod
+    def full_qualname(class_type: type) -> str:
         """Return the fully qualified name: module.qualname"""
-        return f"{self._module}.{self._qualname}"
+        return f"{class_type.__module__}.{class_type.__qualname__}"
 
     @override
     def is_cls_provenance(self) -> bool:
@@ -57,7 +68,16 @@ class ProvenanceClassIdentityData(ProvenanceT):
 
     @override
     def stable_serialize(self) -> str:
-        return self.full_qualname
+        """Serialize to a stable string format including module, qualname, and bases."""
+        bases = self.bases
+        if not bases:
+            return ClassIdentityProvenanceData.full_qualname(self._cls)
+        # Format: module.qualname[bases]
+        # Each base is formatted as module.qualname
+        bases_str = ",".join(
+            ClassIdentityProvenanceData.full_qualname(base) for base in bases
+        )
+        return f"{ClassIdentityProvenanceData.full_qualname(self._cls)}({bases_str})"
 
 
 class WithClassIdentityProvenance(WithProvenance):
@@ -72,19 +92,13 @@ class WithClassIdentityProvenance(WithProvenance):
     @classmethod
     def compute_cls_provenance(cls) -> dict[type[WithClassProvenance], ProvenanceT]:
         result = super().compute_cls_provenance()
-        result[WithClassIdentityProvenance] = ProvenanceClassIdentityData(
-            cls.__module__,
-            cls.__qualname__,
-        )
+        result[WithClassIdentityProvenance] = ClassIdentityProvenanceData(cls)
         return result
 
     @override
     def compute_provenance(self) -> dict[type[WithInstanceProvenance], ProvenanceT]:
         result = super().compute_provenance()
-        result[WithClassIdentityProvenance] = ProvenanceClassIdentityData(
-            self.__class__.__module__,
-            self.__class__.__qualname__,
-        )
+        result[WithClassIdentityProvenance] = ClassIdentityProvenanceData(type(self))
         return result
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

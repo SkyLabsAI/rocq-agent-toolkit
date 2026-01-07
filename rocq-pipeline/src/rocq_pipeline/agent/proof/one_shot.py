@@ -1,6 +1,7 @@
 import logging
-from typing import override
+from typing import Annotated, override
 
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import (
@@ -14,8 +15,10 @@ from .trace import TraceAgent
 logger = logging.getLogger(__name__)
 
 
-class OneShotAgent(TraceAgent, VERSION="1.0.0"):
+class OneShotAgent(TraceAgent):
     """OneShotAgent: Derives from TraceAgent with a restriction on tactic applications (max 1)."""
+
+    _tactic: Annotated[str, Provenance.Reflect.Field]
 
     def __init__(
         self,

@@ -15,10 +15,10 @@ from observability import (
     ObservabilityConfig,
     add_log_context,
     get_logger,
-    set_span_attribute,
     setup_observability,
-    trace,
+    trace_context,
 )
+from opentelemetry.trace import Link, SpanContext, Status, StatusCode
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
@@ -140,7 +140,6 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     return task_output.Tags(tags)
 
 
-@trace(name="run_task")
 def run_task(
     build_agent: AgentBuilder,
     task: FullTask,
@@ -148,104 +147,149 @@ def run_task(
     wdir: Path,
     tags: task_output.Tags,
     progress: util.ProgressCallback,
+    parent_span_context: SpanContext | None = None,
 ) -> task_output.TaskOutput | None:
     """
     Build an agent using [build_agent] and invoke it on the task.
+
+    Creates an independent trace for this task with a link to the parent
+    run_config trace if parent_span_context is provided.
     """
     # Add run_id to log context for this thread
     add_log_context("run_id", run_id)
 
     task_id: str = task.id
     add_log_context("task_id", task_id)
-    # TODO: integrate with opentelemetry, properly instrument the agent
-    # framework and derived agents
-    set_span_attribute("task.id", task_id)
-    trace_id: str | None = None
+
     timestamp_iso_8601 = datetime.now(UTC).isoformat()
 
-    task_result: TaskResult | None = None
-    agent = build_agent(task.prompt)
+    # Create a new independent trace with a link to the parent span
+    trace_id: str | None = None
+    links = []
+    if parent_span_context and parent_span_context.is_valid:
+        links.append(Link(parent_span_context))
 
-    try:
-        task_file = task.file
-        progress.status(0.01, "🔃")
-        rocq_args = (
-            RocqArgs.extend_args(
-                DuneUtil.rocq_args_for(task_file), build_agent.extra_rocq_args()
-            )
-            if task.rocq_args is None
-            else task.rocq_args
-        )
-        with RocqDocManager(
-            rocq_args,
-            str(task_file),
-            dune=True,
-        ).sess(load_file=True) as rdm:
-            rc = rdm.cursor()
-            progress.status(0.05, "🔃")
-            if not task.locator(rc):
-                progress.log(f"{task_id}: locator returned false")
-                return None
-            progress.status(0.1, "💭")
-            task_result = agent.run(TracingCursor.of_cursor(rc))
-    except Exception as e:
-        progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
-        task_result = TaskResult.from_exception(e)
-    finally:
-        progress.status(0.95, "🔚")
-    assert task_result is not None
+    # Prepare tracer_kwargs for creating a root span (new trace) with links
+    tracer_kwargs: dict[str, Any] = {"context": None}  # No parent context = new trace
+    if links:
+        tracer_kwargs["links"] = links
 
-    # Log the result
-    if not task_result.success:
-        if not task_result.exception:
-            progress.log(f"{agent.name()} gave up with message: {task_result.message}")
+    with trace_context(
+        "run_task",
+        tracer_kwargs=tracer_kwargs,
+        attributes={
+            "task.id": task_id,
+            "run.id": run_id,
+        },
+    ) as span:
+        # Get trace_id from this new span
+        span_context = span.get_span_context()
+        if span_context.is_valid:
+            trace_id = format(span_context.trace_id, "032x")
         else:
-            # Note: except block above will handle printing a rich stack trace if
-            # an `ExecutionError` was raised.
-            pass
-    else:
-        progress.log(f"task completed: {task_result.message}")
+            logger.warning(f"Invalid SpanContext for task {task_id} from run {run_id}")
 
-    # For the time being taking id from the environment variable
-    # TODO: Update it to add automatically
-    # can be created based on the task input path
-    # or in a way that it can detect the changes in the task input path or dataset.
-    dataset_id = os.getenv("DATASET_NAME", "default")
+        task_result: TaskResult | None = None
+        agent = build_agent(task.prompt)
 
-    for task_tag in task.tags:
-        tags.value.update({f"TASK_{task_tag}": task_tag})
+        try:
+            task_file = task.file
+            progress.status(0.01, "🔃")
+            rocq_args = (
+                RocqArgs.extend_args(
+                    DuneUtil.rocq_args_for(task_file), build_agent.extra_rocq_args()
+                )
+                if task.rocq_args is None
+                else task.rocq_args
+            )
+            with RocqDocManager(
+                rocq_args,
+                str(task_file),
+                dune=True,
+            ).sess(load_file=True) as rdm:
+                rc = rdm.cursor()
+                progress.status(0.05, "🔃")
+                if not task.locator(rc):
+                    msg = f"{task_id}: locator returned false"
+                    progress.log(msg)
+                    span.set_status(Status(StatusCode.ERROR, msg))
+                    return None
+                progress.status(0.1, "💭")
+                task_result = agent.run(TracingCursor.of_cursor(rc))
+        except Exception as e:
+            progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
+            task_result = TaskResult.from_exception(e)
+            span.record_exception(e)
+            span.set_status(Status(StatusCode.ERROR, str(e)))
+        finally:
+            progress.status(0.95, "🔚")
 
-    # TODO: avoid re-logging if we've already logged AgentClassProvenance
-    # or AgentProvenance with this checksum.
-    class_provenance = agent.cls_provenance_json()
-    instance_provenance = agent.provenance_json()
-    # Simply printing the Provenance data make them separate key value pairs in the log.
-    # To keep them together so they are easy to retrieve, we wrap them in a "json".
-    logger.info(
-        "AgentClassProvenance",
-        cls_checksum=agent.cls_checksum(),
-        cls_name=agent.cls_name(),
-        cls_provenance={"cls_provenance": class_provenance},
-    )
-    logger.info(
-        "AgentProvenance",
-        cls_checksum=agent.cls_checksum(),  # For correlation with class
-        checksum=agent.checksum(),
-        name=agent.name(),
-        provenance={"provenance": instance_provenance},
-    )
-    # TODO: update frontend/backend of dashboard to utilize new checksum/
-    return task_result.to_task_output(
-        run_id=run_id,
-        task_kind=task.locator.task_kind(),
-        task_id=task_id,
-        dataset_id=dataset_id,
-        timestamp_utc=timestamp_iso_8601,
-        agent_cls_checksum=agent.cls_checksum(),
-        agent_checksum=agent.checksum(),
-        trace_id=trace_id,
-        metadata=task_output.Metadata(tags=tags),
-    )
+        assert task_result is not None
+
+        # Log the result
+        if not task_result.success:
+            if not task_result.exception:
+                span.set_status(Status(StatusCode.ERROR, task_result.message))
+                progress.log(
+                    f"{agent.name()} gave up with message: {task_result.message}"
+                )
+                logger.info(
+                    "TaskStatus",
+                    task_status=task_result.success,
+                    task_result_message=task_result.message,
+                )
+            else:
+                # Note: except block above will handle printing a rich stack trace and
+                # invoking `span.set_status` if an `ExecutionError` was raised.
+                pass
+        else:
+            span.set_status(Status(StatusCode.OK))
+            progress.log(f"task completed: {task_result.message}")
+            logger.info(
+                "TaskStatus",
+                task_status=task_result.success,
+                task_result_message=task_result.message,
+            )
+
+        # For the time being taking id from the environment variable
+        # TODO: Update it to add automatically
+        # can be created based on the task input path
+        # or in a way that it can detect the changes in the task input path or dataset.
+        dataset_id = os.getenv("DATASET_NAME", "default")
+
+        for task_tag in task.tags:
+            tags.value.update({f"TASK_{task_tag}": task_tag})
+
+        # TODO: avoid re-logging if we've already logged AgentClassProvenance
+        # or AgentProvenance with this checksum.
+        class_provenance = agent.cls_provenance_json()
+        instance_provenance = agent.provenance_json()
+        # Simply printing the Provenance data make them separate key value pairs in the log.
+        # To keep them together so they are easy to retrieve, we wrap them in a "json".
+        logger.info(
+            "AgentClassProvenance",
+            cls_checksum=agent.cls_checksum(),
+            cls_name=agent.cls_name(),
+            cls_provenance={"cls_provenance": class_provenance},
+        )
+        logger.info(
+            "AgentProvenance",
+            cls_checksum=agent.cls_checksum(),  # For correlation with class
+            checksum=agent.checksum(),
+            name=agent.name(),
+            provenance={"provenance": instance_provenance},
+        )
+        return task_result.to_task_output(
+            run_id=run_id,
+            task_kind=task.locator.task_kind(),
+            task_id=task_id,
+            dataset_id=dataset_id,
+            timestamp_utc=timestamp_iso_8601,
+            agent_cls_checksum=agent.cls_checksum(),
+            agent_checksum=agent.checksum(),
+            trace_id=trace_id,
+            metadata=task_output.Metadata(tags=tags),
+        )
 
 
 def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]]:
@@ -343,7 +387,6 @@ def parse_arguments(
     )
 
 
-@trace(name="Running pipeline")
 def run_config(config: RunConfiguration) -> bool:
     # Setup environment based on deployment mode
     if config.deployment_env:
@@ -353,14 +396,38 @@ def run_config(config: RunConfiguration) -> bool:
             logger.error("Failed to setup environment")
             return False
 
+    # Create a dispatcher span for setup and enqueuing
+    parent_span_context: SpanContext | None = None
+
     now_str = datetime.now().strftime("%Y%m%d_%H%M")
     tasks_result_file: Path = (
         config.output_dir / f"{config.tasks_name}_results_{now_str}.jsonl"
     )
     run_id: str = str(uuid.uuid4())
-    set_span_attribute("run.id", run_id)
-    # Here log context is not getting passed in the multithreads
-    # # add_log_context("run_id", run_id)
+
+    with trace_context(
+        "run_config/begin",
+        attributes={
+            "run.id": run_id,
+            "tasks.count": len(config.tasks),
+            "jobs": config.jobs,
+        },
+    ) as dispatcher_span:
+        # Capture parent span context before closing dispatcher span
+        span_context = dispatcher_span.get_span_context()
+        if span_context.is_valid:
+            parent_span_context = span_context
+
+        logger.info(f"Run {len(config.tasks)} tasks with {config.jobs} workers")
+        dispatcher_span.add_event(
+            "run_tasks",
+            {
+                "task_count": len(config.tasks),
+                "worker_count": config.jobs,
+            },
+        )
+
+    # Dispatcher span is now closed - workers will run independently
 
     def run_it(full_task: FullTask, progress: Any) -> task_output.TaskOutput | None:
         return run_task(
@@ -370,6 +437,7 @@ def run_config(config: RunConfiguration) -> bool:
             wdir=config.working_dir,
             tags=config.tags,
             progress=progress,
+            parent_span_context=parent_span_context,
         )
 
     # Touch the file early to make sure that it is createable
