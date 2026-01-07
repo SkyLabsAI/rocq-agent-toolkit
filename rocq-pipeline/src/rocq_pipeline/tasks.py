@@ -1,5 +1,6 @@
 import json
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
@@ -7,6 +8,13 @@ import jmespath
 import yaml
 
 type Task = dict[str, Any]
+
+
+@dataclass
+class Project:
+    name: str = field(kw_only=True)
+    checksum: str = field(kw_only=True)
+    tasks: list[Task]
 
 
 def get_task_id(task: Task) -> str:
