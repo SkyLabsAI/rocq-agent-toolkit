@@ -9,9 +9,7 @@ from observability import get_logger, trace_context
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import ProofAgent
-from rocq_pipeline.agent.base.dataclasses import (
-    TaskResult,
-)
+from rocq_pipeline.agent.base.dataclasses import TaskResult
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema.task_output import FailureReason
 from rocq_pipeline.search.action import Action
@@ -27,13 +25,13 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
         self,
         strategy: Strategy,
         max_depth: int | None = None,
-        max_breath: int | None = None,
+        max_breadth: int | None = None,
         fuel: int | None = None,
     ) -> None:
         super().__init__(goal_ty_upperbound=RocqGoal)
         self._strategy = strategy
         self._max_depth = max_depth
-        self._max_breath = max_breath
+        self._max_breadth = max_breadth
         self._fuel = fuel
         self._initial_prove_cursor_index: int | None = None
 
@@ -91,8 +89,8 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                 rollout = self._strategy.rollout(rc, context=strategy_ctx)
                 for _, action in (
                     rollout
-                    if self._max_breath is None
-                    else itertools.islice(rollout, self._max_breath)
+                    if self._max_breadth is None
+                    else itertools.islice(rollout, self._max_breadth)
                 ):
                     if rem_fuel is not None:
                         rem_fuel -= 1
@@ -117,7 +115,7 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                 else:
                     # not executed if we see a break
                     return self.give_up(
-                        rc, f"No more proposals (max_breath={self._max_breath})"
+                        rc, f"No more proposals (max_breadth={self._max_breadth})"
                     )
 
     @override
