@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Self, override
 
 from jsonrpc_tp import JsonRPCTP
@@ -18,13 +19,27 @@ class RocqDocManager(API):
     def __init__(
         self,
         rocq_args: list[str],
-        file_path: str,
+        file_path: str | Path,
         chdir: str | None = None,
         dune: bool = False,
         dune_disable_global_lock: bool = True,
     ) -> None:
+        file_path = Path(file_path)
         env: dict[str, str] | None = None
         args: list[str] = []
+        parse_header_failure_hints: list[str] = []
+
+        # Note: file_path must have suffix `.v`, but it need not exist;
+        # RocqDocManager can be used to create new `.v` files via `compile`.
+        if file_path.suffix != ".v":
+            raise ValueError(f"Expected a `.v` file: {file_path}")
+        elif file_path.exists():
+            if not file_path.is_file():
+                raise ValueError(f"Expected a `.v` file: {file_path}")
+            parse_header_failure_hints.append(
+                f"ensure `dune build` has succeeded for {file_path}"
+            )
+
         if dune:
             assert chdir is None
 
@@ -40,13 +55,25 @@ class RocqDocManager(API):
                 "--display=quiet",
                 "rocq-doc-manager",
                 "--",
-                file_path,
+                str(file_path),
                 "--",
             ] + rocq_args
         else:
-            args = ["rocq-doc-manager", file_path, "--"] + rocq_args
-        super().__init__(JsonRPCTP(args=args, cwd=chdir, env=env))
-        self._file_path: str = file_path
+            args = ["rocq-doc-manager", str(file_path), "--"] + rocq_args
+
+        parse_header_failure_hints.append(
+            f"ensure you have the correct Rocq args: {' '.join(rocq_args)}"
+        )
+
+        super().__init__(
+            JsonRPCTP(
+                args=args,
+                cwd=chdir,
+                env=env,
+                parse_header_failure_hints=parse_header_failure_hints,
+            )
+        )
+        self._file_path: Path = file_path
         self._file_loaded: bool = False
 
     def __del__(self) -> None:
