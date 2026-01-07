@@ -31,6 +31,8 @@ class ClassIdentityProvenanceData(ProvenanceT):
         super_eq = super().__eq__(other)
         if super_eq is NotImplemented:
             return NotImplemented
+        elif not super_eq:
+            return False
         return self._cls is other._cls
 
     @property

@@ -47,7 +47,12 @@ class ReflectProvenanceData(ProvenanceT):
         super_eq = super().__eq__(other)
         if super_eq is NotImplemented:
             return NotImplemented
-        return self._data == other._data
+        elif not super_eq:
+            return False
+        return (
+            self._data == other._data
+            and self._is_cls_provenance == other._is_cls_provenance
+        )
 
     @override
     def is_cls_provenance(self) -> bool:
@@ -105,8 +110,9 @@ class ReflectProvenanceData(ProvenanceT):
                     prov_kind = "instance"
                     base_type_name = WithInstanceProvenance.__qualname__
                 raise ValueError(
-                    f"Invalid value for {prov_kind} provenance: {type(value).__qualname__} "
-                    f"does not derive from {base_type_name}; value={value}"
+                    f"Invalid value for {prov_kind} provenance: "
+                    f"{type(value).__qualname__} does not derive "
+                    f"from {base_type_name}; value={value}"
                 )
         elif self._is_container_like(value):
             return self._convert_to_json_serializable(value)
@@ -127,7 +133,7 @@ class ReflectProvenanceData(ProvenanceT):
 
     @staticmethod
     def _key_supports_less_than(key: Any) -> bool:
-        """Check if key supports less-than comparison (used by json.dumps sort_keys=True)."""
+        """Check if key supports less-than comparison (for json.dumps sort_keys=True)."""
         try:
             _ = key < key
             return True
@@ -148,11 +154,11 @@ class ReflectProvenanceData(ProvenanceT):
         key_func: Callable[[Any], Any] | None,
         data: Any,
     ) -> Any:
-        """Recursively applies 'value_func' to every leaf element in a Mapping or Sequence.
+        """Recursively apply 'value_func' to every leaf element in a Mapping or Sequence.
 
         Args:
             value_func: Function to apply to values (and leaf nodes)
-            key_func: Optional function to apply to keys in mappings. If None, keys are left as-is.
+            key_func: Optional function to apply to keys in mappings.
             data: The data structure to process
 
         Returns:
@@ -195,12 +201,15 @@ class ReflectProvenanceData(ProvenanceT):
 
 
 class WithReflectProvenance(WithProvenance):
-    """Protocol for types that automatically include annotated data members in provenance.
+    """Protocol for types that automatically reflect code info based on annotations.
+
+    For now we only support annotations on data members.
 
     This mixin scans class/instance annotations for marked fields and includes them in
     provenance computation. The following annotations can be used:
     - Annotated[T, Field]: value of type T; use a default strategy to reflect it
-    - Annotated[T, Field(transform=...)]: value of type T; use a custom transform to reflect it
+    - Annotated[T, Field(transform=...)]: value of type T; use a custom transform to
+      reflect it
     """
 
     @dataclass(frozen=True)
@@ -320,7 +329,7 @@ class WithReflectProvenance(WithProvenance):
             value: The value to transform
             reflect: Field instance
             field_name: Name of the field (for error messages)
-            is_cls_provenance: Whether this is for class provenance (True) or instance (False)
+            is_cls_provenance: True iff class provenance, else instance provenance
 
         Returns:
             Reflected field value
