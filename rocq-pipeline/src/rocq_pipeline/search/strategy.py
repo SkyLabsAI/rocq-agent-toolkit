@@ -187,6 +187,21 @@ class StagedStrategy[T_co](Strategy[T_co]):
         return combine(self._strat1.rollout(state, max_rollout, context))
 
 
+def staged[T](strats: list[tuple[float | None, Strategy[T]]]) -> Strategy[T]:
+    """
+    Build an iterated StagedStrategy.
+    If the element `(pr,strat)` exists in the list, then `strat` will start
+    being considered once prior strategies yield a probability less than `pr`.
+    """
+    if not strats:
+        return FailStrategy()
+    last_prob, current = strats[-1]
+    for prob, s in reversed(strats[:-1]):
+        current = StagedStrategy(s, current, last_prob)
+        last_prob = prob
+    return current
+
+
 class FailStrategy[T_co](Strategy[T_co]):
     """A simple strategy that fails."""
 

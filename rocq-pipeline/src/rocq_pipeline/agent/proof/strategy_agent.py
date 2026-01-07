@@ -88,8 +88,10 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
                         return self.give_up(rc, message=f"out of fuel ({self._fuel})")
                 action_rc = rc.clone()
                 try:
-                    action.interact(action_rc)
-                    rc = action_rc
+                    next_rc = action.interact(action_rc)
+                    if rc is not next_rc:
+                        rc.dispose()
+                    rc = next_rc
                     depth += 1
                     break
                 except Action.Failed:
@@ -97,45 +99,45 @@ class StrategyAgent(ProofAgent, VERSION="0.1.0"):
             else:
                 # not executed if we see a break
                 return self.give_up(
-                    rc, f"No more proposals (max_breath={self._max_breath}"
+                    rc, f"No more proposals (max_breath={self._max_breath})"
                 )
 
     @override
     def finished(
         self,
-        rc: RocqCursor,
+        rdm: RocqCursor,
         message: str = "",
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rc, side_effects)
+        self._extend_side_effects(rdm, side_effects)
         result = super().finished(
-            rc,
+            rdm,
             message=message,
             side_effects=side_effects,
         )
-        self.conclude(rc)
+        self.conclude(rdm)
         return result
 
     @override
     def give_up(
         self,
-        rc: RocqCursor,
+        rdm: RocqCursor,
         message: str = "",
         reason: FailureReason | RocqCursor.Err[Any] | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rc, side_effects)
+        self._extend_side_effects(rdm, side_effects)
         result = super().give_up(
-            rc,
+            rdm,
             message=message,
             reason=reason,
             side_effects=side_effects,
         )
-        self.conclude(rc)
+        self.conclude(rdm)
         return result
 
     # NOTE:

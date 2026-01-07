@@ -1,6 +1,8 @@
+import itertools
 from typing import override
 
 # Import the function we want to test
+import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import (
     CompositeStrategy,
@@ -103,3 +105,72 @@ def test_multi_same() -> None:
     assert (0.75, [3]) in result
 
     is_empty(actions)
+
+
+VALUES = [
+    ([[], [], []], []),
+    (
+        [[(0.9, 1), (0.8, 2), (0.7, 3)], [(0.95, 4), (0.85, 5), (0.2, 6)], []],
+        [(0.95, 4), (0.9, 1), (0.85, 5), (0.8, 2), (0.7, 3), (0.2, 6)],
+    ),
+    (
+        [[], [(0.9, 1), (0.8, 2), (0.7, 3)], [], [(0.95, 4), (0.85, 5), (0.2, 6)], []],
+        [(0.95, 4), (0.9, 1), (0.85, 5), (0.8, 2), (0.7, 3), (0.2, 6)],
+    ),
+    (
+        [[], [], [(0.95, 4), (0.85, 5), (0.2, 6)], [(0.9, 1), (0.8, 2), (0.7, 3)], []],
+        [(0.95, 4), (0.9, 1), (0.85, 5), (0.8, 2), (0.7, 3), (0.2, 6)],
+    ),
+    (
+        [[], [], [(0.95, 4), (0.85, 5), (0.2, 6)], [(0.9, 1), (0.7, 3)], []],
+        [(0.95, 4), (0.9, 1), (0.85, 5), (0.7, 3), (0.2, 6)],
+    ),
+    (
+        [[], [], [(0.95, 4), (0.2, 6)], [(0.9, 1), (0.8, 2), (0.7, 3)], []],
+        [(0.95, 4), (0.9, 1), (0.8, 2), (0.7, 3), (0.2, 6)],
+    ),
+    (
+        [[], [], [(0.95, 4)], [(0.9, 1), (0.8, 2), (0.7, 3)], []],
+        [(0.95, 4), (0.9, 1), (0.8, 2), (0.7, 3)],
+    ),
+    (
+        [
+            [],
+            [],
+            [(0.95, 1), (0.95, 1), (0.8, 6)],
+            [(0.95, 1), (0.95, 1), (0.7, 3)],
+            [],
+        ],
+        [(0.95, 1), (0.95, 1), (0.95, 1), (0.95, 1), (0.8, 6), (0.7, 3)],
+    ),
+    (
+        [
+            [],
+            [],
+            [(0.95, 1), (0.95, 2), (0.8, 6)],
+            [(0.95, 1), (0.95, 2), (0.7, 3)],
+            [],
+        ],
+        # this is not strictly necessary, we could do 1,1,2,2
+        [(0.95, 1), (0.95, 2), (0.95, 1), (0.95, 2), (0.8, 6), (0.7, 3)],
+    ),
+]
+
+
+@pytest.mark.parametrize("lls, expected", VALUES, ids=[str(x) for _, x in VALUES])
+def test_many(lls: list[list[tuple[float, int]]], expected: list[tuple[float, int]]):
+    strat = CompositeStrategy(
+        [IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]) for x in lls]
+    )
+
+    # make sure we get the same results more than once
+    for _ in range(2):
+        result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
+        assert result == expected
+
+    for pre_len in range(len(result)):
+        x = [
+            (prob, n.interact([])[0])
+            for prob, n in itertools.islice(strat.rollout([]), pre_len)
+        ]
+        assert x == expected[:pre_len]
