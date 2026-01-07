@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import override
+from typing import Annotated, override
 
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from ..action import Action
@@ -12,9 +13,12 @@ from .actions import RocqTacticAction
 class SafeTacticStrategy(Strategy):
     """A simple strategy that always returns a tactic."""
 
+    _tactic: Annotated[str, Provenance.Reflect.Field]
+    _prob: Annotated[float, Provenance.Reflect.Field]
+
     def __init__(self, tactic: str, prob: float = 1.0) -> None:
-        self._tactic: str = tactic
-        self._prob: float = prob
+        self._tactic = tactic
+        self._prob = prob
 
     @override
     def rollout(
@@ -58,6 +62,8 @@ class CutAssertStrategy(Strategy):
 
 class FirstTacticStrategy(Strategy):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
+
+    _tactics: Annotated[list[tuple[float, Action]], Provenance.Reflect.Field]
 
     def __init__(self, tactics: list[tuple[float, str | Action]]) -> None:
         def mk(x: str | Action) -> Action:

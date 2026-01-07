@@ -5,7 +5,7 @@ from rocq_pipeline.agent.base import TacticApplication
 from .trace import TraceAgent
 
 
-class MarkovAgent(TraceAgent, VERSION="1.0.0"):
+class MarkovAgent(TraceAgent):
     def __init__(self) -> None:
         super().__init__(stop_on_failure=True)
 

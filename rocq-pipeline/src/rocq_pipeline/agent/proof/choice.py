@@ -1,5 +1,6 @@
-from typing import override
+from typing import Annotated, override
 
+from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import TaskResult
@@ -7,7 +8,9 @@ from rocq_pipeline.agent.base import TaskResult
 from .markov import MarkovAgent
 
 
-class ChoiceAgent(MarkovAgent, VERSION="1.0.0"):
+class ChoiceAgent(MarkovAgent):
+    _all_choices: Annotated[list[str], Provenance.Reflect.Field]
+
     def __init__(self, choices: list[str]):
         super().__init__()
         self._all_choices = choices
