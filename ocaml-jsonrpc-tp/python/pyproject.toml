@@ -46,3 +46,5 @@ lint_ci = "ruff check"
 format_ci = "ruff format --check"
 typecheck_ci = "mypy ."
 test_ci = "pytest tests/"
+# TODO: consider integrating with precommit hooks
+precommit = "task lint_ci --fix && task format_ci && task typecheck_ci && task test_ci"
