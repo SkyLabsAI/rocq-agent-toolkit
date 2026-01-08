@@ -348,7 +348,12 @@ let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
   | (Args.Cns(_), Some(`List(ls)) ) -> parse_list args ls
   | (Args.Cns(_), Some(`Assoc(fs))) -> parse_assoc args fs
 
+let notify_ready ~oc =
+  let notification = J.Notification.create ~method_:"ready" () in
+  Base.send ~oc (J.Packet.Notification(notification))
+
 let run api ~ic ~oc s =
+  notify_ready ~oc;
   let rec loop s =
     match Base.recv ~ic () with
     | Error(msg)  -> Error(msg)
