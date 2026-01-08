@@ -11,10 +11,10 @@ import { TaskHeader } from './compare-table-header/task-header';
 interface ComparisonTableProps {
   runs: RunDetailsResponse[];
   taskMap: Record<string, RunTaskCell[]>;
-  allTaskIds: string[];
-  selectedTaskId: string | null;
-  onSelectTask: (taskId: string) => void;
-  onOpenModal: (taskId: string) => void;
+  allTaskIds: number[];
+  selectedTaskId: number | null;
+  onSelectTask: (taskId: number) => void;
+  onOpenModal: (taskId: number) => void;
   showTasks: boolean;
   taskRowData: TaskRowData[];
   onToggleShowTasks: () => void;
@@ -51,9 +51,9 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
 };
 
 interface TaskSectionProps {
-  id: string;
+  id: number;
   details: RunTaskCell[];
-  onOpenModal: (taskId: string) => void;
+  onOpenModal: (taskId: number) => void;
   taskRowData: TaskRowData;
 }
 

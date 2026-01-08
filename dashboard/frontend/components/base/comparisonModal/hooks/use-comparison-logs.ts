@@ -8,9 +8,7 @@ export interface ComparisonItem {
   task: TaskOutput | null;
 }
 
-export interface TaskLogs {
-  [itemIndex: number]: Record<string, unknown> | null;
-}
+export type TaskLogs = Record<number, Record<string, unknown> | null>;
 
 export function useComparisonLogs(isOpen: boolean, items: ComparisonItem[]) {
   const [taskLogs, setTaskLogs] = useState<TaskLogs>({});

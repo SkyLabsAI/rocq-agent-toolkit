@@ -8,8 +8,8 @@ import Modal from '@/components/base/ui/modal';
 import VisualizerModal from '@/components/visualizer-modal';
 import ObservabilityLogsModal from '@/features/task-details-modal';
 import {
+  getAgentInstanceTaskRuns,
   getObservabilityLogs,
-  getRunsByInstance,
   getTaskDetails,
 } from '@/services/dataservice';
 import { type AgentRun, type TaskOutput } from '@/types/types';
@@ -17,7 +17,7 @@ import { type AgentRun, type TaskOutput } from '@/types/types';
 interface ProjectTaskDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  taskId: string;
+  taskId: number;
   agentInstanceId: string;
   agentChecksum: string;
   agentName: string;
@@ -42,14 +42,17 @@ const ProjectTaskDetailsModal: React.FC<ProjectTaskDetailsModalProps> = ({
   const [logs, setLogs] = useState<Record<string, unknown> | null>(null);
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
 
-  // Fetch runs for the agent instance
+  // Fetch runs for the agent instance and task
   useEffect(() => {
-    if (isOpen && agentChecksum) {
+    if (isOpen && agentChecksum && taskId) {
       const fetchRuns = async () => {
         try {
           setLoadingRuns(true);
           setError(null);
-          const fetchedRuns = await getRunsByInstance(agentChecksum);
+          const fetchedRuns = await getAgentInstanceTaskRuns(
+            agentChecksum,
+            taskId
+          );
           setRuns(fetchedRuns);
           // Select the first run by default
           if (fetchedRuns.length > 0) {
@@ -64,7 +67,7 @@ const ProjectTaskDetailsModal: React.FC<ProjectTaskDetailsModalProps> = ({
 
       fetchRuns();
     }
-  }, [isOpen, agentChecksum]);
+  }, [isOpen, agentChecksum, taskId]);
 
   // Fetch task result when run is selected
   useEffect(() => {

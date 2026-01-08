@@ -8,7 +8,7 @@ import Layout from '@/layouts/common';
 const TaskDetailsPage = ({
   params,
 }: {
-  params: Promise<{ runId: string; taskid: string }>;
+  params: Promise<{ runId: string; taskid: number }>;
 }) => {
   const { runId, taskid } = use(params);
   return (

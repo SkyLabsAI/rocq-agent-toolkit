@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { use, useEffect } from 'react';
 
 const ProjectPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
@@ -9,8 +9,8 @@ const ProjectPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
   useEffect(() => {
     if (id) {
-      // Redirect old /project/[id] routes to /taskset/[id]
-      router.replace(`/taskset/${id}`);
+      // Redirect old /project/[id] routes to /taskset?id=...
+      router.replace(`/taskset?id=${encodeURIComponent(id)}`);
     }
   }, [id, router]);
 

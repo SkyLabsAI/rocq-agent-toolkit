@@ -7,12 +7,12 @@ import { StatusBadge } from '@/components/base/statusBadge';
 import { Button } from '@/components/base/ui/button';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { getRunDetails } from '@/services/dataservice';
+import { getRunDetails, getTaskDetails } from '@/services/dataservice';
 import type { TaskOutput } from '@/types/types';
 
 interface TaskDetailsPageContentProps {
   runId: string;
-  taskId: string;
+  taskId: number;
 }
 
 const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
@@ -32,16 +32,11 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
       setError(null);
 
       try {
-        const details = await getRunDetails([runId]);
-        if (details.length > 0) {
-          const foundTask = details[0].tasks.find(t => t.task_id === taskId);
-          if (foundTask) {
-            setTask(foundTask);
-          } else {
-            setError('Task not found');
-          }
+        const details = await getTaskDetails(runId, taskId);
+        if (details !== null) {
+          setTask(details);
         } else {
-          setError('Run not found');
+          setError('Task not found');
         }
       } catch (err) {
         setError(
@@ -121,7 +116,7 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
                   Task Details
                 </p>
                 <p className='font-noto-sans font-semibold text-sm text-text'>
-                  {task.task_id}
+                  {task.task_name}
                 </p>
               </div>
             </div>
@@ -343,7 +338,7 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
         isOpen={isLogsModalOpen}
         onClose={closeLogsModal}
         details={task.results as Record<string, unknown> | null}
-        title={`Task Logs - ${task.task_id}`}
+        title={`Task Logs - ${task.task_name}`}
         taskId={task.task_id}
       />
     </div>

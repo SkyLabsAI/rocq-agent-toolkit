@@ -136,7 +136,9 @@ export interface TaskOutput {
   /** Kind of task. */
   task_kind: TaskKind;
   /** Unique task identifier (file+task locator). */
-  task_id: string;
+  task_id: number;
+
+  task_name: string;
   /** Unique trace identifier for corresponding opentelemetry output. */
   trace_id?: string;
   /** Timestamp when task began (ISO 8601). */
@@ -278,7 +280,7 @@ export interface Benchmark {
  * Represents a project that contains datasets
  */
 export interface TaskSet {
-  taskset_id: string;
+  id: string;
   name: string;
   description?: string;
   created_at: string;
@@ -298,8 +300,9 @@ export interface TaskSetAgentInstance {
  * Represents a task in a taskset
  */
 export interface TaskSetTask {
-  task_id: string;
+  task_id: number;
   task_kind?: TaskKind;
+  task_name: string;
   dataset_id?: string;
   tags?: Record<string, string>;
 }
@@ -308,7 +311,7 @@ export interface TaskSetTask {
  * Represents a task result for a specific agent instance
  */
 export interface TaskSetTaskResult {
-  task_id: string;
+  task_id: number;
   agent_instance_id: string;
   success_count: number;
   total_count: number;
@@ -318,7 +321,7 @@ export interface TaskSetTaskResult {
  * Represents the results matrix for a taskset
  */
 export interface TaskSetResults {
-  taskset_id: string;
+  id: string;
   tasks: TaskSetTask[];
   agent_instances: TaskSetAgentInstance[];
   results: TaskSetTaskResult[];

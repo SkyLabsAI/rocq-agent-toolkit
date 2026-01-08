@@ -1,14 +1,14 @@
 import { useRouter } from 'next/navigation';
 import React from 'react';
 
-import { useTaskSets, useProjects } from '@/hooks/use-projects';
+import { useTaskSets } from '@/hooks/use-projects';
 
 const TaskSetView: React.FC = () => {
   const { tasksets, loading, error } = useTaskSets();
   const router = useRouter();
 
   const handleTaskSetClick = (tasksetId: string) => {
-    router.push(`/taskset/${tasksetId}`);
+    router.push(`/taskset?id=${encodeURIComponent(tasksetId)}`);
   };
 
   if (loading) {
@@ -21,7 +21,10 @@ const TaskSetView: React.FC = () => {
 
   if (error) {
     return (
-      <div className='p-8 text-center text-text-disabled' data-testid='tasksets-error'>
+      <div
+        className='p-8 text-center text-text-disabled'
+        data-testid='tasksets-error'
+      >
         {error}
       </div>
     );
@@ -40,10 +43,10 @@ const TaskSetView: React.FC = () => {
           </tr>
           {tasksets.map(taskset => (
             <tr
-              key={taskset.taskset_id}
+              key={taskset.id}
               className='hover:bg-white/5 cursor-pointer transition-colors duration-200'
-              onClick={() => handleTaskSetClick(taskset.taskset_id)}
-              data-testid={`taskset-row-${taskset.taskset_id}`}
+              onClick={() => handleTaskSetClick(taskset.id)}
+              data-testid={`taskset-row-${taskset.id}`}
             >
               <td className='px-6 py-4 text-text font-medium'>
                 <div className='flex items-center gap-3'>
@@ -69,4 +72,3 @@ const TaskSetView: React.FC = () => {
 const ProjectView = TaskSetView;
 export default TaskSetView;
 export { ProjectView };
-

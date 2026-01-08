@@ -1,20 +1,14 @@
 'use client';
 
+import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
-import axios from 'axios';
-
 import { config } from '@/config/environment';
 import Layout from '@/layouts/common';
-import {
-  getTaskSetResults,
-  getTaskSets,
-  getProjectResults,
-  getProjects,
-} from '@/services/dataservice';
+import { getTaskSetResults, getTaskSets } from '@/services/dataservice';
 import { type TaskSet, type TaskSetResults } from '@/types/types';
 
 import ProjectTaskDetailsModal from './task-details-modal';
@@ -40,21 +34,22 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
   const [isAgentInstanceDropdownOpen, setIsAgentInstanceDropdownOpen] =
     useState(false);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [isCreateDatasetModalOpen, setIsCreateDatasetModalOpen] = useState(false);
+  const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
+  const [isCreateDatasetModalOpen, setIsCreateDatasetModalOpen] =
+    useState(false);
   const [datasetName, setDatasetName] = useState('');
   const [datasetDescription, setDatasetDescription] = useState('');
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
-    taskId: string;
+    taskId: number;
     agentInstanceId: string;
     agentChecksum: string;
     agentName: string;
   }>({
     isOpen: false,
-    taskId: '',
+    taskId: -1,
     agentInstanceId: '',
     agentChecksum: '',
     agentName: '',
@@ -68,9 +63,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
 
         // Fetch all tasksets to find the one we need
         const allTaskSets = await getTaskSets();
-        const foundTaskSet = allTaskSets.find(
-          t => t.taskset_id === tasksetId
-        );
+        const foundTaskSet = allTaskSets.find(t => t.id === tasksetId);
 
         if (!foundTaskSet) {
           setError('TaskSet not found');
@@ -117,7 +110,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
 
   // Get result counts for a task and agent instance
   const getResultCounts = (
-    taskId: string,
+    taskId: number,
     agentInstanceId: string
   ): { success_count: number; total_count: number } | null => {
     const key = `${taskId}_${agentInstanceId}`;
@@ -251,7 +244,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     }
   };
 
-  const handleTaskToggle = (taskId: string) => {
+  const handleTaskToggle = (taskId: number) => {
     setSelectedTasks(prev => {
       const newSet = new Set(prev);
       if (newSet.has(taskId)) {
@@ -280,8 +273,8 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       await axios.post(`${config.DATA_API}/datasets`, {
         name: datasetName.trim(),
         description: datasetDescription.trim() || undefined,
-            task_ids: Array.from(selectedTasks),
-            taskset_id: tasksetId,
+        task_ids: Array.from(selectedTasks),
+        id: tasksetId,
       });
 
       // Success - show toast and reset
@@ -415,7 +408,9 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 <button
                   type='button'
                   onClick={() => {
-                    setIsAgentInstanceDropdownOpen(!isAgentInstanceDropdownOpen);
+                    setIsAgentInstanceDropdownOpen(
+                      !isAgentInstanceDropdownOpen
+                    );
                     setIsTagDropdownOpen(false);
                   }}
                   className='w-full px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text text-left flex items-center justify-between hover:bg-elevation-surface-raised transition-colors'
@@ -485,7 +480,10 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                                 }
                                 className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
                               />
-                              <span className='text-sm text-text truncate flex-1' title={instance.agent_name}>
+                              <span
+                                className='text-sm text-text truncate flex-1'
+                                title={instance.agent_name}
+                              >
                                 {instance.agent_name}
                               </span>
                             </label>
@@ -512,7 +510,10 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                         }
                         className='px-2 py-1 text-xs bg-elevation-surface-raised border border-elevation-surface-overlay rounded text-text hover:bg-elevation-surface-sunken transition-colors flex items-center gap-1'
                       >
-                        <span className='truncate max-w-[150px]' title={instance.agent_name}>
+                        <span
+                          className='truncate max-w-[150px]'
+                          title={instance.agent_name}
+                        >
                           {instance.agent_name}
                         </span>
                         <span className='text-text-disabled'>×</span>
@@ -714,19 +715,19 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                           className='mt-1 w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
                         />
                         <div className='flex flex-col gap-1 flex-1'>
-                          <span>{task.task_id}</span>
-                        {task.tags && Object.keys(task.tags).length > 0 && (
-                          <div className='flex flex-wrap gap-1 mt-1'>
-                            {Object.entries(task.tags).map(([key, value]) => (
-                              <span
-                                key={`${key}:${value}`}
-                                className='text-xs px-1.5 py-0.5 rounded bg-elevation-surface-raised border border-elevation-surface-overlay text-text-disabled'
-                              >
-                                {key}:{value}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                          <span>{task.task_name}</span>
+                          {task.tags && Object.keys(task.tags).length > 0 && (
+                            <div className='flex flex-wrap gap-1 mt-1'>
+                              {Object.entries(task.tags).map(([key, value]) => (
+                                <span
+                                  key={`${key}:${value}`}
+                                  className='text-xs px-1.5 py-0.5 rounded bg-elevation-surface-raised border border-elevation-surface-overlay text-text-disabled'
+                                >
+                                  {key}:{value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -790,7 +791,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         onClose={() =>
           setModalState({
             isOpen: false,
-            taskId: '',
+            taskId: -1,
             agentInstanceId: '',
             agentChecksum: '',
             agentName: '',
@@ -817,10 +818,14 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       >
         <div className='flex flex-col gap-4'>
           <div>
-            <label className='block text-sm font-semibold text-text mb-2'>
+            <label
+              htmlFor='dataset-name-input'
+              className='block text-sm font-semibold text-text mb-2'
+            >
               Dataset Name <span className='text-text-danger'>*</span>
             </label>
             <input
+              id='dataset-name-input'
               type='text'
               value={datasetName}
               onChange={e => setDatasetName(e.target.value)}
@@ -831,10 +836,14 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
           </div>
 
           <div>
-            <label className='block text-sm font-semibold text-text mb-2'>
+            <label
+              htmlFor='dataset-description-textarea'
+              className='block text-sm font-semibold text-text mb-2'
+            >
               Description
             </label>
             <textarea
+              id='dataset-description-textarea'
               value={datasetDescription}
               onChange={e => setDatasetDescription(e.target.value)}
               placeholder='Enter dataset description (optional)'
@@ -864,7 +873,9 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
               variant='default'
               onClick={handleCreateDataset}
               disabled={
-                isCreatingDataset || !datasetName.trim() || selectedTasks.size === 0
+                isCreatingDataset ||
+                !datasetName.trim() ||
+                selectedTasks.size === 0
               }
             >
               {isCreatingDataset ? 'Creating...' : 'Create Dataset'}

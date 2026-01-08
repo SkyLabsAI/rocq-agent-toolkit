@@ -3,6 +3,7 @@ import axios from 'axios';
 import { config } from '@/config/environment';
 import {
   getAgentClassDataMock,
+  getAgentInstanceTaskRunsMock,
   getAgentInstancesMock,
   getBenchmarkAgentsMock,
   getBenchmarksMock,
@@ -80,6 +81,58 @@ export const getRunsByInstance = USE_MOCK_DATA
   ? getRunsByInstanceMock
   : getRunsByInstanceReal;
 
+const getAgentInstanceTaskRunsReal = async (
+  agentChecksum: string,
+  taskId: number
+): Promise<AgentRun[]> => {
+  const response = await axios.get<{
+    agent_checksum: string;
+    task_id: number;
+    task_name: string;
+    run_ids: string[];
+    total_runs: number;
+  }>(
+    `${config.DATA_API}/agents/instance/${agentChecksum}/tasks/${taskId}/runs`
+  );
+
+  if (response.data.run_ids.length === 0) {
+    return [];
+  }
+
+  // Fetch full run details using batch endpoint
+  const runIdsParam = response.data.run_ids.join(',');
+  const detailsResponse = await axios.get<RunDetailsResponse[]>(
+    `${config.DATA_API}/runs/details?run_ids=${runIdsParam}`
+  );
+
+  // Convert RunDetailsResponse to AgentRun format
+  return detailsResponse.data.map(run => {
+    const successCount = run.tasks.filter(t => t.status === 'Success').length;
+    const failureCount = run.tasks.filter(t => t.status !== 'Success').length;
+    // Get timestamp from first task if available
+    const timestampUtc =
+      run.tasks.length > 0 ? run.tasks[0].timestamp_utc : new Date().toISOString();
+
+    return {
+      run_id: run.run_id,
+      agent_name: run.agent_name,
+      timestamp_utc: timestampUtc,
+      total_tasks: run.tasks.length,
+      success_count: successCount,
+      failure_count: failureCount,
+      dataset_id: '',
+      metadata: {
+        tags: run.metadata?.tags || {},
+      },
+    };
+  });
+};
+
+
+export const getAgentInstanceTaskRuns = USE_MOCK_DATA
+  ? getAgentInstanceTaskRunsMock
+  : getAgentInstanceTaskRunsReal;
+
 // ========================================
 // AGENT DETAILS (RUNS BY CLASS NAME)
 // ========================================
@@ -135,7 +188,7 @@ export const getRunDetails = USE_MOCK_DATA
 
 const getTaskDetailsReal = async (
   runId: string,
-  taskId: string
+  taskId: number
 ): Promise<TaskOutput> => {
   const encodedTaskId = encodeURIComponent(taskId);
   const response = await axios.get(
@@ -154,9 +207,9 @@ export const getTaskDetails = USE_MOCK_DATA
 
 const getObservabilityLogsReal = async (
   runId: string,
-  taskId: string
+  taskId: number
 ): Promise<Record<string, unknown>> => {
-  const encodedTaskId = encodeURIComponent(taskId);
+  const encodedTaskId = encodeURIComponent(String(taskId));
   const response = await axios.get(
     `${config.DATA_API}/observability/logs?run_id=${runId}&task_id=${encodedTaskId}`
   );
@@ -295,7 +348,16 @@ export const getDatasetInstanceRuns = USE_MOCK_DATA
 
 const getTaskSetsReal = async (): Promise<TaskSet[]> => {
   const response = await axios.get(`${config.DATA_API}/tasksets`);
-  return response.data as TaskSet[];
+
+  const tempB: Benchmark[] = response.data;
+  const tempTaskSets: TaskSet[] = tempB.map(b => ({
+    id: b.dataset_id,
+    name: b.dataset_id ?? '',
+    description: b.description ?? '',
+    created_at: b.created_at ?? '',
+  }));
+
+  return tempTaskSets;
 };
 
 export const getTaskSets = USE_MOCK_DATA ? getProjectsMock : getTaskSetsReal;

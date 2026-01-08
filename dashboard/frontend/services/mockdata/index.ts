@@ -15,6 +15,7 @@ export {
 
 // Run-related mocks
 export {
+  getAgentInstanceTaskRunsMock,
   getDatasetInstanceRunsMock,
   getDetailsForDatasetMock,
   getObservabilityLogsMock,
@@ -29,9 +30,9 @@ export { getBenchmarkAgentsMock, getBenchmarksMock } from './benchmarks';
 
 // Project-related mocks
 export {
-  getProjectsMock,
   getProjectDatasetsMock,
   getProjectResultsMock,
+  getProjectsMock,
 } from './projects';
 
 // Visualizer-related mocks (NEW!)

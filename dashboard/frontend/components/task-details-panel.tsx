@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -6,7 +7,6 @@ import { ChevronUpIcon } from '@/icons/chevron-up';
 import type { TaskOutput } from '@/types/types';
 
 import { StatusBadge } from './base/statusBadge';
-import Link from 'next/link';
 
 interface TaskDetailsPanelProps {
   task: TaskOutput | null;

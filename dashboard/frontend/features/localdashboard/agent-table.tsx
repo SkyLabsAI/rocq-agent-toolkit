@@ -12,7 +12,9 @@ import DataView from './dataview';
 import TaskSetView from './projectview';
 
 const AgentTable: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'agents' | 'datasets' | 'tasksets'>('agents');
+  const [activeTab, setActiveTab] = useState<
+    'agents' | 'datasets' | 'tasksets'
+  >('agents');
 
   return (
     <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
@@ -46,7 +48,9 @@ const AgentTable: React.FC = () => {
               },
             ]}
             defaultTab='agents'
-            onTabChange={tabId => setActiveTab(tabId as 'agents' | 'datasets' | 'tasksets')}
+            onTabChange={tabId =>
+              setActiveTab(tabId as 'agents' | 'datasets' | 'tasksets')
+            }
           />
           <Button
             onClick={() => window.location.reload()}

@@ -53,7 +53,7 @@ export const ComparePageContent: React.FC<ComparePageContentProps> = ({
   );
 
   const taskMap = useMemo(() => {
-    const map: Record<string, RunTaskCell[]> = {};
+    const map: Record<number, RunTaskCell[]> = {};
     selectedRuns.forEach((run, runIdx) => {
       run.tasks.forEach(task => {
         if (!map[task.task_id]) {
@@ -69,13 +69,13 @@ export const ComparePageContent: React.FC<ComparePageContentProps> = ({
   }, [selectedRuns]);
 
   const [showTasks, setShowTasks] = useState(true);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [comparisonModalTaskId, setComparisonModalTaskId] = useState<
-    string | null
+    number | null
   >(null);
   const allTaskIds = useMemo(() => Object.keys(taskMap).sort(), [taskMap]);
 
-  const selectTask = (taskId: string) => {
+  const selectTask = (taskId: number) => {
     setSelectedTaskId(prev => (prev === taskId ? null : taskId));
   };
 
@@ -94,7 +94,7 @@ export const ComparePageContent: React.FC<ComparePageContentProps> = ({
           <ComparisonTable
             runs={selectedRuns}
             taskMap={taskMap}
-            allTaskIds={allTaskIds}
+            allTaskIds={allTaskIds.map(id => parseInt(id))}
             selectedTaskId={selectedTaskId}
             showTasks={showTasks}
             onSelectTask={selectTask}
@@ -110,10 +110,12 @@ export const ComparePageContent: React.FC<ComparePageContentProps> = ({
         <ComparisonModal
           isOpen={!!comparisonModalTaskId}
           onClose={() => setComparisonModalTaskId(null)}
-          taskId={comparisonModalTaskId}
+          taskId={comparisonModalTaskId.toString()}
           items={selectedRuns.map(run => {
             const cell =
-              taskMap[comparisonModalTaskId]?.[selectedRuns.indexOf(run)];
+              taskMap[parseInt(comparisonModalTaskId.toString())]?.[
+                selectedRuns.indexOf(run)
+              ];
             return {
               label: run.agent_name,
               task: cell?.task || null,

@@ -97,7 +97,7 @@ const TasksTable: React.FC<TasksTableProps> = ({
   // Filter tasks based on current filters
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const matchesTaskId = task.task_id
+      const matchesTaskId = task.task_name
         .toLowerCase()
         .includes(taskIdFilter.toLowerCase());
       const matchesStatus =
@@ -263,7 +263,7 @@ const TasksTable: React.FC<TasksTableProps> = ({
             <thead className='bg-elevation-surface-sunken border-b border-elevation-surface-overlay'>
               <tr>
                 <th className='px-6 py-3 text-left font-noto-sans font-semibold text-sm text-text-disabled'>
-                  Task ID
+                  Task Name
                 </th>
                 <th className='px-6 py-3 text-left font-noto-sans font-semibold text-sm text-text-disabled'>
                   Status
@@ -283,16 +283,18 @@ const TasksTable: React.FC<TasksTableProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredTasks.map((task, index) => {
+                filteredTasks.map((task, _index) => {
                   const taskTags = task.metadata?.tags || {};
+
+                  console.log(task.task_id, task.task_name);
                   return (
                     <tr
-                      key={task.task_id + index}
+                      key={task.task_id}
                       onClick={() => onTaskClick(task)}
                       className='hover:bg-elevation-surface-overlay cursor-pointer transition-colors'
                     >
                       <td className='px-6 py-4 font-noto-sans text-sm text-text truncate max-w-xs'>
-                        {task.task_id}
+                        {task.task_name}
                       </td>
                       <td className='px-6 py-4'>
                         <StatusBadge status={task.status} />
@@ -302,7 +304,7 @@ const TasksTable: React.FC<TasksTableProps> = ({
                           <TagsDisplay
                             tags={taskTags}
                             maxVisible={2}
-                            modalTitle={`Tags for ${task.task_id}`}
+                            modalTitle={`Tags for ${task.task_name}`}
                           />
                         ) : (
                           <span className='text-xs text-text-disabled'>

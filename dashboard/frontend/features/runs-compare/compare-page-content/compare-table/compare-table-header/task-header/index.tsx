@@ -13,9 +13,9 @@ export const TaskHeader = ({
   isExpanded,
   onClick,
 }: {
-  id: string;
+  id: number;
   details: RunTaskCell[];
-  onOpenModal: (taskId: string) => void;
+  onOpenModal: (taskId: number) => void;
   onClick: () => void;
   isExpanded: boolean;
 }) => (

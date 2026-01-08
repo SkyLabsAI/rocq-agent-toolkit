@@ -18,7 +18,7 @@ All APIs use the base URL from `config.DATA_API` environment variable.
 **Response Schema:**
 ```typescript
 interface TaskSet {
-  taskset_id: string;        // Unique identifier for the taskset
+  id: string;        // Unique identifier for the taskset
   name: string;             // Display name of the taskset
   description?: string;     // Optional description
   created_at: string;       // ISO 8601 timestamp
@@ -29,7 +29,7 @@ interface TaskSet {
 ```json
 [
   {
-    "taskset_id": "taskset_001",
+    "id": "taskset_001",
     "name": "Mathematical Proofs",
     "description": "A comprehensive collection of mathematical theorem proving tasks",
     "created_at": "2025-11-07T00:00:00.000Z"
@@ -86,7 +86,7 @@ interface Benchmark {
 **Response Schema:**
 ```typescript
 interface TaskSetResults {
-  taskset_id: string;                    // The taskset identifier
+  id: string;                    // The taskset identifier
   tasks: TaskSetTask[];                 // Array of all tasks in the taskset
   agent_instances: TaskSetAgentInstance[]; // Array of all agent instances
   results: TaskSetTaskResult[];          // Matrix of results (task × agent_instance)
@@ -118,7 +118,7 @@ interface TaskSetTaskResult {
 **Example Response:**
 ```json
 {
-  "taskset_id": "taskset_001",
+  "id": "taskset_001",
   "tasks": [
     {
       "task_id": "task_taskset_001_001",
@@ -213,7 +213,7 @@ interface TaskSetTaskResult {
   name: string;                    // Required: Dataset name
   description?: string;            // Optional: Dataset description
   task_ids: string[];              // Required: Array of task IDs to include
-  taskset_id: string;             // Required: TaskSet ID these tasks belong to
+  id: string;             // Required: TaskSet ID these tasks belong to
 }
 ```
 
@@ -227,7 +227,7 @@ interface TaskSetTaskResult {
     "task_taskset_001_002",
     "task_taskset_001_005"
   ],
-  "taskset_id": "taskset_001"
+  "id": "taskset_001"
 }
 ```
 

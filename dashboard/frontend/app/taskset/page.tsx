@@ -1,11 +1,13 @@
 'use client';
 
-import { use } from 'react';
+import { useSearchParams } from 'next/navigation';
+import React from 'react';
 
 import TaskSetDetailsPage from '@/features/project-details';
 
-const TaskSetPage = ({ params }: { params: Promise<{ id: string }> }) => {
-  const { id } = use(params);
+const TaskSetPage = () => {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
 
   if (!id) {
     return <div>No taskset ID provided</div>;

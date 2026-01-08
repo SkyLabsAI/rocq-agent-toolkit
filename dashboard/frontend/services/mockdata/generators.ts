@@ -9,12 +9,13 @@ export const generateMockTaskOutput = (
   taskIndex: number
 ): TaskOutput => {
   const isSuccess = taskIndex % 3 !== 2; // Fixed: 70% success rate (0,1,3,4,6,7... succeed, 2,5,8... fail)
-  const taskId = `task_${taskIndex.toString().padStart(3, '0')}`;
-
+  const taskId = taskIndex;
+  const taskName = `task_${taskIndex.toString().padStart(3, '0')}`;
   return {
     run_id: runId,
     task_kind: 'FullProofTask',
     task_id: taskId,
+    task_name: taskName,
     trace_id: `trace_${taskIndex.toString().padStart(10, '0')}`, // Fixed: deterministic trace ID
     timestamp_utc: new Date(
       Date.now() - taskIndex * 3600000 // Fixed: each task is 1 hour apart
@@ -63,7 +64,7 @@ export const generateMockTaskOutput = (
     metadata: {
       tags: {
         run_id: runId,
-        task_id: taskId,
+        task_id: taskId.toString(),
       },
     },
   };
