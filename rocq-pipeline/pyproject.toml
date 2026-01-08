@@ -25,9 +25,9 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/SkylabsAI/skylabs-fm"
-Issues = "https://github.com/SkylabsAI/skylabs-fm/issues"
-Changelog = "https://github.com/SkylabsAI/skylabs-fm/tree/main/changes"
+Repository = "https://github.com/SkylabsAI/rocq-agent-toolkit"
+Issues = "https://github.com/SkylabsAI/rocq-agent-toolkit/issues"
+Changelog = "https://github.com/SkylabsAI/rocq-agent-toolkit/tree/main/changes"
 
 [project.scripts]
 rat = "rocq_pipeline.cli:main"
