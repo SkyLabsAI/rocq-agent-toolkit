@@ -78,8 +78,9 @@ async def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(
     dataset = db_session.exec(select(Dataset)).one()
     assert dataset.name == "ds1"
 
-    tasks = db_session.exec(select(Task).order_by(Task.id)).all()
-    assert [t.id for t in tasks] == ["t1", "t2"]
+    # Task.id is now auto-increment integer, Task.name is the logical identifier
+    tasks = db_session.exec(select(Task).order_by(Task.name)).all()
+    assert [t.name for t in tasks] == ["t1", "t2"]
 
     run = db_session.exec(select(Run)).one()
     assert str(run.id) == run_id
@@ -95,8 +96,11 @@ async def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(
     # earliest timestamp is the second task
     assert run.timestamp_utc.isoformat().startswith("2025-01-01T00:00:01")
 
-    results = db_session.exec(select(TaskResultDB).order_by(TaskResultDB.task_id)).all()
-    assert [r.task_id for r in results] == ["t1", "t2"]
+    # TaskResultDB.task_name contains the logical task identifier
+    results = db_session.exec(
+        select(TaskResultDB).order_by(TaskResultDB.task_name)
+    ).all()
+    assert [r.task_name for r in results] == ["t1", "t2"]
     assert results[1].failure_reason == ["boom"]
 
     tags = db_session.exec(select(Tag).order_by(Tag.key, Tag.value)).all()
@@ -135,8 +139,11 @@ async def test_reingest_replaces_task_results_for_same_run(
     await ingest_task_results(db_session, second, source_file_name="second.jsonl")
     db_session.commit()
 
-    results = db_session.exec(select(TaskResultDB).order_by(TaskResultDB.task_id)).all()
-    assert [r.task_id for r in results] == ["t3"]
+    # TaskResultDB.task_name contains the logical task identifier
+    results = db_session.exec(
+        select(TaskResultDB).order_by(TaskResultDB.task_name)
+    ).all()
+    assert [r.task_name for r in results] == ["t3"]
 
     run = db_session.exec(select(Run)).one()
     assert run.total_tasks == 1

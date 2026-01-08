@@ -54,7 +54,9 @@ class TaskResult(BaseModel):
     # For ingestion: task_id is the logical string identifier
     # For API responses: task_id is the database integer ID, task_name is the logical string
     task_id: int | str  # int when returned from API, str when ingested from JSONL
-    task_name: str | None = None  # Logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
+    task_name: str | None = (
+        None  # Logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
+    )
     trace_id: str | None = (
         None  # None for backward compatibility with older ingestions.
     )
@@ -192,7 +194,8 @@ class ObservabilityLogsResponse(BaseModel):
     """Response containing observability logs from Loki."""
 
     run_id: str
-    task_id: str
+    task_id: int
+    task_name: str
     logs: list[LogEntry]
     total_logs: int
 
@@ -210,7 +213,8 @@ class ObservabilityLabelsResponse(BaseModel):
     """Response containing unique labels from observability logs."""
 
     run_id: str
-    task_id: str
+    task_id: int
+    task_name: str
     labels: dict[str, list[dict[str, Any]]] | None = None
     total_labels: int
 
@@ -312,10 +316,13 @@ class DatasetResultsTask(BaseModel):
 class DatasetResultsAgentInstance(BaseModel):
     """Agent instance information for the dataset results matrix."""
 
-    agent_instance_id: str  # agent_checksum
+    agent_instance_id: str  # agent_checksum (same as agent_checksum for clarity)
     agent_name: str
     agent_checksum: str
-    run_id: str  # The latest/best run for this agent on this dataset
+    agent_cls_checksum: str
+    agent_cls_name: str
+    provenance: dict[str, Any] = {}
+    run_ids: list[str] = []
 
 
 class DatasetTaskResult(BaseModel):
@@ -342,3 +349,29 @@ class DatasetResultsResponse(BaseModel):
     tasks: list[DatasetResultsTask]
     agent_instances: list[DatasetResultsAgentInstance]
     results: list[DatasetTaskResult]
+
+
+class BulkAddTagsRequest(BaseModel):
+    """Request to add tags to multiple tasks."""
+
+    task_ids: list[int]  # List of task database IDs
+    tags: list[str]  # Tags to add (each string is used as both key and value)
+
+
+class BulkAddTagsResponse(BaseModel):
+    """Response from bulk tag addition."""
+
+    success: bool
+    message: str
+    tasks_updated: int
+    tags_added: int
+
+
+class AgentTaskRunsResponse(BaseModel):
+    """Response containing all run IDs for an agent instance on a specific task."""
+
+    agent_checksum: str
+    task_id: int
+    task_name: str
+    run_ids: list[str]
+    total_runs: int

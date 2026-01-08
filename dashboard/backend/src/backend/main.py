@@ -23,6 +23,7 @@ from backend.config import settings
 from backend.dal import (
     agent_class_exists,
     agent_instance_exists,
+    bulk_add_tags_to_tasks,
     get_agent_instances_for_dataset_from_db,
     get_agents_for_dataset_from_db,
     get_dataset_results_from_db,
@@ -34,6 +35,9 @@ from backend.dal import (
     get_runs_by_agent_from_db,
     get_runs_by_agent_instance_and_dataset_from_db,
     get_runs_by_agent_instance_from_db,
+    get_runs_for_agent_and_task_from_db,
+    get_task_name_from_db,
+    get_task_result_from_db,
     get_tasks_for_dataset_from_db,
     get_unique_tags_from_db,
     ingest_task_results,
@@ -46,7 +50,10 @@ from backend.database import get_session, init_db
 from backend.models import (
     AgentClassSummary,
     AgentInstanceSummary,
+    AgentTaskRunsResponse,
     BestRunUpdateResponse,
+    BulkAddTagsRequest,
+    BulkAddTagsResponse,
     DatasetInfo,
     DatasetResultsResponse,
     DatasetTasksResponse,
@@ -431,8 +438,71 @@ async def list_runs_by_agent_instance(
         ) from e
 
 
+@app.get(
+    "/api/agents/instance/{agent_checksum}/tasks/{task_id}/runs",
+    response_model=AgentTaskRunsResponse,
+)
+async def list_runs_for_agent_and_task(
+    agent_checksum: str,
+    task_id: int,
+    session: Session = Depends(get_session),
+) -> AgentTaskRunsResponse:
+    """
+    Get all run IDs for a specific agent instance on a specific task.
+
+    Args:
+        agent_checksum: Checksum of the agent instance
+        task_id: Database ID of the task
+
+    Returns:
+        AgentTaskRunsResponse containing the list of run IDs
+    """
+    try:
+        result = get_runs_for_agent_and_task_from_db(session, agent_checksum, task_id)
+
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task with id '{task_id}' not found",
+            )
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching runs for agent '%s' and task '%d': %s",
+            agent_checksum,
+            task_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching runs for agent '{agent_checksum}' and task '{task_id}': {str(e)}",
+        ) from e
+
+
 @app.get("/api/datasets", response_model=list[DatasetInfo])
 async def list_datasets(session: Session = Depends(get_session)) -> list[DatasetInfo]:
+    """
+    List all datasets that have been created in the database.
+
+    Each dataset is identified by its logical `dataset_id` (e.g. "loop_corpus")
+    which corresponds to the JSONL field, along with optional description and
+    creation time.
+    """
+    try:
+        return list_datasets_from_db(session)
+    except Exception as e:
+        logger.error("Error fetching datasets: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching datasets: {str(e)}"
+        ) from e
+
+
+@app.get("/api/tasksets", response_model=list[DatasetInfo])
+async def list_tasksets(session: Session = Depends(get_session)) -> list[DatasetInfo]:
     """
     List all datasets that have been created in the database.
 
@@ -490,7 +560,8 @@ async def list_tasks_for_dataset(
         ) from e
 
 
-@app.get("/api/{dataset_id}/results", response_model=DatasetResultsResponse)
+# tasksets is the datasets
+@app.get("/api/tasksets/{dataset_id}/results", response_model=DatasetResultsResponse)
 async def get_dataset_results(
     dataset_id: str,
     session: Session = Depends(get_session),
@@ -832,6 +903,48 @@ async def get_run_details(
         ) from e
 
 
+@app.get("/api/runs/{run_id}/tasks/{task_id}/details", response_model=TaskResult)
+async def get_task_result(
+    run_id: str,
+    task_id: int,
+    session: Session = Depends(get_session),
+) -> TaskResult:
+    """
+    Get the complete task result info for a specific run and task.
+
+    Args:
+        run_id: The run UUID
+        task_id: The database task ID (integer)
+
+    Returns:
+        Complete TaskResult with all metrics, metadata, and results
+    """
+    try:
+        result = get_task_result_from_db(session, run_id, task_id)
+
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task result not found for run_id='{run_id}' and task_id={task_id}",
+            )
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching task result for run_id='%s', task_id=%d: %s",
+            run_id,
+            task_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching task result: {str(e)}",
+        ) from e
+
+
 @app.post("/api/runs/{run_id}/best-run", response_model=BestRunUpdateResponse)
 async def update_best_run_flag(
     run_id: str,
@@ -893,10 +1006,49 @@ async def list_tags(session: Session = Depends(get_session)) -> TagsResponse:
         ) from e
 
 
+@app.post("/api/tasks/tags", response_model=BulkAddTagsResponse)
+async def add_tags_to_tasks(
+    request: BulkAddTagsRequest,
+    session: Session = Depends(get_session),
+) -> BulkAddTagsResponse:
+    """
+    Add tags to multiple tasks.
+
+    This endpoint allows bulk addition of tags to tasks. Each tag is a key-value
+    pair that will be associated with all specified tasks.
+
+    Args:
+        request: BulkAddTagsRequest containing task_ids and tags
+
+    Returns:
+        BulkAddTagsResponse with success status and counts
+    """
+    try:
+        result = bulk_add_tags_to_tasks(
+            session=session,
+            task_ids=request.task_ids,
+            tags=request.tags,
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=404, detail=result.message)
+
+        session.commit()
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error("Error adding tags to tasks: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error adding tags to tasks: {str(e)}"
+        ) from e
+
+
 @app.get("/api/observability/logs/raw", response_model=ObservabilityLogsResponse)
 async def get_observability_logs_raw(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
-    task_id: str = Query(..., description="Task ID to fetch logs for"),
+    task_id: int = Query(..., description="Database task ID to fetch logs for"),
     session: Session = Depends(get_session),
 ) -> ObservabilityLogsResponse:
     """
@@ -905,25 +1057,32 @@ async def get_observability_logs_raw(
     Queries the Loki instance configured in settings to retrieve logs filtered by:
     - service_name: "Rocq_agent"
     - run_id: provided run ID
-    - task_id: provided task ID
+    - task_name: the logical task name looked up from the database
 
     Returns the raw log entries (after basic label filtering), without
     any aggregation or additional post-processing.
 
     Args:
         run_id: The run ID to filter logs by
-        task_id: The task ID to filter logs by
+        task_id: The database task ID (integer)
 
     Returns:
         ObservabilityLogsResponse containing unique label key-value pairs
 
     Example:
-        /api/observability/logs/raw?run_id=abc123&task_id=task456
+        /api/observability/logs/raw?run_id=abc123&task_id=868
     """
     try:
+        # Look up the task name from the database
+        task_name = get_task_name_from_db(session, task_id)
+        if task_name is None:
+            raise HTTPException(
+                status_code=404, detail=f"Task with ID {task_id} not found"
+            )
+
         estimated_time = get_estimated_time_for_task_from_db(session, run_id, task_id)
         logs = await fetch_observability_logs(
-            run_id=run_id, task_id=task_id, estimated_time=estimated_time
+            run_id=run_id, task_name=task_name, estimated_time=estimated_time
         )
 
         logger.info(f"Retrieved {len(logs)} log entries from Loki (raw endpoint)")
@@ -931,9 +1090,12 @@ async def get_observability_logs_raw(
         return ObservabilityLogsResponse(
             run_id=run_id,
             task_id=task_id,
+            task_name=task_name,
             logs=logs,
             total_logs=len(logs),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching raw observability logs: {e}", exc_info=True)
         raise HTTPException(
@@ -944,7 +1106,7 @@ async def get_observability_logs_raw(
 @app.get("/api/observability/logs", response_model=ObservabilityLabelsResponse)
 async def get_observability_logs(
     run_id: str = Query(..., description="Run ID to fetch logs for"),
-    task_id: str = Query(..., description="Task ID to fetch logs for"),
+    task_id: int = Query(..., description="Database task ID to fetch logs for"),
     session: Session = Depends(get_session),
 ) -> ObservabilityLabelsResponse:
     """
@@ -956,13 +1118,20 @@ async def get_observability_logs(
     Returns only the unique labels from the logs after filtering.
 
     Example:
-        /api/observability/logs?run_id=abc123&task_id=task456
+        /api/observability/logs?run_id=abc123&task_id=868
     """
     try:
+        # Look up the task name from the database
+        task_name = get_task_name_from_db(session, task_id)
+        if task_name is None:
+            raise HTTPException(
+                status_code=404, detail=f"Task with ID {task_id} not found"
+            )
+
         # Fetch raw logs via shared utility, using DB-backed estimated time
         estimated_time = get_estimated_time_for_task_from_db(session, run_id, task_id)
         logs = await fetch_observability_logs(
-            run_id=run_id, task_id=task_id, estimated_time=estimated_time
+            run_id=run_id, task_name=task_name, estimated_time=estimated_time
         )
 
         logger.info(f"Retrieved {len(logs)} log entries from Loki")
@@ -977,6 +1146,7 @@ async def get_observability_logs(
         return ObservabilityLabelsResponse(
             run_id=run_id,
             task_id=task_id,
+            task_name=task_name,
             labels=labels_dict,
             total_labels=len(labels_dict),
         )

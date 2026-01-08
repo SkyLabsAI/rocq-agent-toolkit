@@ -120,7 +120,7 @@ def get_labels_grouped_by_log(
 
 async def fetch_observability_logs(
     run_id: str,
-    task_id: str,
+    task_name: str,
     estimated_time: datetime | None = None,
 ) -> list[LogEntry]:
     """
@@ -132,7 +132,7 @@ async def fetch_observability_logs(
 
     Args:
         run_id: The run ID to filter logs by.
-        task_id: The task ID to filter logs by.
+        task_name: The logical task name/identifier to filter logs by.
 
     Returns:
         List of LogEntry items sorted by timestamp.
@@ -144,7 +144,7 @@ async def fetch_observability_logs(
     try:
         # Construct LogQL query to filter logs
         # run_id and task_id are JSON fields, not labels, so we need to parse JSON and filter
-        logql_query = f'{{service_name="rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_id}"'
+        logql_query = f'{{service_name="rocq_agent"}} | json | run_id="{run_id}" | task_id="{task_name}"'
 
         # Calculate time range based on the task's estimated time (if provided).
         # We take a symmetric window of ±delta_hours around the task timestamp.
@@ -167,7 +167,9 @@ async def fetch_observability_logs(
             "limit": 5000,  # Maximum number of logs to return
         }
 
-        logger.info("Querying Loki for logs: run_id=%s, task_id=%s", run_id, task_id)
+        logger.info(
+            "Querying Loki for logs: run_id=%s, task_name=%s", run_id, task_name
+        )
         logger.info("LogQL query: %s", logql_query)
 
         # Make request to Loki

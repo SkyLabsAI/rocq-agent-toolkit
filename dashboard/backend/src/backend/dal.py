@@ -7,6 +7,7 @@ endpoints can remain thin and focused on HTTP concerns.
 
 from __future__ import annotations
 
+import logging
 import math
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
@@ -32,6 +33,7 @@ from backend.db_models import (
 from backend.models import (
     AgentClassSummary,
     AgentInstanceSummary,
+    BulkAddTagsResponse,
     DatasetInfo,
     DatasetResultsAgentInstance,
     DatasetResultsResponse,
@@ -45,12 +47,15 @@ from backend.models import (
     TaskInfo,
     TaskMetadata,
     TaskResult,
+    AgentTaskRunsResponse,
 )
 from backend.provenance import (
     extract_provenance_from_logs_async,
     ingest_agent_class_provenance,
     ingest_agent_provenance,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_timestamp_utc(ts: str) -> datetime:
@@ -120,7 +125,6 @@ def get_or_create_task(
     task = session.exec(stmt).first()
 
     if task:
-
         return task
 
     task = Task(
@@ -210,7 +214,10 @@ async def ingest_task_results_for_run(
     agent_checksum = first_tr.agent_checksum  # Run belongs to the instance
     agent_cls_checksum = first_tr.agent_cls_checksum
     timestamp_utc = _parse_timestamp_utc(first_tr.timestamp_utc)
-    first_task_id = first_tr.task_id  # this is used to extract provenance from logs
+    # During ingestion, task_id is always a string (from JSONL)
+    first_task_id = str(
+        first_tr.task_id
+    )  # this is used to extract provenance from logs
 
     # Extract and ingest provenance from observability logs.
     #
@@ -331,7 +338,7 @@ async def ingest_task_results_for_run(
         )
         session.add(run)
         session.flush()
-    else: # TODO: Will we re ingest a rundata or not
+    else:  # TODO: Will we re ingest a rundata or not
         # Update basic fields on re-ingestion
         run.agent_checksum = agent_checksum
         run.agent_cls_checksum = agent_cls_checksum
@@ -364,8 +371,9 @@ async def ingest_task_results_for_run(
             failure_count += 1
 
         # Ensure dataset and task exist
+        # During ingestion, task_id is always a string (from JSONL)
         task = get_or_create_task(
-            session, task_name=tr.task_id, kind=tr.task_kind, dataset=dataset
+            session, task_name=str(tr.task_id), kind=tr.task_kind, dataset=dataset
         )
 
         ts_utc = _parse_timestamp_utc(tr.timestamp_utc)
@@ -1606,8 +1614,25 @@ def get_runs_by_agent_instance_and_dataset_from_db(
     return run_infos
 
 
+def get_task_name_from_db(session: Session, task_id: int) -> str | None:
+    """
+    Get the task name (logical identifier) from the database given the task ID.
+
+    Args:
+        session: Database session.
+        task_id: The database task ID (integer).
+
+    Returns:
+        The task name string, or None if not found.
+    """
+    task = session.get(Task, task_id)
+    if task is None:
+        return None
+    return task.name
+
+
 def get_estimated_time_for_task_from_db(
-    session: Session, run_id: str, task_id: str
+    session: Session, run_id: str, task_id: int
 ) -> datetime | None:
     """
     Estimate when logs were generated for a given run and task based on
@@ -1743,9 +1768,9 @@ def get_dataset_results_from_db(
         tasks_list.append(task_info)
         task_id_map[task.id] = task_info
 
-    # Get all runs for this dataset with their agent instances
+    # Get all runs for this dataset with their agent instances and class info
     rows = session.exec(
-        select(Run, AgentProvenance)
+        select(Run, AgentProvenance, AgentClassProvenance)
         .join(
             AgentProvenance,
             cast(
@@ -1753,24 +1778,35 @@ def get_dataset_results_from_db(
                 Run.agent_checksum == AgentProvenance.agent_checksum,
             ),
         )
+        .join(
+            AgentClassProvenance,
+            cast(
+                ColumnElement[bool],
+                AgentProvenance.cls_checksum == AgentClassProvenance.cls_checksum,
+            ),
+        )
         .where(cast(ColumnElement[bool], Run.dataset_id == dataset.id))
         .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
     ).all()
 
-    # Build unique agent instances list
-    # Use a dict to track unique agent checksums and their best/latest run
-    agent_instance_map: dict[str, tuple[AgentProvenance, Run]] = {}
-    for run, agent_instance in rows:
+    # Build unique agent instances list with all their run IDs
+    # Use a dict to track unique agent checksums, their info, and all run IDs
+    agent_instance_map: dict[
+        str, tuple[AgentProvenance, AgentClassProvenance, list[str]]
+    ] = {}
+    for run, agent_instance, agent_class in rows:
         if agent_instance.agent_checksum not in agent_instance_map:
-            agent_instance_map[agent_instance.agent_checksum] = (agent_instance, run)
+            agent_instance_map[agent_instance.agent_checksum] = (
+                agent_instance,
+                agent_class,
+                [str(run.id)],
+            )
         else:
-            # Keep the best run (is_best_run=True) or the latest one
-            existing_run = agent_instance_map[agent_instance.agent_checksum][1]
-            if run.is_best_run and not existing_run.is_best_run:
-                agent_instance_map[agent_instance.agent_checksum] = (agent_instance, run)
+            # Append run ID to the list
+            agent_instance_map[agent_instance.agent_checksum][2].append(str(run.id))
 
     agent_instances_list: list[DatasetResultsAgentInstance] = []
-    for agent_checksum, (agent_instance, best_run) in sorted(
+    for agent_checksum, (agent_instance, agent_class, run_ids) in sorted(
         agent_instance_map.items(), key=lambda x: x[1][0].name
     ):
         agent_instances_list.append(
@@ -1778,7 +1814,13 @@ def get_dataset_results_from_db(
                 agent_instance_id=agent_checksum,
                 agent_name=agent_instance.name,
                 agent_checksum=agent_checksum,
-                run_id=str(best_run.id),
+                agent_cls_checksum=agent_class.cls_checksum,
+                agent_cls_name=agent_class.cls_name,
+                provenance={
+                    "agent_instance": agent_instance.provenance,
+                    "agent_class": agent_class.cls_provenance,
+                },
+                run_ids=run_ids,
             )
         )
 
@@ -1792,7 +1834,7 @@ def get_dataset_results_from_db(
     if task_ids_in_dataset:
         task_results = session.exec(
             select(TaskResultDB).where(
-                cast(ColumnElement[bool], TaskResultDB.task_id.in_(task_ids_in_dataset))  # type: ignore[union-attr]
+                TaskResultDB.task_id.in_(task_ids_in_dataset)  # type: ignore[attr-defined]
             )
         ).all()
     else:
@@ -1800,11 +1842,11 @@ def get_dataset_results_from_db(
 
     for tr in task_results:
         # Get the run to find the agent instance
-        run = session.get(Run, tr.run_id)
-        if run is None:
+        run_obj = session.get(Run, tr.run_id)
+        if run_obj is None:
             continue
 
-        agent_checksum = run.agent_checksum
+        agent_checksum = run_obj.agent_checksum
         task_id = tr.task_id
 
         key = (task_id, agent_checksum)
@@ -1832,4 +1874,250 @@ def get_dataset_results_from_db(
         tasks=tasks_list,
         agent_instances=agent_instances_list,
         results=results_list,
+    )
+
+
+def get_task_result_from_db(
+    session: Session, run_id: str, task_id: int
+) -> TaskResult | None:
+    """
+    Get the complete task result info for a specific run and task.
+
+    Args:
+        run_id: The run UUID as a string.
+        task_id: The database task ID (integer).
+
+    Returns:
+        TaskResult with complete info, or None if not found.
+    """
+    try:
+        run_uuid = UUID(run_id)
+    except ValueError:
+        logger.warning(
+            "get_task_result_from_db: Invalid run_id format '%s' (not a valid UUID)",
+            run_id,
+        )
+        return None
+
+    # Query the task result
+    tr_db = session.exec(
+        select(TaskResultDB).where(
+            TaskResultDB.run_id == run_uuid,
+            TaskResultDB.task_id == task_id,
+        )
+    ).first()
+
+    if tr_db is None:
+        logger.warning(
+            "get_task_result_from_db: No TaskResult found for run_id='%s', task_id=%d",
+            run_id,
+            task_id,
+        )
+        return None
+
+    # Get related entities
+    run = session.get(Run, run_uuid)
+    if run is None:
+        logger.warning(
+            "get_task_result_from_db: Run not found for run_id='%s'",
+            run_id,
+        )
+        return None
+
+    task = session.get(Task, task_id)
+    if task is None:
+        logger.warning(
+            "get_task_result_from_db: Task not found for task_id=%d",
+            task_id,
+        )
+        return None
+
+    # Get agent info
+    agent_checksum = run.agent_checksum
+    agent_cls_checksum = run.agent_cls_checksum or ""
+
+    # Get dataset name
+    dataset_name: str | None = None
+    if task.dataset_id is not None:
+        ds = session.get(Dataset, task.dataset_id)
+        if ds is not None:
+            dataset_name = ds.name
+
+    # Build the response
+    task_kind = task.kind or ""
+    task_name = tr_db.task_name or task.name
+
+    if tr_db.metrics is None:
+        logger.warning(
+            "get_task_result_from_db: TaskResult has no metrics for run_id='%s', task_id=%d",
+            run_id,
+            task_id,
+        )
+        return None
+
+    metrics = Metrics.model_validate(tr_db.metrics)
+    metadata = (
+        TaskMetadata.model_validate(tr_db.task_metadata)
+        if tr_db.task_metadata is not None
+        else TaskMetadata()
+    )
+
+    return TaskResult(
+        run_id=str(run.id),
+        task_kind=task_kind,
+        task_id=task_id,
+        task_name=task_name,
+        trace_id=tr_db.trace_id,
+        dataset_id=dataset_name,
+        timestamp_utc=tr_db.timestamp_utc.isoformat(),
+        agent_cls_checksum=agent_cls_checksum,
+        agent_checksum=agent_checksum,
+        status=tr_db.status,
+        metrics=metrics,
+        metadata=metadata,
+        results=tr_db.results,
+        failure_reason=tr_db.failure_reason,
+    )
+
+
+def bulk_add_tags_to_tasks(
+    session: Session,
+    task_ids: list[int],
+    tags: list[str],
+) -> BulkAddTagsResponse:
+    """
+    Add multiple tags to multiple tasks.
+
+    Args:
+        session: Database session.
+        task_ids: List of task database IDs to add tags to.
+        tags: List of tag strings (each string is used as both key and value).
+
+    Returns:
+        BulkAddTagsResponse with success status and counts.
+    """
+    if not task_ids:
+        return BulkAddTagsResponse(
+            success=True,
+            message="No task IDs provided",
+            tasks_updated=0,
+            tags_added=0,
+        )
+
+    if not tags:
+        return BulkAddTagsResponse(
+            success=True,
+            message="No tags provided",
+            tasks_updated=0,
+            tags_added=0,
+        )
+
+    # Verify all tasks exist
+    existing_tasks = session.exec(
+        select(Task).where(
+            cast(ColumnElement[bool], Task.id.in_(task_ids))  # type: ignore[union-attr]
+        )
+    ).all()
+
+    existing_task_ids = {task.id for task in existing_tasks if task.id is not None}
+    missing_task_ids = set(task_ids) - existing_task_ids
+
+    if missing_task_ids:
+        return BulkAddTagsResponse(
+            success=False,
+            message=f"Tasks not found: {sorted(missing_task_ids)}",
+            tasks_updated=0,
+            tags_added=0,
+        )
+
+    # Add tags to each task
+    total_tags_added = 0
+    tasks_updated = 0
+
+    for task in existing_tasks:
+        if task.id is None:
+            continue
+
+        task_had_new_tags = False
+        for tag_str in tags:
+            # Get or create the tag (use same string for key and value)
+            tag = get_or_create_tag(session, key=tag_str, value=tag_str)
+
+            # Check if link already exists
+            existing_link = session.exec(
+                select(TaskTagLink).where(
+                    TaskTagLink.task_id == task.id,
+                    TaskTagLink.tag_id == tag.id,
+                )
+            ).first()
+
+            if existing_link is None:
+                # Create the link
+                session.add(TaskTagLink(task_id=task.id, tag_id=tag.id))
+                total_tags_added += 1
+                task_had_new_tags = True
+
+        if task_had_new_tags:
+            tasks_updated += 1
+
+    session.flush()
+
+    return BulkAddTagsResponse(
+        success=True,
+        message=f"Added {total_tags_added} tag(s) to {tasks_updated} task(s)",
+        tasks_updated=tasks_updated,
+        tags_added=total_tags_added,
+    )
+
+
+def get_runs_for_agent_and_task_from_db(
+    session: Session, agent_checksum: str, task_id: int
+) -> AgentTaskRunsResponse | None:
+    """
+    Get all run IDs for a specific agent instance on a specific task.
+
+    Args:
+        session: Database session.
+        agent_checksum: The agent instance checksum.
+        task_id: The database task ID (integer).
+
+    Returns:
+        AgentTaskRunsResponse containing the list of run IDs,
+        or None if the task does not exist.
+    """
+    # Check if the task exists
+    task = session.get(Task, task_id)
+    if task is None:
+        return None
+
+    # Get all task results for this agent and task
+    # Join TaskResultDB with Run to filter by agent_checksum
+    rows = session.exec(
+        select(TaskResultDB, Run)
+        .join(
+            Run,
+            cast(ColumnElement[bool], TaskResultDB.run_id == Run.id),
+        )
+        .where(
+            cast(ColumnElement[bool], TaskResultDB.task_id == task_id),
+            cast(ColumnElement[bool], Run.agent_checksum == agent_checksum),
+        )
+        .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
+    ).all()
+
+    # Extract unique run IDs (a task might have multiple results per run, though unlikely)
+    run_ids: list[str] = []
+    seen_run_ids: set[str] = set()
+    for task_result, run in rows:
+        run_id_str = str(run.id)
+        if run_id_str not in seen_run_ids:
+            run_ids.append(run_id_str)
+            seen_run_ids.add(run_id_str)
+
+    return AgentTaskRunsResponse(
+        agent_checksum=agent_checksum,
+        task_id=task_id,
+        task_name=task.name,
+        run_ids=run_ids,
+        total_runs=len(run_ids),
     )
