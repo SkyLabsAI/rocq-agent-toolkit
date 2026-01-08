@@ -549,7 +549,9 @@ let _ =
       exit 0
   | _                     ->
   let (file, args) = parse_args ~argv:Sys.argv in
-  let state = Document.init ~args ~file in
+  let state =
+    try Document.init ~args ~file with Failure(s) -> panic "Error: %s." s
+  in
   let state = {fresh = 1; cursors = IntMap.singleton 0 state} in
   match API.run api ~ic:stdin ~oc:stdout state with
   | Ok(_)       -> exit 0

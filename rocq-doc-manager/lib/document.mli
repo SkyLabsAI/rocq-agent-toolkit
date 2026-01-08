@@ -17,7 +17,8 @@ type t
 (** [init ~args ~file] initialises a Rocq document for the given [file], using
     the given Rocq command line arguments [args]. Regardless of whether [file]
     exists on the file system or not, the document starts empty. Upon document
-    creation, a session with a dedicated Rocq top-level is started. *)
+    creation, a session with a dedicated Rocq top-level is started. In case of
+    failure while starting the Rocq toplevel, [Failure] is raised. *)
 val init : args:string list -> file:string -> t
 
 (** Exception raised when running any of the following operation on a document
