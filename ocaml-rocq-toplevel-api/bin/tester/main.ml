@@ -76,7 +76,8 @@ let _ =
   let state =
     let cur_toplevel =
       let args = List.tl (Array.to_list Sys.argv) in
-      Rocq_toplevel.init ~args
+      try Rocq_toplevel.init ~args with
+      | Failure(s) -> notify "Error: %s." s; exit 1
     in
     let toplevels = Hashtbl.create 13 in
     Hashtbl.add toplevels 0 cur_toplevel;

@@ -6,7 +6,8 @@
 type toplevel
 
 (** [init ~args] starts a new Rocq toplevel, with given command-line arguments
-    [args]. It is up to the caller to use ["-topfile"] appropriately. *)
+    [args]. It is up to the caller to use ["-topfile"] appropriately. If there
+    is an error while starting the toplevel, exception [Failure] is raised. *)
 val init : args:string list -> toplevel
 
 (** Exception raised when communicating with a stopped top-level. *)

@@ -19,8 +19,18 @@ let init : args:string list -> toplevel = fun ~args ->
   let prog = "rocq-toplevel-api.private" in
   let argv = Array.of_list (prog :: args) in
   let (ic, oc) = Unix.open_process_args prog argv in
+  let (pid, sid) =
+    try Marshal.from_channel ic with End_of_file ->
+    let explanation =
+      match Unix.close_process (ic, oc) with
+      | Unix.WEXITED(0)   -> assert false
+      | Unix.WEXITED(i)   -> Printf.sprintf "exited with code %i" i
+      | Unix.WSIGNALED(i) -> Printf.sprintf "killed with signal %i" i
+      | Unix.WSTOPPED(i)  -> Printf.sprintf "stopped by signal %i" i
+    in
+    failwith ("the toplevel process failed to start (" ^ explanation ^ ")")
+  in
   let uid = next_toplevel_uid () in
-  let (pid, sid) = Marshal.from_channel ic in
   {uid; oc; ic; pid; is_fork = false; stopped = false; sid}
 
 exception Stopped
