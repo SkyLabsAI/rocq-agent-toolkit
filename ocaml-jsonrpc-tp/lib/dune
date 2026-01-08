@@ -1,4 +1,4 @@
 (library
  (name jsonrpc_tp)
  (public_name jsonrpc-tp)
- (libraries yojson jsonrpc))
+ (libraries yojson jsonrpc eio_main))
