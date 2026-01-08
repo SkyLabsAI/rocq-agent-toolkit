@@ -13,3 +13,9 @@
  (public_name jsonrpc-tp.tp_unwrap)
  (package jsonrpc-tp)
  (libraries jsonrpc-tp))
+
+(executable
+ (name delayed_echo_service)
+ (public_name jsonrpc-tp.delayed-echo-service)
+ (package jsonrpc-tp)
+ (libraries jsonrpc-tp unix))
