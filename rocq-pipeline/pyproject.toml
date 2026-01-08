@@ -35,6 +35,7 @@ ingest = "rocq_pipeline.find_tasks:main"
 tracer = "rocq_pipeline.tracer:main"
 auto-agent = "rocq_pipeline.task_runner:auto_main"
 tactic-agent = "rocq_pipeline.task_runner:tactic_main"
+oracle-agent = "rocq_pipeline.agent.proof.oracle_agent:main"
 progress = "rocq_pipeline.util:main"
 
 [dependency-groups]
