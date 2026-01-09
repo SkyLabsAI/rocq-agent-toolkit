@@ -163,9 +163,9 @@ class IteratorStrategy[T_co](Strategy[T_co]):
 
 
 class CompositeStrategy[T_co](Strategy[T_co]):
-    """
-    A (fair) combination of strategies.
-    Each strategy will be asked for its next action, and the results
+    """Combinator: fair interleaving of strategies.
+
+    Each strategy will be asked for its `next` action, and the results
     will be interleaved according to their scores.
 
     For example, with two strategies that propose:
@@ -218,8 +218,7 @@ class CompositeStrategy[T_co](Strategy[T_co]):
 
 
 class StagedStrategy[T_co](Strategy[T_co]):
-    """
-    Combine two strategies by preferring the first.
+    """Combinator: biased interleaving of two strategies, preferring the first.
 
     All results from `strat1` that are greater than or equal to `prob` will
     be returned before `strat2` is considered, at which point results from
