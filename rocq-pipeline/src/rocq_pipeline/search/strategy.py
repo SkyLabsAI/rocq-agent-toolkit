@@ -14,31 +14,82 @@ T_co = TypeVar("T_co", covariant=True)
 
 
 class Strategy[T_co](Provenance.Full, ABC):
-    """
-    A `Strategy` proposes actions to take. The different proposals
-    are captured lazily using a `Rollout` which allows capturing
-    very large (even infinite) action spaces such as next tactic
-    prediction in theorem proving.
+    """Interface: producer of ranked+ordered _alternative_ `Action`s.
+
+    A `Strategy` proposes `Action`s to take. The different proposals
+    can be lazily drawn from a `Rollout` which allows capturing very
+    large (even infinite) action spaces such as next tactic prediction
+    in theorem proving.
+
+    cf. ./action.py#Action
     """
 
-    # Rollouts capture ranked, **alternative** actions.
-    # For example, a Rollout that contains `[(0, act1), (-1, act2)]`
-    # is saying to try `act1` before `act2` and associates each with
-    # a confidence score. Scores should be in decreasing order because
-    # users will ask for results in order, and higher scoring action
-    # should be tried first.
-    # By convention, we often treat the scores as log probabilities,
-    # but that is not crucial. However, it is important that all
-    # scores in a particular strategy can be interpreted in a consistent
-    # manner.
     type Rollout[U] = Iterator[tuple[float, Action[U]]]
+    """Iterator over ranked+ordered _alternative_ actions.
 
-    # Context information must be read-only and constant in order
-    # for searches to work correctly. This can be used to pass
-    # problem-level information to `Strategy`s, e.g. the original
-    # problem statement, hints, documentation, etc.
-    type MutableContext = MutableMapping[str, Any]
+    Elements of `Rollout` are tuples of the form `(Pr_i, Act_i)` where `Pr_i`
+    is the confidence (often captured via a log probability) that `Act_i` is
+    the next `Action` that should be taken to make efficient progress towards
+    completing the overall task. Scores in the `Rollout` (i.e. `Pr_i`) must be:
+    - a) interpreted in a consistent manner (often as log probabilities)
+    - b) returned from "best" to "worst" based on (a), since clients will
+         generally not ask for a new `Action` unless the previous ones did
+         not work
+
+    Every strategy is responsible for implementing `Strategy.rollout` which
+    produces a (potentially infinite) `Rollout`. To avoid performance impacts
+    from eagerly evaluating large rollouts (or from expensive candidate generation):
+    1. implementers of `Strategy.rollout` should use generators unless the result
+       is small+finite (e.g. a singleton list)
+    2. clients of `Strategy.rollout` should lazily draw from `Rollout` and
+       never force the full computation; i.e. DO NOT DO THE FOLLOWING:
+       ```python
+       # BAD: forcing a computation on a potentially infinite rollout
+       for i, (_, a) in enumerate(s.rollout(...)):
+           print(f"{i}: {a}")
+       ```
+
+    Example: a finite `Rollout` that contains `[(0, A_1), (-1, A_2)]`
+    is saying to try `A_1` before `A_2` and associates each with
+    a confidence score.
+    """
+
     type Context = Mapping[str, Any]
+    """Read-only context information that may be supplied during `Strategy.rollout`.
+
+    Clients need not supply any `context: Context` but may choose to do so, e.g.
+    to capture problem-level information such as the task description, or feedback
+    from a previous attempt.
+    """
+
+    type MutableContext = MutableMapping[str, Any]
+    """Mutable `Context`; useful for clients but unused by `Strategy`.
+
+    `Strategy` uniformly uses `Context` and may not modify it during `rollout`.
+
+    Clients may need to use `MutableContext` if they are incrementally building the
+    initial context via cooperative inheritance, i.e.:
+    ```python
+    class Base:
+        def prepare(...) -> MutableContext:
+            ...
+
+    class Derived(Base):
+        @override
+        def prepare(...) -> MutableContext:
+            mut_ctx = super().prepare(...)
+            ...
+            return mut_ctx
+    ```
+    """
+
+    @staticmethod
+    def empty_Rollout() -> Strategy.Rollout:
+        """The empty `Rollout` containing no `Action`s.
+
+        If a `Strategy` does not apply it can return `empty_Rollout`.
+        """
+        yield from ()
 
     @abstractmethod
     def rollout(
@@ -47,22 +98,26 @@ class Strategy[T_co](Provenance.Full, ABC):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[T_co]:
-        """
-        Given the goal `G`, generates `(Pr,A)` such that:
-        - `Pr` is the probability that `A` is (the next/a necessary) step in an
-            efficient proof of `G`
+        """Build `Rollout` of ranked+ordered _alternative_ `Action`s for `state`.
+
+        Given `state` and optional `context`, generate a `Rollout` containing no more
+        than `max_rollout` ranked+ordered _alternative_ `Action`s. If `max_rollout`
+        is `None` then `rollout` is unbounded (i.e. it may be infinite).
 
         Notes:
         - If a strategy does not apply, it should produce an empty generator.
-        - The returned generator **must** return results with decreasing
-            probability since clients will generally not ask for a new `Action`
-            unless the previous one did not work.
+
+
+        Arguments:
+          - state: strategy-specific current state
+          - max_rollout: maximum size of returned `Rollout`; None = no limit
+          - context (optional): strategy specific, read-only context
         """
         pass
 
 
-def empty_Rollout() -> Strategy.Rollout:
-    yield from ()
+# Note: backwards-compatible symbol; we could remove this if we want.
+empty_Rollout = Strategy.empty_Rollout
 
 
 class SingletonStrategy[T_co](Strategy[T_co]):
