@@ -18,6 +18,11 @@
 
   $ cp $TESTDIR/* .
   $ uv run rat ingest test.v 2> /dev/null
-  Found 4 tasks in test.v: ['Lemma:test', 'Lemma:test(1)', 'Theorem:test', 'Theorem:test(1)']
+  Found 4 tasks in test.v:
+  - Lemma:test
+  - Lemma:test(1)
+  - Theorem:test
+  ...
   Total number of tasks: 4
   Total number of unique tasks: 4
+  Saving tasks to tasks.yaml
