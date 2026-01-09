@@ -30,10 +30,11 @@ class Strategy[T_co](Provenance.Full, ABC):
     Elements of `Rollout` are tuples of the form `(Pr_i, Act_i)` where `Pr_i`
     is the confidence (often captured via a log probability) that `Act_i` is
     the next `Action` that should be taken to make efficient progress towards
-    completing the overall task. Scores in the `Rollout` (i.e. `Pr_i`) must be:
-    - a) interpreted in a consistent manner (often as log probabilities)
-    - b) returned from "best" to "worst" based on (a), since clients will
-         generally not ask for a new `Action` unless the previous ones did
+    completing the overall task. Scores in the `Rollout` (i.e. `Pr_i`):
+    - a) must be interpreted in a consistent manner between all strategies used
+         to produce a given `Rollout` (often as log probabilities)
+    - b) should be returned from "best" to "worst" based on (a), since clients
+         will generally not ask for a new `Action` unless the previous ones did
          not work
 
     Every strategy is responsible for implementing `Strategy.rollout` which
