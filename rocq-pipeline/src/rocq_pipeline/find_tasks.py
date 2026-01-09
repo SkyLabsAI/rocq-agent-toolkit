@@ -174,9 +174,9 @@ def run(output_file: Path, rocq_files: list[Path], jobs: int = 1) -> None:
     def run_it(path: Path, _: Any) -> list[dict[str, Any]]:
         try:
             file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
-
+            item_prefix = "\n- "
             print(
-                f"Found {len(file_tasks)} tasks in {path}: {[x['locator'] for x in file_tasks]}"
+                f"Found {len(file_tasks)} tasks in {path}:{''.join([item_prefix + x['locator'] for x in file_tasks])}"
             )
             for y in file_tasks:
                 y["file"] = path
