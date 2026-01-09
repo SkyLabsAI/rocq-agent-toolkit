@@ -316,9 +316,14 @@ let _ =
   Result.map_error (fun (e,v) -> e, Some v) @@ Document.go_to d ~index
 
 let _ =
-  declare ~name:"clear_suffix" ~descr:"remove all unprocessed \
-    commands from the document" ~args:A.nil ~ret:S.null @@ fun d () ->
-  Document.clear_suffix d
+  let args =
+    A.add ~name:"count" ~descr:"the number of unprocessed commands to \
+      remove, or `null` to remove them all" S.(nullable int) @@
+    A.nil
+  in
+  declare ~name:"clear_suffix" ~descr:"remove unprocessed commands from the \
+    document" ~args ~ret:S.null @@ fun d (count, ()) ->
+  Document.clear_suffix ?count d
 
 let _ =
   declare_full ~name:"run_step" ~descr:"advance the cursor by \

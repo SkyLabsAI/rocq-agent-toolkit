@@ -114,7 +114,12 @@ val revert_before : ?erase:bool -> t -> index:int -> unit
     raise exceptions. *)
 val with_rollback : t -> (unit -> 'a) -> 'a
 
-val clear_suffix : t -> unit
+(** [clear_suffix ?count d] removes unprocessed items from the document suffix
+    starting at the cursor. By default, all such items are removed. If [count]
+    is specified, only the given number of items are removed. Note that if the
+    value of [count] is negative, or greater than the suffix length, exception
+    [Invalid_argument] is raised. *)
+val clear_suffix : ?count:int -> t -> unit
 
 val run_step : t ->
   (command_data option, string * command_error option) result

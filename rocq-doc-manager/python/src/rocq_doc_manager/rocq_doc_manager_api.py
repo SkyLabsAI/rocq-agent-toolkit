@@ -117,9 +117,9 @@ class RocqDocManagerAPI:
             return RocqDocManagerAPI.Err(result.message, data)
         return None
 
-    def clear_suffix(self, cursor: int) -> None:
-        """Remove all unprocessed commands from the document."""
-        result = self._rpc.raw_request("clear_suffix", [cursor])
+    def clear_suffix(self, cursor: int, count: int | None) -> None:
+        """Remove unprocessed commands from the document."""
+        result = self._rpc.raw_request("clear_suffix", [cursor, count])
         assert not isinstance(result, JsonRPCTP.Err)
         return None
 
