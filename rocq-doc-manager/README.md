@@ -129,9 +129,10 @@ API Methods
 
 ### `clear_suffix`
 
-- Description: remove all unprocessed commands from the document.
+- Description: remove unprocessed commands from the document.
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
+  - count: the number of unprocessed commands to remove, or `null` to remove them all (as either `null` or an integer).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
