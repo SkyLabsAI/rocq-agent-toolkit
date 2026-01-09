@@ -25,6 +25,9 @@ module Schema : sig
   (** [string] is a schema specifying a string value. *)
   val string : string t
 
+  (** [variant] is a schema specifying an alternative of literal values. *)
+  val variant : values:'a list -> default:'a -> encode:('a -> string) -> 'a t
+
   (** [nullable s] is a schema that specifies either the same kind of value as
       [s], or a "null" value. The interpretation is [None] in the latter case,
       and [Some(_)] otherwise. *)
