@@ -3,8 +3,8 @@ import axios from 'axios';
 import { config } from '@/config/environment';
 import {
   getAgentClassDataMock,
-  getAgentInstanceTaskRunsMock,
   getAgentInstancesMock,
+  getAgentInstanceTaskRunsMock,
   getBenchmarkAgentsMock,
   getBenchmarksMock,
   getDatasetAgentInstancesMock,
@@ -111,7 +111,9 @@ const getAgentInstanceTaskRunsReal = async (
     const failureCount = run.tasks.filter(t => t.status !== 'Success').length;
     // Get timestamp from first task if available
     const timestampUtc =
-      run.tasks.length > 0 ? run.tasks[0].timestamp_utc : new Date().toISOString();
+      run.tasks.length > 0
+        ? run.tasks[0].timestamp_utc
+        : new Date().toISOString();
 
     return {
       run_id: run.run_id,
@@ -127,7 +129,6 @@ const getAgentInstanceTaskRunsReal = async (
     };
   });
 };
-
 
 export const getAgentInstanceTaskRuns = USE_MOCK_DATA
   ? getAgentInstanceTaskRunsMock

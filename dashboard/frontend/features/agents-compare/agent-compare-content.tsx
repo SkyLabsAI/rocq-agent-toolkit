@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import ComparisonModal from '@/components/base/comparisonModal';
@@ -24,7 +23,6 @@ interface AgentCompareContentProps {
 export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
   agentIds,
 }) => {
-  const router = useRouter();
   const { agentData, isLoading: agentDataLoading } = useAgents();
 
   const agentNames = agentIds;
@@ -32,17 +30,6 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bestRuns, setBestRuns] = useState<RunDetailsResponse[]>([]);
-
-  // Remove an agent from the comparison
-  const handleRemove = (removeId: string) => {
-    const newAgents = agentNames.filter(name => name !== removeId);
-    if (newAgents.length === 0) {
-      router.push('/');
-      return;
-    }
-    const url = `/compare/agents?agents=${encodeURIComponent(newAgents.join(','))}`;
-    router.push(url);
-  };
 
   useEffect(() => {
     const fetchBestRuns = async () => {
@@ -187,7 +174,7 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
 
       {stats.length > 0 && (
         <>
-          <RunSummary runStats={stats} onRemove={handleRemove} />
+          <RunSummary runStats={stats} />
           <ComparisonTable
             runs={bestRuns}
             taskMap={taskMap}

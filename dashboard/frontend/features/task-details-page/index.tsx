@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/base/statusBadge';
 import { Button } from '@/components/base/ui/button';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { getRunDetails, getTaskDetails } from '@/services/dataservice';
+import { getTaskDetails } from '@/services/dataservice';
 import type { TaskOutput } from '@/types/types';
 
 interface TaskDetailsPageContentProps {
@@ -190,33 +190,6 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
             </p>
             <div className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    Execution Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {`${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s`}
-                  </p>
-                </div>
-
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    CPU Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {task.metrics?.resource_usage?.cpu_time_sec.toFixed(2)}s
-                  </p>
-                </div>
-
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    GPU Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {`${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s`}
-                  </p>
-                </div>
-
                 <div className='flex flex-col gap-1.5'>
                   <p className='font-inter font-normal text-sm text-text-disabled'>
                     LLM Calls

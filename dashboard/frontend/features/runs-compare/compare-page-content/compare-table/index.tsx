@@ -38,6 +38,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                 <TaskSection
                   key={taskId}
                   id={taskId}
+                  name={taskMap[taskId][0].task?.task_name || 'No name'}
                   details={taskMap[taskId]}
                   onOpenModal={onOpenModal}
                   taskRowData={taskRowData.find(row => row.taskId === taskId)!}
@@ -52,6 +53,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
 
 interface TaskSectionProps {
   id: number;
+  name: string;
   details: RunTaskCell[];
   onOpenModal: (taskId: number) => void;
   taskRowData: TaskRowData;
@@ -59,6 +61,7 @@ interface TaskSectionProps {
 
 const TaskSection: React.FC<TaskSectionProps> = ({
   id,
+  name,
   details,
   onOpenModal,
   taskRowData,
@@ -69,6 +72,7 @@ const TaskSection: React.FC<TaskSectionProps> = ({
     <>
       <TaskHeader
         id={id}
+        name={name}
         details={details}
         onOpenModal={onOpenModal}
         onClick={() => setOpen(!open)}

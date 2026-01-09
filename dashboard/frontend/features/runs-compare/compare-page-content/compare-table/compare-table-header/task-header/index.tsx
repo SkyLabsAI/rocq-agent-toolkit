@@ -8,12 +8,14 @@ import { getCommonGridStyle } from '..';
 
 export const TaskHeader = ({
   id,
+  name,
   details,
   onOpenModal,
   isExpanded,
   onClick,
 }: {
   id: number;
+  name: string;
   details: RunTaskCell[];
   onOpenModal: (taskId: number) => void;
   onClick: () => void;
@@ -32,7 +34,7 @@ export const TaskHeader = ({
         className="font-['Noto_Sans:SemiBold',sans-serif] font-semibold leading-5 relative shrink-0 text-text text-[14px] truncate max-w-full"
         style={{ fontVariationSettings: "'CTGR' 0, 'wdth' 100" }}
       >
-        Task ID: {id}
+        Task Name: {name}
       </p>
     </div>
 

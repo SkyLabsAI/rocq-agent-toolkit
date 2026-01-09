@@ -50,6 +50,8 @@ export const getAgentInstanceTaskRunsMock = async (
   taskId: number
 ): Promise<AgentRun[]> => {
   await simulateDelay(200, 500);
+
+  console.log(taskId);
   // Filter runs to only include those that would have this task
   const allRuns = await getRunsByInstanceMock(agentChecksum);
   // Return first 3 runs as mock (simulating filtered results)

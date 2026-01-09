@@ -22,9 +22,9 @@ export const computeRunStats = (run: RunDetailsResponse): RunStats => {
       tasks === 0
         ? 0
         : run.tasks.reduce(
-          (a, t) => a + t.metrics?.resource_usage?.execution_time_sec,
-          0
-        ) / tasks,
+            (a, t) => a + t.metrics?.resource_usage?.execution_time_sec,
+            0
+          ) / tasks,
   };
 };
 

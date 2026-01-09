@@ -117,33 +117,6 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
               <div className='grid grid-cols-2 gap-4'>
                 <div className='flex flex-col gap-1.5'>
                   <p className='font-inter font-normal text-sm text-text-disabled'>
-                    Execution Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {`${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s`}
-                  </p>
-                </div>
-
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    CPU Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {task.metrics?.resource_usage?.cpu_time_sec.toFixed(2)}s
-                  </p>
-                </div>
-
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    GPU Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {`${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s`}
-                  </p>
-                </div>
-
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
                     LLM Calls
                   </p>
                   <p className='font-inter font-normal text-sm text-text'>

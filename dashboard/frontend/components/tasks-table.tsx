@@ -286,10 +286,9 @@ const TasksTable: React.FC<TasksTableProps> = ({
                 filteredTasks.map((task, _index) => {
                   const taskTags = task.metadata?.tags || {};
 
-                  console.log(task.task_id, task.task_name);
                   return (
                     <tr
-                      key={task.task_id}
+                      key={`${task.task_id}-${_index}`}
                       onClick={() => onTaskClick(task)}
                       className='hover:bg-elevation-surface-overlay cursor-pointer transition-colors'
                     >

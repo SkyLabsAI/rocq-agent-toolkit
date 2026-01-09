@@ -8,13 +8,9 @@ import { TaskRow } from './run-row';
 
 interface RunSummaryProps {
   runStats: RunStats[];
-  onRemove?: (id: string) => void;
 }
 
-export const RunSummary: React.FC<RunSummaryProps> = ({
-  runStats,
-  onRemove,
-}) => {
+export const RunSummary: React.FC<RunSummaryProps> = ({ runStats }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const agent = searchParams.get('agent') || '';
