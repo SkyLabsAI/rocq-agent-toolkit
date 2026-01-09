@@ -177,8 +177,10 @@ class JsonRPCTP:
             raise self.Error("Not running anymore.")
         assert self._process.stdout is not None
         prefix = "Content-Length: "
-        header = self._process.stdout.readline().decode()
+        header: str = self._process.stdout.readline().decode()
         _ = self._process.stdout.readline()
+        if not header.startswith(prefix):
+            raise self.Error(f"Invalid message header: '{header}'")
         try:
             nb_bytes = int(header[len(prefix) : -2])
         except Exception as e:
