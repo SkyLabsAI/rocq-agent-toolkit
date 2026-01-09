@@ -175,8 +175,11 @@ def run(output_file: Path, rocq_files: list[Path], jobs: int = 1) -> None:
         try:
             file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
             item_prefix = "\n- "
+            n_items = 3
             print(
-                f"Found {len(file_tasks)} tasks in {path}:{''.join([item_prefix + x['locator'] for x in file_tasks])}"
+                f"Found {len(file_tasks)} tasks in {path}:"
+                + "".join([item_prefix + x["locator"] for x in file_tasks[0:n_items]])
+                + ("\n..." if len(file_tasks) > n_items else "")
             )
             for y in file_tasks:
                 y["file"] = path
