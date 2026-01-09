@@ -180,7 +180,7 @@ def run(output_file: Path, rocq_files: list[Path], jobs: int = 1) -> None:
             for y in file_tasks:
                 y["file"] = path
             return file_tasks
-        except RuntimeError as err:
+        except Exception as err:
             print(f"Error occured while scanning file {path}. {err}")
             return []
 

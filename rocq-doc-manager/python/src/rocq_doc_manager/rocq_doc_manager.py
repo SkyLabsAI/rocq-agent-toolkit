@@ -50,7 +50,7 @@ class RocqDocManager(API):
         self._file_loaded: bool = False
 
     def __del__(self) -> None:
-        if self._rpc:
+        if hasattr(self, "_rpc") and self._rpc:
             self._rpc.quit()
 
     def cursor(self) -> RocqCursor:
