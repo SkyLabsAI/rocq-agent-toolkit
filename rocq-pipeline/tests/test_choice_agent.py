@@ -19,7 +19,7 @@ def test_choice_agent() -> None:
             AgentBuilder.of_agent(SimpleTactics),
             [
                 "--task-json",
-                make_task_str("examples/theories/test_simple.v", "lemma:is_true"),
+                make_task_str("examples/theories/test_simple.v", "Lemma:is_true"),
                 "--output-dir",
                 temp_dir,
             ],
