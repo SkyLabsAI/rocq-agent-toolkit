@@ -48,6 +48,8 @@ An **Action** represents a single executable operation. The [`interact(state)`](
 
 ### Relationship
 
+The following sequence diagram illustrates a **deterministic, sequential** usage pattern. Agents may also use sampling, parallel exploration, or other strategies (see usage patterns below).
+
 ```mermaid
 sequenceDiagram
     participant Agent
@@ -55,26 +57,39 @@ sequenceDiagram
     participant Action
     participant State
 
-    Agent->>Strategy: rollout(state)
-    Strategy-->>Agent: (prob₁, action₁), (prob₂, action₂), ...
+    Agent->>Strategy: rollout(state, max_rollout, context)
+    Strategy->>State: analyze state
+    State-->>Strategy: state information
+    Strategy-->>Agent: Iterator[(prob₁, action₁), (prob₂, action₂), ...]
     loop Until success or exhausted
         Agent->>Action: interact(state)
+        Action->>State: transform state
         alt Success
+            State-->>Action: new_state
             Action-->>Agent: new_state
-            Agent->>Agent: break (continue with new_state)
+            Agent->>State: state = new_state
+            Agent->>Agent: break (continue with new state)
         else Failure
-            Action-->>Agent: Action.Failed
+            Action-->>Agent: Action.Failed (exception)
             Agent->>Agent: try next action
         end
     end
 ```
 
-**Usage pattern** (see [`StrategyAgent.prove()`](../../agent/proof/strategy_agent.py#L95-L122)):
-1. Strategy generates ranked actions via `rollout()`
-2. Agent iterates through actions in probability order
-3. Each action is executed via `interact(state)`
+**Usage patterns**: While choosing the highest-probability action is common, Agents have flexibility in how they interpret rollouts; examples include:
+
+- **Deterministic selection**: Iterate through actions in probability order (see [`StrategyAgent.prove()`](../../agent/proof/strategy_agent.py#L95-L122))
+- **Sampling with temperature**: Sample from the rollout distribution rather than taking the maximum (see [`Sampled`](search/frontier.py#L260-L293) frontier wrapper)
+- **Post-processing**: Filter, prune, or re-rank actions before execution (e.g., based on domain-specific heuristics)
+- **Parallel exploration**: Execute multiple actions in parallel via fanout/join operations (see [`RolloutInterleaver`](search/iter.py#L58-L119) and [`Search.continue_search()`](search/search.py#L157-L246))
+- **Beam search**: Maintain multiple search paths, expanding the top-k actions from each state (see [`BeamSearch`](search/beam.py))
+
+The generic pattern:
+1. Strategy generates ranked actions via `rollout(state, max_rollout, context)`
+2. Agent processes the rollout iterator (deterministic, sampled, filtered, etc.)
+3. Selected actions are executed via `interact(state)`
 4. On success, agent continues with new state; on failure, tries next action
-5. Process repeats until goal reached or all actions exhausted
+5. Process repeats until goal reached or search exhausted
 
 ## Search Dynamics
 The [search/](search/) directory contains a [generic search algorithm](search/search.py) that is parametric over the state type which allows it to be used in many contexts.
