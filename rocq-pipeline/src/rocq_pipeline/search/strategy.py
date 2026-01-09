@@ -16,18 +16,27 @@ T_co = TypeVar("T_co", covariant=True)
 class Strategy[T_co](Provenance.Full, ABC):
     """
     A `Strategy` proposes actions to take. The different proposals
-    are captured lazily using a `Generator`. This allows capturing
+    are captured lazily using a `Rollout` which allows capturing
     very large (even infinite) action spaces such as next tactic
     prediction in theorem proving.
     """
 
-    # TODO: make [Rollout] into a class
+    # Rollouts capture ranked, **alternative** actions.
+    # For example, a Rollout that contains `[(0, act1), (-1, act2)]`
+    # is saying to try `act1` before `act2` and associates each with
+    # a confidence score. Scores should be in decreasing order because
+    # users will ask for results in order, and higher scoring action
+    # should be tried first.
+    # By convention, we often treat the scores as log probabilities,
+    # but that is not crucial. However, it is important that all
+    # scores in a particular strategy can be interpreted in a consistent
+    # manner.
     type Rollout[U] = Iterator[tuple[float, Action[U]]]
 
     # Context information must be read-only and constant in order
-    # for searches to work correctly. Clients should use an
-    # implementation such as `immutabledict` to achieve this.
-    # Mutable information needs to be tracked in the state
+    # for searches to work correctly. This can be used to pass
+    # problem-level information to `Strategy`s, e.g. the original
+    # problem statement, hints, documentation, etc.
     type MutableContext = MutableMapping[str, Any]
     type Context = Mapping[str, Any]
 
@@ -57,6 +66,10 @@ def empty_Rollout() -> Strategy.Rollout:
 
 
 class SingletonStrategy[T_co](Strategy[T_co]):
+    """
+    A strategy that always returns a single action
+    """
+
     _value: Annotated[Action[T_co], Provenance.Reflect.Field]
     _prob: Annotated[float, Provenance.Reflect.Field]
 
@@ -92,7 +105,21 @@ class IteratorStrategy[T_co](Strategy[T_co]):
 
 
 class CompositeStrategy[T_co](Strategy[T_co]):
-    """A (fair) combination of strategies"""
+    """
+    A (fair) combination of strategies.
+    Each strategy will be asked for its next action, and the results
+    will be interleaved according to their scores.
+
+    For example, with two strategies that propose:
+        - [(-0.5, act1), (-0.75, act2)]
+        - [(-0.25, act3), (-0.35, act4)]
+    will result in
+        - [(-0.25, act3), (-0.35, act4), (-0.5, act1), (-0.75, act2)]
+
+    The results  of an individual `Strategy` will not be re-ordered
+    so the resulting list may be out-of-order if one of the passed
+    `Strategy`s yields results out of order.
+    """
 
     _children: Annotated[list[Strategy[T_co]], Provenance.Reflect.Field]
 
@@ -138,7 +165,7 @@ class StagedStrategy[T_co](Strategy[T_co]):
 
     All results from `strat1` that are greater than or equal to `prob` will
     be returned before `strat2` is considered, at which point results from
-    `strat1` and `strat2` will be interleaved.
+    `strat1` and `strat2` will be interleaved as they are in `CompositeStrategy`.
     """
 
     _strat1: Annotated[Strategy[T_co], Provenance.Reflect.Field]
