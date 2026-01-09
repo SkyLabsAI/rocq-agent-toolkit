@@ -147,7 +147,7 @@ def mk_parser(parent: Any | None = None) -> Any:
         "--output",
         type=check_file_name,
         default="tasks.yaml",  # A default value if the option is not provided
-        help="Specify the name of the output file. (e.g., -o tasks.yaml)",
+        help="Specify the name of the output file. (e.g., -o tasks.yaml or -o tasks.json)",
     )
     parser.add_argument(
         "-j",
@@ -174,6 +174,7 @@ def run(output_file: Path, rocq_files: list[Path], jobs: int = 1) -> None:
     def run_it(path: Path, _: Any) -> list[dict[str, Any]]:
         try:
             file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
+
             print(
                 f"Found {len(file_tasks)} tasks in {path}: {[x['locator'] for x in file_tasks]}"
             )
@@ -202,6 +203,8 @@ def run(output_file: Path, rocq_files: list[Path], jobs: int = 1) -> None:
             unique_tasks.append(d)
 
     print(f"Total number of unique tasks: {len(unique_tasks)}")
+
+    print(f"Saving tasks to {output_file}")
 
     with open(output_file, "w") as f:
         if output_file.suffix in [".yml", ".yaml"]:
