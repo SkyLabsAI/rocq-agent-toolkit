@@ -14,7 +14,7 @@ T_co = TypeVar("T_co", covariant=True)
 
 
 class Strategy[T_co](Provenance.Full, ABC):
-    """Interface: producer of ranked+ordered _alternative_ `Action`s.
+    """Interface: producer of ranked _alternative_ `Action`s.
 
     A `Strategy` proposes `Action`s to take. The different proposals
     can be lazily drawn from a `Rollout` which allows capturing very
@@ -25,7 +25,7 @@ class Strategy[T_co](Provenance.Full, ABC):
     """
 
     type Rollout[U] = Iterator[tuple[float, Action[U]]]
-    """Iterator over ranked+ordered _alternative_ actions.
+    """Iterator over ranked _alternative_ actions.
 
     Elements of `Rollout` are tuples of the form `(Pr_i, Act_i)` where `Pr_i`
     is the confidence (often captured via a log probability) that `Act_i` is
@@ -99,10 +99,10 @@ class Strategy[T_co](Provenance.Full, ABC):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[T_co]:
-        """Build `Rollout` of ranked+ordered _alternative_ `Action`s for `state`.
+        """Build `Rollout` of ranked _alternative_ `Action`s for `state`.
 
         Given `state` and optional `context`, generate a `Rollout` containing no more
-        than `max_rollout` ranked+ordered _alternative_ `Action`s. If `max_rollout`
+        than `max_rollout` ranked _alternative_ `Action`s. If `max_rollout`
         is `None` then `rollout` is unbounded (i.e. it may be infinite).
 
         Notes:
@@ -113,6 +113,8 @@ class Strategy[T_co](Provenance.Full, ABC):
           - state: strategy-specific current state
           - max_rollout: maximum size of returned `Rollout`; None = no limit
           - context (optional): strategy specific, read-only context
+
+        Returns: the `Rollout` of ranked _alternative_ `Action`s for `state`
         """
         pass
 
