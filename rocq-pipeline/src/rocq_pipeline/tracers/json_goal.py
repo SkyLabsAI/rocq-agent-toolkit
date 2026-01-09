@@ -56,7 +56,7 @@ class JsonGoal(StateExtractor[list[Any]]):
 
         result = rdm.run_command(f"Require {self._mod()}.")
         if isinstance(result, RocqCursor.Err):
-            raise RuntimeError(f"Failed to initialize JsonGoal extractor: {result}")
+            raise Exception(f"Failed to initialize JsonGoal extractor: {result}")
 
     _NO_GOAL_PREFIXES: list[str] = [
         "This subproof is complete, but there are some unfocused goals.",
