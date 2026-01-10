@@ -110,7 +110,7 @@ class Strategy[T_co](Provenance.Full, ABC):
 
 
         Arguments:
-          - state: strategy-specific current state
+          - state: current state to get action alternatives for
           - max_rollout: maximum size of returned `Rollout`; None = no limit
           - context (optional): strategy specific, read-only context
 
