@@ -10,7 +10,7 @@ from ..strategy import Strategy, empty_Rollout
 from .actions import RocqTacticAction
 
 
-class SafeTacticStrategy(Strategy):
+class SafeTacticStrategy(Strategy[RocqCursor]):
     """A simple strategy that always returns a tactic."""
 
     _tactic: Annotated[str, Provenance.Reflect.Field]

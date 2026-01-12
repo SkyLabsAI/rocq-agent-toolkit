@@ -10,7 +10,7 @@ T_co = TypeVar("T_co", covariant=True)
 
 class Action[T_co](Provenance.Full):
     """
-    An `Action` represents a (potential) action in an MDP.
+    An `Action` represents a (potential) action in a Markov Decision Process (MDP).
 
     They support failure in order to support instances
     where no action exists. Mathematically, failed actions
