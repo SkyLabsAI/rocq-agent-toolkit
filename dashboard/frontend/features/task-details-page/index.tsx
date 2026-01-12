@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/base/statusBadge';
 import { Button } from '@/components/base/ui/button';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { getTaskDetails } from '@/services/dataservice';
+import { getObservabilityLogs, getTaskDetails } from '@/services/dataservice';
 import type { TaskOutput } from '@/types/types';
 
 interface TaskDetailsPageContentProps {
@@ -25,6 +25,12 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expandedResults, setExpandedResults] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [observabilityLogs, setObservabilityLogs] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [logsError, setLogsError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -58,12 +64,32 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
     setExpandedResults(prev => !prev);
   };
 
-  const openLogsModal = () => {
-    setIsLogsModalOpen(true);
+  const openLogsModal = async () => {
+    if (!runId || !taskId) return;
+
+    try {
+      setLoadingLogs(true);
+      setLogsError(null);
+      const logs = await getObservabilityLogs(runId, taskId);
+      setObservabilityLogs(logs);
+      setIsLogsModalOpen(true);
+    } catch (err) {
+      setLogsError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to fetch observability logs'
+      );
+      // Still open the modal to show the error
+      setIsLogsModalOpen(true);
+    } finally {
+      setLoadingLogs(false);
+    }
   };
 
   const closeLogsModal = () => {
     setIsLogsModalOpen(false);
+    setObservabilityLogs(null);
+    setLogsError(null);
   };
 
   if (loading) {
@@ -295,9 +321,10 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
             <Button
               variant='default'
               onClick={openLogsModal}
+              disabled={loadingLogs}
               className='flex-1'
             >
-              View Detailed Logs
+              {loadingLogs ? 'Loading Logs...' : 'View Detailed Logs'}
             </Button>
             <Button variant='outline' onClick={handleBack} className='flex-1'>
               Back to Run Details
@@ -310,8 +337,12 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
       <TaskDetailsModal
         isOpen={isLogsModalOpen}
         onClose={closeLogsModal}
-        details={task.results as Record<string, unknown> | null}
-        title={`Task Logs - ${task.task_name}`}
+        details={
+          logsError
+            ? { error: logsError }
+            : observabilityLogs || (loadingLogs ? null : {})
+        }
+        title={`Observability Logs - ${task.task_name}`}
         taskId={task.task_id}
       />
     </div>
