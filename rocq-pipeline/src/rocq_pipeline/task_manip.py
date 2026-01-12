@@ -3,8 +3,7 @@ import random
 from pathlib import Path
 from typing import Any
 
-import rocq_pipeline.tasks as Tasks
-from rocq_pipeline.tasks import Task
+from rocq_pipeline.tasks import Task, TaskFile
 
 
 def mk_parser(parent: Any | None = None) -> Any:
@@ -42,7 +41,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--random",
         action="store_true",
-        help="Used in conjunction with --max to select random tasks",
+        help="Used in conjunction with --limit to select random tasks",
     )
 
     parser.add_argument("task_file", type=Path, help="The path to the task file")
@@ -51,7 +50,7 @@ def mk_parser(parent: Any | None = None) -> Any:
 
 
 def eval_options(
-    tags: list[str],
+    tags: set[str],
     with_tags: list[str],
     without_tags: list[str],
     only_tags: str | None = None,
@@ -78,14 +77,13 @@ def eval_options(
 
 def run(
     output: Path,
-    wdir: Path,
-    tasks: list[Task],
+    tasks: TaskFile,
     with_tags: set[str] | None = None,
     without_tags: set[str] | None = None,
     only_tags: str | None = None,
     limit: int | None = None,
     random_selection: bool = False,
-) -> list[Task]:
+) -> TaskFile:
     def norm(ts: set[str] | None) -> list[str]:
         if ts is None:
             return []
@@ -96,28 +94,27 @@ def run(
     without_tags_l = norm(without_tags)
 
     def keep(task: Task) -> bool:
-        if "tags" not in task:
-            return len(with_tags_l) == 0
-        return eval_options(task["tags"], with_tags_l, without_tags_l, only_tags)
+        return eval_options(task.get_tags(), with_tags_l, without_tags_l, only_tags)
 
-    result_tasks = [task for task in tasks if keep(task)]
+    result_tasks = [task for task in tasks.tasks if keep(task)]
     if limit is not None:
         limit = min(limit, len(result_tasks))
         if random_selection:
             result_tasks = random.sample(result_tasks, limit)
         else:
             result_tasks = result_tasks[:limit]
-    # TODO: Should this adapt the file paths to be relative to the output directory
-    Tasks.save_tasks(output, result_tasks)
-    return result_tasks
+
+    result = TaskFile(project=tasks.project, tasks=result_tasks)
+    result.to_file(output)
+    return result
 
 
 def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -> None:
     assert extra_args is None or len(extra_args) == 0
-    (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
+    tasks = TaskFile.from_file(arguments.task_file)
+
     result = run(
         arguments.output,
-        wdir,
         tasks,
         arguments.with_tag,
         arguments.without_tag,
@@ -125,7 +122,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         arguments.limit,
         arguments.random,
     )
-    print(f"Returned {len(result)} of {len(tasks)} tasks.")
+    print(f"Returned {len(result.tasks)} of {len(tasks.tasks)} tasks.")
 
 
 def main() -> None:

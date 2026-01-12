@@ -1,5 +1,5 @@
 import itertools
-import json
+import logging
 import re
 import sys
 from argparse import ArgumentParser, Namespace
@@ -9,12 +9,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-import yaml
+import git
+import sexpdata  # type: ignore
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 from rocq_pipeline.locator import FirstLemma, NotFound
 from rocq_pipeline.taggers.tactic_tagger import extract_tactics
+from rocq_pipeline.tasks import Project, Task, TaskFile
 from rocq_pipeline.util import parallel_runner
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -46,14 +50,14 @@ def scan_proof(suffix: list[RocqCursor.SuffixItem]) -> ProofTask:
 
 
 def find_tasks(
-    path: Path, tagger: Callable[[ProofTask], set[str]] | None = None
-) -> list[dict[str, Any]]:
+    pdir: Path, path: Path, tagger: Callable[[ProofTask], set[str]] | None = None
+) -> list[Task]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
     with RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True).sess(
         load_file=True
     ) as rdm:
         rc: RocqCursor = rdm.cursor()
-        tasks: list[dict[str, Any]] = []
+        tasks: list[Task] = []
         counts: dict[str, int] = defaultdict(int)
 
         suffix = rc.doc_suffix()
@@ -61,6 +65,7 @@ def find_tasks(
         idx = 0
         mtch = re.compile("(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")
         while idx < total_sentences:
+            logger.debug(f"Running at index {idx}")
             sentence = suffix[idx]
             idx += 1
             if sentence.kind != "command":
@@ -77,14 +82,15 @@ def find_tasks(
                     if tagger is not None:
                         tags.update(tagger(proof))
                 except NotFound:
-                    print(f"{m.group(1)} {m.group(2)} does not end", file=sys.stderr)
+                    logger.error(f"{m.group(1)} {m.group(2)} does not end")
                     # tags = {"proof", "incomplete"}
                     break
-                task_json: dict[str, Any] = {
-                    "locator": str(FirstLemma(m.group(2), m.group(1), current)),
-                    "tags": list(tags),
-                }
-                tasks.append(task_json)
+                locator = FirstLemma(m.group(2), m.group(1), current)
+                file = path.relative_to(pdir)
+                task = Task(
+                    name=None, file=file, locator=locator, tags=tags, prompt=None
+                )
+                tasks.append(task)
 
         return tasks
 
@@ -107,7 +113,7 @@ def my_tagger(task: ProofTask) -> set[str]:
 
         tactics: set[str]
         if has_nonpositives:
-            print("Eliminating the tactics with multiplicity < 1.")
+            logger.debug("Eliminating the tactics with multiplicity < 1.")
             tactics = {key for key, value in identified_tactics.items() if value > 0}
         else:
             tactics = set(identified_tactics.keys())
@@ -126,29 +132,44 @@ def my_tagger(task: ProofTask) -> set[str]:
 
 
 def mk_parser(parent: Any | None = None) -> Any:
-    # 1. Create the parser
+    help = "Build tasks from a Rocq (dune) project."
     if parent:
-        parser = parent.add_parser("ingest", help="Build tasks from Rocq files.")
+        parser = parent.add_parser("ingest", help=help)
     else:
-        parser = ArgumentParser(description="Build tasks from Rocq files.")
+        parser = ArgumentParser(description=help)
 
-    def check_file_name(file_path: str) -> Path:
-        s: Path = Path(file_path)
-        if s.suffix in [".yml", ".yaml", ".json"]:
-            return s
-        print(f"Unknown file type: {s}", file=sys.stderr)
-        exit(1)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Make the output verbose (including logs).",
+    )
 
-    # 2. Add the optional argument: -o/--output
-    # 'dest' sets the name of the attribute in the returned namespace
-    # 'required=True' can be used if the argument must be present (but you asked for an 'option')
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Enable debug output (implies --verbose).",
+    )
+
+    def check_output_file(file: str) -> Literal["-"] | Path:
+        if file == "-":
+            return "-"
+        path: Path = Path(file)
+        if not TaskFile.valid_extension(path):
+            sys.exit(f"Error: unsupported extension on {path}.")
+        if not path.parent.exists():
+            sys.exit(f"Error: parent directory of {path} does not exist.")
+        return path
+
     parser.add_argument(
         "-o",
         "--output",
-        type=check_file_name,
-        default="tasks.yaml",  # A default value if the option is not provided
-        help="Specify the name of the output file. (e.g., -o tasks.yaml or -o tasks.json)",
+        type=check_output_file,
+        default="-",
+        help='Specify the name of the output file, or "-" for stdout which is the default.',
     )
+
     parser.add_argument(
         "-j",
         "--jobs",
@@ -157,70 +178,149 @@ def mk_parser(parent: Any | None = None) -> Any:
         help="The number of parallel workers.",
     )
 
-    # 3. Add the positional arguments
-    # 'nargs='+' means one or more positional arguments are required
-    # 'nargs='*' means zero or more positional arguments are allowed
+    def check_pdir(dir: str) -> Path:
+        path = Path(dir)
+        if not path.exists():
+            sys.exit(f"Error: directory {path} does not exist.")
+        if not path.is_dir():
+            sys.exit(f"Error: file {path} is not a directory.")
+        dune_project = path / "dune-project"
+        if not dune_project.exists():
+            sys.exit(f'Error: no dune-project file in directory "{path}".')
+        return path
+
+    parser.add_argument(
+        "-p",
+        "--pdir",
+        type=check_pdir,
+        default=Path("."),
+        help="The path a dune project directory (containing file dune-project).",
+    )
+
+    def check_rocq_files(file: str) -> Path:
+        path = Path(file)
+        if not path.exists():
+            sys.exit(f"Error: file {path} does not exist.")
+        if path.suffix != ".v":
+            sys.exit(f'Error: file {path} does not have ".v" extension.')
+        return path
+
     parser.add_argument(
         "rocq_files",
-        type=str,
-        nargs="+",  # Accepts an arbitrary number of arguments (one or more)
-        help="The Rocq files to parse. (e.g. foo.v test/bar.v)",
+        type=check_rocq_files,
+        nargs="*",
+        help="The path to the Rocq source files of the project that must be ingested. When left empty, all Rocq source files of the project are ingested.",
     )
 
     return parser
 
 
-def run(output_file: Path, rocq_files: list[Path], jobs: int = 1) -> None:
-    def run_it(path: Path, _: Any) -> list[dict[str, Any]]:
-        try:
-            file_tasks: list[dict[str, Any]] = find_tasks(Path(path), tagger=my_tagger)
-            item_prefix = "\n- "
-            n_items = 3
-            print(
-                f"Found {len(file_tasks)} tasks in {path}:"
-                + "".join([item_prefix + x["locator"] for x in file_tasks[0:n_items]])
-                + ("\n..." if len(file_tasks) > n_items else "")
-            )
-            for y in file_tasks:
-                y["file"] = path
-            return file_tasks
-        except Exception as err:
-            print(f"Error occured while scanning file {path}. {err}")
-            return []
+def dune_project_name(dune_project_file: Path) -> str:
+    try:
+        contents = dune_project_file.read_text()
+        data = sexpdata.loads(f"({contents})")
+        for e in data:
+            if not (isinstance(e, list) and len(e) == 2):
+                continue
+            key = e[0].value()
+            if not (isinstance(key, str) or key != "name"):
+                continue
+            value = e[1].value()
+            if not (isinstance(value, str)):
+                continue
+            return value
+    except FileNotFoundError:
+        sys.exit(f"Error: project file {dune_project_file} not found.")
+    except Exception as e:
+        sys.exit(f"Error: file {dune_project_file} could not be parsed.")
+    sys.exit(f"Error: cound not find project name in {dune_project_file}.")
 
-    all_tasks: list[list[dict[str, Any]]] = parallel_runner(
-        run_it, [(str(x), x) for x in rocq_files], None, jobs=jobs, progress=False
+
+def git_repo_data(project_dir: Path) -> tuple[str, str]:
+    repo = git.Repo(project_dir, search_parent_directories=True)
+    url = repo.remotes.origin.url
+    commit = repo.head.commit.hexsha
+    dirty = repo.is_dirty(untracked_files=True)
+    return (url, commit if not dirty else commit + "-dirty")
+
+
+def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) -> None:
+    def run_it(path: Path, _: Any) -> list[Task]:
+        try:
+            file_tasks: list[Task] = find_tasks(pdir, Path(path), tagger=my_tagger)
+        except Exception as err:
+            logger.error(f"Error occured while scanning file {path}. {err}")
+            file_tasks = []
+        logger.info(
+            f"Found {len(file_tasks)} tasks in {path}: "
+            + ", ".join([str(x.locator) for x in file_tasks[0:3]])
+            + (", ..." if len(file_tasks) > 3 else "")
+        )
+        return file_tasks
+
+    project_name = dune_project_name(pdir / "dune-project")
+    logger.debug(f"Detected project name: {project_name}")
+
+    (git_url, git_commit) = git_repo_data(pdir)
+    logger.debug(f"Detected git URL: {git_url}")
+    logger.debug(f"Detected git commit: {git_commit}")
+
+    exclude = {"_build", ".git", "_opam"}
+    project_files = [
+        p for p in pdir.rglob("*.v") if not any(part in exclude for part in p.parts)
+    ]
+    logger.info(f"Number of Rocq source files found: {len(project_files)}")
+    if len(project_files) == 0:
+        logger.warning("No Rocq source files found in the project.")
+
+    for file in rocq_files:
+        if not any(Path(p).samefile(file) for p in project_files):
+            sys.exit(f"Error: file {file} is not part of the project.")
+
+    if len(rocq_files) != 0:
+        logger.info("Only keeping the files passed on the command line.")
+        project_files = rocq_files
+
+    for file in project_files:
+        logger.debug(f"Will ingest file {file}")
+
+    all_tasks: list[list[Task]] = parallel_runner(
+        run_it, [(str(x), x) for x in project_files], None, jobs=jobs, progress=False
     )
     flat_tasks = list(itertools.chain.from_iterable(all_tasks))
-    print(f"Total number of tasks: {len(flat_tasks)}")
+    logger.info(f"Total number of tasks: {len(flat_tasks)}")
 
-    unique_tasks: list[dict[str, Any]] = []
+    unique_tasks: list[Task] = []
     seen_tasks: set[tuple[str, str]] = set()
 
     for d in flat_tasks:
-        taskfile = d["file"]
-        taskloc = d["locator"]
-        t = (taskfile, taskloc)
+        t = (str(d.file), str(d.locator))
         if t not in seen_tasks:
             seen_tasks.add(t)
             unique_tasks.append(d)
 
-    print(f"Total number of unique tasks: {len(unique_tasks)}")
+    logger.info(f"Total number of unique tasks: {len(unique_tasks)}")
 
-    print(f"Saving tasks to {output_file}")
+    project = Project(
+        name=project_name, git_url=git_url, git_commit=git_commit, path=pdir.resolve()
+    )
+    taskfile = TaskFile(project=project, tasks=unique_tasks)
 
-    with open(output_file, "w") as f:
-        if output_file.suffix in [".yml", ".yaml"]:
-            yaml.dump(unique_tasks, f)
-        elif output_file.suffix == ".json":
-            json.dump(unique_tasks, f)
-        else:
-            print(f"unknown file format! {output_file}")
+    logger.debug(f"Saving tasks to {output_file}")
+    taskfile.to_file(output_file)
 
 
 def run_ns(args: Namespace, extra_args: list[str] | None = None) -> None:
     assert extra_args is None or len(extra_args) == 0
-    return run(args.output, args.rocq_files, jobs=args.jobs)
+    log_level = (
+        logging.DEBUG
+        if args.debug
+        else logging.INFO
+        if args.verbose
+        else logging.WARNING
+    )
+    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
+    return run(args.output, args.pdir, args.rocq_files, jobs=args.jobs)
 
 
 def main() -> None:

@@ -22,7 +22,7 @@ from opentelemetry.trace import Link, SpanContext, Status, StatusCode
 from rocq_doc_manager import DuneUtil, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
-from rocq_pipeline import loader, locator, util
+from rocq_pipeline import loader, util
 from rocq_pipeline import rocq_args as RocqArgs
 from rocq_pipeline.agent import (
     AgentBuilder,
@@ -32,7 +32,6 @@ from rocq_pipeline.agent import (
 )
 from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
-from rocq_pipeline.locator import Locator
 from rocq_pipeline.schema import task_output
 
 logger = get_logger("task_runner")
@@ -115,16 +114,6 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
 #     pass
 
 
-@dataclass
-class FullTask:
-    id: str
-    file: Path
-    locator: Locator
-    tags: set[str]
-    rocq_args: list[str] | None
-    prompt: str | None
-
-
 def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     """
     Collect environment variables that represent tags.
@@ -142,9 +131,9 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
 
 def run_task(
     build_agent: AgentBuilder,
-    task: FullTask,
+    project: Tasks.Project,
+    task: Tasks.Task,
     run_id: str,
-    wdir: Path,
     tags: task_output.Tags,
     progress: util.ProgressCallback,
     parent_span_context: SpanContext | None = None,
@@ -158,7 +147,7 @@ def run_task(
     # Add run_id to log context for this thread
     add_log_context("run_id", run_id)
 
-    task_id: str = task.id
+    task_id: str = task.get_id()
     add_log_context("task_id", task_id)
 
     timestamp_iso_8601 = datetime.now(UTC).isoformat()
@@ -195,17 +184,15 @@ def run_task(
         try:
             task_file = task.file
             progress.status(0.01, "🔃")
-            rocq_args = (
-                RocqArgs.extend_args(
-                    DuneUtil.rocq_args_for(task_file), build_agent.extra_rocq_args()
-                )
-                if task.rocq_args is None
-                else task.rocq_args
+            rocq_args = RocqArgs.extend_args(
+                DuneUtil.rocq_args_for(task_file, cwd=project.path),
+                build_agent.extra_rocq_args(),
             )
             with RocqDocManager(
                 rocq_args,
                 str(task_file),
                 dune=True,
+                chdir=str(project.path),
             ).sess(load_file=True) as rdm:
                 rc = rdm.cursor()
                 progress.status(0.05, "🔃")
@@ -292,11 +279,9 @@ def run_task(
         )
 
 
-def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]]:
-    """
-    The path returned here is used to find the build.py file.
-    TODO: That should be resolved in here
-    """
+def load_tasks(
+    arguments: argparse.Namespace,
+) -> tuple[str, Tasks.Project, list[Tasks.Task]]:
     if arguments.task_json and arguments.task_file:
         logger.warning(
             " ".join(
@@ -307,28 +292,17 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
             )
         )
 
-    def to_full_task(raw: Tasks.Task, wdir: Path) -> FullTask:
-        # TODO: find a better name for tasks
-        id = Tasks.get_task_id(raw)
-        file = wdir / raw["file"]
-        tags: set[str] = Tasks.get_task_tags(raw)
-        return FullTask(
-            id,
-            file,
-            locator.parse_locator(raw["locator"]),
-            tags,
-            None,
-            raw["prompt"] if "prompt" in raw else None,
-        )
-
     if arguments.task_json is not None:
-        tasks = Tasks.mk_validated_tasklist(arguments.task_json)
-        wdir = Path(".")
-        return ("tasks", wdir, [to_full_task(raw, wdir) for raw in tasks])
+        tasks = arguments.task_json
+        if not isinstance(tasks, list):
+            tasks = [tasks]
+        tasks = [Tasks.Task.model_validate(t) for t in tasks]
+        project = Tasks.Project(name="tasks", git_url="", git_commit="", path=Path("."))
+        return ("tasks", project, tasks)
     elif arguments.task_file is not None:
-        (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
+        taskfile = Tasks.TaskFile.from_file(arguments.task_file)
         tasks_name = arguments.task_file.stem
-        return (tasks_name, wdir, [to_full_task(raw, wdir) for raw in tasks])
+        return (tasks_name, taskfile.project, taskfile.tasks)
     else:
         raise ValueError(
             "Unspecified task.\nUse '--task-json ...literal-json...' or '--task-file path/to/task/file.{json,yaml}'."
@@ -348,10 +322,10 @@ def load_agent(agent_desc: str) -> AgentBuilder:
 @dataclass
 class RunConfiguration:
     agent_builder: AgentBuilder
-    tasks: list[FullTask]
+    project: Tasks.Project
+    tasks: list[Tasks.Task]
     tasks_name: str
     output_dir: Path
-    working_dir: Path
     trace: bool
     jobs: int
     tags: task_output.Tags
@@ -366,7 +340,7 @@ def parse_arguments(
             raise ValueError("Missing agent configuration. Pass [--agent ...].")
         agent_builder = load_agent(arguments.agent)
 
-    (tasks_name, wdir, tasks) = load_tasks(arguments)
+    (tasks_name, project, tasks) = load_tasks(arguments)
 
     # Get deployment environment
     env_name = getattr(arguments, "env", "none")
@@ -378,10 +352,10 @@ def parse_arguments(
     tags = collect_env_tags()
     return RunConfiguration(
         agent_builder,
+        project,
         tasks,
         tasks_name,
         arguments.output_dir,
-        wdir,
         arguments.trace,
         arguments.jobs,
         tags,
@@ -431,12 +405,12 @@ def run_config(config: RunConfiguration) -> bool:
 
     # Dispatcher span is now closed - workers will run independently
 
-    def run_it(full_task: FullTask, progress: Any) -> task_output.TaskOutput | None:
+    def run_it(task: Tasks.Task, progress: Any) -> task_output.TaskOutput | None:
         return run_task(
             config.agent_builder,
-            full_task,
+            config.project,
+            task,
             run_id,
-            wdir=config.working_dir,
             tags=config.tags,
             progress=progress,
             parent_span_context=parent_span_context,
@@ -457,7 +431,10 @@ def run_config(config: RunConfiguration) -> bool:
         return is_success(result)
 
     results = util.parallel_runner(
-        run_it, [(t.id, t) for t in config.tasks], succeeded=succeeded, jobs=config.jobs
+        run_it,
+        [(t.get_id(), t) for t in config.tasks],
+        succeeded=succeeded,
+        jobs=config.jobs,
     )
 
     total = len(results)
