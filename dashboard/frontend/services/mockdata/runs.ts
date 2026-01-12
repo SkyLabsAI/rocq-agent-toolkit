@@ -1,4 +1,4 @@
-import type { AgentRun, RunDetailsResponse } from '@/types/types';
+import type { AgentRun, RunDetailsResponse, TaskOutput } from '@/types/types';
 
 import { generateMockTaskOutput, simulateDelay } from './generators';
 
@@ -40,6 +40,22 @@ export const getRunsByInstanceMock = async (
     mockRuns
   );
   return mockRuns;
+};
+
+/**
+ * Mock data for agent instance task runs
+ */
+export const getAgentInstanceTaskRunsMock = async (
+  agentChecksum: string,
+  taskId: number
+): Promise<AgentRun[]> => {
+  await simulateDelay(200, 500);
+
+  console.log(taskId);
+  // Filter runs to only include those that would have this task
+  const allRuns = await getRunsByInstanceMock(agentChecksum);
+  // Return first 3 runs as mock (simulating filtered results)
+  return allRuns.filter((_, index) => index < 3);
 };
 
 /**
@@ -141,19 +157,19 @@ export const getRunDetailsMock = async (
   // Each has 6 tasks: 3 common (task_001, task_002, task_003), 3 unique
   const agentRunMap: Record<
     string,
-    { agentName: string; uniqueTasks: string[] }
+    { agentName: string; uniqueTasks: number[] }
   > = {
     run_agentA_001: {
       agentName: 'agentA',
-      uniqueTasks: ['task_A1', 'task_A2', 'task_A3'],
+      uniqueTasks: [1, 2, 3],
     },
     run_agentB_001: {
       agentName: 'agentB',
-      uniqueTasks: ['task_B1', 'task_B2', 'task_B3'],
+      uniqueTasks: [4, 5, 6],
     },
   };
 
-  const commonTasks = ['task_001', 'task_002', 'task_003'];
+  const commonTasks = [1, 2, 3];
 
   const mockRunDetails: RunDetailsResponse[] = runIds.map(runId => {
     const agentInfo = agentRunMap[runId] || {
@@ -195,21 +211,22 @@ export const getRunDetailsMock = async (
  */
 export const getObservabilityLogsMock = async (
   runId: string,
-  taskId: string
+  taskId: number
 ): Promise<Record<string, unknown>> => {
   await simulateDelay(300, 600);
 
+  const taskIdStr = String(taskId);
   const mockLogs = {
     cpp_code: [
-      `// Generated C++ code for ${taskId}\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from ${taskId}" << std::endl;\n    return 0;\n}`,
+      `// Generated C++ code for ${taskIdStr}\n#include <iostream>\n\nint main() {\n    std::cout << "Hello from ${taskIdStr}" << std::endl;\n    return 0;\n}`,
       `// Alternative implementation\n#include <vector>\n#include <algorithm>\n\nclass Solution {\npublic:\n    void solve() {\n        // Implementation here\n    }\n};`,
     ],
     targetContent: [
-      `Target theorem for ${taskId}:\nforall n : nat, n + 0 = n.`,
+      `Target theorem for ${taskIdStr}:\nforall n : nat, n + 0 = n.`,
       `Additional target:\nforall x y : nat, x + y = y + x.`,
     ],
     lemmaContent: [
-      `Lemma helper_${taskId.replace('_', '')} : forall n, S n = n + 1.\nProof.\n  induction n.\n  - reflexivity.\n  - simpl. rewrite IHn. reflexivity.\nQed.`,
+      `Lemma helper_${taskIdStr.replace('_', '')} : forall n, S n = n + 1.\nProof.\n  induction n.\n  - reflexivity.\n  - simpl. rewrite IHn. reflexivity.\nQed.`,
     ],
     statesContent: [
       `Initial state: Goal (forall n, n + 0 = n)\nTactic applied: induction n\nSubgoal 1: 0 + 0 = 0\nSubgoal 2: forall n, n + 0 = n -> S n + 0 = S n`,
@@ -280,7 +297,7 @@ export const getObservabilityLogsMock = async (
       `7. QED`,
     ],
     execution_log: [
-      `[INFO] Starting proof for ${taskId}`,
+      `[INFO] Starting proof for ${taskIdStr}`,
       `[DEBUG] Parsing goal structure`,
       `[INFO] Applying tactic: induction n`,
       `[DEBUG] Generated subgoals: 2`,
@@ -320,4 +337,59 @@ export const refreshDataMock = async (): Promise<{
 
   console.log('Refresh response (MOCK):', mockRefreshResponse);
   return mockRefreshResponse;
+};
+
+/**
+ * Mock data for task details within a specific run
+ */
+export const getTaskDetailsMock = async (
+  runId: string,
+  taskId: number
+): Promise<TaskOutput> => {
+  await simulateDelay(200, 400);
+
+  // Extract task index from taskId if possible, otherwise use a hash
+  const taskIndex = taskId;
+
+  // Extract agent name from runId or use default
+  const agentName =
+    runId.match(/run_(.+?)_/)?.[1] || runId.split('_')[1] || 'UnknownAgent';
+
+  const mockTask = generateMockTaskOutput(runId, agentName, taskIndex);
+  mockTask.task_id = taskId;
+
+  console.log(
+    `Fetched task details for run ${runId}, task ${taskId} (MOCK):`,
+    mockTask
+  );
+  return mockTask;
+};
+
+/**
+ * Mock bulk add tags operation
+ */
+export const bulkAddTagsMock = async (request: {
+  task_ids: number[];
+  tags: string[];
+}): Promise<{
+  success: boolean;
+  message: string;
+  tasks_updated: number;
+  tags_added: number;
+}> => {
+  await simulateDelay(300, 600);
+
+  const { task_ids, tags } = request;
+  const tasksUpdated = task_ids.length;
+  const tagsAdded = tags.length * tasksUpdated; // Each tag is added to each task
+
+  const mockResponse = {
+    success: true,
+    message: `Successfully added ${tags.length} tag(s) to ${tasksUpdated} task(s)`,
+    tasks_updated: tasksUpdated,
+    tags_added: tagsAdded,
+  };
+
+  console.log('Bulk add tags response (MOCK):', mockResponse);
+  return mockResponse;
 };

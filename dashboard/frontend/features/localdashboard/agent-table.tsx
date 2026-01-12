@@ -4,13 +4,17 @@ import Button from '@/components/base/ui/button';
 import SlidingTabs from '@/components/base/ui/sliding-tabs';
 import AgentListIcon from '@/icons/agent-list';
 import { DataSetListIcon } from '@/icons/dataset-list';
+import { ProjectListIcon } from '@/icons/project-list';
 import { RefreshIcon } from '@/icons/refresh';
 
 import AgentView from './agentview';
 import DataView from './dataview';
+import TaskSetView from './projectview';
 
 const AgentTable: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'agents' | 'datasets'>('agents');
+  const [activeTab, setActiveTab] = useState<
+    'agents' | 'datasets' | 'tasksets'
+  >('tasksets');
 
   return (
     <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
@@ -28,18 +32,25 @@ const AgentTable: React.FC = () => {
           <SlidingTabs
             tabs={[
               {
+                id: 'tasksets',
+                label: 'Tasks',
+                icon: <ProjectListIcon className='size-[15px]' />,
+              },
+              {
                 id: 'agents',
                 label: 'Agents',
                 icon: <AgentListIcon className='size-[15px]' />,
               },
               {
                 id: 'datasets',
-                label: 'Datasets',
+                label: 'Projects',
                 icon: <DataSetListIcon className='size-[15px]' />,
               },
             ]}
-            defaultTab='agents'
-            onTabChange={tabId => setActiveTab(tabId as 'agents' | 'datasets')}
+            defaultTab='tasksets'
+            onTabChange={tabId =>
+              setActiveTab(tabId as 'agents' | 'datasets' | 'tasksets')
+            }
           />
           <Button
             onClick={() => window.location.reload()}
@@ -54,6 +65,7 @@ const AgentTable: React.FC = () => {
 
       {activeTab === 'agents' && <AgentView />}
       {activeTab === 'datasets' && <DataView />}
+      {activeTab === 'tasksets' && <TaskSetView />}
     </div>
   );
 };

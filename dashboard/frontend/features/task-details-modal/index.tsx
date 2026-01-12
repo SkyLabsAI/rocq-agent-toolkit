@@ -12,7 +12,7 @@ interface TaskDetailsModalProps {
   onClose: () => void;
   details: Record<string, unknown> | null;
   title?: string;
-  taskId?: string;
+  taskId?: number;
 }
 
 const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({

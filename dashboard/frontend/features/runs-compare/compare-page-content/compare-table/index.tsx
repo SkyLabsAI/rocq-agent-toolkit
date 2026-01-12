@@ -11,10 +11,10 @@ import { TaskHeader } from './compare-table-header/task-header';
 interface ComparisonTableProps {
   runs: RunDetailsResponse[];
   taskMap: Record<string, RunTaskCell[]>;
-  allTaskIds: string[];
-  selectedTaskId: string | null;
-  onSelectTask: (taskId: string) => void;
-  onOpenModal: (taskId: string) => void;
+  allTaskIds: number[];
+  selectedTaskId: number | null;
+  onSelectTask: (taskId: number) => void;
+  onOpenModal: (taskId: number) => void;
   showTasks: boolean;
   taskRowData: TaskRowData[];
   onToggleShowTasks: () => void;
@@ -38,6 +38,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                 <TaskSection
                   key={taskId}
                   id={taskId}
+                  name={taskMap[taskId][0].task?.task_name || 'No name'}
                   details={taskMap[taskId]}
                   onOpenModal={onOpenModal}
                   taskRowData={taskRowData.find(row => row.taskId === taskId)!}
@@ -51,14 +52,16 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
 };
 
 interface TaskSectionProps {
-  id: string;
+  id: number;
+  name: string;
   details: RunTaskCell[];
-  onOpenModal: (taskId: string) => void;
+  onOpenModal: (taskId: number) => void;
   taskRowData: TaskRowData;
 }
 
 const TaskSection: React.FC<TaskSectionProps> = ({
   id,
+  name,
   details,
   onOpenModal,
   taskRowData,
@@ -69,6 +72,7 @@ const TaskSection: React.FC<TaskSectionProps> = ({
     <>
       <TaskHeader
         id={id}
+        name={name}
         details={details}
         onOpenModal={onOpenModal}
         onClick={() => setOpen(!open)}

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 async def extract_provenance_from_logs_async(
     run_id: str,
-    task_id: str,
+    task_name: str,
     estimated_time: datetime | None = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """
@@ -31,7 +31,7 @@ async def extract_provenance_from_logs_async(
 
     Args:
         run_id: The run ID to filter logs by
-        task_id: The task ID to filter logs by
+        task_name: The logical task name/identifier to filter logs by
         estimated_time: Optional timestamp (UTC) used to narrow the Loki query window.
             This is important during ingestion because the run/task rows may not be in
             the database yet, so we cannot estimate time from DB state.
@@ -51,7 +51,7 @@ async def extract_provenance_from_logs_async(
 
         # Fetch observability logs
         logs = await fetch_observability_logs(
-            run_id=run_id, task_id=task_id, estimated_time=estimated_time
+            run_id=run_id, task_name=task_name, estimated_time=estimated_time
         )
 
         # Extract provenance entries from logs
@@ -122,9 +122,9 @@ async def extract_provenance_from_logs_async(
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning(
-            "Error extracting provenance from logs for run_id=%s, task_id=%s: %s",
+            "Error extracting provenance from logs for run_id=%s, task_name=%s: %s",
             run_id,
-            task_id,
+            task_name,
             e,
         )
 

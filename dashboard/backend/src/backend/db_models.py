@@ -30,6 +30,15 @@ class AgentClassProvenance(SQLModel, table=True):
     runs: list["Run"] = Relationship(back_populates="agent_class")
 
 
+# Notes re data model:
+# - Corresponds to "Agent"
+# - Logged during `TaskResult` construction in `rocq-pipeline`
+# - Ingested when `TaskResult` is uploaded
+# - Re tags:
+#   + some tags may be captured by the `provenance`
+#   + separate agent tags are not crucial in the short term but may become
+#     more useful in the future (e.g. "best_agent" tag)
+# - Primary key: `agent_checksum`, stably computed via `provenance`
 class AgentProvenance(SQLModel, table=True):
     """Agent instance provenance model - stores provenance data for agent instances."""
 
@@ -48,6 +57,8 @@ class AgentProvenance(SQLModel, table=True):
     runs: list["Run"] = Relationship(back_populates="agent_instance")
 
 
+# Notes re data model:
+# - Corresponds to "Project", so we should rename this
 class Dataset(SQLModel, table=True):
     """Dataset model - represents a collection of tasks."""
 
@@ -67,15 +78,31 @@ class Dataset(SQLModel, table=True):
     # Relationships
     tasks: list["Task"] = Relationship(back_populates="dataset")
     runs: list["Run"] = Relationship(back_populates="dataset")
-    results: list["TaskResultDB"] = Relationship(back_populates="dataset")
 
 
+# Notes re data model:
+# - Primary key:
+#   + tasks are only unique relative to project
+#     ==> project ID must be part of task ID
+#   + Using an auto-increment primary key with separate indices for efficient
+#     lookups based on project ID + task locator
+# - Tags:
+#   + Task tags are extracted from `TaskResult` (with "TASK_" prefix)
+#   + Many-to-many relationship via TaskTagLink
+#   + Ability to modify task tags post facto (e.g. by tagging tasks with a date)
 class Task(SQLModel, table=True):
     """Task model - represents a problem/task being solved."""
 
     __tablename__ = "task"
 
-    id: str = Field(primary_key=True)  # e.g., "ArrayCopy.v#lemma:test_ok"
+    # Auto-generated surrogate key; the logical identifier from JSONL
+    # (e.g. "ArrayCopy.v#lemma:test_ok") is stored in the `name` column.
+    id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, primary_key=True, autoincrement=True),
+    )
+    # The logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
+    name: str = Field(index=True)
     kind: str | None = None
     # Foreign key to Dataset; nullable for backward compatibility with
     # older ingested data that did not include dataset information.
@@ -85,6 +112,10 @@ class Task(SQLModel, table=True):
     # Relationships
     results: list["TaskResultDB"] = Relationship(back_populates="task")
     dataset: Dataset = Relationship(back_populates="tasks")
+    tag_links: list["TaskTagLink"] = Relationship(back_populates="task")
+
+    # Note: The combination of (name, dataset_id) should be unique.
+    # This is enforced at the application level during ingestion.
 
 
 class Tag(SQLModel, table=True):
@@ -98,6 +129,7 @@ class Tag(SQLModel, table=True):
 
     # Relationships
     run_links: list["RunTagLink"] = Relationship(back_populates="tag")
+    task_links: list["TaskTagLink"] = Relationship(back_populates="tag")
 
 
 class RunTagLink(SQLModel, table=True):
@@ -113,6 +145,33 @@ class RunTagLink(SQLModel, table=True):
     tag: Tag = Relationship(back_populates="run_links")
 
 
+class TaskTagLink(SQLModel, table=True):
+    """Link table for many-to-many relationship between tasks and tags.
+
+    Task tags are extracted from metadata tags with the "TASK_" prefix during
+    ingestion. The prefix is stripped when storing the tag key.
+    """
+
+    __tablename__ = "task_tag_link"
+
+    task_id: int = Field(foreign_key="task.id", primary_key=True)
+    tag_id: int = Field(foreign_key="tag.id", primary_key=True)
+
+    # Relationships
+    task: "Task" = Relationship(back_populates="tag_links")
+    tag: Tag = Relationship(back_populates="task_links")
+
+
+# Notes re data model:
+# - this seemed mostly OK
+# - `is_best_run` can probably dropped
+# - Q: how important is run concept/visualization for users?
+#   + Gregory: this will be useful for debugging / optimizing our pipeline exeuction
+#     framework, but it is probably less important for agent development
+#   + Ehtesham/Jasper: once the data provenance changes get merged `Run` will be less
+#     important for the frontend
+# - metadata will likely be stripped from this part of the DB schema since we can
+#   compute these aggregates via composite queries.
 class Run(SQLModel, table=True):
     """Run model - represents an execution session.
 
@@ -160,6 +219,11 @@ class Run(SQLModel, table=True):
     dataset: Dataset = Relationship(back_populates="runs")
 
 
+# Notes re data model:
+# - we don't need a dataset ID / project ID since task_ID has a uniquely associated
+#   project ID
+# - in the future we may want a richer status type, e.g. to capture execution
+#   in the pipeline vs. agent failure during task attempt
 class TaskResultDB(SQLModel, table=True):
     """
     TaskResultDB model - individual task result within a run.
@@ -172,9 +236,10 @@ class TaskResultDB(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     run_id: UUID = Field(foreign_key="run.id", index=True)
-    task_id: str = Field(foreign_key="task.id", index=True)
+    task_id: int = Field(foreign_key="task.id", index=True)
+    # Store the logical task name for queries that need to join on the original string
+    task_name: str = Field(default="", index=True)
     trace_id: str | None = Field(default=None, index=True)
-    dataset_id: int = Field(foreign_key="dataset.id", index=True)
 
     timestamp_utc: datetime
     status: str  # 'Success' or 'Failure'
@@ -188,4 +253,3 @@ class TaskResultDB(SQLModel, table=True):
     # Relationships
     run: Run = Relationship(back_populates="results")
     task: Task = Relationship(back_populates="results")
-    dataset: Dataset = Relationship(back_populates="results")

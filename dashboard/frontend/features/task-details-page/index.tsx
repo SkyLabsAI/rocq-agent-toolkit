@@ -7,12 +7,12 @@ import { StatusBadge } from '@/components/base/statusBadge';
 import { Button } from '@/components/base/ui/button';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { getRunDetails } from '@/services/dataservice';
+import { getObservabilityLogs, getTaskDetails } from '@/services/dataservice';
 import type { TaskOutput } from '@/types/types';
 
 interface TaskDetailsPageContentProps {
   runId: string;
-  taskId: string;
+  taskId: number;
 }
 
 const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
@@ -25,6 +25,12 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expandedResults, setExpandedResults] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [observabilityLogs, setObservabilityLogs] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [logsError, setLogsError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -32,16 +38,11 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
       setError(null);
 
       try {
-        const details = await getRunDetails([runId]);
-        if (details.length > 0) {
-          const foundTask = details[0].tasks.find(t => t.task_id === taskId);
-          if (foundTask) {
-            setTask(foundTask);
-          } else {
-            setError('Task not found');
-          }
+        const details = await getTaskDetails(runId, taskId);
+        if (details !== null) {
+          setTask(details);
         } else {
-          setError('Run not found');
+          setError('Task not found');
         }
       } catch (err) {
         setError(
@@ -63,12 +64,32 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
     setExpandedResults(prev => !prev);
   };
 
-  const openLogsModal = () => {
-    setIsLogsModalOpen(true);
+  const openLogsModal = async () => {
+    if (!runId || !taskId) return;
+
+    try {
+      setLoadingLogs(true);
+      setLogsError(null);
+      const logs = await getObservabilityLogs(runId, taskId);
+      setObservabilityLogs(logs);
+      setIsLogsModalOpen(true);
+    } catch (err) {
+      setLogsError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to fetch observability logs'
+      );
+      // Still open the modal to show the error
+      setIsLogsModalOpen(true);
+    } finally {
+      setLoadingLogs(false);
+    }
   };
 
   const closeLogsModal = () => {
     setIsLogsModalOpen(false);
+    setObservabilityLogs(null);
+    setLogsError(null);
   };
 
   if (loading) {
@@ -121,7 +142,7 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
                   Task Details
                 </p>
                 <p className='font-noto-sans font-semibold text-sm text-text'>
-                  {task.task_id}
+                  {task.task_name}
                 </p>
               </div>
             </div>
@@ -195,33 +216,6 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
             </p>
             <div className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    Execution Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {`${task.metrics.resource_usage.execution_time_sec.toFixed(2)}s`}
-                  </p>
-                </div>
-
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    CPU Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {task.metrics?.resource_usage?.cpu_time_sec.toFixed(2)}s
-                  </p>
-                </div>
-
-                <div className='flex flex-col gap-1.5'>
-                  <p className='font-inter font-normal text-sm text-text-disabled'>
-                    GPU Time
-                  </p>
-                  <p className='font-inter font-normal text-sm text-text'>
-                    {`${task.metrics.resource_usage.gpu_time_sec.toFixed(2)}s`}
-                  </p>
-                </div>
-
                 <div className='flex flex-col gap-1.5'>
                   <p className='font-inter font-normal text-sm text-text-disabled'>
                     LLM Calls
@@ -327,9 +321,10 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
             <Button
               variant='default'
               onClick={openLogsModal}
+              disabled={loadingLogs}
               className='flex-1'
             >
-              View Detailed Logs
+              {loadingLogs ? 'Loading Logs...' : 'View Detailed Logs'}
             </Button>
             <Button variant='outline' onClick={handleBack} className='flex-1'>
               Back to Run Details
@@ -342,8 +337,12 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
       <TaskDetailsModal
         isOpen={isLogsModalOpen}
         onClose={closeLogsModal}
-        details={task.results as Record<string, unknown> | null}
-        title={`Task Logs - ${task.task_id}`}
+        details={
+          logsError
+            ? { error: logsError }
+            : observabilityLogs || (loadingLogs ? null : {})
+        }
+        title={`Observability Logs - ${task.task_name}`}
         taskId={task.task_id}
       />
     </div>

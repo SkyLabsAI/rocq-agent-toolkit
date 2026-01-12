@@ -15,16 +15,26 @@ export {
 
 // Run-related mocks
 export {
+  bulkAddTagsMock,
+  getAgentInstanceTaskRunsMock,
   getDatasetInstanceRunsMock,
   getDetailsForDatasetMock,
   getObservabilityLogsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsMock,
   refreshDataMock,
 } from './runs';
 
 // Benchmark-related mocks
 export { getBenchmarkAgentsMock, getBenchmarksMock } from './benchmarks';
+
+// Project-related mocks
+export {
+  getProjectDatasetsMock,
+  getProjectResultsMock,
+  getProjectsMock,
+} from './projects';
 
 // Visualizer-related mocks (NEW!)
 export {

@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import ComparisonModal from '@/components/base/comparisonModal';
@@ -24,7 +23,6 @@ interface AgentCompareContentProps {
 export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
   agentIds,
 }) => {
-  const router = useRouter();
   const { agentData, isLoading: agentDataLoading } = useAgents();
 
   const agentNames = agentIds;
@@ -32,17 +30,6 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bestRuns, setBestRuns] = useState<RunDetailsResponse[]>([]);
-
-  // Remove an agent from the comparison
-  const handleRemove = (removeId: string) => {
-    const newAgents = agentNames.filter(name => name !== removeId);
-    if (newAgents.length === 0) {
-      router.push('/');
-      return;
-    }
-    const url = `/compare/agents?agents=${encodeURIComponent(newAgents.join(','))}`;
-    router.push(url);
-  };
 
   useEffect(() => {
     const fetchBestRuns = async () => {
@@ -109,15 +96,15 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
   const taskMap = useMemo(() => {
     if (bestRuns.length === 0) return {};
 
-    const map: Record<string, RunTaskCell[]> = {};
-    const taskCounts: Record<string, number> = {};
+    const map: Record<number, RunTaskCell[]> = {};
+    const taskCounts: Record<number, number> = {};
 
     // First pass: count how many runs have each task
     bestRuns.forEach(run => {
       const seenTasks = new Set<string>();
       run.tasks.forEach(task => {
-        if (!seenTasks.has(task.task_id)) {
-          seenTasks.add(task.task_id);
+        if (!seenTasks.has(task.task_name)) {
+          seenTasks.add(task.task_name);
           taskCounts[task.task_id] = (taskCounts[task.task_id] || 0) + 1;
         }
       });
@@ -125,13 +112,13 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
 
     // Second pass: only include tasks that appear in ALL runs
     const commonTaskIds = Object.keys(taskCounts).filter(
-      taskId => taskCounts[taskId] === bestRuns.length
+      taskId => taskCounts[parseInt(taskId)] === bestRuns.length
     );
 
     // Build the task map with only common tasks
     commonTaskIds.forEach(taskId => {
-      map[taskId] = bestRuns.map(run => {
-        const task = run.tasks.find(t => t.task_id === taskId);
+      map[parseInt(taskId)] = bestRuns.map(run => {
+        const task = run.tasks.find(t => t.task_id === parseInt(taskId));
         return {
           run,
           task: task || undefined,
@@ -143,14 +130,17 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
   }, [bestRuns]);
 
   const [showTasks, setShowTasks] = useState(true);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [comparisonModalTaskId, setComparisonModalTaskId] = useState<
-    string | null
+    number | null
   >(null);
 
-  const allTaskIds = useMemo(() => Object.keys(taskMap).sort(), [taskMap]);
+  const allTaskIds = useMemo(
+    () => Object.keys(taskMap).sort((a, b) => parseInt(a) - parseInt(b)),
+    [taskMap]
+  );
 
-  const selectTask = (taskId: string) => {
+  const selectTask = (taskId: number) => {
     setSelectedTaskId(prev => (prev === taskId ? null : taskId));
   };
 
@@ -184,11 +174,11 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
 
       {stats.length > 0 && (
         <>
-          <RunSummary runStats={stats} onRemove={handleRemove} />
+          <RunSummary runStats={stats} />
           <ComparisonTable
             runs={bestRuns}
             taskMap={taskMap}
-            allTaskIds={allTaskIds}
+            allTaskIds={allTaskIds.map(id => parseInt(id))}
             selectedTaskId={selectedTaskId}
             showTasks={showTasks}
             onSelectTask={selectTask}
@@ -217,10 +207,12 @@ export const AgentCompareContent: React.FC<AgentCompareContentProps> = ({
         <ComparisonModal
           isOpen={!!comparisonModalTaskId}
           onClose={() => setComparisonModalTaskId(null)}
-          taskId={comparisonModalTaskId}
+          taskId={comparisonModalTaskId.toString()}
           items={bestRuns.map(run => {
             const cell =
-              taskMap[comparisonModalTaskId]?.[bestRuns.indexOf(run)];
+              taskMap[parseInt(comparisonModalTaskId.toString())]?.[
+                bestRuns.indexOf(run)
+              ];
             return {
               label: `${run.agent_name} (${run.run_id})`,
               task: cell?.task || null,

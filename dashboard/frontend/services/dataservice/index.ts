@@ -2,8 +2,10 @@ import axios from 'axios';
 
 import { config } from '@/config/environment';
 import {
+  bulkAddTagsMock,
   getAgentClassDataMock,
   getAgentInstancesMock,
+  getAgentInstanceTaskRunsMock,
   getBenchmarkAgentsMock,
   getBenchmarksMock,
   getDatasetAgentInstancesMock,
@@ -11,8 +13,12 @@ import {
   getDetailsForDatasetMock,
   getDetailsMock,
   getObservabilityLogsMock,
+  getProjectDatasetsMock,
+  getProjectResultsMock,
+  getProjectsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsMock,
   refreshDataMock,
 } from '@/services/mockdata';
 import {
@@ -21,6 +27,9 @@ import {
   type AgentSummary,
   type Benchmark,
   type RunDetailsResponse,
+  type TaskOutput,
+  type TaskSet,
+  type TaskSetResults,
 } from '@/types/types';
 
 // Check if we should use mock data
@@ -73,6 +82,59 @@ export const getRunsByInstance = USE_MOCK_DATA
   ? getRunsByInstanceMock
   : getRunsByInstanceReal;
 
+const getAgentInstanceTaskRunsReal = async (
+  agentChecksum: string,
+  taskId: number
+): Promise<AgentRun[]> => {
+  const response = await axios.get<{
+    agent_checksum: string;
+    task_id: number;
+    task_name: string;
+    run_ids: string[];
+    total_runs: number;
+  }>(
+    `${config.DATA_API}/agents/instance/${agentChecksum}/tasks/${taskId}/runs`
+  );
+
+  if (response.data.run_ids.length === 0) {
+    return [];
+  }
+
+  // Fetch full run details using batch endpoint
+  const runIdsParam = response.data.run_ids.join(',');
+  const detailsResponse = await axios.get<RunDetailsResponse[]>(
+    `${config.DATA_API}/runs/details?run_ids=${runIdsParam}`
+  );
+
+  // Convert RunDetailsResponse to AgentRun format
+  return detailsResponse.data.map(run => {
+    const successCount = run.tasks.filter(t => t.status === 'Success').length;
+    const failureCount = run.tasks.filter(t => t.status !== 'Success').length;
+    // Get timestamp from first task if available
+    const timestampUtc =
+      run.tasks.length > 0
+        ? run.tasks[0].timestamp_utc
+        : new Date().toISOString();
+
+    return {
+      run_id: run.run_id,
+      agent_name: run.agent_name,
+      timestamp_utc: timestampUtc,
+      total_tasks: run.tasks.length,
+      success_count: successCount,
+      failure_count: failureCount,
+      dataset_id: '',
+      metadata: {
+        tags: run.metadata?.tags || {},
+      },
+    };
+  });
+};
+
+export const getAgentInstanceTaskRuns = USE_MOCK_DATA
+  ? getAgentInstanceTaskRunsMock
+  : getAgentInstanceTaskRunsReal;
+
 // ========================================
 // AGENT DETAILS (RUNS BY CLASS NAME)
 // ========================================
@@ -123,14 +185,33 @@ export const getRunDetails = USE_MOCK_DATA
   : getRunDetailsReal;
 
 // ========================================
+// TASK DETAILS API
+// ========================================
+
+const getTaskDetailsReal = async (
+  runId: string,
+  taskId: number
+): Promise<TaskOutput> => {
+  const encodedTaskId = encodeURIComponent(taskId);
+  const response = await axios.get(
+    `${config.DATA_API}/runs/${runId}/tasks/${encodedTaskId}/details`
+  );
+  return response.data as TaskOutput;
+};
+
+export const getTaskDetails = USE_MOCK_DATA
+  ? getTaskDetailsMock
+  : getTaskDetailsReal;
+
+// ========================================
 // OBSERVABILITY LOGS API
 // ========================================
 
 const getObservabilityLogsReal = async (
   runId: string,
-  taskId: string
+  taskId: number
 ): Promise<Record<string, unknown>> => {
-  const encodedTaskId = encodeURIComponent(taskId);
+  const encodedTaskId = encodeURIComponent(String(taskId));
   const response = await axios.get(
     `${config.DATA_API}/observability/logs?run_id=${runId}&task_id=${encodedTaskId}`
   );
@@ -156,6 +237,34 @@ const refreshDataReal = async (): Promise<{
 };
 
 export const refreshData = USE_MOCK_DATA ? refreshDataMock : refreshDataReal;
+
+// ========================================
+// BULK ADD TAGS API
+// ========================================
+
+export interface BulkAddTagsRequest {
+  task_ids: number[]; // List of task database IDs
+  tags: string[]; // Tags to add (each string is used as both key and value)
+}
+
+export interface BulkAddTagsResponse {
+  success: boolean;
+  message: string;
+  tasks_updated: number;
+  tags_added: number;
+}
+
+const bulkAddTagsReal = async (
+  request: BulkAddTagsRequest
+): Promise<BulkAddTagsResponse> => {
+  const response = await axios.post<BulkAddTagsResponse>(
+    `${config.DATA_API}/tasks/tags`,
+    request
+  );
+  return response.data;
+};
+
+export const bulkAddTags = USE_MOCK_DATA ? bulkAddTagsMock : bulkAddTagsReal;
 
 // ========================================
 // AGENT SUMMARIES HELPER
@@ -262,6 +371,69 @@ const getDatasetInstanceRunsReal = async (
 export const getDatasetInstanceRuns = USE_MOCK_DATA
   ? getDatasetInstanceRunsMock
   : getDatasetInstanceRunsReal;
+
+// ========================================
+// TASKSETS API
+// ========================================
+
+const getTaskSetsReal = async (): Promise<TaskSet[]> => {
+  const response = await axios.get(`${config.DATA_API}/datasets`);
+
+  const tempB: Benchmark[] = response.data;
+  const tempTaskSets: TaskSet[] = tempB.map(b => ({
+    id: b.dataset_id,
+    name: b.dataset_id ?? '',
+    description: b.description ?? '',
+    created_at: b.created_at ?? '',
+  }));
+
+  return tempTaskSets;
+};
+
+export const getTaskSets = USE_MOCK_DATA ? getProjectsMock : getTaskSetsReal;
+
+// Legacy export for backward compatibility
+export const getProjects = getTaskSets;
+
+// ========================================
+// TASKSET DATASETS API
+// ========================================
+
+const getTaskSetDatasetsReal = async (
+  tasksetId: string
+): Promise<Benchmark[]> => {
+  const response = await axios.get(
+    `${config.DATA_API}/tasksets/${tasksetId}/datasets`
+  );
+  return response.data as Benchmark[];
+};
+
+export const getTaskSetDatasets = USE_MOCK_DATA
+  ? getProjectDatasetsMock
+  : getTaskSetDatasetsReal;
+
+// Legacy export for backward compatibility
+export const getProjectDatasets = getTaskSetDatasets;
+
+// ========================================
+// TASKSET RESULTS API
+// ========================================
+
+const getTaskSetResultsReal = async (
+  tasksetId: string
+): Promise<TaskSetResults> => {
+  const response = await axios.get(
+    `${config.DATA_API}/datasets/${tasksetId}/results`
+  );
+  return response.data as TaskSetResults;
+};
+
+export const getTaskSetResults = USE_MOCK_DATA
+  ? getProjectResultsMock
+  : getTaskSetResultsReal;
+
+// Legacy export for backward compatibility
+export const getProjectResults = getTaskSetResults;
 
 // ========================================
 // VISUALIZER TYPES

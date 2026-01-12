@@ -29,7 +29,7 @@ export const computeRunStats = (run: RunDetailsResponse): RunStats => {
 };
 
 export interface TaskRowData {
-  taskId: string;
+  taskId: number;
   cells: Array<{
     runId: string;
     runName: string;
@@ -40,7 +40,7 @@ export interface TaskRowData {
 export function transformRunsToTaskRows(
   runs: RunDetailsResponse[]
 ): TaskRowData[] {
-  const taskMap = new Map<string, TaskRowData>();
+  const taskMap = new Map<number, TaskRowData>();
 
   // 1. Iterate through every run (Column)
   runs.forEach((run, runIndex) => {
@@ -69,7 +69,5 @@ export function transformRunsToTaskRows(
   });
 
   // Convert Map to Array and Sort by Task ID
-  return Array.from(taskMap.values()).sort((a, b) =>
-    a.taskId.localeCompare(b.taskId)
-  );
+  return Array.from(taskMap.values()).sort((a, b) => a.taskId - b.taskId);
 }
