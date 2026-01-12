@@ -213,6 +213,7 @@ const RunDetailsView: React.FC<RunDetailsViewProps> = ({
         isOpen={isPanelOpen}
         onClose={handlePanelClose}
         openCodeModal={openCodeModal}
+        runTimestampUtc={run.timestamp_utc}
       />
     </>
   );

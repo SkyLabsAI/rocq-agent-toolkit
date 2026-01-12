@@ -22,6 +22,7 @@ type Props = {
   onClose: () => void;
   runId: string;
   runTimestampUtc: string;
+  initialTraceId?: string;
 };
 
 const VisualizerModal = ({
@@ -29,6 +30,7 @@ const VisualizerModal = ({
   onClose,
   runId,
   runTimestampUtc,
+  initialTraceId,
 }: Props) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +83,15 @@ const VisualizerModal = ({
       setLoading(true);
       setError(null);
       try {
+        // If initialTraceId is provided, use it directly
+        if (initialTraceId) {
+          setTraceIds([initialTraceId]);
+          setSelectedTraceId(initialTraceId);
+          if (!cancelled) setLoading(false);
+          return;
+        }
+
+        // Otherwise, fetch trace IDs for the run
         const res = await getTraceIdsForRun(runId, {
           startMs: range.startMs,
           endMs: range.endMs,
@@ -104,7 +115,7 @@ const VisualizerModal = ({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, runId, range.startMs, range.endMs]);
+  }, [isOpen, runId, range.startMs, range.endMs, initialTraceId]);
 
   // Fetch spans for selected trace id.
   useEffect(() => {
