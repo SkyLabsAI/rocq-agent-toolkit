@@ -26,7 +26,7 @@ const TaskDetailsPage = ({
     );
   }
 
-  return <TaskDetailsPageContent runId={runId} taskId={taskId} />;
+  return <TaskDetailsPageContent runId={runId} taskId={parseInt(taskId, 0)} />;
 };
 
 export default TaskDetailsPage;
