@@ -364,3 +364,32 @@ export const getTaskDetailsMock = async (
   );
   return mockTask;
 };
+
+/**
+ * Mock bulk add tags operation
+ */
+export const bulkAddTagsMock = async (request: {
+  task_ids: number[];
+  tags: string[];
+}): Promise<{
+  success: boolean;
+  message: string;
+  tasks_updated: number;
+  tags_added: number;
+}> => {
+  await simulateDelay(300, 600);
+
+  const { task_ids, tags } = request;
+  const tasksUpdated = task_ids.length;
+  const tagsAdded = tags.length * tasksUpdated; // Each tag is added to each task
+
+  const mockResponse = {
+    success: true,
+    message: `Successfully added ${tags.length} tag(s) to ${tasksUpdated} task(s)`,
+    tasks_updated: tasksUpdated,
+    tags_added: tagsAdded,
+  };
+
+  console.log('Bulk add tags response (MOCK):', mockResponse);
+  return mockResponse;
+};

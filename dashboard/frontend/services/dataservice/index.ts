@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import { config } from '@/config/environment';
 import {
+  bulkAddTagsMock,
   getAgentClassDataMock,
   getAgentInstancesMock,
   getAgentInstanceTaskRunsMock,
@@ -238,6 +239,34 @@ const refreshDataReal = async (): Promise<{
 export const refreshData = USE_MOCK_DATA ? refreshDataMock : refreshDataReal;
 
 // ========================================
+// BULK ADD TAGS API
+// ========================================
+
+export interface BulkAddTagsRequest {
+  task_ids: number[]; // List of task database IDs
+  tags: string[]; // Tags to add (each string is used as both key and value)
+}
+
+export interface BulkAddTagsResponse {
+  success: boolean;
+  message: string;
+  tasks_updated: number;
+  tags_added: number;
+}
+
+const bulkAddTagsReal = async (
+  request: BulkAddTagsRequest
+): Promise<BulkAddTagsResponse> => {
+  const response = await axios.post<BulkAddTagsResponse>(
+    `${config.DATA_API}/tasks/tags`,
+    request
+  );
+  return response.data;
+};
+
+export const bulkAddTags = USE_MOCK_DATA ? bulkAddTagsMock : bulkAddTagsReal;
+
+// ========================================
 // AGENT SUMMARIES HELPER
 // ========================================
 
@@ -348,7 +377,7 @@ export const getDatasetInstanceRuns = USE_MOCK_DATA
 // ========================================
 
 const getTaskSetsReal = async (): Promise<TaskSet[]> => {
-  const response = await axios.get(`${config.DATA_API}/tasksets`);
+  const response = await axios.get(`${config.DATA_API}/datasets`);
 
   const tempB: Benchmark[] = response.data;
   const tempTaskSets: TaskSet[] = tempB.map(b => ({
@@ -394,7 +423,7 @@ const getTaskSetResultsReal = async (
   tasksetId: string
 ): Promise<TaskSetResults> => {
   const response = await axios.get(
-    `${config.DATA_API}/tasksets/${tasksetId}/results`
+    `${config.DATA_API}/datasets/${tasksetId}/results`
   );
   return response.data as TaskSetResults;
 };

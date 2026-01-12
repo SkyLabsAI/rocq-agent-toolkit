@@ -37,7 +37,7 @@ const TaskSetView: React.FC = () => {
           <tr className='text-text' data-testid='tasksets-header-row'>
             <td>
               <div className='px-6 text-[16px] py-5 font-semibold'>
-                TaskSets
+                Projects
               </div>
             </td>
           </tr>

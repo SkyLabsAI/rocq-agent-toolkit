@@ -15,6 +15,7 @@ export {
 
 // Run-related mocks
 export {
+  bulkAddTagsMock,
   getAgentInstanceTaskRunsMock,
   getDatasetInstanceRunsMock,
   getDetailsForDatasetMock,

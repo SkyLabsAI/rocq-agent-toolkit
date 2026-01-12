@@ -1,14 +1,16 @@
 'use client';
 
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
-import { config } from '@/config/environment';
 import Layout from '@/layouts/common';
-import { getTaskSetResults, getTaskSets } from '@/services/dataservice';
+import {
+  bulkAddTags,
+  getTaskSetResults,
+  getTaskSets,
+} from '@/services/dataservice';
 import { type TaskSet, type TaskSetResults } from '@/types/types';
 
 import ProjectTaskDetailsModal from './task-details-modal';
@@ -29,16 +31,23 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     Set<string>
   >(new Set());
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [selectedTasksetTags, setSelectedTasksetTags] = useState<Set<string>>(
+    new Set()
+  );
   const [agentInstanceSearch, setAgentInstanceSearch] = useState('');
   const [tagSearch, setTagSearch] = useState('');
+  const [tasksetTagSearch, setTasksetTagSearch] = useState('');
+  const [taskNameSearch, setTaskNameSearch] = useState('');
   const [isAgentInstanceDropdownOpen, setIsAgentInstanceDropdownOpen] =
     useState(false);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [isTasksetTagDropdownOpen, setIsTasksetTagDropdownOpen] =
+    useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
   const [isCreateDatasetModalOpen, setIsCreateDatasetModalOpen] =
     useState(false);
   const [datasetName, setDatasetName] = useState('');
-  const [datasetDescription, setDatasetDescription] = useState('');
+
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [modalState, setModalState] = useState<{
@@ -117,15 +126,6 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     return resultsMap.get(key) || null;
   };
 
-  // Initialize selected agent instances when results load
-  useEffect(() => {
-    if (results && selectedAgentInstances.size === 0) {
-      setSelectedAgentInstances(
-        new Set(results.agent_instances.map(i => i.agent_instance_id))
-      );
-    }
-  }, [results, selectedAgentInstances.size]);
-
   // Extract all unique tags from tasks
   const allTags = useMemo(() => {
     if (!results) return new Set<string>();
@@ -140,36 +140,74 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     return tagsSet;
   }, [results]);
 
-  // Initialize selected tags when tags are available
-  useEffect(() => {
-    if (allTags.size > 0 && selectedTags.size === 0) {
-      setSelectedTags(new Set(allTags));
-    }
-  }, [allTags, selectedTags.size]);
+  // Separate tags into taskset tags and regular tags
+  const tasksetTags = useMemo(() => {
+    const tasksetSet = new Set<string>();
+    allTags.forEach(tag => {
+      if (tag.startsWith('taskset_')) {
+        tasksetSet.add(tag);
+      }
+    });
+    return tasksetSet;
+  }, [allTags]);
 
-  // Filter tasks based on selected tags
+  const regularTags = useMemo(() => {
+    const regularSet = new Set<string>();
+    allTags.forEach(tag => {
+      if (!tag.startsWith('taskset_')) {
+        regularSet.add(tag);
+      }
+    });
+    return regularSet;
+  }, [allTags]);
+
+  // Filter tasks based on selected tags (both regular and taskset tags) and task name search
   const filteredTasks = useMemo(() => {
     if (!results) return [];
-    if (selectedTags.size === 0) return results.tasks;
 
-    return results.tasks.filter(task => {
-      if (!task.tags || Object.keys(task.tags).length === 0) {
-        // If no tags, only show if "no tags" is selected or all tags are selected
-        return selectedTags.size === allTags.size;
-      }
+    let tasks = results.tasks;
 
-      // Check if task has any of the selected tags
-      return Object.entries(task.tags).some(([key, value]) =>
-        selectedTags.has(`${key}:${value}`)
+    // Filter by tags if any are selected
+    if (selectedTags.size > 0 || selectedTasksetTags.size > 0) {
+      // Combine both tag sets for filtering
+      const allSelectedTags = new Set([
+        ...Array.from(selectedTags),
+        ...Array.from(selectedTasksetTags),
+      ]);
+
+      // Filter tasks to show only those with selected tags
+      tasks = tasks.filter(task => {
+        if (!task.tags || Object.keys(task.tags).length === 0) {
+          // Tasks with no tags are not shown when tags are selected
+          return false;
+        }
+
+        // Check if task has any of the selected tags (regular or taskset)
+        return Object.entries(task.tags).some(([key, value]) =>
+          allSelectedTags.has(`${key}:${value}`)
+        );
+      });
+    }
+
+    // Filter by task name search if search query exists
+    // Matches anywhere in the task name (not just from the start)
+    if (taskNameSearch.trim()) {
+      const searchLower = taskNameSearch.toLowerCase().trim();
+      tasks = tasks.filter(task =>
+        task.task_name.toLowerCase().includes(searchLower)
       );
-    });
-  }, [results, selectedTags, allTags.size]);
+    }
+
+    return tasks;
+  }, [results, selectedTags, selectedTasksetTags, taskNameSearch]);
 
   // Filter agent instances based on selection
   const filteredAgentInstances = useMemo(() => {
     if (!results) return [];
-    if (selectedAgentInstances.size === 0) return [];
+    // If no agent instances are selected, show all
+    if (selectedAgentInstances.size === 0) return results.agent_instances;
 
+    // Filter to show only selected agent instances
     return results.agent_instances.filter(instance =>
       selectedAgentInstances.has(instance.agent_instance_id)
     );
@@ -237,10 +275,30 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
   };
 
   const handleSelectAllTags = () => {
-    if (selectedTags.size === allTags.size) {
+    if (selectedTags.size === regularTags.size) {
       setSelectedTags(new Set());
     } else {
-      setSelectedTags(new Set(allTags));
+      setSelectedTags(new Set(regularTags));
+    }
+  };
+
+  const handleTasksetTagToggle = (tag: string) => {
+    setSelectedTasksetTags(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(tag)) {
+        newSet.delete(tag);
+      } else {
+        newSet.add(tag);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllTasksetTags = () => {
+    if (selectedTasksetTags.size === tasksetTags.size) {
+      setSelectedTasksetTags(new Set());
+    } else {
+      setSelectedTasksetTags(new Set(tasksetTags));
     }
   };
 
@@ -265,23 +323,24 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     }
   };
 
-  const handleCreateDataset = async () => {
+  const handleCreateTaskSet = async () => {
     if (!datasetName.trim() || selectedTasks.size === 0) return;
 
     try {
       setIsCreatingDataset(true);
-      await axios.post(`${config.DATA_API}/datasets`, {
-        name: datasetName.trim(),
-        description: datasetDescription.trim() || undefined,
+
+      // Add tags to the selected tasks
+      const tagName = `taskset_${datasetName.trim()}`;
+      await bulkAddTags({
         task_ids: Array.from(selectedTasks),
-        id: tasksetId,
+        tags: [tagName],
       });
 
       // Success - show toast and reset
       setToastMessage('Dataset created successfully!');
       setIsCreateDatasetModalOpen(false);
       setDatasetName('');
-      setDatasetDescription('');
+
       setSelectedTasks(new Set());
 
       // Hide toast after 2 seconds
@@ -290,7 +349,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       }, 2000);
     } catch (err) {
       setToastMessage(
-        err instanceof Error ? err.message : 'Failed to create dataset'
+        err instanceof Error ? err.message : 'Failed to create taskset'
       );
       setTimeout(() => {
         setToastMessage(null);
@@ -313,15 +372,50 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     );
   }, [results, agentInstanceSearch]);
 
-  // Filter tags based on search
+  // Helper function to format tag for display (show only value, not key)
+  const formatTagForDisplay = (tag: string): string => {
+    // Tag format is "key:value", e.g., "priority:high" or "taskset_MyDataset:MyDataset"
+    const [, value] = tag.split(':');
+    if (!value) return tag; // Fallback if no colon found
+    return value;
+  };
+
+  // Helper function to format taskset tag for display (remove key and taskset_ prefix)
+  const formatTasksetTagForDisplay = formatTagForDisplay;
+
+  // Filter regular tags based on search
   const filteredTagsForSearch = useMemo(() => {
-    if (!tagSearch) return Array.from(allTags).sort();
+    if (!tagSearch) return Array.from(regularTags).sort();
 
     const searchLower = tagSearch.toLowerCase();
-    return Array.from(allTags)
-      .filter(tag => tag.toLowerCase().includes(searchLower))
+    return Array.from(regularTags)
+      .filter(tag => {
+        // Search in both the full tag and the display value
+        const displayValue = formatTagForDisplay(tag);
+        return (
+          tag.toLowerCase().includes(searchLower) ||
+          displayValue.toLowerCase().includes(searchLower)
+        );
+      })
       .sort();
-  }, [allTags, tagSearch]);
+  }, [regularTags, tagSearch]);
+
+  // Filter taskset tags based on search
+  const filteredTasksetTagsForSearch = useMemo(() => {
+    if (!tasksetTagSearch) return Array.from(tasksetTags).sort();
+
+    const searchLower = tasksetTagSearch.toLowerCase();
+    return Array.from(tasksetTags)
+      .filter(tag => {
+        // Search in both the full tag and the display value
+        const displayValue = formatTasksetTagForDisplay(tag);
+        return (
+          tag.toLowerCase().includes(searchLower) ||
+          displayValue.toLowerCase().includes(searchLower)
+        );
+      })
+      .sort();
+  }, [tasksetTags, tasksetTagSearch]);
 
   if (loading) {
     return (
@@ -387,7 +481,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 onClick={() => setIsCreateDatasetModalOpen(true)}
                 variant='default'
               >
-                Create Dataset ({selectedTasks.size} tasks)
+                Create TaskSet ({selectedTasks.size} tasks)
               </Button>
             )}
           </div>
@@ -396,6 +490,24 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         {/* Filters */}
         {results && (
           <div className='px-6 py-4 border-b border-elevation-surface-overlay bg-elevation-surface-raised flex flex-wrap gap-6'>
+            {/* Task Name Search */}
+            <div className='flex-1 min-w-[300px]'>
+              <label
+                htmlFor='task-name-search'
+                className='text-sm font-semibold text-text block mb-2'
+              >
+                Search Tasks
+              </label>
+              <input
+                id='task-name-search'
+                type='text'
+                value={taskNameSearch}
+                onChange={e => setTaskNameSearch(e.target.value)}
+                placeholder='Search by task name...'
+                className='w-full px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-border-focused'
+              />
+            </div>
+
             {/* Agent Instance Filter */}
             <div className='flex-1 min-w-[300px]'>
               <label className='text-sm font-semibold text-text block mb-2'>
@@ -523,11 +635,119 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
               )}
             </div>
 
-            {/* Tags Filter */}
-            {allTags.size > 0 && (
+            {/* Taskset Tags Filter */}
+            {tasksetTags.size > 0 && (
               <div className='flex-1 min-w-[300px]'>
                 <label className='text-sm font-semibold text-text block mb-2'>
-                  Tags ({selectedTags.size}/{allTags.size})
+                  Taskset ({selectedTasksetTags.size}/{tasksetTags.size})
+                </label>
+
+                {/* Dropdown */}
+                <div className='relative mb-2'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setIsTasksetTagDropdownOpen(!isTasksetTagDropdownOpen);
+                      setIsAgentInstanceDropdownOpen(false);
+                      setIsTagDropdownOpen(false);
+                    }}
+                    className='w-full px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text text-left flex items-center justify-between hover:bg-elevation-surface-raised transition-colors'
+                  >
+                    <span className='text-text-disabled'>
+                      {selectedTasksetTags.size === 0
+                        ? 'Select taskset tags...'
+                        : `${selectedTasksetTags.size} selected`}
+                    </span>
+                    <span className='text-text-disabled'>▼</span>
+                  </button>
+
+                  {isTasksetTagDropdownOpen && (
+                    <>
+                      <div
+                        className='fixed inset-0 z-10'
+                        onClick={() => setIsTasksetTagDropdownOpen(false)}
+                      />
+                      <div className='absolute z-20 w-full mt-1 bg-elevation-surface border border-elevation-surface-overlay rounded shadow-lg max-h-64 overflow-hidden flex flex-col'>
+                        {/* Search Input */}
+                        <div className='p-2 border-b border-elevation-surface-overlay'>
+                          <input
+                            type='text'
+                            value={tasksetTagSearch}
+                            onChange={e => setTasksetTagSearch(e.target.value)}
+                            placeholder='Search taskset tags...'
+                            className='w-full px-2 py-1.5 text-sm bg-elevation-surface-sunken border border-elevation-surface-overlay rounded text-text placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-border-focused'
+                            onClick={e => e.stopPropagation()}
+                          />
+                        </div>
+
+                        {/* Select All / Deselect All */}
+                        <div className='px-2 py-1 border-b border-elevation-surface-overlay'>
+                          <button
+                            onClick={handleSelectAllTasksetTags}
+                            className='text-xs text-text-disabled hover:text-text transition-colors'
+                          >
+                            {selectedTasksetTags.size === tasksetTags.size
+                              ? 'Deselect All'
+                              : 'Select All'}
+                          </button>
+                        </div>
+
+                        {/* Options List */}
+                        <div className='overflow-y-auto max-h-48'>
+                          {filteredTasksetTagsForSearch.length === 0 ? (
+                            <div className='px-3 py-2 text-sm text-text-disabled text-center'>
+                              No matches found
+                            </div>
+                          ) : (
+                            filteredTasksetTagsForSearch.map(tag => (
+                              <label
+                                key={tag}
+                                className='flex items-center gap-2 px-3 py-2 hover:bg-elevation-surface-raised cursor-pointer'
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <input
+                                  type='checkbox'
+                                  checked={selectedTasksetTags.has(tag)}
+                                  onChange={() => handleTasksetTagToggle(tag)}
+                                  className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
+                                />
+                                <span className='text-sm text-text'>
+                                  {formatTasksetTagForDisplay(tag)}
+                                </span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Selected Taskset Tags */}
+                {selectedTasksetTags.size > 0 && (
+                  <div className='flex flex-wrap gap-2'>
+                    {Array.from(selectedTasksetTags)
+                      .sort()
+                      .map(tag => (
+                        <button
+                          key={tag}
+                          onClick={() => handleTasksetTagToggle(tag)}
+                          className='px-2 py-1 text-xs bg-elevation-surface-raised border border-elevation-surface-overlay rounded text-text hover:bg-elevation-surface-sunken transition-colors flex items-center gap-1'
+                        >
+                          <span>{formatTasksetTagForDisplay(tag)}</span>
+                          <span className='text-text-disabled'>×</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Regular Tags Filter */}
+            {regularTags.size > 0 && (
+              <div className='flex-1 min-w-[300px]'>
+                <label className='text-sm font-semibold text-text block mb-2'>
+                  Tags ({selectedTags.size}/{regularTags.size})
                 </label>
 
                 {/* Dropdown */}
@@ -537,6 +757,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                     onClick={() => {
                       setIsTagDropdownOpen(!isTagDropdownOpen);
                       setIsAgentInstanceDropdownOpen(false);
+                      setIsTasksetTagDropdownOpen(false);
                     }}
                     className='w-full px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text text-left flex items-center justify-between hover:bg-elevation-surface-raised transition-colors'
                   >
@@ -573,7 +794,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                             onClick={handleSelectAllTags}
                             className='text-xs text-text-disabled hover:text-text transition-colors'
                           >
-                            {selectedTags.size === allTags.size
+                            {selectedTags.size === regularTags.size
                               ? 'Deselect All'
                               : 'Select All'}
                           </button>
@@ -598,7 +819,9 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                                   onChange={() => handleTagToggle(tag)}
                                   className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
                                 />
-                                <span className='text-sm text-text'>{tag}</span>
+                                <span className='text-sm text-text'>
+                                  {formatTagForDisplay(tag)}
+                                </span>
                               </label>
                             ))
                           )}
@@ -619,7 +842,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                           onClick={() => handleTagToggle(tag)}
                           className='px-2 py-1 text-xs bg-elevation-surface-raised border border-elevation-surface-overlay rounded text-text hover:bg-elevation-surface-sunken transition-colors flex items-center gap-1'
                         >
-                          <span>{tag}</span>
+                          <span>{formatTagForDisplay(tag)}</span>
                           <span className='text-text-disabled'>×</span>
                         </button>
                       ))}
@@ -661,7 +884,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                         onChange={handleSelectAllTasks}
                         className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
                       />
-                      <span>Task ID</span>
+                      <span>Task </span>
                     </div>
                   </th>
                   {filteredAgentInstances.map(instance => {
@@ -810,10 +1033,9 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
           if (!isCreatingDataset) {
             setIsCreateDatasetModalOpen(false);
             setDatasetName('');
-            setDatasetDescription('');
           }
         }}
-        title='Create New Dataset'
+        title='Create New TaskSet'
         size='default'
       >
         <div className='flex flex-col gap-4'>
@@ -822,7 +1044,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
               htmlFor='dataset-name-input'
               className='block text-sm font-semibold text-text mb-2'
             >
-              Dataset Name <span className='text-text-danger'>*</span>
+              TaskSet Name <span className='text-text-danger'>*</span>
             </label>
             <input
               id='dataset-name-input'
@@ -831,24 +1053,6 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
               onChange={e => setDatasetName(e.target.value)}
               placeholder='Enter dataset name'
               className='w-full px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-border-focused'
-              disabled={isCreatingDataset}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor='dataset-description-textarea'
-              className='block text-sm font-semibold text-text mb-2'
-            >
-              Description
-            </label>
-            <textarea
-              id='dataset-description-textarea'
-              value={datasetDescription}
-              onChange={e => setDatasetDescription(e.target.value)}
-              placeholder='Enter dataset description (optional)'
-              rows={4}
-              className='w-full px-3 py-2 bg-elevation-surface border border-elevation-surface-overlay rounded text-sm text-text placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-border-focused resize-none'
               disabled={isCreatingDataset}
             />
           </div>
@@ -863,7 +1067,6 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
               onClick={() => {
                 setIsCreateDatasetModalOpen(false);
                 setDatasetName('');
-                setDatasetDescription('');
               }}
               disabled={isCreatingDataset}
             >
@@ -871,14 +1074,14 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
             </Button>
             <Button
               variant='default'
-              onClick={handleCreateDataset}
+              onClick={handleCreateTaskSet}
               disabled={
                 isCreatingDataset ||
                 !datasetName.trim() ||
                 selectedTasks.size === 0
               }
             >
-              {isCreatingDataset ? 'Creating...' : 'Create Dataset'}
+              {isCreatingDataset ? 'Creating...' : 'Create TaskSet'}
             </Button>
           </div>
         </div>

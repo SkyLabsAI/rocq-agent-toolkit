@@ -14,7 +14,7 @@ import TaskSetView from './projectview';
 const AgentTable: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     'agents' | 'datasets' | 'tasksets'
-  >('agents');
+  >('tasksets');
 
   return (
     <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
@@ -32,6 +32,11 @@ const AgentTable: React.FC = () => {
           <SlidingTabs
             tabs={[
               {
+                id: 'tasksets',
+                label: 'Tasks',
+                icon: <ProjectListIcon className='size-[15px]' />,
+              },
+              {
                 id: 'agents',
                 label: 'Agents',
                 icon: <AgentListIcon className='size-[15px]' />,
@@ -41,13 +46,8 @@ const AgentTable: React.FC = () => {
                 label: 'Projects',
                 icon: <DataSetListIcon className='size-[15px]' />,
               },
-              {
-                id: 'tasksets',
-                label: 'Tasks',
-                icon: <ProjectListIcon className='size-[15px]' />,
-              },
             ]}
-            defaultTab='agents'
+            defaultTab='tasksets'
             onTabChange={tabId =>
               setActiveTab(tabId as 'agents' | 'datasets' | 'tasksets')
             }
