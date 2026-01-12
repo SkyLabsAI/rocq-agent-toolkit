@@ -27,12 +27,12 @@ The server will be configured via a `.env` file that must define:
     * **Action:** Provides a list of all runs associated with a specific agent.
 3.  **Get Run Details**
     * **Action:** Returns the complete content (all `jsonl` entries) associated with a specific `run_id`.
-    (take multiple run_ids and return complete content of all the files ) 
+    (take multiple run_ids and return complete content of all the files)
 4. **Get Observability Logs**
     * **Action:** Based on the run_id and task_id fetch the observability logs
 
 
-### Important 
+### Important
 To ensure maintainability, we will abstract the data access logic from the main API endpoints.
 Core logic (like finding unique agents or fetching runs) will be isolated in dedicated functions. The API routes will simply call these functions. This design allows us to easily swap the data source (e.g., from reading local files to querying a database) by only updating the logic inside those specific functions, without needing to change the API endpoints themselves.
 
@@ -105,16 +105,16 @@ This is a FastAPI backend server that serves agent task results for visualizatio
    ```
 
 2. **Configure Environment**
-   
+
    Create a `.env` file in the backend directory with the following variables:
-   
+
    ```env
    # Path to the directory containing JSONL result files
    JSONL_RESULTS_PATH=/path/to/agent/results
-   
+
    # Port where observability stack is accessible
    OBSERVABILITY_PORT=3010
-   
+
    # Server configuration (optional)
    SERVER_HOST=0.0.0.0
    SERVER_PORT=8000

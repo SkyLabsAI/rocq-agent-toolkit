@@ -116,7 +116,7 @@ def test_evaluation_event_config_fields():
     """Test EvaluationEventConfig for default fields."""
     config = EvaluationEventConfig()
     allowed = config.allowed_fields()
-    expected = {"dataset_info", "scores", "brick_server_result", "generation_kc"}
+    expected = {"dataset_info", "scores", "server_result", "generation_kc"}
     # Note: 'sample_predictions' is False by default
     assert set(allowed) == expected
 
