@@ -147,9 +147,21 @@ let quickfix =
     ~descr:"Quick fix hint" ~encode ~decode fields
 
 let feedback_message =
+  let level =
+    let values = Feedback.[Debug; Info; Notice; Warning; Error] in
+    let default = Feedback.Notice in
+    let encode v =
+      match v with
+      | Feedback.Debug   -> "debug"
+      | Feedback.Info    -> "info"
+      | Feedback.Notice  -> "notice"
+      | Feedback.Warning -> "warning"
+      | Feedback.Error   -> "error"
+    in
+    S.variant ~values ~default ~encode
+  in
   let fields =
-    let descr = "either 'debug', 'info', 'notice', 'warning', or 'error'" in
-    API.Fields.add ~name:"level" ~descr S.string @@
+    API.Fields.add ~name:"level" level @@
     API.Fields.add ~name:"loc" S.(nullable (obj rocq_loc)) @@
     API.Fields.add ~name:"quickfix" S.(list (obj quickfix)) @@
     API.Fields.add ~name:"text" S.string @@
@@ -158,14 +170,6 @@ let feedback_message =
   let open Rocq_toplevel in
   let encode _ = assert false in
   let decode {level; loc; quickfix; text} =
-    let level =
-      match level with
-      | Feedback.Debug   -> "debug"
-      | Feedback.Info    -> "info"
-      | Feedback.Notice  -> "notice"
-      | Feedback.Warning -> "warning"
-      | Feedback.Error   -> "error"
-    in
     (level, (loc, (quickfix, (text, ()))))
   in
   API.declare_object api ~name:"FeedbackMessage"
@@ -312,9 +316,14 @@ let _ =
   Result.map_error (fun (e,v) -> e, Some v) @@ Document.go_to d ~index
 
 let _ =
-  declare ~name:"clear_suffix" ~descr:"remove all unprocessed \
-    commands from the document" ~args:A.nil ~ret:S.null @@ fun d () ->
-  Document.clear_suffix d
+  let args =
+    A.add ~name:"count" ~descr:"the number of unprocessed commands to \
+      remove, or `null` to remove them all" S.(nullable int) @@
+    A.nil
+  in
+  declare ~name:"clear_suffix" ~descr:"remove unprocessed commands from the \
+    document" ~args ~ret:S.null @@ fun d (count, ()) ->
+  Document.clear_suffix ?count d
 
 let _ =
   declare_full ~name:"run_step" ~descr:"advance the cursor by \
@@ -326,9 +335,20 @@ let _ =
     @@ fun d () ->
   Document.run_step d
 
+let item_kind =
+  let values = [`Blanks; `Command; `Ghost] in
+  let default = `Command in
+  let encode v =
+    match v with
+    | `Blanks  -> "blanks"
+    | `Command -> "command"
+    | `Ghost   -> "ghost"
+  in
+  S.variant ~values ~default ~encode
+
 let prefix_item =
   let fields =
-    API.Fields.add ~name:"kind" S.string @@
+    API.Fields.add ~name:"kind" item_kind @@
     API.Fields.add ~name:"offset" S.int @@
     API.Fields.add ~name:"text" S.string @@
     API.Fields.nil
@@ -337,24 +357,16 @@ let prefix_item =
     ~descr:"document prefix item, appearing before the cursor"
     ~encode:Fun.id ~decode:Fun.id fields
 
-let item_kind_to_string kind =
-  match kind with
-  | `Blanks  -> "blanks"
-  | `Command -> "command"
-  | `Ghost   -> "ghost"
-
 let _ =
   declare ~name:"doc_prefix" ~descr:"gives the list of all \
       processed commands, appearing before the cursor" ~args:A.nil
     ~ret:S.(list (obj prefix_item)) @@ fun d () ->
-  let make (p : Document.processed_item) =
-    (item_kind_to_string p.kind, (p.off, (p.text, ())))
-  in
+  let make (p : Document.processed_item) = (p.kind, (p.off, (p.text, ()))) in
   List.rev_map make (Document.rev_prefix d)
 
 let suffix_item =
   let fields =
-    API.Fields.add ~name:"kind" S.string @@
+    API.Fields.add ~name:"kind" item_kind @@
     API.Fields.add ~name:"text" S.string @@
     API.Fields.nil
   in
@@ -366,9 +378,7 @@ let _ =
   declare ~name:"doc_suffix" ~descr:"gives the list of all \
       unprocessed commands, appearing after the cursor" ~args:A.nil
     ~ret:S.(list (obj suffix_item)) @@ fun d () ->
-  let make (u : Document.unprocessed_item) =
-    (item_kind_to_string u.kind, (u.text, ()))
-  in
+  let make (u : Document.unprocessed_item) = (u.kind, (u.text, ())) in
   List.map make (Document.suffix d)
 
 let _ =
@@ -549,7 +559,9 @@ let _ =
       exit 0
   | _                     ->
   let (file, args) = parse_args ~argv:Sys.argv in
-  let state = Document.init ~args ~file in
+  let state =
+    try Document.init ~args ~file with Failure(s) -> panic "Error: %s." s
+  in
   let state = {fresh = 1; cursors = IntMap.singleton 0 state} in
   match API.run api ~ic:stdin ~oc:stdout state with
   | Ok(_)       -> exit 0

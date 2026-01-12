@@ -2,7 +2,7 @@ from __future__ import annotations
 
 # ruff: noqa: C416 -- unnecessary list comprehension
 from dataclasses import dataclass, field
-from typing import Any, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from dataclasses_json import DataClassJsonMixin
 from jsonrpc_tp import JsonRPCTP
@@ -55,8 +55,7 @@ class RocqDocManagerAPI:
         text: str = field(kw_only=True, default="")
         quickfix: list[RocqDocManagerAPI.Quickfix] = field(kw_only=True, default_factory=list)
         loc: RocqDocManagerAPI.RocqLoc | None = field(kw_only=True, default=None)
-        # Either 'debug', 'info', 'notice', 'warning', or 'error'.
-        level: str = field(kw_only=True, default="")
+        level: Literal["debug", "info", "notice", "warning", "error"] = field(kw_only=True, default="notice")
 
     @dataclass(frozen=True)
     class GlobrefsDiff(DataClassJsonMixin):
@@ -93,13 +92,13 @@ class RocqDocManagerAPI:
         """Document prefix item, appearing before the cursor."""
         text: str = field(kw_only=True, default="")
         offset: int = field(kw_only=True, default=0)
-        kind: str = field(kw_only=True, default="")
+        kind: Literal["blanks", "command", "ghost"] = field(kw_only=True, default="command")
 
     @dataclass(frozen=True)
     class SuffixItem(DataClassJsonMixin):
         """Document suffix item, appearing after the cursor."""
         text: str = field(kw_only=True, default="")
-        kind: str = field(kw_only=True, default="")
+        kind: Literal["blanks", "command", "ghost"] = field(kw_only=True, default="command")
 
     @dataclass(frozen=True)
     class CompileResult(DataClassJsonMixin):
@@ -118,9 +117,9 @@ class RocqDocManagerAPI:
             return RocqDocManagerAPI.Err(result.message, data)
         return None
 
-    def clear_suffix(self, cursor: int) -> None:
-        """Remove all unprocessed commands from the document."""
-        result = self._rpc.raw_request("clear_suffix", [cursor])
+    def clear_suffix(self, cursor: int, count: int | None) -> None:
+        """Remove unprocessed commands from the document."""
+        result = self._rpc.raw_request("clear_suffix", [cursor, count])
         assert not isinstance(result, JsonRPCTP.Err)
         return None
 

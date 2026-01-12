@@ -14,22 +14,83 @@ T_co = TypeVar("T_co", covariant=True)
 
 
 class Strategy[T_co](Provenance.Full, ABC):
-    """
-    A `Strategy` proposes actions to take. The different proposals
-    are captured lazily using a `Generator`. This allows capturing
-    very large (even infinite) action spaces such as next tactic
-    prediction in theorem proving.
+    """Interface: producer of ranked _alternative_ `Action`s.
+
+    A `Strategy` proposes `Action`s to take. The different proposals
+    can be lazily drawn from a `Rollout` which allows capturing very
+    large (even infinite) action spaces such as next tactic prediction
+    in theorem proving.
+
+    cf. ./action.py#Action
     """
 
-    # TODO: make [Rollout] into a class
     type Rollout[U] = Iterator[tuple[float, Action[U]]]
+    """Iterator over ranked _alternative_ actions.
 
-    # Context information must be read-only and constant in order
-    # for searches to work correctly. Clients should use an
-    # implementation such as `immutabledict` to achieve this.
-    # Mutable information needs to be tracked in the state
-    type MutableContext = MutableMapping[str, Any]
+    Elements of `Rollout` are tuples of the form `(Pr_i, Act_i)` where `Pr_i`
+    is the confidence (often captured via a log probability) that `Act_i` is
+    the next `Action` that should be taken to make efficient progress towards
+    completing the overall task. Scores in the `Rollout` (i.e. `Pr_i`):
+    - a) must be interpreted in a consistent manner between all strategies used
+         to produce a given `Rollout` (often as log probabilities)
+    - b) should be returned from "best" to "worst" based on (a), since clients
+         will generally not ask for a new `Action` unless the previous ones did
+         not work
+
+    Every strategy is responsible for implementing `Strategy.rollout` which
+    produces a (potentially infinite) `Rollout`. To avoid performance impacts
+    from eagerly evaluating large rollouts (or from expensive candidate generation):
+    1. implementers of `Strategy.rollout` should use generators unless the result
+       is small+finite (e.g. a singleton list)
+    2. clients of `Strategy.rollout` should lazily draw from `Rollout` and
+       never force the full computation; i.e. DO NOT DO THE FOLLOWING:
+       ```python
+       # BAD: forcing a computation on a potentially infinite rollout
+       for i, (_, a) in enumerate(s.rollout(...)):
+           print(f"{i}: {a}")
+       ```
+
+    Example: a finite `Rollout` that contains `[(0, A_1), (-1, A_2)]`
+    is saying to try `A_1` before `A_2` and associates each with
+    a confidence score.
+    """
+
     type Context = Mapping[str, Any]
+    """Read-only context information that may be supplied during `Strategy.rollout`.
+
+    Clients need not supply any `context: Context` but may choose to do so, e.g.
+    to capture problem-level information such as the task description, or feedback
+    from a previous attempt.
+    """
+
+    type MutableContext = MutableMapping[str, Any]
+    """Mutable `Context`; useful for clients but unused by `Strategy`.
+
+    `Strategy` uniformly uses `Context` and may not modify it during `rollout`.
+
+    Clients may need to use `MutableContext` if they are incrementally building the
+    initial context via cooperative inheritance, i.e.:
+    ```python
+    class Base:
+        def prepare(...) -> MutableContext:
+            ...
+
+    class Derived(Base):
+        @override
+        def prepare(...) -> MutableContext:
+            mut_ctx = super().prepare(...)
+            ...
+            return mut_ctx
+    ```
+    """
+
+    @staticmethod
+    def empty_Rollout() -> Strategy.Rollout:
+        """The empty `Rollout` containing no `Action`s.
+
+        If a `Strategy` does not apply it can return `empty_Rollout`.
+        """
+        yield from ()
 
     @abstractmethod
     def rollout(
@@ -38,25 +99,35 @@ class Strategy[T_co](Provenance.Full, ABC):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[T_co]:
-        """
-        Given the goal `G`, generates `(Pr,A)` such that:
-        - `Pr` is the probability that `A` is (the next/a necessary) step in an
-            efficient proof of `G`
+        """Build `Rollout` of ranked _alternative_ `Action`s for `state`.
+
+        Given `state` and optional `context`, generate a `Rollout` containing no more
+        than `max_rollout` ranked _alternative_ `Action`s. If `max_rollout`
+        is `None` then `rollout` is unbounded (i.e. it may be infinite).
 
         Notes:
         - If a strategy does not apply, it should produce an empty generator.
-        - The returned generator **must** return results with decreasing
-            probability since clients will generally not ask for a new `Action`
-            unless the previous one did not work.
+
+
+        Arguments:
+          - state: current state to get action alternatives for
+          - max_rollout: maximum size of returned `Rollout`; None = no limit
+          - context (optional): strategy specific, read-only context
+
+        Returns: the `Rollout` of ranked _alternative_ `Action`s for `state`
         """
         pass
 
 
-def empty_Rollout() -> Strategy.Rollout:
-    yield from ()
+# Note: backwards-compatible symbol; we could remove this if we want.
+empty_Rollout = Strategy.empty_Rollout
 
 
 class SingletonStrategy[T_co](Strategy[T_co]):
+    """
+    A strategy that always returns a single action
+    """
+
     _value: Annotated[Action[T_co], Provenance.Reflect.Field]
     _prob: Annotated[float, Provenance.Reflect.Field]
 
@@ -92,7 +163,21 @@ class IteratorStrategy[T_co](Strategy[T_co]):
 
 
 class CompositeStrategy[T_co](Strategy[T_co]):
-    """A (fair) combination of strategies"""
+    """Combinator: fair interleaving of strategies.
+
+    Each strategy will be asked for its `next` action, and the results
+    will be interleaved according to their scores.
+
+    For example, with two strategies that propose:
+        - [(-0.5, act1), (-0.75, act2)]
+        - [(-0.25, act3), (-0.35, act4)]
+    will result in
+        - [(-0.25, act3), (-0.35, act4), (-0.5, act1), (-0.75, act2)]
+
+    The results  of an individual `Strategy` will not be re-ordered
+    so the resulting list may be out-of-order if one of the passed
+    `Strategy`s yields results out of order.
+    """
 
     _children: Annotated[list[Strategy[T_co]], Provenance.Reflect.Field]
 
@@ -133,12 +218,11 @@ class CompositeStrategy[T_co](Strategy[T_co]):
 
 
 class StagedStrategy[T_co](Strategy[T_co]):
-    """
-    Combine two strategies by preferring the first.
+    """Combinator: biased interleaving of two strategies, preferring the first.
 
     All results from `strat1` that are greater than or equal to `prob` will
     be returned before `strat2` is considered, at which point results from
-    `strat1` and `strat2` will be interleaved.
+    `strat1` and `strat2` will be interleaved as they are in `CompositeStrategy`.
     """
 
     _strat1: Annotated[Strategy[T_co], Provenance.Reflect.Field]

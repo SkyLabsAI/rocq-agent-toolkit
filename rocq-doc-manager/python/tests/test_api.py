@@ -15,26 +15,27 @@ class Test_API(RDM_Tests):
 
         result = rc.doc_suffix()
         assert result == [
-            RocqCursor.SuffixItem(**kwargs)
-            for kwargs in [
-                {"kind": "command", "text": "Require Import Stdlib.ZArith.BinInt."},
-                {"kind": "blanks", "text": "\n\n"},
-                {"kind": "command", "text": "About nil."},
-                {"kind": "blanks", "text": "\n    "},
-                {"kind": "command", "text": "Definition junk :=\n\n\nnat."},
-                {"kind": "blanks", "text": "\n"},
-                {"kind": "command", "text": "Check 12 < 42 <= 100."},
-                {"kind": "blanks", "text": "\n\n\n"},
-                {"kind": "command", "text": "Theorem test : forall x : nat, x = x."},
-                {"kind": "blanks", "text": "\n"},
-                {"kind": "command", "text": "Proof."},
-                {"kind": "blanks", "text": "\n  "},
-                {"kind": "command", "text": "intro x."},
-                {"kind": "blanks", "text": "\n  "},
-                {"kind": "command", "text": "reflexivity."},
-                {"kind": "blanks", "text": "\n"},
-                {"kind": "command", "text": "Qed."},
-            ]
+            RocqCursor.SuffixItem(
+                kind="command", text="Require Import Stdlib.ZArith.BinInt."
+            ),
+            RocqCursor.SuffixItem(kind="blanks", text="\n\n"),
+            RocqCursor.SuffixItem(kind="command", text="About nil."),
+            RocqCursor.SuffixItem(kind="blanks", text="\n    "),
+            RocqCursor.SuffixItem(kind="command", text="Definition junk :=\n\n\nnat."),
+            RocqCursor.SuffixItem(kind="blanks", text="\n"),
+            RocqCursor.SuffixItem(kind="command", text="Check 12 < 42 <= 100."),
+            RocqCursor.SuffixItem(kind="blanks", text="\n\n\n"),
+            RocqCursor.SuffixItem(
+                kind="command", text="Theorem test : forall x : nat, x = x."
+            ),
+            RocqCursor.SuffixItem(kind="blanks", text="\n"),
+            RocqCursor.SuffixItem(kind="command", text="Proof."),
+            RocqCursor.SuffixItem(kind="blanks", text="\n  "),
+            RocqCursor.SuffixItem(kind="command", text="intro x."),
+            RocqCursor.SuffixItem(kind="blanks", text="\n  "),
+            RocqCursor.SuffixItem(kind="command", text="reflexivity."),
+            RocqCursor.SuffixItem(kind="blanks", text="\n"),
+            RocqCursor.SuffixItem(kind="command", text="Qed."),
         ]
 
     def test_Check_query_text(

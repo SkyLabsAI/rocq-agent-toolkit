@@ -330,7 +330,9 @@ def load_tasks(arguments: argparse.Namespace) -> tuple[str, Path, list[FullTask]
         tasks_name = arguments.task_file.stem
         return (tasks_name, wdir, [to_full_task(raw, wdir) for raw in tasks])
     else:
-        raise ValueError("unspecified task")
+        raise ValueError(
+            "Unspecified task.\nUse '--task-json ...literal-json...' or '--task-file path/to/task/file.{json,yaml}'."
+        )
 
 
 def load_agent(agent_desc: str) -> AgentBuilder:
@@ -338,7 +340,7 @@ def load_agent(agent_desc: str) -> AgentBuilder:
         agent_builder = loader.load_from_str(agent_desc, "dyn_loaded_agent")
         if isinstance(agent_builder, AgentBuilder):
             return agent_builder
-        raise Exception(f"{agent_builder} is not an [AgentBuilder]")
+        raise Exception(f"{agent_builder} is not an [AgentBuilder].")
     except Exception as err:
         raise ValueError(f"Failed to load AgentBuilder from {agent_desc}.") from err
 
@@ -494,7 +496,13 @@ def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bo
     arguments: Namespace = mk_parser(
         parent=None, with_agent=agent_builder is None
     ).parse_args(args)
-    config: RunConfiguration = parse_arguments(arguments, agent_builder=agent_builder)
+    try:
+        config: RunConfiguration = parse_arguments(
+            arguments, agent_builder=agent_builder
+        )
+    except ValueError as err:
+        print(f"Failed setting up the run: {err}")
+        return False
     if agent_args:
         config.agent_builder.add_args(agent_args)
     return run_config(config)

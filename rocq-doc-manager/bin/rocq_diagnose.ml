@@ -75,6 +75,5 @@ let parse_args : argv:string array -> string list * string = fun ~argv ->
 
 let _ =
   let (args, file) = parse_args ~argv:Sys.argv in
-  let state = Document.init ~args ~file in
-  try main state with
-  | Sys_error(s) -> panic "Error: %s" s
+  try main (Document.init ~args ~file) with
+  | Sys_error(s) | Failure(s) -> panic "Error: %s." s

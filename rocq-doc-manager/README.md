@@ -62,7 +62,7 @@ API Objects
 - Field `text`: a string.
 - Field `quickfix`: a list where each element is an instance of the `Quickfix` object.
 - Field `loc`: either `null` or an instance of the `RocqLoc` object.
-- Field `level`: either 'debug', 'info', 'notice', 'warning', or 'error' (as a string).
+- Field `level`: any of `"debug"`, `"info"`, `"notice"`, `"warning"`, `"error"`.
 
 ### `GlobrefsDiff`
 
@@ -98,13 +98,13 @@ API Objects
 - Description: document prefix item, appearing before the cursor.
 - Field `text`: a string.
 - Field `offset`: an integer.
-- Field `kind`: a string.
+- Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
 
 ### `SuffixItem`
 
 - Description: document suffix item, appearing after the cursor.
 - Field `text`: a string.
-- Field `kind`: a string.
+- Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
 
 ### `CompileResult`
 
@@ -129,9 +129,10 @@ API Methods
 
 ### `clear_suffix`
 
-- Description: remove all unprocessed commands from the document.
+- Description: remove unprocessed commands from the document.
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
+  - count: the number of unprocessed commands to remove, or `null` to remove them all (as either `null` or an integer).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 

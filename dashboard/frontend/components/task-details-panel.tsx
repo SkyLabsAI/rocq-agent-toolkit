@@ -224,7 +224,9 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             View Logs
           </Button>
 
-          <Link href={`/runs/${task.run_id}/tasks/${task.task_id}`}>
+          <Link
+            href={`/runs/${task.run_id}/tasks?taskId=${encodeURIComponent(task.task_id)}`}
+          >
             <Button
               variant='default'
               onClick={() => openCodeModal(task)}

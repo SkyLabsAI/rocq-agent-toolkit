@@ -28,7 +28,7 @@ class SafeTacticStrategy(Strategy):
         context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
         return (
-            (prob, RocqTacticAction(f"progress {tac}"))
+            (prob, RocqTacticAction(f"progress ({tac})"))
             for prob, tac in [(self._prob, self._tactic)]
         )
 

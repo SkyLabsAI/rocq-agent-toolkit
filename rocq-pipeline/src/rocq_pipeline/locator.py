@@ -70,7 +70,7 @@ class FirstLemma(Locator):
 
         if rdm.advance_to_first_match(is_lemma, step_over_match=True):
             for cmd in rdm.doc_suffix():
-                if cmd.kind == "blank" or (
+                if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
                 ):
                     run_step_reply = rdm.run_step()

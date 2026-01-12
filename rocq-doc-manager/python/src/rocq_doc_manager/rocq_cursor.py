@@ -37,8 +37,8 @@ class RocqCursor(RocqCursorProtocol):
         return self._rdm.advance_to(self._cursor, index)
 
     @override
-    def clear_suffix(self) -> None:
-        return self._rdm.clear_suffix(self._cursor)
+    def clear_suffix(self, count: int | None = None) -> None:
+        return self._rdm.clear_suffix(self._cursor, count)
 
     @override
     def materialize(self) -> None:

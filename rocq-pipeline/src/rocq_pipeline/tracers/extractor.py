@@ -60,7 +60,7 @@ class StateExtractor[T](DocumentWatcher):
 def merge_into[A, B](a: dict[A, B], b: dict[A, B]) -> None:
     for k, v in b.items():
         if k in a and a[k] != v:
-            raise RuntimeError("Overlapping entries")
+            raise ValueError("Overlapping entries")
         a[k] = v
 
 

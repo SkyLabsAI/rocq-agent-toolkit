@@ -150,6 +150,8 @@ class JsonRPCTP:
                 cwd=cwd,
                 env=env,
             )
+            # Ignore the "ready" notification
+            _ = self.recv()
         except Exception as e:
             self._process = None
             raise self.Error(f"Failed to start process: {e}") from e
@@ -160,15 +162,37 @@ class JsonRPCTP:
         yield self
         self.quit()
 
+    def send(self, req):
+        if self._process is None:
+            raise self.Error("Not running anymore.")
+        assert self._process.stdin is not None
+        prefix = "Content-Length: "
+        self._process.stdin.write(f"{prefix}{len(req) + 1}\r\n\r\n".encode())
+        self._process.stdin.write(req)
+        self._process.stdin.write(b"\n")
+        self._process.stdin.flush()
+
+    def recv(self):
+        if self._process is None:
+            raise self.Error("Not running anymore.")
+        assert self._process.stdout is not None
+        prefix = "Content-Length: "
+        header: str = self._process.stdout.readline().decode()
+        _ = self._process.stdout.readline()
+        if not header.startswith(prefix):
+            raise self.Error(f"Invalid message header: '{header}'")
+        try:
+            nb_bytes = int(header[len(prefix) : -2])
+        except Exception as e:
+            raise self.Error(f"Failed to parse header: {header}", e) from e
+        response = self._process.stdout.read(nb_bytes).decode()
+        return json.loads(response)
+
     def raw_request(
         self,
         method: str,
         params: list[Any],
     ) -> JsonRPCTP.Resp[Any] | JsonRPCTP.Err[Any]:
-        if self._process is None:
-            raise self.Error("Not running anymore.")
-        assert self._process.stdin is not None
-        assert self._process.stdout is not None
         # Getting a fresh request id.
         self._counter = self._counter + 1
         fresh_id = self._counter
@@ -176,20 +200,9 @@ class JsonRPCTP:
         req = json.dumps(
             {"jsonrpc": "2.0", "method": method, "params": params, "id": fresh_id}
         ).encode()
-        prefix = "Content-Length: "
-        self._process.stdin.write(f"{prefix}{len(req) + 1}\r\n\r\n".encode())
-        self._process.stdin.write(req)
-        self._process.stdin.write(b"\n")
-        self._process.stdin.flush()
+        self.send(req)
         # Reading the response.
-        header = self._process.stdout.readline().decode()
-        _ = self._process.stdout.readline()
-        try:
-            nb_bytes = int(header[len(prefix) : -2])
-        except Exception as e:
-            raise self.Error(f"Failed to parse response: {header}", e) from e
-        response = self._process.stdout.read(nb_bytes).decode()
-        response = json.loads(response)
+        response = self.recv()
         if "error" in response:
             error = response.get("error")
             message = error.get("message")

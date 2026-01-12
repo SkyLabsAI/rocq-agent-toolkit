@@ -17,7 +17,8 @@ type t
 (** [init ~args ~file] initialises a Rocq document for the given [file], using
     the given Rocq command line arguments [args]. Regardless of whether [file]
     exists on the file system or not, the document starts empty. Upon document
-    creation, a session with a dedicated Rocq top-level is started. *)
+    creation, a session with a dedicated Rocq top-level is started. In case of
+    failure while starting the Rocq toplevel, [Failure] is raised. *)
 val init : args:string list -> file:string -> t
 
 (** Exception raised when running any of the following operation on a document
@@ -113,7 +114,12 @@ val revert_before : ?erase:bool -> t -> index:int -> unit
     raise exceptions. *)
 val with_rollback : t -> (unit -> 'a) -> 'a
 
-val clear_suffix : t -> unit
+(** [clear_suffix ?count d] removes unprocessed items from the document suffix
+    starting at the cursor. By default, all such items are removed. If [count]
+    is specified, only the given number of items are removed. Note that if the
+    value of [count] is negative, or greater than the suffix length, exception
+    [Invalid_argument] is raised. *)
+val clear_suffix : ?count:int -> t -> unit
 
 val run_step : t ->
   (command_data option, string * command_error option) result

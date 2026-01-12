@@ -1,22 +1,16 @@
 import tempfile
 
 import rocq_pipeline.task_runner
-from rocq_pipeline.agent import AgentBuilder, ChoiceAgent
+from rocq_pipeline.agent import AgentBuilder
+from rocq_pipeline.agent.proof.oracle_agent import OracleAgent
 
 from .util import make_task_str
 
 
-class SimpleTactics(ChoiceAgent):
-    def __init__(self) -> None:
-        super().__init__(
-            ["solve [ trivial ]", "tauto", "solve [ auto ]", "lia", "split"]
-        )
-
-
-def test_choice_agent() -> None:
+def test_oracle_agent() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         result = rocq_pipeline.task_runner.agent_main(
-            AgentBuilder.of_agent(SimpleTactics),
+            AgentBuilder.of_agent(OracleAgent),
             [
                 "--task-json",
                 make_task_str("examples/theories/test_simple.v", "Lemma:is_true"),

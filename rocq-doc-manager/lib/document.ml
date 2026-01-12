@@ -253,8 +253,15 @@ let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
   d.suffix <- suffix;
   unsync backend d; v
 
-let clear_suffix : t -> unit = fun d ->
-  ignore (get_backend d); d.suffix <- []
+let clear_suffix : ?count:int -> t -> unit = fun ?count d ->
+  ignore (get_backend d);
+  match count with
+  | None        -> d.suffix <- []
+  | Some(0)     -> ()
+  | Some(count) ->
+  if count < 0 then invalid_arg "negative count";
+  if List.length d.suffix < count then invalid_arg "invalid count";
+  d.suffix <- List.drop count d.suffix
 
 let run_step : t ->
     (command_data option, string * command_error option) result = fun d ->

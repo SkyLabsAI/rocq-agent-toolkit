@@ -3,12 +3,19 @@ type 'a api_obj = {name : string; default : 'a option}
 type json = Yojson.Safe.t
 
 module Schema = struct
+  type 'a variant_spec = {
+    values : 'a list;
+    default : 'a;
+    encode : 'a -> string;
+  }
+
   type _ t =
     | Null : unit t
     | Any : json t
     | Int : int t
     | Bool : bool t
     | String : string t
+    | Variant : 'a variant_spec -> 'a t
     | Nullable : 'a t -> 'a option t
     | List : 'a t -> 'a list t
     | Obj : 'a api_obj -> 'a t
@@ -18,9 +25,14 @@ module Schema = struct
   let int = Int
   let bool = Bool
   let string = String
+  let variant ~values ~default ~encode = Variant({values; default; encode})
   let nullable s = Nullable(s)
   let list s = List(s)
   let obj o = Obj(o)
+
+  let descr_variant : 'a variant_spec -> string = fun s ->
+    let to_string v = Printf.sprintf "`%S`" (s.encode v) in
+    String.concat ", " (List.map to_string s.values)
 
   let rec descr : type a. a t -> string = fun s ->
     match s with
@@ -29,9 +41,14 @@ module Schema = struct
     | Int -> "an integer"
     | Bool -> "a boolean"
     | String -> "a string"
+    | Variant s -> "any of " ^ descr_variant s
     | Nullable s -> "either `null` or " ^ descr s
     | List s -> "a list where each element is " ^ descr s
     | Obj o -> "an instance of the `" ^ o.name ^ "` object"
+
+  let python_type_variant : 'a variant_spec -> string = fun s ->
+    let to_string v = Printf.sprintf "%S" (s.encode v) in
+    "Literal[" ^ String.concat ", " (List.map to_string s.values) ^ "]"
 
   let python_type : type a. cls:string -> a t -> string = fun ~cls ->
     let rec python_type : type a. a t -> string = function
@@ -40,6 +57,7 @@ module Schema = struct
       | Int -> "int"
       | Bool -> "bool"
       | String -> "str"
+      | Variant s -> python_type_variant s
       | Nullable s -> python_type s ^ " | None"
       | List s -> "list[" ^ python_type s ^ "]"
       | Obj o -> Printf.sprintf "%s.%s" cls o.name
@@ -57,6 +75,7 @@ module Schema = struct
     | Int -> "default=0"
     | Bool -> "default=False"
     | String -> "default=\"\""
+    | Variant s -> Printf.sprintf "default=%S" (s.encode s.default)
     | Nullable _ -> "default=None"
     | List _ -> "default_factory=list"
     | Obj o -> Printf.sprintf "default_factory=lambda: %s.%s()" cls o.name
@@ -70,6 +89,7 @@ module Schema = struct
       | Int -> Printf.sprintf "int(%s)" var
       | Bool -> Printf.sprintf "bool(%s)" var
       | String -> Printf.sprintf "str(%s)" var
+      | Variant _ -> Printf.sprintf "str(%s)" var
       | Nullable s ->
           Printf.sprintf "None if %s is None else %s" var (python_val var s)
       | List s ->
@@ -225,6 +245,7 @@ let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
   | (Int        , _      ) -> `Int(v)
   | (Bool       , _      ) -> `Bool(v)
   | (String     , _      ) -> `String(v)
+  | (Variant(s) , v      ) -> `String(s.encode v)
   | (Nullable(_), None   ) -> `Null
   | (Nullable(s), Some(v)) -> to_json api s v
   | (List(s)    , _      ) -> `List(List.map (to_json api s) v)
@@ -292,6 +313,13 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
     | (Bool       , _         ) -> error ctxt "expected boolean value"
     | (String     , `String(s)) -> s
     | (String     , _         ) -> error ctxt "expected string value"
+    | (Variant(r) , `String(s)) ->
+        begin
+          match List.find_opt (fun v -> r.encode v = s) r.values with
+          | None    -> error ctxt "unknown variant"
+          | Some(v) -> v
+        end
+    | (Variant(_) , _         ) -> error ctxt "expected string value"
     | (Nullable(_), `Null     ) -> None
     | (Nullable(s), _         ) ->
         Some(of_json (NullableItem :: ctxt) s json)
@@ -348,7 +376,12 @@ let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
   | (Args.Cns(_), Some(`List(ls)) ) -> parse_list args ls
   | (Args.Cns(_), Some(`Assoc(fs))) -> parse_assoc args fs
 
+let notify_ready ~oc =
+  let notification = J.Notification.create ~method_:"ready" () in
+  Base.send ~oc (J.Packet.Notification(notification))
+
 let run api ~ic ~oc s =
+  notify_ready ~oc;
   let rec loop s =
     match Base.recv ~ic () with
     | Error(msg)  -> Error(msg)
@@ -471,7 +504,7 @@ let output_python_api oc api =
   line "";
   line "# ruff: noqa: C416 -- unnecessary list comprehension";
   line "from dataclasses import dataclass, field";
-  line "from typing import Any, TypeAlias";
+  line "from typing import Any, Literal, TypeAlias";
   line "";
   line "from dataclasses_json import DataClassJsonMixin";
   line "from jsonrpc_tp import JsonRPCTP";
