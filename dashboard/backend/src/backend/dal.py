@@ -33,6 +33,7 @@ from backend.db_models import (
 from backend.models import (
     AgentClassSummary,
     AgentInstanceSummary,
+    AgentTaskRunsResponse,
     BulkAddTagsResponse,
     DatasetInfo,
     DatasetResultsAgentInstance,
@@ -47,7 +48,6 @@ from backend.models import (
     TaskInfo,
     TaskMetadata,
     TaskResult,
-    AgentTaskRunsResponse,
 )
 from backend.provenance import (
     extract_provenance_from_logs_async,
@@ -2105,10 +2105,9 @@ def get_runs_for_agent_and_task_from_db(
         .order_by(desc(Run.timestamp_utc))  # type: ignore[arg-type]
     ).all()
 
-    # Extract unique run IDs (a task might have multiple results per run, though unlikely)
     run_ids: list[str] = []
     seen_run_ids: set[str] = set()
-    for task_result, run in rows:
+    for _task_result, run in rows:
         run_id_str = str(run.id)
         if run_id_str not in seen_run_ids:
             run_ids.append(run_id_str)

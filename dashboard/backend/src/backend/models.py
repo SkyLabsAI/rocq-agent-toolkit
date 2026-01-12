@@ -128,21 +128,21 @@ class RunInfo(BaseModel):
     metadata: TaskMetadata = TaskMetadata()
 
 
-# class AgentClassProvenance(BaseModel):
-#     """Agent class provenance data."""
+class AgentClassProvenance(BaseModel):
+    """Agent class provenance data."""
 
-#     cls_checksum: str
-#     cls_name: str
-#     cls_provenance: dict[str, Any]
+    cls_checksum: str
+    cls_name: str
+    cls_provenance: dict[str, Any]
 
 
-# class AgentInstanceProvenance(BaseModel):
-#     """Agent instance provenance data."""
+class AgentInstanceProvenance(BaseModel):
+    """Agent instance provenance data."""
 
-#     agent_checksum: str
-#     cls_checksum: str
-#     name: str
-#     provenance: dict[str, Any]
+    agent_checksum: str
+    cls_checksum: str
+    name: str
+    provenance: dict[str, Any]
 
 
 class AgentInstanceSummary(BaseModel):

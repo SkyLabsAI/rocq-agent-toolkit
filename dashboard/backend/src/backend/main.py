@@ -24,6 +24,8 @@ from backend.dal import (
     agent_class_exists,
     agent_instance_exists,
     bulk_add_tags_to_tasks,
+    get_agent_class_provenance_from_db,
+    get_agent_instance_provenance_from_db,
     get_agent_instances_for_dataset_from_db,
     get_agents_for_dataset_from_db,
     get_dataset_results_from_db,
@@ -48,7 +50,9 @@ from backend.dal import (
 )
 from backend.database import get_session, init_db
 from backend.models import (
+    AgentClassProvenance,
     AgentClassSummary,
+    AgentInstanceProvenance,
     AgentInstanceSummary,
     AgentTaskRunsResponse,
     BestRunUpdateResponse,
@@ -501,24 +505,6 @@ async def list_datasets(session: Session = Depends(get_session)) -> list[Dataset
         ) from e
 
 
-@app.get("/api/tasksets", response_model=list[DatasetInfo])
-async def list_tasksets(session: Session = Depends(get_session)) -> list[DatasetInfo]:
-    """
-    List all datasets that have been created in the database.
-
-    Each dataset is identified by its logical `dataset_id` (e.g. "loop_corpus")
-    which corresponds to the JSONL field, along with optional description and
-    creation time.
-    """
-    try:
-        return list_datasets_from_db(session)
-    except Exception as e:
-        logger.error("Error fetching datasets: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching datasets: {str(e)}"
-        ) from e
-
-
 @app.get("/api/{dataset_id}/tasks", response_model=DatasetTasksResponse)
 async def list_tasks_for_dataset(
     dataset_id: str,
@@ -561,7 +547,7 @@ async def list_tasks_for_dataset(
 
 
 # tasksets is the datasets
-@app.get("/api/tasksets/{dataset_id}/results", response_model=DatasetResultsResponse)
+@app.get("/api/datasets/{dataset_id}/results", response_model=DatasetResultsResponse)
 async def get_dataset_results(
     dataset_id: str,
     session: Session = Depends(get_session),
@@ -1160,90 +1146,89 @@ async def get_observability_logs(
         ) from e
 
 
-# If agent class and agent instacne summary have provenance we might not need them here
-# @app.get(
-#     "/api/agents/class/{cls_checksum}/provenance", response_model=AgentClassProvenance
-# )
-# async def get_agent_class_provenance(
-#     cls_checksum: str, session: Session = Depends(get_session)
-# ) -> AgentClassProvenance:
-#     """
-#     Get agent class provenance by checksum.
+@app.get(
+    "/api/agents/class/{cls_checksum}/provenance", response_model=AgentClassProvenance
+)
+async def get_agent_class_provenance(
+    cls_checksum: str, session: Session = Depends(get_session)
+) -> AgentClassProvenance:
+    """
+    Get agent class provenance by checksum.
 
-#     Args:
-#         cls_checksum: The agent class checksum
+    Args:
+        cls_checksum: The agent class checksum
 
-#     Returns:
-#         AgentClassProvenance object containing class name and provenance data
+    Returns:
+        AgentClassProvenance object containing class name and provenance data
 
-#     Raises:
-#         HTTPException: If the agent class is not found
-#     """
-#     try:
-#         agent_class = get_agent_class_provenance_from_db(session, cls_checksum)
+    Raises:
+        HTTPException: If the agent class is not found
+    """
+    try:
+        agent_class = get_agent_class_provenance_from_db(session, cls_checksum)
 
-#         if agent_class is None:
-#             raise HTTPException(
-#                 status_code=404,
-#                 detail=f"Agent class with checksum '{cls_checksum}' not found",
-#             )
+        if agent_class is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent class with checksum '{cls_checksum}' not found",
+            )
 
-#         return AgentClassProvenance(
-#             cls_checksum=agent_class.cls_checksum,
-#             cls_name=agent_class.cls_name,
-#             cls_provenance=agent_class.cls_provenance,
-#         )
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Error fetching agent class provenance: {e}", exc_info=True)
-#         raise HTTPException(
-#             status_code=500, detail=f"Error fetching agent class provenance: {str(e)}"
-#         ) from e
+        return AgentClassProvenance(
+            cls_checksum=agent_class.cls_checksum,
+            cls_name=agent_class.cls_name,
+            cls_provenance=agent_class.cls_provenance,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching agent class provenance: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching agent class provenance: {str(e)}"
+        ) from e
 
 
-# @app.get(
-#     "/api/agents/instance/{agent_checksum}/provenance",
-#     response_model=AgentInstanceProvenance,
-# )
-# async def get_agent_provenance(
-#     agent_checksum: str, session: Session = Depends(get_session)
-# ) -> AgentInstanceProvenance:
-#     """
-#     Get agent instance provenance by checksum.
+@app.get(
+    "/api/agents/instance/{agent_checksum}/provenance",
+    response_model=AgentInstanceProvenance,
+)
+async def get_agent_provenance(
+    agent_checksum: str, session: Session = Depends(get_session)
+) -> AgentInstanceProvenance:
+    """
+    Get agent instance provenance by checksum.
 
-#     Args:
-#         agent_checksum: The agent instance checksum
+    Args:
+        agent_checksum: The agent instance checksum
 
-#     Returns:
-#         AgentInstanceProvenance object containing instance name and provenance data
+    Returns:
+        AgentInstanceProvenance object containing instance name and provenance data
 
-#     Raises:
-#         HTTPException: If the agent instance is not found
-#     """
-#     try:
-#         agent_instance = get_agent_instance_provenance_from_db(session, agent_checksum)
+    Raises:
+        HTTPException: If the agent instance is not found
+    """
+    try:
+        agent_instance = get_agent_instance_provenance_from_db(session, agent_checksum)
 
-#         if agent_instance is None:
-#             raise HTTPException(
-#                 status_code=404,
-#                 detail=f"Agent instance with checksum '{agent_checksum}' not found",
-#             )
+        if agent_instance is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent instance with checksum '{agent_checksum}' not found",
+            )
 
-#         return AgentInstanceProvenance(
-#             agent_checksum=agent_instance.agent_checksum,
-#             cls_checksum=agent_instance.cls_checksum,
-#             name=agent_instance.name,
-#             provenance=agent_instance.provenance,
-#         )
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Error fetching agent instance provenance: {e}", exc_info=True)
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Error fetching agent instance provenance: {str(e)}",
-#         ) from e
+        return AgentInstanceProvenance(
+            agent_checksum=agent_instance.agent_checksum,
+            cls_checksum=agent_instance.cls_checksum,
+            name=agent_instance.name,
+            provenance=agent_instance.provenance,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching agent instance provenance: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching agent instance provenance: {str(e)}",
+        ) from e
 
 
 def start() -> None:
