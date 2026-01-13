@@ -10,7 +10,6 @@ from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.strategy import Strategy
 
 from .frontier import BasicNode, Frontier
-from .iter import RolloutInterleaver
 
 
 @dataclass(frozen=True)
@@ -165,7 +164,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
         state_manip: StateManipulator[CState] | None = None,
         max_depth: int | None = None,
     ) -> FrontierT:
-        """Expand a frontier by interleaving rollouts and pruning duplicates."""
+        """Expand a frontier by applying up to explore_width actions per node and pruning duplicates."""
         assert explore_width > 0
         history_limit = repetition_policy.history_limit() if repetition_policy else 0
         # Injected hooks keep search domain-agnostic while preserving resource lifetimes.
@@ -216,33 +215,13 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                     except Action.Failed:
                         smanip.dispose(fresh_state)
 
-            # Rollout each node in the tree with fair interleaving.
-            stream = RolloutInterleaver(
-                {
-                    nm: (
-                        (prob, act)
-                        for prob, act in val.rollout(
-                            strategy, max_rollout=explore_width
-                        )
-                    )
-                    for nm, (val, _) in enumerate(candidates)
-                }
-            )
-
-            # Due to the way that generators work, we can not send a message to the first element
-            # so we need to special case this logic
-            for i, (_, action) in itertools.islice(stream, explore_width):
-                process(candidates[i][0], candidates[i][1], action)
-
-            # The states that we visited might have additional rollouts
-            # so we put them back in the candidate pool using `repush`
-            for candidate, (head, rest) in stream.stop().items():
-                cand = candidates[candidate]
-                if head is not None:
-                    cand[0].update_rollout(itertools.chain([head], rest))
-                else:
-                    cand[0].update_rollout(rest)
-                worklist.repush(cand[1])
+            # Rollout each node independently so explore_width is per node.
+            for node, parent in candidates:
+                rollout = node.rollout(strategy, max_rollout=explore_width)
+                for _, action in itertools.islice(rollout, explore_width):
+                    process(node, parent, action)
+                node.update_rollout(rollout)
+                worklist.repush(parent)
 
 
 search = Search.search
