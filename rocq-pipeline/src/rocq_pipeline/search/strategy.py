@@ -384,10 +384,13 @@ class WrapStrategy[T, U](Strategy[T]):
 
     _base: Annotated[Strategy[U], Provenance.Reflect.Field]
     _into: Annotated[Callable[[T], U], Provenance.Reflect.Field]
-    _outof: Annotated[Callable[[T, U], T], Provenance.Reflect.Field]
+    _outof: Annotated[Callable[[T, U, Action[U]], T], Provenance.Reflect.Field]
 
     def __init__(
-        self, base: Strategy[U], into: Callable[[T], U], outof: Callable[[T, U], T]
+        self,
+        base: Strategy[U],
+        into: Callable[[T], U],
+        outof: Callable[[T, U, Action[U]], T],
     ) -> None:
         self._base = base
         self._into = into
@@ -400,8 +403,14 @@ class WrapStrategy[T, U](Strategy[T]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Strategy.Rollout:
+        outof = self._outof
+
+        def mk(action: Action[U]) -> Action[T]:
+            nonlocal outof
+            return WrapAction(action, self._into, lambda a, b: outof(a, b, action))
+
         return (
-            (prob, WrapAction(action, self._into, self._outof))
+            (prob, mk(action))
             for prob, action in self._base.rollout(
                 self._into(state), max_rollout=max_rollout, context=context
             )
