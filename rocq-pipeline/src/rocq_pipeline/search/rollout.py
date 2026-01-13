@@ -109,6 +109,11 @@ class SingletonRollout[T_co](ConsRollout[T_co]):
         super().__init__(value, logprob=logprob, rest=EmptyRollout())
 
 
+def singleton[T](value: T, *, logprob: float) -> Rollout[T]:
+    """A `Rollout` that returns a single value"""
+    return SingletonRollout(value, logprob=logprob)
+
+
 class IteratorRollout[T_co](Rollout[T_co]):
     def __init__(self, iterator: Iterator[Rollout.Approx[T_co]]) -> None:
         self._values = iterator
