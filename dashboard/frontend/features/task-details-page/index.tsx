@@ -57,7 +57,7 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
   }, [runId, taskId]);
 
   const handleBack = () => {
-    router.push(`/runs/${runId}`);
+    router.back();
   };
 
   const toggleResultExpansion = () => {
