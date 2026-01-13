@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
+import { TagsDisplay } from '@/components/tags-display';
 import Layout from '@/layouts/common';
 import {
   bulkAddTags,
@@ -1065,15 +1066,12 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                         <div className='flex flex-col gap-1 flex-1'>
                           <span>{task.task_name}</span>
                           {task.tags && Object.keys(task.tags).length > 0 && (
-                            <div className='flex flex-wrap gap-1 mt-1'>
-                              {Object.entries(task.tags).map(([key, value]) => (
-                                <span
-                                  key={`${key}:${value}`}
-                                  className='text-xs px-1.5 py-0.5 rounded bg-elevation-surface-raised border border-elevation-surface-overlay text-text-disabled'
-                                >
-                                  {key}:{value}
-                                </span>
-                              ))}
+                            <div className='mt-1'>
+                              <TagsDisplay
+                                tags={task.tags}
+                                maxVisible={3}
+                                modalTitle={`Tags for ${task.task_name}`}
+                              />
                             </div>
                           )}
                         </div>
