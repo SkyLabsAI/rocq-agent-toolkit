@@ -44,6 +44,7 @@ class StrategyAgent(ProofAgent):
     def prepare(self, rc: RocqCursor) -> Strategy.MutableContext:
         """Pre-hook for prove."""
         self._initial_prove_cursor_index = rc.cursor_index()
+        rc.insert_command("Unset SsrIdents.")
         return {}
 
     def conclude(self, rc: RocqCursor) -> None:
