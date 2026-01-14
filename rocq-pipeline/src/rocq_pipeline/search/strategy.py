@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import heapq
-import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
 from typing import Annotated, Any, TypeVar, override
@@ -362,18 +361,8 @@ class WrapAction[T, U](Action[T]):
     """
 
     _base: Annotated[Action[U], Provenance.Reflect.Field]
-    _into: Annotated[
-        Callable[[T], U],
-        Provenance.Reflect.Field(
-            transform=lambda fn: None if fn is None else inspect.getsource(fn)
-        ),
-    ]
-    _outof: Annotated[
-        Callable[[T, U], T],
-        Provenance.Reflect.Field(
-            transform=lambda fn: None if fn is None else inspect.getsource(fn)
-        ),
-    ]
+    _into: Annotated[Callable[[T], U], Provenance.Reflect.CallableField]
+    _outof: Annotated[Callable[[T, U], T], Provenance.Reflect.CallableField]
 
     def __init__(
         self, base: Action[U], into: Callable[[T], U], outof: Callable[[T, U], T]
@@ -394,8 +383,8 @@ class WrapStrategy[T, U](Strategy[T]):
     """
 
     _base: Annotated[Strategy[U], Provenance.Reflect.Field]
-    _into: Annotated[Callable[[T], U], Provenance.Reflect.Field]
-    _outof: Annotated[Callable[[T, U, Action[U]], T], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T], U], Provenance.Reflect.CallableField]
+    _outof: Annotated[Callable[[T, U, Action[U]], T], Provenance.Reflect.CallableField]
 
     def __init__(
         self,
