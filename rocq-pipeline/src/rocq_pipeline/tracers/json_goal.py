@@ -28,7 +28,9 @@ class JsonGoal(StateExtractor[list[Any]]):
         return f"all: {self._mod()}.goal_to_json."
 
     def _check_iris(self, rdm: RocqCursor) -> bool:
-        result = rdm.query_text("Locate iris.proofmode.environments.envs_entails.", 0)
+        result = rdm.query_text(
+            "Locate iris.proofmode.environments.envs_entails.", index=0
+        )
         assert not isinstance(result, RocqCursor.Err)
         return not result.startswith("No object")
 

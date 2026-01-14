@@ -115,28 +115,28 @@ class TracingCursor(RocqCursor):
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query_json(
-        self, text: str, index: int
+        self, text: str, *, index: int
     ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
-        return super().query_json(text, index)
+        return super().query_json(text, index=index)
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query_json_all(
-        self, text: str, indices: list[int] | None = None
+        self, text: str, *, indices: list[int] | None = None
     ) -> list[Any] | RocqCursor.Err[None]:
-        return super().query_json_all(text, indices)
+        return super().query_json_all(text, indices=indices)
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
-    def query_text(self, text: str, index: int) -> str | RocqCursor.Err[None]:
-        return super().query_text(text, index)
+    def query_text(self, text: str, *, index: int) -> str | RocqCursor.Err[None]:
+        return super().query_text(text, index=index)
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query_text_all(
-        self, text: str, indices: list[int] | None = None
+        self, text: str, *, indices: list[int] | None = None
     ) -> list[str] | RocqCursor.Err[None]:
-        return super().query_text_all(text, indices)
+        return super().query_text_all(text, indices=indices)
 
     def location_info(self) -> dict[str, Any]:
         """Construct a functional location by computing the hash of the effectful commands."""
