@@ -47,7 +47,7 @@ def test_A() -> None:
     assert cls_prov[Provenance.ClassIdentity] == Provenance.ClassIdentityT(A)
     assert cls_prov[Provenance.Version] == Provenance.VersionT(cls_version)
     assert cls_prov[Provenance.Reflect] == Provenance.ReflectT(
-        {},
+        {"_data": None},
         is_cls_provenance=True,
     )
 
@@ -87,7 +87,7 @@ def test_B() -> None:
     assert cls_prov[Provenance.ClassIdentity] == Provenance.ClassIdentityT(B)
     assert cls_prov[Provenance.Version] == Provenance.VersionT(cls_version)
     assert cls_prov[Provenance.Reflect] == Provenance.ReflectT(
-        {},
+        {"_data": None, "_cfg": None},
         is_cls_provenance=True,
     )
 
@@ -143,13 +143,14 @@ def test_C() -> None:
     print(str(cls_prov[Provenance.Reflect]))
     assert cls_prov[Provenance.Reflect] == Provenance.ReflectT(
         {
+            "_data": None,
             "_cfg": {
                 Provenance.Reflect: Provenance.ReflectT(
                     {
                         "_name": "bar",
                     },
                 )
-            }
+            },
         },
         is_cls_provenance=True,
     )
