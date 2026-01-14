@@ -26,8 +26,6 @@ class RocqDocManager(API):
         env: dict[str, str] | None = None
         args: list[str] = []
         if dune:
-            assert chdir is None
-
             # NOTE: workaround issue with [dune exec] not properly handling
             # the "--no-build" flag.
             if dune_disable_global_lock:
