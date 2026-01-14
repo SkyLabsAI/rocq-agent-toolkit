@@ -1,4 +1,5 @@
 import logging
+from pydoc import text
 import re
 from typing import override
 
@@ -86,6 +87,27 @@ class FirstLemma(Locator):
         return task_output.TaskKind(task_output.FullProofTask())
 
 
+class MarkerCommentLocator(Locator):
+    def __init__(self, marker: str):
+        self._marker = marker
+
+    def __str__(self) -> str:
+        return f"comment_marker:{self._marker}"
+
+    @override
+    def __call__(self, rdm: RocqCursor) -> bool:
+        def is_marker_comment(
+            text: str,
+            kind: str,
+        ) -> bool:
+            return kind == "blanks" and self._marker in text
+
+        return rdm.advance_to_first_match(is_marker_comment)
+
+    # def task_kind(self) -> task_output.TaskKind:
+    #     return task_output.TaskKind(task_output.OtherTask(f"marker_comment:{self._marker}"))
+
+
 def parse_locator(s: str) -> Locator:
     def get_index(s: str) -> tuple[str, int]:
         ptrn: re.Pattern = re.compile(r"(.+)\(([0-9]+)\)")
@@ -112,6 +134,9 @@ def parse_locator(s: str) -> Locator:
     elif s.startswith("Lemma:"):
         nm, index = get_index(s[len("Lemma:") :])
         return FirstLemma(nm, "Lemma", index=index)
+    elif s.startswith("comment_marker:"):
+        marker = s[len("comment_marker:") :]
+        return MarkerCommentLocator(marker)
     if s == "admit":
         return FirstAdmit()
     return Locator()
