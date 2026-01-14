@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from typing import TypeVar, override
+from warnings import deprecated
 
 NEG_INF = -float("inf")
 
@@ -77,6 +78,11 @@ class EmptyRollout[T_co](Rollout[T_co]):
         raise StopIteration()
 
 
+def empty[T]() -> Rollout[T]:
+    return EmptyRollout()
+
+
+@deprecated("use `empty`")
 def empty_Rollout[T]() -> Rollout[T]:
     return EmptyRollout()
 
