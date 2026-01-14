@@ -20,90 +20,93 @@ export type SpanNodeData = {
   virtualErrorNode?: boolean;
 };
 
+// Single configuration object for all node and edge styling
+// Only 3 states: error, success, and intermediate
+export const NODE_STYLE_CONFIG = {
+  error: {
+    bg: 'bg-background-warning',
+    border: 'border-border-warning',
+    textColor: 'text-text-warning',
+    badgeBg: 'bg-background-warning',
+    badgeBorder: 'border-border-warning',
+    icon: '⚠',
+    // Edge styling for error path
+    edge: {
+      stroke: 'var(--color-border-warning, #d97706)',
+      strokeWidth: 2,
+      animated: false,
+    },
+  },
+  success: {
+    bg: 'bg-background-success',
+    border: 'border-border-success',
+    textColor: 'text-text-success',
+    badgeBg: 'bg-background-success',
+    badgeBorder: 'border-border-success',
+    icon: '✓',
+    // Edge styling for success path
+    edge: {
+      stroke: 'var(--color-border-success, #6a9a23)',
+      strokeWidth: 2,
+      animated: true,
+    },
+  },
+  intermediate: {
+    bg: 'bg-elevation-surface-raised',
+    border: 'border-border-bold',
+    textColor: 'text-text-subtle',
+    badgeBg: 'bg-elevation-surface-overlay',
+    badgeBorder: 'border-border-bold',
+    icon: '→',
+    // Edge styling for intermediate path
+    edge: {
+      stroke: 'var(--color-border-bold, #7d818a)',
+      strokeWidth: 1.5,
+      animated: false,
+    },
+  },
+  // Selected state uses intermediate border (no blue)
+  selected: {
+    border: 'border-border-bold',
+  },
+} as const;
+
 const SpanNode = (props: NodeProps) => {
   const data = props.data as SpanNodeData;
   const selected = props.selected;
 
-  // Depth-based border colors
-  const getDepthBorderColor = (depth?: number) => {
-    if (depth === undefined) return 'border-elevation-surface-overlay';
+  // Determine node state: error > success > intermediate
+  const getNodeState = (): 'error' | 'success' | 'intermediate' => {
+    // Check for error states first
+    if (data.virtualErrorNode) return 'error';
+    if (data.processState === 'error') return 'error';
 
-    const colors = [
-      'border-blue-500', // depth 0
-      'border-purple-500', // depth 1
-      'border-pink-500', // depth 2
-      'border-orange-500', // depth 3
-      'border-yellow-500', // depth 4
-      'border-green-500', // depth 5
-    ];
+    // Check for success states
+    if (data.processState === 'success') return 'success';
+    if (data.isOnPath) return 'success';
 
-    return colors[depth % colors.length];
+    // Everything else is intermediate
+    return 'intermediate';
   };
 
-  // Get process node styling - theme-aware
-  const getProcessNodeStyle = () => {
-    if (data.virtualErrorNode) {
-      return {
-        bg: 'bg-background-danger',
-        border: 'border-border-danger',
-        textColor: 'text-text-danger',
-        badgeBg: 'bg-background-danger',
-        badgeBorder: 'border-border-danger',
-      };
-    }
+  const nodeState = getNodeState();
+  const nodeStyle = NODE_STYLE_CONFIG[nodeState];
 
-    switch (data.processState) {
-      case 'root':
-        return {
-          bg: 'bg-background-information',
-          border: 'border-border-brand',
-          textColor: 'text-text-information',
-          badgeBg: 'bg-background-information',
-          badgeBorder: 'border-border-brand',
-        };
-      case 'success':
-        return {
-          bg: 'bg-background-success',
-          border: 'border-border-success',
-          textColor: 'text-text-success',
-          badgeBg: 'bg-background-success',
-          badgeBorder: 'border-border-success',
-        };
-      case 'error':
-        return {
-          bg: 'bg-background-warning',
-          border: 'border-border-warning',
-          textColor: 'text-text-warning',
-          badgeBg: 'bg-background-warning',
-          badgeBorder: 'border-border-warning',
-        };
-      case 'intermediate':
-        return {
-          bg: 'bg-background-accent-gray-subtlest',
-          border: 'border-border-bold',
-          textColor: 'text-text-subtle',
-          badgeBg: 'bg-background-accent-gray-subtlest',
-          badgeBorder: 'border-border-bold',
-        };
-      default:
-        return null;
-    }
+  // Get badge icon from config
+  const getBadgeIcon = () => {
+    return nodeStyle.icon;
   };
 
-  const processStyle = data.isProcessNode ? getProcessNodeStyle() : null;
+  // Determine border color (priority: selected > state-based)
+  const border = selected
+    ? NODE_STYLE_CONFIG.selected.border
+    : nodeStyle.border;
+
+  // Determine background color (based on state)
+  const bg = nodeStyle.bg;
 
   const base =
     'rounded-lg border-2 px-3 py-2 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)] relative';
-  const border = selected
-    ? 'border-border-focused'
-    : processStyle
-      ? processStyle.border
-      : getDepthBorderColor(data.depth);
-  const bg = processStyle
-    ? processStyle.bg
-    : data.isOnPath
-      ? 'bg-background-success'
-      : 'bg-elevation-surface-raised';
 
   return (
     <div className={`${base} ${border} ${bg} w-full h-full`}>
@@ -138,21 +141,9 @@ const SpanNode = (props: NodeProps) => {
       {/* Process state badge */}
       {data.isProcessNode && (
         <div
-          className={`absolute -left-2 -top-2 px-2 h-5 rounded-full ${
-            processStyle
-              ? `${processStyle.badgeBg} border-2 ${processStyle.badgeBorder}`
-              : 'bg-elevation-surface-overlay border-2 border-elevation-surface'
-          } flex items-center justify-center text-[10px] font-bold ${processStyle?.textColor || 'text-text'}`}
+          className={`absolute -left-2 -top-2 px-2 h-5 rounded-full ${nodeStyle.badgeBg} border-2 ${nodeStyle.badgeBorder} flex items-center justify-center text-[10px] font-bold ${nodeStyle.textColor}`}
         >
-          {data.processState === 'root'
-            ? '🎯'
-            : data.processState === 'success'
-              ? '✓'
-              : data.processState === 'error'
-                ? '⚠'
-                : data.virtualErrorNode
-                  ? '❌'
-                  : '→'}
+          {getBadgeIcon()}
         </div>
       )}
 

@@ -52,14 +52,9 @@ export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
               <span className='text-xs font-medium text-text-disabled uppercase tracking-wide'>
                 Agent Class
               </span>
-              <span className='truncate font-semibold'>{agent.cls_name}</span>
-            </div>
-
-            <div className='ml-3'>
-              <TagsDisplay
-                tags={agent.cls_provenance as Record<string, string>}
-                modalTitle={`All Tags for ${agent.cls_name}`}
-              />
+              <span className='truncate font-semibold'>
+                {agent.cls_name}@{agent.cls_checksum.slice(0, 12)}
+              </span>
             </div>
           </div>
         </td>

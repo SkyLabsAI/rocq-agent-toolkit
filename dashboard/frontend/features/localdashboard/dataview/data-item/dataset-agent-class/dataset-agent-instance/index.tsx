@@ -93,7 +93,7 @@ export const DatasetAgentInstance: React.FC<DatasetAgentInstanceProps> = ({
                   className='text-[13px] font-medium truncate text-text'
                   data-testid='instance-name'
                 >
-                  {instance.name}
+                  {instance.name}@{instance.agent_checksum.slice(0, 12)}
                 </span>
               </div>
             </div>
@@ -101,13 +101,6 @@ export const DatasetAgentInstance: React.FC<DatasetAgentInstanceProps> = ({
         </div>
 
         <div className='flex items-center gap-3 shrink-0'>
-          {hasUniqueTags && (
-            <TagsDisplay
-              tags={instanceTags}
-              modalTitle={`Instance Tags: ${instance.name}`}
-              maxVisible={2}
-            />
-          )}
           <div className='flex gap-3 text-xs bg-elevation-surface-overlay px-3 py-1.5 rounded-md'>
             <div className='flex flex-col items-end'>
               <span className='text-text-disabled'>Success</span>

@@ -1,10 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
+import { TagsDisplay } from '@/components/tags-display';
 import Layout from '@/layouts/common';
 import {
   bulkAddTags,
@@ -23,21 +24,34 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
   tasksetId,
 }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Parse URL query parameters for filters
+  const initialTaskNameSearch = searchParams.get('taskName') || '';
+  const initialAgentInstances = searchParams.get('agentInstances')
+    ? new Set(searchParams.get('agentInstances')!.split(',').filter(Boolean))
+    : new Set<string>();
+  const initialTags = searchParams.get('tags')
+    ? new Set(searchParams.get('tags')!.split(',').filter(Boolean))
+    : new Set<string>();
+  const initialTasksetTags = searchParams.get('tasksetTags')
+    ? new Set(searchParams.get('tasksetTags')!.split(',').filter(Boolean))
+    : new Set<string>();
+
   const [taskset, setTaskSet] = useState<TaskSet | null>(null);
   const [results, setResults] = useState<TaskSetResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAgentInstances, setSelectedAgentInstances] = useState<
     Set<string>
-  >(new Set());
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [selectedTasksetTags, setSelectedTasksetTags] = useState<Set<string>>(
-    new Set()
-  );
+  >(initialAgentInstances);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(initialTags);
+  const [selectedTasksetTags, setSelectedTasksetTags] =
+    useState<Set<string>>(initialTasksetTags);
   const [agentInstanceSearch, setAgentInstanceSearch] = useState('');
   const [tagSearch, setTagSearch] = useState('');
   const [tasksetTagSearch, setTasksetTagSearch] = useState('');
-  const [taskNameSearch, setTaskNameSearch] = useState('');
+  const [taskNameSearch, setTaskNameSearch] = useState(initialTaskNameSearch);
   const [isAgentInstanceDropdownOpen, setIsAgentInstanceDropdownOpen] =
     useState(false);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
@@ -63,6 +77,9 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     agentChecksum: '',
     agentName: '',
   });
+
+  // Track the last URL we generated to avoid syncing when we update it ourselves
+  const lastGeneratedUrlRef = useRef<string>('');
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -98,6 +115,114 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       fetchProjectData();
     }
   }, [tasksetId]);
+
+  // Sync state with URL parameters when they change externally (e.g., back/forward navigation, shared links)
+  useEffect(() => {
+    const currentUrl = searchParams.toString();
+
+    // If this URL matches what we last generated, don't sync (we just updated it ourselves)
+    if (currentUrl === lastGeneratedUrlRef.current) {
+      return;
+    }
+
+    const urlTaskName = searchParams.get('taskName') || '';
+    const urlAgentInstances = searchParams.get('agentInstances')
+      ? new Set(searchParams.get('agentInstances')!.split(',').filter(Boolean))
+      : new Set<string>();
+    const urlTags = searchParams.get('tags')
+      ? new Set(searchParams.get('tags')!.split(',').filter(Boolean))
+      : new Set<string>();
+    const urlTasksetTags = searchParams.get('tasksetTags')
+      ? new Set(searchParams.get('tasksetTags')!.split(',').filter(Boolean))
+      : new Set<string>();
+
+    // Update state from URL params
+    if (taskNameSearch !== urlTaskName) {
+      setTaskNameSearch(urlTaskName);
+    }
+
+    // Compare Sets by converting to sorted arrays
+    const currentAgentInstances = Array.from(selectedAgentInstances).sort();
+    const urlAgentInstancesArray = Array.from(urlAgentInstances).sort();
+    if (
+      currentAgentInstances.length !== urlAgentInstancesArray.length ||
+      !currentAgentInstances.every(
+        (val, idx) => val === urlAgentInstancesArray[idx]
+      )
+    ) {
+      setSelectedAgentInstances(urlAgentInstances);
+    }
+
+    const currentTags = Array.from(selectedTags).sort();
+    const urlTagsArray = Array.from(urlTags).sort();
+    if (
+      currentTags.length !== urlTagsArray.length ||
+      !currentTags.every((val, idx) => val === urlTagsArray[idx])
+    ) {
+      setSelectedTags(urlTags);
+    }
+
+    const currentTasksetTags = Array.from(selectedTasksetTags).sort();
+    const urlTasksetTagsArray = Array.from(urlTasksetTags).sort();
+    if (
+      currentTasksetTags.length !== urlTasksetTagsArray.length ||
+      !currentTasksetTags.every((val, idx) => val === urlTasksetTagsArray[idx])
+    ) {
+      setSelectedTasksetTags(urlTasksetTags);
+    }
+
+    // Update ref to prevent re-syncing when state updates trigger this effect again
+    lastGeneratedUrlRef.current = currentUrl;
+  }, [
+    searchParams,
+    taskNameSearch,
+    selectedAgentInstances,
+    selectedTags,
+    selectedTasksetTags,
+  ]);
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (taskNameSearch.trim()) {
+      params.set('taskName', taskNameSearch.trim());
+    }
+
+    if (selectedAgentInstances.size > 0) {
+      params.set(
+        'agentInstances',
+        Array.from(selectedAgentInstances).join(',')
+      );
+    }
+
+    if (selectedTags.size > 0) {
+      params.set('tags', Array.from(selectedTags).sort().join(','));
+    }
+
+    if (selectedTasksetTags.size > 0) {
+      params.set(
+        'tasksetTags',
+        Array.from(selectedTasksetTags).sort().join(',')
+      );
+    }
+
+    const queryString = params.toString();
+    const newUrl = queryString
+      ? `/taskset/${tasksetId}?${queryString}`
+      : `/taskset/${tasksetId}`;
+
+    // Track this URL so we don't sync it back to state
+    lastGeneratedUrlRef.current = queryString;
+    router.replace(newUrl, { scroll: false });
+  }, [
+    taskNameSearch,
+    selectedAgentInstances,
+    selectedTags,
+    selectedTasksetTags,
+    tasksetId,
+    router,
+  ]);
 
   // Create a map for quick lookup of results
   const resultsMap = useMemo(() => {
@@ -345,7 +470,8 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
 
       // Hide toast after 2 seconds
       setTimeout(() => {
-        setToastMessage(null);
+        setToastMessage('Successfully created taskset');
+        window.location.reload();
       }, 2000);
     } catch (err) {
       setToastMessage(
@@ -940,15 +1066,12 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                         <div className='flex flex-col gap-1 flex-1'>
                           <span>{task.task_name}</span>
                           {task.tags && Object.keys(task.tags).length > 0 && (
-                            <div className='flex flex-wrap gap-1 mt-1'>
-                              {Object.entries(task.tags).map(([key, value]) => (
-                                <span
-                                  key={`${key}:${value}`}
-                                  className='text-xs px-1.5 py-0.5 rounded bg-elevation-surface-raised border border-elevation-surface-overlay text-text-disabled'
-                                >
-                                  {key}:{value}
-                                </span>
-                              ))}
+                            <div className='mt-1'>
+                              <TagsDisplay
+                                tags={task.tags}
+                                maxVisible={3}
+                                modalTitle={`Tags for ${task.task_name}`}
+                              />
                             </div>
                           )}
                         </div>
