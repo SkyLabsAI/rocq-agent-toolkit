@@ -53,7 +53,7 @@ export const DatasetAgentClass: React.FC<DatasetAgentClassProps> = ({
                 Agent Class
               </span>
               <span className='truncate font-semibold'>
-                {agent.cls_name}----{agent.cls_checksum}
+                {agent.cls_name}@{agent.cls_checksum.slice(0, 12)}
               </span>
             </div>
           </div>

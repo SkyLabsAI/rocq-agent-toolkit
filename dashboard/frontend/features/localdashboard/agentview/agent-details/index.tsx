@@ -39,7 +39,7 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
                 Agent Class
               </span>
               <span className='truncate font-semibold' data-testid='agent-name'>
-                {agent.cls_name}----{agent.cls_checksum}
+                {agent.cls_name}@{agent.cls_checksum.slice(0, 12)}
               </span>
             </div>
           </div>

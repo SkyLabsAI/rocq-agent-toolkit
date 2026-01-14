@@ -54,7 +54,7 @@ export const AgentInstance: React.FC<AgentInstanceProps> = ({
                   className='text-[13px] font-medium truncate text-text'
                   data-testid='instance-name'
                 >
-                  {instance.name}----{instance.agent_checksum}
+                  {instance.name}@{instance.agent_checksum.slice(0, 12)}
                 </span>
               </div>
             </div>
