@@ -13,7 +13,7 @@ def dune_env_hack() -> dict[str, str]:
 # TODO: hoist into a separate `rocq-dune-util` package.
 class DuneUtil:
     @staticmethod
-    def rocq_args_for(file_path: str | Path) -> list[str]:
+    def rocq_args_for(file_path: str | Path, *, cwd: Path | None = None) -> list[str]:
         """Compute Rocq args needed to build/process a target Rocq file."""
         file_path = Path(file_path)
         if file_path.suffix != ".v":
@@ -32,6 +32,7 @@ class DuneUtil:
                 file_path,
             ],
             capture_output=True,
+            cwd=str(cwd) if cwd is not None else None,
         )
         dune_args = dune_args_result.stdout.decode(encoding="utf-8")
         return [x.strip() for x in dune_args.splitlines()]
