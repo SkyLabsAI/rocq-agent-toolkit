@@ -7,6 +7,7 @@ from typing import Annotated, Any, TypeVar, override
 from provenance_toolkit import Provenance
 
 from .rollout import (
+    DelayRollout,
     EmptyRollout,
     InterleaveRollout,
     IteratorRollout,
@@ -240,6 +241,25 @@ class FailStrategy[State, Action](Strategy[State, Action]):
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
         return EmptyRollout()
+
+
+class DelayStrategy[State, Action](Strategy[State, Action]):
+    """A Strategy that doesn't respond util a certain score is surpassed"""
+
+    def __init__(self, base: Strategy[State, Action], until: float) -> None:
+        self._base = base
+        self._until = until
+
+    def rollout(
+        self,
+        state: State,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
+    ) -> Rollout[Action]:
+        base = self._base
+        return DelayRollout(
+            lambda: base.rollout(state, max_rollout, context), self._until
+        )
 
 
 class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):

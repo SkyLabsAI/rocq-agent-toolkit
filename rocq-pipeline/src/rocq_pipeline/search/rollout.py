@@ -114,6 +114,21 @@ def singleton[T](value: T, *, logprob: float) -> Rollout[T]:
     return SingletonRollout(value, logprob=logprob)
 
 
+class DelayRollout[T](Rollout[T]):
+    """A `Rollout` that delays its results until a given score."""
+
+    def __init__(self, base: Callable[[], Rollout[T]], until: float) -> None:
+        self._base: Rollout[T] | Callable[[], Rollout[T]] = base
+        self._until = until
+
+    def next(self, min_logprob: float = -float("inf")) -> Rollout.Approx[T]:
+        if min_logprob > self._until:
+            return Rollout.Approx(logprob=self._until, result=None)
+        if not isinstance(self._base, Rollout):
+            self._base = self._base()
+        return self._base.next(min_logprob=min_logprob)
+
+
 class IteratorRollout[T_co](Rollout[T_co]):
     def __init__(self, iterator: Iterator[Rollout.Approx[T_co]]) -> None:
         self._values = iterator
