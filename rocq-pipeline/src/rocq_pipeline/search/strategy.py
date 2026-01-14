@@ -354,7 +354,8 @@ class WrapAction[T, U](Action[T]):
     Converts an `Action[U]` to an `Action[T]` given functions
     - `into: Callable[[T],U]`
     - `outof: Callable[[T, U], T]` -- the first argument is the original
-      state.
+      state. This function should return a **new** value of type `T`, it
+      should **not** mutate the original value.
 
     Note: Since `Action` is a effectively where its argument occurs
     both positively and negatively, we need both `into` and `outof`.
