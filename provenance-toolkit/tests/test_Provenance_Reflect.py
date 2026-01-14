@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from typing import Annotated, Final, get_args, get_origin
 
 from provenance_toolkit import Provenance
@@ -470,8 +472,7 @@ class TestWithReflectProvenance:
         assert isinstance(reflect_prov, ReflectProvenanceData)
         _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
-        # Instance fields (annotated but not assigned at class level) should not appear in class provenance
-        assert "model" not in reflect_prov.data
+        assert reflect_prov.data["model"] == "none"
 
     def test_instance_provenance_with_values(self):
         """Test instance provenance with fields that have values."""
@@ -589,7 +590,7 @@ class TestWithReflectProvenance:
         assert checksum1 != checksum2
 
     def test_instance_fields_not_in_class_provenance(self):
-        """Test that instance fields annotated in __init__ are NOT in class provenance."""
+        """Test that instance fields annotated in __init__ appear with None in class provenance."""
         cls_prov = MyClassWithInstanceFields.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
@@ -597,8 +598,8 @@ class TestWithReflectProvenance:
         # Class field should be present
         assert "class_field" in reflect_prov.data
         assert reflect_prov.data["class_field"] == 100
-        # Instance field should NOT be present in class provenance
-        assert "instance_field" not in reflect_prov.data
+        assert "instance_field" in reflect_prov.data
+        assert reflect_prov.data["instance_field"] is None
 
     def test_class_fields_in_instance_provenance(self):
         """Test that class fields ARE included in instance provenance."""
@@ -638,12 +639,13 @@ class TestWithReflectProvenance:
         _assert_stable_serialize_no_error(cls_reflect)
         _assert_stable_serialize_no_error(inst_reflect)
 
-        # Class provenance should only have class field
+        # Class provenance should have both class field and instance fields,
+        # but all instance fields should be None
         assert "class_val" in cls_reflect.data
         assert cls_reflect.data["class_val"] == 42
-        assert "instance_str" not in cls_reflect.data
-        assert "instance_int" not in cls_reflect.data
-        assert "instance_float" not in cls_reflect.data
+        assert cls_reflect.data["instance_str"] is None
+        assert cls_reflect.data["instance_int"] is None
+        assert cls_reflect.data["instance_float"] is None
 
         # Instance provenance should have both class and instance fields
         assert "class_val" in inst_reflect.data
@@ -655,16 +657,15 @@ class TestWithReflectProvenance:
         assert "instance_float" in inst_reflect.data
         assert inst_reflect.data["instance_float"] == 3.14  # transformed
 
-    def test_only_instance_fields_class_provenance_empty(self):
-        """Test that class provenance is empty when only instance fields exist."""
+    def test_only_instance_fields_class_provenance(self):
+        """Test that class provenance includes instance fields with None."""
         cls_prov = MyClassOnlyInstanceFields.cls_provenance()
         reflect_prov = cls_prov[WithReflectProvenance]
         assert isinstance(reflect_prov, ReflectProvenanceData)
         _assert_stable_serialize_no_error(reflect_prov)
-        # Should be empty or only contain fields that exist at class level
-        assert "instance_only" not in reflect_prov.data
-        # If there are no class fields, the data dict should be empty
-        assert len(reflect_prov.data) == 0
+        assert "instance_only" in reflect_prov.data
+        assert reflect_prov.data["instance_only"] is None
+        assert len(reflect_prov.data) == 1
 
     def test_only_instance_fields_instance_provenance_has_them(self):
         """Test that instance provenance includes instance fields when no class fields exist."""
@@ -1026,3 +1027,194 @@ class TestContainerLikeAnnotatedData:
         serialized = reflect_prov.stable_serialize()
         assert isinstance(serialized, str)
         assert len(serialized) > 0
+
+
+# Test functions and classes for CallableField tests
+def sample_function(x: int, y: int) -> int:
+    """A sample function for testing CallableField."""
+    return x + y
+
+
+def another_function() -> str:
+    """Another sample function."""
+    return "test"
+
+
+class TestCallableField:
+    """Tests for CallableField annotation behavior."""
+
+    def test_callable_field_basic_usage(self):
+        """Test CallableField extracts source code from a regular function."""
+
+        class MyClassWithCallable(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Test class with a callable field."""
+
+            func: Final[Annotated[Callable, Provenance.Reflect.CallableField]] = (
+                sample_function
+            )
+
+        cls_prov = MyClassWithCallable.cls_provenance()
+        reflect_prov = cls_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # Should contain the extracted source code
+        assert "func" in reflect_prov.data
+        func_source = reflect_prov.data["func"]
+        assert isinstance(func_source, str)
+        assert "def sample_function" in func_source
+        assert "return x + y" in func_source
+
+    def test_callable_field_instance_provenance(self):
+        """Test CallableField works with instance provenance."""
+
+        class MyClassInstanceCallable(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Test class with callable instance field."""
+
+            func: Annotated[Callable, Provenance.Reflect.CallableField]
+
+            def __init__(self, func: Callable) -> None:
+                super().__init__()
+                self.func = func
+
+        instance = MyClassInstanceCallable(another_function)
+        inst_prov = instance.provenance()
+        reflect_prov = inst_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # Should contain the extracted source code
+        assert "func" in reflect_prov.data
+        func_source = reflect_prov.data["func"]
+        assert isinstance(func_source, str)
+        assert "def another_function" in func_source
+        assert 'return "test"' in func_source
+
+    def test_callable_field_non_callable_placeholder(self, caplog):
+        """Test CallableField returns placeholder on failure."""
+
+        class MyClassWithBuiltin(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Test class with a built-in function (can't extract source)."""
+
+            func: Final[Annotated[Callable, Provenance.Reflect.CallableField]] = (
+                len  # Built-in function, can't extract source
+            )
+
+        with caplog.at_level(logging.WARNING):
+            cls_prov = MyClassWithBuiltin.cls_provenance()
+
+        reflect_prov = cls_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # Should contain the placeholder
+        assert "func" in reflect_prov.data
+        assert reflect_prov.data["func"] == "<callable>"
+
+        # Should have logged a warning
+        assert any(
+            "Failed to extract source" in record.message for record in caplog.records
+        )
+
+    def test_callable_field_lambda(self, caplog):
+        """Test CallableField with lambda function."""
+
+        class MyClassWithLambda(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Test class with a lambda."""
+
+            func: Final[Annotated[Callable, Provenance.Reflect.CallableField]] = (
+                lambda x: x * 2
+            )
+
+        with caplog.at_level(logging.WARNING):
+            cls_prov = MyClassWithLambda.cls_provenance()
+
+        reflect_prov = cls_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+
+        # Lambda source extraction depends on Python version and environment
+        # It might work or fail, so we just verify it doesn't crash
+        assert "func" in reflect_prov.data
+        func_data = reflect_prov.data["func"]
+        # Either got source or got placeholder
+        assert isinstance(func_data, str)
+        assert func_data == "<callable>" or "lambda" in func_data
+
+    def test_callable_field_method(self):
+        """Test CallableField with a method."""
+
+        class HelperClass:
+            """Helper class with a method."""
+
+            def helper_method(self, x: int) -> int:
+                """A helper method."""
+                return x * 3
+
+        class MyClassWithMethod(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Test class with a method as callable."""
+
+            helper: Final[Annotated[Callable, Provenance.Reflect.CallableField]] = (
+                HelperClass.helper_method
+            )
+
+        cls_prov = MyClassWithMethod.cls_provenance()
+        reflect_prov = cls_prov[WithReflectProvenance]
+        assert isinstance(reflect_prov, ReflectProvenanceData)
+        _assert_stable_serialize_no_error(reflect_prov)
+
+        # Should extract the method source
+        assert "helper" in reflect_prov.data
+        method_source = reflect_prov.data["helper"]
+        assert isinstance(method_source, str)
+        assert "def helper_method" in method_source
+        assert "return x * 3" in method_source
+
+    def test_callable_field_checksum_stability(self):
+        """Test that checksums are stable for same callable."""
+
+        class MyClassCallableStable(
+            Provenance.ClassIdentity,
+            Provenance.Version,
+            Provenance.Reflect,
+            VERSION="1.0.0",
+        ):
+            """Test class for callable checksum stability."""
+
+            func: Final[Annotated[Callable, Provenance.Reflect.CallableField]] = (
+                sample_function
+            )
+
+        checksum1 = MyClassCallableStable.cls_checksum()
+        checksum2 = MyClassCallableStable.cls_checksum()
+        assert checksum1 == checksum2
+
+    def test_callable_field_has_transform(self):
+        """Test that CallableField has a transform attribute."""
+        field: Provenance.Reflect.CallableField = Provenance.Reflect.CallableField()
+        assert field.transform is not None
+        assert callable(field.transform)

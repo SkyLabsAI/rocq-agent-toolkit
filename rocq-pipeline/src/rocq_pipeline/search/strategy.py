@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import heapq
-import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
 from typing import Annotated, Any, TypeVar, override
@@ -349,46 +348,71 @@ class GuardStrategy[T_co, With](FailStrategy[T_co]):
         return self.rollout_with(val, state, max_rollout, context)
 
 
-class ActionWrapper[T_co](Action[T_co]):
-    _fn: Annotated[
-        Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
-    ]
-    _base: Annotated[Action[T_co], Provenance.Reflect.Field]
+class WrapAction[T, U](Action[T]):
+    """A wrapper for Actions based on lenses.
 
-    def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
-        self._fn = fn
+    Converts an `Action[U]` to an `Action[T]` given functions
+    - `into: Callable[[T],U]`
+    - `outof: Callable[[T, U], T]` -- the first argument is the original
+      state. This function should return a **new** value of type `T`, it
+      should **not** mutate the original value.
+
+    Note: Since `Action` is a effectively where its argument occurs
+    both positively and negatively, we need both `into` and `outof`.
+    """
+
+    _base: Annotated[Action[U], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T], U], Provenance.Reflect.CallableField]
+    _outof: Annotated[Callable[[T, U], T], Provenance.Reflect.CallableField]
+
+    def __init__(
+        self, base: Action[U], into: Callable[[T], U], outof: Callable[[T, U], T]
+    ) -> None:
         self._base = base
+        self._into = into
+        self._outof = outof
 
-    def interact(self, state: T_co) -> T_co:
-        self._fn(state)
-        return self._base.interact(state)
+    @override
+    def interact(self, state: T) -> T:
+        return self._outof(state, self._base.interact(self._into(state)))
 
 
-class TraceStrategy[T_co](Strategy[T_co]):
-    _base: Annotated[Strategy[T_co], Provenance.Reflect.Field]
-    _trace: Annotated[list[tuple[T_co, Action[T_co]]], Provenance.Reflect.Field]
+class WrapStrategy[T, U](Strategy[T]):
+    """A wrapper of `Strategy` based on lenses.
 
-    def __init__(self, base: Strategy[T_co]) -> None:
+    See the documentation for `WrapAction`.
+    """
+
+    _base: Annotated[Strategy[U], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T], U], Provenance.Reflect.CallableField]
+    _outof: Annotated[Callable[[T, U, Action[U]], T], Provenance.Reflect.CallableField]
+
+    def __init__(
+        self,
+        base: Strategy[U],
+        into: Callable[[T], U],
+        outof: Callable[[T, U, Action[U]], T],
+    ) -> None:
         self._base = base
-        self._trace: list[tuple[T_co, Action[T_co]]] = []
-
-    @property
-    def trace(self) -> list[tuple[T_co, Action[T_co]]]:
-        return self._trace
+        self._into = into
+        self._outof = outof
 
     @override
     def rollout(
         self,
-        state: T_co,
+        state: T,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[T_co]:
-        roll = self._base.rollout(state, max_rollout, context)
+    ) -> Strategy.Rollout:
+        outof = self._outof
 
-        def mk(action: Action[T_co]) -> Callable[[T_co], None]:
-            def fn(state: T_co) -> None:
-                self._trace.append((state, action))
+        def mk(action: Action[U]) -> Action[T]:
+            nonlocal outof
+            return WrapAction(action, self._into, lambda a, b: outof(a, b, action))
 
-            return fn
-
-        return ((prob, ActionWrapper(action, mk(action))) for prob, action in roll)
+        return (
+            (prob, mk(action))
+            for prob, action in self._base.rollout(
+                self._into(state), max_rollout=max_rollout, context=context
+            )
+        )

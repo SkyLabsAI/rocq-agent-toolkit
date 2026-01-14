@@ -8,6 +8,7 @@ cf. __init__.py for more details."""
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
@@ -210,6 +211,7 @@ class WithReflectProvenance(WithProvenance):
     - Annotated[T, Field]: value of type T; use a default strategy to reflect it
     - Annotated[T, Field(transform=...)]: value of type T; use a custom transform to
       reflect it
+    - Annotated[Callable, CallableField]: callable; extract source code with inspect.getsource
     """
 
     @dataclass(frozen=True)
@@ -217,6 +219,36 @@ class WithReflectProvenance(WithProvenance):
         """Frozen dataclass used to mark reflection targets in Annotated hints."""
 
         transform: Callable[[T], Any] | None = field(kw_only=True, default=None)
+
+    @dataclass(frozen=True)
+    class CallableField[**P, T](Field[Callable[P, T]]):
+        """Field for callables that extracts source code using inspect.getsource.
+
+        Derives from Field with a fixed transform that uses inspect.getsource,
+        logging a warning if inspect.getsource raises fails.
+        """
+
+        def __post_init__(self) -> None:
+            """Initialize the transform function that extracts source code."""
+
+            def extract_source(callable_obj: Any) -> str:
+                """Extract source code from a callable using inspect.getsource."""
+                if not callable(callable_obj):
+                    raise TypeError(
+                        f"Expected callable object, got {type(callable_obj).__name__}: "
+                        + repr(callable_obj)
+                    )
+                try:
+                    return inspect.getsource(callable_obj)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to extract source for callable %s (using placeholder): %s.",
+                        callable_obj,
+                        e,
+                    )
+                    return "<callable>"
+
+            object.__setattr__(self, "transform", extract_source)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -276,29 +308,30 @@ class WithReflectProvenance(WithProvenance):
             reflect: WithReflectProvenance.Field | None = None
             for meta in metadata:
                 if isinstance(meta, WithReflectProvenance.Field):
+                    # This includes CallableField since it inherits from Field
                     reflect = meta
                     break
                 elif meta is WithReflectProvenance.Field or (
-                    isinstance(meta, type) and meta.__name__ == "Field"
+                    isinstance(meta, type)
+                    and meta.__qualname__ == "WithReflectProvenance.Field"
                 ):
                     reflect = WithReflectProvenance.Field(transform=None)
+                    break
+                elif meta is WithReflectProvenance.CallableField or (
+                    isinstance(meta, type)
+                    and meta.__qualname__ == "WithReflectProvenance.CallableField"
+                ):
+                    reflect = WithReflectProvenance.CallableField()
                     break
             if reflect is None:
                 continue
 
             # Get the field value; use None for uninitialized fields
-            if instance is None:
-                # For class provenance, only include fields that exist at class level
-                if hasattr(klass, field_name):
-                    value = getattr(klass, field_name)
-                else:
-                    # Skip instance-only fields in class provenance
-                    continue
+            obj = klass if instance is None else instance
+            if hasattr(obj, field_name):
+                value = getattr(obj, field_name)
             else:
-                if hasattr(instance, field_name):
-                    value = getattr(instance, field_name)
-                else:
-                    value = None
+                value = None
 
             data_dict[field_name] = WithReflectProvenance._reflect_field(
                 value,
