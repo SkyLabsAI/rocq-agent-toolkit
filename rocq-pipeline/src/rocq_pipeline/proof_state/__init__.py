@@ -10,13 +10,12 @@ from typing import Any, overload
 from rocq_doc_manager import RocqDocManager as RDM
 
 from rocq_pipeline.proof_state import parse
-from rocq_pipeline.proof_state.goal import BrickGoal, IrisGoal, RocqGoal
+from rocq_pipeline.proof_state.goal import IrisGoal, RocqGoal
 
 __all__ = [
     "goal_parts",
     "RocqGoal",
     "IrisGoal",
-    "BrickGoal",
     "ProofState",
 ]
 
@@ -27,8 +26,9 @@ class ProofState:
     """Structured proof states.
 
     A proof state is a heterogenous collection of structured goals (Rocq,
-    Iris or Brick). This is a derivation atop RocqDocManager.ProofState
-    exposing a structured / hierarchical view of the focused goals.
+    Iris or client extensions). This is a derivation atop
+    RocqDocManager.ProofState exposing a structured / hierarchical view of
+    the focused goals.
     """
 
     def __init__(

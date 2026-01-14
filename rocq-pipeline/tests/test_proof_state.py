@@ -1,9 +1,6 @@
-import re
-
 import pytest
 from rocq_doc_manager import RocqDocManager as RDM
 from rocq_pipeline.proof_state import (
-    BrickGoal,
     IrisGoal,
     ProofState,
     RocqGoal,
@@ -15,48 +12,22 @@ def focused_goal_strings() -> list[str]:
     return [
         (
             "\n"
-            "thread_info : biIndex\n"
-            "_Σ : gFunctors\n"
-            "Σ : cpp_logic thread_info _Σ\n"
-            "σ : genv\n"
-            "MOD : source ⊧ σ\n"
-            "_PostPred_ : ptr → mpred\n"
-            "n_addr : ptr\n"
-            "n : Z\n"
-            "PostCond : PostCondition\n"
-            "_H_ : (0 ≤ n)%Z\n"
-            'H : valid<"int"> (n * (n + 1))%Z\n'
-            "sum_addr, i_addr : ptr\n"
-            "GUARDS : GWs.GUARDS\n"
-            '_x_0 : valid<"int"> n\n'
-            '_x_ : valid<"int"> 0%Z\n'
-            '_x_1 : valid<"int"> 1%Z\n'
+            "x : nat\n"
+            "y : nat\n"
+            "z : nat\n"
             "my_num := 42 : nat\n"
             "============================\n"
-            "_ : denoteModule source\n"
-            '_ : type_ptr "int" n_addr\n'
-            '_ : type_ptr "int" sum_addr\n'
-            '_ : type_ptr "int" i_addr\n'
+            "_ : P x\n"
+            "_ : Q y\n"
+            "_ : R z\n"
+            "_ : S x y\n"
             "--------------------------------------□\n"
-            "_ : PostCond\n"
-            "_ : n_addr |-> intR 1$m n\n"
-            "_ : sum_addr |-> intR 1$m 0\n"
-            "_ : i_addr |-> intR 1$m 1\n"
+            "_ : P a\n"
+            "_ : Q b\n"
+            "_ : R c\n"
+            "_ : T a b\n"
             "--------------------------------------∗\n"
-            "::wpS\n"
-            '  [region: "i" @ i_addr;\n'
-            '           "sum" @ sum_addr;\n'
-            '           "n" @ n_addr;\n'
-            '           return {?: "int"}]\n'
-            "  (Sfor None\n"
-            "    (Some\n"
-            '      (Ebinop Ble (Ecast Cl2r (Evar "i" "int"))\n'
-            '        (Ecast Cl2r (Evar "n" "int")) "bool"))\n'
-            '    (Some (Epreinc (Evar "i" "int") "int"))\n'
-            "    (Sseq\n"
-            "      [Sexpr\n"
-            '        (Eassign_op Badd (Evar "sum" "int")\n'
-            '          (Ecast Cl2r (Evar "i" "int")) "int")]))\n'
+            "P x ∗ Q y ∗ R z"
         ),
         ("\n============================\n True\n"),
         (
@@ -87,7 +58,7 @@ def proof_state(focused_goal_strings) -> ProofState:
     )
 
     # Parse using the most specific type
-    return ProofState(rdm_pf_state, goal_ty_upperbound=BrickGoal)
+    return ProofState(rdm_pf_state, goal_ty_upperbound=IrisGoal)
 
 
 # --- Tests ---
@@ -97,23 +68,6 @@ def test_proof_state_RocqGoal_raw_str(focused_goal_strings, proof_state) -> None
     for i, focused_goal_string in enumerate(focused_goal_strings, start=1):
         focused_goal: RocqGoal = proof_state.goal(i, strict=True)
         assert focused_goal.raw_str == focused_goal_string
-
-
-def test_BrickGoal_is_loop_goal1(proof_state) -> None:
-    goal = proof_state.goal(1, strict=True, cast_to=BrickGoal)
-    assert (
-        bool(goal.regex_brick_spat_concl_wp("Sdo_while", "Sfor", "Swhile", kind="S"))
-        is True
-    )
-
-
-def test_BrickGoal_is_loop_goal3(proof_state) -> None:
-    goal: BrickGoal = proof_state.goal(3, strict=True, cast_to=BrickGoal)
-    d: dict[str, re.Match[str] | None] = goal.regex_brick_spat_concl_wp(
-        "Sfor", "Swhile", "Sdo_while"
-    )
-    b: bool = any(value is not None for value in d.values())
-    assert b is False
 
 
 def test_proof_state_None() -> None:
@@ -134,9 +88,9 @@ def test_proof_state_overview(proof_state: ProofState) -> None:
 
 
 def test_goal_1_parsing(proof_state: ProofState) -> None:
-    """Checks Goal 1, which should be a full BrickGoal."""
+    """Checks Goal 1, which should be a full IrisGoal."""
     # Use the typed goal getter, which includes an isinstance check
-    goal1 = proof_state.goal(1, strict=True, cast_to=BrickGoal)
+    goal1 = proof_state.goal(1, strict=True, cast_to=IrisGoal)
     assert goal1 is not None
 
     # Check metadata
@@ -144,28 +98,33 @@ def test_goal_1_parsing(proof_state: ProofState) -> None:
     assert goal1.parts.rocq_shelved_cnt == 2
 
     # Check hypothesis parsing
-    assert goal1.parts.rocq_hyps["thread_info"] == ("biIndex", None)
-    assert goal1.parts.rocq_hyps["sum_addr"] == ("ptr", None)
-    assert goal1.parts.rocq_hyps["i_addr"] == ("ptr", None)
+    assert goal1.parts.rocq_hyps["x"] == ("nat", None)
+    assert goal1.parts.rocq_hyps["y"] == ("nat", None)
+    assert goal1.parts.rocq_hyps["z"] == ("nat", None)
     assert goal1.parts.rocq_hyps["my_num"] == ("nat", "42")
 
-    # Check Iris parts
+    # Check generic Iris persistent hypotheses
+    assert goal1.parts.iris_pers_hyps == {}  # No named persistent hypotheses
     assert goal1.parts.iris_pers_hyps_anon == {
-        "denoteModule source",
-        'type_ptr "int" i_addr',
-        'type_ptr "int" sum_addr',
-        'type_ptr "int" n_addr',
+        "P x",
+        "Q y",
+        "R z",
+        "S x y",
     }
-    assert goal1.parts.iris_spat_hyps_anon == {
-        "PostCond",
-        "i_addr |-> intR 1$m 1",
-        "n_addr |-> intR 1$m n",
-        "sum_addr |-> intR 1$m 0",
-    }
-    assert goal1.parts.iris_spat_concl.strip().startswith("::wpS")
 
-    # Check Brick-specific behavior
-    assert goal1.is_loop_goal() is True
+    # Check generic Iris spatial hypotheses
+    assert goal1.parts.iris_spat_hyps == {}  # No named spatial hypotheses
+    assert goal1.parts.iris_spat_hyps_anon == {
+        "P a",
+        "Q b",
+        "R c",
+        "T a b",
+    }
+
+    # Check generic Iris spatial conclusion
+    assert goal1.parts.iris_spat_concl.strip() == "P x ∗ Q y ∗ R z"
+
+    # Check wellformedness
     assert goal1.wellformed() is True
 
 
@@ -194,8 +153,8 @@ def test_goal_2_parsing(proof_state: ProofState) -> None:
 
 
 def test_goal_3_parsing(proof_state: ProofState) -> None:
-    """Checks Goal 3, which is a simple BrickGoal (from 'goal N is:')."""
-    goal3 = proof_state.goal(3, strict=True, cast_to=BrickGoal)
+    """Checks Goal 3, which is a simple IrisGoal (from 'goal N is:')."""
+    goal3 = proof_state.goal(3, strict=True, cast_to=IrisGoal)
     assert goal3 is not None
 
     # Check metadata
@@ -204,8 +163,17 @@ def test_goal_3_parsing(proof_state: ProofState) -> None:
     # Check 'is_concl_only' parsing
     assert goal3.parts.rocq_hyps == {}
     assert goal3.parts.rocq_concl.strip().startswith("-----------------")
+
+    # Check generic Iris persistent hypotheses
+    assert goal3.parts.iris_pers_hyps == {}
+    assert goal3.parts.iris_pers_hyps_anon == set()
+
+    # Check generic Iris spatial hypotheses
+    assert goal3.parts.iris_spat_hyps == {}
+    assert goal3.parts.iris_spat_hyps_anon == set()
+
+    # Check generic Iris spatial conclusion
     assert goal3.parts.iris_spat_concl == "emp"
 
-    # Check behavior
-    assert goal3.is_loop_goal() is False
+    # Check wellformedness
     assert goal3.wellformed() is True
