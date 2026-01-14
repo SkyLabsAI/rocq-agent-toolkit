@@ -7,27 +7,21 @@ from typing import override
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.frontier import BasicNode, Frontier
 from rocq_pipeline.search.search.search import Node
-from rocq_pipeline.search.strategy import Strategy
+from rocq_pipeline.search.strategy import TraceStrategy
 
 from .util import FixedStrategy, OneShotFrontier, RecordingAction, run_search
 
 
-class CountingStrategy(Strategy[int]):
+class CountingStrategy(TraceStrategy[int, Action[int]]):
     """Strategy that returns fixed rollouts per state and counts calls."""
 
     def __init__(self, mapping: dict[int, list[tuple[float, Action[int]]]]) -> None:
-        self._mapping = mapping
         self.call_counts: dict[int, int] = {}
 
-    @override
-    def rollout(
-        self,
-        state: int,
-        max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[int]:
-        self.call_counts[state] = self.call_counts.get(state, 0) + 1
-        return iter(self._mapping.get(state, []))
+        def record(state: int) -> None:
+            self.call_counts[state] = self.call_counts.get(state, 0) + 1
+
+        super().__init__(FixedStrategy(mapping), record)
 
 
 class QueueFrontier[T](Frontier[T, BasicNode[T]]):

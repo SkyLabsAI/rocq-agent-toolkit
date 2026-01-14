@@ -4,8 +4,10 @@ from rocq_doc_manager import RocqCursor
 
 from rocq_pipeline.agent.base import AgentBuilder
 from rocq_pipeline.agent.proof.strategy_agent import StrategyAgent
+from rocq_pipeline.search import rollout
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.strategy import Strategy, empty_Rollout
+from rocq_pipeline.search.rollout import IteratorRollout, Rollout
+from rocq_pipeline.search.strategy import Strategy
 from rocq_pipeline.task_runner import agent_main
 
 
@@ -37,7 +39,7 @@ class StepAction(Action[RocqCursor]):
         return state
 
 
-class OracleStrategy(Strategy[RocqCursor]):
+class OracleStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     """
     This strategy 'cheats' by looking at the document suffix to propose the next tactic.
     When the `doc_suffix` is hidden, this strategy will no longer work.
@@ -48,14 +50,23 @@ class OracleStrategy(Strategy[RocqCursor]):
         state: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[RocqCursor]:
+    ) -> Rollout[Action[RocqCursor]]:
         for count, cmd in enumerate(state.doc_suffix()):
             if cmd.kind != "command":
                 continue
             if cmd.text.startswith("Proof"):
                 continue
-            return iter([(1.0, StepAction(tac, count)) for tac in [cmd.text]])
-        return empty_Rollout()
+            return IteratorRollout[Action[RocqCursor]](
+                iter(
+                    [
+                        Rollout.Approx[Action[RocqCursor]](
+                            logprob=0.0, result=StepAction(tac, count)
+                        )
+                        for tac in [cmd.text]
+                    ]
+                )
+            )
+        return rollout.empty_Rollout()
 
 
 class OracleAgent(StrategyAgent):

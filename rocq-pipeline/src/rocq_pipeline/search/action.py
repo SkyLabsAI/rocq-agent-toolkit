@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from typing import Annotated, Any, TypeVar, override
 
@@ -40,18 +41,59 @@ class Action[T_co](Provenance.Full):
         return f"{type(self).__name__}:{id(self)}"
 
 
+class ActionWrapper[T_co](Action[T_co]):
+    _base: Annotated[Action[T_co], Provenance.Reflect.Field]
+    _fn: Annotated[
+        Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
+    ]
+
+    def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
+        self._fn = fn
+        self._base = base
+
+    def interact(self, state: T_co) -> T_co:
+        self._fn(state)
+        return self._base.interact(state)
+
+
 class LoggingAction[T_co](Action[T_co]):
     """
     An action that logs itself when it is invoked.
     """
 
     _base: Annotated[Action[T_co], Provenance.Reflect.Field]
+    _fn: Annotated[
+        Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
+    ]
 
-    def __init__(self, base: Action[T_co], record: Callable[[T_co], None]) -> None:
-        self._record = record
+    def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
+        self._fn = fn
         self._base = base
 
     @override
     def interact(self, state: T_co) -> T_co:
-        self._record(state)
+        self._fn(state)
         return self._base.interact(state)
+
+
+class MapAction[T_co, U](Action[T_co]):
+    """
+    Transport an action to another state type.
+
+    Note that this is *invariant*.
+    """
+
+    _base: Annotated[Action[U], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T_co], U], Provenance.Reflect.Field]
+    _outof: Annotated[Callable[[U], T_co], Provenance.Reflect.Field]
+
+    def __init__(
+        self, base: Action[U], into: Callable[[T_co], U], outof: Callable[[U], T_co]
+    ) -> None:
+        self._base = base
+        self._into = into
+        self._outof = outof
+
+    @override
+    def interact(self, state: T_co) -> T_co:
+        return self._outof(self._base.interact(self._into(state)))

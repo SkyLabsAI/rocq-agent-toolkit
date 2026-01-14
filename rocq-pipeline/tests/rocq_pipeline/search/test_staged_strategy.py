@@ -5,6 +5,7 @@ from typing import override
 import pytest
 from rocq_pipeline.search import strategy
 from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.rollout import Rollout
 from rocq_pipeline.search.strategy import (
     FailStrategy,
     IteratorStrategy,
@@ -23,7 +24,12 @@ class SimpleAction[T](Action[list[T]]):
         return state + [self._value]
 
 
-def is_empty[T](x: Strategy.Rollout[T]) -> None:
+type ActionL[T] = Action[list[T]]
+type RolloutAL[T] = Rollout[ActionL[T]]
+type StrategyAL[T] = Strategy[list[T], ActionL[T]]
+
+
+def is_empty[T](x: RolloutAL[int]) -> None:
     try:
         elem = next(x)
         raise AssertionError(f"empty contains element {elem}")
@@ -32,20 +38,18 @@ def is_empty[T](x: Strategy.Rollout[T]) -> None:
 
 
 def test_empty() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(FailStrategy(), FailStrategy())
+    strat: StrategyAL[int] = StagedStrategy(FailStrategy(), FailStrategy())
     actions = strat.rollout([])
     is_empty(actions)
 
 
-def next_eval(
-    actions: Strategy.Rollout[list[int]], st: list[int]
-) -> tuple[float, list[int]]:
+def next_eval(actions: RolloutAL[int], st: list[int]) -> tuple[float, list[int]]:
     pr, act = next(actions)
     return (pr, act.interact(st))
 
 
 def test_empty_1() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         FailStrategy(), SingletonStrategy(SimpleAction(0), 0.5)
     )
     actions = strat.rollout([])
@@ -54,7 +58,7 @@ def test_empty_1() -> None:
 
 
 def test_empty_2() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5), FailStrategy()
     )
     actions = strat.rollout([])
@@ -63,7 +67,7 @@ def test_empty_2() -> None:
 
 
 def test_both_1() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         SingletonStrategy(SimpleAction(1), 0.75),
     )
@@ -74,7 +78,7 @@ def test_both_1() -> None:
 
 
 def test_both_2() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         SingletonStrategy(SimpleAction(1), 0.75),
         prob=0.5,
@@ -86,7 +90,7 @@ def test_both_2() -> None:
 
 
 def test_both_3() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         SingletonStrategy(SimpleAction(1), 0.75),
         prob=0.8,
@@ -98,7 +102,7 @@ def test_both_3() -> None:
 
 
 def test_both_4() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
         SingletonStrategy(SimpleAction(2), 0.75),
         prob=0.2,
@@ -110,19 +114,19 @@ def test_both_4() -> None:
     is_empty(actions)
 
 
-class NeverStrategy[T](Strategy[T]):
+class NeverStrategy[T, A](Strategy[T, A]):
     @override
     def rollout(
         self,
         state: T,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[T]:
+    ) -> Rollout[A]:
         raise AssertionError("Should not Run")
 
 
 def test_delayed() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         NeverStrategy(),
         prob=0.3,
@@ -132,7 +136,7 @@ def test_delayed() -> None:
 
 
 def test_delayed_edge() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         NeverStrategy(),
         prob=0.5,
@@ -142,7 +146,7 @@ def test_delayed_edge() -> None:
 
 
 def test_delayed_edge2() -> None:
-    strat: Strategy[list[int]] = StagedStrategy(
+    strat: StrategyAL[int] = StagedStrategy(
         IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
         NeverStrategy(),
         prob=0.2,
@@ -211,7 +215,7 @@ VALUES = [
 def test_many(
     lls: list[tuple[float, list[tuple[float, int]]]], expected: list[tuple[float, int]]
 ):
-    strat = strategy.staged(
+    strat: StrategyAL[int] = strategy.staged(
         [
             (cutoff, IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]))
             for cutoff, x in lls
