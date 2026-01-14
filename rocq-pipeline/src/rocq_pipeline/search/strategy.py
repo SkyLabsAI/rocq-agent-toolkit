@@ -171,6 +171,10 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
         )
 
 
+def composite[T, A](*strats: Strategy[T, A]) -> Strategy[T, A]:
+    return CompositeStrategy(list(strats))
+
+
 class StagedStrategy[State, Action](Strategy[State, Action]):
     """Combinator: biased interleaving of two strategies, preferring the first.
 
