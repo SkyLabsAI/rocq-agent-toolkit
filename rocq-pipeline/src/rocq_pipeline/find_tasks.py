@@ -307,7 +307,7 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
     logger.info(f"Total number of unique tasks: {len(unique_tasks)}")
 
     project = Project(
-        name=project_name, git_url=git_url, git_commit=git_commit, path=pdir.resolve()
+        name=project_name, git_url=git_url, git_commit=git_commit, path=pdir
     )
     taskfile = TaskFile(project=project, tasks=unique_tasks)
 

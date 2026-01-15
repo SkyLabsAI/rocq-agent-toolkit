@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Literal
@@ -88,7 +90,7 @@ class TaskFile(BaseModel):
     tasks: list[Task]
 
     @classmethod
-    def from_file(cls, file: Literal["-"] | Path):
+    def from_file(cls, file: Literal["-"] | Path) -> TaskFile:
         data: dict[str, Any] = {}
 
         if file == "-":
@@ -105,10 +107,23 @@ class TaskFile(BaseModel):
                         "`.yaml`, or `.yml`"
                     )
 
-        return TaskFile.model_validate(data)
+        task_file = TaskFile.model_validate(data)
+        file_dir = Path(".") if file == "-" else file.parent
+        path = file_dir / task_file.project.path
+        task_file.project.path = Path(os.path.normpath(path))
 
-    def to_file(self, file: Literal["-"] | Path):
-        data = self.model_dump(exclude_none=True)
+        return task_file
+
+    def to_file(self, file: Literal["-"] | Path) -> None:
+        project = copy.deepcopy(self.project)
+        task_file = TaskFile(project=project, tasks=self.tasks)
+
+        file_dir = Path(".") if file == "-" else file.parent
+        task_file.project.path = task_file.project.path.resolve().relative_to(
+            file_dir.resolve(), walk_up=True
+        )
+
+        data = task_file.model_dump(exclude_none=True)
 
         if file == "-":
             json.dump(data, sys.stdout, indent=2)
