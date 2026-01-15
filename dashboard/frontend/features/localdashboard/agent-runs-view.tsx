@@ -50,7 +50,9 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   const [pinnedRuns, setPinnedRuns] = React.useState<Set<string>>(() =>
     loadPinnedRuns(agentName)
   );
-  const [timestampSort, setTimestampSort] = React.useState<'asc' | 'desc'>('desc');
+  const [timestampSort, setTimestampSort] = React.useState<'asc' | 'desc'>(
+    'desc'
+  );
 
   // Save pinned runs to localStorage whenever it changes
   React.useEffect(() => {

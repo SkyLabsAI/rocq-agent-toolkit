@@ -30,7 +30,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
         <td className='px-6 py-2.5 text-text font-medium pl-16'>
           <div className='flex items-center gap-2.5'>
             <div className='w-0.5 h-5 bg-elevation-surface-overlay rounded-full' />
-            <span className='truncate font-mono text-xs text-text-disabled' data-testid='agent-name'>
+            <span
+              className='truncate font-mono text-xs text-text-disabled'
+              data-testid='agent-name'
+            >
               {agent.cls_checksum.slice(0, 12)}
             </span>
           </div>
@@ -40,7 +43,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
       {isOpen && (
         <tr data-testid={`agent-expanded-${agent.cls_checksum}`}>
           <td colSpan={2}>
-            <div className='px-6 py-2 pl-20' data-testid='agent-expanded-content'>
+            <div
+              className='px-6 py-2 pl-20'
+              data-testid='agent-expanded-content'
+            >
               {isLoading ? (
                 <div
                   className='flex items-center justify-center py-8'

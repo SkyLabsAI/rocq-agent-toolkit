@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
 import SlidingTabs from '@/components/base/ui/sliding-tabs';
@@ -12,9 +13,29 @@ import DataView from './dataview';
 import TaskSetView from './projectview';
 
 const AgentTable: React.FC = () => {
+  const searchParams = useSearchParams();
+
+  // Initialize from URL params or default
+  const initialTab =
+    (searchParams.get('view') as 'agents' | 'datasets' | 'tasksets') ||
+    'tasksets';
   const [activeTab, setActiveTab] = useState<
     'agents' | 'datasets' | 'tasksets'
-  >('tasksets');
+  >(initialTab);
+
+  // Update URL when tab changes (without page refresh)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (activeTab === 'tasksets') {
+      params.delete('view');
+    } else {
+      params.set('view', activeTab);
+    }
+    const newUrl = params.toString()
+      ? `?${params.toString()}`
+      : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [activeTab]);
 
   return (
     <div className='backdrop-blur-sm border bg-elevation-surface border-elevation-surface-raised rounded-xl overflow-hidden'>
@@ -47,7 +68,7 @@ const AgentTable: React.FC = () => {
                 icon: <DataSetListIcon className='size-[15px]' />,
               },
             ]}
-            defaultTab='tasksets'
+            defaultTab={initialTab}
             onTabChange={tabId =>
               setActiveTab(tabId as 'agents' | 'datasets' | 'tasksets')
             }
