@@ -207,10 +207,10 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       );
     }
 
+    // Always include the taskset ID as a query parameter
+    params.set('id', tasksetId);
     const queryString = params.toString();
-    const newUrl = queryString
-      ? `/taskset/${tasksetId}?${queryString}`
-      : `/taskset/${tasksetId}`;
+    const newUrl = `/taskset?${queryString}`;
 
     // Track this URL so we don't sync it back to state
     lastGeneratedUrlRef.current = queryString;
