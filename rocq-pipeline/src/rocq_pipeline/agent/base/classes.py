@@ -6,6 +6,7 @@ from observability import get_logger
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
+from rocq_pipeline.observability import TraceRocqTacApplicationMixin
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.schema.task_output import FailureReason
@@ -18,7 +19,7 @@ from .dataclasses import (
 logger = get_logger("rocq_agent")
 
 
-class Agent(Provenance.Full):
+class Agent(TraceRocqTacApplicationMixin, Provenance.Full):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
     def run(self, rdm: RocqCursor) -> TaskResult:
@@ -159,38 +160,36 @@ class ProofAgent(Agent):
             return tac_app
         else:
             tac_app.pf_state_pre = pre_pf_state_reply
-        logger.info(
-            "Tactic Pre State",
-            pf_state_pre=tac_app.pf_state_pre.to_json(),
-        )
 
-        logger.info(
-            "Tactic Application",
-            tactic_application_tactic=tac,
-        )
         tac_reply = rdm.run_command(tac)
         if isinstance(tac_reply, RocqCursor.Err):
-            logger.info(
-                "Tactic Application Status",
-                status="Failure",
-                error_msg=tac_reply.message,
-                # error_data=tac_reply.data,
+            self.log_rocq_tactic_failure(
+                logger,
+                pre_state=tac_app.pf_state_pre.to_json(),
+                tactic=tac,
+                error=tac_reply.message,
             )
             tac_app.err = tac_reply
             return tac_app
-        logger.info(
-            "Tactic Application Status",
-            status="Success",
-        )
 
         post_pf_state_reply = self.current_proof_state(rdm)
         if isinstance(post_pf_state_reply, RocqCursor.Err):
+            self.log_rocq_tactic_failure(
+                logger,
+                pre_state=tac_app.pf_state_pre.to_json(),
+                tactic=tac,
+                error=post_pf_state_reply.message,
+            )
             tac_app.err = post_pf_state_reply
             return tac_app
+
         tac_app.pf_state_post = post_pf_state_reply
-        logger.info(
-            "Tactic Post State",
-            pf_state_post=tac_app.pf_state_post.to_json(),
+
+        self.log_rocq_tactic_success(
+            logger,
+            pre_state=tac_app.pf_state_pre.to_json(),
+            tactic=tac,
+            post_state=tac_app.pf_state_post.to_json(),
         )
 
         return tac_app
