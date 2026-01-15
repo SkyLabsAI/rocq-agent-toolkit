@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/base/ui/button';
+import VisualizerModal from '@/components/visualizer-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 import type { TaskOutput } from '@/types/types';
 
@@ -13,6 +14,7 @@ interface TaskDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   openCodeModal: (task: TaskOutput) => void;
+  runTimestampUtc: string;
 }
 
 const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
@@ -20,9 +22,15 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
   isOpen,
   onClose,
   openCodeModal,
+  runTimestampUtc,
 }) => {
   const [expandedResults, setExpandedResults] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
+
+  const handleVisualize = () => {
+    setIsVisualizerOpen(true);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -224,6 +232,17 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             View Logs
           </Button>
 
+          {/* Visualize Button */}
+          {task.trace_id && (
+            <Button
+              variant='default'
+              onClick={handleVisualize}
+              className='w-full'
+            >
+              Visualize
+            </Button>
+          )}
+
           <Link
             href={`/runs/${task.run_id}/tasks?taskId=${encodeURIComponent(task.task_id)}`}
           >
@@ -237,6 +256,17 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
           </Link>
         </div>
       </div>
+
+      {/* Visualizer Modal */}
+      {task.trace_id && (
+        <VisualizerModal
+          isOpen={isVisualizerOpen}
+          onClose={() => setIsVisualizerOpen(false)}
+          runId={task.run_id}
+          runTimestampUtc={runTimestampUtc}
+          initialTraceId={task.trace_id}
+        />
+      )}
     </>
   );
 

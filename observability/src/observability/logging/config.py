@@ -96,7 +96,7 @@ class WorkflowEventConfig(EventLogConfig):
 class EvaluationEventConfig(EventLogConfig):
     include_dataset_info: bool = True
     include_scores: bool = True
-    include_brick_server_result: bool = True
+    include_server_result: bool = True
     include_generation_kc: bool = True
     include_sample_predictions: bool = False
     max_sample_predictions: int = 5

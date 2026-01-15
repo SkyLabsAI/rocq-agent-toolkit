@@ -24,10 +24,6 @@ export const AgentInstance: React.FC<AgentInstanceProps> = ({
     setIsOpen(!isOpen);
   };
 
-  // Check if instance has any unique tags compared to what user would see
-  const instanceTags = (instance.provenance as Record<string, string>) || {};
-  const hasUniqueTags = Object.keys(instanceTags).length > 0;
-
   return (
     <div
       className='border-l-4 border-background-warning/40 ml-6 mb-3 rounded-r-md overflow-hidden'
@@ -58,7 +54,7 @@ export const AgentInstance: React.FC<AgentInstanceProps> = ({
                   className='text-[13px] font-medium truncate text-text'
                   data-testid='instance-name'
                 >
-                  {instance.name}
+                  {instance.name}@{instance.agent_checksum.slice(0, 12)}
                 </span>
               </div>
             </div>
@@ -66,13 +62,6 @@ export const AgentInstance: React.FC<AgentInstanceProps> = ({
         </div>
 
         <div className='flex items-center gap-4 shrink-0'>
-          {hasUniqueTags && (
-            <TagsDisplay
-              tags={instanceTags}
-              modalTitle={`Instance Tags: ${instance.name}`}
-              maxVisible={2}
-            />
-          )}
           <div className='flex items-center gap-3 text-xs text-text-disabled bg-elevation-surface-overlay px-3 py-1.5 rounded-md'>
             <div className='flex items-center gap-1.5'>
               <span className='font-medium text-text'>

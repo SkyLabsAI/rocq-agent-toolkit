@@ -2,7 +2,7 @@
 Simple client script to ingest a JSONL file into the Rocq Agent Toolkit backend.
 
 Usage:
-    uv run python -m client.ingester /home/skylabs/Desktop/psi-verifier/workspace/psi/backend/brick_agents/tasks2_results_20251201_1352.jsonl \
+    uv run python -m client.ingester /path/to/results.jsonl \
         --base-url http://localhost:8000 \
         --source-file-name tasks_results.jsonl
 The backend must be running and exposing the /api/ingest/file endpoint.

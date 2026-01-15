@@ -16,6 +16,7 @@ import { useEffect, useMemo } from 'react';
 import SpanNode, {
   type SpanNodeData,
 } from '@/components/visualizer/nodes/span-node';
+import { NODE_STYLE_CONFIG } from '@/components/visualizer/nodes/span-node';
 import type { EnhancedSpan } from '@/services/visualizer/process-tree';
 
 type Props = {
@@ -116,6 +117,67 @@ const SpanGraphView = ({
       }
     }
 
+    // Build a map of span_id -> span for quick lookup
+    const spanMap = new Map<string, EnhancedSpan>();
+    for (const s of spans) {
+      spanMap.set(s.span_id, s);
+    }
+
+    // Find all success path edges by backtracking from success nodes
+    const successPathEdgeIds = new Set<string>();
+    // Find all error path edges by backtracking from error nodes
+    const errorPathEdgeIds = new Set<string>();
+
+    for (const s of spans) {
+      if (!visibleSpanIds.has(s.span_id)) continue;
+
+      const nodeVal =
+        typeof s.attributes?.['node'] === 'string'
+          ? (s.attributes?.['node'] as string)
+          : undefined;
+      const isOnPath = nodeVal ? successPathNodes.has(nodeVal) : false;
+      const isSuccessProcess = s.processState === 'success';
+      const isErrorProcess = s.processState === 'error' || s.virtualErrorNode;
+
+      // If this node is on the success path (either via node attribute or process state),
+      // backtrack to root and mark all edges
+      if (isOnPath || isSuccessProcess) {
+        let current = s.span_id;
+        while (current) {
+          const span = spanMap.get(current);
+          if (!span || !span.parent_span_id) break;
+
+          const parentId = span.parent_span_id;
+          // Only mark edges if both parent and child are visible
+          if (visibleSpanIds.has(parentId) && visibleSpanIds.has(current)) {
+            const edgeId = `${parentId}→${current}`;
+            successPathEdgeIds.add(edgeId);
+          }
+
+          current = parentId;
+        }
+      }
+
+      // If this node is an error (process state or virtual error),
+      // backtrack to root and mark all edges
+      if (isErrorProcess) {
+        let current = s.span_id;
+        while (current) {
+          const span = spanMap.get(current);
+          if (!span || !span.parent_span_id) break;
+
+          const parentId = span.parent_span_id;
+          // Only mark edges if both parent and child are visible
+          if (visibleSpanIds.has(parentId) && visibleSpanIds.has(current)) {
+            const edgeId = `${parentId}→${current}`;
+            errorPathEdgeIds.add(edgeId);
+          }
+
+          current = parentId;
+        }
+      }
+    }
+
     for (const s of spans) {
       if (!visibleSpanIds.has(s.span_id)) continue;
 
@@ -162,16 +224,26 @@ const SpanGraphView = ({
 
       const p = s.parent_span_id ?? undefined;
       if (p && ids.has(p) && visibleSpanIds.has(p)) {
+        const edgeId = `${p}→${s.span_id}`;
+        const isSuccessEdge = successPathEdgeIds.has(edgeId);
+        const isErrorEdge = errorPathEdgeIds.has(edgeId);
+
+        // Priority: success > error > intermediate
+        // If an edge is on both success and error paths, show success color
+        const edgeStyle = isSuccessEdge
+          ? NODE_STYLE_CONFIG.success.edge
+          : isErrorEdge
+            ? NODE_STYLE_CONFIG.error.edge
+            : NODE_STYLE_CONFIG.intermediate.edge;
+
         edges.push({
-          id: `${p}→${s.span_id}`,
+          id: edgeId,
           source: p,
           target: s.span_id,
-          animated: isOnPath,
+          animated: edgeStyle.animated,
           style: {
-            stroke: isOnPath
-              ? 'var(--color-border-success, #6a9a23)'
-              : 'var(--color-border-bold, #7d818a)',
-            strokeWidth: isOnPath ? 2 : 1.5,
+            stroke: edgeStyle.stroke,
+            strokeWidth: edgeStyle.strokeWidth,
           },
         });
       }
