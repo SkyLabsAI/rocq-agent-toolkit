@@ -215,7 +215,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     return parser
 
 
-def dune_project_name(dune_project_file: Path) -> str:
+def dune_project_name(dune_project_file: Path) -> str | None:
     try:
         contents = dune_project_file.read_text()
         data = sexpdata.loads(f"({contents})")
@@ -233,7 +233,7 @@ def dune_project_name(dune_project_file: Path) -> str:
         sys.exit(f"Error: project file {dune_project_file} not found.")
     except Exception as e:
         sys.exit(f"Error: file {dune_project_file} could not be parsed.")
-    sys.exit(f"Error: cound not find project name in {dune_project_file}.")
+    return None
 
 
 def git_repo_data(project_dir: Path) -> tuple[str, str]:
@@ -259,6 +259,11 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
         return file_tasks
 
     project_name = dune_project_name(pdir / "dune-project")
+    if project_name is None:
+        project_name = pdir.resolve().name
+        logger.warn(
+            f"No project name in the dune-project file, falling back to directory name {project_name}."
+        )
     logger.debug(f"Detected project name: {project_name}")
 
     (git_url, git_commit) = git_repo_data(pdir)
