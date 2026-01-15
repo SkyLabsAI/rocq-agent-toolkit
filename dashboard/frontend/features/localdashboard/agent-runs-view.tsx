@@ -6,7 +6,9 @@ import React from 'react';
 import RunRow from '@/components/run-row';
 import StickyCompareBar from '@/components/sticky-compare-bar';
 import { PlayIcon } from '@/icons/play';
+import { SortIcon } from '@/icons/sort/sort';
 import { type AgentRun, type Run } from '@/types/types';
+import { cn } from '@/utils/cn';
 
 type AgentRunsViewProps = {
   runDetails: AgentRun[];
@@ -48,6 +50,9 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
   const [pinnedRuns, setPinnedRuns] = React.useState<Set<string>>(() =>
     loadPinnedRuns(agentName)
   );
+  const [timestampSort, setTimestampSort] = React.useState<'asc' | 'desc'>(
+    'desc'
+  );
 
   // Save pinned runs to localStorage whenever it changes
   React.useEffect(() => {
@@ -72,6 +77,20 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         newSet.add(run.run_id);
       }
       return newSet;
+    });
+  };
+
+  const toggleTimestampSort = () => {
+    setTimestampSort(prev => (prev === 'desc' ? 'asc' : 'desc'));
+  };
+
+  const sortRunsByTimestamp = (runs: AgentRun[]) => {
+    return [...runs].sort((a, b) => {
+      if (timestampSort === 'desc') {
+        return b.timestamp_utc.localeCompare(a.timestamp_utc);
+      } else {
+        return a.timestamp_utc.localeCompare(b.timestamp_utc);
+      }
     });
   };
 
@@ -101,9 +120,20 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
         </div>
 
         <div>
-          <p className='font-noto-sans font-normal leading-5 text-text-disabled text-sm'>
-            Timestamp
-          </p>
+          <button
+            onClick={toggleTimestampSort}
+            className='flex gap-1 items-center hover:text-primary-default transition-colors cursor-pointer'
+          >
+            <p className='font-noto-sans font-normal leading-5 text-text-disabled text-sm'>
+              Timestamp
+            </p>
+            <SortIcon
+              className={cn('ml-1 transition-transform size-4', {
+                'rotate-180 text-primary-default': timestampSort === 'asc',
+                'text-primary-default': timestampSort === 'desc',
+              })}
+            />
+          </button>
         </div>
 
         <div>
@@ -119,12 +149,12 @@ const AgentRunsView: React.FC<AgentRunsViewProps> = ({
       >
         {(runDetails || []).length > 0 &&
           [
-            ...runDetails
-              .filter(run => pinnedRuns.has(run.run_id))
-              .sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
-            ...runDetails
-              .filter(run => !pinnedRuns.has(run.run_id))
-              .sort((a, b) => b.timestamp_utc.localeCompare(a.timestamp_utc)),
+            ...sortRunsByTimestamp(
+              runDetails.filter(run => pinnedRuns.has(run.run_id))
+            ),
+            ...sortRunsByTimestamp(
+              runDetails.filter(run => !pinnedRuns.has(run.run_id))
+            ),
           ].map((run, index, arr) => (
             <RunRow
               run={run}

@@ -27,21 +27,15 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
         onClick={toggleDetails}
         data-testid={`agent-row-${agent.cls_checksum}`}
       >
-        <td className='px-6 py-4 text-text font-medium'>
-          <div className='flex items-center gap-3'>
-            <div className='h-6 w-6 bg-background-information rounded-lg flex items-center justify-center'>
-              <span className='text-text-information font-semibold text-sm'>
-                {agent.cls_name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className='flex flex-col'>
-              <span className='text-xs font-medium text-text-disabled uppercase tracking-wide'>
-                Agent Class
-              </span>
-              <span className='truncate font-semibold' data-testid='agent-name'>
-                {agent.cls_name}@{agent.cls_checksum.slice(0, 12)}
-              </span>
-            </div>
+        <td className='px-6 py-2.5 text-text font-medium pl-16'>
+          <div className='flex items-center gap-2.5'>
+            <div className='w-0.5 h-5 bg-elevation-surface-overlay rounded-full' />
+            <span
+              className='truncate font-mono text-xs text-text-disabled'
+              data-testid='agent-name'
+            >
+              {agent.cls_checksum.slice(0, 12)}
+            </span>
           </div>
         </td>
       </tr>
@@ -49,7 +43,10 @@ const AgentDetails: React.FC<AgentDetailsProps> = ({ agent }) => {
       {isOpen && (
         <tr data-testid={`agent-expanded-${agent.cls_checksum}`}>
           <td colSpan={2}>
-            <div className='px-6 py-4' data-testid='agent-expanded-content'>
+            <div
+              className='px-6 py-2 pl-20'
+              data-testid='agent-expanded-content'
+            >
               {isLoading ? (
                 <div
                   className='flex items-center justify-center py-8'

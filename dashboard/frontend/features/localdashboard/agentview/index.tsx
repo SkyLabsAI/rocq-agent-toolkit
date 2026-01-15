@@ -6,8 +6,10 @@ import { GlobalCompareProvider } from '@/contexts/global-compare-context';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { useAgents } from '@/hooks/use-agent-summaries';
 import AgentListIcon from '@/icons/agent-list';
+import { ChevronUpIcon } from '@/icons/chevron-up';
 import { SortIcon } from '@/icons/sort/sort';
 import { type AgentSummaryTemp } from '@/services/dataservice';
+import { cn } from '@/utils/cn';
 
 import AgentDetails from './agent-details';
 
@@ -27,6 +29,9 @@ const AgentView: React.FC = () => {
     key: SortableKey;
     direction: 'asc' | 'desc';
   } | null>(null);
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(
+    new Set()
+  );
   const router = useRouter();
   const pathname = usePathname();
 
@@ -96,6 +101,36 @@ const AgentView: React.FC = () => {
     });
   };
 
+  // Group agents by cls_name, then by cls_checksum
+  const getGroupedAgents = () => {
+    const sorted = getSortedAgents();
+    const grouped: Record<string, Record<string, typeof agentData>> = {};
+
+    sorted.forEach(agent => {
+      if (!grouped[agent.cls_name]) {
+        grouped[agent.cls_name] = {};
+      }
+      if (!grouped[agent.cls_name][agent.cls_checksum]) {
+        grouped[agent.cls_name][agent.cls_checksum] = [];
+      }
+      grouped[agent.cls_name][agent.cls_checksum].push(agent);
+    });
+
+    return grouped;
+  };
+
+  const toggleClassExpansion = (clsName: string) => {
+    setExpandedClasses(prev => {
+      const next = new Set(prev);
+      if (next.has(clsName)) {
+        next.delete(clsName);
+      } else {
+        next.add(clsName);
+      }
+      return next;
+    });
+  };
+
   // Clear selected runs when navigating to different pages
   useEffect(() => {
     const isComparePage = pathname?.startsWith('/compare');
@@ -134,9 +169,54 @@ const AgentView: React.FC = () => {
                 </button>
               </td>
             </tr>
-            {getSortedAgents().map(agent => (
-              <AgentDetails key={agent.cls_checksum} agent={agent} />
-            ))}
+            {Object.entries(getGroupedAgents()).map(
+              ([clsName, checksumGroups]) => {
+                const isClassExpanded = expandedClasses.has(clsName);
+                return (
+                  <React.Fragment key={clsName}>
+                    {/* Class Name Header */}
+                    <tr
+                      className='bg-elevation-surface-sunken hover:bg-elevation-surface-overlay cursor-pointer transition-colors'
+                      onClick={() => toggleClassExpansion(clsName)}
+                    >
+                      <td className='px-6 py-3 text-text font-semibold'>
+                        <div className='flex items-center gap-3'>
+                          <ChevronUpIcon
+                            className={cn('size-4 transition-transform', {
+                              'rotate-180': isClassExpanded,
+                            })}
+                          />
+                          <div className='h-6 w-6 bg-background-information rounded-lg flex items-center justify-center'>
+                            <span className='text-text-information font-semibold text-sm'>
+                              {clsName.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <span className='text-sm'>{clsName}</span>
+                          <span className='text-xs text-text-disabled ml-auto'>
+                            ({Object.values(checksumGroups).flat().length} agent
+                            {Object.values(checksumGroups).flat().length !== 1
+                              ? 's'
+                              : ''}
+                            )
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Checksum Groups */}
+                    {isClassExpanded &&
+                      Object.entries(checksumGroups).map(
+                        ([_checksum, agents]) =>
+                          agents.map(agent => (
+                            <AgentDetails
+                              key={agent.cls_checksum}
+                              agent={agent}
+                            />
+                          ))
+                      )}
+                  </React.Fragment>
+                );
+              }
+            )}
           </tbody>
         </table>
       </div>

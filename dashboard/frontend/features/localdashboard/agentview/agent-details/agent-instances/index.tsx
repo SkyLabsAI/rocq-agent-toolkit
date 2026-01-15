@@ -26,43 +26,36 @@ export const AgentInstance: React.FC<AgentInstanceProps> = ({
 
   return (
     <div
-      className='border-l-4 border-background-warning/40 ml-6 mb-3 rounded-r-md overflow-hidden'
+      className='border-l-2 border-background-warning/30 ml-8 mb-2 rounded-r-md overflow-hidden'
       data-testid={`instance-card-${instance.agent_checksum}`}
     >
       <div
-        className='bg-elevation-surface-raised/80 hover:bg-elevation-surface-raised overflow-hidden py-3.5 px-5 flex justify-between items-center cursor-pointer transition-colors border-l-0'
+        className='bg-elevation-surface-raised/60 hover:bg-elevation-surface-raised/80 overflow-hidden py-2.5 px-4 flex justify-between items-center cursor-pointer transition-colors border-l-0'
         onClick={handleToggle}
       >
-        <div className='flex gap-3 items-center text-text min-w-0 shrink'>
+        <div className='flex gap-2 items-center text-text min-w-0 shrink'>
           <ChevronUpIcon
-            className={cn('size-4 text-text-disabled shrink-0', {
+            className={cn('size-3.5 text-text-disabled shrink-0', {
               'rotate-180': isOpen,
             })}
           />
-          <div className='flex items-center gap-2.5 min-w-0'>
-            <div className='h-5 w-5 bg-background-warning rounded flex items-center justify-center shrink-0'>
-              <span className='text-text-warning font-semibold text-xs'>
+          <div className='flex items-center gap-2 min-w-0'>
+            <div className='h-4 w-4 bg-background-warning rounded flex items-center justify-center shrink-0'>
+              <span className='text-text-warning font-semibold text-[10px]'>
                 {instance.name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <div className='flex flex-col min-w-0'>
-              <div className='flex items-center gap-2'>
-                <span className='text-xs font-medium text-text-disabled uppercase tracking-wide'>
-                  Instance
-                </span>
-                <span
-                  className='text-[13px] font-medium truncate text-text'
-                  data-testid='instance-name'
-                >
-                  {instance.name}@{instance.agent_checksum.slice(0, 12)}
-                </span>
-              </div>
-            </div>
+            <span
+              className='text-sm font-medium truncate text-text'
+              data-testid='instance-name'
+            >
+              {instance.name}
+            </span>
           </div>
         </div>
 
-        <div className='flex items-center gap-4 shrink-0'>
-          <div className='flex items-center gap-3 text-xs text-text-disabled bg-elevation-surface-overlay px-3 py-1.5 rounded-md'>
+        <div className='flex items-center gap-2 shrink-0'>
+          <div className='flex items-center gap-2.5 text-xs text-text-disabled bg-elevation-surface-overlay px-2.5 py-1 rounded-md'>
             <div className='flex items-center gap-1.5'>
               <span className='font-medium text-text'>
                 {instance.total_runs}

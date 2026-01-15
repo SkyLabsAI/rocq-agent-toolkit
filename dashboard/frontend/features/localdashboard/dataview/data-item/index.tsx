@@ -1,5 +1,5 @@
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { useGlobalCompare } from '@/contexts/global-compare-context';
 import TaskDetailsModal from '@/features/task-details-modal';
@@ -44,6 +44,9 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
     key: SortableKey;
     direction: 'asc' | 'desc';
   } | null>(null);
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(
+    new Set()
+  );
   const pathname = usePathname();
 
   // Sorting function
@@ -89,6 +92,36 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
       const aNum = Number(aValue);
       const bNum = Number(bValue);
       return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+    });
+  };
+
+  // Group agents by cls_name, then by cls_checksum
+  const getGroupedAgents = () => {
+    const sorted = getSortedAgents();
+    const grouped: Record<string, Record<string, typeof agentData>> = {};
+
+    sorted.forEach(agent => {
+      if (!grouped[agent.cls_name]) {
+        grouped[agent.cls_name] = {};
+      }
+      if (!grouped[agent.cls_name][agent.cls_checksum]) {
+        grouped[agent.cls_name][agent.cls_checksum] = [];
+      }
+      grouped[agent.cls_name][agent.cls_checksum].push(agent);
+    });
+
+    return grouped;
+  };
+
+  const toggleClassExpansion = (clsName: string) => {
+    setExpandedClasses(prev => {
+      const next = new Set(prev);
+      if (next.has(clsName)) {
+        next.delete(clsName);
+      } else {
+        next.add(clsName);
+      }
+      return next;
     });
   };
 
@@ -140,26 +173,79 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                     </button>
                   </td>
                 </tr>
-                {getSortedAgents().map(agent => (
-                  <DatasetAgentClass
-                    key={agent.cls_checksum}
-                    agent={agent}
-                    datasetId={benchmark.dataset_id}
-                    isSelected={isAgentSelected(
-                      agent.cls_name,
-                      benchmark.dataset_id
-                    )}
-                    toggleSelection={() => {
-                      if (
-                        isAgentSelected(agent.cls_name, benchmark.dataset_id)
-                      ) {
-                        deselectAgent(agent.cls_name, benchmark.dataset_id);
-                      } else {
-                        selectAgent(agent.cls_name, benchmark.dataset_id);
-                      }
-                    }}
-                  />
-                ))}
+                {Object.entries(getGroupedAgents()).map(
+                  ([clsName, checksumGroups]) => {
+                    const isClassExpanded = expandedClasses.has(clsName);
+                    return (
+                      <React.Fragment key={clsName}>
+                        {/* Class Name Header */}
+                        <tr
+                          className='bg-elevation-surface-sunken hover:bg-elevation-surface-overlay cursor-pointer transition-colors'
+                          onClick={() => toggleClassExpansion(clsName)}
+                        >
+                          <td className='px-6 py-3 text-text font-semibold'>
+                            <div className='flex items-center gap-3'>
+                              <ChevronUpIcon
+                                className={cn('size-4 transition-transform', {
+                                  'rotate-180': isClassExpanded,
+                                })}
+                              />
+                              <div className='h-6 w-6 bg-background-information rounded-lg flex items-center justify-center'>
+                                <span className='text-text-information font-semibold text-sm'>
+                                  {clsName.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <span className='text-sm'>{clsName}</span>
+                              <span className='text-xs text-text-disabled ml-auto'>
+                                ({Object.values(checksumGroups).flat().length}{' '}
+                                agent
+                                {Object.values(checksumGroups).flat().length !==
+                                1
+                                  ? 's'
+                                  : ''}
+                                )
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                        {/* Checksum Groups */}
+                        {isClassExpanded &&
+                          Object.entries(checksumGroups).map(
+                            ([checksum, agents]) =>
+                              agents.map(agent => (
+                                <DatasetAgentClass
+                                  key={agent.cls_checksum}
+                                  agent={agent}
+                                  datasetId={benchmark.dataset_id}
+                                  isSelected={isAgentSelected(
+                                    agent.cls_name,
+                                    benchmark.dataset_id
+                                  )}
+                                  toggleSelection={() => {
+                                    if (
+                                      isAgentSelected(
+                                        agent.cls_name,
+                                        benchmark.dataset_id
+                                      )
+                                    ) {
+                                      deselectAgent(
+                                        agent.cls_name,
+                                        benchmark.dataset_id
+                                      );
+                                    } else {
+                                      selectAgent(
+                                        agent.cls_name,
+                                        benchmark.dataset_id
+                                      );
+                                    }
+                                  }}
+                                />
+                              ))
+                          )}
+                      </React.Fragment>
+                    );
+                  }
+                )}
               </tbody>
             </table>
           </div>
