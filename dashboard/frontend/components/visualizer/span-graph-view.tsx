@@ -236,10 +236,45 @@ const SpanGraphView = ({
             ? NODE_STYLE_CONFIG.error.edge
             : NODE_STYLE_CONFIG.intermediate.edge;
 
+        // Extract action from span attributes
+        const action =
+          typeof s.attributes?.action === 'string'
+            ? (s.attributes.action as string)
+            : undefined;
+
+        // Determine label border color based on edge type
+        const labelBgStyle: {
+          fill: string;
+          fillOpacity: number;
+          stroke?: string;
+          strokeWidth?: number;
+        } = {
+          fill: 'var(--color-elevation-surface, #ffffff)',
+          fillOpacity: 0.9,
+        };
+
+        // Add colored border for success and error edges
+        if (isSuccessEdge) {
+          labelBgStyle.stroke = 'var(--color-border-success, #6a9a23)';
+          labelBgStyle.strokeWidth = 1.5;
+        } else if (isErrorEdge) {
+          labelBgStyle.stroke = 'var(--color-border-warning, #d97706)';
+          labelBgStyle.strokeWidth = 1.5;
+        }
+
         edges.push({
           id: edgeId,
           source: p,
           target: s.span_id,
+          label: action,
+          labelStyle: {
+            fontSize: 11,
+            fontWeight: 500,
+            fill: 'var(--color-text-subtle, #7d818a)',
+          },
+          labelBgStyle,
+          labelBgPadding: [4, 6],
+          labelBgBorderRadius: 4,
           animated: edgeStyle.animated,
           style: {
             stroke: edgeStyle.stroke,
@@ -337,7 +372,42 @@ function layoutDagre<T extends Record<string, unknown>>(
   edges: Edge[]
 ) {
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'LR', nodesep: 30, ranksep: 70 });
+
+  // Calculate spacing based on label lengths
+  // Estimate: ~6.5 pixels per character for font size 11 (variable-width font)
+  // Plus padding: labelBgPadding [4, 6] = 8px vertical, 12px horizontal
+  const estimateLabelWidth = (label: string | undefined): number => {
+    if (!label) return 0;
+    // Character width estimate + horizontal padding (6px * 2) + some buffer
+    return label.length * 6.5 + 12 + 8;
+  };
+
+  // Calculate required spacing for each edge based on its label
+  const edgeSpacingMap = new Map<string, number>();
+  const baseRanksep = 70;
+  const baseNodesep = 30;
+
+  for (const edge of edges) {
+    const labelWidth = estimateLabelWidth(edge.label as string | undefined);
+
+    // Calculate required spacing: need space for label between nodes
+    // The label appears between nodes, so we need:
+    // - Small buffer from source node (to avoid overlap)
+    // - Full label width
+    // - Small buffer to target node (to avoid overlap)
+    // Use a more conservative approach: only add extra space if label is significant
+    const nodeBuffer = 20; // Small buffer to clear node edges
+    const padding = 10; // Minimal padding for readability
+    const requiredSpacing =
+      labelWidth > 0
+        ? nodeBuffer + labelWidth + nodeBuffer + padding
+        : baseRanksep; // No label, use base spacing
+
+    edgeSpacingMap.set(edge.id, requiredSpacing);
+  }
+
+  // Use base spacing for dagre initial layout
+  g.setGraph({ rankdir: 'LR', nodesep: baseNodesep, ranksep: baseRanksep });
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const n of nodes) g.setNode(n.id, { width: NODE_W, height: NODE_H });
@@ -345,11 +415,108 @@ function layoutDagre<T extends Record<string, unknown>>(
 
   dagre.layout(g);
 
-  const outNodes: Array<Node<T>> = nodes.map(n => {
+  // Post-process: adjust positions based on edge label widths
+  // Build a map of source -> target edges to find rank transitions
+  const edgesBySource = new Map<string, Edge[]>();
+  for (const edge of edges) {
+    if (!edgesBySource.has(edge.source)) {
+      edgesBySource.set(edge.source, []);
+    }
+    edgesBySource.get(edge.source)!.push(edge);
+  }
+
+  // Get initial positions
+  const initialPositions = new Map<string, { x: number; y: number }>();
+  for (const n of nodes) {
     const p = g.node(n.id);
+    initialPositions.set(n.id, { x: p.x, y: p.y });
+  }
+
+  // Calculate ranks from x positions (dagre's layout)
+  const nodeRanks = new Map<string, number>();
+  const xValues = Array.from(initialPositions.values())
+    .map(p => p.x)
+    .sort((a, b) => a - b);
+
+  // Cluster x positions into ranks
+  const rankThreshold = baseRanksep * 0.4;
+  const rankClusters: number[][] = [];
+  let currentCluster: number[] = [xValues[0]];
+
+  for (let i = 1; i < xValues.length; i++) {
+    if (xValues[i] - xValues[i - 1] < rankThreshold) {
+      currentCluster.push(xValues[i]);
+    } else {
+      rankClusters.push(currentCluster);
+      currentCluster = [xValues[i]];
+    }
+  }
+  rankClusters.push(currentCluster);
+
+  // Map nodes to ranks
+  const nodesByRank = new Map<number, string[]>();
+  for (const n of nodes) {
+    const pos = initialPositions.get(n.id)!;
+    let rank = 0;
+    let minDist = Infinity;
+    for (let r = 0; r < rankClusters.length; r++) {
+      const cluster = rankClusters[r];
+      const clusterCenter = cluster.reduce((a, b) => a + b, 0) / cluster.length;
+      const dist = Math.abs(pos.x - clusterCenter);
+      if (dist < minDist) {
+        minDist = dist;
+        rank = r;
+      }
+    }
+    nodeRanks.set(n.id, rank);
+    if (!nodesByRank.has(rank)) {
+      nodesByRank.set(rank, []);
+    }
+    nodesByRank.get(rank)!.push(n.id);
+  }
+
+  // Adjust positions rank by rank
+  const adjustedPositions = new Map<string, { x: number; y: number }>();
+  const sortedRanks = Array.from(nodesByRank.keys()).sort((a, b) => a - b);
+  let cumulativeOffset = 0;
+
+  for (let i = 0; i < sortedRanks.length; i++) {
+    const rank = sortedRanks[i];
+    const nodesInRank = nodesByRank.get(rank)!;
+
+    if (i > 0) {
+      // Find max spacing needed for edges entering this rank
+      let maxSpacingNeeded = baseRanksep;
+      for (const nodeId of nodesInRank) {
+        const incomingEdges = edges.filter(e => e.target === nodeId);
+        for (const edge of incomingEdges) {
+          const requiredSpacing = edgeSpacingMap.get(edge.id) || baseRanksep;
+          maxSpacingNeeded = Math.max(maxSpacingNeeded, requiredSpacing);
+        }
+      }
+      // Add the difference to cumulative offset
+      cumulativeOffset += maxSpacingNeeded - baseRanksep;
+    }
+
+    // Apply offset to all nodes in this rank
+    for (const nodeId of nodesInRank) {
+      const pos = initialPositions.get(nodeId)!;
+      adjustedPositions.set(nodeId, {
+        x: pos.x + cumulativeOffset,
+        y: pos.y,
+      });
+    }
+  }
+
+  const outNodes: Array<Node<T>> = nodes.map(n => {
+    const adjustedPos =
+      adjustedPositions.get(n.id) || initialPositions.get(n.id)!;
     return {
       ...n,
-      position: { x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 },
+      position: {
+        x: adjustedPos.x - NODE_W / 2,
+        y: adjustedPos.y - NODE_H / 2,
+      },
     };
   });
 
