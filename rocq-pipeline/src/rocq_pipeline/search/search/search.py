@@ -217,11 +217,23 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
 
             # Rollout each node independently so explore_width is per node.
             for node, parent in candidates:
+                if max_depth is not None and node.depth > max_depth:
+                    continue
                 rollout = node.rollout(strategy, max_rollout=explore_width)
-                for _, action in itertools.islice(rollout, explore_width):
+                for _ in range(explore_width):
+                    try:
+                        _, action = next(rollout)
+                    except StopIteration:
+                        break
                     process(node, parent, action)
-                node.update_rollout(rollout)
-                worklist.repush(parent)
+                # Peek to see if more actions remain; re-chain to preserve the item.
+                try:
+                    next_item = next(rollout)
+                except StopIteration:
+                    node.update_rollout(rollout)
+                else:
+                    node.update_rollout(itertools.chain([next_item], rollout))
+                    worklist.repush(parent)
 
 
 search = Search.search

@@ -64,8 +64,8 @@ class QueueFrontier[T](Frontier[T, BasicNode[T]]):
         return [(x.state, x) for x in pulled]
 
 
-def test_explore_width_is_global_budget() -> None:
-    """Verify explore_width limits total actions across the beam per iteration."""
+def test_explore_width_is_per_node_budget() -> None:
+    """Verify explore_width limits actions per node per iteration."""
     record: list[str] = []
     actions: dict[int, list[tuple[float, Action[int]]]] = {
         0: [
@@ -82,7 +82,7 @@ def test_explore_width_is_global_budget() -> None:
 
     run_search(strategy, frontier, beam_width=2, explore_width=2)
 
-    assert record == ["c1_a1", "c1_a2"]
+    assert record == ["c1_a1", "c1_a2", "c2_a1", "c2_a2"]
 
 
 def test_repush_and_rollout_reuse() -> None:
