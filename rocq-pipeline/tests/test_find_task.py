@@ -5,16 +5,44 @@ import rocq_pipeline.find_tasks
 
 
 def test_test_simple() -> None:
-    tasks = rocq_pipeline.find_tasks.find_tasks(Path("examples/theories/test_simple.v"))
+    pdir = Path("examples")
+    file = "theories/test_simple.v"
+    path = pdir / Path(file)
+    tasks = rocq_pipeline.find_tasks.find_tasks(pdir, path)
     assert len(tasks) == 2
-    assert tasks == [
-        {"locator": "Lemma:is_true", "tags": ["proof"]},
-        {"locator": "Lemma:not_false", "tags": ["proof"]},
+    dict_tasks = [t.model_dump() for t in tasks]
+    assert dict_tasks == [
+        {
+            "name": None,
+            "file": file,
+            "locator": "Lemma:is_true",
+            "tags": ["proof"],
+            "prompt": None,
+        },
+        {
+            "name": None,
+            "file": file,
+            "locator": "Lemma:not_false",
+            "tags": ["proof"],
+            "prompt": None,
+        },
     ]
 
 
 @pytest.mark.skip(reason="temporary: requires pre-building the example")
 def test_with_deps() -> None:
-    tasks = rocq_pipeline.find_tasks.find_tasks(Path("examples/theories/with_dep.v"))
+    pdir = Path("examples")
+    file = "theories/with_dep.v"
+    path = pdir / Path(file)
+    tasks = rocq_pipeline.find_tasks.find_tasks(pdir, path)
     assert len(tasks) == 1
-    assert tasks == [{"locator": "Lemma:add_comm", "tags": ["proof"]}]
+    dict_tasks = [t.model_dump() for t in tasks]
+    assert dict_tasks == [
+        {
+            "name": None,
+            "file": file,
+            "locator": "Lemma:add_comm",
+            "tags": ["proof"],
+            "prompt": None,
+        }
+    ]

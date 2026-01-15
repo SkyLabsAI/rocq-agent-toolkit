@@ -7,7 +7,7 @@ from typing import Any
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
-from rocq_pipeline import find_tasks, loader, locator, rocq_args, util
+from rocq_pipeline import find_tasks, loader, rocq_args, util
 from rocq_pipeline.tracers.extractor import (
     BeforeAndAfter,
     TacticExtractor,
@@ -74,7 +74,7 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
 def run(
     tracer_builder: TacticExtractorBuilder,
     output_dir: Path,
-    wdir: Path,
+    project: Tasks.Project,
     tasks: list[Tasks.Task],
     jobs: int = 1,
 ) -> None:
@@ -84,7 +84,7 @@ def run(
 
     def run_task(task: Tasks.Task, progress: util.ProgressCallback) -> bool:
         # TODO: find a better ID for tasks
-        task_id: str = Tasks.get_task_id(task)
+        task_id: str = task.get_id()
         output_file: Path = (
             output_dir / f"{task_id.replace('/', '_').replace('#', '_')}.json"
         )
@@ -95,7 +95,7 @@ def run(
                 (["-Q", str(v), k] for k, v in tracer.extra_paths().items())
             )
 
-            task_file: Path = wdir / task["file"]
+            task_file: Path = project.path / task.file
             with RocqDocManager(
                 rocq_args.extend_args(
                     DuneUtil.rocq_args_for(task_file), list(extra_paths)
@@ -107,7 +107,7 @@ def run(
                 tracer.setup(rc)
                 progress.status(0.05, "🔃")
 
-                if not locator.parse_locator(task["locator"])(rc):
+                if not task.locator(rc):
                     print(f"Failed to find task: {task_id}")
                     return False
                 progress.status(0.1, "💭")
@@ -125,7 +125,7 @@ def run(
             return False
 
     util.parallel_runner(
-        run_task, [(Tasks.get_task_id(x), x) for x in tasks], lambda x: x, jobs=jobs
+        run_task, [(t.get_id(), t) for t in tasks], lambda x: x, jobs=jobs
     )
 
 
@@ -141,12 +141,15 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
             )
         )
     if arguments.task_json is not None:
-        # TODO: if we had a schema we could automatically validate that the
-        # task JSON has the expected shape.
-        tasks = Tasks.mk_validated_tasklist(arguments.task_json)
-        wdir = Path(".")
+        tasks = arguments.task_json
+        if not isinstance(tasks, list):
+            tasks = [tasks]
+        tasks = [Tasks.Task.model_validate(t) for t in tasks]
+        project = Tasks.Project(name="tasks", git_url="", git_commit="", path=Path("."))
     elif arguments.task_file is not None:
-        (wdir, tasks) = Tasks.load_tasks(arguments.task_file)
+        task_file = Tasks.TaskFile.from_file(arguments.task_file)
+        project = task_file.project
+        tasks = task_file.tasks
     else:
         print("unspecified task")
         return False
@@ -168,7 +171,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         #     # print(f"'{arguments.tracer}' is a '{tracer}' but expected a [TacticExtractor].")
         #     return False
 
-    run(tracer, arguments.output_dir, wdir, tasks, jobs=arguments.jobs)
+    run(tracer, arguments.output_dir, project, tasks, jobs=arguments.jobs)
     return True
 
 

@@ -1,108 +1,149 @@
+from __future__ import annotations
+
+import copy
 import json
+import os
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal
 
-import jmespath
 import yaml
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    field_serializer,
+    field_validator,
+)
 
-type Task = dict[str, Any]
-
-
-def get_task_id(task: Task) -> str:
-    validate_task_schema(task)
-    return f"{task['file']}#{task['locator']}"
-
-
-def get_task_tags(task: Task) -> set[str]:
-    validate_task_schema(task)
-    return set(task.get("tags", []))
+from rocq_pipeline.locator import Locator, parse_locator
 
 
-def validate_task_schema(task: Task) -> None:
-    if not isinstance(task, dict):
-        raise ValueError(f"Task should be a dict, but had type {type(task)}: {task}")
+class Project(BaseModel):
+    name: str
+    git_url: str
+    git_commit: str
+    path: Path
 
-    expected_keys = {"file", "locator"}
-    if not (expected_keys <= task.keys()):
-        raise ValueError(
-            " ".join(
-                [
-                    f"Task should contain at least ({', '.join(expected_keys)}),",
-                    f"but had ({', '.join(task.keys())}): {task}",
-                ]
-            )
-        )
-    for k in expected_keys:
-        v = task[k]
-        assert isinstance(v, str), f"{k} should be a str, but got {type(v)}: {v}"
+    @field_serializer("path")
+    def serialize_path(self, path: Path):
+        return str(path)
 
-    if "tags" in task.keys():
-        tags = task["tags"]
-        assert isinstance(tags, list), (
-            f"tags should be a list, but got {type(tags)}: {tags}"
-        )
-        for tag in tags:
-            assert isinstance(tag, str), (
-                f"tag should be a str, but got {type(tag)}: {tag}"
-            )
-
-    if Path(task["file"]).suffix != ".v":
-        raise ValueError("Task file should be a Rocq file (.v): {task}")
+    def get_id(self) -> str:
+        return f"{self.git_url}#{self.git_commit}"
 
 
-def validate_tasklist_schema(tasks: list[Task]) -> None:
-    assert isinstance(tasks, list)
-    for task in tasks:
-        validate_task_schema(task)
+class Task(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    name: str | None = None
+    file: Path
+    locator: Locator
+    tags: set[str]
+    prompt: str | None = None
+
+    def get_id(self) -> str:
+        if self.name is not None:
+            return self.name
+        return f"{self.file}#{self.locator}"
+
+    def get_tags(self) -> set[str]:
+        return self.tags
+
+    @field_validator("file")
+    @classmethod
+    def validate_path(cls, p: Path) -> Path:
+        if p.is_absolute():
+            raise ValueError(f"Path {p} is not relative")
+        if p.suffix != ".v":
+            raise ValueError(f'Path {p} does not have the ".v" extension')
+        return p
+
+    @field_validator("locator", mode="before")
+    @classmethod
+    def parse_locator_string(cls, value: str | Locator) -> Locator:
+        if isinstance(value, Locator):
+            return value
+        return parse_locator(value)
+
+    @field_validator("tags")
+    @classmethod
+    def parse_tags_set(cls, value: set[str] | list[str]) -> set[str]:
+        if isinstance(value, set):
+            return value
+        return set(value)
+
+    @field_serializer("file")
+    def serialize_path(self, path: Path):
+        return str(path)
+
+    @field_serializer("tags")
+    def serialize_tags(self, tags: set[str]):
+        return sorted(tags)
+
+    @field_serializer("locator")
+    def serialize_locator(self, locator: Locator):
+        return str(locator)
 
 
-def mk_validated_tasklist(data: dict[str, Any] | list[dict[str, Any]]) -> list[Task]:
-    if isinstance(data, dict):
-        data = [data]
-    validate_tasklist_schema(data)
-    return data
+class TaskFile(BaseModel):
+    project: Project
+    tasks: list[Task]
 
+    @classmethod
+    def from_file(cls, file: Literal["-"] | Path) -> TaskFile:
+        data: dict[str, Any] = {}
 
-def load_tasks(filename: str | Path) -> tuple[Path, list[Task]]:
-    if filename == "-":
-        return (Path("."), json.load(sys.stdin))
-
-    filename = Path(filename)
-    wdir = filename.parent
-    with open(filename, encoding="utf-8") as f:
-        if filename.suffix in [".yaml", ".yml"]:
-            data = yaml.safe_load(f)
-        elif filename.suffix in [".json"]:
-            data = json.load(f)
+        if file == "-":
+            data = json.load(sys.stdin)
         else:
-            raise ValueError(
-                " ".join(
-                    [
-                        "Invalid tasks file extension.",
-                        "Expected `.json`, `.yaml`, or `.yml`",
-                    ]
-                )
-            )
+            with open(file, encoding="utf-8") as f:
+                if file.suffix in [".yaml", ".yml"]:
+                    data = yaml.safe_load(f)
+                elif file.suffix in [".json"]:
+                    data = json.load(f)
+                else:
+                    raise ValueError(
+                        "Invalid tasks file extension. Expected `.json`, "
+                        "`.yaml`, or `.yml`"
+                    )
 
-        return (wdir, mk_validated_tasklist(data))
+        task_file = TaskFile.model_validate(data)
+        file_dir = Path(".") if file == "-" else file.parent
+        path = file_dir / task_file.project.path
+        task_file.project.path = Path(os.path.normpath(path))
 
+        return task_file
 
-def save_tasks(filename: str | Path, tasks: list[Task]) -> None:
-    if filename == "-":
-        json.dump(tasks, sys.stdout)
-    filename = Path(filename)
-    with open(filename, "w") as f:
-        if filename.suffix in [".yaml", ".yml"]:
-            yaml.safe_dump(tasks, f)
-        elif filename.suffix in [".json"]:
-            json.dump(tasks, f)
+    def to_file(self, file: Literal["-"] | Path) -> None:
+        project = copy.deepcopy(self.project)
+        task_file = TaskFile(project=project, tasks=self.tasks)
+
+        file_dir = Path(".") if file == "-" else file.parent
+        task_file.project.path = task_file.project.path.resolve().relative_to(
+            file_dir.resolve(), walk_up=True
+        )
+
+        data = task_file.model_dump(exclude_none=True)
+
+        if file == "-":
+            json.dump(data, sys.stdout, indent=2)
+            sys.stdout.write("\n")
         else:
-            raise ValueError(
-                "Invalid file extension. Expected `.json`, `.yaml`, or `.yml`"
-            )
+            with open(file, "w") as f:
+                if file.suffix in [".yaml", ".yml"]:
+                    yaml.safe_dump(data, f, sort_keys=False)
+                elif file.suffix in [".json"]:
+                    json.dump(data, f, indent=2)
+                else:
+                    raise ValueError(
+                        "Invalid tasks file extension. Expected `.json`, "
+                        "`.yaml`, or `.yml`"
+                    )
 
+    def filter_tags(self, tag: str) -> TaskFile:
+        tasks = [t for t in self.tasks if tag in t.get_tags()]
+        return TaskFile(project=self.project, tasks=tasks)
 
-def filter_tags(tasks: list[Task], tag: str) -> list[Task]:
-    escaped = tag.replace("'", r"\'")
-    return cast(list[Task], jmespath.search(f"[? contains(tags, '{escaped}')]", tasks))
+    @classmethod
+    def valid_extension(cls, file: Path) -> bool:
+        return file.suffix in [".yml", ".yaml", ".json"]
