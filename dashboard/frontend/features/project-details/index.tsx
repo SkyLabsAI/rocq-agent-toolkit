@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
+import Toast from '@/components/base/ui/toast';
 import { TagsDisplay } from '@/components/tags-display';
 import Layout from '@/layouts/common';
 import {
@@ -66,6 +67,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
 
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [modalState, setModalState] = useState<{
@@ -466,6 +468,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       });
 
       // Success - show toast and reset
+      setToastType('success');
       setToastMessage('Dataset created successfully!');
       setIsCreateDatasetModalOpen(false);
       setDatasetName('');
@@ -478,12 +481,10 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         window.location.reload();
       }, 2000);
     } catch (err) {
+      setToastType('error');
       setToastMessage(
         err instanceof Error ? err.message : 'Failed to create taskset'
       );
-      setTimeout(() => {
-        setToastMessage(null);
-      }, 2000);
     } finally {
       setIsCreatingDataset(false);
     }
@@ -495,6 +496,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       const response = await uploadTasksYaml(file);
 
       if (response.success) {
+        setToastType('success');
         setToastMessage(
           `Successfully uploaded ${file.name}. ${response.tasks_created} tasks created, ${response.tasks_updated} tasks updated.`
         );
@@ -505,20 +507,16 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
           window.location.reload();
         }, 2000);
       } else {
+        setToastType('error');
         setToastMessage(response.message || 'Upload failed');
-        setTimeout(() => {
-          setToastMessage(null);
-        }, 3000);
       }
     } catch (err) {
+      setToastType('error');
       setToastMessage(
         err instanceof Error
           ? `Upload failed: ${err.message}`
           : 'Failed to upload file'
       );
-      setTimeout(() => {
-        setToastMessage(null);
-      }, 3000);
     } finally {
       setIsUploading(false);
     }
@@ -1304,28 +1302,13 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       </Modal>
 
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className='fixed bottom-4 right-4 z-50 px-4 py-3 bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-[500px] animate-in slide-in-from-bottom-2'>
-          <div className='flex-1'>
-            <p
-              className={`text-sm ${
-                toastMessage.includes('successfully')
-                  ? 'text-text-success'
-                  : 'text-text-danger'
-              }`}
-            >
-              {toastMessage}
-            </p>
-          </div>
-          <button
-            onClick={() => setToastMessage(null)}
-            className='text-text-disabled hover:text-text transition-colors text-lg leading-none'
-            aria-label='Close notification'
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <Toast
+        message={toastMessage || ''}
+        type={toastType}
+        isOpen={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        duration={3000}
+      />
     </Layout>
   );
 };

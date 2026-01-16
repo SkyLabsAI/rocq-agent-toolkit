@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
+import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
 
 interface FileUploadProps {
@@ -24,15 +25,18 @@ const FileUpload: React.FC<FileUploadProps> = ({
   title = 'Upload Tasks from YAML',
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const handleFileSelected = useCallback(
-    (file: File) => {
-      setFileName(file.name);
-      onFileSelect(file);
-    },
-    [onFileSelect]
-  );
+  // Reset selected file when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedFile(null);
+    }
+  }, [isOpen]);
+
+  const handleFilePreview = useCallback((file: File) => {
+    setSelectedFile(file);
+  }, []);
 
   const handleDragEnter = useCallback(
     (e: React.DragEvent) => {
@@ -74,10 +78,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
       );
 
       if (yamlFile) {
-        handleFileSelected(yamlFile);
+        handleFilePreview(yamlFile);
       }
     },
-    [disabled, handleFileSelected]
+    [disabled, handleFilePreview]
   );
 
   const handleFileInput = useCallback(
@@ -85,11 +89,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const files = e.target.files;
       if (files && files.length > 0) {
         const file = files[0];
-        handleFileSelected(file);
+        handleFilePreview(file);
       }
     },
-    [handleFileSelected]
+    [handleFilePreview]
   );
+
+  const handleUpload = useCallback(() => {
+    if (selectedFile) {
+      onFileSelect(selectedFile);
+    }
+  }, [selectedFile, onFileSelect]);
 
   const uploadContent = (
     <div className={`relative ${className}`}>
@@ -139,10 +149,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
             </svg>
             <div className='mt-4 flex text-sm leading-6 text-text'>
               <span className='relative cursor-pointer rounded-md font-semibold text-primary-default focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-default focus-within:ring-offset-2 hover:text-primary-hovered'>
-                {fileName ? `Selected: ${fileName}` : 'Click to upload'}
+                {selectedFile ? `Selected: ${selectedFile.name}` : 'Click to select'}
               </span>
               <p className='pl-1'>or drag and drop</p>
             </div>
+            {selectedFile && (
+              <div className='mt-2 text-xs text-text-success'>
+                File ready to upload: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+              </div>
+            )}
             <p className='text-xs leading-5 text-text-disabled mt-2'>
               YAML files only (.yaml, .yml)
             </p>
@@ -162,6 +177,25 @@ const FileUpload: React.FC<FileUploadProps> = ({
             validated on the server.
           </div>
           {uploadContent}
+          <div className='flex gap-3 justify-end pt-2'>
+            <Button
+              variant='ghost'
+              onClick={() => {
+                setSelectedFile(null);
+                onClose();
+              }}
+              disabled={disabled}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant='default'
+              onClick={handleUpload}
+              disabled={!selectedFile || disabled}
+            >
+              {disabled ? 'Uploading...' : 'Upload'}
+            </Button>
+          </div>
         </div>
       </Modal>
     );

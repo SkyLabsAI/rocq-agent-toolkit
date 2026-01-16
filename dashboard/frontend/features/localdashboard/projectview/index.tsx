@@ -2,6 +2,7 @@ import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 
 import Button from '@/components/base/ui/button';
+import Toast from '@/components/base/ui/toast';
 import FileUpload from '@/components/file-upload';
 import { uploadTasksYaml } from '@/services/dataservice';
 
@@ -13,6 +14,7 @@ const TaskSetView: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   const handleTaskSetClick = (tasksetId: string) => {
     router.push(`/taskset?id=${encodeURIComponent(tasksetId)}`);
@@ -24,6 +26,7 @@ const TaskSetView: React.FC = () => {
       const response = await uploadTasksYaml(file);
 
       if (response.success) {
+        setToastType('success');
         setToastMessage(
           `Successfully uploaded ${file.name}. ${response.tasks_created} tasks created, ${response.tasks_updated} tasks updated.`
         );
@@ -34,20 +37,16 @@ const TaskSetView: React.FC = () => {
           window.location.reload();
         }, 2000);
       } else {
+        setToastType('error');
         setToastMessage(response.message || 'Upload failed');
-        setTimeout(() => {
-          setToastMessage(null);
-        }, 3000);
       }
     } catch (err) {
+      setToastType('error');
       setToastMessage(
         err instanceof Error
           ? `Upload failed: ${err.message}`
           : 'Failed to upload file'
       );
-      setTimeout(() => {
-        setToastMessage(null);
-      }, 3000);
     } finally {
       setIsUploading(false);
     }
@@ -125,29 +124,13 @@ const TaskSetView: React.FC = () => {
       />
 
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className='fixed bottom-4 right-4 z-50 px-4 py-3 bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-[500px] animate-in slide-in-from-bottom-2'>
-          <div className='flex-1'>
-            <p
-              className={`text-sm ${
-                toastMessage.includes('Successfully') ||
-                toastMessage.includes('successfully')
-                  ? 'text-text-success'
-                  : 'text-text-danger'
-              }`}
-            >
-              {toastMessage}
-            </p>
-          </div>
-          <button
-            onClick={() => setToastMessage(null)}
-            className='text-text-disabled hover:text-text transition-colors text-lg leading-none'
-            aria-label='Close notification'
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <Toast
+        message={toastMessage || ''}
+        type={toastType}
+        isOpen={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        duration={3000}
+      />
     </>
   );
 };
