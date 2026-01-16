@@ -11,9 +11,11 @@ import {
   bulkAddTags,
   getTaskSetResults,
   getTaskSets,
+  uploadTasksYaml,
 } from '@/services/dataservice';
 import { type TaskSet, type TaskSetResults } from '@/types/types';
 
+import FileUpload from '@/components/file-upload';
 import ProjectTaskDetailsModal from './task-details-modal';
 
 interface TaskSetDetailsPageProps {
@@ -64,6 +66,8 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
 
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     taskId: number;
@@ -485,6 +489,41 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     }
   };
 
+  const handleFileUpload = async (file: File) => {
+    try {
+      setIsUploading(true);
+      const response = await uploadTasksYaml(file);
+
+      if (response.success) {
+        setToastMessage(
+          `Successfully uploaded ${file.name}. ${response.tasks_created} tasks created, ${response.tasks_updated} tasks updated.`
+        );
+        setIsUploadModalOpen(false);
+
+        // Reload the page after 2 seconds to show new tasks
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setToastMessage(response.message || 'Upload failed');
+        setTimeout(() => {
+          setToastMessage(null);
+        }, 3000);
+      }
+    } catch (err) {
+      setToastMessage(
+        err instanceof Error
+          ? `Upload failed: ${err.message}`
+          : 'Failed to upload file'
+      );
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Filter agent instances based on search
   const filteredAgentInstancesForSearch = useMemo(() => {
     if (!results) return [];
@@ -602,14 +641,22 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 instance
               </p>
             </div>
-            {selectedTasks.size > 0 && (
+            <div className='flex items-center gap-3'>
               <Button
-                onClick={() => setIsCreateDatasetModalOpen(true)}
+                onClick={() => setIsUploadModalOpen(true)}
                 variant='default'
               >
-                Create TaskSet ({selectedTasks.size} tasks)
+                Upload Tasks
               </Button>
-            )}
+              {selectedTasks.size > 0 && (
+                <Button
+                  onClick={() => setIsCreateDatasetModalOpen(true)}
+                  variant='default'
+                >
+                  Create TaskSet ({selectedTasks.size} tasks)
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1148,6 +1195,47 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         agentChecksum={modalState.agentChecksum}
         agentName={modalState.agentName}
       />
+
+      {/* Upload Tasks Modal */}
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => {
+          if (!isUploading) {
+            setIsUploadModalOpen(false);
+          }
+        }}
+        title='Upload Tasks from YAML'
+        size='default'
+      >
+        <div className='flex flex-col gap-4'>
+          <div className='text-sm text-text-disabled'>
+            Upload a YAML file containing task definitions. The file will be
+            validated on the server.
+          </div>
+          <FileUpload
+            onFileSelect={handleFileUpload}
+            accept='.yaml,.yml'
+            disabled={isUploading}
+          />
+          {isUploading && (
+            <div className='flex items-center gap-2 text-sm text-text-disabled'>
+              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
+              <span>Uploading file...</span>
+            </div>
+          )}
+          <div className='flex gap-3 justify-end pt-2'>
+            <Button
+              variant='ghost'
+              onClick={() => {
+                setIsUploadModalOpen(false);
+              }}
+              disabled={isUploading}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create Dataset Modal */}
       <Modal

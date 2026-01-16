@@ -273,3 +273,39 @@ export const getProjectResultsMock = async (
   );
   return tasksetResults;
 };
+
+/**
+ * Mock data for uploading tasks YAML file
+ */
+export const uploadTasksYamlMock = async (
+  file: File
+): Promise<{
+  success: boolean;
+  message: string;
+  dataset_id: string;
+  tasks_created: number;
+  tasks_updated: number;
+}> => {
+  await simulateDelay(1000, 2000);
+
+  // Extract dataset name from filename (remove .yaml extension)
+  const datasetId = file.name.replace(/\.ya?ml$/i, '').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+
+  // Simulate random number of tasks created
+  const tasksCreated = Math.floor(Math.random() * 5000) + 1000;
+  const tasksUpdated = Math.floor(Math.random() * 100);
+
+  console.log(`Uploaded YAML file ${file.name} (MOCK):`, {
+    dataset_id: datasetId,
+    tasks_created: tasksCreated,
+    tasks_updated: tasksUpdated,
+  });
+
+  return {
+    success: true,
+    message: `Ingested dataset '${datasetId}' with ${tasksCreated} new task(s), ${tasksUpdated} updated task(s).`,
+    dataset_id: datasetId,
+    tasks_created: tasksCreated,
+    tasks_updated: tasksUpdated,
+  };
+};
