@@ -132,24 +132,25 @@ def my_tagger(task: ProofTask) -> set[str]:
 
 
 def mk_parser(parent: Any | None = None) -> Any:
-    help = "Build tasks from a Rocq (dune) project."
+    help = "Ingest a Rocq (dune) project to build a corresponding task file."
+    description = "This command ingests the Rocq source files of a Rocq (dune) project to produce a task file, either in JSON or Yaml format (based on the file's extension). A task file contains information about the originating project (git URL and commit hash), including the path to the project relative to the task file's parent directory, so that subsequent rat commands can automatically locate the project. It also contains a list of task, each of which applies to a specific Rocq source file identified by a relative path from the project's root directory. For now, all the generated tasks concern proofs, and are thus meant to be tackled by proof agents. We aim at collecting other forms of tasks in the future."
     if parent:
-        parser = parent.add_parser("ingest", help=help)
+        parser = parent.add_parser("ingest", help=help, description=description)
     else:
-        parser = ArgumentParser(description=help)
+        parser = ArgumentParser(description=description)
 
     parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        help="Make the output verbose (including logs).",
+        help="make the output verbose (including logs)",
     )
 
     parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
-        help="Enable debug output (implies --verbose).",
+        help="enable debug output (implies --verbose)",
     )
 
     def check_output_file(file: str) -> Literal["-"] | Path:
@@ -165,9 +166,10 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "-o",
         "--output",
+        metavar="FILE",
         type=check_output_file,
         default="-",
-        help='Specify the name of the output file, or "-" for stdout which is the default.',
+        help='specify an output file ("-" for stdout, which is the default)',
     )
 
     parser.add_argument(
@@ -175,7 +177,7 @@ def mk_parser(parent: Any | None = None) -> Any:
         "--jobs",
         type=lambda N: max(1, int(N)),
         default=1,
-        help="The number of parallel workers.",
+        help="number of parallel workers (1 by default)",
     )
 
     def check_pdir(dir: str) -> Path:
@@ -192,9 +194,10 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "-p",
         "--pdir",
+        metavar="DIR",
         type=check_pdir,
         default=Path("."),
-        help="The path a dune project directory (containing file dune-project).",
+        help="path to the dune project to ingest (directory containing dune-project)",
     )
 
     def check_rocq_files(file: str) -> Path:
@@ -207,9 +210,10 @@ def mk_parser(parent: Any | None = None) -> Any:
 
     parser.add_argument(
         "rocq_files",
+        metavar="ROCQ_FILE",
         type=check_rocq_files,
         nargs="*",
-        help="The path to the Rocq source files of the project that must be ingested. When left empty, all Rocq source files of the project are ingested.",
+        help="file to be ingested (all files are ingested if none is given)",
     )
 
     return parser
