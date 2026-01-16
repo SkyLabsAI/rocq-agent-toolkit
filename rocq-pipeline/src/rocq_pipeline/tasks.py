@@ -116,7 +116,8 @@ class TaskFile(BaseModel):
 
     def to_file(self, file: Literal["-"] | Path) -> None:
         project = copy.deepcopy(self.project)
-        task_file = TaskFile(project=project, tasks=self.tasks)
+        tasks = sorted(self.tasks, key=lambda t: (t.file, t.name, str(t.locator)))
+        task_file = TaskFile(project=project, tasks=tasks)
 
         file_dir = Path(".") if file == "-" else file.parent
         task_file.project.path = task_file.project.path.resolve().relative_to(
