@@ -1033,34 +1033,38 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 ? 'No tasks found in this taskset'
                 : 'No tasks match the selected filters'}
             </div>
-          ) : filteredAgentInstances.length === 0 ? (
-            <div className='text-center py-8 text-text-disabled'>
-              {results && results.agent_instances.length === 0
-                ? 'No agent instances found in this taskset'
-                : 'No agent instances selected'}
-            </div>
           ) : (
-            <table
-              className='w-full border-collapse'
-              data-testid='project-results-table'
-            >
-              <thead>
-                <tr className='border-b border-elevation-surface-overlay'>
-                  <th className='px-4 py-3 text-left text-sm font-semibold text-text sticky left-0 bg-elevation-surface z-10 border-r border-elevation-surface-overlay min-w-[200px]'>
-                    <div className='flex items-center gap-2'>
-                      <input
-                        type='checkbox'
-                        checked={
-                          filteredTasks.length > 0 &&
-                          selectedTasks.size === filteredTasks.length
-                        }
-                        onChange={handleSelectAllTasks}
-                        className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
-                      />
-                      <span>Task </span>
-                    </div>
-                  </th>
-                  {filteredAgentInstances.map(instance => {
+            <>
+              {filteredAgentInstances.length === 0 && (
+                <div className='px-6 py-3 bg-elevation-surface-raised border-b border-elevation-surface-overlay'>
+                  <p className='text-sm text-text-disabled'>
+                    {results && results.agent_instances.length === 0
+                      ? 'No agent instances found in this taskset. Tasks are shown below.'
+                      : 'No agent instances selected. Tasks are shown below.'}
+                  </p>
+                </div>
+              )}
+              <table
+                className='w-full border-collapse'
+                data-testid='project-results-table'
+              >
+                <thead>
+                  <tr className='border-b border-elevation-surface-overlay'>
+                    <th className='px-4 py-3 text-left text-sm font-semibold text-text sticky left-0 bg-elevation-surface z-10 border-r border-elevation-surface-overlay min-w-[200px]'>
+                      <div className='flex items-center gap-2'>
+                        <input
+                          type='checkbox'
+                          checked={
+                            filteredTasks.length > 0 &&
+                            selectedTasks.size === filteredTasks.length
+                          }
+                          onChange={handleSelectAllTasks}
+                          className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
+                        />
+                        <span>Task </span>
+                      </div>
+                    </th>
+                    {filteredAgentInstances.map(instance => {
                     const stats = agentPerformance.get(
                       instance.agent_instance_id
                     );
@@ -1175,6 +1179,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
