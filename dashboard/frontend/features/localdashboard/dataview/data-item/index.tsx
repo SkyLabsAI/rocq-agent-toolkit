@@ -211,7 +211,7 @@ export const DataItem: React.FC<DataItemProps> = ({ benchmark, index }) => {
                         {/* Checksum Groups */}
                         {isClassExpanded &&
                           Object.entries(checksumGroups).map(
-                            ([checksum, agents]) =>
+                            ([_checksum, agents]) =>
                               agents.map(agent => (
                                 <DatasetAgentClass
                                   key={agent.cls_checksum}

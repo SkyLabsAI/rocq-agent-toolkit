@@ -1,6 +1,5 @@
 import cn from 'classnames';
 
-import { TagsDisplay } from '@/components/tags-display';
 import { useAgentInstances } from '@/hooks/use-agent-instances';
 import { useBenchmarks } from '@/hooks/use-dataview';
 import { type AgentSummary } from '@/types/types';
