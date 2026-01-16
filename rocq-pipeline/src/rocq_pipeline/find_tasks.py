@@ -50,12 +50,13 @@ def scan_proof(suffix: list[RocqCursor.SuffixItem]) -> ProofTask:
 
 
 def find_tasks(
-    pdir: Path, path: Path, tagger: Callable[[ProofTask], set[str]] | None = None
+    pdir: Path,
+    path: Path,
+    args: list[str],
+    tagger: Callable[[ProofTask], set[str]] | None = None,
 ) -> list[Task]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
-    with RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True).sess(
-        load_file=True
-    ) as rdm:
+    with RocqDocManager(args, str(path), dune=True).sess(load_file=True) as rdm:
         rc: RocqCursor = rdm.cursor()
         tasks: list[Task] = []
         counts: dict[str, int] = defaultdict(int)
@@ -265,7 +266,12 @@ def git_repo_data(project_dir: Path) -> tuple[str, str]:
 def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) -> None:
     def run_it(path: Path, _: Any) -> list[Task]:
         try:
-            file_tasks: list[Task] = find_tasks(pdir, Path(path), tagger=my_tagger)
+            file = Path(path)
+            args = DuneUtil.rocq_args_for(file)
+            file_tasks: list[Task] = find_tasks(pdir, file, args, tagger=my_tagger)
+        except DuneUtil.NotFound:
+            logger.error(f"Unable to get CLI arguments for file {path}.")
+            return []
         except Exception as err:
             logger.error(f"Error occured while scanning file {path}. {err}")
             file_tasks = []
