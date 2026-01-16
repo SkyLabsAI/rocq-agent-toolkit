@@ -237,11 +237,24 @@ def dune_project_name(dune_project_file: Path) -> str | None:
 
 
 def git_repo_data(project_dir: Path) -> tuple[str, str]:
-    repo = git.Repo(project_dir, search_parent_directories=True)
-    url = repo.remotes.origin.url
-    commit = repo.head.commit.hexsha
-    dirty = repo.is_dirty(untracked_files=True)
-    return (url, commit if not dirty else commit + "-dirty")
+    try:
+        repo = git.Repo(project_dir, search_parent_directories=True)
+    except Exception:
+        logger.warn("The project does not seem to use git for versioning.")
+        return ("unknown", "unknown")
+    try:
+        url = repo.remotes.origin.url
+    except Exception:
+        logger.warn("No origin remote set, unable to find a git URL.")
+        url = "unknown"
+    try:
+        commit = repo.head.commit.hexsha
+        if repo.is_dirty(untracked_files=True):
+            commit = commit + "-dirty"
+    except Exception:
+        logger.warn("The current commit hash could not be determined.")
+        commit = "unknown"
+    return (url, commit)
 
 
 def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) -> None:
