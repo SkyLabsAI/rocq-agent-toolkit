@@ -1,7 +1,6 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { TagsDisplay } from '@/components/tags-display';
 import { useGlobalCompare } from '@/contexts/global-compare-context';
 import AgentRunsView from '@/features/localdashboard/agent-runs-view';
 import { ChevronUpIcon } from '@/icons/chevron-up';
@@ -58,10 +57,6 @@ export const DatasetAgentInstance: React.FC<DatasetAgentInstanceProps> = ({
     }).toString();
     router.push(`/compare?${query}`);
   };
-
-  // Check if instance has any unique tags
-  const instanceTags = (instance.provenance as Record<string, string>) || {};
-  const hasUniqueTags = Object.keys(instanceTags).length > 0;
 
   return (
     <div

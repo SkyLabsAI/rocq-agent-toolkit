@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { TagsDisplay } from '@/components/tags-display';
 import { ChevronUpIcon } from '@/icons/chevron-up';
 import { type AgentInstanceSummary, type Benchmark } from '@/types/types';
 import { cn } from '@/utils/cn';
@@ -49,7 +48,7 @@ export const AgentInstance: React.FC<AgentInstanceProps> = ({
               className='text-sm font-medium truncate text-text'
               data-testid='instance-name'
             >
-              {instance.name}
+              {instance.name}@{instance.agent_checksum}
             </span>
           </div>
         </div>
