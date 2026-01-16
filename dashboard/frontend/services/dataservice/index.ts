@@ -20,6 +20,7 @@ import {
   getRunsByInstanceMock,
   getTaskDetailsMock,
   refreshDataMock,
+  uploadTasksYamlMock,
 } from '@/services/mockdata';
 import {
   type AgentInstanceSummary,
@@ -265,6 +266,40 @@ const bulkAddTagsReal = async (
 };
 
 export const bulkAddTags = USE_MOCK_DATA ? bulkAddTagsMock : bulkAddTagsReal;
+
+// ========================================
+// UPLOAD TASKS YAML API
+// ========================================
+
+export interface UploadTasksYamlResponse {
+  success: boolean;
+  message: string;
+  dataset_id: string;
+  tasks_created: number;
+  tasks_updated: number;
+}
+
+const uploadTasksYamlReal = async (
+  file: File
+): Promise<UploadTasksYamlResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await axios.post<UploadTasksYamlResponse>(
+    `${config.DATA_API}/ingest/tasks/yaml`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+};
+
+export const uploadTasksYaml = USE_MOCK_DATA
+  ? uploadTasksYamlMock
+  : uploadTasksYamlReal;
 
 // ========================================
 // AGENT SUMMARIES HELPER
