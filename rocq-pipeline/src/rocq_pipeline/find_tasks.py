@@ -153,12 +153,12 @@ def mk_parser(parent: Any | None = None) -> Any:
         help="enable debug output (implies --verbose)",
     )
 
-    def check_output_file(file: str) -> Literal["-"] | Path:
-        if file == "-":
-            return "-"
+    def check_output_file(file: str) -> Path:
         path: Path = Path(file)
         if not TaskFile.valid_extension(path):
-            sys.exit(f"Error: unsupported extension on {path}.")
+            sys.exit(
+                f"Error: unsupported extension on {path} (use any of {', '.join(TaskFile.supported_extensions())})."
+            )
         if not path.parent.exists():
             sys.exit(f"Error: parent directory of {path} does not exist.")
         return path
@@ -168,13 +168,14 @@ def mk_parser(parent: Any | None = None) -> Any:
         "--output",
         metavar="FILE",
         type=check_output_file,
-        default="-",
-        help='specify an output file ("-" for stdout, which is the default)',
+        required=True,
+        help=f"specify the output file (allowed extensions are {', '.join(TaskFile.supported_extensions())})",
     )
 
     parser.add_argument(
         "-j",
         "--jobs",
+        metavar="N",
         type=lambda N: max(1, int(N)),
         default=1,
         help="number of parallel workers (1 by default)",

@@ -18,7 +18,7 @@
   > EOF
   $ cp $TESTDIR/* .
 
-  $ uv run rat ingest --verbose test.v > /dev/null
+  $ uv run rat ingest --verbose --output test.yaml test.v
   WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
   WARNING: The project does not seem to use git for versioning.
   INFO: Number of Rocq source files found: 1
@@ -30,7 +30,7 @@
   $ git init -b main > /dev/null
   $ git config user.name "Tester"
   $ git config user.email "tester@example.com"
-  $ uv run rat ingest --verbose test.v > /dev/null
+  $ uv run rat ingest --verbose --output test.yaml test.v
   WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
   WARNING: No origin remote set, unable to find a git URL.
   WARNING: The current commit hash could not be determined.
@@ -41,7 +41,7 @@
   INFO: Total number of unique tasks: 4
 
   $ git remote add origin git@github.com:example/example.git
-  $ uv run rat ingest --verbose test.v > /dev/null
+  $ uv run rat ingest --verbose --output test.yaml test.v
   WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
   WARNING: The current commit hash could not be determined.
   INFO: Number of Rocq source files found: 1
@@ -52,7 +52,7 @@
 
   $ git add dune dune-project test.v
   $ git commit -m "Test." > /dev/null
-  $ uv run rat ingest --verbose test.v > /dev/null
+  $ uv run rat ingest --verbose --output test.yaml test.v
   WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
   INFO: Number of Rocq source files found: 1
   INFO: Only keeping the files passed on the command line.

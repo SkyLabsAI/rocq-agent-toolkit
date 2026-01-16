@@ -145,5 +145,9 @@ class TaskFile(BaseModel):
         return TaskFile(project=self.project, tasks=tasks)
 
     @classmethod
+    def supported_extensions(cls) -> list[str]:
+        return [".json", ".yaml", ".yml"]
+
+    @classmethod
     def valid_extension(cls, file: Path) -> bool:
-        return file.suffix in [".yml", ".yaml", ".json"]
+        return file.suffix in TaskFile.supported_extensions()
