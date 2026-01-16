@@ -73,6 +73,9 @@ class Dataset(SQLModel, table=True):
     )
     name: str = Field(unique=True, index=True)
     description: str | None = None
+    git_url: str | None = None
+    git_commit: str | None = None
+    path: str | None = None
     created_at: datetime | None = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
@@ -104,6 +107,7 @@ class Task(SQLModel, table=True):
     # The logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
     name: str = Field(index=True)
     kind: str | None = None
+    ground_truth: Any | None = Field(default=None, sa_column=Column(JSON))
     # Foreign key to Dataset; nullable for backward compatibility with
     # older ingested data that did not include dataset information.
     dataset_id: int | None = Field(foreign_key="dataset.id", index=True)

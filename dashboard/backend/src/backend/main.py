@@ -17,6 +17,7 @@ import uvicorn
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from sqlmodel import Session
 
 from backend.config import settings
@@ -42,7 +43,9 @@ from backend.dal import (
     get_task_result_from_db,
     get_tasks_for_dataset_from_db,
     get_unique_tags_from_db,
+    export_dataset_tasks_yaml_from_db,
     ingest_task_results,
+    ingest_task_dataset_from_yaml,
     list_agent_instances_from_db,
     list_agents_from_db,
     list_datasets_from_db,
@@ -66,6 +69,7 @@ from backend.models import (
     ObservabilityLogsResponse,
     RunDetailsResponse,
     RunInfo,
+    TaskDatasetIngestionResponse,
     TagsResponse,
     TaskResult,
 )
@@ -299,6 +303,50 @@ async def ingest_jsonl_file(
     )
 
 
+@app.post("/api/ingest/tasks/yaml", response_model=TaskDatasetIngestionResponse)
+async def ingest_task_yaml_file(
+    file: UploadFile = File(
+        ...,
+        description="YAML file describing a dataset and its tasks",
+    ),
+    session: Session = Depends(get_session),
+) -> TaskDatasetIngestionResponse:
+    """
+    Ingest task definitions from a YAML file upload.
+
+    The YAML must contain a project name (dataset id) and a tasks list.
+    """
+    raw_bytes = await file.read()
+    yaml_text = raw_bytes.decode("utf-8")
+
+    try:
+        stats = ingest_task_dataset_from_yaml(session, yaml_text)
+        session.commit()
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:  # pragma: no cover - defensive logging
+        session.rollback()
+        logger.error("Error ingesting task YAML: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error ingesting task YAML: {str(e)}"
+        ) from e
+
+    message = (
+        f"Ingested dataset '{stats['dataset_id']}' with "
+        f"{stats['tasks_created']} new task(s), "
+        f"{stats['tasks_updated']} updated task(s)."
+    )
+
+    return TaskDatasetIngestionResponse(
+        success=True,
+        message=message,
+        dataset_id=stats["dataset_id"],
+        tasks_created=stats["tasks_created"],
+        tasks_updated=stats["tasks_updated"],
+    )
+
+
 @app.get("/api/agents/class", response_model=list[AgentClassSummary])
 async def list_agents(
     session: Session = Depends(get_session),
@@ -503,6 +551,38 @@ async def list_datasets(session: Session = Depends(get_session)) -> list[Dataset
         raise HTTPException(
             status_code=500, detail=f"Error fetching datasets: {str(e)}"
         ) from e
+
+
+@app.get("/api/datasets/{dataset_id}/tasks/yaml")
+async def export_dataset_tasks_yaml(
+    dataset_id: str,
+    tag: str = Query(..., description="Filter tasks by this tag (key=value)"),
+    session: Session = Depends(get_session),
+) -> Response:
+    """
+    Export a dataset's tasks (optionally filtered by tag) as a YAML file.
+    """
+    try:
+        yaml_text = export_dataset_tasks_yaml_from_db(session, dataset_id, tag=tag)
+        if yaml_text is None:
+            raise HTTPException(
+                status_code=404, detail=f"Dataset '{dataset_id}' not found"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:  # pragma: no cover - defensive logging
+        logger.error(
+            "Error exporting tasks for dataset '%s': %s", dataset_id, e, exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error exporting tasks for dataset '{dataset_id}': {str(e)}",
+        ) from e
+
+    safe_tag = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in tag)
+    filename = f"{dataset_id}_{safe_tag}.yaml" if safe_tag else f"{dataset_id}.yaml"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(content=yaml_text, media_type="application/x-yaml", headers=headers)
 
 
 @app.get("/api/{dataset_id}/tasks", response_model=DatasetTasksResponse)
