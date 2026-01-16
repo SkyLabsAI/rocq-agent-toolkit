@@ -83,7 +83,9 @@ def find_tasks(
                     if tagger is not None:
                         tags.update(tagger(proof))
                 except NotFound:
-                    logger.error(f"{m.group(1)} {m.group(2)} does not end")
+                    logger.error(
+                        f"In file {path}, no end found for {m.group(1)} {m.group(2)}."
+                    )
                     # tags = {"proof", "incomplete"}
                     break
                 locator = FirstLemma(m.group(2), m.group(1), current)
