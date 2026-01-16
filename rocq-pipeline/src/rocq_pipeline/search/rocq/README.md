@@ -6,7 +6,7 @@ This connects the Action/Strategy framework to Rocq. It should be de-coupled fro
 
 ### Simple Strategy Creating Actions
 
-[`SafeTacticStrategy`](strategies.py#L13-L33) demonstrates a strategy that creates and yields a single action:
+[`SafeTacticStrategy`](strategies.py) demonstrates a strategy that creates and yields a single action:
 
 ```python
 class SafeTacticStrategy(Strategy):
@@ -19,7 +19,7 @@ class SafeTacticStrategy(Strategy):
 
 ### Action Execution with Failure Handling
 
-[`RocqTacticAction`](actions.py#L14-L47) shows how actions execute and handle failures:
+[`RocqTacticAction`](actions.py) shows how actions execute and handle failures:
 
 ```python
 class RocqTacticAction(Action[RocqCursor]):
@@ -32,7 +32,7 @@ class RocqTacticAction(Action[RocqCursor]):
 
 ### Strategy Consuming Actions
 
-[`FirstTacticStrategy`](strategies.py#L63-L85) accepts either strings (converted to actions) or pre-constructed actions, demonstrating flexibility:
+[`FirstTacticStrategy`](strategies.py) accepts either strings (converted to actions) or pre-constructed actions, demonstrating flexibility:
 
 ```python
 class FirstTacticStrategy(Strategy):
@@ -46,7 +46,7 @@ class FirstTacticStrategy(Strategy):
 
 ### Complete Example: Oracle Pattern
 
-[`OracleStrategy`](../../agent/proof/oracle_agent.py#L40-L58) and [`StepAction`](../../agent/proof/oracle_agent.py#L12-L37) show a complete strategy-action pair where the strategy creates domain-specific actions:
+[`OracleStrategy`](../../agent/proof/oracle_agent.py) and [`StepAction`](../../agent/proof/oracle_agent.py) show a complete strategy-action pair where the strategy creates domain-specific actions:
 
 ```mermaid
 graph TD
@@ -57,4 +57,4 @@ graph TD
     Result -->|failure| Action.Failed
 ```
 
-See [`OracleAgent`](../../agent/proof/oracle_agent.py#L61-L68) for how this strategy is used in practice.
+See [`OracleAgent`](../../agent/proof/oracle_agent.py) for how this strategy is used in practice.

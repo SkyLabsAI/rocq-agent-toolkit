@@ -21,30 +21,30 @@ graph LR
 
 ### Strategy
 
-A **Strategy** proposes ranked action candidates. The [`rollout()`](strategy.py#L34-L52) method lazily generates `(probability, Action)` pairs in **decreasing probability order**, enabling efficient exploration of large or infinite action spaces.
+A **Strategy** proposes ranked action candidates. The [`rollout()`](strategy.py) method lazily generates `(probability, Action)` pairs in **decreasing probability order**, enabling efficient exploration of large or infinite action spaces.
 
 **Key properties:**
 - **Lazy generation**: Uses generators to avoid materializing entire action spaces
 - **Ranked proposals**: Actions returned in decreasing probability (highest confidence first)
-- **Composable**: Strategies can be combined via [`CompositeStrategy`](strategy.py#L94-L132), [`StagedStrategy`](strategy.py#L135-L204), etc.
+- **Composable**: Strategies can be combined via [`CompositeStrategy`](strategy.py), [`StagedStrategy`](strategy.py), etc.
 
 **Example implementations:**
-- [`SafeTacticStrategy`](../rocq/strategies.py#L13-L33): Wraps a single tactic as a strategy
-- [`FirstTacticStrategy`](../rocq/strategies.py#L63-L85): Tries multiple tactics in ranked order
-- [`OracleStrategy`](../../agent/proof/oracle_agent.py#L40-L58): Proposes actions by looking ahead in the document (useful for data extraction, but not synthesis of new proofs)
+- [`SafeTacticStrategy`](../rocq/strategies.py): Wraps a single tactic as a strategy
+- [`FirstTacticStrategy`](../rocq/strategies.py): Tries multiple tactics in ranked order
+- [`OracleStrategy`](../../agent/proof/oracle_agent.py): Proposes actions by looking ahead in the document (useful for data extraction, but not synthesis of new proofs)
 
 ### Action
 
-An **Action** represents a single executable operation. The [`interact(state)`](action.py#L30-L36) method transforms state and either returns a new state or raises [`Action.Failed`](action.py#L22-L28) if execution cannot proceed.
+An **Action** represents a single executable operation. The [`interact(state)`](action.py) method transforms state and either returns a new state or raises [`Action.Failed`](action.py) if execution cannot proceed.
 
 **Key properties:**
 - **Explicit failure**: Uses exceptions rather than silent failures
 - **State transformation**: `interact(state) → new_state`
-- **Deduplication**: [`key()`](action.py#L38-L40) provides stable identifiers for repetition checks
+- **Deduplication**: [`key()`](action.py) provides stable identifiers for repetition checks
 
 **Example implementations:**
-- [`RocqTacticAction`](../rocq/actions.py#L14-L47): Executes a single Rocq tactic
-- [`RocqRetryAction`](../rocq/actions.py#L50-L158): Adds LLM-based rectification on failure
+- [`RocqTacticAction`](../rocq/actions.py): Executes a single Rocq tactic
+- [`RocqRetryAction`](../rocq/actions.py): Adds LLM-based rectification on failure
 
 ### Relationship
 
@@ -78,10 +78,10 @@ sequenceDiagram
 
 **Usage patterns**: While choosing the highest-probability action is common, Agents have flexibility in how they interpret rollouts; examples include:
 
-- **Deterministic selection**: Iterate through actions in probability order (see [`StrategyAgent.prove()`](../../agent/proof/strategy_agent.py#L95-L122))
-- **Sampling with temperature**: Sample from the rollout distribution rather than taking the maximum (see [`Sampled`](search/frontier.py#L260-L293) frontier wrapper)
+- **Deterministic selection**: Iterate through actions in probability order (see [`StrategyAgent.prove()`](../../agent/proof/strategy_agent.py))
+- **Sampling with temperature**: Sample from the rollout distribution rather than taking the maximum (see [`Sampled`](search/frontier.py) frontier wrapper)
 - **Post-processing**: Filter, prune, or re-rank actions before execution (e.g., based on domain-specific heuristics)
-- **Parallel exploration**: Execute multiple actions in parallel via fanout/join operations (see [`RolloutInterleaver`](search/iter.py#L58-L119) and [`Search.continue_search()`](search/search.py#L157-L246))
+- **Parallel exploration**: Execute multiple actions in parallel via fanout/join operations (see [`RolloutInterleaver`](search/iter.py) and [`Search.continue_search()`](search/search.py))
 - **Beam search**: Maintain multiple search paths, expanding the top-k actions from each state (see [`BeamSearch`](search/beam.py))
 
 The generic pattern:
