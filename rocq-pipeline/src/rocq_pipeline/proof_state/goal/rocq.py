@@ -39,8 +39,8 @@ class RocqGoal:
         return self.parts.wellformed()
 
     # naming the function re confuses mypy
+    @staticmethod
     def regex(
-        self,
         re_pat: str,
         text: str,
         search: bool = False,
@@ -61,7 +61,7 @@ class RocqGoal:
         ignore_leading_whitespace: bool = True,
         re_flags: re.RegexFlag = re.DOTALL,
     ) -> re.Match[str] | None:
-        return self.regex(
+        return RocqGoal.regex(
             re_pat,
             self.parts.rocq_concl,
             search=search,
