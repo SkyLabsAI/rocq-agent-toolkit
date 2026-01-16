@@ -43,18 +43,3 @@ class FirstTacticStrategy(Strategy):
     def rollout(self, rdm, ...):
         return ((prob, tac) for prob, tac in self._tactics)  # Yields Actions
 ```
-
-### Complete Example: Oracle Pattern
-
-[`OracleStrategy`](../../agent/proof/oracle_agent.py) and [`StepAction`](../../agent/proof/oracle_agent.py) show a complete strategy-action pair where the strategy creates domain-specific actions:
-
-```mermaid
-graph TD
-    OS[OracleStrategy] -->|rollout| SA[StepAction]
-    SA -->|interact| RC[RocqCursor]
-    RC -->|run_step| Result
-    Result -->|success| NewState
-    Result -->|failure| Action.Failed
-```
-
-See [`OracleAgent`](../../agent/proof/oracle_agent.py) for how this strategy is used in practice.

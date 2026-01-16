@@ -40,11 +40,11 @@ An **Action** represents a single executable operation. The [`interact(state)`](
 **Key properties:**
 - **Explicit failure**: Uses exceptions rather than silent failures
 - **State transformation**: `interact(state) → new_state`
-- **Deduplication**: [`key()`](action.py) provides stable identifiers for repetition checks
+- **Deduplication**: [`key()`](action.py) provides stable identifiers to describe the action
 
 **Example implementations:**
 - [`RocqTacticAction`](../rocq/actions.py): Executes a single Rocq tactic
-- [`RocqRetryAction`](../rocq/actions.py): Adds LLM-based rectification on failure
+- [`RocqRetryAction`](../rocq/actions.py): Adds the ability to alter the tactic based on Rocq feedback
 
 ### Relationship
 
