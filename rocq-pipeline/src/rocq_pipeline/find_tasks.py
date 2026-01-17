@@ -50,12 +50,13 @@ def scan_proof(suffix: list[RocqCursor.SuffixItem]) -> ProofTask:
 
 
 def find_tasks(
-    pdir: Path, path: Path, tagger: Callable[[ProofTask], set[str]] | None = None
+    pdir: Path,
+    path: Path,
+    args: list[str],
+    tagger: Callable[[ProofTask], set[str]] | None = None,
 ) -> list[Task]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
-    with RocqDocManager(DuneUtil.rocq_args_for(path), str(path), dune=True).sess(
-        load_file=True
-    ) as rdm:
+    with RocqDocManager(args, str(path), dune=True).sess(load_file=True) as rdm:
         rc: RocqCursor = rdm.cursor()
         tasks: list[Task] = []
         counts: dict[str, int] = defaultdict(int)
@@ -82,7 +83,9 @@ def find_tasks(
                     if tagger is not None:
                         tags.update(tagger(proof))
                 except NotFound:
-                    logger.error(f"{m.group(1)} {m.group(2)} does not end")
+                    logger.error(
+                        f"In file {path}, no end found for {m.group(1)} {m.group(2)}."
+                    )
                     # tags = {"proof", "incomplete"}
                     break
                 locator = FirstLemma(m.group(2), m.group(1), current)
@@ -132,32 +135,33 @@ def my_tagger(task: ProofTask) -> set[str]:
 
 
 def mk_parser(parent: Any | None = None) -> Any:
-    help = "Build tasks from a Rocq (dune) project."
+    help = "Ingest a Rocq (dune) project to build a corresponding task file."
+    description = "This command ingests the Rocq source files of a Rocq (dune) project to produce a task file, either in JSON or Yaml format (based on the file's extension). A task file contains information about the originating project (git URL and commit hash), including the path to the project relative to the task file's parent directory, so that subsequent rat commands can automatically locate the project. It also contains a list of task, each of which applies to a specific Rocq source file identified by a relative path from the project's root directory. For now, all the generated tasks concern proofs, and are thus meant to be tackled by proof agents. We aim at collecting other forms of tasks in the future."
     if parent:
-        parser = parent.add_parser("ingest", help=help)
+        parser = parent.add_parser("ingest", help=help, description=description)
     else:
-        parser = ArgumentParser(description=help)
+        parser = ArgumentParser(description=description)
 
     parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        help="Make the output verbose (including logs).",
+        help="make the output verbose (including logs)",
     )
 
     parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
-        help="Enable debug output (implies --verbose).",
+        help="enable debug output (implies --verbose)",
     )
 
-    def check_output_file(file: str) -> Literal["-"] | Path:
-        if file == "-":
-            return "-"
+    def check_output_file(file: str) -> Path:
         path: Path = Path(file)
         if not TaskFile.valid_extension(path):
-            sys.exit(f"Error: unsupported extension on {path}.")
+            sys.exit(
+                f"Error: unsupported extension on {path} (use any of {', '.join(TaskFile.supported_extensions())})."
+            )
         if not path.parent.exists():
             sys.exit(f"Error: parent directory of {path} does not exist.")
         return path
@@ -165,17 +169,19 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "-o",
         "--output",
+        metavar="FILE",
         type=check_output_file,
-        default="-",
-        help='Specify the name of the output file, or "-" for stdout which is the default.',
+        required=True,
+        help=f"specify the output file (allowed extensions are {', '.join(TaskFile.supported_extensions())})",
     )
 
     parser.add_argument(
         "-j",
         "--jobs",
+        metavar="N",
         type=lambda N: max(1, int(N)),
         default=1,
-        help="The number of parallel workers.",
+        help="number of parallel workers (1 by default)",
     )
 
     def check_pdir(dir: str) -> Path:
@@ -192,9 +198,10 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "-p",
         "--pdir",
+        metavar="DIR",
         type=check_pdir,
         default=Path("."),
-        help="The path a dune project directory (containing file dune-project).",
+        help="path to the dune project to ingest (directory containing dune-project)",
     )
 
     def check_rocq_files(file: str) -> Path:
@@ -207,9 +214,10 @@ def mk_parser(parent: Any | None = None) -> Any:
 
     parser.add_argument(
         "rocq_files",
+        metavar="ROCQ_FILE",
         type=check_rocq_files,
         nargs="*",
-        help="The path to the Rocq source files of the project that must be ingested. When left empty, all Rocq source files of the project are ingested.",
+        help="file to be ingested (all files are ingested if none is given)",
     )
 
     return parser
@@ -237,17 +245,35 @@ def dune_project_name(dune_project_file: Path) -> str | None:
 
 
 def git_repo_data(project_dir: Path) -> tuple[str, str]:
-    repo = git.Repo(project_dir, search_parent_directories=True)
-    url = repo.remotes.origin.url
-    commit = repo.head.commit.hexsha
-    dirty = repo.is_dirty(untracked_files=True)
-    return (url, commit if not dirty else commit + "-dirty")
+    try:
+        repo = git.Repo(project_dir, search_parent_directories=True)
+    except Exception:
+        logger.warn("The project does not seem to use git for versioning.")
+        return ("unknown", "unknown")
+    try:
+        url = repo.remotes.origin.url
+    except Exception:
+        logger.warn("No origin remote set, unable to find a git URL.")
+        url = "unknown"
+    try:
+        commit = repo.head.commit.hexsha
+        if repo.is_dirty(untracked_files=True):
+            commit = commit + "-dirty"
+    except Exception:
+        logger.warn("The current commit hash could not be determined.")
+        commit = "unknown"
+    return (url, commit)
 
 
 def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) -> None:
     def run_it(path: Path, _: Any) -> list[Task]:
         try:
-            file_tasks: list[Task] = find_tasks(pdir, Path(path), tagger=my_tagger)
+            file = Path(path)
+            args = DuneUtil.rocq_args_for(file)
+            file_tasks: list[Task] = find_tasks(pdir, file, args, tagger=my_tagger)
+        except DuneUtil.NotFound:
+            logger.error(f"Unable to get CLI arguments for file {path}.")
+            return []
         except Exception as err:
             logger.error(f"Error occured while scanning file {path}. {err}")
             file_tasks = []

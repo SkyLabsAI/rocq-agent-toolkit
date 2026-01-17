@@ -26,7 +26,7 @@
   $ git add dune dune-project test.v
   $ git commit -m "Test." > /dev/null
 
-  $ uv run rat ingest --verbose test.v > /dev/null
+  $ uv run rat ingest --verbose -o tasks.yaml test.v
   INFO: Number of Rocq source files found: 1
   INFO: Only keeping the files passed on the command line.
   INFO: Found 4 tasks in test.v: Lemma:test, Lemma:test(1), Theorem:test, ...

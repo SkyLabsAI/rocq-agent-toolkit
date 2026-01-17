@@ -2,13 +2,15 @@ from pathlib import Path
 
 import pytest
 import rocq_pipeline.find_tasks
+from rocq_doc_manager import DuneUtil
 
 
 def test_test_simple() -> None:
     pdir = Path("examples")
     file = "theories/test_simple.v"
     path = pdir / Path(file)
-    tasks = rocq_pipeline.find_tasks.find_tasks(pdir, path)
+    args = DuneUtil.rocq_args_for(path)
+    tasks = rocq_pipeline.find_tasks.find_tasks(pdir, path, args)
     assert len(tasks) == 2
     dict_tasks = [t.model_dump() for t in tasks]
     assert dict_tasks == [
@@ -34,7 +36,8 @@ def test_with_deps() -> None:
     pdir = Path("examples")
     file = "theories/with_dep.v"
     path = pdir / Path(file)
-    tasks = rocq_pipeline.find_tasks.find_tasks(pdir, path)
+    args = DuneUtil.rocq_args_for(path)
+    tasks = rocq_pipeline.find_tasks.find_tasks(pdir, path, args)
     assert len(tasks) == 1
     dict_tasks = [t.model_dump() for t in tasks]
     assert dict_tasks == [

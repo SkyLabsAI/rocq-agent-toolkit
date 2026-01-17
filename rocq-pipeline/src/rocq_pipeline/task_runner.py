@@ -184,10 +184,14 @@ def run_task(
         try:
             task_file = task.file
             progress.status(0.01, "🔃")
-            rocq_args = RocqArgs.extend_args(
-                DuneUtil.rocq_args_for(task_file, cwd=project.path),
-                build_agent.extra_rocq_args(),
-            )
+            try:
+                rocq_args = DuneUtil.rocq_args_for(task_file, cwd=project.path)
+            except DuneUtil.NotFound:
+                logger.error(
+                    f"Could not get arguments for file {task_file}, using no arguments."
+                )
+                rocq_args = []
+            rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())
             with RocqDocManager(
                 rocq_args,
                 str(task_file),
