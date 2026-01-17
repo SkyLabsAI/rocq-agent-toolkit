@@ -5,15 +5,18 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
+import Toast from '@/components/base/ui/toast';
 import { TagsDisplay } from '@/components/tags-display';
 import Layout from '@/layouts/common';
 import {
   bulkAddTags,
   getTaskSetResults,
   getTaskSets,
+  uploadTasksYaml,
 } from '@/services/dataservice';
 import { type TaskSet, type TaskSetResults } from '@/types/types';
 
+import FileUpload from '@/components/file-upload';
 import ProjectTaskDetailsModal from './task-details-modal';
 
 interface TaskSetDetailsPageProps {
@@ -64,6 +67,9 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
 
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     taskId: number;
@@ -462,6 +468,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       });
 
       // Success - show toast and reset
+      setToastType('success');
       setToastMessage('Dataset created successfully!');
       setIsCreateDatasetModalOpen(false);
       setDatasetName('');
@@ -474,14 +481,44 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         window.location.reload();
       }, 2000);
     } catch (err) {
+      setToastType('error');
       setToastMessage(
         err instanceof Error ? err.message : 'Failed to create taskset'
       );
-      setTimeout(() => {
-        setToastMessage(null);
-      }, 2000);
     } finally {
       setIsCreatingDataset(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      setIsUploading(true);
+      const response = await uploadTasksYaml(file);
+
+      if (response.success) {
+        setToastType('success');
+        setToastMessage(
+          `Successfully uploaded ${file.name}. ${response.tasks_created} tasks created, ${response.tasks_updated} tasks updated.`
+        );
+        setIsUploadModalOpen(false);
+
+        // Reload the page after 2 seconds to show new tasks
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setToastType('error');
+        setToastMessage(response.message || 'Upload failed');
+      }
+    } catch (err) {
+      setToastType('error');
+      setToastMessage(
+        err instanceof Error
+          ? `Upload failed: ${err.message}`
+          : 'Failed to upload file'
+      );
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -602,14 +639,22 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 instance
               </p>
             </div>
-            {selectedTasks.size > 0 && (
+            <div className='flex items-center gap-3'>
               <Button
-                onClick={() => setIsCreateDatasetModalOpen(true)}
+                onClick={() => setIsUploadModalOpen(true)}
                 variant='default'
               >
-                Create TaskSet ({selectedTasks.size} tasks)
+                Upload Tasks
               </Button>
-            )}
+              {selectedTasks.size > 0 && (
+                <Button
+                  onClick={() => setIsCreateDatasetModalOpen(true)}
+                  variant='default'
+                >
+                  Create TaskSet ({selectedTasks.size} tasks)
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -986,34 +1031,38 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 ? 'No tasks found in this taskset'
                 : 'No tasks match the selected filters'}
             </div>
-          ) : filteredAgentInstances.length === 0 ? (
-            <div className='text-center py-8 text-text-disabled'>
-              {results && results.agent_instances.length === 0
-                ? 'No agent instances found in this taskset'
-                : 'No agent instances selected'}
-            </div>
           ) : (
-            <table
-              className='w-full border-collapse'
-              data-testid='project-results-table'
-            >
-              <thead>
-                <tr className='border-b border-elevation-surface-overlay'>
-                  <th className='px-4 py-3 text-left text-sm font-semibold text-text sticky left-0 bg-elevation-surface z-10 border-r border-elevation-surface-overlay min-w-[200px]'>
-                    <div className='flex items-center gap-2'>
-                      <input
-                        type='checkbox'
-                        checked={
-                          filteredTasks.length > 0 &&
-                          selectedTasks.size === filteredTasks.length
-                        }
-                        onChange={handleSelectAllTasks}
-                        className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
-                      />
-                      <span>Task </span>
-                    </div>
-                  </th>
-                  {filteredAgentInstances.map(instance => {
+            <>
+              {filteredAgentInstances.length === 0 && (
+                <div className='px-6 py-3 bg-elevation-surface-raised border-b border-elevation-surface-overlay'>
+                  <p className='text-sm text-text-disabled'>
+                    {results && results.agent_instances.length === 0
+                      ? 'No agent instances found in this taskset. Tasks are shown below.'
+                      : 'No agent instances selected. Tasks are shown below.'}
+                  </p>
+                </div>
+              )}
+              <table
+                className='w-full border-collapse'
+                data-testid='project-results-table'
+              >
+                <thead>
+                  <tr className='border-b border-elevation-surface-overlay'>
+                    <th className='px-4 py-3 text-left text-sm font-semibold text-text sticky left-0 bg-elevation-surface z-10 border-r border-elevation-surface-overlay min-w-[200px]'>
+                      <div className='flex items-center gap-2'>
+                        <input
+                          type='checkbox'
+                          checked={
+                            filteredTasks.length > 0 &&
+                            selectedTasks.size === filteredTasks.length
+                          }
+                          onChange={handleSelectAllTasks}
+                          className='w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
+                        />
+                        <span>Task </span>
+                      </div>
+                    </th>
+                    {filteredAgentInstances.map(instance => {
                     const stats = agentPerformance.get(
                       instance.agent_instance_id
                     );
@@ -1128,6 +1177,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
@@ -1148,6 +1198,47 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         agentChecksum={modalState.agentChecksum}
         agentName={modalState.agentName}
       />
+
+      {/* Upload Tasks Modal */}
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => {
+          if (!isUploading) {
+            setIsUploadModalOpen(false);
+          }
+        }}
+        title='Upload Tasks from YAML'
+        size='default'
+      >
+        <div className='flex flex-col gap-4'>
+          <div className='text-sm text-text-disabled'>
+            Upload a YAML file containing task definitions. The file will be
+            validated on the server.
+          </div>
+          <FileUpload
+            onFileSelect={handleFileUpload}
+            accept='.yaml,.yml'
+            disabled={isUploading}
+          />
+          {isUploading && (
+            <div className='flex items-center gap-2 text-sm text-text-disabled'>
+              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
+              <span>Uploading file...</span>
+            </div>
+          )}
+          <div className='flex gap-3 justify-end pt-2'>
+            <Button
+              variant='ghost'
+              onClick={() => {
+                setIsUploadModalOpen(false);
+              }}
+              disabled={isUploading}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create Dataset Modal */}
       <Modal
@@ -1211,28 +1302,13 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       </Modal>
 
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className='fixed bottom-4 right-4 z-50 px-4 py-3 bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-[500px] animate-in slide-in-from-bottom-2'>
-          <div className='flex-1'>
-            <p
-              className={`text-sm ${
-                toastMessage.includes('successfully')
-                  ? 'text-text-success'
-                  : 'text-text-danger'
-              }`}
-            >
-              {toastMessage}
-            </p>
-          </div>
-          <button
-            onClick={() => setToastMessage(null)}
-            className='text-text-disabled hover:text-text transition-colors text-lg leading-none'
-            aria-label='Close notification'
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <Toast
+        message={toastMessage || ''}
+        type={toastType}
+        isOpen={!!toastMessage}
+        onClose={() => setToastMessage(null)}
+        duration={3000}
+      />
     </Layout>
   );
 };

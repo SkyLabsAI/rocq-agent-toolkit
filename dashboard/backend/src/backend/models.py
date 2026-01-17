@@ -237,11 +237,24 @@ class IngestionResponse(BaseModel):
     tasks_ingested: int
 
 
+class TaskDatasetIngestionResponse(BaseModel):
+    """Response returned by the YAML task dataset ingestion endpoint."""
+
+    success: bool
+    message: str
+    dataset_id: str
+    tasks_created: int
+    tasks_updated: int
+
+
 class DatasetInfo(BaseModel):
     """Summary information about a dataset."""
 
     dataset_id: str
     description: str | None = None
+    git_url: str | None = None
+    git_commit: str | None = None
+    path: str | None = None
     created_at: str | None = None
 
 
@@ -292,6 +305,7 @@ class TaskInfo(BaseModel):
     task_name: str  # Logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
     task_kind: str | None = None
     dataset_id: str | None = None
+    ground_truth: Any | None = None
     tags: dict[str, str] = {}  # Task-level tags (extracted from TASK_ prefixed tags)
 
 

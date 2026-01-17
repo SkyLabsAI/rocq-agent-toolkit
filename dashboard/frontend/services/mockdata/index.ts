@@ -34,6 +34,7 @@ export {
   getProjectDatasetsMock,
   getProjectResultsMock,
   getProjectsMock,
+  uploadTasksYamlMock,
 } from './projects';
 
 // Visualizer-related mocks (NEW!)
