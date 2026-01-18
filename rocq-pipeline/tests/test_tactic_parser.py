@@ -26,7 +26,11 @@ TEST_CASES: dict[str, list[str]] = {
     "*": [],
     "+": [],
     "2:{ ": [],
+    "last rewrite H": ["rewrite H"],
     "1: rewrite h": ["rewrite h"],
+    "vc_split=>?": ["vc_split=>?"],
+    "do 5 rewrite H": ["rewrite H"],
+    "do 15 rewrite H": ["rewrite H"],
 }
 
 # 1. Get the list of input strings (keys) for the test ID/name

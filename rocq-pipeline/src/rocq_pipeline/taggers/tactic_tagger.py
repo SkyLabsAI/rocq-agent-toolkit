@@ -138,6 +138,7 @@ def get_atomic_tactics(chunk: str) -> list[str]:
 
 
 PTRN_N_COLON = re.compile("[0-9]+:")
+PTRN_DO = re.compile(r"do\s+[0-9]+")
 
 
 def flatten_tactic_string(s: str) -> list[str]:
@@ -164,6 +165,10 @@ def flatten_tactic_string(s: str) -> list[str]:
             if (content.startswith("(") and content.endswith(")"))
             else content
         )
+    elif mtch := PTRN_DO.match(s_to_process):
+        return flatten_tactic_string(s_to_process[mtch.end(0) :])
+    elif s_to_process.startswith("last "):
+        return flatten_tactic_string(s_to_process[4:])
     elif mtch := PTRN_N_COLON.match(s_to_process):
         return flatten_tactic_string(s_to_process[mtch.end(0) :])
     elif s_to_process[0] in "-+*{}":
@@ -217,10 +222,10 @@ def filter_tactics(
             # ^             : Start of string
             # {escaped}     : The prefix (escaped for safety)
             # (?= ... )     : Lookahead for boundary
-            #    [\s.(]     : Whitespace, dot, or open parenthesis
+            #    [\s.(-=:]  : token to and a word
             #    |          : OR
             #    $          : End of string
-            pattern = rf"^{re.escape(prefix)}(?=[\s.(]|$)"
+            pattern = rf"^{re.escape(prefix)}(?=[\s.(\-=:]|$)"
 
             if re.match(pattern, tac):
                 if tac_tagger is None:
@@ -264,6 +269,7 @@ rocq_prefixes = [
     "cbv",
     "cbn",
     "subst",
+    "case",
     "change",
     "clear",
     "replace",
@@ -310,6 +316,7 @@ rocq_prefixes = [
     "zify",
     "setoid_rewrite",
     "move",
+    "have",
 ]
 
 # from https://gitlab.mpi-sws.org/iris/iris/blob/master/docs/proof_mode.md
@@ -369,6 +376,7 @@ brick_prefixes = [
     "solve_learnable",
     "run",
     "erun",
+    "vc_split",
 ]
 
 allowed_prefixes = rocq_prefixes + iris_prefixes + brick_prefixes
