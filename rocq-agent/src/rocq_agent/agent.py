@@ -5,12 +5,16 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+import rocq_pipeline.task_runner as RAT
+
 # import logfire
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, FunctionToolset, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
+from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager, rocq_cursor
+from rocq_pipeline import AgentBuilder
+from rocq_pipeline.agent import ProofAgent, TaskResult
 from rocq_pipeline.locator import FirstLemma
 
 # 'if-token-present' means nothing will be sent (and the example will work) if you don't have logfire configured
@@ -34,25 +38,14 @@ else:
     )
     model = OpenAIChatModel("gpt-4o-mini", provider=provider)
 
-brick_agent = Agent(
-    model,
-    # 'Be concise, reply with one sentence.' is enough for some models (like openai) to use
-    # the below tools appropriately, but others like anthropic and gemini require a bit more direction.
-    instructions="Be concise, reply with one sentence.",
-    deps_type=Deps,
-    retries=2,
-)
-
 
 class RocqResult(BaseModel):
     error: str | None
     goal: list[str] | None
 
 
-@brick_agent.tool
 async def current_goal(ctx: RunContext[Deps]) -> list[str] | None:
     """Get the focused goals."""
-    print("current_goal")
     result = ctx.deps.rocq_cursor.current_goal()
     print(result)
     if result is None:
@@ -60,7 +53,6 @@ async def current_goal(ctx: RunContext[Deps]) -> list[str] | None:
     return result.focused_goals
 
 
-@brick_agent.tool
 async def run_tactic(ctx: RunContext[Deps], tactic: str) -> RocqResult:
     """Run a tactic on the current goal
 
@@ -79,14 +71,12 @@ async def run_tactic(ctx: RunContext[Deps], tactic: str) -> RocqResult:
             return RocqResult(error=None, goal=[])
 
 
-@brick_agent.tool
 async def proof_script(ctx: RunContext[Deps]) -> list[str]:
     """Returns the current tactics in the proof."""
     prefix = ctx.deps.rocq_cursor.doc_prefix()[ctx.deps.rocq_start :]
     return [cmd.text for cmd in prefix if cmd.kind == "command"]
 
 
-@brick_agent.tool
 async def backtrack(ctx: RunContext[Deps], count: int) -> bool:
     """Backtrack before the last several commands within the proof.
 
@@ -105,14 +95,41 @@ async def backtrack(ctx: RunContext[Deps], count: int) -> bool:
     return True
 
 
-@brick_agent.tool
 async def qed(ctx: RunContext[Deps]) -> bool:
     """Finish the current proof.
 
     Returns false if the proof can not be completed as this point.
     """
-    result = ctx.deps.rocq_cursor.insert_command("Qed.", blanks=None, safe=False)
+    result = ctx.deps.rocq_cursor.query("Qed.", blanks=None, safe=False)
     return not isinstance(result, RocqCursor.Err)
+
+
+rocq_cursor_toolset = FunctionToolset(
+    [current_goal, run_tactic, proof_script, backtrack, qed]
+)
+
+
+class ToolAgent(ProofAgent):
+    agent = Agent(
+        model,
+        # 'Be concise, reply with one sentence.' is enough for some models (like openai) to use
+        # the below tools appropriately, but others like anthropic and gemini require a bit more direction.
+        instructions="Be concise, reply with one sentence.",
+        deps_type=Deps,
+        retries=2,
+    )
+
+    def prove(self, rc: RocqCursor) -> TaskResult:
+        self.agent.run_sync(
+            "Prove this Rocq theorem using the provided tools. To check whether your proof is complete, use the `qed` command.",
+            deps=Deps(rocq_cursor=rc, rocq_start=len(rc.doc_prefix())),
+        )
+
+        # Check whether the proof is complete
+        result = rc.insert_command("Qed.")
+        if isinstance(result, RocqCursor.Err):
+            return super().give_up(rc, "Failed to find a proof")
+        return super().finished(rc)
 
 
 async def amain():
@@ -146,3 +163,7 @@ async def amain():
 
 def main():
     asyncio.run(amain())
+
+
+def rat_main():
+    return RAT.agent_main(AgentBuilder.of_agent(ToolAgent))

@@ -20,7 +20,8 @@ rocq-doc-manager = { workspace = true }
 rocq-pipeline = { workspace = true }
 
 [project.scripts]
-rocq-agent = "rocq_agent.agent:main"
+rocq-agent-standalone = "rocq_agent.agent:main"
+rocq-agent = "rocq_agent.agent:rat_main"
 
 [tool.hatch.build.targets.wheel]
 include = ["src/rocq_agent"]
