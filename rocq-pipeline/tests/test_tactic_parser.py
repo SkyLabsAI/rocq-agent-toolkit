@@ -21,6 +21,12 @@ TEST_CASES: dict[str, list[str]] = {
     " ": [],  # Empty string after stripping whitespace
     ";": [],  # Only delimiters
     "  ; ; ": [],
+    "- rewrite x": ["rewrite x"],
+    "-": [],
+    "*": [],
+    "+": [],
+    "2:{ ": [],
+    "1: rewrite h": ["rewrite h"],
 }
 
 # 1. Get the list of input strings (keys) for the test ID/name

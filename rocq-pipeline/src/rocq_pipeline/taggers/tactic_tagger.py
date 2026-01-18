@@ -137,6 +137,9 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     return [chunk]
 
 
+PTRN_N_COLON = re.compile("[0-9]+:")
+
+
 def flatten_tactic_string(s: str) -> list[str]:
     """
     Flattens a nested tactic string into a flat list of individual tactics.
@@ -146,18 +149,25 @@ def flatten_tactic_string(s: str) -> list[str]:
     - 'try', 'first', 'solve', 'repeat' wrappers
     - ';' and '|' separators
     - 'tactic by script' separators (merged logic)
+    - 'n:{'
     """
 
     s_to_process = s.strip()
+    if not s_to_process:
+        return []
 
     # Handle Proof Terminator 'by ...'
-    if s_to_process.startswith("by ") and s_to_process.endswith("."):
+    elif s_to_process.startswith("by ") and s_to_process.endswith("."):
         content = s_to_process[3:-1].strip()
         s_to_process = (
             content[1:-1].strip()
             if (content.startswith("(") and content.endswith(")"))
             else content
         )
+    elif mtch := PTRN_N_COLON.match(s_to_process):
+        return flatten_tactic_string(s_to_process[mtch.end(0) :])
+    elif s_to_process[0] in "-+*{}":
+        return flatten_tactic_string(s_to_process[1:])
     elif s_to_process.startswith("by(") and s_to_process.endswith("."):
         content = s_to_process[2:-1].strip()
         s_to_process = (
