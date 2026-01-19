@@ -2,10 +2,12 @@ import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import CodeViewer from '@/components/base/codeViewer';
 import { Button } from '@/components/base/ui/button';
 import VisualizerModal from '@/components/visualizer-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import type { TaskOutput } from '@/types/types';
+import { getTaskDetailsById } from '@/services/dataservice';
+import type { TaskDetailsResponse, TaskOutput } from '@/types/types';
 
 import { StatusBadge } from './base/statusBadge';
 
@@ -27,6 +29,10 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
   const [expandedResults, setExpandedResults] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
+  const [taskDetails, setTaskDetails] = useState<TaskDetailsResponse | null>(
+    null
+  );
+  const [loadingTaskDetails, setLoadingTaskDetails] = useState(false);
 
   const handleVisualize = () => {
     setIsVisualizerOpen(true);
@@ -36,6 +42,28 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  // Fetch task details (including ground truth) when task changes
+  useEffect(() => {
+    if (task?.task_id) {
+      const fetchTaskDetails = async () => {
+        setLoadingTaskDetails(true);
+        try {
+          const details = await getTaskDetailsById(task.task_id);
+          setTaskDetails(details);
+        } catch (err) {
+          console.error('Failed to fetch task details:', err);
+          // Don't show error to user, just log it
+        } finally {
+          setLoadingTaskDetails(false);
+        }
+      };
+
+      fetchTaskDetails();
+    } else {
+      setTaskDetails(null);
+    }
+  }, [task?.task_id]);
 
   const toggleResultExpansion = () => {
     setExpandedResults(prev => !prev);
@@ -188,6 +216,33 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
                 </div>
               </div>
             )}
+
+          {/* Ground Truth */}
+          <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-5'>
+            <p className='font-noto-sans font-semibold text-base text-text mb-4'>
+              Ground Truth
+            </p>
+            {loadingTaskDetails ? (
+              <div className='flex items-center gap-2 py-8'>
+                <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-elevation-surface-overlay'></div>
+                <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                  Loading ground truth...
+                </p>
+              </div>
+            ) : taskDetails?.ground_truth ? (
+              <CodeViewer
+                code={taskDetails.ground_truth}
+                language='text'
+                filename='ground_truth.txt'
+              />
+            ) : (
+              <div className='text-center py-8'>
+                <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                  No ground truth available
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Task Result */}
           <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-5'>

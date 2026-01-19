@@ -22,6 +22,7 @@ export {
   getObservabilityLogsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsByIdMock,
   getTaskDetailsMock,
   refreshDataMock,
 } from './runs';

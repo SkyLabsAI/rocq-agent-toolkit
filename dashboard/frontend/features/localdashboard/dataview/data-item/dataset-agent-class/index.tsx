@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { TagsDisplay } from '@/components/tags-display';
 import { type AgentSummary } from '@/types/types';
 import { cn } from '@/utils/cn';
 

@@ -289,7 +289,10 @@ export const uploadTasksYamlMock = async (
   await simulateDelay(1000, 2000);
 
   // Extract dataset name from filename (remove .yaml extension)
-  const datasetId = file.name.replace(/\.ya?ml$/i, '').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+  const datasetId = file.name
+    .replace(/\.ya?ml$/i, '')
+    .replace(/[^a-z0-9-]/gi, '-')
+    .toLowerCase();
 
   // Simulate random number of tasks created
   const tasksCreated = Math.floor(Math.random() * 5000) + 1000;

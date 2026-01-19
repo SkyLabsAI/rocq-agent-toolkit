@@ -3,12 +3,17 @@
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
+import CodeViewer from '@/components/base/codeViewer';
 import { StatusBadge } from '@/components/base/statusBadge';
 import { Button } from '@/components/base/ui/button';
 import TaskDetailsModal from '@/features/task-details-modal';
 import { ChevronUpIcon } from '@/icons/chevron-up';
-import { getObservabilityLogs, getTaskDetails } from '@/services/dataservice';
-import type { TaskOutput } from '@/types/types';
+import {
+  getObservabilityLogs,
+  getTaskDetails,
+  getTaskDetailsById,
+} from '@/services/dataservice';
+import type { TaskDetailsResponse, TaskOutput } from '@/types/types';
 
 interface TaskDetailsPageContentProps {
   runId: string;
@@ -31,6 +36,10 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
     unknown
   > | null>(null);
   const [logsError, setLogsError] = useState<string | null>(null);
+  const [taskDetails, setTaskDetails] = useState<TaskDetailsResponse | null>(
+    null
+  );
+  const [loadingTaskDetails, setLoadingTaskDetails] = useState(false);
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -55,6 +64,28 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
 
     fetchTaskDetails();
   }, [runId, taskId]);
+
+  // Fetch task details (including ground truth) when taskId is available
+  useEffect(() => {
+    if (taskId) {
+      const fetchTaskDetailsResponse = async () => {
+        setLoadingTaskDetails(true);
+        try {
+          const details = await getTaskDetailsById(taskId);
+          setTaskDetails(details);
+        } catch (err) {
+          console.error('Failed to fetch task details:', err);
+          // Don't show error to user, just log it
+        } finally {
+          setLoadingTaskDetails(false);
+        }
+      };
+
+      fetchTaskDetailsResponse();
+    } else {
+      setTaskDetails(null);
+    }
+  }, [taskId]);
 
   const handleBack = () => {
     router.back();
@@ -281,6 +312,33 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
                 </div>
               </div>
             )}
+
+          {/* Ground Truth */}
+          <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-6'>
+            <p className='font-noto-sans font-semibold text-base text-text mb-4'>
+              Ground Truth
+            </p>
+            {loadingTaskDetails ? (
+              <div className='flex items-center justify-center gap-2 py-12'>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-elevation-surface-overlay'></div>
+                <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                  Loading ground truth...
+                </p>
+              </div>
+            ) : taskDetails?.ground_truth ? (
+              <CodeViewer
+                code={taskDetails.ground_truth}
+                language='text'
+                filename='ground_truth.txt'
+              />
+            ) : (
+              <div className='text-center py-12'>
+                <p className='font-noto-sans font-normal text-sm text-text-disabled'>
+                  No ground truth available
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Task Result */}
           <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded-lg p-6'>

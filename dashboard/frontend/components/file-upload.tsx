@@ -49,14 +49,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
     [disabled]
   );
 
-  const handleDragLeave = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-    },
-    []
-  );
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -73,8 +70,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       const files = Array.from(e.dataTransfer.files);
       const yamlFile = files.find(
-        file =>
-          file.name.endsWith('.yaml') || file.name.endsWith('.yml')
+        file => file.name.endsWith('.yaml') || file.name.endsWith('.yml')
       );
 
       if (yamlFile) {
@@ -149,13 +145,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
             </svg>
             <div className='mt-4 flex text-sm leading-6 text-text'>
               <span className='relative cursor-pointer rounded-md font-semibold text-primary-default focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-default focus-within:ring-offset-2 hover:text-primary-hovered'>
-                {selectedFile ? `Selected: ${selectedFile.name}` : 'Click to select'}
+                {selectedFile
+                  ? `Selected: ${selectedFile.name}`
+                  : 'Click to select'}
               </span>
               <p className='pl-1'>or drag and drop</p>
             </div>
             {selectedFile && (
               <div className='mt-2 text-xs text-text-success'>
-                File ready to upload: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                File ready to upload: {selectedFile.name} (
+                {(selectedFile.size / 1024).toFixed(2)} KB)
               </div>
             )}
             <p className='text-xs leading-5 text-text-disabled mt-2'>

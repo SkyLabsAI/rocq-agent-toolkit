@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
 import Toast from '@/components/base/ui/toast';
+import FileUpload from '@/components/file-upload';
 import { TagsDisplay } from '@/components/tags-display';
 import Layout from '@/layouts/common';
 import {
@@ -16,8 +17,8 @@ import {
 } from '@/services/dataservice';
 import { type TaskSet, type TaskSetResults } from '@/types/types';
 
-import FileUpload from '@/components/file-upload';
 import ProjectTaskDetailsModal from './task-details-modal';
+import TaskInfoModal from './task-info-modal';
 
 interface TaskSetDetailsPageProps {
   tasksetId: string;
@@ -82,6 +83,15 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     agentInstanceId: '',
     agentChecksum: '',
     agentName: '',
+  });
+  const [taskInfoModalState, setTaskInfoModalState] = useState<{
+    isOpen: boolean;
+    taskId: number;
+    taskName: string;
+  }>({
+    isOpen: false,
+    taskId: -1,
+    taskName: '',
   });
 
   // Track the last URL we generated to avoid syncing when we update it ourselves
@@ -1063,120 +1073,132 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                       </div>
                     </th>
                     {filteredAgentInstances.map(instance => {
-                    const stats = agentPerformance.get(
-                      instance.agent_instance_id
-                    );
-                    const successCount = stats?.success || 0;
-                    const totalCount = stats?.total || 0;
-                    return (
-                      <th
-                        key={instance.agent_instance_id}
-                        className='px-4 py-3 text-center text-sm font-semibold text-text min-w-[120px]'
-                        title={instance.agent_name}
-                      >
-                        <div className='flex flex-col items-center gap-1'>
-                          <span className='truncate max-w-[100px]'>
-                            {instance.agent_name}
-                          </span>
-                          {totalCount > 0 ? (
-                            <span className='text-xs font-medium text-text'>
-                              <span className='text-text-success'>
-                                {successCount}
-                              </span>
-                              /{totalCount}
-                            </span>
-                          ) : (
-                            <span className='text-xs text-text-disabled'>
-                              {instance.agent_instance_id.split('_').pop()}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody className='divide-y divide-elevation-surface-overlay'>
-                {filteredTasks.map(task => (
-                  <tr
-                    key={task.task_id}
-                    className='hover:bg-white/5 transition-colors'
-                    data-testid={`task-row-${task.task_id}`}
-                  >
-                    <td className='px-4 py-3 text-sm text-text font-mono sticky left-0 bg-elevation-surface z-10 border-r border-elevation-surface-overlay'>
-                      <div className='flex items-start gap-2'>
-                        <input
-                          type='checkbox'
-                          checked={selectedTasks.has(task.task_id)}
-                          onChange={() => handleTaskToggle(task.task_id)}
-                          onClick={e => e.stopPropagation()}
-                          className='mt-1 w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
-                        />
-                        <div className='flex flex-col gap-1 flex-1'>
-                          <span>{task.task_name}</span>
-                          {task.tags && Object.keys(task.tags).length > 0 && (
-                            <div className='mt-1'>
-                              <TagsDisplay
-                                tags={task.tags}
-                                maxVisible={3}
-                                modalTitle={`Tags for ${task.task_name}`}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    {filteredAgentInstances.map(instance => {
-                      const counts = getResultCounts(
-                        task.task_id,
+                      const stats = agentPerformance.get(
                         instance.agent_instance_id
                       );
-                      const handleCellClick = () => {
-                        if (counts && counts.total_count > 0) {
-                          setModalState({
-                            isOpen: true,
-                            taskId: task.task_id,
-                            agentInstanceId: instance.agent_instance_id,
-                            agentChecksum: instance.agent_checksum,
-                            agentName: instance.agent_name,
-                          });
-                        }
-                      };
-
+                      const successCount = stats?.success || 0;
+                      const totalCount = stats?.total || 0;
                       return (
-                        <td
+                        <th
                           key={instance.agent_instance_id}
-                          className={`px-4 py-3 text-center ${
-                            counts && counts.total_count > 0
-                              ? 'cursor-pointer hover:bg-white/10'
-                              : ''
-                          }`}
-                          onClick={handleCellClick}
+                          className='px-4 py-3 text-center text-sm font-semibold text-text min-w-[120px]'
+                          title={instance.agent_name}
                         >
-                          <div
-                            className='flex items-center justify-center'
-                            data-testid={`result-${task.task_id}-${instance.agent_instance_id}`}
-                          >
-                            {counts && counts.total_count > 0 ? (
-                              <span className='text-sm font-medium text-text'>
+                          <div className='flex flex-col items-center gap-1'>
+                            <span className='truncate max-w-[100px]'>
+                              {instance.agent_name}
+                            </span>
+                            {totalCount > 0 ? (
+                              <span className='text-xs font-medium text-text'>
                                 <span className='text-text-success'>
-                                  {counts.success_count}
+                                  {successCount}
                                 </span>
-                                /{counts.total_count}
+                                /{totalCount}
                               </span>
                             ) : (
-                              <span className='text-sm text-text-disabled'>
-                                -
+                              <span className='text-xs text-text-disabled'>
+                                {instance.agent_instance_id.split('_').pop()}
                               </span>
                             )}
                           </div>
-                        </td>
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className='divide-y divide-elevation-surface-overlay'>
+                  {filteredTasks.map(task => (
+                    <tr
+                      key={task.task_id}
+                      className='hover:bg-white/5 transition-colors'
+                      data-testid={`task-row-${task.task_id}`}
+                    >
+                      <td className='px-4 py-3 text-sm text-text font-mono sticky left-0 bg-elevation-surface z-10 border-r border-elevation-surface-overlay'>
+                        <div className='flex items-start gap-2'>
+                          <input
+                            type='checkbox'
+                            checked={selectedTasks.has(task.task_id)}
+                            onChange={() => handleTaskToggle(task.task_id)}
+                            onClick={e => e.stopPropagation()}
+                            className='mt-1 w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
+                          />
+                          <div className='flex flex-col gap-1 flex-1'>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                setTaskInfoModalState({
+                                  isOpen: true,
+                                  taskId: task.task_id,
+                                  taskName: task.task_name,
+                                });
+                              }}
+                              className='text-left hover:text-text-information transition-colors cursor-pointer'
+                            >
+                              {task.task_name}
+                            </button>
+                            {task.tags && Object.keys(task.tags).length > 0 && (
+                              <div className='mt-1'>
+                                <TagsDisplay
+                                  tags={task.tags}
+                                  maxVisible={3}
+                                  modalTitle={`Tags for ${task.task_name}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      {filteredAgentInstances.map(instance => {
+                        const counts = getResultCounts(
+                          task.task_id,
+                          instance.agent_instance_id
+                        );
+                        const handleCellClick = () => {
+                          if (counts && counts.total_count > 0) {
+                            setModalState({
+                              isOpen: true,
+                              taskId: task.task_id,
+                              agentInstanceId: instance.agent_instance_id,
+                              agentChecksum: instance.agent_checksum,
+                              agentName: instance.agent_name,
+                            });
+                          }
+                        };
+
+                        return (
+                          <td
+                            key={instance.agent_instance_id}
+                            className={`px-4 py-3 text-center ${
+                              counts && counts.total_count > 0
+                                ? 'cursor-pointer hover:bg-white/10'
+                                : ''
+                            }`}
+                            onClick={handleCellClick}
+                          >
+                            <div
+                              className='flex items-center justify-center'
+                              data-testid={`result-${task.task_id}-${instance.agent_instance_id}`}
+                            >
+                              {counts && counts.total_count > 0 ? (
+                                <span className='text-sm font-medium text-text'>
+                                  <span className='text-text-success'>
+                                    {counts.success_count}
+                                  </span>
+                                  /{counts.total_count}
+                                </span>
+                              ) : (
+                                <span className='text-sm text-text-disabled'>
+                                  -
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </>
           )}
         </div>
@@ -1197,6 +1219,19 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         agentInstanceId={modalState.agentInstanceId}
         agentChecksum={modalState.agentChecksum}
         agentName={modalState.agentName}
+      />
+
+      <TaskInfoModal
+        isOpen={taskInfoModalState.isOpen}
+        onClose={() =>
+          setTaskInfoModalState({
+            isOpen: false,
+            taskId: -1,
+            taskName: '',
+          })
+        }
+        taskId={taskInfoModalState.taskId}
+        taskName={taskInfoModalState.taskName}
       />
 
       {/* Upload Tasks Modal */}

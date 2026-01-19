@@ -1,4 +1,9 @@
-import type { AgentRun, RunDetailsResponse, TaskOutput } from '@/types/types';
+import type {
+  AgentRun,
+  RunDetailsResponse,
+  TaskDetailsResponse,
+  TaskOutput,
+} from '@/types/types';
 
 import { generateMockTaskOutput, simulateDelay } from './generators';
 
@@ -392,4 +397,40 @@ export const bulkAddTagsMock = async (request: {
 
   console.log('Bulk add tags response (MOCK):', mockResponse);
   return mockResponse;
+};
+
+/**
+ * Mock data for task details by task ID
+ */
+export const getTaskDetailsByIdMock = async (
+  taskId: number
+): Promise<TaskDetailsResponse> => {
+  await simulateDelay(200, 400);
+
+  const mockTask: TaskDetailsResponse = {
+    task_id: taskId,
+    task_name: `task_${taskId.toString().padStart(3, '0')}`,
+    task_kind: 'FullProofTask',
+    dataset_id: `dataset_${taskId.toString().padStart(3, '0')}`,
+    dataset: {
+      dataset_id: `dataset_${taskId.toString().padStart(3, '0')}`,
+      description: `Mock dataset for task ${taskId}`,
+      created_at: new Date().toISOString(),
+    },
+    ground_truth: `forall n : nat, n + 0 = n.
+
+Proof:
+  induction n.
+  - reflexivity.
+  - simpl. rewrite IHn. reflexivity.
+Qed.`,
+    tags: {
+      category: 'algebra',
+      difficulty: 'easy',
+      status: 'active',
+    },
+  };
+
+  console.log(`Fetched task details for task ${taskId} (MOCK):`, mockTask);
+  return mockTask;
 };

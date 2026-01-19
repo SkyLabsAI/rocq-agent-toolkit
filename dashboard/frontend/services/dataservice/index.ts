@@ -18,6 +18,7 @@ import {
   getProjectsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsByIdMock,
   getTaskDetailsMock,
   refreshDataMock,
   uploadTasksYamlMock,
@@ -28,6 +29,7 @@ import {
   type AgentSummary,
   type Benchmark,
   type RunDetailsResponse,
+  type TaskDetailsResponse,
   type TaskOutput,
   type TaskSet,
   type TaskSetResults,
@@ -203,6 +205,24 @@ const getTaskDetailsReal = async (
 export const getTaskDetails = USE_MOCK_DATA
   ? getTaskDetailsMock
   : getTaskDetailsReal;
+
+// ========================================
+// TASK DETAILS BY ID API
+// ========================================
+
+const getTaskDetailsByIdReal = async (
+  taskId: number
+): Promise<TaskDetailsResponse> => {
+  const encodedTaskId = encodeURIComponent(taskId);
+  const response = await axios.get(
+    `${config.DATA_API}/tasks/${encodedTaskId}/details`
+  );
+  return response.data as TaskDetailsResponse;
+};
+
+export const getTaskDetailsById = USE_MOCK_DATA
+  ? getTaskDetailsByIdMock
+  : getTaskDetailsByIdReal;
 
 // ========================================
 // OBSERVABILITY LOGS API
