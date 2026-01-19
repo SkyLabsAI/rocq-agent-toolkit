@@ -119,7 +119,7 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     Collect environment variables that represent tags.
 
     For each variable of the form TAG_FOO=bar, this returns an entry
-    {"foo": "bar"} in the resulting dict.
+    {"foo": "bar"} in the resulting dict for the run header.
     """
     tags: dict[str, str] = {}
     for key, value in os.environ.items():
@@ -134,7 +134,6 @@ def run_task(
     project: Tasks.Project,
     task: Tasks.Task,
     run_id: str,
-    tags: task_output.Tags,
     progress: util.ProgressCallback,
     parent_span_context: SpanContext | None = None,
 ) -> task_output.TaskOutput | None:
@@ -242,14 +241,7 @@ def run_task(
                 task_result_message=task_result.message,
             )
 
-        # For the time being taking id from the environment variable
-        # TODO: Update it to add automatically
-        # can be created based on the task input path
-        # or in a way that it can detect the changes in the task input path or dataset.
-        dataset_id = os.getenv("DATASET_NAME", "default")
-
-        for task_tag in task.tags:
-            tags.value.update({f"TASK_{task_tag}": task_tag})
+        task_tags = task_output.Tags({tag: tag for tag in task.tags})
 
         # TODO: avoid re-logging if we've already logged AgentClassProvenance
         # or AgentProvenance with this checksum.
@@ -271,15 +263,11 @@ def run_task(
             provenance={"provenance": instance_provenance},
         )
         return task_result.to_task_output(
-            run_id=run_id,
             task_kind=task.locator.task_kind(),
             task_id=task_id,
-            dataset_id=dataset_id,
             timestamp_utc=timestamp_iso_8601,
-            agent_cls_checksum=agent.cls_checksum(),
-            agent_checksum=agent.checksum(),
             trace_id=trace_id,
-            metadata=task_output.Metadata(tags=tags),
+            metadata=task_output.Metadata(tags=task_tags),
         )
 
 
@@ -332,7 +320,8 @@ class RunConfiguration:
     output_dir: Path
     trace: bool
     jobs: int
-    tags: task_output.Tags
+    dataset_id: str
+    run_tags: task_output.Tags
     deployment_env: Environment | None = None
 
 
@@ -353,7 +342,15 @@ def parse_arguments(
 
     init_logging(deployment_env)
 
-    tags = collect_env_tags()
+    dataset_id = None
+    if getattr(arguments, "task_file", None) is not None:
+        project_name = getattr(project, "name", "").strip()
+        if project_name:
+            dataset_id = project_name
+    if not dataset_id:
+        dataset_id = os.getenv("DATASET_NAME") or "default"
+
+    run_tags = collect_env_tags()
     return RunConfiguration(
         agent_builder,
         project,
@@ -362,7 +359,8 @@ def parse_arguments(
         arguments.output_dir,
         arguments.trace,
         arguments.jobs,
-        tags,
+        dataset_id,
+        run_tags,
         deployment_env,
     )
 
@@ -415,13 +413,47 @@ def run_config(config: RunConfiguration) -> bool:
             config.project,
             task,
             run_id,
-            tags=config.tags,
             progress=progress,
             parent_span_context=parent_span_context,
         )
 
     # Touch the file early to make sure that it is createable
     Path(tasks_result_file).touch()
+
+    def build_run_header() -> task_output.RunHeader:
+        prompt = config.tasks[0].prompt if config.tasks else None
+        try:
+            agent = config.agent_builder(None)
+        except Exception:
+            agent = config.agent_builder(prompt)
+
+        cls_checksum = agent.cls_checksum()
+        agent_checksum = agent.checksum()
+        class_provenance = agent.cls_provenance_json()
+        instance_provenance = agent.provenance_json()
+
+        return task_output.RunHeader(
+            type="run",
+            run_id=run_id,
+            dataset_id=config.dataset_id,
+            tags=config.run_tags,
+            agent_cls=task_output.AgentClassInfo(
+                cls_checksum=cls_checksum,
+                cls_name=agent.cls_name(),
+                cls_provenance={"cls_provenance": class_provenance},
+            ),
+            agent=task_output.AgentInfo(
+                cls_checksum=cls_checksum,
+                checksum=agent_checksum,
+                name=agent.name(),
+                provenance={"provenance": instance_provenance},
+            ),
+        )
+
+    run_header = build_run_header()
+    with open(tasks_result_file, "a", encoding="utf8") as f:
+        json.dump(run_header.to_json(), f)
+        f.write("\n")
 
     def is_success(result: task_output.TaskOutput | None) -> bool:
         return result is not None and str(result.status.value.kind) == "Success"
