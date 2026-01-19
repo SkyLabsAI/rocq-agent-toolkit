@@ -49,13 +49,16 @@ class Rollout[T_co](ABC):
         result: U_co | None = field(kw_only=True, default=None)
 
     @abstractmethod
-    def next(self, min_logprob: float = -float("inf")) -> Rollout.Approx[T_co]:
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         """
-        strat.next(min_prob=math.log(0.5))
-        - Rollout.Delay(math.log(0.45)) -- i don't have anything with higher prob than 0.5, ask me again when you want something less 0.45
-        - Rollout.Result(math.log(0.6), act) -- action has probability 0.6
+        strat.next(min_logprob=math.log(0.5))
+        - Rollout.Approx(math.log(0.45), None) -- No new elements with higher probability
+          than 0.45, ask again when you want something less 0.45
+        - Rollout.Approx(math.log(0.6), act) -- action has probability 0.6
 
-        An implementation is only allowed to return `Delay(Pr)` if `Pr < min_logprob`, otherwise, it must produce a value, or raise `StopIteration`.
+        An implementation is only allowed to return `None` in the `result` field
+        if `Pr < min_logprob`, otherwise, it must produce a value, or raise
+        `StopIteration`.
 
         raises `StopIteration` when complete
         """
@@ -73,7 +76,7 @@ class Rollout[T_co](ABC):
 
 class EmptyRollout[T_co](Rollout[T_co]):
     @override
-    def next(self, min_logprob: float = 0) -> Rollout.Approx[T_co]:
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         raise StopIteration()
 
 
@@ -118,7 +121,7 @@ class IteratorRollout[T_co](Rollout[T_co]):
         self._values = iterator
         self._last: float | None = None
 
-    def next(self, min_logprob: float = -float("inf")) -> Rollout.Approx[T_co]:
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         if self._last is not None and min_logprob > self._last:
             return Rollout.Approx(logprob=self._last, result=None)
         result = next(self._values)
@@ -135,22 +138,28 @@ class IteratorRollout[T_co](Rollout[T_co]):
 
 
 class IterableRollout[T_co](Rollout[T_co]):
+    """Rolls out the values from the iterable.
+    The scores are expected to be in decreasing order.
+    """
+
     def __init__(self, iterable: Iterable[tuple[float, T_co]]) -> None:
         self._values = iter(iterable)
 
     @override
-    def next(self, min_logprob: float = 0) -> Rollout.Approx[T_co]:
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         logprob, act = next(self._values)
         return Rollout.Approx(logprob=logprob, result=act)
 
 
-class MapRollout[T_co, U](Rollout[U]):
-    def __init__(self, base: Rollout[T_co], fn: Callable[[T_co], U]) -> None:
+class MapRollout[T_co, U_co](Rollout[U_co]):
+    """Change the values of a Rollout, but not their scores"""
+
+    def __init__(self, base: Rollout[T_co], fn: Callable[[T_co], U_co]) -> None:
         self._base = base
         self._fn = fn
 
     @override
-    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U]:
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U_co]:
         result = self._base.next(min_logprob=min_logprob)
         if result.result is None:
             return Rollout.Approx(logprob=result.logprob, result=None)
@@ -160,7 +169,9 @@ class MapRollout[T_co, U](Rollout[U]):
             )
 
 
-class InterleaveRollout[U](Rollout[U]):
+class InterleaveRollout[U_co](Rollout[U_co]):
+    """Interleave the results from many rollouts in a fair way."""
+
     class Node[V]:
         def __init__(
             self,
@@ -185,15 +196,15 @@ class InterleaveRollout[U](Rollout[U]):
                 return False
             return self.owner < other.owner
 
-    def __init__(self, children: list[Rollout[U]]) -> None:
-        self._queue: list[InterleaveRollout.Node[U]] = []
+    def __init__(self, children: list[Rollout[U_co]]) -> None:
+        self._queue: list[InterleaveRollout.Node[U_co]] = []
 
         for i, rollout in enumerate(children):
             # We pass 0.0 as the highest probability to allow `Strategy`s
             # to only advertise their certainty
             self._push_next(i, rollout, 0.0)
 
-    def _push_next(self, i: int, rollout: Rollout[U], min_logprob=0.0) -> float:
+    def _push_next(self, i: int, rollout: Rollout[U_co], min_logprob=NEG_INF) -> float:
         try:
             result = rollout.next(min_logprob)
         except StopIteration:
@@ -210,11 +221,11 @@ class InterleaveRollout[U](Rollout[U]):
         return result.logprob
 
     @override
-    def next(self, min_logprob: float = -float("inf")) -> Rollout.Approx[U]:
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U_co]:
         # All entries inside this will have `action = None`
         # Also, the highest item will be first
-        stashed: list[InterleaveRollout.Node[U]] = []
-        candidate: InterleaveRollout.Node[U] | None = None
+        stashed: list[InterleaveRollout.Node[U_co]] = []
+        candidate: InterleaveRollout.Node[U_co] | None = None
         highest: float = min_logprob
         while True:
             try:
@@ -284,8 +295,8 @@ class InterleaveRollout[U](Rollout[U]):
                 return Rollout.Approx(logprob=highest, result=None)
             raise StopIteration()
 
-    def stop(self) -> dict[int, Rollout[U]]:
-        def mk(logprob: float, act: U | None, rest: Rollout[U]) -> Rollout[U]:
+    def stop(self) -> dict[int, Rollout[U_co]]:
+        def mk(logprob: float, act: U_co | None, rest: Rollout[U_co]) -> Rollout[U_co]:
             if act is None:
                 return rest
             else:
@@ -296,7 +307,9 @@ class InterleaveRollout[U](Rollout[U]):
         return result
 
 
-class StagedRollout[T](Rollout[T]):
+class StagedRollout[T_co](Rollout[T_co]):
+    """Interleave the results of two `Rollout`s by prioritizing the first up until some cutoff."""
+
     @dataclass(slots=True)
     class YieldUntil[U](Rollout[U]):
         active: Rollout[U]
@@ -384,12 +397,15 @@ class StagedRollout[T](Rollout[T]):
                     return result
 
     def __init__(
-        self, r1: Rollout[T], r2: Callable[[], Rollout[T]], cutoff: float | None = None
+        self,
+        r1: Rollout[T_co],
+        r2: Callable[[], Rollout[T_co]],
+        cutoff: float | None = None,
     ) -> None:
-        self._state: Rollout[T] = StagedRollout.YieldUntil(
+        self._state: Rollout[T_co] = StagedRollout.YieldUntil(
             active=r1, waiting=r2, cutoff=cutoff, parent=self
         )
 
     @override
-    def next(self, min_logprob: float = -float("inf")) -> Rollout.Approx[T]:
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         return self._state.next(min_logprob=min_logprob)
