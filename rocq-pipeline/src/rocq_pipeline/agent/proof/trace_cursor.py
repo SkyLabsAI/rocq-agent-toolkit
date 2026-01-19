@@ -22,7 +22,8 @@ def _trace_log(
     exception: Callable[[Any], Any] | None = None,
 ):
     fn_input = (lambda _, args: args) if inputs is None else inputs
-    fn_output = (lambda x: x) if output is None else output
+    # `to_json` comes from DataClassJsonMixin
+    fn_output = (lambda x: x.to_json()) if output is None else output
     fn_except = (lambda x: x) if exception is None else exception
 
     def wrap(func: Callable):
@@ -84,14 +85,14 @@ class TracingCursor(RocqCursor):
         return TracingCursor(result._the_rdm, result._cursor, verbose=self._verbose)
 
     @override
-    @_trace_log(after=True, inputs=lambda _, args: args["text"])
+    @_trace_log(after=True, output=_json_result, inputs=lambda _, args: args["text"])
     def insert_command(
         self, text: str, blanks: str | None = "\n", safe: bool = True
     ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
         return super().insert_command(text, blanks, safe)
 
     @override
-    @_trace_log(after=True, inputs=lambda _, args: args["text"])
+    @_trace_log(after=True, output=_json_result, inputs=lambda _, args: args["text"])
     def run_command(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
         return super().run_command(text)
 
@@ -101,38 +102,38 @@ class TracingCursor(RocqCursor):
         return suffix[0] if suffix else None
 
     @override
-    @_trace_log(after=True, inputs=_next_command)
+    @_trace_log(after=True, output=_json_result, inputs=_next_command)
     def run_step(
         self,
     ) -> RocqCursor.CommandData | None | RocqCursor.Err[RocqCursor.CommandError | None]:
         return super().run_step()
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log(output=_json_result, inputs=lambda _, args: args["text"])
     def query(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
         return super().query(text)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log(output=_json_result, inputs=lambda _, args: args["text"])
     def query_json(
         self, text: str, *, index: int
     ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
         return super().query_json(text, index=index)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log(output=_json_result, inputs=lambda _, args: args["text"])
     def query_json_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[Any] | RocqCursor.Err[None]:
         return super().query_json_all(text, indices=indices)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log(output=_json_result, inputs=lambda _, args: args["text"])
     def query_text(self, text: str, *, index: int) -> str | RocqCursor.Err[None]:
         return super().query_text(text, index=index)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log(output=_json_result, inputs=lambda _, args: args["text"])
     def query_text_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[str] | RocqCursor.Err[None]:
