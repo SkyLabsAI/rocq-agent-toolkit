@@ -156,8 +156,14 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         project = Tasks.Project(name="tasks", git_url="", git_commit="", path=Path("."))
     elif arguments.task_file is not None:
         task_file = Tasks.TaskFile.from_file(arguments.task_file)
-        project = task_file.project
-        tasks = task_file.tasks
+        # For backward compatibility, use first bundle if single-project file
+        if len(task_file.bundles) == 1:
+            project = task_file.project
+            tasks = task_file.tasks
+        else:
+            # For multi-project files, use first project and all tasks
+            project = task_file.bundles[0].project
+            tasks = task_file.get_all_tasks()
     else:
         print("unspecified task")
         return False

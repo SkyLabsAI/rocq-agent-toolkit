@@ -13,6 +13,8 @@ from pydantic import (
     ConfigDict,
     field_serializer,
     field_validator,
+    model_serializer,
+    model_validator,
 )
 from pydantic.fields import Field
 
@@ -109,52 +111,142 @@ class Task(BaseModel):
         return str(locator)
 
 
-class TaskFile(BaseModel):
+class TaskBundle(BaseModel):
     project: Project
     tasks: list[Task]
 
+    @field_serializer("tasks")
+    def serialize_tasks(self, tasks: list[Task]):
+        return sorted(tasks, key=lambda t: (t.file, t.name, str(t.locator)))
+
+    @classmethod
+    def merge(cls, bundles: list[TaskBundle]) -> list[TaskBundle]:
+        """Merge bundles with the same project and deduplicate tasks."""
+        # Use hashable tuple key for O(1) lookups (Project isn't hashable due to Path)
+        # Key: (name, git_url, git_commit, path_str)
+        # Value: (Project object, list of tasks)
+        project_data: dict[tuple[str, str, str, str], tuple[Project, list[Task]]] = {}
+
+        for bundle in bundles:
+            # Create hashable key from project fields
+            project_key = (
+                bundle.project.name,
+                bundle.project.git_url,
+                bundle.project.git_commit,
+                str(bundle.project.path),
+            )
+
+            if project_key not in project_data:
+                # New project
+                project_data[project_key] = (bundle.project, [])
+
+            project, tasks = project_data[project_key]
+
+            # Merge tasks, deduplicating by Task.get_id()
+            seen_task_ids = {task.get_id() for task in tasks}
+
+            for task in bundle.tasks:
+                task_id = task.get_id()
+                if task_id not in seen_task_ids:
+                    tasks.append(task)
+                    seen_task_ids.add(task_id)
+
+        # Create merged bundles
+        return [
+            cls(project=project, tasks=tasks)
+            for project, tasks in project_data.values()
+        ]
+
+
+class TaskFile(BaseModel):
+    bundles: list[TaskBundle]
+
+    @model_validator(mode="after")
+    def merge_bundles(self) -> TaskFile:
+        """Merge bundles with the same project and deduplicate tasks."""
+        merged_bundles = TaskBundle.merge(self.bundles)
+        # Use model_construct to avoid re-validation (which would cause recursion)
+        return self.model_construct(bundles=merged_bundles)
+
+    @model_serializer
+    def serialize_model(self) -> list[dict[str, Any]]:
+        """Serialize TaskFile as a list of TaskBundle data (on-disk format)."""
+        sorted_bundles = sorted(self.bundles, key=lambda b: b.project.get_id())
+        # Tasks are already sorted by TaskBundle serializer
+        return [bundle.model_dump() for bundle in sorted_bundles]
+
     @classmethod
     def from_file(cls, file: Literal["-"] | Path) -> TaskFile:
-        data: dict[str, Any] = {}
-
+        # Load raw data
+        raw_data: Any
         if file == "-":
-            data = json.load(sys.stdin)
+            raw_data = json.load(sys.stdin)
         else:
             with open(file, encoding="utf-8") as f:
                 if file.suffix in [".yaml", ".yml"]:
-                    data = yaml.safe_load(f)
+                    raw_data = yaml.safe_load(f)
                 elif file.suffix in [".json"]:
-                    data = json.load(f)
+                    raw_data = json.load(f)
                 else:
                     raise ValueError(
                         "Invalid tasks file extension. Expected `.json`, "
                         "`.yaml`, or `.yml`"
                     )
 
-        task_file = TaskFile.model_validate(data)
+        # Determine format and convert to internal format
+        bundles_data: list[dict[str, Any]]
+        if isinstance(raw_data, list):
+            # New format: list of TaskBundle data
+            bundles_data = raw_data
+        elif isinstance(raw_data, dict):
+            if "bundles" in raw_data:
+                # Legacy new format: dict with "bundles" key
+                bundles_data = raw_data["bundles"]
+            elif "project" in raw_data and "tasks" in raw_data:
+                # Old format: single project with tasks
+                bundle = TaskBundle(
+                    project=raw_data["project"], tasks=raw_data["tasks"]
+                )
+                bundles_data = [bundle.model_dump()]
+            else:
+                raise ValueError(
+                    "Invalid task file format. Expected either a list of bundles (new format), "
+                    "a dict with 'bundles' key, or a dict with 'project' and 'tasks' (old format)."
+                )
+        else:
+            raise ValueError(f"Expected list or dict, got {type(raw_data).__name__}")
+
+        task_file = TaskFile.model_validate({"bundles": bundles_data})
         file_dir = Path(".") if file == "-" else file.parent
-        path = file_dir / task_file.project.path
-        task_file.project.path = Path(os.path.normpath(path))
+
+        # Resolve paths for all projects
+        for bundle in task_file.bundles:
+            path = file_dir / bundle.project.path
+            bundle.project.path = Path(os.path.normpath(path))
 
         return task_file
 
     def to_file(self, file: Literal["-"] | Path) -> None:
-        project = copy.deepcopy(self.project)
-        tasks = sorted(self.tasks, key=lambda t: (t.file, t.name, str(t.locator)))
-        task_file = TaskFile(project=project, tasks=tasks)
+        # Create a copy to avoid modifying the original
+        bundles = copy.deepcopy(self.bundles)
 
         file_dir = Path(".") if file == "-" else file.parent
-        task_file.project.path = task_file.project.path.resolve().relative_to(
-            file_dir.resolve(), walk_up=True
-        )
 
-        data = task_file.model_dump(exclude_none=True)
+        # Relativize paths for all projects
+        for bundle in bundles:
+            bundle.project.path = bundle.project.path.resolve().relative_to(
+                file_dir.resolve(), walk_up=True
+            )
+
+        task_file = TaskFile(bundles=bundles)
+        # Serialize as list (on-disk format)
+        data = task_file.model_dump(mode="json")
 
         if file == "-":
             json.dump(data, sys.stdout, indent=2)
             sys.stdout.write("\n")
         else:
-            with open(file, "w") as f:
+            with open(file, "w", encoding="utf-8") as f:
                 if file.suffix in [".yaml", ".yml"]:
                     yaml.safe_dump(data, f, sort_keys=False)
                 elif file.suffix in [".json"]:
@@ -166,8 +258,15 @@ class TaskFile(BaseModel):
                     )
 
     def filter_tags(self, tag: str) -> TaskFile:
-        tasks = [t for t in self.tasks if tag in t.get_tags()]
-        return TaskFile(project=self.project, tasks=tasks)
+        """Filter tasks across all bundles by tag, removing empty bundles."""
+        filtered_bundles = []
+        for bundle in self.bundles:
+            filtered_tasks = [t for t in bundle.tasks if tag in t.get_tags()]
+            if filtered_tasks:
+                filtered_bundles.append(
+                    TaskBundle(project=bundle.project, tasks=filtered_tasks)
+                )
+        return TaskFile(bundles=filtered_bundles)
 
     @classmethod
     def supported_extensions(cls) -> list[str]:
@@ -176,3 +275,39 @@ class TaskFile(BaseModel):
     @classmethod
     def valid_extension(cls, file: Path) -> bool:
         return file.suffix in TaskFile.supported_extensions()
+
+    @classmethod
+    def from_bundles(cls, bundles: list[tuple[Project, list[Task]]]) -> TaskFile:
+        """Convenience method to create TaskFile from (project, tasks) pairs."""
+        task_bundles = [
+            TaskBundle(project=project, tasks=tasks) for project, tasks in bundles
+        ]
+        return TaskFile(bundles=task_bundles)
+
+    def get_all_tasks(self) -> list[Task]:
+        """Get all tasks from all bundles. Useful for backward compatibility."""
+        return [task for bundle in self.bundles for task in bundle.tasks]
+
+    def get_all_projects(self) -> list[Project]:
+        """Get all unique projects from bundles."""
+        return [bundle.project for bundle in self.bundles]
+
+    @property
+    def project(self) -> Project:
+        """Get the project from a single-project TaskFile. Raises ValueError if multiple projects."""
+        if len(self.bundles) != 1:
+            raise ValueError(
+                f"TaskFile has {len(self.bundles)} projects. "
+                "Use .bundles or .get_all_projects() for multi-project files."
+            )
+        return self.bundles[0].project
+
+    @property
+    def tasks(self) -> list[Task]:
+        """Get the tasks from a single-project TaskFile. Raises ValueError if multiple projects."""
+        if len(self.bundles) != 1:
+            raise ValueError(
+                f"TaskFile has {len(self.bundles)} projects. "
+                "Use .bundles or .get_all_tasks() for multi-project files."
+            )
+        return self.bundles[0].tasks
