@@ -25,6 +25,7 @@ from backend.dal import (
     agent_class_exists,
     agent_instance_exists,
     bulk_add_tags_to_tasks,
+    export_dataset_tasks_yaml_from_db,
     get_agent_class_provenance_from_db,
     get_agent_instance_provenance_from_db,
     get_agent_instances_for_dataset_from_db,
@@ -39,13 +40,13 @@ from backend.dal import (
     get_runs_by_agent_instance_and_dataset_from_db,
     get_runs_by_agent_instance_from_db,
     get_runs_for_agent_and_task_from_db,
+    get_task_details_from_db,
     get_task_name_from_db,
     get_task_result_from_db,
     get_tasks_for_dataset_from_db,
     get_unique_tags_from_db,
-    export_dataset_tasks_yaml_from_db,
-    ingest_task_results,
     ingest_task_dataset_from_yaml,
+    ingest_task_results,
     list_agent_instances_from_db,
     list_agents_from_db,
     list_datasets_from_db,
@@ -69,8 +70,9 @@ from backend.models import (
     ObservabilityLogsResponse,
     RunDetailsResponse,
     RunInfo,
-    TaskDatasetIngestionResponse,
     TagsResponse,
+    TaskDatasetIngestionResponse,
+    TaskDetailsResponse,
     TaskResult,
 )
 from backend.s3 import upload_bytes_to_s3
@@ -623,6 +625,44 @@ async def list_tasks_for_dataset(
         raise HTTPException(
             status_code=500,
             detail=f"Error fetching tasks for dataset '{dataset_id}': {str(e)}",
+        ) from e
+
+
+@app.get("/api/tasks/{task_id}/details", response_model=TaskDetailsResponse)
+async def get_task_details(
+    task_id: int,
+    session: Session = Depends(get_session),
+) -> TaskDetailsResponse:
+    """
+    Get a single task's details by task ID.
+
+    Args:
+        task_id: The database task ID (integer).
+
+    Returns:
+        TaskDetailsResponse containing full task info, tags, and dataset details.
+    """
+    try:
+        result = get_task_details_from_db(session, task_id)
+
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task with id '{task_id}' not found",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error fetching task details for task_id=%d: %s",
+            task_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching task details: {str(e)}",
         ) from e
 
 

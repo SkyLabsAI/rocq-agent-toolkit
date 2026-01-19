@@ -15,10 +15,10 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
 
+import yaml
 from sqlalchemy import desc
 from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, delete, select
-import yaml
 
 from backend.db_models import (
     AgentClassProvenance,
@@ -46,6 +46,7 @@ from backend.models import (
     RunDetailsResponse,
     RunInfo,
     TagsResponse,
+    TaskDetailsResponse,
     TaskInfo,
     TaskMetadata,
     TaskResult,
@@ -93,9 +94,6 @@ def get_or_create_dataset(
     session: Session,
     name: str,
     description: str | None = None,
-    git_url: str | None = None,
-    git_commit: str | None = None,
-    path: str | None = None,
 ) -> Dataset:
     """
     Fetch a Dataset by name or create it if missing.
@@ -108,21 +106,9 @@ def get_or_create_dataset(
     if dataset:
         if description and dataset.description != description:
             dataset.description = description
-        if git_url and dataset.git_url != git_url:
-            dataset.git_url = git_url
-        if git_commit and dataset.git_commit != git_commit:
-            dataset.git_commit = git_commit
-        if path and dataset.path != path:
-            dataset.path = path
         return dataset
 
-    dataset = Dataset(
-        name=name,
-        description=description,
-        git_url=git_url,
-        git_commit=git_commit,
-        path=path,
-    )
+    dataset = Dataset(name=name, description=description)
     session.add(dataset)
     session.flush()
     return dataset
@@ -133,7 +119,7 @@ def get_or_create_task(
     task_name: str,
     dataset: Dataset,
     kind: str | None = None,
-    ground_truth: Any | None = None,
+    ground_truth: str | None = None,
 ) -> Task:
     """Fetch a Task by (name, dataset_id) or create it if missing.
 
@@ -250,9 +236,7 @@ def export_dataset_tasks_yaml_from_db(
             locator = ""
 
         task_tags = get_tags_for_task(session, task.id) if task.id else {}
-        yaml_tags = sorted(
-            key for key, value in task_tags.items() if key == value
-        )
+        yaml_tags = sorted(key for key, value in task_tags.items() if key == value)
 
         task_entry: dict[str, Any] = {
             "file": file_path,
@@ -268,12 +252,6 @@ def export_dataset_tasks_yaml_from_db(
         tasks_payload.append(task_entry)
 
     project_payload: dict[str, Any] = {"name": dataset.name}
-    if dataset.git_url:
-        project_payload["git_url"] = dataset.git_url
-    if dataset.git_commit:
-        project_payload["git_commit"] = dataset.git_commit
-    if dataset.path:
-        project_payload["path"] = dataset.path
 
     payload = {
         "project": project_payload,
@@ -283,7 +261,9 @@ def export_dataset_tasks_yaml_from_db(
     return yaml.safe_dump(payload, sort_keys=False)
 
 
-def _sync_task_tags(session: Session, task: Task, desired_tags: set[str]) -> tuple[int, int]:
+def _sync_task_tags(
+    session: Session, task: Task, desired_tags: set[str]
+) -> tuple[int, int]:
     """
     Sync task tags (key=value) to the desired set.
 
@@ -302,7 +282,7 @@ def _sync_task_tags(session: Session, task: Task, desired_tags: set[str]) -> tup
     managed_existing_ids: dict[str, int] = {
         key: tag_id
         for tag_id, key, value in existing_rows
-        if key == value
+        if tag_id is not None and key == value
     }
 
     tags_added = 0
@@ -328,7 +308,7 @@ def _sync_task_tags(session: Session, task: Task, desired_tags: set[str]) -> tup
     if to_remove_ids:
         session.exec(
             delete(TaskTagLink).where(
-                TaskTagLink.task_id == task.id,
+                cast(ColumnElement[bool], TaskTagLink.task_id == task.id),
                 TaskTagLink.tag_id.in_(to_remove_ids),  # type: ignore[attr-defined]
             )
         )
@@ -364,21 +344,11 @@ def ingest_task_dataset_from_yaml(
     if not dataset_name:
         raise ValueError("Missing 'project.name' in YAML payload")
 
-    dataset_git_url = project.get("git_url")
-    dataset_git_commit = project.get("git_commit")
-    dataset_path = project.get("path")
-
     tasks = payload.get("tasks", [])
     if not isinstance(tasks, list):
         raise ValueError("YAML 'tasks' must be a list")
 
-    dataset = get_or_create_dataset(
-        session,
-        name=str(dataset_name),
-        git_url=str(dataset_git_url) if dataset_git_url else None,
-        git_commit=str(dataset_git_commit) if dataset_git_commit else None,
-        path=str(dataset_path) if dataset_path else None,
-    )
+    dataset = get_or_create_dataset(session, name=str(dataset_name))
 
     tasks_created = 0
     tasks_updated = 0
@@ -392,9 +362,7 @@ def ingest_task_dataset_from_yaml(
         file_path = task_entry.get("file")
         locator = task_entry.get("locator")
         if not file_path or not locator:
-            raise ValueError(
-                "Each task entry must include 'file' and 'locator' fields"
-            )
+            raise ValueError("Each task entry must include 'file' and 'locator' fields")
 
         task_name = f"{file_path}#{locator}"
         task_kind = task_entry.get("kind")
@@ -412,7 +380,10 @@ def ingest_task_dataset_from_yaml(
                 dataset_id=dataset.id,
             )
             if "ground_truth" in task_entry:
-                existing_task.ground_truth = task_entry.get("ground_truth")
+                raw_ground_truth = task_entry.get("ground_truth")
+                existing_task.ground_truth = (
+                    None if raw_ground_truth is None else str(raw_ground_truth)
+                )
             session.add(existing_task)
             session.flush()
             created = True
@@ -422,7 +393,10 @@ def ingest_task_dataset_from_yaml(
                 existing_task.kind = task_kind
                 task_changed = True
             if "ground_truth" in task_entry:
-                ground_truth_value = task_entry.get("ground_truth")
+                raw_ground_truth = task_entry.get("ground_truth")
+                ground_truth_value = (
+                    None if raw_ground_truth is None else str(raw_ground_truth)
+                )
                 if existing_task.ground_truth != ground_truth_value:
                     existing_task.ground_truth = ground_truth_value
                     task_changed = True
@@ -433,14 +407,10 @@ def ingest_task_dataset_from_yaml(
                 desired_tags: set[str] = set()
             elif isinstance(raw_tags, list):
                 desired_tags = {
-                    str(tag).strip()
-                    for tag in raw_tags
-                    if str(tag).strip()
+                    str(tag).strip() for tag in raw_tags if str(tag).strip()
                 }
             else:
-                raise ValueError(
-                    f"Task entry at index {idx} has invalid 'tags' type"
-                )
+                raise ValueError(f"Task entry at index {idx} has invalid 'tags' type")
 
             added_count, removed_count = _sync_task_tags(
                 session, existing_task, desired_tags
@@ -1144,6 +1114,7 @@ def get_run_details_from_db(
             task_kind = (task.kind or "") if task else ""
             # Use stored task_name or fall back to task.name
             task_name = tr_db.task_name or (task.name if task else "")
+            ground_truth = task.ground_truth if task else None
             # Get database task ID
             task_db_id = tr_db.task_id
 
@@ -1180,6 +1151,7 @@ def get_run_details_from_db(
                     task_kind=task_kind,
                     task_id=task_db_id,  # Database integer ID
                     task_name=task_name,  # Logical task identifier string
+                    ground_truth=ground_truth,
                     trace_id=tr_db.trace_id,
                     dataset_id=dataset_name,
                     timestamp_utc=tr_db.timestamp_utc.isoformat(),
@@ -1247,9 +1219,6 @@ def list_datasets_from_db(session: Session) -> list[DatasetInfo]:
             DatasetInfo(
                 dataset_id=ds.name,
                 description=ds.description,
-                git_url=ds.git_url,
-                git_commit=ds.git_commit,
-                path=ds.path,
                 created_at=created_at_str,
             )
         )
@@ -1992,7 +1961,6 @@ def get_tasks_for_dataset_from_db(
                 task_name=task.name,
                 task_kind=task.kind,
                 dataset_id=dataset_id,
-                ground_truth=task.ground_truth,
                 tags=task_tags,
             )
         )
@@ -2001,6 +1969,52 @@ def get_tasks_for_dataset_from_db(
         dataset_id=dataset_id,
         tasks=task_infos,
         total_tasks=len(task_infos),
+    )
+
+
+def get_task_details_from_db(
+    session: Session, task_id: int
+) -> TaskDetailsResponse | None:
+    """
+    Get a single task's details including tags and dataset info.
+
+    Args:
+        task_id: The database task ID (integer).
+
+    Returns:
+        TaskDetailsResponse with task details, or None if not found.
+    """
+    task = session.get(Task, task_id)
+    if task is None:
+        return None
+
+    dataset_name: str | None = None
+    dataset_info: DatasetInfo | None = None
+    if task.dataset_id is not None:
+        dataset = session.get(Dataset, task.dataset_id)
+        if dataset is not None:
+            dataset_name = dataset.name
+            created_at_str = (
+                dataset.created_at.isoformat()
+                if dataset.created_at is not None
+                else None
+            )
+            dataset_info = DatasetInfo(
+                dataset_id=dataset.name,
+                description=dataset.description,
+                created_at=created_at_str,
+            )
+
+    task_tags = get_tags_for_task(session, task_id)
+
+    return TaskDetailsResponse(
+        task_id=task.id or 0,
+        task_name=task.name,
+        task_kind=task.kind,
+        dataset_id=dataset_name,
+        dataset=dataset_info,
+        ground_truth=task.ground_truth,
+        tags=task_tags,
     )
 
 
@@ -2251,6 +2265,7 @@ def get_task_result_from_db(
         task_name=task_name,
         trace_id=tr_db.trace_id,
         dataset_id=dataset_name,
+        ground_truth=task.ground_truth,
         timestamp_utc=tr_db.timestamp_utc.isoformat(),
         agent_cls_checksum=agent_cls_checksum,
         agent_checksum=agent_checksum,

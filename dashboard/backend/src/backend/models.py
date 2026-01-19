@@ -63,6 +63,7 @@ class TaskResult(BaseModel):
     dataset_id: str | None = (
         None  # Can be None for backward compatibility with older ingestions.
     )
+    ground_truth: str | None = None
     timestamp_utc: str
     agent_cls_checksum: str
     agent_checksum: str
@@ -252,9 +253,6 @@ class DatasetInfo(BaseModel):
 
     dataset_id: str
     description: str | None = None
-    git_url: str | None = None
-    git_commit: str | None = None
-    path: str | None = None
     created_at: str | None = None
 
 
@@ -305,7 +303,18 @@ class TaskInfo(BaseModel):
     task_name: str  # Logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
     task_kind: str | None = None
     dataset_id: str | None = None
-    ground_truth: Any | None = None
+    tags: dict[str, str] = {}  # Task-level tags (extracted from TASK_ prefixed tags)
+
+
+class TaskDetailsResponse(BaseModel):
+    """Complete task details for a single task (no run results)."""
+
+    task_id: int  # Database primary key
+    task_name: str  # Logical task identifier (e.g., "ArrayCopy.v#lemma:test_ok")
+    task_kind: str | None = None
+    dataset_id: str | None = None
+    dataset: DatasetInfo | None = None
+    ground_truth: str | None = None
     tags: dict[str, str] = {}  # Task-level tags (extracted from TASK_ prefixed tags)
 
 
