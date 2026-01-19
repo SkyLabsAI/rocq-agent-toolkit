@@ -56,6 +56,53 @@ class ActionWrapper[T_co](Action[T_co]):
         return self._base.interact(state)
 
 
+class EmptyAction[T](Action[T]):
+        """An action that does nothing and returns the input state."""
+
+        @override
+        def interact(self, state: T) -> T:
+                return state
+
+class ConditionalAction[T](Action[T]):
+    """Execute one of two actions based on a test action."""
+
+    _condition: Annotated[Action[T], Provenance.Reflect.Field]
+    _then_action: Annotated[Action[T], Provenance.Reflect.Field]
+    _else_action: Annotated[Action[T], Provenance.Reflect.Field]
+
+    def __init__(
+        self,
+        condition: Action[T],
+        then_action: Action[T],
+        else_action: Action[T] = EmptyAction(),
+    ) -> None:
+        self._condition = condition
+        self._then_action = then_action
+        self._else_action = else_action
+
+    @override
+    def interact(self, state: T) -> T:
+        try:
+            self._condition.interact(state)
+            return self._then_action.interact(state)
+        except Action.Failed:
+            return self._else_action.interact(state)
+
+class ComposeAction[T](Action[T]):
+    """Sequentially compose multiple actions into a single action."""
+
+    _actions: Annotated[list[Action[T]], Provenance.Reflect.Field]
+
+    def __init__(self, actions: list[Action[T]]) -> None:
+        self._actions = actions
+
+    @override
+    def interact(self, state: T) -> T:
+        for action in self._actions:
+            state = action.interact(state)
+        return state
+
+
 class LoggingAction[T_co](Action[T_co]):
     """
     An action that logs itself when it is invoked.
