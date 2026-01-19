@@ -276,7 +276,7 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
     ) -> Rollout[Action]:
         val = self.check(state)
         if val is None:
-            return super().rollout(state, max_rollout, context)
+            return empty_Rollout()
         return self.rollout_with(val, state, max_rollout, context)
 
 
