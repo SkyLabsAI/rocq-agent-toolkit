@@ -3,7 +3,7 @@ import random
 from pathlib import Path
 from typing import Any
 
-from rocq_pipeline.tasks import Task, TaskFile
+from rocq_pipeline.tasks import Project, Task, TaskFile
 
 
 def mk_parser(parent: Any | None = None) -> Any:
@@ -96,15 +96,39 @@ def run(
     def keep(task: Task) -> bool:
         return eval_options(task.get_tags(), with_tags_l, without_tags_l, only_tags)
 
-    result_tasks = [task for task in tasks.tasks if keep(task)]
-    if limit is not None:
-        limit = min(limit, len(result_tasks))
-        if random_selection:
-            result_tasks = random.sample(result_tasks, limit)
-        else:
-            result_tasks = result_tasks[:limit]
+    # Filter tasks within each bundle to preserve project associations
+    filtered_bundles: list[tuple[Project, list[Task]]] = []
+    all_filtered_tasks: list[Task] = []
 
-    result = TaskFile(project=tasks.project, tasks=result_tasks)
+    for bundle in tasks.bundles:
+        bundle_filtered = [task for task in bundle.tasks if keep(task)]
+        if bundle_filtered:
+            filtered_bundles.append((bundle.project, bundle_filtered))
+            all_filtered_tasks.extend(bundle_filtered)
+
+    # Apply limit across all tasks if specified
+    if limit is not None:
+        if random_selection:
+            if len(all_filtered_tasks) > limit:
+                selected_tasks = set(random.sample(all_filtered_tasks, limit))
+                # Rebuild bundles with only selected tasks
+                filtered_bundles = [
+                    (project, [t for t in tasks if t in selected_tasks])
+                    for project, tasks in filtered_bundles
+                ]
+                # Remove empty bundles
+                filtered_bundles = [(p, t) for p, t in filtered_bundles if t]
+        else:
+            # Take first N tasks across all bundles
+            selected_tasks = set(all_filtered_tasks[:limit])
+            filtered_bundles = [
+                (project, [t for t in tasks if t in selected_tasks])
+                for project, tasks in filtered_bundles
+            ]
+            # Remove empty bundles
+            filtered_bundles = [(p, t) for p, t in filtered_bundles if t]
+
+    result = TaskFile.from_bundles(filtered_bundles)
     result.to_file(output)
     return result
 
@@ -122,7 +146,9 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         arguments.limit,
         arguments.random,
     )
-    print(f"Returned {len(result.tasks)} of {len(tasks.tasks)} tasks.")
+    result_count = len(result.get_all_tasks())
+    original_count = len(tasks.get_all_tasks())
+    print(f"Returned {result_count} of {original_count} tasks.")
 
 
 def main() -> None:
