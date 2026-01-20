@@ -6,12 +6,14 @@ from observability import get_logger
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
+from rocq_pipeline.observability import TraceRocqTacApplicationMixin
+
 from ..action import Action
 
 logger = get_logger("rocq_agent")
 
 
-class RocqTacticAction(Action[RocqCursor]):
+class RocqTacticAction(TraceRocqTacApplicationMixin, Action[RocqCursor]):
     """Execute a single Rocq tactic."""
 
     _tactic: Annotated[str, Provenance.Reflect.Field]
@@ -29,12 +31,17 @@ class RocqTacticAction(Action[RocqCursor]):
         response = self.run_tactic(state, self._tactic)
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
-            logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
+            self.log_rocq_tactic_failure(
+                logger,
+                tactic=self._tactic,
+                error=response.message,
+            )
             raise Action.Failed(
                 message=response.message,
                 details=response,
             )
-        logger.info(f"  RocqTacticAction: '{self._tactic}' succeeded.")
+        else:
+            self.log_rocq_tactic_success(logger, tactic=self._tactic)
         return state
 
     def run_tactic(

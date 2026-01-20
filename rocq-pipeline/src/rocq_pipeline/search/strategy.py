@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import (
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from typing import Annotated, Any, TypeVar, override
 
 from provenance_toolkit import Provenance
@@ -178,10 +185,10 @@ class CompositeStrategy[T_co](Strategy[T_co]):
     `Strategy`s yields results out of order.
     """
 
-    _children: Annotated[list[Strategy[T_co]], Provenance.Reflect.Field]
+    _children: Annotated[Sequence[Strategy[T_co]], Provenance.Reflect.Field]
 
-    def __init__(self, children: list[Strategy[T_co]]) -> None:
-        self._children: list[Strategy[T_co]] = children
+    def __init__(self, children: Sequence[Strategy[T_co]]) -> None:
+        self._children: Sequence[Strategy[T_co]] = children
 
     @override
     def rollout(

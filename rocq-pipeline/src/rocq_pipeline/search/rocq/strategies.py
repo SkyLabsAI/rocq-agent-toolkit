@@ -33,7 +33,7 @@ class SafeTacticStrategy(Strategy[RocqCursor]):
         )
 
 
-class CutAssertStrategy(Strategy):
+class CutAssertStrategy(Strategy[RocqCursor]):
     """A simple strategy that cuts a Rocq lemma.
     The success probability 1.0 is not necessarily appropriate."""
 
@@ -60,7 +60,7 @@ class CutAssertStrategy(Strategy):
         return ((prob, RocqTacticAction(t)) for prob, t in [(self._prob, tac)])
 
 
-class FirstTacticStrategy(Strategy):
+class FirstTacticStrategy(Strategy[RocqCursor]):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
     _tactics: Annotated[list[tuple[float, Action]], Provenance.Reflect.Field]

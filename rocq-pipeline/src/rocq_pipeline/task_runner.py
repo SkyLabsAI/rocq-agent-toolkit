@@ -429,9 +429,18 @@ def run_config(config: RunConfiguration) -> bool:
     def succeeded(result: task_output.TaskOutput | None) -> bool:
         if result is None:
             return False
+
+        def json_safe(obj):
+            if isinstance(obj, dict):
+                return {str(k): json_safe(v) for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [json_safe(x) for x in obj]
+            return obj
+
         with open(tasks_result_file, "a", encoding="utf8") as f:
-            json.dump(result.to_json(), f)
+            json.dump(json_safe(result.to_json()), f)
             f.write("\n")
+
         return is_success(result)
 
     results = util.parallel_runner(
