@@ -34,20 +34,49 @@ def same[T](fn: Callable[[RocqCursor], T], verbose: bool) -> None:
         if isinstance(result, RocqCursor.CommandData):
             assert isinstance(traced_result, RocqCursor.CommandData)
             assert result.proof_state == traced_result.proof_state
-        else:
-            assert isinstance(result, RocqCursor.Err)
+        elif isinstance(result, RocqCursor.Err):
             assert isinstance(traced_result, RocqCursor.Err)
             assert result.data == traced_result.data
+        else:
+            assert result == traced_result
+
+
+_methods = [
+    "insert_command",
+    "query",
+    "query_text_all",
+    "query_json_all",
+]
 
 
 @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
-def test_insert_command(verbose: bool) -> None:
-    same(lambda rc: rc.insert_command("About nat."), verbose)
+@pytest.mark.parametrize(
+    "method",
+    _methods,
+    ids=_methods,
+)
+def test_insert_command(verbose: bool, method: str) -> None:
+    same(lambda rc: getattr(rc, method)("About nat."), verbose)
 
 
 @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
-def test_query(verbose: bool) -> None:
-    same(lambda rc: rc.query("About nat."), verbose)
+@pytest.mark.parametrize(
+    "method",
+    ["query_json", "query_text"],
+    ids=["query_json", "query_text"],
+)
+def test_with_index(verbose: bool, method: str) -> None:
+    same(lambda rc: getattr(rc, method)("About nat.", index=0), verbose)
+
+
+# @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
+# def test_query(verbose: bool) -> None:
+#     same(lambda rc: rc.query("About nat."), verbose)
+
+
+# @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
+# def test_query_text_all(verbose: bool) -> None:
+#     same(lambda rc: rc.query_text_all("About nat."), verbose)
 
 
 @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
