@@ -60,6 +60,9 @@ def _trace_log(
             try:
                 result = func(self, *args, **kwargs)
                 log_args["result"] = fn_output(result)
+                if result is not None:
+                    log_args["result_type"] = str(type(result))
+                    log_args["error"] = isinstance(result, RocqCursor.Err)
                 if after:
                     log_args["after"] = self.location_info()
                 logger.info(f"RocqCursor.{func.__name__}", **log_args)
