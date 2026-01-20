@@ -154,6 +154,7 @@ class TracingCursor(RocqCursor):
     ) -> list[str] | RocqCursor.Err[None]:
         return super().query_text_all(text, indices=indices)
 
+    # NAVIGATION
     @override
     @_trace_log(inputs=lambda _, args: args, after=True)
     def revert_before(self, erase: bool, index: int) -> None:
@@ -161,8 +162,16 @@ class TracingCursor(RocqCursor):
 
     @override
     @_trace_log(inputs=lambda _, args: args, after=True)
-    def b(self, erase: bool, index: int) -> None:
-        return super().revert_before(erase, index)
+    def advance_to(self, index: int) -> None:
+        # TODO: it might be necessary to insert all of the commands here
+        super().advance_to(index=index)
+
+    @override
+    @_trace_log(inputs=lambda _, args: args, after=True)
+    def go_to(
+        self, index: int
+    ) -> None | RocqCursor.Err[RocqCursor.CommandError | None]:
+        return super().go_to(index)
 
     def location_info(self) -> dict[str, Any]:
         """Construct a functional location by computing the hash of the effectful commands."""
