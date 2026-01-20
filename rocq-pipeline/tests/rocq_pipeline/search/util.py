@@ -33,7 +33,7 @@ class FixedStrategy[State, Action](Strategy[State, Action]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        return IterableRollout(self._mapping.get(state, []))
+        return IterableRollout(iter(self._mapping.get(state, [])))
 
 
 class RecordingAction(Action[int]):

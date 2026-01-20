@@ -7,13 +7,13 @@ from typing import Annotated, Any, TypeVar, override
 from provenance_toolkit import Provenance
 
 from .rollout import (
+    ApproximatingRollout,
     EmptyRollout,
     InterleaveRollout,
-    IteratorRollout,
     MapRollout,
     Rollout,
-    SingletonRollout,
     StagedRollout,
+    singleton,
 )
 
 T_co = TypeVar("T_co", covariant=True)
@@ -108,7 +108,7 @@ class SingletonStrategy[State, Action](Strategy[State, Action]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        return SingletonRollout(self._value, logprob=self._logprob)
+        return singleton(self._value, score=self._logprob)
 
 
 class IteratorStrategy[State, Action](Strategy[State, Action]):
@@ -126,7 +126,7 @@ class IteratorStrategy[State, Action](Strategy[State, Action]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        return IteratorRollout(
+        return ApproximatingRollout(
             (
                 Rollout.Approx(logprob=logprob, result=act)
                 for logprob, act in self._collection

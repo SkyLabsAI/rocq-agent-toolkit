@@ -2,10 +2,10 @@ from collections.abc import Generator
 from math import log
 
 from rocq_pipeline.search.rollout import (
+    ApproximatingRollout,
     InterleaveRollout,
-    IteratorRollout,
     Rollout,
-    SingletonRollout,
+    singleton,
 )
 
 
@@ -34,8 +34,8 @@ def test_interleave_delayed() -> None:
         raise AssertionError("Should not force value")
 
     ch: list[Rollout[int]] = [
-        SingletonRollout(1, logprob=log(0.5)),
-        IteratorRollout(tester()),
+        singleton(1, score=log(0.5)),
+        ApproximatingRollout(tester()),
     ]
     ir = InterleaveRollout(ch)
 
@@ -52,7 +52,7 @@ def test_interleave_delayed() -> None:
 
 def test_interleave_1() -> None:
     ch: list[Rollout[int]] = [
-        SingletonRollout(1, logprob=log(0.1)),
+        singleton(1, score=log(0.1)),
     ]
     ir = InterleaveRollout(ch)
 
@@ -64,8 +64,8 @@ def test_interleave_1() -> None:
 
 def test_interleave_rollout() -> None:
     ch: list[Rollout[int]] = [
-        SingletonRollout(1, logprob=log(0.1)),
-        SingletonRollout(2, logprob=log(0.2)),
+        singleton(1, score=log(0.1)),
+        singleton(2, score=log(0.2)),
     ]
     ir = InterleaveRollout(ch)
 

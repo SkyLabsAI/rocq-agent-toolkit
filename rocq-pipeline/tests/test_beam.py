@@ -22,7 +22,7 @@ class Around(Strategy[int, Action[int]]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[int]]:
-        return IterableRollout([(0.5, MoveAction(delta)) for delta in [1, -1]])
+        return IterableRollout(iter([(0.5, MoveAction(delta)) for delta in [1, -1]]))
 
 
 def test_test_simple() -> None:

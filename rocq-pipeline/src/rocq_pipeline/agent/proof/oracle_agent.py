@@ -6,7 +6,7 @@ from rocq_pipeline.agent.base import AgentBuilder
 from rocq_pipeline.agent.proof.strategy_agent import StrategyAgent
 from rocq_pipeline.search import rollout
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import IteratorRollout, Rollout
+from rocq_pipeline.search.rollout import ApproximatingRollout, Rollout
 from rocq_pipeline.search.strategy import Strategy
 from rocq_pipeline.task_runner import agent_main
 
@@ -56,7 +56,7 @@ class OracleStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
                 continue
             if cmd.text.startswith("Proof"):
                 continue
-            return IteratorRollout[Action[RocqCursor]](
+            return ApproximatingRollout[Action[RocqCursor]](
                 iter(
                     [
                         Rollout.Approx[Action[RocqCursor]](

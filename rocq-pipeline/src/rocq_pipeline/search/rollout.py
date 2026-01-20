@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import TypeVar, override
 
@@ -41,6 +41,11 @@ class Rollout[T_co](ABC):
     Example: a finite `Rollout` that contains `[(0, A_1), (-1, A_2)]`
     is saying to try `A_1` before `A_2` and associates each with
     a confidence score.
+
+    For functional readers, this is similar to:
+    ```
+    Rollout[Action] := float -> tuple[float, Action | None, Rollout[Action]] | raise StopIteration
+    ```
     """
 
     @dataclass(frozen=True)
@@ -51,10 +56,10 @@ class Rollout[T_co](ABC):
     @abstractmethod
     def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         """
-        strat.next(min_logprob=math.log(0.5))
-        - Rollout.Approx(math.log(0.45), None) -- No new elements with higher probability
-          than 0.45, ask again when you want something less 0.45
-        - Rollout.Approx(math.log(0.6), act) -- action has probability 0.6
+        strat.next(min_logprob=0.5) could return either:
+        - Rollout.Approx(logprob=0.45, result=None) -- No new elements with higher probability
+          than 0.45, ask again when you want something less than 0.45
+        - Rollout.Approx(logprob=0.6, result=act) -- action has probability 0.6
 
         An implementation is only allowed to return `None` in the `result` field
         if `Pr < min_logprob`, otherwise, it must produce a value, or raise
@@ -102,21 +107,13 @@ class ConsRollout[T_co](Rollout[T_co]):
             return Rollout.Approx(logprob=self._logprob, result=self._value)
 
 
-class SingletonRollout[T_co](ConsRollout[T_co]):
-    def __init__(
-        self,
-        value: T_co,
-        *,
-        logprob: float = 0.0,
-    ) -> None:
-        super().__init__(value, logprob=logprob, rest=EmptyRollout())
+def singleton[T_co](value: T_co, *, score: float = 0.0) -> Rollout[T_co]:
+    return ConsRollout(value, logprob=score, rest=empty_Rollout())
 
 
-def singleton[T](value: T, score: float) -> Rollout[T]:
-    return SingletonRollout(value, logprob=score)
+class ApproximatingRollout[T_co](Rollout[T_co]):
+    """A rollout built from successive approximations"""
 
-
-class IteratorRollout[T_co](Rollout[T_co]):
     def __init__(self, iterator: Iterator[Rollout.Approx[T_co]]) -> None:
         self._values = iterator
         self._last: float | None = None
@@ -142,8 +139,8 @@ class IterableRollout[T_co](Rollout[T_co]):
     The scores are expected to be in decreasing order.
     """
 
-    def __init__(self, iterable: Iterable[tuple[float, T_co]]) -> None:
-        self._values = iter(iterable)
+    def __init__(self, iterable: Iterator[tuple[float, T_co]]) -> None:
+        self._values = iterable
 
     @override
     def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
@@ -252,24 +249,24 @@ class InterleaveRollout[U_co](Rollout[U_co]):
         #
         for n in stashed:
             try:
-                xxx = n.rest.next(highest)
+                r_next = n.rest.next(highest)
             except StopIteration:
                 continue
-            if xxx.result is not None:
+            if r_next.result is not None:
                 if candidate is None:
                     candidate = InterleaveRollout.Node(
-                        xxx.logprob,
+                        r_next.logprob,
                         n.owner,
-                        xxx.result,
+                        r_next.result,
                         n.rest,
                     )
                     highest = candidate.logprob
-                elif xxx.logprob > candidate.logprob:
+                elif r_next.logprob > candidate.logprob:
                     heapq.heappush(self._queue, candidate)
                     candidate = InterleaveRollout.Node(
-                        xxx.logprob,
+                        r_next.logprob,
                         n.owner,
-                        xxx.result,
+                        r_next.result,
                         n.rest,
                     )
                     highest = candidate.logprob
@@ -277,13 +274,13 @@ class InterleaveRollout[U_co](Rollout[U_co]):
                     heapq.heappush(
                         self._queue,
                         InterleaveRollout.Node(
-                            xxx.logprob, n.owner, xxx.result, n.rest
+                            r_next.logprob, n.owner, r_next.result, n.rest
                         ),
                     )
             else:
                 heapq.heappush(
                     self._queue,
-                    InterleaveRollout.Node(xxx.logprob, n.owner, None, n.rest),
+                    InterleaveRollout.Node(r_next.logprob, n.owner, None, n.rest),
                 )
 
         if candidate:
@@ -409,3 +406,23 @@ class StagedRollout[T_co](Rollout[T_co]):
     @override
     def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         return self._state.next(min_logprob=min_logprob)
+
+
+class Delay[Action](Rollout[Action]):
+    """A `Rollout` that delays until it is asked to get at least a given approximation depth."""
+
+    def __init__(self, wait: float, base: Callable[[], Rollout[Action]]) -> None:
+        self._wait: float | None = wait
+        self._base: Callable[[], Rollout[Action]] | Rollout[Action] = base
+
+    @override
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[Action]:
+        if self._wait is None:
+            assert isinstance(self._base, Rollout)
+            return self._base.next(min_logprob=min_logprob)
+        if min_logprob < self._wait:
+            self._wait = None
+            assert not isinstance(self._base, Rollout)
+            self._base = self._base()
+            return self._base.next(min_logprob=min_logprob)
+        return Rollout.Approx(logprob=self._wait, result=None)

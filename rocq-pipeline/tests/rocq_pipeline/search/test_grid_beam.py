@@ -81,7 +81,7 @@ class GridStrategy(Strategy[GridState, Action[GridState]]):
             (0.25, GridMoveAction(0, 1, "up")),
             (0.25, GridMoveAction(0, -1, "down")),
         ]
-        return IterableRollout(moves)
+        return IterableRollout(iter(moves))
 
 
 class ManhattanGuidance(Guidance[GridState]):

@@ -7,7 +7,7 @@ from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from ..action import Action
-from ..rollout import EmptyRollout, IteratorRollout, Rollout, SingletonRollout
+from ..rollout import ApproximatingRollout, EmptyRollout, Rollout, singleton
 from ..strategy import Strategy
 from .actions import RocqTacticAction
 
@@ -29,7 +29,7 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        return SingletonRollout(RocqTacticAction("progress {tac}"), logprob=self._prob)
+        return singleton(RocqTacticAction("progress {tac}"), score=self._prob)
 
 
 class CutAssertStrategy(Strategy):
@@ -56,7 +56,7 @@ class CutAssertStrategy(Strategy):
         # otherwise we risk looping here
         tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
-        return SingletonRollout(RocqTacticAction(tac), logprob=math.log(self._logprob))
+        return singleton(RocqTacticAction(tac), score=math.log(self._logprob))
 
 
 class FirstTacticStrategy(Strategy):
@@ -83,7 +83,7 @@ class FirstTacticStrategy(Strategy):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        return IteratorRollout(
+        return ApproximatingRollout(
             (
                 Rollout.Approx(logprob=prob, result=result)
                 for prob, result in self._tactics
