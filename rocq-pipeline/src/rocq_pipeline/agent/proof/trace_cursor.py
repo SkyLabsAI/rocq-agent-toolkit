@@ -13,6 +13,22 @@ from rocq_doc_manager.rocq_doc_manager_api import RocqDocManagerAPI
 logger = get_logger("RocqCursor")
 
 
+def _default_fn(x: Any) -> Any:
+    if hasattr(x, "to_json"):
+        return x.to_json()
+    elif isinstance(x, list):
+        return [_default_fn(x) for x in x]
+    elif isinstance(x, dict):
+        return {str(k): _default_fn(v) for k, v in x.items()}
+    elif isinstance(x, str):
+        return x
+    elif isinstance(x, int):
+        return x
+    elif isinstance(x, float):
+        return x
+    return x
+
+
 def _trace_log(
     *,
     after: bool = False,
@@ -22,8 +38,8 @@ def _trace_log(
     exception: Callable[[Any], Any] | None = None,
 ):
     fn_input = (lambda _, args: args) if inputs is None else inputs
-    fn_output = (lambda x: x) if output is None else output
-    fn_except = (lambda x: x) if exception is None else exception
+    fn_output = _default_fn if output is None else output
+    fn_except = _default_fn if exception is None else exception
 
     def wrap(func: Callable):
         sig = inspect.signature(func)
@@ -44,6 +60,9 @@ def _trace_log(
             try:
                 result = func(self, *args, **kwargs)
                 log_args["result"] = fn_output(result)
+                if result is not None:
+                    log_args["result_type"] = str(type(result))
+                    log_args["error"] = isinstance(result, RocqCursor.Err)
                 if after:
                     log_args["after"] = self.location_info()
                 logger.info(f"RocqCursor.{func.__name__}", **log_args)
@@ -113,7 +132,7 @@ class TracingCursor(RocqCursor):
         return super().query(text)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log(inputs=lambda _, args: args)
     def query_json(
         self, text: str, *, index: int
     ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
@@ -127,7 +146,7 @@ class TracingCursor(RocqCursor):
         return super().query_json_all(text, indices=indices)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log(inputs=lambda _, args: args)
     def query_text(self, text: str, *, index: int) -> str | RocqCursor.Err[None]:
         return super().query_text(text, index=index)
 
@@ -138,10 +157,33 @@ class TracingCursor(RocqCursor):
     ) -> list[str] | RocqCursor.Err[None]:
         return super().query_text_all(text, indices=indices)
 
+    # NAVIGATION
+    @override
+    @_trace_log(inputs=lambda _, args: args, after=True)
+    def revert_before(self, erase: bool, index: int) -> None:
+        return super().revert_before(erase, index)
+
+    @override
+    @_trace_log(inputs=lambda _, args: args, after=True)
+    def advance_to(self, index: int) -> None:
+        # TODO: it might be necessary to insert all of the commands here
+        super().advance_to(index=index)
+
+    @override
+    @_trace_log(inputs=lambda _, args: args, after=True)
+    def go_to(
+        self, index: int
+    ) -> None | RocqCursor.Err[RocqCursor.CommandError | None]:
+        return super().go_to(index)
+
     def location_info(self) -> dict[str, Any]:
         """Construct a functional location by computing the hash of the effectful commands."""
         raw = "\n".join(
-            [elem.text for elem in self.doc_prefix() if elem.kind == "command"]
+            [
+                elem.text
+                for elem in self.doc_prefix()
+                if elem.kind == "command" or elem.kind == "ghost"
+            ]
         )
         result = {"id": hashlib.md5(raw.encode("utf-8")).hexdigest()}
         if self._verbose and (goal := self._untraced_current_goal()):
