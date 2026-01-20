@@ -22,6 +22,7 @@ export {
   getObservabilityLogsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsByIdMock,
   getTaskDetailsMock,
   refreshDataMock,
 } from './runs';
@@ -34,6 +35,7 @@ export {
   getProjectDatasetsMock,
   getProjectResultsMock,
   getProjectsMock,
+  uploadTasksYamlMock,
 } from './projects';
 
 // Visualizer-related mocks (NEW!)

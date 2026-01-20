@@ -18,8 +18,10 @@ import {
   getProjectsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTaskDetailsByIdMock,
   getTaskDetailsMock,
   refreshDataMock,
+  uploadTasksYamlMock,
 } from '@/services/mockdata';
 import {
   type AgentInstanceSummary,
@@ -27,6 +29,7 @@ import {
   type AgentSummary,
   type Benchmark,
   type RunDetailsResponse,
+  type TaskDetailsResponse,
   type TaskOutput,
   type TaskSet,
   type TaskSetResults,
@@ -204,6 +207,24 @@ export const getTaskDetails = USE_MOCK_DATA
   : getTaskDetailsReal;
 
 // ========================================
+// TASK DETAILS BY ID API
+// ========================================
+
+const getTaskDetailsByIdReal = async (
+  taskId: number
+): Promise<TaskDetailsResponse> => {
+  const encodedTaskId = encodeURIComponent(taskId);
+  const response = await axios.get(
+    `${config.DATA_API}/tasks/${encodedTaskId}/details`
+  );
+  return response.data as TaskDetailsResponse;
+};
+
+export const getTaskDetailsById = USE_MOCK_DATA
+  ? getTaskDetailsByIdMock
+  : getTaskDetailsByIdReal;
+
+// ========================================
 // OBSERVABILITY LOGS API
 // ========================================
 
@@ -265,6 +286,40 @@ const bulkAddTagsReal = async (
 };
 
 export const bulkAddTags = USE_MOCK_DATA ? bulkAddTagsMock : bulkAddTagsReal;
+
+// ========================================
+// UPLOAD TASKS YAML API
+// ========================================
+
+export interface UploadTasksYamlResponse {
+  success: boolean;
+  message: string;
+  dataset_id: string;
+  tasks_created: number;
+  tasks_updated: number;
+}
+
+const uploadTasksYamlReal = async (
+  file: File
+): Promise<UploadTasksYamlResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await axios.post<UploadTasksYamlResponse>(
+    `${config.DATA_API}/ingest/tasks/yaml`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+};
+
+export const uploadTasksYaml = USE_MOCK_DATA
+  ? uploadTasksYamlMock
+  : uploadTasksYamlReal;
 
 // ========================================
 // AGENT SUMMARIES HELPER

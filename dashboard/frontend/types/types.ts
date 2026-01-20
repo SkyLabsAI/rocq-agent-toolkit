@@ -326,3 +326,16 @@ export interface TaskSetResults {
   agent_instances: TaskSetAgentInstance[];
   results: TaskSetTaskResult[];
 }
+
+/**
+ * Represents task details response from the API
+ */
+export interface TaskDetailsResponse {
+  task_id: number;
+  task_name: string;
+  task_kind: string;
+  dataset_id: string;
+  dataset: Benchmark;
+  ground_truth?: string;
+  tags: Record<string, string>;
+}
