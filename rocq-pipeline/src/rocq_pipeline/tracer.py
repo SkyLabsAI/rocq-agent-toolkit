@@ -1,38 +1,42 @@
 import argparse
 import itertools
 import json
+import traceback
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Protocol
 
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
 from rocq_pipeline.tracers.extractor import (
-    BeforeAndAfter,
+    DocumentWatcher,
     TacticExtractor,
-    TacticExtractorBuilder,
 )
 from rocq_pipeline.tracers.json_goal import JsonGoal
 
 
-def trace_proof[T](
-    extractor: TacticExtractor[T,T],
+class Tracer[B, A](DocumentWatcher, TacticExtractor[None, tuple[B, A]], Protocol):
+    pass
+
+
+def trace_proof[B, A](
+    tracer: Tracer[B, A],
     rdm: RocqCursor,
     progress: util.ProgressCallback,
     progress_min: float = 0.0,
     progress_max: float = 1.0,
-) -> list[tuple[(T | None), str, (T | None)]]:
+) -> list[tuple[(B | None), str, (A | None)]]:
     tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
-    extractor.start_proof(rdm)
-    trace: list[tuple[(T | None), str, (T | None)]] = []
+    tracer.start_proof(rdm)
+    trace: list[tuple[(B | None), str, (A | None)]] = []
     step_size: float = (progress_max - progress_min) / len(tactics)
     for i, tactic in enumerate(tactics):
-        pre = extractor.before(rdm, tactic)
+        tracer.before(rdm, tactic)
         progress.status(status=tactic[:10])
         assert not isinstance(rdm.run_command(tactic), rdm.Err)
         progress.status(percent=progress_min + i * step_size)
-        post = extractor.after(rdm, tactic)
+        pre, post = tracer.after(rdm, tactic)
         trace.append((pre, tactic.strip(".").strip(), post))
     return trace
 
@@ -72,7 +76,7 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
 
 
 def run(
-    tracer_builder: TacticExtractorBuilder,
+    tracer_builder: Callable[[], Tracer[Any, Any]],
     output_dir: Path,
     project: Tasks.Project,
     tasks: list[Tasks.Task],
@@ -90,7 +94,7 @@ def run(
         )
 
         try:
-            tracer = tracer_builder.build()
+            tracer = tracer_builder()
             extra_paths = itertools.chain.from_iterable(
                 (["-Q", str(v), k] for k, v in tracer.extra_paths().items())
             )
@@ -121,6 +125,7 @@ def run(
 
             return True
         except Exception as err:
+            print(traceback.format_exc())
             print(f"Failed at task {task_id}.{err}")
             return False
 
@@ -155,9 +160,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         return False
 
     if arguments.tracer is None:
-        tracer: TacticExtractorBuilder = TacticExtractorBuilder.of_tactic_extractor(
-            lambda: BeforeAndAfter(JsonGoal())
-        )  # GoalAsString())
+        tracer = lambda: JsonGoal()
     else:
         if isinstance(arguments.tracer, str):
             tracer = loader.load_from_str(arguments.tracer)
@@ -175,7 +178,9 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     return True
 
 
-def tracer_main(tracer: TacticExtractor[Any,Any], args: list[str] | None = None) -> bool:
+def tracer_main(
+    tracer: TacticExtractor[Any, Any], args: list[str] | None = None
+) -> bool:
     """
     This function can be used to create a `main` entry point for a specific tracer.
     Use it with something like:

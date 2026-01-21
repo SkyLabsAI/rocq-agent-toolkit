@@ -4,15 +4,20 @@ from typing import Any, override
 
 from rocq_doc_manager import RocqCursor
 
-from .extractor import StateExtractor
+from .extractor import DocumentWatcher, TacticExtractor
+from ..proof_state import ProofState
+from ..proof_state.goal import RocqGoal
 
 
-class JsonGoal(StateExtractor[list[Any]]):
+class JsonGoal(
+    DocumentWatcher, TacticExtractor[None, tuple[list[Any] | None, list[Any] | None]]
+):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
 
     def __init__(self, iris: bool | None = None):
         self._iris: bool | None = iris
+        self._preGoals: tuple[dict[int, RocqGoal], list[str] | None] | None = None
 
     @staticmethod
     def find_user_contrib(installed: bool = True) -> Path:
@@ -34,7 +39,6 @@ class JsonGoal(StateExtractor[list[Any]]):
         assert not isinstance(result, RocqCursor.Err)
         return not result.startswith("No object")
 
-    @override
     def extra_paths(self) -> dict[str, Path]:
         user = self.find_user_contrib()
 
@@ -51,6 +55,9 @@ class JsonGoal(StateExtractor[list[Any]]):
         ]
         return {k: ext(user, k.split(".")) for k in PATHS}
 
+    def setup(self, rdm: RocqCursor) -> None:
+        pass
+
     def start_proof(self, rdm: RocqCursor) -> None:
         # Detect iris
         if self._iris is None:
@@ -60,13 +67,16 @@ class JsonGoal(StateExtractor[list[Any]]):
         if isinstance(result, RocqCursor.Err):
             raise Exception(f"Failed to initialize JsonGoal extractor: {result}")
 
+    def end_proof(self, rdm: RocqCursor) -> None:
+        pass
+
     _NO_GOAL_PREFIXES: list[str] = [
         "This subproof is complete, but there are some unfocused goals.",
         "No more goals",
         "All the remaining goals are on the shelf",
     ]
 
-    def __call__(self, rdm: RocqCursor) -> list[Any] | None:
+    def get_goals(self, rdm: RocqCursor) -> list[str] | None:
         result = rdm.query_text_all(self._tactic(), indices=None)
         if isinstance(result, rdm.Err):
             if "Init.Not_focussed" in result.message:
@@ -78,7 +88,24 @@ class JsonGoal(StateExtractor[list[Any]]):
             # TODO: 'All the remaining goals are on the shelf'
             return []
         else:
-            try:
-                return [json.loads(goal) for goal in result]
-            except ValueError as err:
-                raise ValueError(f"bad value in {result}") from err
+            return result
+
+    def before(self, rdm: RocqCursor, tactic: str) -> None:
+        result = self.get_goals(rdm)
+        self._preGoals = (ProofState(rdm.current_goal()).goals, result)
+
+    def after(
+        self, rdm: RocqCursor, tactic: str
+    ) -> tuple[list[Any] | None, list[Any] | None]:
+        result = self.get_goals(rdm)
+        goals = ProofState(rdm.current_goal()).goals
+
+        assert self._preGoals is not None
+        preGoals, preResult = self._preGoals
+
+        preResult = (
+            [json.loads(goal) for goal in preResult] if preResult is not None else None
+        )
+        result = [json.loads(goal) for goal in result] if result is not None else None
+
+        return (preResult, result)

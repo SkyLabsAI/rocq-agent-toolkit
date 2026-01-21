@@ -36,9 +36,7 @@ class RocqGoalParts:
         return asdict(self)
 
     def equal_up_to_numbering(self, other: Self) -> bool:
-        return \
-            self.rocq_hyps == other.rocq_hyps \
-            and self.rocq_concl == other.rocq_concl
+        return self.rocq_hyps == other.rocq_hyps and self.rocq_concl == other.rocq_concl
 
 
 class into_GoalParts[GOAL_PARTS: RocqGoalParts](Protocol):
