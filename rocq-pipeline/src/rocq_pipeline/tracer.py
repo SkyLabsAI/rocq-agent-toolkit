@@ -56,6 +56,11 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
         "--task-file", type=Path, help="The task descriptor in a file, JSON or YAML"
     )
     parser.add_argument(
+        "--minimize-goal-diff",
+        action=argparse.BooleanOptionalAction,
+        help="Only emit goals affected by the tactic",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("."),
@@ -160,7 +165,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         return False
 
     if arguments.tracer is None:
-        tracer = lambda: JsonGoal()
+        tracer = lambda: JsonGoal(minimize_diff=arguments.minimize_goal_diff)
     else:
         if isinstance(arguments.tracer, str):
             tracer = loader.load_from_str(arguments.tracer)
