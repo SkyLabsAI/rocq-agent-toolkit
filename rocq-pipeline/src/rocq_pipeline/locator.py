@@ -157,8 +157,8 @@ class MarkerCommentLocator(Locator):
 
 
 def parse_locator(s: str) -> Locator:
-    for cls in [FirstLemma, FirstAdmit, MarkerCommentLocator]:
-        loc = cls.parse(s)
+    for parser in [FirstLemma.parse, FirstAdmit.parse, MarkerCommentLocator.parse]:
+        loc = parser(s)
         if loc is not None:
             return loc
     return Locator()
