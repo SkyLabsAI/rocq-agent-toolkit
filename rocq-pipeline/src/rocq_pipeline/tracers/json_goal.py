@@ -15,8 +15,9 @@ class JsonGoal(
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
 
-    def __init__(self, iris: bool | None = None):
+    def __init__(self, iris: bool | None = None, minimize_diff: bool = False):
         self._iris: bool | None = iris
+        self._minimize_diff = minimize_diff
         self._preGoals: tuple[dict[int, RocqGoal], list[str] | None] | None = None
 
     @staticmethod
@@ -103,22 +104,23 @@ class JsonGoal(
         assert self._preGoals is not None
         preGoals, preResult = self._preGoals
 
-        changed = set()
-        new = set(goals.keys())
-        for preIdx, preGoal in preGoals.items():
-            preParts = preGoal.parts
-            found = False
-            for idx, goal in goals.items():
-                if preParts.equal_up_to_numbering(goal.parts):
-                    found = True
-                    new.remove(idx)
-                    break
-            if not found:
-                changed.add(preIdx)
+        if self._minimize_diff:
+            changed = set()
+            new = set(goals.keys())
+            for preIdx, preGoal in preGoals.items():
+                preParts = preGoal.parts
+                found = False
+                for idx, goal in goals.items():
+                    if preParts.equal_up_to_numbering(goal.parts):
+                        found = True
+                        new.remove(idx)
+                        break
+                if not found:
+                    changed.add(preIdx)
 
-        if len(changed) == 1 and preResult is not None and result is not None:
-            preResult = [preResult[preIdx - 1] for preIdx in changed]
-            result = [result[idx - 1] for idx in new]
+            if len(changed) == 1 and preResult is not None and result is not None:
+                preResult = [preResult[preIdx - 1] for preIdx in changed]
+                result = [result[idx - 1] for idx in new]
 
         preResult = (
             [json.loads(goal) for goal in preResult] if preResult is not None else None
