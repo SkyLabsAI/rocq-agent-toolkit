@@ -16,7 +16,9 @@ class DuneUtil:
         pass
 
     @staticmethod
-    def rocq_args_for(file_path: str | Path, *, cwd: Path | None = None) -> list[str]:
+    def rocq_args_for(
+        file_path: str | Path, *, cwd: Path | None = None, build: bool = False
+    ) -> list[str]:
         """Compute Rocq args needed to build/process a target Rocq file."""
         file_path = Path(file_path)
         if file_path.suffix != ".v":
@@ -28,7 +30,7 @@ class DuneUtil:
                 "dune",
                 "coq",
                 "top",
-                "--no-build",
+                *(["--no-build"] if not build else []),
                 "--no-print-directory",
                 "--display=quiet",
                 "--toplevel=rocq-fake-repl",
