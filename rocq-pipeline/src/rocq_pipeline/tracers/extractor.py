@@ -1,6 +1,6 @@
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, override, Protocol
+from typing import Any, Protocol, override
 
 from rocq_doc_manager import RocqCursor
 from rocq_pipeline.proof_state import ProofState

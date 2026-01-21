@@ -2,8 +2,9 @@ import argparse
 import itertools
 import json
 import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
@@ -165,7 +166,9 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         return False
 
     if arguments.tracer is None:
-        tracer = lambda: JsonGoal(minimize_diff=arguments.minimize_goal_diff)
+
+        def tracer():
+            return JsonGoal(minimize_diff=arguments.minimize_goal_diff)
     else:
         if isinstance(arguments.tracer, str):
             tracer = loader.load_from_str(arguments.tracer)
