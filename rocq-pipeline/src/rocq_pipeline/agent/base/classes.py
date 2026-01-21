@@ -170,7 +170,7 @@ class ProofAgent(Agent):
             "Tactic Application",
             tactic_application_tactic=tac,
         )
-        tac_reply = rdm.run_command(tac)
+        tac_reply = rdm.insert_command(tac)
         if isinstance(tac_reply, RocqCursor.Err):
             logger.info(
                 "Tactic Application Status",
