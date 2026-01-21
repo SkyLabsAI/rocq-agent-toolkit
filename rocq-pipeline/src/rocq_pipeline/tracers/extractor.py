@@ -124,7 +124,7 @@ class GoalAsString(StateExtractor[str]):
         return str(ProofState(result))
 
 
-class TacticExtractor[T](DocumentWatcher):
+class TacticExtractor[B,A](DocumentWatcher):
     """
     Extract information about the execution of a tactic. This class can extract
     additional information based on the tactic, e.g. adding the types of lemmas that
@@ -134,15 +134,15 @@ class TacticExtractor[T](DocumentWatcher):
     from the before to the after using the class state.
     """
 
-    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
+    def before(self, rdm: RocqCursor, tactic: str) -> B | None:
         return None
 
-    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
+    def after(self, rdm: RocqCursor, tactic: str) -> A | None:
         return None
 
 
-class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
-    def __init__(self, extractors: dict[str, TacticExtractor[Any]]) -> None:
+class AllTacticExtractor(TacticExtractor[dict[str, Any],dict[str, Any]]):
+    def __init__(self, extractors: dict[str, TacticExtractor[Any,Any]]) -> None:
         self._extractors = extractors
 
     @override
@@ -164,7 +164,7 @@ class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
             e.end_proof(rdm)
 
     def before(self, rdm: RocqCursor, tactic: str) -> dict[str, Any] | None:
-        def go[T](e: TacticExtractor[T]) -> T | None:
+        def go[B,A](e: TacticExtractor[B,A]) -> B | None:
             try:
                 return e.before(rdm, tactic)
             except Exception:
@@ -173,7 +173,7 @@ class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
         return {key: go(e) for key, e in self._extractors.items()}
 
     def after(self, rdm: RocqCursor, tactic: str) -> dict[str, Any] | None:
-        def go[T](e: TacticExtractor[T]) -> T | None:
+        def go[B,A](e: TacticExtractor[B,A]) -> A | None:
             try:
                 return e.after(rdm, tactic)
             except Exception:
@@ -182,10 +182,10 @@ class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
         return {key: go(e) for key, e in self._extractors.items()}
 
 
-class Before[T](TacticExtractor[T]):
+class Before[B,A](TacticExtractor[B,A]):
     """Run the StateExtractor before the tactic runs"""
 
-    def __init__(self, state: StateExtractor[T]):
+    def __init__(self, state: StateExtractor[B]):
         self._extractor = state
 
     @override
@@ -202,14 +202,14 @@ class Before[T](TacticExtractor[T]):
         self._extractor.end_proof(rdm)
 
     @override
-    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
+    def before(self, rdm: RocqCursor, tactic: str) -> B | None:
         return self._extractor(rdm)
 
 
-class After[T](TacticExtractor[T]):
+class After[B,A](TacticExtractor[B,A]):
     """Run the StateExtractor after the tactic runs"""
 
-    def __init__(self, state: StateExtractor[T]):
+    def __init__(self, state: StateExtractor[A]):
         self._extractor = state
 
     @override
@@ -226,11 +226,11 @@ class After[T](TacticExtractor[T]):
         self._extractor.end_proof(rdm)
 
     @override
-    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
+    def after(self, rdm: RocqCursor, tactic: str) -> A | None:
         return self._extractor(rdm)
 
 
-class BeforeAndAfter[T](TacticExtractor[T]):
+class BeforeAndAfter[T](TacticExtractor[T,T]):
     """Run the StateExtractor before and after the tactic runs"""
 
     def __init__(self, state: StateExtractor[T]):
@@ -260,13 +260,13 @@ class BeforeAndAfter[T](TacticExtractor[T]):
 
 class TacticExtractorBuilder:
     @staticmethod
-    def of_tactic_extractor[T](
-        build: Callable[[], TacticExtractor[T]] | type[TacticExtractor[T]],
+    def of_tactic_extractor[B,A](
+        build: Callable[[], TacticExtractor[B,A]] | type[TacticExtractor[B,A]],
     ) -> "TacticExtractorBuilder":
         return TacticExtractorBuilder(build)
 
-    def __init__(self, build: Callable[[], TacticExtractor[Any]]) -> None:
+    def __init__(self, build: Callable[[], TacticExtractor[Any,Any]]) -> None:
         self._builder = build
 
-    def build(self) -> TacticExtractor[Any]:
+    def build(self) -> TacticExtractor[Any,Any]:
         return self._builder()

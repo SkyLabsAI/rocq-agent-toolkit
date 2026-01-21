@@ -17,7 +17,7 @@ from rocq_pipeline.tracers.json_goal import JsonGoal
 
 
 def trace_proof[T](
-    extractor: TacticExtractor[T],
+    extractor: TacticExtractor[T,T],
     rdm: RocqCursor,
     progress: util.ProgressCallback,
     progress_min: float = 0.0,
@@ -175,7 +175,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     return True
 
 
-def tracer_main(tracer: TacticExtractor[Any], args: list[str] | None = None) -> bool:
+def tracer_main(tracer: TacticExtractor[Any,Any], args: list[str] | None = None) -> bool:
     """
     This function can be used to create a `main` entry point for a specific tracer.
     Use it with something like:
