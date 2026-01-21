@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
-from typing import Any, override
+from typing import Any
 
 from rocq_doc_manager import RocqCursor
 
-from .extractor import DocumentWatcher, TacticExtractor
 from ..proof_state import ProofState
 from ..proof_state.goal import RocqGoal
+from .extractor import DocumentWatcher, TacticExtractor
 
 
 class JsonGoal(
