@@ -4,8 +4,7 @@ from typing import Any, override
 
 from rocq_doc_manager import RocqCursor
 
-from .extractor import StateExtractor
-
+from .extractor import BeforeAndAfter, StateExtractor
 
 class JsonGoal(StateExtractor[list[Any]]):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
@@ -72,7 +71,9 @@ class JsonGoal(StateExtractor[list[Any]]):
             if "Init.Not_focussed" in result.message:
                 return []
             return None
-        elif len(result) == 1 or any(
+        elif len(result) == 0:
+            return []
+        elif len(result) == 1 and any(
             result[0].startswith(x) for x in self._NO_GOAL_PREFIXES
         ):
             # TODO: 'All the remaining goals are on the shelf'
@@ -82,3 +83,9 @@ class JsonGoal(StateExtractor[list[Any]]):
                 return [json.loads(goal) for goal in result]
             except ValueError as err:
                 raise ValueError(f"bad value in {result}") from err
+
+
+# Module-level build function for dynamic loading
+def build() -> BeforeAndAfter[list[Any]]:
+    """Build a TacticExtractor for JsonGoal extractor."""
+    return BeforeAndAfter(JsonGoal())
