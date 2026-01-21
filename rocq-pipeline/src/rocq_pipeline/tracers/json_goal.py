@@ -72,7 +72,7 @@ class JsonGoal(StateExtractor[list[Any]]):
             if "Init.Not_focussed" in result.message:
                 return []
             return None
-        elif len(result) == 1 or any(
+        elif len(result) == 1 and any(
             result[0].startswith(x) for x in self._NO_GOAL_PREFIXES
         ):
             # TODO: 'All the remaining goals are on the shelf'
