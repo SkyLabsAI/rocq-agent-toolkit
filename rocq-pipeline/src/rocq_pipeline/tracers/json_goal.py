@@ -6,6 +6,7 @@ from rocq_doc_manager import RocqCursor
 
 from .extractor import BeforeAndAfter, StateExtractor
 
+
 class JsonGoal(StateExtractor[list[Any]]):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
