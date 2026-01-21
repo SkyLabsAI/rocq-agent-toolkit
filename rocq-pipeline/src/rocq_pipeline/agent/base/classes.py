@@ -22,7 +22,9 @@ class Agent(Provenance.Full):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
     def run(self, rdm: RocqCursor) -> TaskResult:
-        """Entrypoint; use rdm to attempt a task and report the result."""
+        """Entrypoint; use rdm to attempt a task and report the result. The
+        rdm cursor is updated to reflect the changes to the proof, even in
+        case of failure (partial progress is kept)."""
         return self.give_up(rdm, message="Not implemented")
 
     @classmethod
