@@ -103,6 +103,23 @@ class JsonGoal(
         assert self._preGoals is not None
         preGoals, preResult = self._preGoals
 
+        changed = set()
+        new = set(goals.keys())
+        for preIdx, preGoal in preGoals.items():
+            preParts = preGoal.parts
+            found = False
+            for idx, goal in goals.items():
+                if preParts.equal_up_to_numbering(goal.parts):
+                    found = True
+                    new.remove(idx)
+                    break
+            if not found:
+                changed.add(preIdx)
+
+        if len(changed) == 1 and preResult is not None and result is not None:
+            preResult = [preResult[preIdx - 1] for preIdx in changed]
+            result = [result[idx - 1] for idx in new]
+
         preResult = (
             [json.loads(goal) for goal in preResult] if preResult is not None else None
         )
