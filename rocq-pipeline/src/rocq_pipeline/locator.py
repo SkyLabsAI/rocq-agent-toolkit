@@ -1,7 +1,6 @@
 import logging
 import re
 from typing import override
-from abc import abstractmethod
 
 from rocq_doc_manager import RocqCursor
 
@@ -22,10 +21,6 @@ class Locator:
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("unknown"))
 
-class LocatorParser:
-    @abstractmethod
-    def parse(self, s: str) -> Locator | None:
-        ...
 
 class FirstAdmit(Locator):
     def __str__(self) -> str:
@@ -44,12 +39,12 @@ class FirstAdmit(Locator):
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("admit"))
 
-class FirstAdmitParser(LocatorParser):
-    @override
-    def parse(self, s: str) -> FirstAdmit | None:
+    @staticmethod
+    def parse(s: str) -> "FirstAdmit | None":
         if s == "admit":
             return FirstAdmit()
         return None
+
 
 class FirstLemma(Locator):
     def __str__(self) -> str:
@@ -96,9 +91,8 @@ class FirstLemma(Locator):
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.FullProofTask())
 
-class FirstLemmaParser(LocatorParser):
-    @override
-    def parse(self, s: str) -> FirstLemma | None:
+    @staticmethod
+    def parse(s: str) -> "FirstLemma | None":
         def get_index(s: str) -> tuple[str, int]:
             ptrn: re.Pattern = re.compile(r"(.+)\(([0-9]+)\)")
             mtch = ptrn.match(s)
@@ -153,17 +147,17 @@ class MarkerCommentLocator(Locator):
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask(self.__str__()))
 
-class MarkerCommentParser(LocatorParser):
-    @override
-    def parse(self, s: str) -> MarkerCommentLocator | None:
+    @staticmethod
+    def parse(s: str) -> "MarkerCommentLocator | None":
         if s.startswith(MarkerCommentLocator.COMMENT_MARKER_PREFIX):
             return MarkerCommentLocator(
                 s[len(MarkerCommentLocator.COMMENT_MARKER_PREFIX) :]
             )
         return None
 
+
 def parse_locator(s: str) -> Locator:
-    for cls in [FirstLemmaParser(), FirstAdmitParser(), MarkerCommentParser()]:
+    for cls in [FirstLemma, FirstAdmit, MarkerCommentLocator]:
         loc = cls.parse(s)
         if loc is not None:
             return loc
