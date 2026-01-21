@@ -1,5 +1,5 @@
 from dataclasses import asdict, dataclass, field
-from typing import Any, Protocol
+from typing import Any, Protocol, Self
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,11 @@ class RocqGoalParts:
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
+
+    def equal_up_to_numbering(self, other: Self) -> bool:
+        return \
+            self.rocq_hyps == other.rocq_hyps \
+            and self.rocq_concl == other.rocq_concl
 
 
 class into_GoalParts[GOAL_PARTS: RocqGoalParts](Protocol):
