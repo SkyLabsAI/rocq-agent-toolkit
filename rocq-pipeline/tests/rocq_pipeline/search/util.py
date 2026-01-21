@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import TypeVar, override
 
 from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.rollout import IterableRollout, Rollout
 from rocq_pipeline.search.search.frontier import BFS, BasicNode, Frontier
 from rocq_pipeline.search.search.search import (
     Node,
@@ -19,20 +20,20 @@ S = TypeVar("S")
 FNode = TypeVar("FNode")
 
 
-class FixedStrategy(Strategy[S]):
+class FixedStrategy[State, Action](Strategy[State, Action]):
     """Strategy that returns fixed rollouts per state."""
 
-    def __init__(self, mapping: dict[S, list[tuple[float, Action[S]]]]) -> None:
+    def __init__(self, mapping: dict[State, list[tuple[float, Action]]]) -> None:
         self._mapping = mapping
 
     @override
     def rollout(
         self,
-        state: S,
+        state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout[S]:
-        return iter(self._mapping.get(state, []))
+    ) -> Rollout[Action]:
+        return IterableRollout(iter(self._mapping.get(state, [])))
 
 
 class RecordingAction(Action[int]):
@@ -76,8 +77,8 @@ def seeded_bfs[S](candidates: list[Node[S]]) -> BFS[Node[S]]:
     return frontier
 
 
-def run_search(
-    strategy: Strategy[S],
+def run_search[S, FNode](
+    strategy: Strategy[S, Action[S]],
     worklist: Frontier[Node[S], FNode],
     beam_width: int = 1,
     explore_width: int = 1,

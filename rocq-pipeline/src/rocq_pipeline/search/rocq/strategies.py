@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import math
 from typing import Annotated, override
 
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
 from ..action import Action
-from ..strategy import Strategy, empty_Rollout
+from ..rollout import ApproximatingRollout, EmptyRollout, Rollout, singleton
+from ..strategy import Strategy
 from .actions import RocqTacticAction
 
 
-class SafeTacticStrategy(Strategy[RocqCursor]):
+class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     """A simple strategy that always returns a tactic."""
 
     _tactic: Annotated[str, Provenance.Reflect.Field]
@@ -26,11 +28,8 @@ class SafeTacticStrategy(Strategy[RocqCursor]):
         rdm: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
-        return (
-            (prob, RocqTacticAction(f"progress ({tac})"))
-            for prob, tac in [(self._prob, self._tactic)]
-        )
+    ) -> Rollout[Action[RocqCursor]]:
+        return singleton(RocqTacticAction("progress {tac}"), score=self._prob)
 
 
 class CutAssertStrategy(Strategy):
@@ -40,7 +39,7 @@ class CutAssertStrategy(Strategy):
     def __init__(self, name: str, lemma: str, prob: float = 1.0) -> None:
         self._name: str = name
         self._lemma: str = lemma
-        self._prob: float = prob
+        self._logprob: float = math.log(prob)
 
     @override
     def rollout(
@@ -48,30 +47,32 @@ class CutAssertStrategy(Strategy):
         rdm: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
+    ) -> Rollout[Action[RocqCursor]]:
         name: str | RocqCursor.Err[None] = rdm.fresh_ident(self._name)
         if isinstance(name, RocqCursor.Err):
-            return empty_Rollout()
+            return EmptyRollout()
 
         # For now, it is important that we fail if this fact is already known,
         # otherwise we risk looping here
         tac: str = f"assert ({self._lemma}) as {name}; [ assert_fails tauto | ]"
 
-        return ((prob, RocqTacticAction(t)) for prob, t in [(self._prob, tac)])
+        return singleton(RocqTacticAction(tac), score=math.log(self._logprob))
 
 
 class FirstTacticStrategy(Strategy):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
-    _tactics: Annotated[list[tuple[float, Action]], Provenance.Reflect.Field]
+    _tactics: Annotated[
+        list[tuple[float, Action[RocqCursor]]], Provenance.Reflect.Field
+    ]
 
-    def __init__(self, tactics: list[tuple[float, str | Action]]) -> None:
-        def mk(x: str | Action) -> Action:
+    def __init__(self, tactics: list[tuple[float, str | Action[RocqCursor]]]) -> None:
+        def mk(x: str | Action[RocqCursor]) -> Action[RocqCursor]:
             if isinstance(x, Action):
                 return x
             return RocqTacticAction(x)
 
-        self._tactics: list[tuple[float, Action]] = [
+        self._tactics: list[tuple[float, Action[RocqCursor]]] = [
             (prob, mk(tac)) for prob, tac in sorted(tactics, reverse=True)
         ]
 
@@ -81,5 +82,10 @@ class FirstTacticStrategy(Strategy):
         rdm: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
-    ) -> Strategy.Rollout:
-        return ((prob, tac) for prob, tac in self._tactics)
+    ) -> Rollout[Action[RocqCursor]]:
+        return ApproximatingRollout(
+            (
+                Rollout.Approx(logprob=prob, result=result)
+                for prob, result in self._tactics
+            )
+        )

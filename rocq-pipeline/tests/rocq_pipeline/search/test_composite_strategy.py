@@ -4,6 +4,7 @@ from typing import override
 # Import the function we want to test
 import pytest
 from rocq_pipeline.search.action import Action
+from rocq_pipeline.search.rollout import Rollout
 from rocq_pipeline.search.strategy import (
     CompositeStrategy,
     FailStrategy,
@@ -22,7 +23,7 @@ class SimpleAction[T](Action[list[T]]):
         return state + [self._value]
 
 
-def is_empty[T](x: Strategy.Rollout[T]) -> None:
+def is_empty[T](x: Rollout[T]) -> None:
     try:
         elem = next(x)
         raise AssertionError(f"empty contains element {elem}")
@@ -30,28 +31,29 @@ def is_empty[T](x: Strategy.Rollout[T]) -> None:
         pass
 
 
+type ActionStrategy = Strategy[list[int], Action[list[int]]]
+
+
 def test_empty() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy([])
+    strat: ActionStrategy = CompositeStrategy([])
     actions = strat.rollout([])
     is_empty(actions)
 
 
 def test_empty_empty() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy([FailStrategy()])
+    strat: ActionStrategy = CompositeStrategy([FailStrategy()])
     actions = strat.rollout([])
     is_empty(actions)
 
 
 def test_empty_empty_empty() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy([FailStrategy(), FailStrategy()])
+    strat: ActionStrategy = CompositeStrategy([FailStrategy(), FailStrategy()])
     actions = strat.rollout([])
     is_empty(actions)
 
 
 def test_singleton() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy(
-        [SingletonStrategy(SimpleAction(0), 0.5)]
-    )
+    strat: ActionStrategy = CompositeStrategy([SingletonStrategy(SimpleAction(0), 0.5)])
     actions = strat.rollout([])
 
     assert [(prob, n.interact([])) for prob, n in actions] == [(0.5, [0])]
@@ -60,7 +62,7 @@ def test_singleton() -> None:
 
 
 def test_multi() -> None:
-    strat: Strategy[list[int]] = CompositeStrategy(
+    strat: ActionStrategy = CompositeStrategy(
         [
             SingletonStrategy(SimpleAction(0), 0.5),
             SingletonStrategy(SimpleAction(1), 0.75),
@@ -74,11 +76,11 @@ def test_multi() -> None:
 
 
 def test_multi2() -> None:
-    ls: list[Strategy[list[int]]] = [
+    ls: list[ActionStrategy] = [
         IteratorStrategy(iter([(0.5, SimpleAction(0)), (0.25, SimpleAction(2))])),
         SingletonStrategy(SimpleAction(1), 0.75),
     ]
-    strat: Strategy[list[int]] = CompositeStrategy(ls)
+    strat = CompositeStrategy(ls)
     actions = strat.rollout([])
 
     assert [(prob, n.interact([])) for prob, n in actions] == [
@@ -91,12 +93,12 @@ def test_multi2() -> None:
 
 
 def test_multi_same() -> None:
-    ls: list[Strategy[list[int]]] = [
+    ls: list[ActionStrategy] = [
         SingletonStrategy(SimpleAction(1), 0.75),
         SingletonStrategy(SimpleAction(2), 0.75),
         SingletonStrategy(SimpleAction(3), 0.75),
     ]
-    strat: Strategy[list[int]] = CompositeStrategy(ls)
+    strat = CompositeStrategy(ls)
     actions = strat.rollout([])
 
     result = [(prob, n.interact([])) for prob, n in actions]
@@ -159,9 +161,11 @@ VALUES = [
 
 @pytest.mark.parametrize("lls, expected", VALUES, ids=[str(x) for _, x in VALUES])
 def test_many(lls: list[list[tuple[float, int]]], expected: list[tuple[float, int]]):
-    strat = CompositeStrategy(
+    strat: Strategy[list[int], Action[list[int]]] = CompositeStrategy(
         [IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]) for x in lls]
     )
+
+    result: list[tuple[float, int]] = []
 
     # make sure we get the same results more than once
     for _ in range(2):
