@@ -23,20 +23,26 @@ class Locator:
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("unknown"))
 
+
+class LocatorParser:
     parsers: list[Callable[[str], Locator | None]] = []
 
     @staticmethod
     def register_parser(parser: Callable[[str], Locator | None]) -> None:
-        Locator.parsers.append(parser)
+        LocatorParser.parsers.append(parser)
 
-    # [FirstLemma.parse, FirstAdmit.parse, MarkerCommentLocator.parse]
     @staticmethod
     def parse(s: str) -> Locator:
-        for parser in Locator.parsers:
+        for parser in LocatorParser.parsers:
             loc = parser(s)
             if loc is not None:
                 return loc
         return Locator()
+
+
+@deprecated("use LocatorParser.parse instead")
+def parse_locator(s: str) -> Locator:
+    return LocatorParser.parse(s)
 
 
 class FirstAdmit(Locator):
@@ -63,7 +69,7 @@ class FirstAdmit(Locator):
         return None
 
 
-Locator.register_parser(FirstAdmit.parse)
+LocatorParser.register_parser(FirstAdmit.parse)
 
 
 class FirstLemma(Locator):
@@ -142,7 +148,7 @@ class FirstLemma(Locator):
         return None
 
 
-Locator.register_parser(FirstLemma.parse)
+LocatorParser.register_parser(FirstLemma.parse)
 
 # TODO: add unit tests
 
@@ -180,9 +186,4 @@ class MarkerCommentLocator(Locator):
         return None
 
 
-Locator.register_parser(MarkerCommentLocator.parse)
-
-
-@deprecated("use Locator.parse instead")
-def parse_locator(s: str) -> Locator:
-    return Locator.parse(s)
+LocatorParser.register_parser(MarkerCommentLocator.parse)
