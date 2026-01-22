@@ -4,7 +4,6 @@ import logging
 import re
 from collections.abc import Callable
 from typing import override
-from warnings import deprecated
 
 from rocq_doc_manager import RocqCursor
 
@@ -40,11 +39,6 @@ class LocatorParser:
             if loc is not None:
                 return loc
         return Locator()
-
-
-@deprecated("use LocatorParser.parse instead")
-def parse_locator(s: str) -> Locator:
-    return LocatorParser.parse(s)
 
 
 class FirstAdmit(Locator):
