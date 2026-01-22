@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import re
 from typing import Callable, override
+from warnings import deprecated
 
 from rocq_doc_manager import RocqCursor
 
@@ -173,3 +174,7 @@ class MarkerCommentLocator(Locator):
         return None
 
 Locator.register_parser(MarkerCommentLocator.parse)
+
+@deprecated("use Locator.parse instead")
+def parse_locator(s: str) -> Locator:
+    return Locator.parse(s)
