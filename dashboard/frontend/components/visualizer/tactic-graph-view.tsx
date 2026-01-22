@@ -167,7 +167,7 @@ const TacticGraphView = ({
     }
 
     return layoutDagre(nodes, edges);
-  }, [graph, selectedNodeId, selectedEdgeId]);
+  }, [graph]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<TacticNodeData>>(
     []
