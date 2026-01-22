@@ -30,7 +30,7 @@ class Locator:
 
     # [FirstLemma.parse, FirstAdmit.parse, MarkerCommentLocator.parse]
     @staticmethod
-    def parse_locator(s: str) -> Locator:
+    def parse(s: str) -> Locator:
         for parser in Locator.parsers:
             loc = parser(s)
             if loc is not None:
