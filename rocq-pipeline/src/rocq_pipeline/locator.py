@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 import re
 from typing import override
@@ -40,7 +41,7 @@ class FirstAdmit(Locator):
         return task_output.TaskKind(task_output.OtherTask("admit"))
 
     @staticmethod
-    def parse(s: str) -> "FirstAdmit | None":
+    def parse(s: str) -> FirstAdmit | None:
         if s == "admit":
             return FirstAdmit()
         return None
@@ -92,7 +93,7 @@ class FirstLemma(Locator):
         return task_output.TaskKind(task_output.FullProofTask())
 
     @staticmethod
-    def parse(s: str) -> "FirstLemma | None":
+    def parse(s: str) -> FirstLemma | None:
         def get_index(s: str) -> tuple[str, int]:
             ptrn: re.Pattern = re.compile(r"(.+)\(([0-9]+)\)")
             mtch = ptrn.match(s)
@@ -148,7 +149,7 @@ class MarkerCommentLocator(Locator):
         return task_output.TaskKind(task_output.OtherTask(self.__str__()))
 
     @staticmethod
-    def parse(s: str) -> "MarkerCommentLocator | None":
+    def parse(s: str) -> MarkerCommentLocator | None:
         if s.startswith(MarkerCommentLocator.COMMENT_MARKER_PREFIX):
             return MarkerCommentLocator(
                 s[len(MarkerCommentLocator.COMMENT_MARKER_PREFIX) :]
