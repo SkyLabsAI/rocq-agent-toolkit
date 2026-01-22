@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import logging
 import re
-from typing import Callable, override
+from collections.abc import Callable
+from typing import override
 from warnings import deprecated
 
 from rocq_doc_manager import RocqCursor
