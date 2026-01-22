@@ -63,7 +63,7 @@ class Task(BaseModel):
     def parse_locator_string(cls, value: str | Locator) -> Locator:
         if isinstance(value, Locator):
             return value
-        return Locator.parse(value)
+        return Locator.parse_locator(value)
 
     @field_validator("tags")
     @classmethod
