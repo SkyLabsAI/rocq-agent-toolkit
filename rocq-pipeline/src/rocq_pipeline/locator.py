@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 import re
-from typing import override
+from typing import Callable, override
 
 from rocq_doc_manager import RocqCursor
 
@@ -22,6 +22,20 @@ class Locator:
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("unknown"))
 
+
+    parsers: list[Callable[[str], Locator | None]] = []
+    @staticmethod
+    def register_parser(parser: Callable[[str], Locator | None]) -> None:
+        Locator.parsers.append(parser)
+
+    # [FirstLemma.parse, FirstAdmit.parse, MarkerCommentLocator.parse]
+    @staticmethod
+    def parse_locator(s: str) -> Locator:
+        for parser in Locator.parsers:
+            loc = parser(s)
+            if loc is not None:
+                return loc
+        return Locator()
 
 class FirstAdmit(Locator):
     def __str__(self) -> str:
@@ -46,6 +60,7 @@ class FirstAdmit(Locator):
             return FirstAdmit()
         return None
 
+Locator.register_parser(FirstAdmit.parse)
 
 class FirstLemma(Locator):
     def __str__(self) -> str:
@@ -122,6 +137,7 @@ class FirstLemma(Locator):
 
         return None
 
+Locator.register_parser(FirstLemma.parse)
 
 # TODO: add unit tests
 class MarkerCommentLocator(Locator):
@@ -156,10 +172,8 @@ class MarkerCommentLocator(Locator):
             )
         return None
 
+Locator.register_parser(MarkerCommentLocator.parse)
 
 def parse_locator(s: str) -> Locator:
-    for parser in [FirstLemma.parse, FirstAdmit.parse, MarkerCommentLocator.parse]:
-        loc = parser(s)
-        if loc is not None:
-            return loc
-    return Locator()
+    return Locator.parse_locator(s)
+
