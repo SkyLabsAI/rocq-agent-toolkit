@@ -173,7 +173,3 @@ class MarkerCommentLocator(Locator):
         return None
 
 Locator.register_parser(MarkerCommentLocator.parse)
-
-def parse_locator(s: str) -> Locator:
-    return Locator.parse_locator(s)
-
