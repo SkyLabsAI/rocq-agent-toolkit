@@ -5,7 +5,7 @@ Pydantic models for API request/response validation.
 import json
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # Wrtie now defining the Schema Directly
 # Improt it from the Rocq pipeline schema later own.
@@ -188,7 +188,7 @@ class LogEntry(BaseModel):
 
     timestamp: str
     line: str
-    labels: dict | None = None
+    labels: dict[str, Any]
 
 
 class ObservabilityLogsResponse(BaseModel):
@@ -199,6 +199,40 @@ class ObservabilityLogsResponse(BaseModel):
     task_name: str
     logs: list[LogEntry]
     total_logs: int
+
+
+class GraphNode(BaseModel):
+    """Graph node for observability-derived cursor graphs."""
+
+    id: str
+    information: dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphEdge(BaseModel):
+    """Graph edge for observability-derived cursor graphs."""
+
+    source: str
+    target: str
+    label: str
+    information: dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphData(BaseModel):
+    """Graph payload containing nodes and edges."""
+
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+
+
+class ObservabilityGraphResponse(BaseModel):
+    """Response containing a graph built from observability logs."""
+
+    run_id: str
+    task_id: int
+    task_name: str
+    graph: GraphData
+    total_nodes: int
+    total_edges: int
 
 
 class RefreshResponse(BaseModel):
