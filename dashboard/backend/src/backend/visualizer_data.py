@@ -9,16 +9,23 @@ Stable API surface for the dashboard visualizer UI under:
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import Session
 
+from backend.dal import get_estimated_time_for_task_from_db, get_task_name_from_db
+from backend.database import get_session
+from backend.graph import build_rocq_cursor_graph
 from backend.models import (
+    ObservabilityGraphResponse,
     VisualizerSpanLite,
     VisualizerSpansResponse,
     VisualizerTraceIdsResponse,
 )
+from backend.utils import fetch_observability_logs
 from backend.visualizer import (
     extract_spans_best_effort,
     loki_query_range,
@@ -26,6 +33,9 @@ from backend.visualizer import (
 )
 
 router = APIRouter(prefix="/visualizer/data", tags=["visualizer"])
+
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("/tempo/traces/{trace_id}/spans", response_model=VisualizerSpansResponse)
@@ -116,3 +126,63 @@ async def visualizer_data_trace_ids_for_run(
 
     out = sorted(trace_ids)
     return VisualizerTraceIdsResponse(run_id=run_id, trace_ids=out, total=len(out))
+
+
+@router.get("/tactic/graph", response_model=ObservabilityGraphResponse)
+async def get_tactic_graph(
+    run_id: str = Query(..., description="Run ID to fetch logs for"),
+    task_id: int = Query(..., description="Database task ID to fetch logs for"),
+    session: Session = Depends(get_session),  # noqa: B008
+) -> ObservabilityGraphResponse:
+    """
+    Build a RocqCursor graph from tactics for a specific run and task.
+    """
+    try:
+        task_name = get_task_name_from_db(session, task_id)
+        if task_name is None:
+            raise HTTPException(
+                status_code=404, detail=f"Task with ID {task_id} not found"
+            )
+
+        estimated_time = get_estimated_time_for_task_from_db(session, run_id, task_id)
+
+        if not estimated_time:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No run data found for run_id='{run_id}' and task_id={task_id}",
+            )
+
+        logs = await fetch_observability_logs(
+            run_id=run_id, task_name=task_name, estimated_time=estimated_time
+        )
+
+        if not logs:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No logs found for run_id='{run_id}' and task_id={task_id}",
+            )
+
+        graph = build_rocq_cursor_graph(logs)
+        graph_payload = graph.to_model()
+
+        logger.info(
+            "Built RocqCursor graph: nodes=%d edges=%d",
+            len(graph.nodes),
+            len(graph.edges),
+        )
+
+        return ObservabilityGraphResponse(
+            run_id=run_id,
+            task_id=task_id,
+            task_name=task_name,
+            graph=graph_payload,
+            total_nodes=len(graph.nodes),
+            total_edges=len(graph.edges),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error building observability graph: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error building graph: {str(e)}"
+        ) from e
