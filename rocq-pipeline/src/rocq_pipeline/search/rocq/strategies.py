@@ -29,7 +29,9 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        return singleton(RocqTacticAction("progress {tac}"), score=self._prob)
+        return singleton(
+            RocqTacticAction(f"progress ({self._tactic})"), score=self._prob
+        )
 
 
 class CutAssertStrategy(Strategy):
