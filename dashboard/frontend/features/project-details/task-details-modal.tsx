@@ -326,6 +326,7 @@ const ProjectTaskDetailsModal: React.FC<ProjectTaskDetailsModalProps> = ({
           onClose={() => setIsVisualizerOpen(false)}
           runId={selectedRun.run_id}
           runTimestampUtc={selectedRun.timestamp_utc}
+          taskId={taskId}
         />
       )}
     </Modal>

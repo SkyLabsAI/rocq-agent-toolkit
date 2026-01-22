@@ -320,6 +320,7 @@ const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
           runId={task.run_id}
           runTimestampUtc={runTimestampUtc}
           initialTraceId={task.trace_id}
+          taskId={task.task_id}
         />
       )}
     </>

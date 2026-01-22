@@ -45,6 +45,9 @@ export {
   getTraceIdsForRunMock,
 } from './visualizer';
 
+// Tactic graph mocks
+export { getTacticGraphMock } from './tactic-graph';
+
 // Helper generators
 export {
   generateHexString,
