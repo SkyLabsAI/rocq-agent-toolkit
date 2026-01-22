@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import logging
 import re
+from collections.abc import Callable
 from typing import override
+from warnings import deprecated
 
 from rocq_doc_manager import RocqCursor
 
@@ -22,6 +26,27 @@ class Locator:
         return task_output.TaskKind(task_output.OtherTask("unknown"))
 
 
+class LocatorParser:
+    parsers: list[Callable[[str], Locator | None]] = []
+
+    @staticmethod
+    def register_parser(parser: Callable[[str], Locator | None]) -> None:
+        LocatorParser.parsers.append(parser)
+
+    @staticmethod
+    def parse(s: str) -> Locator:
+        for parser in LocatorParser.parsers:
+            loc = parser(s)
+            if loc is not None:
+                return loc
+        return Locator()
+
+
+@deprecated("use LocatorParser.parse instead")
+def parse_locator(s: str) -> Locator:
+    return LocatorParser.parse(s)
+
+
 class FirstAdmit(Locator):
     def __str__(self) -> str:
         return "admit"
@@ -38,6 +63,15 @@ class FirstAdmit(Locator):
 
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("admit"))
+
+    @staticmethod
+    def parse(s: str) -> FirstAdmit | None:
+        if s == "admit":
+            return FirstAdmit()
+        return None
+
+
+LocatorParser.register_parser(FirstAdmit.parse)
 
 
 class FirstLemma(Locator):
@@ -85,16 +119,52 @@ class FirstLemma(Locator):
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.FullProofTask())
 
+    @staticmethod
+    def parse(s: str) -> FirstLemma | None:
+        def get_index(s: str) -> tuple[str, int]:
+            ptrn: re.Pattern = re.compile(r"(.+)\(([0-9]+)\)")
+            mtch = ptrn.match(s)
+            if mtch is None:
+                return (s, 0)
+            else:
+                return mtch.group(1), int(mtch.group(2))
+
+        for kw in ["Lemma", "Theorem"]:
+            kw_colon = kw + ":"
+            if s.startswith(kw_colon):
+                nm, index = get_index(s[len(kw_colon) :])
+                return FirstLemma(nm, kw, index=index)
+
+        if s.startswith("lemma:"):  # Backwards compatibility
+            logger.warning(
+                " ".join(
+                    [
+                        '"lemma:" locator is deprecated,',
+                        'use "Theorem:" or "Lemma:":',
+                        s,
+                    ]
+                )
+            )
+            return FirstLemma(s[len("lemma:") :])
+
+        return None
+
+
+LocatorParser.register_parser(FirstLemma.parse)
 
 # TODO: add unit tests
+
+
 class MarkerCommentLocator(Locator):
     """Locates a comment that contains the given string."""
+
+    COMMENT_MARKER_PREFIX = "comment_marker:"
 
     def __init__(self, marker: str):
         self._marker = marker
 
     def __str__(self) -> str:
-        return f"comment_marker:{self._marker}"
+        return f"{self.COMMENT_MARKER_PREFIX}{self._marker}"
 
     @override
     def __call__(self, rdm: RocqCursor) -> bool:
@@ -107,40 +177,15 @@ class MarkerCommentLocator(Locator):
         return rdm.advance_to_first_match(is_marker_comment)
 
     def task_kind(self) -> task_output.TaskKind:
-        return task_output.TaskKind(
-            task_output.OtherTask(f"marker_comment:{self._marker}")
-        )
+        return task_output.TaskKind(task_output.OtherTask(self.__str__()))
 
-
-def parse_locator(s: str) -> Locator:
-    def get_index(s: str) -> tuple[str, int]:
-        ptrn: re.Pattern = re.compile(r"(.+)\(([0-9]+)\)")
-        mtch = ptrn.match(s)
-        if mtch is None:
-            return (s, 0)
-        else:
-            return mtch.group(1), int(mtch.group(2))
-
-    if s.startswith("lemma:"):  # Backwards compatibility
-        logger.warning(
-            " ".join(
-                [
-                    '"lemma:" locator is deprecated,',
-                    'use "Theorem:" or "Lemma:":',
-                    s,
-                ]
+    @staticmethod
+    def parse(s: str) -> MarkerCommentLocator | None:
+        if s.startswith(MarkerCommentLocator.COMMENT_MARKER_PREFIX):
+            return MarkerCommentLocator(
+                s[len(MarkerCommentLocator.COMMENT_MARKER_PREFIX) :]
             )
-        )
-        return FirstLemma(s[len("lemma:") :])
-    elif s.startswith("Theorem:"):
-        nm, index = get_index(s[len("Theorem:") :])
-        return FirstLemma(nm, "Theorem", index=index)
-    elif s.startswith("Lemma:"):
-        nm, index = get_index(s[len("Lemma:") :])
-        return FirstLemma(nm, "Lemma", index=index)
-    elif s.startswith("comment_marker:"):
-        marker = s[len("comment_marker:") :]
-        return MarkerCommentLocator(marker)
-    if s == "admit":
-        return FirstAdmit()
-    return Locator()
+        return None
+
+
+LocatorParser.register_parser(MarkerCommentLocator.parse)
