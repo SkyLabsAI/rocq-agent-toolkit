@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 import re
-from typing import Callable, Protocol, override
+from typing import Callable, override
 
 from rocq_doc_manager import RocqCursor
 
@@ -15,13 +15,6 @@ class NotFound(Exception):
     pass
 
 
-class ParserProtocol(Protocol):
-    """Protocol for parser classes that have a static parse method."""
-    @staticmethod
-    def parse(s: str) -> Locator | None:
-        ...
-
-
 class Locator:
     def __call__(self, rdm: RocqCursor) -> bool:
         return False
@@ -32,8 +25,8 @@ class Locator:
 
     parsers: list[Callable[[str], Locator | None]] = []
     @staticmethod
-    def register_parser(parser: type[ParserProtocol]) -> None:
-        Locator.parsers.append(parser.parse)
+    def register_parser(parser: Callable[[str], Locator | None]) -> None:
+        Locator.parsers.append(parser)
 
     # [FirstLemma.parse, FirstAdmit.parse, MarkerCommentLocator.parse]
     @staticmethod
@@ -67,7 +60,7 @@ class FirstAdmit(Locator):
             return FirstAdmit()
         return None
 
-Locator.register_parser(FirstAdmit)
+Locator.register_parser(FirstAdmit.parse)
 
 class FirstLemma(Locator):
     def __str__(self) -> str:
@@ -144,7 +137,7 @@ class FirstLemma(Locator):
 
         return None
 
-Locator.register_parser(FirstLemma)
+Locator.register_parser(FirstLemma.parse)
 
 # TODO: add unit tests
 class MarkerCommentLocator(Locator):
@@ -179,4 +172,4 @@ class MarkerCommentLocator(Locator):
             )
         return None
 
-Locator.register_parser(MarkerCommentLocator)
+Locator.register_parser(MarkerCommentLocator.parse)
