@@ -205,6 +205,7 @@ class GraphNode(BaseModel):
     """Graph node for observability-derived cursor graphs."""
 
     id: str
+    index: int
     information: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -214,6 +215,7 @@ class GraphEdge(BaseModel):
     source: str
     target: str
     label: str
+    index: int
     information: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -222,6 +224,7 @@ class GraphData(BaseModel):
 
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+    information: dict[str, Any] = Field(default_factory=dict)
 
 
 class ObservabilityGraphResponse(BaseModel):
