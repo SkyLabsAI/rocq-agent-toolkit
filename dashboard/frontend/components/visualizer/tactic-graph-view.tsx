@@ -11,7 +11,7 @@ import {
   useNodesState,
 } from '@xyflow/react';
 import dagre from 'dagre';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import SelfLoopEdge from '@/components/visualizer/edges/self-loop-edge';
 import TacticNode, {
@@ -22,9 +22,9 @@ import type { TacticGraphResponse } from '@/services/dataservice';
 type Props = {
   graph: TacticGraphResponse;
   selectedNodeId?: string;
-  onSelectNodeId: (nodeId: string) => void;
+  onSelectNodeId: (nodeId: string | null) => void;
   selectedEdgeId?: string;
-  onSelectEdgeId: (edgeId: string) => void;
+  onSelectEdgeId: (edgeId: string | null) => void;
 };
 
 const NODE_W = 220;
@@ -37,6 +37,12 @@ const TacticGraphView = ({
   selectedEdgeId,
   onSelectEdgeId,
 }: Props) => {
+  // Use a ref to store the callback to avoid re-creating edges on every selection change
+  const onSelectEdgeIdRef = useRef(onSelectEdgeId);
+  useEffect(() => {
+    onSelectEdgeIdRef.current = onSelectEdgeId;
+  }, [onSelectEdgeId]);
+
   const computed = useMemo(() => {
     const nodes: Array<Node<TacticNodeData>> = [];
     const edges: Edge[] = [];
@@ -49,6 +55,11 @@ const TacticGraphView = ({
 
     // Build a map of node id -> connected edges
     const edgesByNode = new Map<string, Array<(typeof graph.graph.edges)[0]>>();
+    const outgoingEdgesByNode = new Map<
+      string,
+      Array<(typeof graph.graph.edges)[0]>
+    >();
+
     for (const edge of graph.graph.edges) {
       if (!edgesByNode.has(edge.source)) {
         edgesByNode.set(edge.source, []);
@@ -58,6 +69,12 @@ const TacticGraphView = ({
       }
       edgesByNode.get(edge.source)!.push(edge);
       edgesByNode.get(edge.target)!.push(edge);
+
+      // Track outgoing edges separately
+      if (!outgoingEdgesByNode.has(edge.source)) {
+        outgoingEdgesByNode.set(edge.source, []);
+      }
+      outgoingEdgesByNode.get(edge.source)!.push(edge);
     }
 
     // Create nodes
@@ -66,6 +83,14 @@ const TacticGraphView = ({
         node.information?.error === 'true' || node.information?.error === true;
       const connectedEdges = edgesByNode.get(node.id) || [];
 
+      // Check if this is an end node (no outgoing edges, excluding self-loops)
+      const outgoingEdges = outgoingEdgesByNode.get(node.id) || [];
+      const hasNonSelfLoopOutgoing = outgoingEdges.some(
+        e => e.target !== node.id
+      );
+      const isEndNode = !hasNonSelfLoopOutgoing;
+      const isSuccess = isEndNode && !hasError;
+
       nodes.push({
         id: node.id,
         type: 'tacticNode',
@@ -73,6 +98,7 @@ const TacticGraphView = ({
         data: {
           node,
           hasError,
+          isSuccess,
           connectedEdges,
         },
         width: NODE_W,
@@ -118,6 +144,7 @@ const TacticGraphView = ({
             originalEdge: edge,
             edgeId,
             offset: isSelfLoop ? idx : 0, // For multiple self-loops on same node
+            onEdgeClick: () => onSelectEdgeIdRef.current(edgeId), // Use ref to avoid dependency
           },
           type: isSelfLoop ? 'selfloop' : undefined,
           labelStyle: {
@@ -144,6 +171,7 @@ const TacticGraphView = ({
           labelBgPadding: [4, 6],
           labelBgBorderRadius: 4,
           animated: false,
+          interactionWidth: 20, // Make the edge easier to click
           style: {
             stroke: hasError
               ? 'var(--color-border-warning, #d97706)'
@@ -235,6 +263,12 @@ const TacticGraphView = ({
     onSelectEdgeId(edge.id);
   };
 
+  const onPaneClick = () => {
+    // Deselect both nodes and edges when clicking on empty space
+    onSelectNodeId(null);
+    onSelectEdgeId(null);
+  };
+
   if (!graph.graph.nodes.length) {
     return (
       <div className='text-sm text-text-disabled'>No nodes to render.</div>
@@ -248,6 +282,7 @@ const TacticGraphView = ({
         edges={edges}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
+        onPaneClick={onPaneClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         nodesDraggable

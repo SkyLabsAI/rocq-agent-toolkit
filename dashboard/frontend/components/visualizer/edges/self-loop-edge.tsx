@@ -12,47 +12,37 @@ const SelfLoopEdge = ({
   markerEnd,
   data,
 }: EdgeProps) => {
-  // For self-loops, create a circular path at the top of the node
-  // Get the offset for multiple self-loops on the same node
   const offset = (data?.offset as number) || 0;
+  const onEdgeClick = (data?.onEdgeClick as (() => void) | undefined) || null;
 
-  // Node dimensions (should match NODE_W and NODE_H in tactic-graph-view)
-  const nodeWidth = 220;
-  const nodeHeight = 120;
+  // Node dimensions (must match tactic-graph-view.tsx)
+  const NODE_WIDTH = 220;
+  const NODE_HEIGHT = 120;
 
-  // Loop parameters
-  const loopHeight = 50; // Height of the loop above the node
-  const loopWidth = 40; // Width of each loop
-  const horizontalSpacing = 50; // Horizontal spacing between loops
+  // Get node's top-left corner (using user's modification)
+  const nodeLeft = sourceX - NODE_WIDTH;
+  const nodeTop = sourceY - NODE_HEIGHT / 3;
 
-  // Calculate horizontal offset for multiple loops
-  const horizontalOffset = offset * horizontalSpacing;
+  // All loops start and end at the same points on the node's top edge
+  const startX = nodeLeft + 30; // Fixed start point (30px from left edge)
+  const endX = nodeLeft + NODE_WIDTH - 30; // Fixed end point (30px from right edge)
+  const y = nodeTop;
 
-  // Starting point: top-left of node, offset horizontally for each loop
-  const startX = sourceX - nodeWidth / 2 + 30 + horizontalOffset;
-  const startY = sourceY - nodeHeight / 2;
+  // Each loop gets progressively larger radius (stacks vertically)
+  const baseRadius = 40;
+  const radiusIncrement = 100; // Each loop adds 25px to radius
+  const loopRadius = baseRadius + offset * radiusIncrement;
 
-  // End point: slightly to the right of start point
-  const endX = startX + loopWidth;
-  const endY = startY;
-
-  // Control points for a smooth loop above the node
-  const controlPoint1X = startX;
-  const controlPoint1Y = startY - loopHeight;
-  const controlPoint2X = endX;
-  const controlPoint2Y = startY - loopHeight;
-
-  // Create a smooth loop path using cubic Bezier
+  // Create circular arc - control points determine the height
+  const centerX = (startX + endX) / 2;
   const path = `
-    M ${startX},${startY}
-    C ${controlPoint1X},${controlPoint1Y} 
-      ${controlPoint2X},${controlPoint2Y} 
-      ${endX},${endY}
+    M ${startX},${y}
+    Q ${centerX},${y - loopRadius} ${endX},${y}
   `;
 
-  // Position for the label - place it at the top of the loop
-  const labelX = (startX + endX) / 2;
-  const labelY = startY - loopHeight - 10;
+  // Label at the apex of each loop (different heights for each)
+  const labelX = centerX;
+  const labelY = y - loopRadius / 2;
 
   return (
     <>
@@ -69,10 +59,12 @@ const SelfLoopEdge = ({
               cursor: 'pointer',
               ...labelStyle,
             }}
-            className='nodrag nopan bg-elevation-surface px-2 py-1 rounded border border-elevation-surface-overlay hover:bg-elevation-surface-overlay transition-colors'
+            className='nodrag nopan bg-elevation-surface px-2 py-1 rounded border border-elevation-surface-overlay hover:bg-elevation-surface-overlay transition-colors shadow-sm'
             onClick={e => {
               e.stopPropagation();
-              // The edge click will be handled by ReactFlow's onEdgeClick
+              if (onEdgeClick) {
+                onEdgeClick();
+              }
             }}
           >
             {label}

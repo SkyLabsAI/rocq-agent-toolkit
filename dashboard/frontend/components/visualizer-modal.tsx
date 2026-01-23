@@ -2,6 +2,8 @@
 
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
+import CodeViewer from '@/components/base/codeViewer';
+import { StatusBadge } from '@/components/base/statusBadge';
 import Modal from '@/components/base/ui/modal';
 import SpanGraphView from '@/components/visualizer/span-graph-view';
 import TacticGraphView from '@/components/visualizer/tactic-graph-view';
@@ -644,6 +646,166 @@ const TracesVisualization = ({
   );
 };
 
+// Copy Button Component
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // Failed to copy to clipboard
+      setCopied(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className='px-2 py-1 text-xs rounded bg-elevation-surface-raised border border-elevation-surface-overlay hover:bg-elevation-surface-overlay transition-colors'
+      title='Copy to clipboard'
+    >
+      {copied ? '✓ Copied' : 'Copy'}
+    </button>
+  );
+};
+
+// JSON Viewer Component with syntax highlighting
+const JsonViewer = ({ data }: { data: unknown }) => {
+  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
+
+  // Simple syntax highlighting using regex
+  const highlighted = useMemo(() => {
+    return jsonString
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(
+        /"([^"]+)":/g,
+        '<span style="color: var(--color-text-information, #3b82f6)">"$1"</span>:'
+      )
+      .replace(
+        /: "([^"]*)"/g,
+        ': <span style="color: var(--color-text-success, #10b981)">"$1"</span>'
+      )
+      .replace(
+        /: (true|false)/g,
+        ': <span style="color: var(--color-text-warning, #d97706)">$1</span>'
+      )
+      .replace(
+        /: (null)/g,
+        ': <span style="color: var(--color-text-disabled, #9ca3af)">$1</span>'
+      )
+      .replace(
+        /: (-?\d+\.?\d*)/g,
+        ': <span style="color: var(--color-text-information, #3b82f6)">$1</span>'
+      );
+  }, [jsonString]);
+
+  return (
+    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-96 overflow-auto'>
+      <pre
+        className='text-xs font-mono text-text whitespace-pre-wrap'
+        dangerouslySetInnerHTML={{ __html: highlighted }}
+      />
+    </div>
+  );
+};
+
+// Helper to extract focused goals from information
+const extractFocusedGoals = (
+  information: Record<string, unknown>
+): string[] | null => {
+  try {
+    const result = information?.result as Record<string, unknown> | undefined;
+    const proofState = result?.proof_state as
+      | Record<string, unknown>
+      | undefined;
+    const focusedGoals = proofState?.focused_goals as unknown;
+
+    if (Array.isArray(focusedGoals)) {
+      return focusedGoals.map(goal => String(goal));
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+// Information Viewer with tabs for Focused Goals and JSON
+const InformationViewer = ({
+  data,
+  title = 'Information',
+}: {
+  data: Record<string, unknown>;
+  title?: string;
+}) => {
+  const [activeTab, setActiveTab] = useState<'goals' | 'json'>('goals');
+  const focusedGoals = useMemo(() => extractFocusedGoals(data), [data]);
+
+  return (
+    <div>
+      <div className='flex items-center justify-between mb-2'>
+        <div className='text-xs text-text-disabled'>{title}</div>
+        <CopyButton text={JSON.stringify(data, null, 2)} />
+      </div>
+
+      {focusedGoals && focusedGoals.length > 0 ? (
+        <>
+          {/* Tabs */}
+          <div className='flex gap-2 mb-2 border-b border-elevation-surface-overlay'>
+            <button
+              onClick={() => setActiveTab('goals')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                activeTab === 'goals'
+                  ? 'text-text-information border-b-2 border-text-information'
+                  : 'text-text-disabled hover:text-text'
+              }`}
+            >
+              Focused Goals
+            </button>
+            <button
+              onClick={() => setActiveTab('json')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                activeTab === 'json'
+                  ? 'text-text-information border-b-2 border-text-information'
+                  : 'text-text-disabled hover:text-text'
+              }`}
+            >
+              JSON
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'goals' ? (
+            <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-96 overflow-auto space-y-3'>
+              {focusedGoals.map((goal, idx) => (
+                <div
+                  key={idx}
+                  className='border-l-2 border-text-information pl-3'
+                >
+                  <div className='text-xs text-text-disabled mb-1'>
+                    Goal {idx + 1}
+                  </div>
+                  <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
+                    {goal}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <JsonViewer data={data} />
+          )}
+        </>
+      ) : (
+        <JsonViewer data={data} />
+      )}
+    </div>
+  );
+};
+
 // Tactic Graph Visualization Component
 const TacticGraphVisualization = ({
   tacticGraph,
@@ -668,6 +830,21 @@ const TacticGraphVisualization = ({
   const selectedNodeEdges = tacticGraph?.graph.edges.filter(
     e => e.source === selectedTacticNode || e.target === selectedTacticNode
   );
+
+  // Extract graph information in a type-safe way
+  const graphInfo = useMemo(() => {
+    if (!tacticGraph?.graph.information) return null;
+    const info = tacticGraph.graph.information;
+    return {
+      cpp_code: typeof info.cpp_code === 'string' ? info.cpp_code : undefined,
+      cpp_spec: typeof info.cpp_spec === 'string' ? info.cpp_spec : undefined,
+      proofScript:
+        typeof info.proofScript === 'string' ? info.proofScript : undefined,
+      task_status: info.task_status,
+      taskStatus: info.taskStatus,
+      raw: info,
+    };
+  }, [tacticGraph]);
 
   // Find selected edge by matching the edge ID
   // We need to reconstruct the edge index to match
@@ -751,12 +928,16 @@ const TacticGraphVisualization = ({
               selectedNodeId={selectedTacticNode || undefined}
               onSelectNodeId={nodeId => {
                 setSelectedTacticNode(nodeId);
-                setSelectedTacticEdge(null); // Clear edge selection
+                if (nodeId !== null) {
+                  setSelectedTacticEdge(null); // Clear edge selection only when selecting a node
+                }
               }}
               selectedEdgeId={selectedTacticEdge || undefined}
               onSelectEdgeId={edgeId => {
                 setSelectedTacticEdge(edgeId);
-                setSelectedTacticNode(null); // Clear node selection
+                if (edgeId !== null) {
+                  setSelectedTacticNode(null); // Clear node selection only when selecting an edge
+                }
               }}
             />
           ) : (
@@ -773,7 +954,11 @@ const TacticGraphVisualization = ({
       <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
         <div className='p-4 space-y-4'>
           <div className='text-sm text-text font-semibold mb-3'>
-            {selectedEdge ? 'Edge Details' : 'Node Details'}
+            {selectedEdge
+              ? 'Edge Details'
+              : selectedNode
+                ? 'Node Details'
+                : 'Graph Information'}
           </div>
           {selectedEdge ? (
             <div className='space-y-3'>
@@ -811,14 +996,12 @@ const TacticGraphVisualization = ({
                 </div>
               )}
               <div>
-                <div className='text-xs text-text-disabled mb-1'>
-                  Edge Information
-                </div>
-                <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-96 overflow-auto'>
-                  <pre className='text-xs text-text whitespace-pre-wrap'>
-                    {JSON.stringify(selectedEdge.edge.information, null, 2)}
-                  </pre>
-                </div>
+                <InformationViewer
+                  data={
+                    selectedEdge.edge.information as Record<string, unknown>
+                  }
+                  title='Edge Information'
+                />
               </div>
             </div>
           ) : selectedNode ? (
@@ -870,16 +1053,84 @@ const TacticGraphVisualization = ({
                 </div>
               )}
               <div>
-                <div className='text-xs text-text-disabled mb-1'>
-                  Information
-                </div>
-                <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-96 overflow-auto'>
-                  <pre className='text-xs text-text whitespace-pre-wrap'>
-                    {JSON.stringify(selectedNode.information, null, 2)}
-                  </pre>
-                </div>
+                <InformationViewer
+                  data={selectedNode.information as Record<string, unknown>}
+                  title='Information'
+                />
               </div>
             </div>
+          ) : graphInfo ? (
+            <>
+              <div className='space-y-3'>
+                {/* Graph-level Information */}
+                {graphInfo.cpp_code && (
+                  <div>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='text-xs text-text-disabled'>C++ Code</div>
+                      <CopyButton text={graphInfo.cpp_code} />
+                    </div>
+                    <CodeViewer code={graphInfo.cpp_code} language='cpp' />
+                  </div>
+                )}
+                {graphInfo.cpp_spec && (
+                  <div>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='text-xs text-text-disabled'>
+                        C++ Specification
+                      </div>
+                      <CopyButton text={graphInfo.cpp_spec} />
+                    </div>
+                    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
+                      <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
+                        {graphInfo.cpp_spec}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+                {graphInfo.proofScript && (
+                  <div>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='text-xs text-text-disabled'>
+                        Proof Script
+                      </div>
+                      <CopyButton text={graphInfo.proofScript} />
+                    </div>
+                    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
+                      <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
+                        {graphInfo.proofScript}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+                {(graphInfo.task_status !== undefined ||
+                  graphInfo.taskStatus !== undefined) && (
+                  <div>
+                    <div className='text-xs text-text-disabled mb-2'>
+                      Task Status
+                    </div>
+                    <StatusBadge
+                      status={
+                        String(
+                          graphInfo.taskStatus ?? graphInfo.task_status
+                        ) === 'true'
+                          ? 'Success'
+                          : 'Failure'
+                      }
+                    />
+                  </div>
+                )}
+                {/* Show all other fields as JSON */}
+                <div>
+                  <div className='flex items-center justify-between mb-2'>
+                    <div className='text-xs text-text-disabled'>
+                      Additional Information
+                    </div>
+                    <CopyButton text={JSON.stringify(graphInfo.raw, null, 2)} />
+                  </div>
+                  <JsonViewer data={graphInfo.raw} />
+                </div>
+              </div>
+            </>
           ) : (
             <div className='text-sm text-text-disabled'>
               Select a node or edge to see details

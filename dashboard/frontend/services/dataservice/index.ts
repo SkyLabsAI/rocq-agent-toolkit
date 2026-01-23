@@ -1,6 +1,9 @@
 import axios from 'axios';
 
 import { config } from '@/config/environment';
+
+// Configure axios defaults to skip ngrok browser warning
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 import {
   bulkAddTagsMock,
   getAgentClassDataMock,
@@ -581,6 +584,7 @@ export async function getLogsBySpan(args: {
 
 export type TacticGraphNode = {
   id: string;
+  index: number;
   information: Record<string, unknown>;
 };
 
@@ -588,12 +592,14 @@ export type TacticGraphEdge = {
   source: string;
   target: string;
   label: string;
+  index: number;
   information: Record<string, unknown>;
 };
 
 export type TacticGraph = {
   nodes: TacticGraphNode[];
   edges: TacticGraphEdge[];
+  information?: Record<string, unknown>;
 };
 
 export type TacticGraphResponse = {

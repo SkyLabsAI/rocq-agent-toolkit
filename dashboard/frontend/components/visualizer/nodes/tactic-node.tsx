@@ -7,6 +7,7 @@ import type { TacticGraphEdge, TacticGraphNode } from '@/services/dataservice';
 export type TacticNodeData = {
   node: TacticGraphNode;
   hasError: boolean;
+  isSuccess: boolean;
   connectedEdges: TacticGraphEdge[];
 };
 
