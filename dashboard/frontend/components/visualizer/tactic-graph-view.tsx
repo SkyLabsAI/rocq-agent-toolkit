@@ -47,6 +47,14 @@ const TacticGraphView = ({
     const nodes: Array<Node<TacticNodeData>> = [];
     const edges: Edge[] = [];
 
+    // Check graph-level task status to determine edge colors
+    const graphInfo = graph.graph.information;
+    const taskStatus = graphInfo?.taskStatus ?? graphInfo?.task_status;
+    const isTaskSuccess =
+      taskStatus === true ||
+      taskStatus === 'true' ||
+      String(taskStatus).toLowerCase() === 'true';
+
     // Build a map of node id -> node for quick lookup
     const nodeMap = new Map<string, (typeof graph.graph.nodes)[0]>();
     for (const node of graph.graph.nodes) {
@@ -161,24 +169,37 @@ const TacticGraphView = ({
               ? 'var(--color-border-warning, #d97706)'
               : selectedEdgeId === edgeId
                 ? 'var(--color-border-bold, #7d818a)'
-                : undefined,
-            strokeWidth: hasError
-              ? 1.5
-              : selectedEdgeId === edgeId
-                ? 2
-                : undefined,
+                : isSelfLoop
+                  ? 'var(--color-border, #e5e7eb)'
+                  : isTaskSuccess
+                    ? 'var(--color-border-success, #6a9a23)'
+                    : 'var(--color-border, #e5e7eb)',
+            strokeWidth: hasError ? 1.5 : selectedEdgeId === edgeId ? 2 : 1.5,
           },
           labelBgPadding: [4, 6],
           labelBgBorderRadius: 4,
-          animated: false,
+          animated: !hasError && !isSelfLoop && isTaskSuccess, // Animate only on task success
           interactionWidth: 20, // Make the edge easier to click
           style: {
             stroke: hasError
               ? 'var(--color-border-warning, #d97706)'
               : selectedEdgeId === edgeId
                 ? 'var(--color-border-bold, #7d818a)'
-                : 'var(--color-border, #e5e7eb)',
-            strokeWidth: selectedEdgeId === edgeId ? 3 : hasError ? 2 : 1.5,
+                : isSelfLoop
+                  ? 'var(--color-border, #e5e7eb)'
+                  : isTaskSuccess
+                    ? 'var(--color-border-success, #6a9a23)'
+                    : 'var(--color-border, #e5e7eb)',
+            strokeWidth:
+              selectedEdgeId === edgeId
+                ? 3
+                : hasError
+                  ? 2
+                  : isSelfLoop
+                    ? 1.5
+                    : isTaskSuccess
+                      ? 2
+                      : 1.5,
           },
           markerEnd: {
             type: 'arrowclosed',
@@ -188,7 +209,11 @@ const TacticGraphView = ({
               ? 'var(--color-border-warning, #d97706)'
               : selectedEdgeId === edgeId
                 ? 'var(--color-border-bold, #7d818a)'
-                : 'var(--color-border, #e5e7eb)',
+                : isSelfLoop
+                  ? 'var(--color-border, #e5e7eb)'
+                  : isTaskSuccess
+                    ? 'var(--color-border-success, #6a9a23)'
+                    : 'var(--color-border, #e5e7eb)',
           },
         });
       });
@@ -218,6 +243,14 @@ const TacticGraphView = ({
 
   // Update edge selection state without recreating edges
   useEffect(() => {
+    // Check task status
+    const graphInfo = graph.graph.information;
+    const taskStatus = graphInfo?.taskStatus ?? graphInfo?.task_status;
+    const isTaskSuccess =
+      taskStatus === true ||
+      taskStatus === 'true' ||
+      String(taskStatus).toLowerCase() === 'true';
+
     setEdges(prev =>
       prev.map(e => {
         const edgeData = e.data as
@@ -230,12 +263,22 @@ const TacticGraphView = ({
         const hasError =
           edgeData?.originalEdge?.information?.error === 'true' ||
           edgeData?.originalEdge?.information?.error === true;
+        const isSelfLoop = e.type === 'selfloop';
 
         return {
           ...e,
           style: {
             ...e.style,
-            strokeWidth: selectedEdgeId === e.id ? 3 : hasError ? 2 : 1.5,
+            strokeWidth:
+              selectedEdgeId === e.id
+                ? 3
+                : hasError
+                  ? 2
+                  : isSelfLoop
+                    ? 1.5
+                    : isTaskSuccess
+                      ? 2
+                      : 1.5,
           },
           labelBgStyle: {
             ...e.labelBgStyle,
@@ -243,12 +286,12 @@ const TacticGraphView = ({
               ? 'var(--color-border-warning, #d97706)'
               : selectedEdgeId === e.id
                 ? 'var(--color-border-bold, #7d818a)'
-                : undefined,
-            strokeWidth: hasError
-              ? 1.5
-              : selectedEdgeId === e.id
-                ? 2
-                : undefined,
+                : isSelfLoop
+                  ? 'var(--color-border, #e5e7eb)'
+                  : isTaskSuccess
+                    ? 'var(--color-border-success, #6a9a23)'
+                    : 'var(--color-border, #e5e7eb)',
+            strokeWidth: hasError ? 1.5 : selectedEdgeId === e.id ? 2 : 1.5,
           },
         };
       })

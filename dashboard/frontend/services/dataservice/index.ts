@@ -2,8 +2,6 @@ import axios from 'axios';
 
 import { config } from '@/config/environment';
 
-// Configure axios defaults to skip ngrok browser warning
-axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 import {
   bulkAddTagsMock,
   getAgentClassDataMock,
