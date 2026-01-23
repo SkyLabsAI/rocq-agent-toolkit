@@ -25,6 +25,7 @@ def trace_proof[B, A](
     tracer: Tracer[B, A],
     rdm: RocqCursor,
     progress: util.ProgressCallback,
+    skip_goal_selectors: bool,
     progress_min: float = 0.0,
     progress_max: float = 1.0,
 ) -> list[tuple[(B | None), str, (A | None)]]:
@@ -33,6 +34,9 @@ def trace_proof[B, A](
     trace: list[tuple[(B | None), str, (A | None)]] = []
     step_size: float = (progress_max - progress_min) / len(tactics)
     for i, tactic in enumerate(tactics):
+        tactic = tactic.strip()
+        if skip_goal_selectors and not tactic.endswith("."):
+            continue
         tracer.before(rdm, tactic)
         progress.status(status=tactic[:10])
         assert not isinstance(rdm.run_command(tactic), rdm.Err)
@@ -86,6 +90,7 @@ def run(
     output_dir: Path,
     project: Tasks.Project,
     tasks: list[Tasks.Task],
+    skip_goal_selectors: bool,
     jobs: int = 1,
 ) -> None:
     output_dir.mkdir(exist_ok=True)
@@ -122,7 +127,9 @@ def run(
                     return False
                 progress.status(0.1, "💭")
 
-                trace = trace_proof(tracer, rc, progress, 0.1, 0.95)
+                trace = trace_proof(
+                    tracer, rc, progress, skip_goal_selectors, 0.1, 0.95
+                )
                 progress.status(0.95, "💭")
 
             with open(output_file, "w") as output:
@@ -182,7 +189,14 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         #     # print(f"'{arguments.tracer}' is a '{tracer}' but expected a [TacticExtractor].")
         #     return False
 
-    run(tracer, arguments.output_dir, project, tasks, jobs=arguments.jobs)
+    run(
+        tracer,
+        arguments.output_dir,
+        project,
+        tasks,
+        skip_goal_selectors=arguments.minimize_goal_diff,
+        jobs=arguments.jobs,
+    )
     return True
 
 
