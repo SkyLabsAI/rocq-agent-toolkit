@@ -1,4 +1,3 @@
-import inspect
 from collections.abc import Callable
 from typing import Annotated, override
 
@@ -63,12 +62,10 @@ class RocqRetryAction(RocqTacticAction):
 
     _rectifier: Annotated[
         Callable[[RocqCursor, str, str], str | None] | None,
-        Provenance.Reflect.Field(
-            transform=lambda fn: None if fn is None else inspect.getsource(fn)
-        ),
+        Provenance.Reflect.CallableField,
     ]
     _max_retries: Annotated[int, Provenance.Reflect.Field]
-    _final_tactic: Annotated[str | None, Provenance.Reflect.Field]
+    _final_tactic: str | None  # this field is mutable
 
     def __init__(
         self,
