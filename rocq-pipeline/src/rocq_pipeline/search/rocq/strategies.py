@@ -18,7 +18,8 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     _tactic: Annotated[str, Provenance.Reflect.Field]
     _prob: Annotated[float, Provenance.Reflect.Field]
 
-    def __init__(self, tactic: str, prob: float = 1.0) -> None:
+    # TODO: this is a logprob
+    def __init__(self, tactic: str, prob: float = 0.0) -> None:
         self._tactic = tactic
         self._prob = prob
 
