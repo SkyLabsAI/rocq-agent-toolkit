@@ -1,0 +1,12 @@
+cd dashboard/frontend
+
+echo "Running ESLint with --fix..."
+pnpm eslint --fix || exit 1
+
+echo "Building project..."
+pnpm build || exit 1
+
+echo "Running unit tests..."
+pnpm test || exit 1
+
+echo "All checks passed!"

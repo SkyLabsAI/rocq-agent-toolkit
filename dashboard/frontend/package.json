@@ -16,7 +16,17 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "test:e2e:install": "playwright install --with-deps"
+    "test:e2e:install": "playwright install --with-deps",
+    "prepare": "cd ../.. && husky dashboard/frontend/.husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@xyflow/react": "^12.10.0",
@@ -66,6 +76,8 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.1"
   }
 }
