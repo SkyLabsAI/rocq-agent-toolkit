@@ -107,7 +107,7 @@ class ConsRollout[T_co](Rollout[T_co]):
             return Rollout.Approx(logprob=self._logprob, result=self._value)
 
 
-def singleton[T_co](value: T_co, *, score: float = 0.0) -> Rollout[T_co]:
+def singleton[T_co](value: T_co, *, score: float) -> Rollout[T_co]:
     return ConsRollout(value, logprob=score, rest=empty_Rollout())
 
 
