@@ -48,22 +48,23 @@ class Graph:
 
     def to_model(self) -> GraphData:
         return GraphData(
-            nodes=list(self.nodes.values()), edges=self.edges, information=self.information
+            nodes=list(self.nodes.values()),
+            edges=self.edges,
+            information=self.information,
         )
 
     def to_dict(self) -> dict[str, Any]:
         return self.to_model().model_dump()
-    
+
     def update_graph_information(self, information: dict[str, Any]) -> None:
         self.information.update(information)
 
-    def extract_graph_info(self, log: LogEntry, labels:[str]) -> dict[str, Any]:
+    def extract_graph_info(self, log: LogEntry, labels: list[str]) -> dict[str, Any]:
         for label in labels:
             value = log.labels.get(label, None)
             if value:
                 self.information[label] = value
         return self.information
-
 
 
 def _maybe_json(value: Any) -> Any:
@@ -73,6 +74,7 @@ def _maybe_json(value: Any) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return value
+
 
 def _extract_proof_Script(edges: list[GraphEdge]) -> str:
     proof_script = ""
@@ -100,7 +102,7 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
         if not match:
             # this is for the idea on how we can define the key's and values which will be extarcted
             # Right now only the task_status is granteed to be extracted as it is being done in task_runner
-            graph.extract_graph_info(log, ["cpp_spec", "cpp_code" , "task_status"])
+            graph.extract_graph_info(log, ["cpp_spec", "cpp_code", "task_status"])
             continue
 
         before_id = log.labels.get("before_id", None)
@@ -142,7 +144,7 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
         proof_state = result.get("proof_state", "NoProofState")
         if proof_state == "NoProofState":
             graph.update_graph_information({"taskStatus": False})
-        elif proof_state is None: # proof_state = null means no goals are left to prove
+        elif proof_state is None:  # proof_state = null means no goals are left to prove
             graph.update_graph_information({"taskStatus": True})
         else:
             graph.update_graph_information({"taskStatus": False})
