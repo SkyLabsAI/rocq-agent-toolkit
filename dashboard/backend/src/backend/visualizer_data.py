@@ -152,6 +152,8 @@ async def get_tactic_graph(
                 detail=f"No run data found for run_id='{run_id}' and task_id={task_id}",
             )
 
+        # Right now, all the logs are being fetched and the filtering is done in python.
+        # We can also add the filtering at the loki level. - if the number of logs for a single task increases
         logs = await fetch_observability_logs(
             run_id=run_id, task_name=task_name, estimated_time=estimated_time
         )

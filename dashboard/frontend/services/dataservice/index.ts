@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { config } from '@/config/environment';
+
 import {
   bulkAddTagsMock,
   getAgentClassDataMock,
@@ -18,6 +19,7 @@ import {
   getProjectsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,
+  getTacticGraphMock,
   getTaskDetailsByIdMock,
   getTaskDetailsMock,
   refreshDataMock,
@@ -572,4 +574,51 @@ export async function getLogsBySpan(args: {
   url.searchParams.set('direction', args.direction ?? 'backward');
   const resp = await axios.get(url.toString());
   return resp.data as Record<string, unknown>;
+}
+
+// ========================================
+// TACTIC GRAPH VISUALIZER TYPES
+// ========================================
+
+export type TacticGraphNode = {
+  id: string;
+  index: number;
+  information: Record<string, unknown>;
+};
+
+export type TacticGraphEdge = {
+  source: string;
+  target: string;
+  label: string;
+  index: number;
+  information: Record<string, unknown>;
+};
+
+export type TacticGraph = {
+  nodes: TacticGraphNode[];
+  edges: TacticGraphEdge[];
+  information?: Record<string, unknown>;
+};
+
+export type TacticGraphResponse = {
+  run_id: string;
+  task_id: number;
+  task_name: string;
+  graph: TacticGraph;
+  total_nodes: number;
+  total_edges: number;
+};
+
+export async function getTacticGraph(
+  runId: string,
+  taskId: number
+): Promise<TacticGraphResponse> {
+  if (USE_MOCK_DATA) {
+    return getTacticGraphMock(runId, taskId);
+  }
+  const url = new URL(`${config.DATA_API}/visualizer/data/tactic/graph`);
+  url.searchParams.set('run_id', runId);
+  url.searchParams.set('task_id', `${taskId}`);
+  const resp = await axios.get(url.toString());
+  return resp.data as TacticGraphResponse;
 }
