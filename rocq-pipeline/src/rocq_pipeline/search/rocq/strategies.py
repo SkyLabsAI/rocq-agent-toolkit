@@ -18,7 +18,8 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     _tactic: Annotated[str, Provenance.Reflect.Field]
     _prob: Annotated[float, Provenance.Reflect.Field]
 
-    def __init__(self, tactic: str, prob: float = 1.0) -> None:
+    # TODO: this is a logprob
+    def __init__(self, tactic: str, prob: float = 0.0) -> None:
         self._tactic = tactic
         self._prob = prob
 
@@ -29,7 +30,9 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        return singleton(RocqTacticAction("progress {tac}"), score=self._prob)
+        return singleton(
+            RocqTacticAction(f"progress ({self._tactic})"), score=self._prob
+        )
 
 
 class CutAssertStrategy(Strategy):
