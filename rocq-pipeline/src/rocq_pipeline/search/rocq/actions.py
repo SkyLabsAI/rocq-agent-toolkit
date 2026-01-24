@@ -9,6 +9,40 @@ from ..action import Action
 
 logger = get_logger("rocq_agent")
 
+# Rocq tactics and commands have a lot of variations that make dealing
+# with them complex. In an ideal world, we would get this information
+# from Rocq and operate at the abstract syntax level, but that requires
+# exposing APIs from Rocq that are not currently exposed. Several
+# notes.
+#
+# Commands are interactions with Rocq that end with a `.`, e.g.
+#
+# - `Lemma foo : True.`
+# - `Hint Resolve foo : typeclass_instances.`
+#
+# Commands expose a very "raw", text-based level of interaction with Rocq
+# and can be used as an escape hatch when finer-grained APIs are not suitable.
+#
+# One way to build commands is via tactics, and we sometimes wish to
+# manipulate tactics, e.g. by adding `progress`, or running tactics on
+# resulting goals. Some example tactics are the following:
+#
+# - `intros`
+# - `1: reflexivity`
+# - `1,3: lia`
+#
+# Note that tactics **do not** end in a `.`[^..tactics].
+#
+# Another class of interactions are "tactics" for focusing and bracketing.
+# These include interactions such as `{`, `-`, `+`, `*`. These interactions
+# are currently not well supported in this framework and are currently
+# best to work with these as commands.
+#
+# [^..tactics]: The ".." abbreviation, e.g. in `intros..`, does mean that
+# tactics can syntactically end in a `.`. However, note that to execute this,
+# you need `intros.. .` (often without the space between the two).
+#
+
 
 class RocqTacticAction(Action[RocqCursor]):
     """Execute a single Rocq tactic."""
