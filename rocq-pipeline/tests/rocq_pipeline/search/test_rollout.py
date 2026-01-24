@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from math import log
 
+import pytest
 from rocq_pipeline.search.rollout import (
     ApproximatingRollout,
     InterleaveRollout,
@@ -75,3 +76,15 @@ def test_interleave_rollout() -> None:
     assert ir.next(log(0.2)) == approx(log(0.1), None)
     assert ir.next(log(0.1)) == approx(log(0.1), 1)
     is_empty(ir)
+
+
+@pytest.mark.parametrize("value", [1, 2])
+@pytest.mark.parametrize("score", [float("inf"), 1, 0, -1, -float("inf")])
+@pytest.mark.parametrize("probe", [float("inf"), 1, 0, -1, -float("inf")])
+def test_singleton(value: int, score: float, probe: float) -> None:
+    r = singleton(value, score=score)
+    if score >= probe:
+        assert r.next(probe) == Rollout.Approx(logprob=score, result=value)
+        is_empty(r)
+    else:
+        assert r.next(probe) == Rollout.Approx(logprob=score, result=None)
