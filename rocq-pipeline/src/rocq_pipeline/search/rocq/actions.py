@@ -46,14 +46,21 @@ logger = get_logger("rocq_agent")
 
 def is_command(cmd: str) -> bool:
     """Detect whether the string looks like a Rocq command."""
+    if cmd in "{}+-*":
+        # commonly supported bracketing commands that do not
+        # use `.`s.
+        return True
     return cmd.endswith("...") if cmd.endswith("..") else cmd.endswith(".")
 
 
 def tactic_of(tactic: str) -> str:
+    """Get a tactic from a tactic string.
+
+    NOTE: This is currently simple, but should support features such as
+    goal selectors. This might require type changes.
+    """
     tactic = tactic.strip()
-    assert (not tactic.endswith(".")) or (
-        tactic.endswith("..") and not tactic.endswith("...")
-    )
+    assert not is_command(tactic)
     return tactic
 
 
@@ -77,7 +84,7 @@ class RocqCommandAction(Action[RocqCursor]):
         # we will basically always be returning our own cursor.
         # If cursors were functional, we would just be returning the latest
         # cursor here.
-        response = state.insert_command(f"{self._command}.")
+        response = state.insert_command(self._command)
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
             # logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
@@ -246,4 +253,4 @@ class RocqRetryCommandAction(Action[RocqCursor]):
 
         For the tactic that actually succeeded, use `final_tactic` instead.
         """
-        return self._initial_command.strip()
+        return self._initial_command

@@ -13,7 +13,7 @@ from rocq_doc_manager import RocqCursor
 from ..action import Action
 from ..rollout import ApproximatingRollout, EmptyRollout, Rollout, singleton
 from ..strategy import Strategy
-from .actions import RocqTacticAction
+from .actions import RocqTacticAction, tactic_of
 
 
 class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
@@ -26,12 +26,9 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     def __init__(self, tactic: str, prob: float = 0.0) -> None:
         """The `tactic` is a Rocq tactic, **not** a Rocq command,
         therefore, there should be no '.'"""
-        self._tactic = tactic
         self._score = prob
         super().__init__()
-        tactic = tactic.strip()
-        assert not tactic.endswith(".")
-        self._tactic = tactic[:-1]
+        self._tactic = tactic_of(tactic)
         self._prob = prob
 
     @override
