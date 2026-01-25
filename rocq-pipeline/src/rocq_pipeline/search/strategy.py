@@ -313,3 +313,45 @@ class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
             self._base.rollout(u_state, max_rollout, context),
             lambda act: fn(state, u_state, act),
         )
+
+
+#
+# Strategy repetition is a bit subtle because it implicitly
+# assumes some randomization and tries to implement that
+# generically on top of an arbitrary randomized program.
+#
+# There are two ways to implement **parametric** repetition with
+# different properties.
+# 1. Propose all of the options from the strategy once and then
+#    duplicate them.
+# 2. Get all of the proposals from the repetitions and then
+#    interleave them.
+# The former will (almost always) produce un-sorted proposals
+# but it will also ensure to try the greatest variation in
+# proposals.
+# By contrast, the later will produce sorted proposals
+# (assuming the underlying strategies produce sorted proposals)
+# which may hide the low-score proposals.
+#
+# Non-parametric Repetition
+# ==========================
+# An alternative to strategy repetition is to implement repetition
+# within the strategy itself, e.g. by prompting an LLM to "return 5
+# proposals" rather than prompting it to return 1 proposal five times.
+#
+
+
+def repeat[State, Action](
+    strategy: Strategy[State, Action], repeat: int
+) -> Strategy[State, Action]:
+    """Set up a strategy that runs the full strategy
+    back to back. So all the elements of the strategy are tried
+    the first time, and then again subsequent times."""
+    return staged([(None, strategy)] * repeat)
+
+
+def self_interleave[State, Action](
+    strategy: Strategy[State, Action], repeat: int
+) -> Strategy[State, Action]:
+    """Interleaves the strategy with itself repeat times"""
+    return CompositeStrategy([strategy] * repeat)
