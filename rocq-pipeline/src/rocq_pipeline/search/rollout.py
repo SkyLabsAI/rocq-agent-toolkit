@@ -426,3 +426,32 @@ class Delay[Action](Rollout[Action]):
             self._base = self._base()
             return self._base.next(min_logprob=min_logprob)
         return Rollout.Approx(logprob=self._wait, result=None)
+
+
+class DeduplicateRollout[T_co](Rollout[T_co]):
+    def __init__(
+        self,
+        rollout: Rollout[T_co],
+        *,
+        compare: Callable[[T_co, T_co], bool] = lambda x, y: x is y,
+    ) -> None:
+        super().__init__()
+        self._base = rollout
+        self._seen: list[T_co] = []
+        self._compare = compare
+
+    def _add(self, candidate: T_co) -> bool:
+        if any(self._compare(x, candidate) for x in self._seen):
+            return False
+        self._seen.append(candidate)
+        return True
+
+    @override
+    def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+        while True:
+            proposal = self._base.next(min_logprob=min_logprob)
+            if proposal.result is None:
+                return proposal
+            if self._add(proposal.result):
+                return proposal
+            # we already returned this proposal, so we try to get the next one
