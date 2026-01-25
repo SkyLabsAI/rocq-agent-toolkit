@@ -1,6 +1,6 @@
 from rocq_pipeline.search.rollout import (
     DeduplicateRollout,
-    IterableRollout,
+    IteratorRollout,
     Rollout,
     empty_Rollout,
     singleton,
@@ -24,7 +24,7 @@ def test_singleton() -> None:
 
 def test_multiple() -> None:
     rollout: Rollout[int] = DeduplicateRollout(
-        IterableRollout(iter([(1, 1), (0.5, 2), (0.25, 3)]))
+        IteratorRollout(iter([(1, 1), (0.5, 2), (0.25, 3)]))
     )
 
     assert list(rollout) == [(1, 1), (0.5, 2), (0.25, 3)]
@@ -33,7 +33,7 @@ def test_multiple() -> None:
 
 def test_duplicate() -> None:
     rollout: Rollout[int] = DeduplicateRollout(
-        IterableRollout(iter([(1, 1), (0.5, 1), (0.25, 3)]))
+        IteratorRollout(iter([(1, 1), (0.5, 1), (0.25, 3)]))
     )
 
     assert list(rollout) == [(1, 1), (0.25, 3)]
@@ -42,7 +42,7 @@ def test_duplicate() -> None:
 
 def test_duplicate2() -> None:
     rollout: Rollout[int] = DeduplicateRollout(
-        IterableRollout(iter([(1, 1), (0.75, 1), (0.5, 1), (0.25, 3)]))
+        IteratorRollout(iter([(1, 1), (0.75, 1), (0.5, 1), (0.25, 3)]))
     )
 
     assert list(rollout) == [(1, 1), (0.25, 3)]

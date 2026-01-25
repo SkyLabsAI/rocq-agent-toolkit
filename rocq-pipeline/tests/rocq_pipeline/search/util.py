@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import TypeVar, override
 
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import IterableRollout, Rollout
+from rocq_pipeline.search.rollout import IteratorRollout, Rollout
 from rocq_pipeline.search.search.frontier import BFS, BasicNode, Frontier
 from rocq_pipeline.search.search.search import (
     Node,
@@ -33,7 +33,7 @@ class FixedStrategy[State, Action](Strategy[State, Action]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        return IterableRollout(iter(self._mapping.get(state, [])))
+        return IteratorRollout(iter(self._mapping.get(state, [])))
 
 
 class RecordingAction(Action[int]):

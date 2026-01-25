@@ -134,7 +134,7 @@ class ApproximatingRollout[T_co](Rollout[T_co]):
         return result
 
 
-class IterableRollout[T_co](Rollout[T_co]):
+class IteratorRollout[T_co](Rollout[T_co]):
     """Rolls out the values from the iterable.
     The scores are expected to be in decreasing order.
     """
