@@ -1,6 +1,6 @@
 from rocq_doc_manager import RocqCursor
+from rocq_pipeline.proof_state import ProofState
 
-from ..proof_state import ProofState
 from .extractor import DefaultDocumentWatcher, StateExtractor, TrivialBracketedExtractor
 
 
