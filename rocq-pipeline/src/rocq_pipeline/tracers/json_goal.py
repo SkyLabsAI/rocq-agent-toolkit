@@ -9,7 +9,6 @@ from rocq_pipeline.proof_state.goal import RocqGoal
 from .extractor import (
     BracketedExtractor,
     DefaultDocumentWatcher,
-    NotSupported,
     OutputDict,
 )
 
@@ -98,9 +97,9 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
         # TODO: ask the tagger if the tactic starts with a goal selector
         return tactic.endswith(".") or tactic in ["{", "}"]
 
-    def before(self, rdm: RocqCursor, tactic: str) -> state:
+    def before(self, rdm: RocqCursor, tactic: str) -> state | None:
         if not self.supported_tactic(tactic):
-            raise NotSupported
+            return None
         result = self.get_goals(rdm)
         return (ProofState(rdm.current_goal()).goals, result)
 

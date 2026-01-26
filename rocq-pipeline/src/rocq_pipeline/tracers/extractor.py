@@ -5,15 +5,6 @@ from typing import Any, Protocol, TypedDict
 from rocq_doc_manager import RocqCursor
 
 
-class NotSupported(Exception):
-    """
-    Is used to signal that an extractor does not support tracing a certain
-    command or tactic.
-    """
-
-    pass
-
-
 class DocumentWatcher(Protocol):
     """
     Provides callback infrastructure to watch certain parts of the document.
@@ -71,7 +62,7 @@ class StateExtractor[T](Protocol):
     A StateExtractor extracts state from a Rocq proof.
     """
 
-    def extract(self, rdm: RocqCursor) -> T:
+    def extract(self, rdm: RocqCursor) -> T | None:
         """
         Extract a feature from the current state.
         """
@@ -131,16 +122,13 @@ class AllStateExtractor(StateExtractor[dict[str, Any]]):
         for k, extractor in self._extractors.items():
             # TODO: for now, we assume that extractors are hygeinic in the sense that they do revert any effects they might have on the document.
             # In the future, we could use the revert environment to enforce this.
-            try:
-                k_result = extractor.extract(rdm)
-                if k_result is not None:
-                    result[k] = k_result
-            except NotSupported:
-                pass
+            k_result = extractor.extract(rdm)
+            if k_result is not None:
+                result[k] = k_result
         return result
 
 
-type After[A] = Callable[[RocqCursor, str], A]
+type After[A] = Callable[[RocqCursor, str], A | None]
 
 
 class BracketInterface[A](Protocol):
@@ -151,7 +139,7 @@ class BracketInterface[A](Protocol):
     Inheriting from [BracketedExtractor] automatically implements this interface.
     """
 
-    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A]: ...
+    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A] | None: ...
 
 
 class BracketedExtractor[B, A](BracketInterface[A], Protocol):
@@ -162,14 +150,19 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
 
     Note that [before] will always be called before [after] and the return value
     of [before] is passed to [after] as the [result_before] value.
+
+    Both [before] and [after] can return [None] to indicate that this command or
+    tactic is not supported by the extractor.
     """
 
-    def before(self, rdm: RocqCursor, tactic: str) -> B: ...
+    def before(self, rdm: RocqCursor, tactic: str) -> B | None: ...
 
-    def after(self, rdm: RocqCursor, tactic: str, result_before: B) -> A: ...
+    def after(self, rdm: RocqCursor, tactic: str, result_before: B) -> A | None: ...
 
-    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A]:
+    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A] | None:
         result_before = self.before(rdm, tactic)
+        if result_before is None:
+            return None
         return lambda rdm, tactic: self.after(rdm, tactic, result_before)
 
 
@@ -181,11 +174,16 @@ class OutputDict[A](TypedDict):
 class TrivialBracketedExtractor[A](
     StateExtractor[A], BracketedExtractor[A, OutputDict[A]]
 ):
-    def before(self, rdm: RocqCursor, tactic: str) -> A:
+    def before(self, rdm: RocqCursor, tactic: str) -> A | None:
         return self.extract(rdm)
 
-    def after(self, rdm: RocqCursor, tactic: str, result_before: A) -> OutputDict[A]:
-        return {"before": result_before, "after": self.extract(rdm)}
+    def after(
+        self, rdm: RocqCursor, tactic: str, result_before: A
+    ) -> OutputDict[A] | None:
+        result_after = self.extract(rdm)
+        if result_after is None:
+            return None
+        return {"before": result_before, "after": result_after}
 
 
 type D = dict[str, Any]
@@ -198,19 +196,19 @@ class AllBracketedExtractor(BracketedExtractor[D, D]):
     def before(self, rdm: RocqCursor, tactic: str) -> D:
         state = {}
         for k, e in self._extractors.items():
-            try:
-                state[k] = e.before(rdm, tactic)
-            except NotSupported:
-                pass
+            result = e.before(rdm, tactic)
+            if result is None:
+                continue
+            state[k] = result
         return state
 
     def after(self, rdm: RocqCursor, tactic: str, result_before) -> D:
         results: D = {}
         for k, e in result_before.items():
-            try:
-                results[k] = self._extractors[k].after(rdm, tactic, result_before=e)
-            except NotSupported:
-                pass
+            result_after = self._extractors[k].after(rdm, tactic, result_before=e)
+            if result_after is None:
+                continue
+            results[k] = result_after
         return results
 
 
