@@ -8,6 +8,8 @@ _pyenv/
 __pycache__
 *.egg-info
 .hypothesis
+/uv.lock
+/pyproject.toml
 
 # direnv
 .envrc

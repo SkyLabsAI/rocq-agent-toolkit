@@ -1,6 +1,5 @@
-Require Import skylabs.ltac2.extra.extra.
 Require skylabs_ai.ltac2_json.JSON.
-Import Ltac2 Control.Notations Ltac2.Printf.
+Import Ltac2 Ltac2.Printf.
 
 Ltac2 goal_to_json (_ : unit) : JSON.t :=
   let to_string c := Message.to_string (fprintf "%t" c) in

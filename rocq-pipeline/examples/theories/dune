@@ -7,10 +7,4 @@
 (include_subdirs qualified)
 (coq.theory
  (name skylabs.pipeline.test)
- (theories
-  Stdlib Ltac2
-  Lens Lens.Elpi
-  stdpp iris
-  Equations Equations.Prop Equations.Type
-  elpi elpi_elpi elpi.apps.locker elpi.apps.NES
-  ExtLib))
+ (theories Stdlib Ltac2))
