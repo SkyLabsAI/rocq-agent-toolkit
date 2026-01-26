@@ -264,8 +264,8 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
             file = Path(path)
             args = DuneUtil.rocq_args_for(file)
             file_tasks: list[Task] = find_tasks(pdir, file, args, tagger=my_tagger)
-        except DuneUtil.NotFound:
-            logger.error(f"Unable to get CLI arguments for file {path}.")
+        except DuneUtil.NotFound as e:
+            logger.error(f"Unable to get CLI arguments for file {path}. Exception: {e}")
             return []
         except Exception as err:
             logger.error(f"Error occured while scanning file {path}. {err}")
