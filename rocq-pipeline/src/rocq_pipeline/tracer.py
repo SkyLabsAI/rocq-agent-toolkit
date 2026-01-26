@@ -13,7 +13,6 @@ import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
 from rocq_pipeline.tracers import json_goal
 from rocq_pipeline.tracers.extractor import (
-    NotSupported,
     Tracer,
 )
 
@@ -30,22 +29,16 @@ def trace_proof(
     trace = []
     step_size: float = (progress_max - progress_min) / len(tactics)
     for i, tactic in enumerate(tactics):
-        after = None
-        try:
-            after = tracer.before_internal(rdm, tactic)
-        except NotSupported:
-            pass
+        after = tracer.before_internal(rdm, tactic)
         progress.status(status=tactic[:10])
         assert not isinstance(rdm.run_command(tactic), rdm.Err)
         progress.status(percent=progress_min + i * step_size)
         if after is not None:
-            try:
-                result = after(rdm, tactic)
+            result = after(rdm, tactic)
+            if result is not None:
                 if "tactic" not in result:
                     result["tactic"] = tactic.strip(".").strip()
                 trace.append(result)
-            except NotSupported:
-                continue
     return trace
 
 
