@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Any
 
 from rocq_doc_manager import RocqCursor
+from rocq_pipeline.proof_state import ProofState
+from rocq_pipeline.proof_state.goal import RocqGoal
 
-from ..proof_state import ProofState
-from ..proof_state.goal import RocqGoal
 from .extractor import (
     BracketedExtractor,
     DefaultDocumentWatcher,
