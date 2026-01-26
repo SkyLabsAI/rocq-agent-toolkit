@@ -1,9 +1,17 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Protocol, override
+from typing import Any, Protocol
 
 from rocq_doc_manager import RocqCursor
-from rocq_pipeline.proof_state import ProofState
+
+
+class NotSupported(Exception):
+    """
+    Is used to signal that an extractor does not support tracing a certain
+    command or tactic.
+    """
+
+    pass
 
 
 class DocumentWatcher(Protocol):
@@ -14,8 +22,7 @@ class DocumentWatcher(Protocol):
     the document do not affect the behavior of other parts of the file.
     """
 
-    def extra_paths(self) -> dict[str, Path]:
-        return {}
+    def extra_paths(self) -> dict[str, Path]: ...
 
     def setup(self, rdm: RocqCursor) -> None:
         """
@@ -43,6 +50,20 @@ class DocumentWatcher(Protocol):
         still be open subgoals if the proof is being closed by `Admitted`.
         """
         ...
+
+
+class DefaultDocumentWatcher(DocumentWatcher):
+    def extra_paths(self) -> dict[str, Path]:
+        return {}
+
+    def setup(self, rdm: RocqCursor) -> None:
+        pass
+
+    def start_proof(self, rdm: RocqCursor) -> None:
+        pass
+
+    def end_proof(self, rdm: RocqCursor) -> None:
+        pass
 
 
 class StateExtractor[T](Protocol):
@@ -81,11 +102,8 @@ class AllDocumentWatcher(DocumentWatcher):
     def __init__(self, watchers: dict[str, DocumentWatcher]):
         self._watchers: dict[str, DocumentWatcher] = watchers
 
-    @override
     def extra_paths(self) -> dict[str, Path]:
-        return merge_all(
-            (w.extra_paths() for w in self._watchers.values()), super().extra_paths()
-        )
+        return merge_all(w.extra_paths() for w in self._watchers.values())
 
     def setup(self, rdm: RocqCursor) -> None:
         for _, w in self._watchers.items():
@@ -117,54 +135,81 @@ class AllStateExtractor(StateExtractor[dict[str, Any]]):
                 k_result = extractor.extract(rdm)
                 if k_result is not None:
                     result[k] = k_result
-            except Exception:
+            except NotSupported:
                 pass
         return result
 
 
-class GoalAsString(StateExtractor[str]):
-    """A simple extractor that just gets the current goal the way it is printed in Rocq."""
-
-    def extract(self, rdm: RocqCursor) -> str:
-        result = rdm.current_goal()
-        if isinstance(result, rdm.Err):
-            raise RuntimeError("Failed to parse goal: {result}")
-        return str(ProofState(result))
+type After[A] = Callable[[RocqCursor, str], A]
 
 
-class TacticExtractor[B, A](Protocol):
+class BracketInterface[A](Protocol):
     """
-    Extract information about the execution of a tactic. This class can extract
-    additional information based on the tactic, e.g. adding the types of lemmas that
-    are used.
+    Is used internally to enforce the [before]-before-[after] invariant of
+    [BracketedExtractor].
 
-    Note that [before] will always be called before [after], so you can pass state
-    from the before to the after using the class state.
+    Inheriting from [BracketedExtractor] automatically implements this interface.
+    """
+
+    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A]: ...
+
+
+class BracketedExtractor[B, A](BracketInterface[A], Protocol):
+    """
+    Extract information about the execution of a command (or a tactic). Classes
+    implementing this protocol can extract additional information based on the
+    command, e.g. adding the types of lemmas that are used in a tactic.
+
+    Note that [before] will always be called before [after] and the return value
+    of [before] is passed to [after] as the [result_before] value.
     """
 
     def before(self, rdm: RocqCursor, tactic: str) -> B: ...
 
-    def after(self, rdm: RocqCursor, tactic: str) -> A: ...
+    def after(self, rdm: RocqCursor, tactic: str, result_before: B) -> A: ...
+
+    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A]:
+        result_before = self.before(rdm, tactic)
+        return lambda rdm, tactic: self.after(rdm, tactic, result_before)
 
 
-class AllTacticExtractor(TacticExtractor[dict[str, Any], dict[str, Any]]):
-    def __init__(self, extractors: dict[str, TacticExtractor[Any, Any]]) -> None:
+class TrivialBracketedExtractor[A](StateExtractor[A], BracketedExtractor[A, A]):
+    def before(self, rdm: RocqCursor, tactic: str) -> A:
+        return self.extract(rdm)
+
+    def after(self, rdm: RocqCursor, tactic: str, result_before: A) -> A:
+        return self.extract(rdm)
+
+
+type D = dict[str, Any]
+
+
+class AllBracketedExtractor(BracketedExtractor[D, D]):
+    def __init__(self, extractors: dict[str, BracketedExtractor[Any, Any]]) -> None:
         self._extractors = extractors
 
-    def before(self, rdm: RocqCursor, tactic: str) -> dict[str, Any]:
-        def go[B, A](e: TacticExtractor[B, A]) -> B | None:
+    def before(self, rdm: RocqCursor, tactic: str) -> D:
+        state = {}
+        for k, e in self._extractors.items():
             try:
-                return e.before(rdm, tactic)
-            except Exception:
-                return None
+                state[k] = e.before(rdm, tactic)
+            except NotSupported:
+                pass
+        return state
 
-        return {key: go(e) for key, e in self._extractors.items()}
-
-    def after(self, rdm: RocqCursor, tactic: str) -> dict[str, Any]:
-        def go[B, A](e: TacticExtractor[B, A]) -> A | None:
+    def after(self, rdm: RocqCursor, tactic: str, result_before) -> D:
+        results: D = {}
+        for k, e in result_before.items():
             try:
-                return e.after(rdm, tactic)
-            except Exception:
-                return None
+                results[k] = self._extractors[k].after(rdm, tactic, result_before=e)
+            except NotSupported:
+                pass
+        return results
 
-        return {key: go(e) for key, e in self._extractors.items()}
+
+class Tracer[A](DocumentWatcher, BracketInterface[A], Protocol):
+    """
+    The protocol that the tracer relies on.
+    """
+
+    pass

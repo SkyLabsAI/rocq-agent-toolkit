@@ -4,45 +4,47 @@ import json
 import traceback
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
 from rocq_pipeline.tracers.extractor import (
-    DocumentWatcher,
-    TacticExtractor,
+    NotSupported,
+    Tracer,
 )
-from rocq_pipeline.tracers.json_goal import JsonGoal
+from rocq_pipeline.tracers import json_goal, string_goal
 
 
-class Tracer[B, A](DocumentWatcher, TacticExtractor[None, tuple[B, A]], Protocol):
-    pass
-
-
-def trace_proof[B, A](
-    tracer: Tracer[B, A],
+def trace_proof(
+    tracer: Tracer[dict[str, Any]],
     rdm: RocqCursor,
     progress: util.ProgressCallback,
-    skip_goal_selectors: bool,
     progress_min: float = 0.0,
     progress_max: float = 1.0,
-) -> list[tuple[(B | None), str, (A | None)]]:
+) -> list[dict[str, Any]]:
     tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
     tracer.start_proof(rdm)
-    trace: list[tuple[(B | None), str, (A | None)]] = []
+    trace = []
     step_size: float = (progress_max - progress_min) / len(tactics)
     for i, tactic in enumerate(tactics):
-        tactic = tactic.strip()
-        if skip_goal_selectors and not tactic.endswith("."):
-            continue
-        tracer.before(rdm, tactic)
+        after = None
+        try:
+            after = tracer.before_internal(rdm, tactic)
+        except NotSupported:
+            pass
         progress.status(status=tactic[:10])
         assert not isinstance(rdm.run_command(tactic), rdm.Err)
         progress.status(percent=progress_min + i * step_size)
-        pre, post = tracer.after(rdm, tactic)
-        trace.append((pre, tactic.strip(".").strip(), post))
+        if after is not None:
+            try:
+                result = after(rdm, tactic)
+                if "tactic" not in result:
+                    result["tactic"] = tactic.strip(".").strip()
+                trace.append(result)
+            except NotSupported:
+                continue
     return trace
 
 
@@ -59,11 +61,6 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
     )
     parser.add_argument(
         "--task-file", type=Path, help="The task descriptor in a file, JSON or YAML"
-    )
-    parser.add_argument(
-        "--minimize-goal-diff",
-        action=argparse.BooleanOptionalAction,
-        help="Only emit goals affected by the tactic",
     )
     parser.add_argument(
         "--output-dir",
@@ -86,11 +83,10 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
 
 
 def run(
-    tracer_builder: Callable[[], Tracer[Any, Any]],
+    tracer_builder: Callable[[], Tracer[Any]],
     output_dir: Path,
     project: Tasks.Project,
     tasks: list[Tasks.Task],
-    skip_goal_selectors: bool,
     jobs: int = 1,
 ) -> None:
     output_dir.mkdir(exist_ok=True)
@@ -128,7 +124,7 @@ def run(
                 progress.status(0.1, "💭")
 
                 trace = trace_proof(
-                    tracer, rc, progress, skip_goal_selectors, 0.1, 0.95
+                    tracer, rc, progress, 0.1, 0.95
                 )
                 progress.status(0.95, "💭")
 
@@ -175,7 +171,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     if arguments.tracer is None:
 
         def tracer():
-            return JsonGoal(minimize_diff=arguments.minimize_goal_diff)
+            return json_goal.build()
     else:
         if isinstance(arguments.tracer, str):
             tracer = loader.load_from_str(arguments.tracer)
@@ -194,15 +190,12 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         arguments.output_dir,
         project,
         tasks,
-        skip_goal_selectors=arguments.minimize_goal_diff,
         jobs=arguments.jobs,
     )
     return True
 
 
-def tracer_main(
-    tracer: TacticExtractor[Any, Any], args: list[str] | None = None
-) -> bool:
+def tracer_main(tracer: Tracer[Any], args: list[str] | None = None) -> bool:
     """
     This function can be used to create a `main` entry point for a specific tracer.
     Use it with something like:

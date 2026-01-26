@@ -1,9 +1,20 @@
 project:
   name: rocq_pipeline_test
   git_url: git@github.com:SkyLabsAI/rocq-agent-toolkit.git
-  git_commit: 0d0781f027a1e9763014e512eee99d810ca90ec8-dirty
+  git_commit: ee749f84767636b32a65e8f08040131ca1a48a6d-dirty
   path: .
 tasks:
+- file: theories/goals.v
+  locator: Lemma:task1
+  tags:
+  - NumTactics=10
+  - destruct
+  - intros
+  - left
+  - proof
+  - qed
+  - reflexivity
+  - right
 - file: theories/my_nat.v
   locator: Lemma:add_S
   tags:
