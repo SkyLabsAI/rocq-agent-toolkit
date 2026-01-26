@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import CodeViewer from '@/components/base/codeViewer';
 import { StatusBadge } from '@/components/base/statusBadge';
 import Modal from '@/components/base/ui/modal';
+import FlamegraphView from '@/components/visualizer/flamegraph-view';
 import SpanGraphView from '@/components/visualizer/span-graph-view';
 import TacticGraphView from '@/components/visualizer/tactic-graph-view';
 import {
@@ -41,7 +42,9 @@ const VisualizerModal = ({
   initialTraceId,
   taskId,
 }: Props) => {
-  const [activeTab, setActiveTab] = useState<'traces' | 'tactic'>('traces');
+  const [activeTab, setActiveTab] = useState<
+    'traces' | 'flamegraph' | 'tactic'
+  >('traces');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -384,6 +387,16 @@ const VisualizerModal = ({
         >
           Traces
         </button>
+        <button
+          onClick={() => setActiveTab('flamegraph')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'flamegraph'
+              ? 'border-text-information text-text'
+              : 'border-transparent text-text-disabled hover:text-text'
+          }`}
+        >
+          Flamegraph
+        </button>
         {taskId && (
           <button
             onClick={() => setActiveTab('tactic')}
@@ -419,6 +432,22 @@ const VisualizerModal = ({
             spansById={spansById}
             onToggleCollapse={toggleNodeCollapse}
             onDepthChange={handleDepthChange}
+          />
+        ) : activeTab === 'flamegraph' ? (
+          <FlamegraphVisualization
+            traceIds={traceIds}
+            selectedTraceId={selectedTraceId}
+            setSelectedTraceId={setSelectedTraceId}
+            spans={spans}
+            selectedSpan={selectedSpan as VisualizerSpanLite | null}
+            setSelectedSpan={
+              setSelectedSpan as (span: VisualizerSpanLite | null) => void
+            }
+            logs={logs}
+            logsLoading={logsLoading}
+            loading={loading}
+            error={error}
+            spansById={new Map(spans.map(s => [s.span_id, s]))}
           />
         ) : (
           <TacticGraphVisualization
@@ -803,6 +832,166 @@ const InformationViewer = ({
         <JsonViewer data={data} />
       )}
     </div>
+  );
+};
+
+// Flamegraph Visualization Component
+const FlamegraphVisualization = ({
+  traceIds,
+  selectedTraceId,
+  setSelectedTraceId,
+  spans,
+  selectedSpan,
+  setSelectedSpan,
+  logs,
+  logsLoading,
+  loading,
+  error,
+  spansById,
+}: {
+  traceIds: string[];
+  selectedTraceId: string;
+  setSelectedTraceId: (id: string) => void;
+  spans: VisualizerSpanLite[];
+  selectedSpan: VisualizerSpanLite | null;
+  setSelectedSpan: (span: VisualizerSpanLite | null) => void;
+  logs: Record<string, unknown> | null;
+  logsLoading: boolean;
+  loading: boolean;
+  error: string | null;
+  spansById: Map<string, VisualizerSpanLite>;
+}) => {
+  return (
+    <>
+      <div className='flex-1 flex flex-col gap-3 min-w-0'>
+        {/* Control Panel */}
+        <div className='flex items-center gap-4 flex-wrap bg-elevation-surface-raised p-4 rounded-lg border border-elevation-surface-overlay'>
+          {/* Trace Selection */}
+          <div className='flex items-center gap-3 flex-1 min-w-[320px]'>
+            {traceIds.length > 1 ? (
+              <>
+                <div className='text-sm text-text font-semibold'>Trace</div>
+                <select
+                  className='flex-1 h-9 rounded border border-elevation-surface-overlay bg-elevation-surface-sunken text-text px-2'
+                  value={selectedTraceId}
+                  onChange={e => setSelectedTraceId(e.target.value)}
+                  disabled={!traceIds.length}
+                >
+                  {!traceIds.length ? (
+                    <option value=''>(no traces)</option>
+                  ) : null}
+                  {traceIds.map(t => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : traceIds.length === 1 ? (
+              <div className='text-sm text-text'>
+                <span className='font-semibold'>Trace:</span>{' '}
+                <span className='font-mono text-text-disabled'>
+                  {traceIds[0]}
+                </span>
+              </div>
+            ) : (
+              <div className='text-sm text-text-disabled'>No traces.</div>
+            )}
+          </div>
+
+          {/* Status indicators */}
+          <div className='flex items-center gap-3'>
+            {loading ? (
+              <div className='text-sm text-text-disabled'>Loading…</div>
+            ) : null}
+            {error ? (
+              <div className='text-sm text-text-danger'>{error}</div>
+            ) : null}
+            {spans.length > 0 && (
+              <div className='text-xs text-text-disabled'>
+                {spans.length} spans
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className='flex-1 min-h-0'>
+          <FlamegraphView
+            spans={spans}
+            selectedSpanId={selectedSpan?.span_id}
+            onSelectSpanId={spanId =>
+              setSelectedSpan(spansById.get(spanId) ?? null)
+            }
+          />
+        </div>
+      </div>
+
+      {/* Right panel - Span details and logs */}
+      <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
+        <div className='p-4 space-y-4'>
+          {/* Span details section */}
+          <div>
+            <div className='flex items-center justify-between gap-2 mb-3'>
+              <div className='text-sm text-text font-semibold'>
+                Span details
+              </div>
+              {selectedSpan ? (
+                <div className='text-xs text-text-disabled'>
+                  {selectedSpan.service_name} •{' '}
+                  {selectedSpan.span_id.slice(0, 12)}…
+                </div>
+              ) : null}
+            </div>
+
+            {selectedSpan ? (
+              <div className='space-y-3'>
+                <div>
+                  <div className='text-sm text-text font-semibold'>
+                    {selectedSpan.name}
+                  </div>
+                  <div className='text-xs text-text-disabled'>
+                    {selectedSpan.service_name}
+                  </div>
+                </div>
+
+                <div>
+                  <div className='text-xs text-text-disabled mb-1'>
+                    Attributes
+                  </div>
+                  <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
+                    <pre className='text-xs text-text whitespace-pre-wrap'>
+                      {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className='text-sm text-text-disabled'>
+                Select a span node to see details and logs.
+              </div>
+            )}
+          </div>
+
+          {/* Logs section */}
+          <div className='border-t border-elevation-surface-overlay pt-4'>
+            <div className='text-sm text-text font-semibold mb-3'>Logs</div>
+
+            {!selectedSpan ? (
+              <div className='text-sm text-text-disabled'>—</div>
+            ) : logsLoading ? (
+              <div className='flex items-center gap-2 text-sm text-text-disabled'>
+                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
+                Loading logs…
+              </div>
+            ) : logs ? (
+              <LogsDisplay logs={logs} />
+            ) : (
+              <div className='text-sm text-text-disabled'>No logs.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 
