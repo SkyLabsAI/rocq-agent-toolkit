@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 import { config } from '@/config/environment';
-
 import {
   bulkAddTagsMock,
   getAgentClassDataMock,
@@ -13,6 +12,7 @@ import {
   getDatasetInstanceRunsMock,
   getDetailsForDatasetMock,
   getDetailsMock,
+  getLatestRunsMock,
   getObservabilityLogsMock,
   getProjectDatasetsMock,
   getProjectResultsMock,
@@ -621,4 +621,20 @@ export async function getTacticGraph(
   url.searchParams.set('task_id', `${taskId}`);
   const resp = await axios.get(url.toString());
   return resp.data as TacticGraphResponse;
+}
+
+// ========================================
+// LATEST RUNS API
+// ========================================
+
+export async function getLatestRuns(
+  limit: number = config.LATEST_RUNS_LIMIT
+): Promise<AgentRun[]> {
+  if (USE_MOCK_DATA) {
+    return getLatestRunsMock(limit);
+  }
+  const response = await axios.get(
+    `${config.DATA_API}/runs/latest?limit=${limit}`
+  );
+  return response.data as AgentRun[];
 }
