@@ -4,6 +4,7 @@
   $ export OCAMLPATH="$DUNE_SOURCEROOT/_build/install/default/lib"
   $ export DUNE_CACHE=disabled
 
+  $ mkdir deterministic_name && cd deterministic_name
   $ cat > dune-project <<EOF
   > (lang dune 3.17)
   > (using coq 0.10)
@@ -19,7 +20,7 @@
   $ cp $TESTDIR/* .
 
   $ uv run rat ingest --verbose --output test.yaml test.v
-  WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
+  WARNING: No project name in the dune-project file, falling back to directory name deterministic_name.
   WARNING: The project does not seem to use git for versioning.
   INFO: Number of Rocq source files found: 1
   INFO: Only keeping the files passed on the command line.
@@ -31,7 +32,7 @@
   $ git config user.name "Tester"
   $ git config user.email "tester@example.com"
   $ uv run rat ingest --verbose --output test.yaml test.v
-  WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
+  WARNING: No project name in the dune-project file, falling back to directory name deterministic_name.
   WARNING: No origin remote set, unable to find a git URL.
   WARNING: The current commit hash could not be determined.
   INFO: Number of Rocq source files found: 1
@@ -42,7 +43,7 @@
 
   $ git remote add origin git@github.com:example/example.git
   $ uv run rat ingest --verbose --output test.yaml test.v
-  WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
+  WARNING: No project name in the dune-project file, falling back to directory name deterministic_name.
   WARNING: The current commit hash could not be determined.
   INFO: Number of Rocq source files found: 1
   INFO: Only keeping the files passed on the command line.
@@ -53,7 +54,7 @@
   $ git add dune dune-project test.v
   $ git commit -m "Test." > /dev/null
   $ uv run rat ingest --verbose --output test.yaml test.v
-  WARNING: No project name in the dune-project file, falling back to directory name run.t-2.
+  WARNING: No project name in the dune-project file, falling back to directory name deterministic_name.
   INFO: Number of Rocq source files found: 1
   INFO: Only keeping the files passed on the command line.
   INFO: Found 4 tasks in test.v: Lemma:test, Lemma:test(1), Theorem:test, ...
