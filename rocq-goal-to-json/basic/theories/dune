@@ -8,6 +8,5 @@
    -w -ambiguous-paths))
  (theories
   Stdlib Ltac2
-  skylabs.ltac2.extra
   skylabs_ai.ltac2_derive
   skylabs_ai.ltac2_json))

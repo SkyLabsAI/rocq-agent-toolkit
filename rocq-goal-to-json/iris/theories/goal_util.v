@@ -2,9 +2,62 @@ Require Import iris.proofmode.base.
 Require Import iris.proofmode.environments.
 Require Import iris.bi.bi.
 
-Require Import skylabs.ltac2.extra.extra.
 Require skylabs_ai.ltac2_json.JSON.
-Import Ltac2 Control.Notations Ltac2.Printf.
+Import Ltac2 Ltac2.Printf.
+
+(** This module contains utilities borrowed from the ltac2-extra package found
+    in https://github.com/SkyLabsAI/BRiCk/tree/main/ltac2-extra. *)
+Module Util.
+  (** [of_ascii_constr c] attempts to convert the Coq term [c], intended to be
+      a full application of [Ascii] to concrete booleans, into a character. *)
+  Ltac2 of_ascii_constr (c : constr) : char option :=
+    let bool_to_int (t : constr) : int option :=
+      lazy_match! t with
+      | true  => Some 1
+      | false => Some 0
+      | _     => None
+      end
+    in
+    let add xo yo :=
+      Option.bind xo (fun x => Option.bind yo (fun y => Some (Int.add x y)))
+    in
+    let mul2 xo := Option.bind xo (fun x => Some (Int.mul 2 x)) in
+    lazy_match! c with
+    | Ascii ?b0 ?b1 ?b2 ?b3 ?b4 ?b5 ?b6 ?b7 =>
+        let n :=              (bool_to_int b7) in
+        let n := add (mul2 n) (bool_to_int b6) in
+        let n := add (mul2 n) (bool_to_int b5) in
+        let n := add (mul2 n) (bool_to_int b4) in
+        let n := add (mul2 n) (bool_to_int b3) in
+        let n := add (mul2 n) (bool_to_int b2) in
+        let n := add (mul2 n) (bool_to_int b1) in
+        let n := add (mul2 n) (bool_to_int b0) in
+        Option.bind n (fun n => Some (Char.of_int n))
+    | _ => None
+    end.
+
+  (** [of_char_list cs] builds a string from the list [cs]. *)
+  Ltac2 of_char_list (cs : char list) : string :=
+    let len := List.length cs in
+    let res := String.make len (Char.of_int 0) in
+    List.iteri (String.set res) cs; res.
+
+  (** [of_string_constr t] attempts to build a string from the given Coq term
+      [c], which must be a fully concrete and evaluated term of type [string]
+      from the [Coq.Strings.String] module. *)
+  Ltac2 of_string_constr (t : constr) : string option :=
+    let rec build_string acc t :=
+      lazy_match! t with
+      | String ?c ?t  => Option.bind (of_ascii_constr c)
+                           (fun c => build_string (c :: acc) t)
+      | EmptyString   => Some (of_char_list (List.rev acc))
+      | _             => None
+      end
+    in
+    build_string [] t.
+End Util.
+
+Ltac2 Type exn ::= [ Ill_formed_IPM_environment ].
 
 Ltac2 goal_to_json (_ : unit) : JSON.t :=
   let to_string c := Message.to_string (fprintf "%t" c) in
@@ -23,8 +76,8 @@ Ltac2 goal_to_json (_ : unit) : JSON.t :=
     let rec get_env acc env :=
       let to_json name p :=
         let of_string s :=
-          match String.of_string_constr s with
-          | None => user_err! "Ill-formed IPM environment."
+          match Util.of_string_constr s with
+          | None => Control.throw Ill_formed_IPM_environment
           | Some s => s
           end
         in
@@ -32,7 +85,7 @@ Ltac2 goal_to_json (_ : unit) : JSON.t :=
           lazy_match! name with
           | IAnon _ => JSON.Null
           | INamed ?s => JSON.String (of_string s)
-          | _ => user_err! "Ill-formed IPM environment."
+          | _ => Control.throw Ill_formed_IPM_environment
           end
         in
         JSON.Assoc [ ("name", name); ("prop", JSON.String (to_string p)) ]
@@ -41,7 +94,7 @@ Ltac2 goal_to_json (_ : unit) : JSON.t :=
       | environments.Enil => acc
       | environments.Esnoc ?env ?name ?p =>
           get_env (to_json name p :: acc) env
-      | _ => user_err! "Ill-formed IPM environment."
+      | _ => Control.throw Ill_formed_IPM_environment
       end
     in
     let rec get_concls acc concls :=

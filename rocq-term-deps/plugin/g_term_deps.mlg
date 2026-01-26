@@ -2,6 +2,8 @@ DECLARE PLUGIN "rocq-term-deps.plugin"
 
 {
 
+[@@@ocaml.warning "-27"]
+
 open Stdarg
 
 }

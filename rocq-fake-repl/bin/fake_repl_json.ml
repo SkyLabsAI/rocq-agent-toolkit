@@ -1,5 +1,3 @@
-open Yojson
-
 (** filters out [-topfile] *)
 let get_args argv : string list =
   let rec go i : string list =
@@ -14,11 +12,12 @@ let env key : Yojson.t =
   with Not_found -> `Null
 
 let _ =
-  let result : Yojson.t = Yojson.(
-    `Assoc [("args", `List (List.map (fun s -> `String s) (get_args Sys.argv)));
+  let result : Yojson.t =
+    `Assoc [
+      ("args", `List (List.map (fun s -> `String s) (get_args Sys.argv)));
       ("ROCQPATH", env "ROCQPATH");
       ("ROCQLIB", env "ROCQLIB");
-      ("OCAMLPATH", env "OCAMLPATH")]
-    )
+      ("OCAMLPATH", env "OCAMLPATH")
+    ]
   in
   Yojson.pretty_to_channel stdout result
