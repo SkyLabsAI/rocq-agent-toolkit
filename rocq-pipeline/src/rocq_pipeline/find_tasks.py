@@ -13,6 +13,7 @@ import git
 import sexpdata  # type: ignore
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
+from rocq_pipeline.args_util import valid_file
 from rocq_pipeline.locator import FirstLemma, NotFound
 from rocq_pipeline.taggers.tactic_tagger import extract_tactics
 from rocq_pipeline.tasks import Project, Task, TaskFile
@@ -156,21 +157,13 @@ def mk_parser(parent: Any | None = None) -> Any:
         help="enable debug output (implies --verbose)",
     )
 
-    def check_output_file(file: str) -> Path:
-        path: Path = Path(file)
-        if not TaskFile.valid_extension(path):
-            sys.exit(
-                f"Error: unsupported extension on {path} (use any of {', '.join(TaskFile.supported_extensions())})."
-            )
-        if not path.parent.exists():
-            sys.exit(f"Error: parent directory of {path} does not exist.")
-        return path
-
     parser.add_argument(
         "-o",
         "--output",
         metavar="FILE",
-        type=check_output_file,
+        type=valid_file(
+            check_creatable=True, allowed_suffixes=TaskFile.supported_extensions()
+        ),
         required=True,
         help=f"specify the output file (allowed extensions are {', '.join(TaskFile.supported_extensions())})",
     )
@@ -215,7 +208,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "rocq_files",
         metavar="ROCQ_FILE",
-        type=check_rocq_files,
+        type=valid_file(exists=True, allowed_suffixes=[".v"]),
         nargs="*",
         help="file to be ingested (all files are ingested if none is given)",
     )

@@ -6,6 +6,7 @@ from pathlib import Path
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 from rocq_pipeline.agent import ProofAgent
+from rocq_pipeline.args_util import valid_file
 
 
 def is_admitted(text: str, kind: str) -> bool:
@@ -41,15 +42,6 @@ def run_proving_agent(
     main_rc.commit(str(output), include_suffix=True)
 
 
-def check_rocq_file(file: str) -> Path:
-    path = Path(file)
-    if not path.exists():
-        sys.exit(f"Error: file {path} does not exist.")
-    if path.suffix != ".v":
-        sys.exit(f'Error: file {path} does not have ".v" extension.')
-    return path
-
-
 def main_prover(agent_cls: type[ProofAgent]):
     parser = ArgumentParser(
         description="Run a proof agent on the given Rocq source file."
@@ -57,14 +49,14 @@ def main_prover(agent_cls: type[ProofAgent]):
     parser.add_argument(
         "rocq_file",
         metavar="ROCQ_FILE",
-        type=check_rocq_file,
+        type=valid_file(exists=True, allowed_suffixes=[".v"]),
         help="file in which to attempt proof completion",
     )
     parser.add_argument(
         "-o",
         "--output",
         metavar="OUTPUT",
-        type=Path,
+        type=valid_file(check_creatable=True, allowed_suffixes=[".v"]),
         help="output file (default is the input file)",
     )
     args = parser.parse_args()
