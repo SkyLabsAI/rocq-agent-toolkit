@@ -4,17 +4,18 @@ import json
 import traceback
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from types import ModuleType
+from typing import Any, cast
 
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
+from rocq_pipeline.tracers import json_goal
 from rocq_pipeline.tracers.extractor import (
     NotSupported,
     Tracer,
 )
-from rocq_pipeline.tracers import json_goal, string_goal
 
 
 def trace_proof(
@@ -123,9 +124,7 @@ def run(
                     return False
                 progress.status(0.1, "💭")
 
-                trace = trace_proof(
-                    tracer, rc, progress, 0.1, 0.95
-                )
+                trace = trace_proof(tracer, rc, progress, 0.1, 0.95)
                 progress.status(0.95, "💭")
 
             with open(output_file, "w") as output:
@@ -170,11 +169,16 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
 
     if arguments.tracer is None:
 
-        def tracer():
+        def tracer() -> Tracer[Any]:
             return json_goal.build()
     else:
         if isinstance(arguments.tracer, str):
-            tracer = loader.load_from_str(arguments.tracer)
+            loaded = loader.load_from_str(arguments.tracer)
+            if isinstance(loaded, ModuleType):
+                tracer = loaded.build
+            else:
+                assert callable(loaded)
+                tracer = cast(Callable[[], Tracer[Any]], loaded)
         else:
             tracer = arguments.tracer
 

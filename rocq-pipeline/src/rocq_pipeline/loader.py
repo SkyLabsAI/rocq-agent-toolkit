@@ -2,10 +2,11 @@ import importlib.util
 import os
 import sys
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 
-def load_module(module_path: Path, package_name: str | None = None) -> Any:
+def load_module(module_path: Path, package_name: str | None = None) -> ModuleType:
     """
     Loads a Python module from a given file path and executes its 'run' method.
     This version correctly configures the module to support relative imports
@@ -101,7 +102,7 @@ def load_definition(
     return result
 
 
-def load_from_str(desc: str, package_name: str | None = None) -> Any:
+def load_from_str(desc: str, package_name: str | None = None) -> ModuleType | Any:
     """
     Load a value from a file. Uses the syntax `path/to/module.py:definition.to.load`.
     """

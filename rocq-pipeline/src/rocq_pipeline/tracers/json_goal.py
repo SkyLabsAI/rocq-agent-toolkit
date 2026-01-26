@@ -145,9 +145,14 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict]):
 
         return {"before": preResult, "after": result}
 
+
 def build_by_goal() -> JsonGoal:
     return JsonGoal(by_goal=True)
+
+
 def build_full_state() -> JsonGoal:
     return JsonGoal(by_goal=False)
+
+
 def build() -> JsonGoal:
     return build_by_goal()

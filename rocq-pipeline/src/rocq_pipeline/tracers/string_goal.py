@@ -19,5 +19,6 @@ class GoalAsString(
 ):
     pass
 
+
 def build() -> GoalAsString:
     return GoalAsString()
