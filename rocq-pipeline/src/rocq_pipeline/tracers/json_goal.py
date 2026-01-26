@@ -1,12 +1,17 @@
 import json
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 from rocq_doc_manager import RocqCursor
 
 from ..proof_state import ProofState
 from ..proof_state.goal import RocqGoal
-from .extractor import BracketedExtractor, DefaultDocumentWatcher, NotSupported
+from .extractor import (
+    BracketedExtractor,
+    DefaultDocumentWatcher,
+    NotSupported,
+    OutputDict,
+)
 
 type output = list[Any] | None
 type goals = dict[int, RocqGoal]  # 1-indexed
@@ -14,12 +19,7 @@ type results = list[str] | None
 type state = tuple[goals, results]
 
 
-class OutputDict(TypedDict):
-    before: output
-    after: output
-
-
-class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict]):
+class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]]):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
 
@@ -126,7 +126,7 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict]):
         rdm: RocqCursor,
         tactic: str,
         result_before: state,
-    ) -> OutputDict:
+    ) -> OutputDict[Any]:
         result = self.get_goals(rdm)
         goals = ProofState(rdm.current_goal()).goals
 

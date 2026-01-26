@@ -1,6 +1,6 @@
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, TypedDict
 
 from rocq_doc_manager import RocqCursor
 
@@ -173,12 +173,19 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
         return lambda rdm, tactic: self.after(rdm, tactic, result_before)
 
 
-class TrivialBracketedExtractor[A](StateExtractor[A], BracketedExtractor[A, A]):
+class OutputDict[A](TypedDict):
+    before: A
+    after: A
+
+
+class TrivialBracketedExtractor[A](
+    StateExtractor[A], BracketedExtractor[A, OutputDict[A]]
+):
     def before(self, rdm: RocqCursor, tactic: str) -> A:
         return self.extract(rdm)
 
-    def after(self, rdm: RocqCursor, tactic: str, result_before: A) -> A:
-        return self.extract(rdm)
+    def after(self, rdm: RocqCursor, tactic: str, result_before: A) -> OutputDict[A]:
+        return {"before": result_before, "after": self.extract(rdm)}
 
 
 type D = dict[str, Any]
