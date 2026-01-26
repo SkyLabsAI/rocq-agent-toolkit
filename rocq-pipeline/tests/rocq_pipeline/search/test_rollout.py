@@ -9,13 +9,7 @@ from rocq_pipeline.search.rollout import (
     singleton,
 )
 
-
-def is_empty[T](r: Rollout[T]) -> None:
-    try:
-        result = r.next()
-        raise AssertionError(f"Should be empty, but got {result}")
-    except StopIteration:
-        pass
+from .rollout_util import approx, is_empty
 
 
 def test_interleave_empty() -> None:
@@ -23,10 +17,6 @@ def test_interleave_empty() -> None:
     ir = InterleaveRollout(ch)
 
     is_empty(ir)
-
-
-def approx[T](logprob: float, result: T | None) -> Rollout.Approx[T]:
-    return Rollout.Approx(logprob=logprob, result=result)
 
 
 def test_interleave_delayed() -> None:

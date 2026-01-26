@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import override
 
 from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import IterableRollout, Rollout
+from rocq_pipeline.search.rollout import IteratorRollout, Rollout
 from rocq_pipeline.search.search.beam import BeamSearch
 from rocq_pipeline.search.search.guidance import Guidance
 from rocq_pipeline.search.strategy import Strategy
@@ -81,7 +81,7 @@ class GridStrategy(Strategy[GridState, Action[GridState]]):
             (0.25, GridMoveAction(0, 1, "up")),
             (0.25, GridMoveAction(0, -1, "down")),
         ]
-        return IterableRollout(iter(moves))
+        return IteratorRollout(iter(moves))
 
 
 class ManhattanGuidance(Guidance[GridState]):
