@@ -1,24 +1,31 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from rocq_doc_manager import RocqCursor
 
 from ..proof_state import ProofState
 from ..proof_state.goal import RocqGoal
-from .extractor import DocumentWatcher, TacticExtractor
+from .extractor import BracketedExtractor, DefaultDocumentWatcher, NotSupported
+
+type output = list[Any] | None
+type goals = dict[int, RocqGoal]  # 1-indexed
+type results = list[str] | None
+type state = tuple[goals, results]
 
 
-class JsonGoal(
-    DocumentWatcher, TacticExtractor[None, tuple[list[Any] | None, list[Any] | None]]
-):
+class OutputDict(TypedDict):
+    before: output
+    after: output
+
+
+class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict]):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
 
-    def __init__(self, iris: bool | None = None, minimize_diff: bool = False):
+    def __init__(self, iris: bool | None = None, by_goal: bool = False):
         self._iris: bool | None = iris
-        self._minimize_diff = minimize_diff
-        self._preGoals: tuple[dict[int, RocqGoal], list[str] | None] | None = None
+        self._by_goal = by_goal
 
     @staticmethod
     def find_user_contrib(installed: bool = True) -> Path:
@@ -56,9 +63,6 @@ class JsonGoal(
         ]
         return {k: ext(user, k.split(".")) for k in PATHS}
 
-    def setup(self, rdm: RocqCursor) -> None:
-        pass
-
     def start_proof(self, rdm: RocqCursor) -> None:
         # Detect iris
         if self._iris is None:
@@ -67,9 +71,6 @@ class JsonGoal(
         result = rdm.run_command(f"Require {self._mod()}.")
         if isinstance(result, RocqCursor.Err):
             raise Exception(f"Failed to initialize JsonGoal extractor: {result}")
-
-    def end_proof(self, rdm: RocqCursor) -> None:
-        pass
 
     _NO_GOAL_PREFIXES: list[str] = [
         "This subproof is complete, but there are some unfocused goals.",
@@ -91,33 +92,48 @@ class JsonGoal(
         else:
             return result
 
-    def before(self, rdm: RocqCursor, tactic: str) -> None:
+    @staticmethod
+    def supported_tactic(tactic: str):
+        tactic = tactic.strip()
+        # TODO: ask the tagger if the tactic starts with a goal selector
+        return tactic.endswith(".") or tactic in ["{", "}"]
+
+    def before(self, rdm: RocqCursor, tactic: str) -> state:
+        if not self.supported_tactic(tactic):
+            raise NotSupported
         result = self.get_goals(rdm)
-        self._preGoals = (ProofState(rdm.current_goal()).goals, result)
+        return (ProofState(rdm.current_goal()).goals, result)
+
+    def by_goal(
+        self, preGoals: goals, preResult: results, goals: goals, result: results
+    ) -> tuple[set[int], set[int]]:  # result sets are 1-indexed
+        changed = set()
+        new = set(goals.keys())
+        for preIdx, preGoal in preGoals.items():
+            preParts = preGoal.parts
+            found = False
+            for idx, goal in goals.items():
+                if preParts.equal_up_to_numbering(goal.parts):
+                    found = True
+                    new.remove(idx)
+                    break
+            if not found:
+                changed.add(preIdx)
+        return (changed, new)
 
     def after(
-        self, rdm: RocqCursor, tactic: str
-    ) -> tuple[list[Any] | None, list[Any] | None]:
+        self,
+        rdm: RocqCursor,
+        tactic: str,
+        result_before: state,
+    ) -> OutputDict:
         result = self.get_goals(rdm)
         goals = ProofState(rdm.current_goal()).goals
 
-        assert self._preGoals is not None
-        preGoals, preResult = self._preGoals
+        preGoals, preResult = result_before
 
-        if self._minimize_diff:
-            changed = set()
-            new = set(goals.keys())
-            for preIdx, preGoal in preGoals.items():
-                preParts = preGoal.parts
-                found = False
-                for idx, goal in goals.items():
-                    if preParts.equal_up_to_numbering(goal.parts):
-                        found = True
-                        new.remove(idx)
-                        break
-                if not found:
-                    changed.add(preIdx)
-
+        if self._by_goal:
+            (changed, new) = self.by_goal(preGoals, preResult, goals, result)
             if len(changed) == 1 and preResult is not None and result is not None:
                 preResult = [preResult[preIdx - 1] for preIdx in changed]
                 result = [result[idx - 1] for idx in new]
@@ -127,4 +143,11 @@ class JsonGoal(
         )
         result = [json.loads(goal) for goal in result] if result is not None else None
 
-        return (preResult, result)
+        return {"before": preResult, "after": result}
+
+def build_by_goal() -> JsonGoal:
+    return JsonGoal(by_goal=True)
+def build_full_state() -> JsonGoal:
+    return JsonGoal(by_goal=False)
+def build() -> JsonGoal:
+    return build_by_goal()
