@@ -129,6 +129,28 @@ class RunInfo(BaseModel):
     metadata: TaskMetadata = TaskMetadata()
 
 
+class RunSummary(BaseModel):
+    """Run summary fields without per-task details."""
+
+    run_id: str
+    agent_checksum: str
+    agent_cls_checksum: str | None = None
+    timestamp_utc: str
+    dataset_id: str | None = None
+    total_tasks: int
+    success_count: int
+    failure_count: int
+    success_rate: float = 0.0
+    total_tokens: int = 0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_execution_time_sec: float = 0.0
+    total_llm_invocation_count: int = 0
+    best_run: bool = False
+    source_file_name: str | None = None
+    metadata: TaskMetadata = TaskMetadata()
+
+
 class AgentClassProvenance(BaseModel):
     """Agent class provenance data."""
 
@@ -425,6 +447,12 @@ class BulkAddTagsResponse(BaseModel):
     message: str
     tasks_updated: int
     tags_added: int
+
+
+class ExportTasksYamlRequest(BaseModel):
+    """Request to export specific tasks as a YAML dataset."""
+
+    task_ids: list[int]  # List of task database IDs
 
 
 class AgentTaskRunsResponse(BaseModel):

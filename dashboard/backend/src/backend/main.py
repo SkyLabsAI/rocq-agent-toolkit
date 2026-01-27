@@ -34,6 +34,7 @@ from backend.dal import (
     get_estimated_time_for_task_from_db,
     get_instances_for_class_from_db,
     get_instances_for_class_in_dataset_from_db,
+    get_latest_runs_from_db,
     get_run_details_from_db,
     get_runs_by_agent_and_dataset_from_db,
     get_runs_by_agent_from_db,
@@ -65,11 +66,13 @@ from backend.models import (
     DatasetInfo,
     DatasetResultsResponse,
     DatasetTasksResponse,
+    ExportTasksYamlRequest,
     IngestionResponse,
     ObservabilityLabelsResponse,
     ObservabilityLogsResponse,
     RunDetailsResponse,
     RunInfo,
+    RunSummary,
     TagsResponse,
     TaskDatasetIngestionResponse,
     TaskDetailsResponse,
@@ -555,21 +558,27 @@ async def list_datasets(session: Session = Depends(get_session)) -> list[Dataset
         ) from e
 
 
-@app.get("/api/datasets/{dataset_id}/tasks/yaml")
+@app.post("/api/datasets/{dataset_id}/tasks/yaml")
 async def export_dataset_tasks_yaml(
     dataset_id: str,
-    tag: str = Query(..., description="Filter tasks by this tag (key=value)"),
+    request: ExportTasksYamlRequest = Body(...),
     session: Session = Depends(get_session),
 ) -> Response:
     """
-    Export a dataset's tasks (optionally filtered by tag) as a YAML file.
+    Export specific tasks from a dataset by task ID as a YAML file.
     """
     try:
-        yaml_text = export_dataset_tasks_yaml_from_db(session, dataset_id, tag=tag)
+        yaml_text = export_dataset_tasks_yaml_from_db(
+            session,
+            dataset_id,
+            task_ids=request.task_ids,
+        )
         if yaml_text is None:
             raise HTTPException(
                 status_code=404, detail=f"Dataset '{dataset_id}' not found"
             )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:  # pragma: no cover - defensive logging
@@ -581,8 +590,7 @@ async def export_dataset_tasks_yaml(
             detail=f"Error exporting tasks for dataset '{dataset_id}': {str(e)}",
         ) from e
 
-    safe_tag = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in tag)
-    filename = f"{dataset_id}_{safe_tag}.yaml" if safe_tag else f"{dataset_id}.yaml"
+    filename = f"{dataset_id}.yaml"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return Response(content=yaml_text, media_type="application/x-yaml", headers=headers)
 
@@ -1006,6 +1014,28 @@ async def get_run_details(
         logger.error(f"Error fetching run details: {e}")
         raise HTTPException(
             status_code=500, detail=f"Error fetching run details: {str(e)}"
+        ) from e
+
+
+@app.get("/api/runs/latest", response_model=list[RunSummary])
+async def list_latest_runs(
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of runs to return (most recent first)",
+    ),
+    session: Session = Depends(get_session),
+) -> list[RunSummary]:
+    """
+    Get the most recent runs without task-level details.
+    """
+    try:
+        return get_latest_runs_from_db(session, limit=limit)
+    except Exception as e:
+        logger.error(f"Error fetching latest runs: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching latest runs: {str(e)}"
         ) from e
 
 

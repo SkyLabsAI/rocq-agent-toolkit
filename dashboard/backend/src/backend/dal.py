@@ -45,6 +45,7 @@ from backend.models import (
     Metrics,
     RunDetailsResponse,
     RunInfo,
+    RunSummary,
     TagsResponse,
     TaskDetailsResponse,
     TaskInfo,
@@ -205,10 +206,10 @@ def get_tags_for_task(session: Session, task_id: int) -> dict[str, str]:
 def export_dataset_tasks_yaml_from_db(
     session: Session,
     dataset_id: str,
-    tag: str | None = None,
+    task_ids: list[int],
 ) -> str | None:
     """
-    Export a dataset's tasks as YAML, optionally filtered by a tag.
+    Export specific tasks from a dataset as YAML by task IDs.
 
     Only tags with key == value are emitted to match the YAML ingestion format.
     """
@@ -217,15 +218,21 @@ def export_dataset_tasks_yaml_from_db(
         return None
 
     task_stmt = select(Task).where(Task.dataset_id == dataset.id)
-    tag_filter = tag.strip() if tag else None
-    if tag_filter:
-        task_stmt = (
-            task_stmt.join(TaskTagLink, TaskTagLink.task_id == Task.id)  # type: ignore[arg-type]
-            .join(Tag, Tag.id == TaskTagLink.tag_id)  # type: ignore[arg-type]
-            .where(Tag.key == tag_filter, Tag.value == tag_filter)
+    tasks_db: list[Task]
+    if not task_ids:
+        tasks_db = []
+    else:
+        task_id_col = cast(ColumnElement[int], Task.id)
+        task_stmt = task_stmt.where(
+            cast(ColumnElement[bool], task_id_col.in_(task_ids))
         )
-
-    tasks_db = session.exec(task_stmt.order_by(Task.name)).all()
+        tasks_db = list(session.exec(task_stmt.order_by(Task.name)).all())
+        found_ids = {task.id for task in tasks_db if task.id is not None}
+        missing_ids = sorted(set(task_ids) - found_ids)
+        if missing_ids:
+            raise ValueError(
+                f"Tasks not found in dataset '{dataset_id}': {missing_ids}"
+            )
 
     tasks_payload: list[dict[str, Any]] = []
     for task in tasks_db:
@@ -995,6 +1002,44 @@ def get_runs_by_agent_from_db(
         )
 
     return run_infos
+
+
+def get_latest_runs_from_db(session: Session, limit: int = 10) -> list[RunSummary]:
+    """
+    Get the latest runs across all agents, sorted by timestamp (most recent first).
+    """
+    runs = session.exec(
+        select(Run).order_by(desc(Run.timestamp_utc)).limit(limit)  # type: ignore[arg-type]
+    ).all()
+
+    summaries: list[RunSummary] = []
+    for run in runs:
+        run_tags = _get_tags_for_run(session, run.id)
+        dataset_name = _get_dataset_name_for_run(session, run)
+
+        summaries.append(
+            RunSummary(
+                run_id=str(run.id),
+                agent_checksum=run.agent_checksum,
+                agent_cls_checksum=run.agent_cls_checksum,
+                timestamp_utc=run.timestamp_utc.isoformat(),
+                dataset_id=dataset_name,
+                total_tasks=run.total_tasks,
+                success_count=run.success_count,
+                failure_count=run.failure_count,
+                success_rate=run.success_rate,
+                total_tokens=run.total_tokens,
+                total_input_tokens=run.total_input_tokens,
+                total_output_tokens=run.total_output_tokens,
+                total_execution_time_sec=run.total_execution_time_sec,
+                total_llm_invocation_count=run.total_llm_invocation_count,
+                best_run=run.is_best_run,
+                source_file_name=run.source_file_name,
+                metadata=TaskMetadata(tags=run_tags),
+            )
+        )
+
+    return summaries
 
 
 def get_runs_by_agent_and_dataset_from_db(
