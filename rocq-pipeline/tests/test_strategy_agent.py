@@ -33,7 +33,7 @@ def test_strategy_agent_doc_interaction() -> None:
     """Test that StrategyAgent captures doc_interaction in side_effects."""
     # Create a simple strategy that uses "auto." tactic
     # FirstTacticStrategy takes a list of (probability, tactic) pairs
-    strategy = FirstTacticStrategy([(1.0, "auto.")])
+    strategy = FirstTacticStrategy([(1.0, "auto")])
 
     # Create an AgentBuilder for StrategyAgent with the strategy
     agent_builder = StrategyAgentBuilder(strategy)

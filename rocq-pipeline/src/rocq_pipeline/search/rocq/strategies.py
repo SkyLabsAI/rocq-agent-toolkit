@@ -1,3 +1,7 @@
+"""
+A collection of various algorithmic strategies for Rocq.
+"""
+
 from __future__ import annotations
 
 import math
@@ -16,11 +20,18 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     """A simple strategy that always returns a tactic."""
 
     _tactic: Annotated[str, Provenance.Reflect.Field]
-    _prob: Annotated[float, Provenance.Reflect.Field]
+    _score: Annotated[float, Provenance.Reflect.Field]
 
     # TODO: this is a logprob
     def __init__(self, tactic: str, prob: float = 0.0) -> None:
+        """The `tactic` is a Rocq tactic, **not** a Rocq command,
+        therefore, there should be no '.'"""
         self._tactic = tactic
+        self._score = prob
+        super().__init__()
+        tactic = tactic.strip()
+        assert not tactic.endswith(".")
+        self._tactic = tactic[:-1]
         self._prob = prob
 
     @override
@@ -31,15 +42,15 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
         return singleton(
-            RocqTacticAction(f"progress ({self._tactic})"), score=self._prob
+            RocqTacticAction(f"progress ({self._tactic})"), score=self._score
         )
 
 
 class CutAssertStrategy(Strategy):
     """A simple strategy that cuts a Rocq lemma.
-    The success probability 1.0 is not necessarily appropriate."""
+    The success probability 0.1 is not necessarily appropriate."""
 
-    def __init__(self, name: str, lemma: str, prob: float = 1.0) -> None:
+    def __init__(self, name: str, lemma: str, prob: float = 0.1) -> None:
         self._name: str = name
         self._lemma: str = lemma
         self._logprob: float = math.log(prob)

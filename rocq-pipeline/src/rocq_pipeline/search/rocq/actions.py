@@ -44,12 +44,80 @@ logger = get_logger("rocq_agent")
 #
 
 
+def is_command(cmd: str) -> bool:
+    """Detect whether the string looks like a Rocq command."""
+    return cmd.endswith("...") if cmd.endswith("..") else cmd.endswith(".")
+
+
+def tactic_of(tactic: str) -> str:
+    tactic = tactic.strip()
+    assert (not tactic.endswith(".")) or (
+        tactic.endswith("..") and not tactic.endswith("...")
+    )
+    return tactic
+
+
+class RocqCommandAction(Action[RocqCursor]):
+    """Execute a single Rocq command.
+
+    This command **must** end in a '.'.
+    """
+
+    _command: Annotated[str, Provenance.Reflect.Field]
+
+    def __init__(self, cmd: str) -> None:
+        """Build an action to run the command."""
+        assert is_command(cmd)
+        self._command = cmd
+
+    @override
+    def interact(self, state: RocqCursor) -> RocqCursor:
+        # TODO: the fact that cursors are not functional is quite annoying here.
+        # It should be the caller that creates a new cursor, but in this case
+        # we will basically always be returning our own cursor.
+        # If cursors were functional, we would just be returning the latest
+        # cursor here.
+        response = state.insert_command(f"{self._command}.")
+        if isinstance(response, RocqCursor.Err):
+            # Preserve the actual Rocq error message
+            # logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
+            raise Action.Failed(
+                message=response.message,
+                details=response,
+            )
+        # logger.info(f"  RocqTacticAction: '{self._tactic}' succeeded.")
+        return state
+
+    @override
+    def key(self) -> str:
+        return self._command
+
+
 class RocqTacticAction(Action[RocqCursor]):
-    """Execute a single Rocq tactic."""
+    """Execute a single Rocq tactic, potentially with modifiers.
+
+    Note that the tactic is not a command, so it should **not** end in a `.`
+    (unless it is a tactic such as `intros..`).
+    """
 
     _tactic: Annotated[str, Provenance.Reflect.Field]
 
-    def __init__(self, tactic: str) -> None:
+    def __init__(
+        self,
+        tactic: str,
+        *,
+        progress: bool = False,
+        no_evar: bool = False,
+    ) -> None:
+        """The tactic must be a Rocq tactic, **not** a Rocq command, so it should **not** end in a '.'."""
+        tactic = tactic_of(tactic)
+        # NOTE: we place the `progress` first, then the match
+        tactic = f"progress ({tactic})" if progress else tactic
+        tactic = (
+            f"{tactic}; lazymatch goal with |- ?g => assert_fails (has_evar g) end"
+            if no_evar
+            else tactic
+        )
         self._tactic = tactic
 
     @override
@@ -59,30 +127,25 @@ class RocqTacticAction(Action[RocqCursor]):
         # we will basically always be returning our own cursor.
         # If cursors were functional, we would just be returning the latest
         # cursor here.
-        response = self.run_tactic(state, self._tactic)
+        response = state.insert_command(f"{self._tactic}.")
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
-            logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
+            # logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
             raise Action.Failed(
                 message=response.message,
                 details=response,
             )
-        logger.info(f"  RocqTacticAction: '{self._tactic}' succeeded.")
+        # logger.info(f"  RocqTacticAction: '{self._tactic}' succeeded.")
         return state
-
-    def run_tactic(
-        self, rc: RocqCursor, tactic: str
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
-        return rc.insert_command(tactic)
 
     @override
     def key(self) -> str:
-        return self._tactic.strip()
+        return self._tactic
 
 
-class RocqRetryAction(RocqTacticAction):
+class RocqRetryCommandAction(Action[RocqCursor]):
     """
-    Rocq tactic with LLM-based rectification on failure.
+    A Rocq action that retries using a given (often LLM-based) rectifier.
 
     Inherits tactic execution from RocqTacticAction and adds:
     - Cursor passed to rectifier for goal/context access
@@ -99,67 +162,64 @@ class RocqRetryAction(RocqTacticAction):
         Provenance.Reflect.CallableField,
     ]
     _max_retries: Annotated[int, Provenance.Reflect.Field]
-    _final_tactic: str | None  # this field is mutable
+    _final_command: str | None  # imperative state, does not contribute to provenance
 
     def __init__(
         self,
-        tactic: str,
+        command: str,
         rectifier: Callable[[RocqCursor, str, str], str | None] | None,
         max_retries: int = 3,
+        **kwargs,
     ) -> None:
         """
         Args:
-            tactic: Initial tactic string to try
+            tactic: Initial tactic string to try (tactics do not include the '.').
             rectifier: Function (cursor, tactic, error) -> rectified_tactic | None
             max_retries: Maximum number of rectification attempts
         """
-        super().__init__(tactic)
+        command = command.strip()
+        self._initial_command = command
         self._rectifier = rectifier
         self._max_retries = max_retries
-        self._final_tactic: str | None = None
+        self._final_command: str | None = None
 
     @property
-    def final_tactic(self) -> str | None:
+    def final_command(self) -> str | None:
         """
         The tactic that actually succeeded (after any rectification).
 
         Returns None if interact() hasn't been called or failed.
         Use this for logging/tracing what actually ran.
         """
-        return self._final_tactic
+        return self._final_command
 
     @override
     def interact(self, state: RocqCursor) -> RocqCursor:
-        self._final_tactic = None
-        tactic = self._tactic
+        self._final_command = None
+        command = self._initial_command
 
         # Total attempts = 1 (original) + N (retries)
         max_attempts = (self._max_retries + 1) if self._rectifier else 1
 
         for attempt in range(max_attempts):
-            # 1. Try the tactic
-            response = self.run_tactic(state, tactic)
-
-            # 2. Success path
+            response = state.insert_command(command)
             if not isinstance(response, RocqCursor.Err):
-                self._final_tactic = tactic
+                self._final_command = command
                 return state
 
-            # 3. Failure path - can we try again?
-            is_last_attempt = attempt == max_attempts - 1
-            if is_last_attempt:
+            if attempt == max_attempts - 1:
+                # out of attempts, we fail
                 raise Action.Failed(
                     message=(
-                        f"Max retries ({self._max_retries}) exceeded for '{self._tactic}'. "
+                        f"Max retries ({self._max_retries}) exceeded for '{self._initial_command}'. "
                         f"Last error: {response.message}"
                     ),
                     details=response,
                 )
 
-            # 4. Recovery logic (Rectification)
             # We know self._rectifier is not None because max_attempts > 1
             assert self._rectifier is not None
-            rectified = self._rectifier(state, tactic, response.message)
+            rectified = self._rectifier(state, command, response.message)
 
             if rectified is None:
                 raise Action.Failed(
@@ -167,7 +227,7 @@ class RocqRetryAction(RocqTacticAction):
                     details=response,
                 )
 
-            tactic = rectified
+            command = rectified
 
         # Unreachable
         raise Action.Failed("Unexpected loop termination")
@@ -186,4 +246,4 @@ class RocqRetryAction(RocqTacticAction):
 
         For the tactic that actually succeeded, use `final_tactic` instead.
         """
-        return self._tactic.strip()
+        return self._initial_command.strip()
