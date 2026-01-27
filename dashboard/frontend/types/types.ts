@@ -239,6 +239,7 @@ export interface AgentInstanceSummary {
 export interface AgentRun {
   run_id: string;
   agent_name: string;
+  agent_checksum?: string;
   timestamp_utc: string; // ISO 8601 date-time string
   total_tasks: number;
   success_count: number;

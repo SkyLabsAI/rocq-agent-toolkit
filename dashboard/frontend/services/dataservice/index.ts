@@ -37,6 +37,9 @@ import {
   type TaskSetResults,
 } from '@/types/types';
 
+// Set default axios headers to skip ngrok browser warning
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
+
 // Check if we should use mock data
 const USE_MOCK_DATA = config.USE_MOCK_DATA;
 

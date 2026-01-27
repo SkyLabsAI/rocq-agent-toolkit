@@ -104,7 +104,7 @@ const LatestRunsList: React.FC = () => {
           <thead className='bg-elevation-surface-raised'>
             <tr className='text-left text-text-subtlest text-[13px] font-medium'>
               <th className='px-6 py-3'>Run ID</th>
-              <th className='px-6 py-3'>Agent Name</th>
+              <th className='px-6 py-3'>Agent Checksum</th>
               <th className='px-6 py-3'>Dataset</th>
               <th className='px-6 py-3'>Timestamp</th>
               <th className='px-6 py-3 text-center'>Tasks</th>
@@ -121,13 +121,13 @@ const LatestRunsList: React.FC = () => {
                 <td className='px-6 py-4'>
                   <Link
                     href={`/runs/${run.run_id}`}
-                    className='text-text-link hover:underline font-mono text-[13px]'
+                    className='text-text-link hover:underline font-mono text-[13px] break-all'
                   >
-                    {run.run_id.slice(0, 8)}...
+                    {run.run_id}
                   </Link>
                 </td>
-                <td className='px-6 py-4 text-text text-[14px]'>
-                  {run.agent_name}
+                <td className='px-6 py-4 text-text text-[14px] font-mono'>
+                  {run.agent_checksum}
                 </td>
                 <td className='px-6 py-4 text-text-subtlest text-[13px]'>
                   {run.dataset_id || '-'}
