@@ -327,6 +327,41 @@ export const uploadTasksYaml = USE_MOCK_DATA
   : uploadTasksYamlReal;
 
 // ========================================
+// DOWNLOAD TASKS YAML API
+// ========================================
+
+export interface DownloadTasksYamlRequest {
+  task_ids: number[];
+}
+
+const downloadTasksYamlReal = async (
+  datasetId: string,
+  request: DownloadTasksYamlRequest
+): Promise<Blob> => {
+  const response = await axios.post(
+    `${config.DATA_API}/datasets/${datasetId}/tasks/yaml`,
+    request,
+    {
+      responseType: 'blob',
+    }
+  );
+  return response.data;
+};
+
+const downloadTasksYamlMock = async (
+  _datasetId: string,
+  _request: DownloadTasksYamlRequest
+): Promise<Blob> => {
+  // Return a mock YAML blob
+  const yamlContent = `# Mock YAML file\ntasks:\n  - task_id: 1\n    name: Mock Task`;
+  return new Blob([yamlContent], { type: 'application/x-yaml' });
+};
+
+export const downloadTasksYaml = USE_MOCK_DATA
+  ? downloadTasksYamlMock
+  : downloadTasksYamlReal;
+
+// ========================================
 // AGENT SUMMARIES HELPER
 // ========================================
 
