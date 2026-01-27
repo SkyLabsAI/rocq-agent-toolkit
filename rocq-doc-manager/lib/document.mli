@@ -156,13 +156,21 @@ val rev_prefix : t -> processed_item list
 
 val suffix : t -> unprocessed_item list
 
-(** [commit ?file ?include_suffix d] commits the contents of document [d] to a
-    file. If not target file is specified with [file], the file name specified
-    upon document creation is used. Note that if the file exists, it is simply
-    overwritten. If [include_suffix] is [true], which is the default, commands
-    from the (unprocessed) suffix are also included. The [Sys_error] exception
-    is raised upon file system errors. *)
-val commit : ?file:string -> ?include_suffix:bool -> t -> unit
+(** [contents ?include_ghost ?include_suffix d]  gives the current contents of
+    document [d] as a string. By default, ghost commands are excluded from the
+    output. To include them, [include_ghost] must be set to [true]. The suffix
+    of the document (unprocessed items) is included by default. To exclude the
+    suffix, [include_suffix] must be set to [false]. *)
+val contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string
+
+(** [commit ?file ?include_ghost ?include_suffix d] is the same as writing the
+    output of [contents ?include_ghost ?include_suffix d] to the given [file].
+    When [file] is omitted, the contents is written to the file initially used
+    at document creation via the [init] function. Note that the target file is
+    simply overwritten if it exists. Exception [Sys_error] is raised upon file
+    system errors. *)
+val commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool
+  -> t -> unit
 
 val compile : t -> (unit, string) result * string * string
 

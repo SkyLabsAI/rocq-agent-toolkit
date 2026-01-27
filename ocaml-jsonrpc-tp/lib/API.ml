@@ -473,7 +473,7 @@ let output_docs oc api =
         match args with
         | Args.Nil    -> ()
         | Args.Cns(a) ->
-        line "  - %s: %s." a.name (describe_schema a.schema a.descr);
+        line "  - `%s`: %s." a.name (describe_schema a.schema a.descr);
         print_args a.tail
       in
       print_args m.args

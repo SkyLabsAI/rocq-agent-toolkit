@@ -312,22 +312,34 @@ let rev_prefix : t -> processed_item list = fun d ->
 let suffix : t -> unprocessed_item list = fun d ->
   ignore (get_backend d); d.suffix
 
-let commit : ?file:string -> ?include_suffix:bool -> t -> unit =
-    fun ?file ?(include_suffix=true) d ->
+let contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string =
+    fun ?(include_ghost=false) ?(include_suffix=true) d ->
+  let _ = get_backend d in
+  let b = Buffer.create 73 in
+  let add_processed (p : processed_item) =
+    if p.kind <> `Ghost || include_ghost then Buffer.add_string b p.text
+  in
+  let add_unprocessed u =
+    if u.kind <> `Ghost || include_ghost then Buffer.add_string b u.text
+  in
+  List.iter add_processed (List.rev d.rev_prefix);
+  if include_suffix then List.iter add_unprocessed d.suffix;
+  Buffer.contents b
+
+let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
+    -> unit = fun ?file ?(include_ghost=false) ?(include_suffix=true) d ->
   let backend = get_backend d in
   let file = Stdlib.Option.value file ~default:backend.file in
   Out_channel.with_open_text file @@ fun oc ->
   let output_processed (p : processed_item) =
-    match p.kind with
-    | `Ghost -> ()
-    | _      -> Out_channel.output_string oc p.text
+    if p.kind <> `Ghost || include_ghost then
+      Out_channel.output_string oc p.text
+  in
+  let output_unprocessed u =
+    if u.kind <> `Ghost || include_ghost then
+      Out_channel.output_string oc u.text
   in
   List.iter output_processed (List.rev d.rev_prefix);
-  let output_unprocessed u =
-    match u.kind with
-    | `Ghost -> ()
-    | _      -> Out_channel.output_string oc u.text
-  in
   if include_suffix then List.iter output_unprocessed d.suffix
 
 let compile : t -> (unit, string) result * string * string = fun d ->

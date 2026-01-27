@@ -387,17 +387,29 @@ let _ =
     @@ fun d () ->
   Document.suffix d <> []
 
+let common_contents_args =
+  A.add ~name:"include_ghost" ~descr:"indicate whether ghost commands \
+    should be included" S.bool @@
+  A.add ~name:"include_suffix" ~descr:"indicate whether the suffix should \
+    be included" S.bool @@
+  A.nil
+
+let _ =
+  let args = common_contents_args in
+  declare ~name:"contents" ~descr:"gives the current contents of the \
+      document, as if it was written to a file" ~args ~ret:S.string
+    @@ fun d (include_ghost, (include_suffix, ())) ->
+  Document.contents ~include_ghost ~include_suffix d
+
 let _ =
   let args =
     A.add ~name:"file" ~descr:"optional target file" S.(nullable string) @@
-    A.add ~name:"include_suffix" ~descr:"indicate whether he suffix should \
-      be included" S.bool @@
-    A.nil
+    common_contents_args
   in
   declare ~name:"commit" ~descr:"write the current document \
       contents to the file" ~args ~ret:S.null
-    @@ fun d (file, (include_suffix, ())) ->
-  Document.commit ?file ~include_suffix d
+    @@ fun d (file, (include_ghost, (include_suffix, ()))) ->
+  Document.commit ?file ~include_ghost ~include_suffix d
 
 let compile_result =
   let fields =
