@@ -8,6 +8,7 @@ import Modal from '@/components/base/ui/modal';
 import FlamegraphView from '@/components/visualizer/flamegraph-view';
 import SpanGraphView from '@/components/visualizer/span-graph-view';
 import TacticGraphView from '@/components/visualizer/tactic-graph-view';
+import UnifiedView from '@/components/visualizer/unified-view';
 import {
   getTacticGraph,
   type TacticGraphResponse,
@@ -43,8 +44,8 @@ const VisualizerModal = ({
   taskId,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<
-    'traces' | 'flamegraph' | 'tactic'
-  >('traces');
+    'traces' | 'flamegraph' | 'tactic' | 'unified'
+  >('unified');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,8 +102,8 @@ const VisualizerModal = ({
     setTacticGraph(null);
     setTacticGraphError(null);
     setSelectedTacticNode(null);
-    // Default to traces tab if no taskId, otherwise default to tactic tab
-    setActiveTab(taskId ? 'tactic' : 'traces');
+    // Default to unified tab if no taskId, otherwise default to tactic tab
+    setActiveTab(taskId ? 'tactic' : 'unified');
   }, [isOpen, runId, taskId]);
 
   // Auto-load trace ids for this run.
@@ -378,6 +379,16 @@ const VisualizerModal = ({
       {/* Tabs */}
       <div className='flex gap-2 mb-4 border-b border-elevation-surface-overlay'>
         <button
+          onClick={() => setActiveTab('unified')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'unified'
+              ? 'border-text-information text-text'
+              : 'border-transparent text-text-disabled hover:text-text'
+          }`}
+        >
+          Unified View
+        </button>
+        <button
           onClick={() => setActiveTab('traces')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'traces'
@@ -412,7 +423,28 @@ const VisualizerModal = ({
       </div>
 
       <div className='flex gap-4 h-[80vh]' data-testid='visualizer-modal'>
-        {activeTab === 'traces' ? (
+        {activeTab === 'unified' ? (
+          <UnifiedVisualization
+            traceIds={traceIds}
+            selectedTraceId={selectedTraceId}
+            setSelectedTraceId={setSelectedTraceId}
+            spans={spans}
+            enhancedSpans={enhancedSpans}
+            selectedSpan={selectedSpan}
+            setSelectedSpan={setSelectedSpan}
+            logs={logs}
+            logsLoading={logsLoading}
+            collapsedNodes={collapsedNodes}
+            maxDepth={maxDepth}
+            maxPossibleDepth={maxPossibleDepth}
+            loading={loading}
+            error={error}
+            successPathNodes={successPathNodes}
+            spansById={spansById}
+            onToggleCollapse={toggleNodeCollapse}
+            onDepthChange={handleDepthChange}
+          />
+        ) : activeTab === 'traces' ? (
           <TracesVisualization
             traceIds={traceIds}
             selectedTraceId={selectedTraceId}
@@ -595,6 +627,218 @@ const TracesVisualization = ({
         <div className='flex-1 min-h-0'>
           <SpanGraphView
             spans={enhancedSpans}
+            selectedSpanId={selectedSpan?.span_id}
+            onSelectSpanId={spanId =>
+              setSelectedSpan(spansById.get(spanId) ?? null)
+            }
+            successPathNodes={successPathNodes}
+            collapsedNodes={collapsedNodes}
+            onToggleCollapse={onToggleCollapse}
+          />
+        </div>
+      </div>
+
+      {/* Right panel - Span details and logs */}
+      <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
+        <div className='p-4 space-y-4'>
+          {/* Span details section */}
+          <div>
+            <div className='flex items-center justify-between gap-2 mb-3'>
+              <div className='text-sm text-text font-semibold'>
+                Span details
+              </div>
+              {selectedSpan ? (
+                <div className='text-xs text-text-disabled'>
+                  {selectedSpan.service_name} •{' '}
+                  {selectedSpan.span_id.slice(0, 12)}…
+                </div>
+              ) : null}
+            </div>
+
+            {selectedSpan ? (
+              <div className='space-y-3'>
+                <div>
+                  <div className='text-sm text-text font-semibold'>
+                    {selectedSpan.name}
+                  </div>
+                  <div className='text-xs text-text-disabled'>
+                    {selectedSpan.service_name}
+                  </div>
+                </div>
+
+                <div>
+                  <div className='text-xs text-text-disabled mb-1'>
+                    Attributes
+                  </div>
+                  <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
+                    <pre className='text-xs text-text whitespace-pre-wrap'>
+                      {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className='text-sm text-text-disabled'>
+                Select a span node to see details and logs.
+              </div>
+            )}
+          </div>
+
+          {/* Logs section */}
+          <div className='border-t border-elevation-surface-overlay pt-4'>
+            <div className='text-sm text-text font-semibold mb-3'>Logs</div>
+
+            {!selectedSpan ? (
+              <div className='text-sm text-text-disabled'>—</div>
+            ) : logsLoading ? (
+              <div className='flex items-center gap-2 text-sm text-text-disabled'>
+                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
+                Loading logs…
+              </div>
+            ) : logs ? (
+              <LogsDisplay logs={logs} />
+            ) : (
+              <div className='text-sm text-text-disabled'>No logs.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// Unified Visualization Component (combines Traces Graph + Flamegraph)
+const UnifiedVisualization = ({
+  traceIds,
+  selectedTraceId,
+  setSelectedTraceId,
+  spans,
+  enhancedSpans,
+  selectedSpan,
+  setSelectedSpan,
+  logs,
+  logsLoading,
+  collapsedNodes,
+  maxDepth,
+  maxPossibleDepth,
+  loading,
+  error,
+  successPathNodes,
+  spansById,
+  onToggleCollapse,
+  onDepthChange,
+}: {
+  traceIds: string[];
+  selectedTraceId: string;
+  setSelectedTraceId: (id: string) => void;
+  spans: VisualizerSpanLite[];
+  enhancedSpans: EnhancedSpan[];
+  selectedSpan: EnhancedSpan | null;
+  setSelectedSpan: (span: EnhancedSpan | null) => void;
+  logs: Record<string, unknown> | null;
+  logsLoading: boolean;
+  collapsedNodes: Set<string>;
+  maxDepth: number | null;
+  maxPossibleDepth: number;
+  loading: boolean;
+  error: string | null;
+  successPathNodes: Set<string>;
+  spansById: Map<string, EnhancedSpan>;
+  onToggleCollapse: (spanId: string) => void;
+  onDepthChange: (depth: number | null) => void;
+}) => {
+  return (
+    <>
+      <div className='flex-1 flex flex-col gap-3 min-w-0'>
+        {/* Control Panel */}
+        <div className='flex items-center gap-4 flex-wrap bg-elevation-surface-raised p-4 rounded-lg border border-elevation-surface-overlay'>
+          {/* Trace Selection */}
+          <div className='flex items-center gap-3 flex-1 min-w-[320px]'>
+            {traceIds.length > 1 ? (
+              <>
+                <div className='text-sm text-text font-semibold'>Trace</div>
+                <select
+                  className='flex-1 h-9 rounded border border-elevation-surface-overlay bg-elevation-surface-sunken text-text px-2'
+                  value={selectedTraceId}
+                  onChange={e => setSelectedTraceId(e.target.value)}
+                  disabled={!traceIds.length}
+                >
+                  {!traceIds.length ? (
+                    <option value=''>(no traces)</option>
+                  ) : null}
+                  {traceIds.map(t => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : traceIds.length === 1 ? (
+              <div className='text-sm text-text'>
+                <span className='font-semibold'>Trace:</span>{' '}
+                <span className='font-mono text-text-disabled'>
+                  {traceIds[0]}
+                </span>
+              </div>
+            ) : (
+              <div className='text-sm text-text-disabled'>No traces.</div>
+            )}
+          </div>
+
+          {/* Depth Control */}
+          {spans.length > 0 && (
+            <div className='flex items-center gap-3'>
+              <div className='text-sm text-text font-semibold'>Max Depth</div>
+              <div className='flex gap-2'>
+                {[1, 2, 3, 4, 5].map(depth => (
+                  <button
+                    key={depth}
+                    onClick={() => onDepthChange(depth)}
+                    disabled={depth > maxPossibleDepth}
+                    className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                      maxDepth === depth
+                        ? 'bg-primary-default text-white border-primary-default'
+                        : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                    } ${depth > maxPossibleDepth ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    {depth}
+                  </button>
+                ))}
+                <button
+                  onClick={() => onDepthChange(null)}
+                  className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                    maxDepth === null
+                      ? 'bg-primary-default text-white border-primary-default'
+                      : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                  }`}
+                >
+                  All
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Status indicators */}
+          <div className='flex items-center gap-3'>
+            {loading ? (
+              <div className='text-sm text-text-disabled'>Loading…</div>
+            ) : null}
+            {error ? (
+              <div className='text-sm text-text-danger'>{error}</div>
+            ) : null}
+            {enhancedSpans.length > 0 && (
+              <div className='text-xs text-text-disabled'>
+                {enhancedSpans.length} spans • {collapsedNodes.size} collapsed
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Unified View */}
+        <div className='flex-1 min-h-0'>
+          <UnifiedView
+            spans={spans}
+            enhancedSpans={enhancedSpans}
             selectedSpanId={selectedSpan?.span_id}
             onSelectSpanId={spanId =>
               setSelectedSpan(spansById.get(spanId) ?? null)
