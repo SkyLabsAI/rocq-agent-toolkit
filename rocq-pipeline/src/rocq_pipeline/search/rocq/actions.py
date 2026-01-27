@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import Annotated, override
 
 from observability import get_logger
+from observability.tracing.decorators import trace
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 
@@ -78,6 +79,7 @@ class RocqCommandAction(Action[RocqCursor]):
         self._command = cmd
 
     @override
+    @trace("RocqCommandAction")
     def interact(self, state: RocqCursor) -> RocqCursor:
         # TODO: the fact that cursors are not functional is quite annoying here.
         # It should be the caller that creates a new cursor, but in this case
@@ -87,12 +89,10 @@ class RocqCommandAction(Action[RocqCursor]):
         response = state.insert_command(self._command)
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
-            # logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
             raise Action.Failed(
                 message=response.message,
                 details=response,
             )
-        # logger.info(f"  RocqTacticAction: '{self._tactic}' succeeded.")
         return state
 
     @override
@@ -128,6 +128,7 @@ class RocqTacticAction(Action[RocqCursor]):
         self._tactic = tactic
 
     @override
+    @trace("RocqTacticAction")
     def interact(self, state: RocqCursor) -> RocqCursor:
         # TODO: the fact that cursors are not functional is quite annoying here.
         # It should be the caller that creates a new cursor, but in this case
@@ -137,12 +138,10 @@ class RocqTacticAction(Action[RocqCursor]):
         response = state.insert_command(f"{self._tactic}.")
         if isinstance(response, RocqCursor.Err):
             # Preserve the actual Rocq error message
-            # logger.info(f"  RocqTacticAction: '{self._tactic}' failed.")
             raise Action.Failed(
                 message=response.message,
                 details=response,
             )
-        # logger.info(f"  RocqTacticAction: '{self._tactic}' succeeded.")
         return state
 
     @override
