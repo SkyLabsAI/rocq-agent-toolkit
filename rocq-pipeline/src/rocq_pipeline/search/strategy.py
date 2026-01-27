@@ -344,9 +344,20 @@ class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
 def repeat[State, Action](
     strategy: Strategy[State, Action], repeat: int
 ) -> Strategy[State, Action]:
-    """Set up a strategy that runs the full strategy
-    back to back. So all the elements of the strategy are tried
-    the first time, and then again subsequent times."""
+    """
+    Repeat a base strategy to get multiple candidates per node.
+    So all the elements of the strategy are tried
+    the first time, and then again subsequent times.
+
+    This is intendend to be used with non-deterministic strategies.
+
+    If the underlying Strategy returns `[a_n,b_n,c_n]`, then
+    `repeat(base, 3)` will return `[a_1,b_1,c_1,a_2,b_2,c_2,a_3,b_3,c_3]`.
+
+    NOTE: This Strategy violates the convention that scores arrive
+    in decreasing order if the underlying strategy returns
+    multiple actions with different probabilities.
+    """
     return staged([(None, strategy)] * repeat)
 
 
