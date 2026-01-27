@@ -150,7 +150,8 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
   - file: optional target file (as either `null` or a string).
-  - include_suffix: indicate whether he suffix should be included (as a boolean).
+  - include_ghost: indicate whether ghost commands should be included (as a boolean).
+  - include_suffix: indicate whether the suffix should be included (as a boolean).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
@@ -160,6 +161,16 @@ API Methods
 - Arguments (in order, or named):
   - cursor: the cursor to perform the operation on (as an integer).
 - Response payload: an instance of the `CompileResult` object.
+- Failure mode: never fails.
+
+### `contents`
+
+- Description: gives the current contents of the document, as if it was written to a file.
+- Arguments (in order, or named):
+  - cursor: the cursor to perform the operation on (as an integer).
+  - include_ghost: indicate whether ghost commands should be included (as a boolean).
+  - include_suffix: indicate whether the suffix should be included (as a boolean).
+- Response payload: a string.
 - Failure mode: never fails.
 
 ### `copy_contents`

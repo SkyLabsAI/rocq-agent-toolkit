@@ -223,7 +223,13 @@ class RocqCursorProtocol(ABC):
     def copy_contents(self, dest: RocqCursorProtocol) -> None: ...
 
     @abstractmethod
-    def commit(self, file: str | None, *, include_suffix: bool) -> None: ...
+    def commit(
+        self,
+        file: str | None,
+        *,
+        include_ghost: bool = False,
+        include_suffix: bool = True,
+    ) -> None: ...
 
     @abstractmethod
     def compile(self) -> RocqDocManagerAPI.CompileResult: ...
