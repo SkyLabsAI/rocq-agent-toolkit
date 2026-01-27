@@ -36,8 +36,13 @@ class TestRocqTacticAction:
 
     def test_key_returns_tactic(self) -> None:
         """key() returns the tactic string for deduplication."""
-        action = RocqTacticAction("  reflexivity  ")
+        action = RocqTacticAction("reflexivity")
         assert action.key() == "reflexivity"
+
+    def test_reject_invalid_tactic(self) -> None:
+        with pytest.raises(AssertionError) as exc_info:
+            RocqTacticAction("  reflexivity  ")
+        print(exc_info.value)
 
 
 class TestRocqRetryAction:

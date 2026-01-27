@@ -65,16 +65,6 @@ def ensure_tactic(tactic: str) -> None:
     assert not is_command(tactic)
 
 
-def tactic_of(tactic: str) -> str:
-    """Get a tactic from a tactic string.
-    The function does some amount of "canonicalization", e.g. removing whitespace, etc.
-    """
-    tactic = tactic.strip()
-    ensure_tactic(tactic)
-    assert not is_command(tactic)
-    return tactic
-
-
 class RocqCommandAction(Action[RocqCursor]):
     """Execute a single Rocq command.
 
@@ -127,7 +117,7 @@ class RocqTacticAction(Action[RocqCursor]):
         no_evar: bool = False,
     ) -> None:
         """The tactic must be a Rocq tactic, **not** a Rocq command. See discussion above."""
-        tactic = tactic_of(tactic)
+        ensure_tactic(tactic)
         # NOTE: we place the `progress` first, then the match
         tactic = f"progress ({tactic})" if progress else tactic
         tactic = (
