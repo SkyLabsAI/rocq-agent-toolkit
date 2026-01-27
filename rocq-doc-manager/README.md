@@ -121,8 +121,8 @@ API Methods
 
 - Description: advance the cursor before the indicated unprocessed item.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `index`: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
@@ -131,8 +131,8 @@ API Methods
 
 - Description: remove unprocessed commands from the document.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - count: the number of unprocessed commands to remove, or `null` to remove them all (as either `null` or an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `count`: the number of unprocessed commands to remove, or `null` to remove them all (as either `null` or an integer).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
@@ -140,7 +140,7 @@ API Methods
 
 - Description: clones the given cursor.
 - Arguments (in order, or named):
-  - cursor: the cursor to clone (as an integer).
+  - `cursor`: the cursor to clone (as an integer).
 - Response payload: the name of the new cursor (as an integer).
 - Failure mode: never fails.
 
@@ -148,10 +148,10 @@ API Methods
 
 - Description: write the current document contents to the file.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - file: optional target file (as either `null` or a string).
-  - include_ghost: indicate whether ghost commands should be included (as a boolean).
-  - include_suffix: indicate whether the suffix should be included (as a boolean).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `file`: optional target file (as either `null` or a string).
+  - `include_ghost`: indicate whether ghost commands should be included (as a boolean).
+  - `include_suffix`: indicate whether the suffix should be included (as a boolean).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
@@ -159,7 +159,7 @@ API Methods
 
 - Description: compile the current contents of the file with `rocq compile`.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: an instance of the `CompileResult` object.
 - Failure mode: never fails.
 
@@ -167,9 +167,9 @@ API Methods
 
 - Description: gives the current contents of the document, as if it was written to a file.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - include_ghost: indicate whether ghost commands should be included (as a boolean).
-  - include_suffix: indicate whether the suffix should be included (as a boolean).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `include_ghost`: indicate whether ghost commands should be included (as a boolean).
+  - `include_suffix`: indicate whether the suffix should be included (as a boolean).
 - Response payload: a string.
 - Failure mode: never fails.
 
@@ -177,8 +177,8 @@ API Methods
 
 - Description: copies the contents of src into dst.
 - Arguments (in order, or named):
-  - src: the source cursor (as an integer).
-  - dst: the target cursor (as an integer).
+  - `src`: the source cursor (as an integer).
+  - `dst`: the target cursor (as an integer).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
@@ -186,7 +186,7 @@ API Methods
 
 - Description: gives the index at the cursor.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: an integer.
 - Failure mode: never fails.
 
@@ -194,7 +194,7 @@ API Methods
 
 - Description: destroys the cursor.
 - Arguments (in order, or named):
-  - cursor: an integer.
+  - `cursor`: an integer.
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
@@ -202,7 +202,7 @@ API Methods
 
 - Description: gives the list of all processed commands, appearing before the cursor.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: a list where each element is an instance of the `PrefixItem` object.
 - Failure mode: never fails.
 
@@ -210,7 +210,7 @@ API Methods
 
 - Description: gives the list of all unprocessed commands, appearing after the cursor.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: a list where each element is an instance of the `SuffixItem` object.
 - Failure mode: never fails.
 
@@ -218,7 +218,7 @@ API Methods
 
 - Description: dump the document contents (debug).
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: a JSON value.
 - Failure mode: never fails.
 
@@ -226,8 +226,8 @@ API Methods
 
 - Description: move the cursor right before the indicated item (whether it is already processed or not).
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - index: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `index`: integer index before which to move the cursor (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
@@ -236,7 +236,7 @@ API Methods
 
 - Description: indicates whether the document has a suffix (unprocessed items).
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: a boolean.
 - Failure mode: never fails.
 
@@ -244,8 +244,8 @@ API Methods
 
 - Description: insert and process blanks at the cursor.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the blanks to insert (as a string).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the blanks to insert (as a string).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
@@ -253,8 +253,8 @@ API Methods
 
 - Description: insert and process a command at the cursor.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the command to insert (as a string).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the command to insert (as a string).
 - Response payload: an instance of the `CommandData` object.
 - Error payload: optional source code location for the error (as an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
@@ -263,7 +263,7 @@ API Methods
 
 - Description: adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors).
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: a `null` value.
 - Error payload: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 - Failure mode: recoverable failure.
@@ -272,7 +272,7 @@ API Methods
 
 - Description: materializes the cursor, giving it its own dedicated top-level.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: a `null` value.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -281,8 +281,8 @@ API Methods
 
 - Description: runs the given query at the cursor, not updating the state.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the query (as a string).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the query (as a string).
 - Response payload: an instance of the `CommandData` object.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -291,9 +291,9 @@ API Methods
 
 - Description: runs the given query at the cursor, not updating the state.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the query (as a string).
-  - index: feedback item index for the result (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the query (as a string).
+  - `index`: feedback item index for the result (as an integer).
 - Response payload: arbitrary JSON data, as returned by the query as JSON text, taken from the "info" / "notice" feedback with the given index (as a JSON value).
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -302,9 +302,9 @@ API Methods
 
 - Description: runs the given query at the cursor, not updating the state.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the query (as a string).
-  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the query (as a string).
+  - `indices`: feedback indices to collect (as either `null` or a list where each element is an integer).
 - Response payload: a list where each element is a JSON value.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -313,9 +313,9 @@ API Methods
 
 - Description: runs the given query at the cursor, not updating the state.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the query (as a string).
-  - index: feedback item index for the result (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the query (as a string).
+  - `index`: feedback item index for the result (as an integer).
 - Response payload: query's result, as taken from the "info"  "notice" feedback at the given index (as a string).
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -324,9 +324,9 @@ API Methods
 
 - Description: runs the given query at the cursor, not updating the state.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the query (as a string).
-  - indices: feedback indices to collect (as either `null` or a list where each element is an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the query (as a string).
+  - `indices`: feedback indices to collect (as either `null` or a list where each element is an integer).
 - Response payload: a list where each element is a string.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -335,9 +335,9 @@ API Methods
 
 - Description: revert the cursor to an earlier point in the document.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - erase: boolean indicating whether reverted items should be erased (as a boolean).
-  - index: index of the item before which the cursor should be revered (one-past-the-end index allowed) (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `erase`: boolean indicating whether reverted items should be erased (as a boolean).
+  - `index`: index of the item before which the cursor should be revered (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
 - Failure mode: never fails.
 
@@ -345,8 +345,8 @@ API Methods
 
 - Description: process a command at the cursor without inserting it in the document.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
-  - text: text of the command to insert (as a string).
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text of the command to insert (as a string).
 - Response payload: an instance of the `CommandData` object.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
@@ -355,7 +355,7 @@ API Methods
 
 - Description: advance the cursor by stepping over an unprocessed item.
 - Arguments (in order, or named):
-  - cursor: the cursor to perform the operation on (as an integer).
+  - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: data for the command that was run, if any (as either `null` or an instance of the `CommandData` object).
 - Error payload: error data for the command that was run, if any (as either `null` or an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
