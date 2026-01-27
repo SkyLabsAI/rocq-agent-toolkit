@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from typing import Annotated, override
 
@@ -54,13 +55,22 @@ def is_command(cmd: str) -> bool:
     return cmd.endswith("...") if cmd.endswith("..") else cmd.endswith(".")
 
 
+PTRN_GOAL_SELECTORS = re.compile(r"^([0-9,\s-]+|all)\w*:")
+
+
+def ensure_tactic(tactic: str) -> None:
+    """Ensure that a string represents a tactic."""
+    assert tactic == tactic.strip()
+    assert not PTRN_GOAL_SELECTORS.match(tactic)  # ensure the absence of goal selectors
+    assert not is_command(tactic)
+
+
 def tactic_of(tactic: str) -> str:
     """Get a tactic from a tactic string.
-
-    NOTE: This is currently simple, but should support features such as
-    goal selectors. This might require type changes.
+    The function does some amount of "canonicalization", e.g. removing whitespace, etc.
     """
     tactic = tactic.strip()
+    ensure_tactic(tactic)
     assert not is_command(tactic)
     return tactic
 
@@ -116,7 +126,7 @@ class RocqTacticAction(Action[RocqCursor]):
         progress: bool = False,
         no_evar: bool = False,
     ) -> None:
-        """The tactic must be a Rocq tactic, **not** a Rocq command, so it should **not** end in a '.'."""
+        """The tactic must be a Rocq tactic, **not** a Rocq command. See discussion above."""
         tactic = tactic_of(tactic)
         # NOTE: we place the `progress` first, then the match
         tactic = f"progress ({tactic})" if progress else tactic
