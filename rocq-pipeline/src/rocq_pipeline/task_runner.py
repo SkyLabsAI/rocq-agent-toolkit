@@ -32,6 +32,7 @@ from rocq_pipeline.agent import (
 )
 from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
+from rocq_pipeline.prover import main_prover
 from rocq_pipeline.schema import task_output
 
 logger = get_logger("task_runner")
@@ -499,6 +500,10 @@ def run_ns(args: Namespace, extra_args: list[str] | None = None) -> bool:
 
 def auto_main() -> bool:
     return agent_main(AgentBuilder.of_agent(AutoAgent))
+
+
+def auto_prover():
+    return main_prover(AutoAgent)
 
 
 def tactic_main() -> bool:

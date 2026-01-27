@@ -22,7 +22,9 @@ class Agent(Provenance.Full):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
     def run(self, rdm: RocqCursor) -> TaskResult:
-        """Entrypoint; use rdm to attempt a task and report the result."""
+        """Entrypoint; use rdm to attempt a task and report the result. The
+        rdm cursor is updated to reflect the changes to the proof, even in
+        case of failure (partial progress is kept)."""
         return self.give_up(rdm, message="Not implemented")
 
     @classmethod
@@ -168,7 +170,7 @@ class ProofAgent(Agent):
             "Tactic Application",
             tactic_application_tactic=tac,
         )
-        tac_reply = rdm.run_command(tac)
+        tac_reply = rdm.insert_command(tac)
         if isinstance(tac_reply, RocqCursor.Err):
             logger.info(
                 "Tactic Application Status",
