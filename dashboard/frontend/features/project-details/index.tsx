@@ -11,6 +11,7 @@ import { TagsDisplay } from '@/components/tags-display';
 import Layout from '@/layouts/common';
 import {
   bulkAddTags,
+  downloadTasksYaml,
   getTaskSetResults,
   getTaskSets,
   uploadTasksYaml,
@@ -71,6 +72,7 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     taskId: number;
@@ -532,6 +534,45 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     }
   };
 
+  const handleDownloadYaml = async () => {
+    if (selectedTasks.size === 0) {
+      setToastType('error');
+      setToastMessage('Please select tasks to download');
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      const blob = await downloadTasksYaml(tasksetId, {
+        task_ids: Array.from(selectedTasks),
+      });
+
+      // Create a download link and trigger it
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${tasksetId}_tasks_${Date.now()}.yaml`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setToastType('success');
+      setToastMessage(
+        `Successfully downloaded YAML file with ${selectedTasks.size} tasks`
+      );
+    } catch (err) {
+      setToastType('error');
+      setToastMessage(
+        err instanceof Error
+          ? `Download failed: ${err.message}`
+          : 'Failed to download YAML file'
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Filter agent instances based on search
   const filteredAgentInstancesForSearch = useMemo(() => {
     if (!results) return [];
@@ -657,12 +698,23 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                 Upload Tasks
               </Button>
               {selectedTasks.size > 0 && (
-                <Button
-                  onClick={() => setIsCreateDatasetModalOpen(true)}
-                  variant='default'
-                >
-                  Create TaskSet ({selectedTasks.size} tasks)
-                </Button>
+                <>
+                  <Button
+                    onClick={handleDownloadYaml}
+                    variant='default'
+                    disabled={isDownloading}
+                  >
+                    {isDownloading
+                      ? 'Downloading...'
+                      : `Download YAML (${selectedTasks.size})`}
+                  </Button>
+                  <Button
+                    onClick={() => setIsCreateDatasetModalOpen(true)}
+                    variant='default'
+                  >
+                    Create TaskSet ({selectedTasks.size} tasks)
+                  </Button>
+                </>
               )}
             </div>
           </div>

@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 import { config } from '@/config/environment';
-
 import {
   bulkAddTagsMock,
   getAgentClassDataMock,
@@ -13,6 +12,7 @@ import {
   getDatasetInstanceRunsMock,
   getDetailsForDatasetMock,
   getDetailsMock,
+  getLatestRunsMock,
   getObservabilityLogsMock,
   getProjectDatasetsMock,
   getProjectResultsMock,
@@ -36,6 +36,9 @@ import {
   type TaskSet,
   type TaskSetResults,
 } from '@/types/types';
+
+// Set default axios headers to skip ngrok browser warning
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
 // Check if we should use mock data
 const USE_MOCK_DATA = config.USE_MOCK_DATA;
@@ -322,6 +325,41 @@ const uploadTasksYamlReal = async (
 export const uploadTasksYaml = USE_MOCK_DATA
   ? uploadTasksYamlMock
   : uploadTasksYamlReal;
+
+// ========================================
+// DOWNLOAD TASKS YAML API
+// ========================================
+
+export interface DownloadTasksYamlRequest {
+  task_ids: number[];
+}
+
+const downloadTasksYamlReal = async (
+  datasetId: string,
+  request: DownloadTasksYamlRequest
+): Promise<Blob> => {
+  const response = await axios.post(
+    `${config.DATA_API}/datasets/${datasetId}/tasks/yaml`,
+    request,
+    {
+      responseType: 'blob',
+    }
+  );
+  return response.data;
+};
+
+const downloadTasksYamlMock = async (
+  _datasetId: string,
+  _request: DownloadTasksYamlRequest
+): Promise<Blob> => {
+  // Return a mock YAML blob
+  const yamlContent = `# Mock YAML file\ntasks:\n  - task_id: 1\n    name: Mock Task`;
+  return new Blob([yamlContent], { type: 'application/x-yaml' });
+};
+
+export const downloadTasksYaml = USE_MOCK_DATA
+  ? downloadTasksYamlMock
+  : downloadTasksYamlReal;
 
 // ========================================
 // AGENT SUMMARIES HELPER
@@ -621,4 +659,20 @@ export async function getTacticGraph(
   url.searchParams.set('task_id', `${taskId}`);
   const resp = await axios.get(url.toString());
   return resp.data as TacticGraphResponse;
+}
+
+// ========================================
+// LATEST RUNS API
+// ========================================
+
+export async function getLatestRuns(
+  limit: number = config.LATEST_RUNS_LIMIT
+): Promise<AgentRun[]> {
+  if (USE_MOCK_DATA) {
+    return getLatestRunsMock(limit);
+  }
+  const response = await axios.get(
+    `${config.DATA_API}/runs/latest?limit=${limit}`
+  );
+  return response.data as AgentRun[];
 }

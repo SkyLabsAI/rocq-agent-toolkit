@@ -83,7 +83,7 @@ const TaskInfoModal: React.FC<TaskInfoModalProps> = ({
                   <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                     Task ID
                   </p>
-                  <p className='font-noto-sans font-normal text-base text-text'>
+                  <p className='font-noto-sans font-normal text-base text-text wrap-break-word'>
                     {task.task_id}
                   </p>
                 </div>
@@ -91,7 +91,7 @@ const TaskInfoModal: React.FC<TaskInfoModalProps> = ({
                   <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                     Task Name
                   </p>
-                  <p className='font-noto-sans font-normal text-base text-text'>
+                  <p className='font-noto-sans font-normal text-base text-text wrap-break-word'>
                     {task.task_name}
                   </p>
                 </div>
@@ -99,7 +99,7 @@ const TaskInfoModal: React.FC<TaskInfoModalProps> = ({
                   <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                     Task Kind
                   </p>
-                  <p className='font-noto-sans font-normal text-base text-text'>
+                  <p className='font-noto-sans font-normal text-base text-text wrap-break-word'>
                     {task.task_kind}
                   </p>
                 </div>
@@ -107,7 +107,7 @@ const TaskInfoModal: React.FC<TaskInfoModalProps> = ({
                   <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                     Dataset ID
                   </p>
-                  <p className='font-noto-sans font-normal text-base text-text'>
+                  <p className='font-noto-sans font-normal text-base text-text wrap-break-word'>
                     {task.dataset_id}
                   </p>
                 </div>
@@ -125,7 +125,7 @@ const TaskInfoModal: React.FC<TaskInfoModalProps> = ({
                     <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                       Dataset ID
                     </p>
-                    <p className='font-noto-sans font-normal text-base text-text'>
+                    <p className='font-noto-sans font-normal text-base text-text wrap-break-word'>
                       {task.dataset.dataset_id}
                     </p>
                   </div>
@@ -134,7 +134,7 @@ const TaskInfoModal: React.FC<TaskInfoModalProps> = ({
                       <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                         Description
                       </p>
-                      <p className='font-noto-sans font-normal text-base text-text'>
+                      <p className='font-noto-sans font-normal text-base text-text wrap-break-word'>
                         {task.dataset.description}
                       </p>
                     </div>
@@ -143,7 +143,7 @@ const TaskInfoModal: React.FC<TaskInfoModalProps> = ({
                     <p className='font-noto-sans font-normal text-sm text-text-disabled'>
                       Created At
                     </p>
-                    <p className='font-noto-sans font-normal text-base text-text'>
+                    <p className='font-noto-sans font-normal text-base text-text wrap-break-word'>
                       {new Date(task.dataset.created_at).toLocaleString()}
                     </p>
                   </div>

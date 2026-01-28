@@ -65,9 +65,10 @@ export const NODE_STYLE_CONFIG = {
       animated: false,
     },
   },
-  // Selected state uses intermediate border (no blue)
+  // Selected state uses a prominent blue/primary border with glow
   selected: {
-    border: 'border-border-bold',
+    border: 'border-primary-default',
+    ringClass: 'ring-4 ring-primary-default/30',
   },
 } as const;
 
@@ -102,14 +103,24 @@ const SpanNode = (props: NodeProps) => {
     ? NODE_STYLE_CONFIG.selected.border
     : nodeStyle.border;
 
+  // Add ring effect for selected state
+  const ringClass = selected ? NODE_STYLE_CONFIG.selected.ringClass : '';
+
+  // Add scale and enhanced shadow for selected state
+  const selectedEnhancement = selected
+    ? 'scale-105 shadow-[0px_4px_12px_0px_rgba(59,130,246,0.3)]'
+    : '';
+
   // Determine background color (based on state)
   const bg = nodeStyle.bg;
 
   const base =
-    'rounded-lg border-2 px-3 py-2 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)] relative';
+    'rounded-lg border-2 px-3 py-2 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)] relative transition-all duration-200';
 
   return (
-    <div className={`${base} ${border} ${bg} w-full h-full`}>
+    <div
+      className={`${base} ${border} ${bg} ${ringClass} ${selectedEnhancement} w-full h-full`}
+    >
       <Handle
         type='target'
         position={Position.Left}
