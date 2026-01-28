@@ -11,7 +11,7 @@ These tests demonstrate the full flow of:
 from typing import Any, cast
 
 from rocq_doc_manager import RocqCursor
-from rocq_pipeline.search.rocq.actions import RocqRetryAction, RocqTacticAction
+from rocq_pipeline.search.rocq.actions import RocqRetryCommandAction, RocqTacticAction
 
 from .conftest import MockRocqCursor
 
@@ -28,7 +28,7 @@ class TestRocqRetryActionIntegration:
         """
         # Setup: cursor that fails on "autoo." but succeeds on "auto."
         cursor: Any = MockRocqCursor(goal="∀ n : nat, n = n")
-        cursor.set_failure("autoo.", "Unknown tactic: autoo")
+        cursor.set_failure("autoo.", "Unknown command: autoo")
 
         # Mock LLM generator that produces a tactic with a typo
         def mock_generator(goal: str) -> list[tuple[float, str]]:
@@ -44,7 +44,7 @@ class TestRocqRetryActionIntegration:
             Simulates LLM fixing a tactic based on error.
             In real usage, this would call the LLM with context.
             """
-            if "Unknown tactic: autoo" in error:
+            if "Unknown command: autoo" in error:
                 return "auto."  # Fixed!
             return None  # Can't fix
 
@@ -52,8 +52,8 @@ class TestRocqRetryActionIntegration:
         generated_tactics = mock_generator(cast(str, cursor.current_goal()))
         first_tactic = generated_tactics[0][1]  # "autoo."
 
-        action = RocqRetryAction(
-            tactic=first_tactic,
+        action = RocqRetryCommandAction(
+            command=first_tactic,
             rectifier=mock_rectifier,
             max_retries=3,
         )
@@ -85,18 +85,18 @@ class TestRocqRetryActionIntegration:
             return None
 
         # Simulate what GeneratorStrategy.rollout() would produce
-        def create_retry_action(tactic: str) -> RocqRetryAction:
-            return RocqRetryAction(
-                tactic=tactic,
+        def create_retry_action(command: str) -> RocqRetryCommandAction:
+            return RocqRetryCommandAction(
+                command=command,
                 rectifier=tracking_rectifier,
                 max_retries=2,
             )
 
         # Generator would yield these
-        tactics_from_llm = ["simpl;", "reflexivity."]
+        commands_from_llm = ["simpl;", "reflexivity."]
 
         # Try first tactic (has error, will be rectified)
-        action1 = create_retry_action(tactics_from_llm[0])
+        action1 = create_retry_action(commands_from_llm[0])
         result = action1.interact(cursor)
 
         assert result is cursor
@@ -117,21 +117,21 @@ class TestRocqRetryActionIntegration:
         but not for mechanical/hardcoded tactics.
         """
         cursor: Any = MockRocqCursor(goal="goal")
-        cursor.set_failure("llm_tactic", "Error from LLM tactic")
+        cursor.set_failure("llm_tactic.", "Error from LLM tactic")
 
         # LLM tactic with retry
-        llm_action = RocqRetryAction(
-            tactic="llm_tactic",
-            rectifier=lambda rc, t, e: "fixed_tactic",
+        llm_action = RocqRetryCommandAction(
+            command="llm_tactic.",
+            rectifier=lambda rc, t, e: "fixed_tactic.",
             max_retries=2,
         )
 
         # Mechanical tactic without retry (use base RocqTacticAction)
-        mechanical_action = RocqTacticAction("auto.")
+        mechanical_action = RocqTacticAction("auto")
 
         # Execute LLM action (will retry and fix)
         llm_action.interact(cursor)
-        assert cursor._commands == ["llm_tactic", "fixed_tactic"]
+        assert cursor._commands == ["llm_tactic.", "fixed_tactic."]
 
         # Execute mechanical action (no retry needed)
         cursor._commands.clear()
@@ -146,7 +146,7 @@ class TestRocqRetryActionIntegration:
         checkpoint-based state (though not in this mock).
         """
         cursor: Any = MockRocqCursor(goal="current goal state")
-        cursor.set_failure("tactic1", "First error")
+        cursor.set_failure("tactic1.", "First error")
 
         received_goals: list[str] = []
 
@@ -154,10 +154,10 @@ class TestRocqRetryActionIntegration:
             rc: RocqCursor, tactic: str, error: str
         ) -> str | None:
             received_goals.append(cast(str, rc.current_goal()))
-            return "tactic2"  # Fixed
+            return "tactic2."  # Fixed
 
-        action = RocqRetryAction(
-            tactic="tactic1",
+        action = RocqRetryCommandAction(
+            command="tactic1.",
             rectifier=goal_tracking_rectifier,
             max_retries=1,
         )
@@ -175,9 +175,9 @@ class TestRocqRetryActionIntegration:
         based on successive error messages.
         """
         cursor: Any = MockRocqCursor(goal="complex goal")
-        cursor.set_failure("step1", "Missing argument")
-        cursor.set_failure("step2", "Type mismatch")
-        cursor.set_failure("step3", "Almost there")
+        cursor.set_failure("step1.", "Missing argument")
+        cursor.set_failure("step2.", "Type mismatch")
+        cursor.set_failure("step3.", "Almost there")
         # "step4" will succeed
 
         correction_history: list[str] = []
@@ -186,16 +186,16 @@ class TestRocqRetryActionIntegration:
             correction_history.append(f"{tactic} -> error: {error}")
 
             # Simulate progressive fixing
-            if tactic == "step1":
-                return "step2"
-            elif tactic == "step2":
-                return "step3"
-            elif tactic == "step3":
-                return "step4"
+            if tactic == "step1.":
+                return "step2."
+            elif tactic == "step2.":
+                return "step3."
+            elif tactic == "step3.":
+                return "step4."
             return None
 
-        action = RocqRetryAction(
-            tactic="step1",
+        action = RocqRetryCommandAction(
+            command="step1.",
             rectifier=iterative_rectifier,
             max_retries=5,
         )
@@ -203,5 +203,5 @@ class TestRocqRetryActionIntegration:
         result = action.interact(cursor)
 
         assert result is cursor
-        assert cursor._commands == ["step1", "step2", "step3", "step4"]
+        assert cursor._commands == ["step1.", "step2.", "step3.", "step4."]
         assert len(correction_history) == 3  # Three corrections made
