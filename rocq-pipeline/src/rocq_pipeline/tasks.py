@@ -14,15 +14,18 @@ from pydantic import (
     field_serializer,
     field_validator,
 )
+from pydantic.fields import Field
 
 from rocq_pipeline.locator import Locator, LocatorParser
 
 
 class Project(BaseModel):
-    name: str
+    name: str = Field(description="Human readable name of the project.")
     git_url: str
     git_commit: str
-    path: Path
+    path: Path = Field(
+        description="The **local** path to the project checkout. This is **not** used to identify a project, it is just used for finding the tasks."
+    )
 
     @field_serializer("path")
     def serialize_path(self, path: Path):
@@ -35,11 +38,17 @@ class Project(BaseModel):
 class Task(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    name: str | None = None
+    name: str | None = Field(
+        None,
+        description="Human-readable name of the task. This can be used to distinguish multiple tasks on the same locator, e.g. 'with-prompt' and 'without-prompt'",
+    )
     file: Path
     locator: Locator
     tags: set[str]
-    prompt: str | None = None
+    prompt: str | None = Field(
+        default=None,
+        description="Additional information about the task **provided to the agent**.",
+    )
 
     def get_id(self) -> str:
         if self.name is not None:
