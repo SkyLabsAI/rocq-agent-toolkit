@@ -130,8 +130,8 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
                 # so that only proof state information is added to the node
                 graph.add_information(after, info)
 
-            args = log.labels.get("args", None)
-            label = f"{cmd}({args})" if args else f"{cmd}()"
+            args = log.labels.get("args", "None")
+            label = f"{args}" if cmd == "insert_command" else f"{cmd}({args})"
             graph.add_edge(before, after, label=label, information=info)
 
     # Finding the Task Status By seeing the result and proof state

@@ -242,11 +242,11 @@ def run_task(
                 task_result_message=task_result.message,
             )
 
-        # For the time being taking id from the environment variable
-        # TODO: Update it to add automatically
-        # can be created based on the task input path
-        # or in a way that it can detect the changes in the task input path or dataset.
-        dataset_id = os.getenv("DATASET_NAME", "default")
+        dataset_id = (project.name or "").strip()
+        if not dataset_id:
+            raise ValueError(
+                "Missing project name in task file; cannot derive dataset_id."
+            )
 
         for task_tag in task.tags:
             tags.value.update({f"TASK_{task_tag}": task_tag})

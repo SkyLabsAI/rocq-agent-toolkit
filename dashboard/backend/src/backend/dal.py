@@ -251,8 +251,6 @@ def export_dataset_tasks_yaml_from_db(
         }
         if yaml_tags:
             task_entry["tags"] = yaml_tags
-        if task.kind:
-            task_entry["kind"] = task.kind
         if task.ground_truth is not None:
             task_entry["ground_truth"] = task.ground_truth
 
