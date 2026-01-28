@@ -21,10 +21,14 @@ from rocq_pipeline.locator import Locator, LocatorParser
 
 class Project(BaseModel):
     name: str = Field(description="Human readable name of the project.")
-    git_url: str
-    git_commit: str
+    git_url: str = Field(
+        description="The URL to the repository that hosts the project."
+    )
+    git_commit: str = Field(
+        description="The git commit hash for this project. This is important so that projects are stable."
+    )
     path: Path = Field(
-        description="The **local** path to the project checkout. This is **not** used to identify a project, it is just used for finding the tasks."
+        description="The **local** path to the project root. This is **not** used to identify a project, it is just used for finding the tasks."
     )
 
     @field_serializer("path")
@@ -42,13 +46,21 @@ class Task(BaseModel):
         None,
         description="Human-readable name of the task. This can be used to distinguish multiple tasks on the same locator, e.g. 'with-prompt' and 'without-prompt'",
     )
-    file: Path
-    locator: Locator
-    tags: set[str]
+    file: Path = Field(
+        description="The path from the project root to the file that hosts the task."
+    )
+    locator: Locator = Field(description="The location within the file.")
+    tags: set[str] = Field(
+        description="The tags of the task. These are often used to convey information such as how complex a task is. These are easily searchable within the dashboard."
+    )
     prompt: str | None = Field(
         default=None,
         description="Additional information about the task **provided to the agent**.",
     )
+    meta: dict[str, Any] | None = Field(
+        default=None,
+        description="Meta data about the task as a JSON dictionary, e.g. 'ground truth' proof script.",
+    )  # The [Any] is json-able things
 
     def get_id(self) -> str:
         if self.name is not None:
