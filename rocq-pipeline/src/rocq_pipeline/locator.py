@@ -21,6 +21,12 @@ class Locator:
     def __call__(self, rdm: RocqCursor) -> bool:
         return False
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if type(other) is type(self):
+            return str(self) == str(other)
+        return False
+
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("unknown"))
 
@@ -38,12 +44,19 @@ class LocatorParser:
             loc = parser(s)
             if loc is not None:
                 return loc
-        return Locator()
+        raise ValueError(f"Failed to parse locator from `{s}`")
 
 
 class FirstAdmit(Locator):
+    """Find the first (or nth) use of the `admit` tactic."""
+
+    def __init__(self, index: int = 0) -> None:
+        self._index = index
+
     def __str__(self) -> str:
-        return "admit"
+        if self._index == 0:
+            return "admit"
+        return f"admit({self._index})"
 
     @override
     def __call__(self, rdm: RocqCursor) -> bool:
@@ -53,16 +66,25 @@ class FirstAdmit(Locator):
         ) -> bool:
             return kind == "command" and text.startswith("admit")
 
-        return rdm.advance_to_first_match(is_admit)
+        return rdm.goto_first_match(is_admit, skip=self._index)
 
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("admit"))
 
+    PTRN_PARSE = re.compile(r"admit(\([0-9]+\))?")
+
     @staticmethod
     def parse(s: str) -> FirstAdmit | None:
-        if s == "admit":
-            return FirstAdmit()
-        return None
+        if not (mtch := FirstAdmit.PTRN_PARSE.match(s)):
+            return None
+        if mtch.group(1):
+            try:
+                index: int = int(mtch.group(1)[1:-1])
+            except BaseException as err:
+                logging.error(f"Failed to parse integer from '{mtch.group(1)}'. {err}")
+                return None
+            return FirstAdmit(index)
+        return FirstAdmit()
 
 
 LocatorParser.register_parser(FirstAdmit.parse)
@@ -96,7 +118,7 @@ class FirstLemma(Locator):
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
-        if rdm.advance_to_first_match(is_lemma, step_over_match=True):
+        if rdm.goto_first_match(is_lemma, step_over_match=True, skip=self._index):
             for cmd in rdm.doc_suffix():
                 if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
@@ -152,13 +174,17 @@ LocatorParser.register_parser(FirstLemma.parse)
 class MarkerCommentLocator(Locator):
     """Locates a comment that contains the given string."""
 
-    COMMENT_MARKER_PREFIX = "comment_marker:"
+    PREFIX = "comment_marker"
+    PTRN_PARSE = re.compile(r"comment_marker(\([0-9]+\))?:")
 
-    def __init__(self, marker: str):
+    def __init__(self, marker: str, index: int = 0):
         self._marker = marker
+        self._index = index
 
     def __str__(self) -> str:
-        return f"{self.COMMENT_MARKER_PREFIX}{self._marker}"
+        if self._index:
+            return f"{MarkerCommentLocator.PREFIX}({self._index}){self._marker}"
+        return f"{MarkerCommentLocator.PREFIX}{self._marker}"
 
     @override
     def __call__(self, rdm: RocqCursor) -> bool:
@@ -168,18 +194,22 @@ class MarkerCommentLocator(Locator):
         ) -> bool:
             return kind == "blanks" and self._marker in text
 
-        return rdm.advance_to_first_match(is_marker_comment)
+        return rdm.goto_first_match(is_marker_comment)
 
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask(self.__str__()))
 
     @staticmethod
     def parse(s: str) -> MarkerCommentLocator | None:
-        if s.startswith(MarkerCommentLocator.COMMENT_MARKER_PREFIX):
-            return MarkerCommentLocator(
-                s[len(MarkerCommentLocator.COMMENT_MARKER_PREFIX) :]
-            )
-        return None
+        if not (mtch := MarkerCommentLocator.PTRN_PARSE.match(s)):
+            return None
+        marker = s[len(mtch.group(0)) :]
+        if mtch.group(1):
+            try:
+                return MarkerCommentLocator(marker, int(mtch.group(1)[1:-1]))
+            except ValueError:
+                return None
+        return MarkerCommentLocator(marker, 0)
 
 
 LocatorParser.register_parser(MarkerCommentLocator.parse)
