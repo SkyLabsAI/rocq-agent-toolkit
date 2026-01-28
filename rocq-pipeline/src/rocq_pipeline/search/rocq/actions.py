@@ -33,26 +33,24 @@ logger = get_logger("rocq_agent")
 # - `1: reflexivity`
 # - `1,3: lia`
 #
-# Note that tactics **do not** end in a `.`[^..tactics].
+# Tactics **do not** end in a `.`; tactic commands end in `.` or `...`[^..tactics],
+# but `...` is inessential sugar that we do not support for simplicity.
 #
 # Another class of interactions are "tactics" for focusing and bracketing.
 # These include interactions such as `{`, `-`, `+`, `*`. These interactions
 # are currently not well supported in this framework and are currently
 # best to work with these as commands.
 #
-# [^..tactics]: The ".." abbreviation, e.g. in `intros..`, does mean that
-# tactics can syntactically end in a `.`. However, note that to execute this,
-# you need `intros.. .` (often without the space between the two).
-#
+# [^..tactics]:
+# See [https://rocq-prover.org/doc/V9.1.0/refman/proofs/automatic-tactics/auto.html#coq:cmd.Proof-with].
 
 
 def is_command(cmd: str) -> bool:
     """Detect whether the string looks like a Rocq command."""
-    if cmd in "{}+-*":
-        # commonly supported bracketing commands that do not
-        # use `.`s.
-        return True
-    return cmd.endswith("...") if cmd.endswith("..") else cmd.endswith(".")
+    # commonly supported bracketing commands that do not
+    # use `.`s.
+    bracketing_commands = "{}+-*"
+    return cmd in bracketing_commands or cmd.endswith(".")
 
 
 PTRN_GOAL_SELECTORS = re.compile(r"^([0-9,\s-]+|all)\w*:")
