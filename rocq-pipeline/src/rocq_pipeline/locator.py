@@ -21,6 +21,12 @@ class Locator:
     def __call__(self, rdm: RocqCursor) -> bool:
         return False
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if type(other) is type(self):
+            return str(self) == str(other)
+        return False
+
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("unknown"))
 
@@ -38,7 +44,7 @@ class LocatorParser:
             loc = parser(s)
             if loc is not None:
                 return loc
-        return Locator()
+        raise ValueError(f"Failed to parse locator from `{s}`")
 
 
 class FirstAdmit(Locator):
