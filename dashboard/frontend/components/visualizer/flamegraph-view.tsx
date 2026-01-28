@@ -27,21 +27,11 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
   const flamegraphData = useMemo(() => {
     if (!spans.length) return null;
 
-    // Filter spans with valid timestamps
-    const validSpans = spans.filter(
-      s => s.start_time_unix_nano && s.end_time_unix_nano
-    );
-
-    if (validSpans.length === 0) {
-      // Fallback to equal-width layout if no timing data
-      return null;
-    }
-
     // Build parent-child relationships
     const childrenMap = new Map<string, string[]>();
     const spanMap = new Map<string, VisualizerSpanLite>();
 
-    for (const span of validSpans) {
+    for (const span of spans) {
       spanMap.set(span.span_id, span);
       const parentId = span.parent_span_id;
       if (parentId) {
@@ -53,22 +43,9 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
     }
 
     // Find root spans (no parent or parent not in the set)
-    const rootSpans = validSpans.filter(
+    const rootSpans = spans.filter(
       s => !s.parent_span_id || !spanMap.has(s.parent_span_id)
     );
-
-    // Find the min start time and max end time to establish timeline bounds
-    const minStartTime = Math.min(
-      ...validSpans.map(s => Number(s.start_time_unix_nano))
-    );
-    const maxEndTime = Math.max(
-      ...validSpans.map(s => Number(s.end_time_unix_nano))
-    );
-    const totalDuration = maxEndTime - minStartTime;
-
-    if (totalDuration <= 0) {
-      return null;
-    }
 
     // Calculate depth for each span via recursion
     const depthMap = new Map<string, number>();
@@ -81,7 +58,7 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
 
     rootSpans.forEach(root => calculateDepth(root.span_id, 0));
 
-    // Calculate position and width based on actual timestamps
+    // Calculate position and width using equal distribution for children
     const layoutMap = new Map<
       string,
       {
@@ -91,23 +68,43 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
       }
     >();
 
-    for (const span of validSpans) {
-      const startTime = Number(span.start_time_unix_nano!);
-      const endTime = Number(span.end_time_unix_nano!);
-      const duration = endTime - startTime;
+    // Recursive function to calculate layout with equal width distribution
+    const calculateLayout = (
+      spanId: string,
+      parentLeft: number,
+      parentWidth: number
+    ) => {
+      const depth = depthMap.get(spanId) ?? 0;
+      const children = childrenMap.get(spanId) || [];
 
-      // Calculate position and width as percentage of total timeline
-      const leftPercent = ((startTime - minStartTime) / totalDuration) * 100;
-      const widthPercent = (duration / totalDuration) * 100;
-      const depth = depthMap.get(span.span_id) ?? 0;
+      // Set layout for current span
+      layoutMap.set(spanId, {
+        leftPercent: parentLeft,
+        widthPercent: parentWidth,
+        depth,
+      });
 
-      layoutMap.set(span.span_id, { leftPercent, widthPercent, depth });
-    }
+      // If this span has children, divide its width equally among them
+      if (children.length > 0) {
+        const childWidth = parentWidth / children.length;
+        children.forEach((childId, index) => {
+          const childLeft = parentLeft + index * childWidth;
+          calculateLayout(childId, childLeft, childWidth);
+        });
+      }
+    };
+
+    // Start with root spans, each taking equal portion of 100%
+    const rootWidth = 100 / rootSpans.length;
+    rootSpans.forEach((root, index) => {
+      const rootLeft = index * rootWidth;
+      calculateLayout(root.span_id, rootLeft, rootWidth);
+    });
 
     const maxDepth = Math.max(...Array.from(depthMap.values()), 0);
 
     // Create layout data for each span
-    const layoutSpans = validSpans.map(span => {
+    const layoutSpans = spans.map(span => {
       const layout = layoutMap.get(span.span_id)!;
 
       // Determine color based on depth (flame gradient)
@@ -146,9 +143,6 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
     return {
       spans: layoutSpans,
       maxDepth,
-      totalDuration,
-      minStartTime,
-      maxEndTime,
     };
   }, [spans]);
 
@@ -172,14 +166,6 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
 
   const formatPercent = (value: number): string => {
     return `${value.toFixed(2)}%`;
-  };
-
-  // Format duration from nanoseconds to human-readable format
-  const formatDuration = (nanos: number): string => {
-    if (nanos < 1000) return `${nanos}ns`;
-    if (nanos < 1000000) return `${(nanos / 1000).toFixed(2)}μs`;
-    if (nanos < 1000000000) return `${(nanos / 1000000).toFixed(2)}ms`;
-    return `${(nanos / 1000000000).toFixed(2)}s`;
   };
 
   // Calculate zoom scale - how much the canvas should expand
@@ -228,10 +214,6 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
           <div className='flex gap-4 items-center'>
             <span>Spans: {spans.length}</span>
             <span className='text-text-subtlest'>•</span>
-            <span>
-              Total Duration: {formatDuration(flamegraphData.totalDuration)}
-            </span>
-            <span className='text-text-subtlest'>•</span>
             <span className='text-text-disabled text-[10px] font-mono'>
               Zoom: {zoomStart.toFixed(1)}% - {zoomEnd.toFixed(1)}%
             </span>
@@ -252,21 +234,9 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
               <span className='text-orange-500'>
                 Depth: {hoveredSpan.depth}
               </span>
-              {hoveredSpan.span.start_time_unix_nano &&
-                hoveredSpan.span.end_time_unix_nano && (
-                  <>
-                    <span className='mx-2'>•</span>
-                    <span className='text-blue-400'>
-                      {formatDuration(
-                        Number(hoveredSpan.span.end_time_unix_nano) -
-                          Number(hoveredSpan.span.start_time_unix_nano)
-                      )}
-                    </span>
-                  </>
-                )}
               <span className='mx-2'>•</span>
               <span className='text-text-disabled'>
-                {formatPercent(hoveredSpan.widthPercent)} of trace
+                {formatPercent(hoveredSpan.widthPercent)} of view
               </span>
             </div>
           )}
@@ -296,20 +266,7 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
                   Level {hoveredSpan.depth}
                 </div>
 
-                {hoveredSpan.span.start_time_unix_nano &&
-                  hoveredSpan.span.end_time_unix_nano && (
-                    <>
-                      <div className='text-text-disabled'>Duration:</div>
-                      <div className='text-blue-500 font-medium'>
-                        {formatDuration(
-                          Number(hoveredSpan.span.end_time_unix_nano) -
-                            Number(hoveredSpan.span.start_time_unix_nano)
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                <div className='text-text-disabled'>% of Trace:</div>
+                <div className='text-text-disabled'>% of View:</div>
                 <div className='text-yellow-500 font-medium'>
                   {formatPercent(hoveredSpan.widthPercent)}
                 </div>

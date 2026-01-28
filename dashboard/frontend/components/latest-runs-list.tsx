@@ -86,7 +86,7 @@ const LatestRunsList: React.FC = () => {
 
   const getSuccessRate = (run: AgentRun) => {
     if (run.total_tasks === 0) return 0;
-    return ((run.success_count / run.total_tasks) * 100).toFixed(1);
+    return (run.success_count / run.total_tasks) * 100;
   };
 
   return (
@@ -145,14 +145,14 @@ const LatestRunsList: React.FC = () => {
                 <td className='px-6 py-4 text-center'>
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      parseFloat(getSuccessRate(run)) >= 80
+                      getSuccessRate(run) >= 80
                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : parseFloat(getSuccessRate(run)) >= 50
+                        : getSuccessRate(run) >= 50
                           ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                           : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                     }`}
                   >
-                    {getSuccessRate(run)}%
+                    {getSuccessRate(run).toFixed(1)}%
                   </span>
                 </td>
                 <td className='px-6 py-4'>
