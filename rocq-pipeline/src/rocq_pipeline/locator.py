@@ -48,8 +48,15 @@ class LocatorParser:
 
 
 class FirstAdmit(Locator):
+    """Find the first (or nth) use of the `admit` tactic."""
+
+    def __init__(self, index: int = 0) -> None:
+        self._index = index
+
     def __str__(self) -> str:
-        return "admit"
+        if self._index == 0:
+            return "admit"
+        return f"admit({self._index})"
 
     @override
     def __call__(self, rdm: RocqCursor) -> bool:
@@ -59,16 +66,25 @@ class FirstAdmit(Locator):
         ) -> bool:
             return kind == "command" and text.startswith("admit")
 
-        return rdm.advance_to_first_match(is_admit)
+        return rdm.advance_to_first_match(is_admit, skip=self._index)
 
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("admit"))
 
+    PTRN_PARSE = re.compile(r"admit(\([0-9]+\))?")
+
     @staticmethod
     def parse(s: str) -> FirstAdmit | None:
-        if s == "admit":
-            return FirstAdmit()
-        return None
+        if not (mtch := FirstAdmit.PTRN_PARSE.match(s)):
+            return None
+        if mtch.group(1):
+            try:
+                index: int = int(mtch.group(1)[1:-1])
+            except BaseException as err:
+                logging.error(f"Failed to parse integer from '{mtch.group(1)}'. {err}")
+                return None
+            return FirstAdmit(index)
+        return FirstAdmit()
 
 
 LocatorParser.register_parser(FirstAdmit.parse)
