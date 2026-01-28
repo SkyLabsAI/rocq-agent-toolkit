@@ -287,7 +287,7 @@ class RocqCursor(RocqCursorProtocol):
     #   non side-effecting proof sentences, batching visits, etc...)
     # - update rocq-doc-manager API to reflect that kind must be
     #   "command" or "blanks".
-    def advance_to_first_match(
+    def goto_first_match(
         self,
         fn: Callable[[str, Literal["blanks", "command", "ghost"]], bool],
         skip: int = 0,
