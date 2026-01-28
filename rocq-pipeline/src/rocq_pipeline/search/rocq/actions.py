@@ -166,13 +166,13 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     """
     A Rocq action that retries using a given (often LLM-based) rectifier.
 
-    Inherits tactic execution from RocqTacticAction and adds:
+    Inherits command execution from `RocqCommandAction` and adds:
     - Cursor passed to rectifier for goal/context access
     - Real Rocq error message preservation
     - Retry loop with rectifier callback
 
-    After interact() completes successfully, use `final_tactic` to get the
-    tactic that actually succeeded (which may differ from the original if
+    After `interact()` completes successfully, use `final_command` to get the
+    command that actually succeeded (which may differ from the original if
     rectification occurred).
     """
 
@@ -192,8 +192,8 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     ) -> None:
         """
         Args:
-            tactic: Initial tactic string to try (tactics do not include the '.').
-            rectifier: Function (cursor, tactic, error) -> rectified_tactic | None
+            command: Initial command string to try.
+            rectifier: Function (cursor, command, error) -> rectified_tactic | None
             max_retries: Maximum number of rectification attempts
         """
         command = command.strip()
@@ -205,9 +205,9 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     @property
     def final_command(self) -> str | None:
         """
-        The tactic that actually succeeded (after any rectification).
+        The command that actually succeeded (after any rectification).
 
-        Returns None if interact() hasn't been called or failed.
+        Returns `None` if `interact()` hasn't been called or failed.
         Use this for logging/tracing what actually ran.
         """
         return self._final_command
@@ -254,15 +254,15 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     @override
     def key(self) -> str:
         """
-        Returns the original tactic for deduplication and loop detection.
+        Returns the original command for deduplication and loop detection.
 
-        We use the original (not rectified) tactic because:
+        We use the original (not rectified) command because:
         1. Deduplication: If the generator suggests "autoo." multiple times,
            we shouldn't retry it—it'll just rectify to the same thing.
         2. Loop detection: The repetition policy checks recent action keys
            to prevent cycles. Using original keys ensures we detect when
            the generator keeps suggesting the same broken tactic.
 
-        For the tactic that actually succeeded, use `final_tactic` instead.
+        For the command that actually succeeded, use `final_command` instead.
         """
         return self._initial_command
