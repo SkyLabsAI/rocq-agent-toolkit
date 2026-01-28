@@ -137,6 +137,10 @@ def get_atomic_tactics(chunk: str) -> list[str]:
     return [chunk]
 
 
+PTRN_N_COLON = re.compile("[0-9]+:")
+PTRN_DO = re.compile(r"do\s+[0-9]+")
+
+
 def flatten_tactic_string(s: str) -> list[str]:
     """
     Flattens a nested tactic string into a flat list of individual tactics.
@@ -146,18 +150,29 @@ def flatten_tactic_string(s: str) -> list[str]:
     - 'try', 'first', 'solve', 'repeat' wrappers
     - ';' and '|' separators
     - 'tactic by script' separators (merged logic)
+    - 'n:{'
     """
 
     s_to_process = s.strip()
+    if not s_to_process:
+        return []
 
     # Handle Proof Terminator 'by ...'
-    if s_to_process.startswith("by ") and s_to_process.endswith("."):
+    elif s_to_process.startswith("by ") and s_to_process.endswith("."):
         content = s_to_process[3:-1].strip()
         s_to_process = (
             content[1:-1].strip()
             if (content.startswith("(") and content.endswith(")"))
             else content
         )
+    elif mtch := PTRN_DO.match(s_to_process):
+        return flatten_tactic_string(s_to_process[mtch.end(0) :])
+    elif s_to_process.startswith("last "):
+        return flatten_tactic_string(s_to_process[4:])
+    elif mtch := PTRN_N_COLON.match(s_to_process):
+        return flatten_tactic_string(s_to_process[mtch.end(0) :])
+    elif s_to_process[0] in "-+*{}":
+        return flatten_tactic_string(s_to_process[1:])
     elif s_to_process.startswith("by(") and s_to_process.endswith("."):
         content = s_to_process[2:-1].strip()
         s_to_process = (
@@ -207,10 +222,10 @@ def filter_tactics(
             # ^             : Start of string
             # {escaped}     : The prefix (escaped for safety)
             # (?= ... )     : Lookahead for boundary
-            #    [\s.(]     : Whitespace, dot, or open parenthesis
+            #    [\s.(-=:]  : token to and a word
             #    |          : OR
             #    $          : End of string
-            pattern = rf"^{re.escape(prefix)}(?=[\s.(]|$)"
+            pattern = rf"^{re.escape(prefix)}(?=[\s.(\-=:]|$)"
 
             if re.match(pattern, tac):
                 if tac_tagger is None:
@@ -254,6 +269,7 @@ rocq_prefixes = [
     "cbv",
     "cbn",
     "subst",
+    "case",
     "change",
     "clear",
     "replace",
@@ -300,6 +316,7 @@ rocq_prefixes = [
     "zify",
     "setoid_rewrite",
     "move",
+    "have",
 ]
 
 # from https://gitlab.mpi-sws.org/iris/iris/blob/master/docs/proof_mode.md
@@ -359,6 +376,7 @@ brick_prefixes = [
     "solve_learnable",
     "run",
     "erun",
+    "vc_split",
 ]
 
 allowed_prefixes = rocq_prefixes + iris_prefixes + brick_prefixes
