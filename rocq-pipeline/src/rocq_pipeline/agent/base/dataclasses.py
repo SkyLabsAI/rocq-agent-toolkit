@@ -102,12 +102,8 @@ class TaskResult:
     def to_task_output(
         self,
         *,
-        agent_cls_checksum: str,
-        agent_checksum: str,
-        run_id: str | None = None,
         task_kind: task_output.TaskKind | None = None,
         task_id: str | None = None,
-        dataset_id: str | None = None,
         timestamp_utc: str | None = None,
         trace_id: str | None = None,
         metadata: task_output.Metadata | None = None,
@@ -125,17 +121,10 @@ class TaskResult:
         else:
             status = task_output.TaskStatus(task_output.Failure())
 
-        if (
-            run_id is None
-            or task_kind is None
-            or task_id is None
-            or dataset_id is None
-            or timestamp_utc is None
-        ):
+        if task_kind is None or task_id is None or timestamp_utc is None:
             missing = [
                 k
                 for k, v in {
-                    "run_id": run_id,
                     "task_kind": task_kind,
                     "task_id": task_id,
                     "timestamp_utc": timestamp_utc,
@@ -145,14 +134,11 @@ class TaskResult:
             raise ValueError(f"Missing required fields: {', '.join(missing)}")
 
         return task_output.TaskOutput(
-            run_id=run_id,
+            type="task",
             task_kind=task_kind,
             task_id=task_id,
-            dataset_id=dataset_id,
             trace_id=trace_id,
             timestamp_utc=timestamp_utc,
-            agent_cls_checksum=agent_cls_checksum,
-            agent_checksum=agent_checksum,
             status=status,
             # TODO: remove `self.metrics` once opentelemetry instrumentation is in place
             metrics=self._metrics,

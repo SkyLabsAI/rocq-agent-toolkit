@@ -66,10 +66,19 @@ def test_strategy_agent_doc_interaction() -> None:
         # Read and parse the result
         with open(result_file, encoding="utf-8") as f:
             lines = [line for line in f if line.strip()]
-            assert len(lines) == 1, f"Expected 1 result line, found {len(lines)}"
+            assert len(lines) == 2, f"Expected 2 result lines, found {len(lines)}"
 
-            task_output_json = json.loads(lines[0])
+            run_header_json = json.loads(lines[0])
+            run_header_obj = task_output.RunHeader.from_json(run_header_json)
+            assert run_header_obj.type == "run", (
+                f"Expected run header, got type={run_header_obj.type}"
+            )
+
+            task_output_json = json.loads(lines[1])
             task_output_obj = task_output.TaskOutput.from_json(task_output_json)
+            assert task_output_obj.type == "task", (
+                f"Expected task output, got type={task_output_obj.type}"
+            )
 
         # Verify the task succeeded
         assert str(task_output_obj.status.value.kind) == "Success", (

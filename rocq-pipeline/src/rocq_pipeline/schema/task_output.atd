@@ -44,25 +44,41 @@ type metrics <doc text="Aggregated metrics for task."> = {
 type tags <doc text="User-defined tags as key/value pairs."> = (string * string) list <python repr="dict"> <json repr="object">
 
 type metadata <doc text="Additional metadata for a task."> = {
-  ~tags <doc text="User-defined tags for this task (from environment, etc.).">
+  ~tags <doc text="User-defined tags for this task.">
     <python default="Tags({})"> : tags;
 }
 
-type task_output <doc text="Agent output for a single task."> = {
+type agent_class_info <doc text="Agent class provenance for the run."> = {
+  cls_checksum <doc text="Pseudo-unique checksum of the Agent class."> : string;
+  cls_name <doc text="Name of the Agent class."> : string;
+  cls_provenance <doc text="Provenance for the Agent class."> : abstract;
+}
+
+type agent_info <doc text="Agent instance provenance for the run."> = {
+  cls_checksum <doc text="Checksum of the Agent class for correlation."> : string;
+  checksum <doc text="Pseudo-unique checksum of the Agent instance."> : string;
+  name <doc text="Name of the Agent instance."> : string;
+  provenance <doc text="Provenance for the Agent instance."> : abstract;
+}
+
+type run_header <doc text="Run header entry for JSONL output."> = {
+  type <doc text="Entry type (run)."> : string;
   run_id <doc text="Unique identifier for the run (UUID)."> : string;
+  dataset_id <doc text="Unique name of the dataset on which agent is run."> : string;
+  tags <doc text="Run-level tags from the environment."> : tags;
+  agent_cls <doc text="Agent class provenance."> : agent_class_info;
+  agent <doc text="Agent instance provenance."> : agent_info;
+}
+
+type task_output <doc text="Agent output for a single task."> = {
+  type <doc text="Entry type (task)."> : string;
   task_kind <doc text="Kind of task."> : task_kind;
   task_id <doc text="Unique task identifier (file+task locator)."> : string;
-  dataset_id <doc text="Unique name of the dataset on which agent is run"> : string;
   ?trace_id <doc text="Unique trace identifier for corresponding opentelemetry output."> : string option;
   timestamp_utc <doc text="Timestamp when task began (ISO 8601)."> : string;
-  (* NOTE: in the future we may want to store additional metadata
-     for reproducibility/comparison purposes
-   *)
-  agent_cls_checksum <doc text="Pseudo-unique checksum of the Agent class that attempted the task."> : string;
-  agent_checksum <doc text="Pseudo-unique checksum of the Agent instance that attempted the task."> : string;
   status <doc text="Task status upon completion."> : task_status;
   ?failure_reason <doc text="Reason for task failure."> : failure_reason option;
   ~results <doc text="Agent results after task completion."> <python default="None"> : abstract;
   metrics <doc text="Aggregated metrics for task."> : metrics;
-  ?metadata <doc text="Additional metadata, including env tags."> : metadata option;
+  ?metadata <doc text="Additional metadata, including task tags."> : metadata option;
 }

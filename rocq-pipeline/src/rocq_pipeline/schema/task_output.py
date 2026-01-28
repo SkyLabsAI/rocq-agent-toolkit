@@ -652,6 +652,146 @@ class Metadata:
 
 
 @dataclass
+class AgentClassInfo:
+    """Original type: agent_class_info = { ... }"""
+
+    cls_checksum: str
+    cls_name: str
+    cls_provenance: Any
+
+    @classmethod
+    def from_json(cls, x: Any) -> "AgentClassInfo":
+        if isinstance(x, dict):
+            return cls(
+                cls_checksum=_atd_read_string(x["cls_checksum"])
+                if "cls_checksum" in x
+                else _atd_missing_json_field("AgentClassInfo", "cls_checksum"),
+                cls_name=_atd_read_string(x["cls_name"])
+                if "cls_name" in x
+                else _atd_missing_json_field("AgentClassInfo", "cls_name"),
+                cls_provenance=(lambda x: x)(x["cls_provenance"])
+                if "cls_provenance" in x
+                else _atd_missing_json_field("AgentClassInfo", "cls_provenance"),
+            )
+        else:
+            _atd_bad_json("AgentClassInfo", x)
+
+    def to_json(self) -> Any:
+        res: Dict[str, Any] = {}
+        res["cls_checksum"] = _atd_write_string(self.cls_checksum)
+        res["cls_name"] = _atd_write_string(self.cls_name)
+        res["cls_provenance"] = (lambda x: x)(self.cls_provenance)
+        return res
+
+    @classmethod
+    def from_json_string(cls, x: str) -> "AgentClassInfo":
+        return cls.from_json(json.loads(x))
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
+class AgentInfo:
+    """Original type: agent_info = { ... }"""
+
+    cls_checksum: str
+    checksum: str
+    name: str
+    provenance: Any
+
+    @classmethod
+    def from_json(cls, x: Any) -> "AgentInfo":
+        if isinstance(x, dict):
+            return cls(
+                cls_checksum=_atd_read_string(x["cls_checksum"])
+                if "cls_checksum" in x
+                else _atd_missing_json_field("AgentInfo", "cls_checksum"),
+                checksum=_atd_read_string(x["checksum"])
+                if "checksum" in x
+                else _atd_missing_json_field("AgentInfo", "checksum"),
+                name=_atd_read_string(x["name"])
+                if "name" in x
+                else _atd_missing_json_field("AgentInfo", "name"),
+                provenance=(lambda x: x)(x["provenance"])
+                if "provenance" in x
+                else _atd_missing_json_field("AgentInfo", "provenance"),
+            )
+        else:
+            _atd_bad_json("AgentInfo", x)
+
+    def to_json(self) -> Any:
+        res: Dict[str, Any] = {}
+        res["cls_checksum"] = _atd_write_string(self.cls_checksum)
+        res["checksum"] = _atd_write_string(self.checksum)
+        res["name"] = _atd_write_string(self.name)
+        res["provenance"] = (lambda x: x)(self.provenance)
+        return res
+
+    @classmethod
+    def from_json_string(cls, x: str) -> "AgentInfo":
+        return cls.from_json(json.loads(x))
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
+class RunHeader:
+    """Original type: run_header = { ... }"""
+
+    type: str
+    run_id: str
+    dataset_id: str
+    tags: Tags
+    agent_cls: AgentClassInfo
+    agent: AgentInfo
+
+    @classmethod
+    def from_json(cls, x: Any) -> "RunHeader":
+        if isinstance(x, dict):
+            return cls(
+                type=_atd_read_string(x["type"])
+                if "type" in x
+                else _atd_missing_json_field("RunHeader", "type"),
+                run_id=_atd_read_string(x["run_id"])
+                if "run_id" in x
+                else _atd_missing_json_field("RunHeader", "run_id"),
+                dataset_id=_atd_read_string(x["dataset_id"])
+                if "dataset_id" in x
+                else _atd_missing_json_field("RunHeader", "dataset_id"),
+                tags=Tags.from_json(x["tags"])
+                if "tags" in x
+                else _atd_missing_json_field("RunHeader", "tags"),
+                agent_cls=AgentClassInfo.from_json(x["agent_cls"])
+                if "agent_cls" in x
+                else _atd_missing_json_field("RunHeader", "agent_cls"),
+                agent=AgentInfo.from_json(x["agent"])
+                if "agent" in x
+                else _atd_missing_json_field("RunHeader", "agent"),
+            )
+        else:
+            _atd_bad_json("RunHeader", x)
+
+    def to_json(self) -> Any:
+        res: Dict[str, Any] = {}
+        res["type"] = _atd_write_string(self.type)
+        res["run_id"] = _atd_write_string(self.run_id)
+        res["dataset_id"] = _atd_write_string(self.dataset_id)
+        res["tags"] = (lambda x: x.to_json())(self.tags)
+        res["agent_cls"] = (lambda x: x.to_json())(self.agent_cls)
+        res["agent"] = (lambda x: x.to_json())(self.agent)
+        return res
+
+    @classmethod
+    def from_json_string(cls, x: str) -> "RunHeader":
+        return cls.from_json(json.loads(x))
+
+    def to_json_string(self, **kw: Any) -> str:
+        return json.dumps(self.to_json(), **kw)
+
+
+@dataclass
 class ResourceExhaustion:
     """Original type: failure_reason = [ ... | ResourceExhaustion of ... | ... ]"""
 
@@ -744,13 +884,10 @@ class FailureReason:
 class TaskOutput:
     """Original type: task_output = { ... }"""
 
-    run_id: str
+    type: str
     task_kind: TaskKind
     task_id: str
-    dataset_id: str
     timestamp_utc: str
-    agent_cls_checksum: str
-    agent_checksum: str
     status: TaskStatus
     metrics: Metrics
     trace_id: Optional[str] = None
@@ -762,27 +899,18 @@ class TaskOutput:
     def from_json(cls, x: Any) -> "TaskOutput":
         if isinstance(x, dict):
             return cls(
-                run_id=_atd_read_string(x["run_id"])
-                if "run_id" in x
-                else _atd_missing_json_field("TaskOutput", "run_id"),
+                type=_atd_read_string(x["type"])
+                if "type" in x
+                else _atd_missing_json_field("TaskOutput", "type"),
                 task_kind=TaskKind.from_json(x["task_kind"])
                 if "task_kind" in x
                 else _atd_missing_json_field("TaskOutput", "task_kind"),
                 task_id=_atd_read_string(x["task_id"])
                 if "task_id" in x
                 else _atd_missing_json_field("TaskOutput", "task_id"),
-                dataset_id=_atd_read_string(x["dataset_id"])
-                if "dataset_id" in x
-                else _atd_missing_json_field("TaskOutput", "dataset_id"),
                 timestamp_utc=_atd_read_string(x["timestamp_utc"])
                 if "timestamp_utc" in x
                 else _atd_missing_json_field("TaskOutput", "timestamp_utc"),
-                agent_cls_checksum=_atd_read_string(x["agent_cls_checksum"])
-                if "agent_cls_checksum" in x
-                else _atd_missing_json_field("TaskOutput", "agent_cls_checksum"),
-                agent_checksum=_atd_read_string(x["agent_checksum"])
-                if "agent_checksum" in x
-                else _atd_missing_json_field("TaskOutput", "agent_checksum"),
                 status=TaskStatus.from_json(x["status"])
                 if "status" in x
                 else _atd_missing_json_field("TaskOutput", "status"),
@@ -801,13 +929,10 @@ class TaskOutput:
 
     def to_json(self) -> Any:
         res: Dict[str, Any] = {}
-        res["run_id"] = _atd_write_string(self.run_id)
+        res["type"] = _atd_write_string(self.type)
         res["task_kind"] = (lambda x: x.to_json())(self.task_kind)
         res["task_id"] = _atd_write_string(self.task_id)
-        res["dataset_id"] = _atd_write_string(self.dataset_id)
         res["timestamp_utc"] = _atd_write_string(self.timestamp_utc)
-        res["agent_cls_checksum"] = _atd_write_string(self.agent_cls_checksum)
-        res["agent_checksum"] = _atd_write_string(self.agent_checksum)
         res["status"] = (lambda x: x.to_json())(self.status)
         res["metrics"] = (lambda x: x.to_json())(self.metrics)
         if self.trace_id is not None:
