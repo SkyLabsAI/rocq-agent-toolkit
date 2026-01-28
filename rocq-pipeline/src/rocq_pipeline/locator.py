@@ -174,13 +174,17 @@ LocatorParser.register_parser(FirstLemma.parse)
 class MarkerCommentLocator(Locator):
     """Locates a comment that contains the given string."""
 
-    COMMENT_MARKER_PREFIX = "comment_marker:"
+    PREFIX = "comment_marker"
+    PTRN_PARSE = re.compile(r"comment_marker(\([0-9]+\))?:")
 
-    def __init__(self, marker: str):
+    def __init__(self, marker: str, index: int = 0):
         self._marker = marker
+        self._index = index
 
     def __str__(self) -> str:
-        return f"{self.COMMENT_MARKER_PREFIX}{self._marker}"
+        if self._index:
+            return f"{MarkerCommentLocator.PREFIX}({self._index}){self._marker}"
+        return f"{MarkerCommentLocator.PREFIX}{self._marker}"
 
     @override
     def __call__(self, rdm: RocqCursor) -> bool:
@@ -197,11 +201,15 @@ class MarkerCommentLocator(Locator):
 
     @staticmethod
     def parse(s: str) -> MarkerCommentLocator | None:
-        if s.startswith(MarkerCommentLocator.COMMENT_MARKER_PREFIX):
-            return MarkerCommentLocator(
-                s[len(MarkerCommentLocator.COMMENT_MARKER_PREFIX) :]
-            )
-        return None
+        if not (mtch := MarkerCommentLocator.PTRN_PARSE.match(s)):
+            return None
+        marker = s[len(mtch.group(0)) :]
+        if mtch.group(1):
+            try:
+                return MarkerCommentLocator(marker, int(mtch.group(1)[1:-1]))
+            except ValueError:
+                return None
+        return MarkerCommentLocator(marker, 0)
 
 
 LocatorParser.register_parser(MarkerCommentLocator.parse)
