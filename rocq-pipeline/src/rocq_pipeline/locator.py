@@ -102,7 +102,7 @@ class FirstLemma(Locator):
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
-        if rdm.advance_to_first_match(is_lemma, step_over_match=True):
+        if rdm.advance_to_first_match(is_lemma, step_over_match=True, skip=self._index):
             for cmd in rdm.doc_suffix():
                 if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
