@@ -18,7 +18,7 @@ def run_proving_agent(
 ) -> None:
     main_rc = rc.clone()
     print("Running the proving agent.")
-    while main_rc.advance_to_first_match(is_admitted):
+    while main_rc.goto_first_match(is_admitted):
         print()
         goal = main_rc.current_goal()
         assert goal is not None

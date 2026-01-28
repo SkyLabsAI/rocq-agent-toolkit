@@ -29,7 +29,7 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
                 rc.advance_to(steps),
                 RocqCursor.Err,
             )
-            assert not rc.advance_to_first_match(
+            assert not rc.goto_first_match(
                 self._no_match,
             )
 
@@ -52,7 +52,7 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
                 rdm.advance_to(steps),
                 RocqCursor.Err,
             )
-            assert rdm.advance_to_first_match(
+            assert rdm.goto_first_match(
                 self._match_any_Theorem,
                 step_over_match=step_over_match,
             )

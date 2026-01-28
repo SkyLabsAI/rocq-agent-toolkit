@@ -66,7 +66,7 @@ class FirstAdmit(Locator):
         ) -> bool:
             return kind == "command" and text.startswith("admit")
 
-        return rdm.advance_to_first_match(is_admit, skip=self._index)
+        return rdm.goto_first_match(is_admit, skip=self._index)
 
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("admit"))
@@ -118,7 +118,7 @@ class FirstLemma(Locator):
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
-        if rdm.advance_to_first_match(is_lemma, step_over_match=True, skip=self._index):
+        if rdm.goto_first_match(is_lemma, step_over_match=True, skip=self._index):
             for cmd in rdm.doc_suffix():
                 if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
@@ -194,7 +194,7 @@ class MarkerCommentLocator(Locator):
         ) -> bool:
             return kind == "blanks" and self._marker in text
 
-        return rdm.advance_to_first_match(is_marker_comment)
+        return rdm.goto_first_match(is_marker_comment)
 
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask(self.__str__()))
