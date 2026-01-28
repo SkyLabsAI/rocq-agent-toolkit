@@ -1,74 +1,110 @@
-- file: theories/my_nat.v
-  locator: Lemma:zero_add
+project:
+  name: rocq_pipeline_test
+  git_url: git@github.com:SkyLabsAI/rocq-agent-toolkit.git
+  git_commit: ee749f84767636b32a65e8f08040131ca1a48a6d-dirty
+  path: .
+tasks:
+- file: theories/goals.v
+  locator: Lemma:task1
   tags:
+  - NumTactics=10
+  - destruct
+  - intros
+  - left
   - proof
+  - qed
   - reflexivity
+  - right
 - file: theories/my_nat.v
   locator: Lemma:add_S
   tags:
-  - proof
-  - induction
+  - NumTactics=3
   - auto
+  - induction
+  - proof
+  - qed
   - simpl
 - file: theories/my_nat.v
   locator: Lemma:add_zero
   tags:
-  - proof
-  - induction
-  - congruence
+  - NumTactics=5
   - auto
-  - simpl
+  - congruence
+  - induction
+  - proof
+  - qed
   - rewrite
+  - simpl
+- file: theories/my_nat.v
+  locator: Lemma:zero_add
+  tags:
+  - NumTactics=1
+  - proof
+  - qed
+  - reflexivity
 - file: theories/test_simple.v
   locator: Lemma:is_true
   tags:
+  - NumTactics=1
   - proof
+  - qed
   - trivial
 - file: theories/test_simple.v
   locator: Lemma:not_false
   tags:
+  - NumTactics=1
   - proof
+  - qed
+  - tauto
 - file: theories/with_dep.v
   locator: Lemma:add_comm
   tags:
-  - proof
-  - induction
+  - NumTactics=8
+  - UnmatchedTactics=['{', '}']
   - admitted
-  - rewrite
-  - reflexivity
   - auto
-  - simpl
+  - induction
   - intros
+  - proof
+  - reflexivity
+  - rewrite
+  - simpl
 - file: theories/with_dep.v
   locator: Lemma:add_comm'
   tags:
-  - proof
-  - induction
+  - NumTactics=8
+  - UnmatchedTactics=['-']
   - admitted
-  - rewrite
-  - reflexivity
   - auto
-  - simpl
+  - induction
   - intros
+  - proof
+  - reflexivity
+  - rewrite
+  - simpl
 - file: theories/with_dep.v
   locator: Lemma:add_comm''
   tags:
-  - proof
-  - induction
+  - NumTactics=8
+  - UnmatchedTactics=['+']
   - admitted
-  - rewrite
-  - reflexivity
   - auto
-  - simpl
+  - induction
   - intros
+  - proof
+  - reflexivity
+  - rewrite
+  - simpl
 - file: theories/with_dep.v
   locator: Lemma:add_comm'''
   tags:
-  - proof
-  - induction
+  - NumTactics=8
+  - UnmatchedTactics=['*']
   - admitted
-  - rewrite
-  - reflexivity
   - auto
-  - simpl
+  - induction
   - intros
+  - proof
+  - reflexivity
+  - rewrite
+  - simpl
