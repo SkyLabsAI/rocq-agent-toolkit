@@ -74,7 +74,7 @@ const AgentTable: React.FC = () => {
             }
           />
           <Button
-            onClick={() => window.location.reload()}
+            onClick={() => router.push('/')}
             disabled={false}
             variant='default'
             leftIcon={<RefreshIcon className='h-5 w-5' />}

@@ -74,6 +74,7 @@ const VisualizerModal = ({
   const [selectedTacticEdge, setSelectedTacticEdge] = useState<string | null>(
     null
   );
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
   const runTsMs = useMemo(
     () => normalizeRunTimestampMs(runTimestampUtc),
@@ -490,6 +491,8 @@ const VisualizerModal = ({
             setSelectedTacticNode={setSelectedTacticNode}
             selectedTacticEdge={selectedTacticEdge}
             setSelectedTacticEdge={setSelectedTacticEdge}
+            isRightPanelOpen={isRightPanelOpen}
+            setIsRightPanelOpen={setIsRightPanelOpen}
           />
         )}
       </div>
@@ -1248,6 +1251,8 @@ const TacticGraphVisualization = ({
   setSelectedTacticNode,
   selectedTacticEdge,
   setSelectedTacticEdge,
+  isRightPanelOpen,
+  setIsRightPanelOpen,
 }: {
   tacticGraph: TacticGraphResponse | null;
   tacticGraphLoading: boolean;
@@ -1256,6 +1261,8 @@ const TacticGraphVisualization = ({
   setSelectedTacticNode: (nodeId: string | null) => void;
   selectedTacticEdge: string | null;
   setSelectedTacticEdge: (edgeId: string | null) => void;
+  isRightPanelOpen: boolean;
+  setIsRightPanelOpen: (open: boolean) => void;
 }) => {
   const selectedNode = tacticGraph?.graph.nodes.find(
     n => n.id === selectedTacticNode
@@ -1337,7 +1344,16 @@ const TacticGraphVisualization = ({
         </div>
 
         {/* Graph Visualization */}
-        <div className='flex-1 min-h-0'>
+        <div className='flex-1 min-h-0 relative'>
+          {/* Toggle button */}
+          <button
+            onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+            className='absolute top-4 right-4 z-10 px-3 py-2 bg-elevation-surface-raised hover:bg-elevation-surface-overlay rounded-lg border border-elevation-surface-overlay text-text text-sm font-medium transition-colors shadow-sm'
+            title={isRightPanelOpen ? 'Close panel' : 'Open panel'}
+          >
+            {isRightPanelOpen ? '→' : '←'} Info
+          </button>
+
           {tacticGraphLoading ? (
             <div className='flex items-center justify-center h-full bg-elevation-surface-sunken rounded-lg border border-elevation-surface-overlay'>
               <div className='text-center'>
@@ -1384,193 +1400,199 @@ const TacticGraphVisualization = ({
       </div>
 
       {/* Right panel - Node or Edge details */}
-      <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
-        <div className='p-4 space-y-4'>
-          <div className='text-sm text-text font-semibold mb-3'>
-            {selectedEdge
-              ? 'Edge Details'
-              : selectedNode
-                ? 'Node Details'
-                : 'Graph Information'}
-          </div>
-          {selectedEdge ? (
-            <div className='space-y-3'>
-              <div>
-                <div className='text-xs text-text-disabled mb-1'>Edge ID</div>
-                <div className='text-sm font-mono text-text'>
-                  {selectedEdge.edgeId}
-                </div>
-              </div>
-              <div>
-                <div className='text-xs text-text-disabled mb-1'>Label</div>
-                <div className='text-sm text-text font-semibold wrap-break-word bg-elevation-surface-raised p-3 rounded border border-elevation-surface-overlay max-h-32 overflow-auto'>
-                  {selectedEdge.edge.label}
-                </div>
-              </div>
-              <div>
-                <div className='text-xs text-text-disabled mb-1'>
-                  Source Node
-                </div>
-                <div className='text-xs font-mono text-text break-all bg-elevation-surface-raised p-2 rounded border border-elevation-surface-overlay'>
-                  {selectedEdge.edge.source}
-                </div>
-              </div>
-              <div>
-                <div className='text-xs text-text-disabled mb-1'>
-                  Target Node
-                </div>
-                <div className='text-xs font-mono text-text break-all bg-elevation-surface-raised p-2 rounded border border-elevation-surface-overlay'>
-                  {selectedEdge.edge.target}
-                </div>
-              </div>
-              {selectedEdge.edge.source === selectedEdge.edge.target && (
-                <div className='text-xs text-text-warning bg-background-warning border border-border-warning rounded p-2'>
-                  ⟲ Self-loop edge
-                </div>
-              )}
-              <div>
-                <InformationViewer
-                  data={
-                    selectedEdge.edge.information as Record<string, unknown>
-                  }
-                  title='Edge Information'
-                />
-              </div>
+      {isRightPanelOpen && (
+        <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
+          <div className='p-4 space-y-4'>
+            <div className='text-sm text-text font-semibold mb-3'>
+              {selectedEdge
+                ? 'Edge Details'
+                : selectedNode
+                  ? 'Node Details'
+                  : 'Graph Information'}
             </div>
-          ) : selectedNode ? (
-            <div className='space-y-3'>
-              <div>
-                <div className='text-xs text-text-disabled mb-1'>Node ID</div>
-                <div className='text-sm font-mono text-text break-all'>
-                  {selectedNode.id}
+            {selectedEdge ? (
+              <div className='space-y-3'>
+                <div>
+                  <div className='text-xs text-text-disabled mb-1'>Edge ID</div>
+                  <div className='text-sm font-mono text-text'>
+                    {selectedEdge.edgeId}
+                  </div>
                 </div>
-              </div>
-              {selectedNodeEdges && selectedNodeEdges.length > 0 && (
+                <div>
+                  <div className='text-xs text-text-disabled mb-1'>Label</div>
+                  <div className='text-sm text-text font-semibold wrap-break-word bg-elevation-surface-raised p-3 rounded border border-elevation-surface-overlay max-h-32 overflow-auto'>
+                    {selectedEdge.edge.label}
+                  </div>
+                </div>
                 <div>
                   <div className='text-xs text-text-disabled mb-1'>
-                    Connected Edges ({selectedNodeEdges.length})
+                    Source Node
                   </div>
-                  <div className='space-y-2 max-h-64 overflow-auto'>
-                    {selectedNodeEdges.map((edge, idx) => {
-                      const hasError =
-                        edge.information?.error === 'true' ||
-                        edge.information?.error === true;
-                      return (
-                        <div
-                          key={idx}
-                          className={`p-2 rounded border ${
-                            hasError
-                              ? 'border-border-warning bg-background-warning'
-                              : 'border-elevation-surface-overlay bg-elevation-surface-raised'
-                          } text-xs`}
-                        >
-                          <div className='font-semibold text-text mb-1'>
-                            {edge.label}
-                          </div>
-                          <div className='text-text-disabled font-mono'>
-                            {edge.source === selectedNode.id ? '→' : '←'}{' '}
-                            {edge.source === selectedNode.id
-                              ? edge.target.slice(0, 16)
-                              : edge.source.slice(0, 16)}
-                            ...
-                          </div>
-                          {hasError && (
-                            <div className='text-xs text-text-warning mt-1'>
-                              Error
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className='text-xs font-mono text-text break-all bg-elevation-surface-raised p-2 rounded border border-elevation-surface-overlay'>
+                    {selectedEdge.edge.source}
                   </div>
                 </div>
-              )}
-              <div>
-                <InformationViewer
-                  data={selectedNode.information as Record<string, unknown>}
-                  title='Information'
-                />
-              </div>
-            </div>
-          ) : graphInfo ? (
-            <>
-              <div className='space-y-3'>
-                {/* Graph-level Information */}
-                {graphInfo.cpp_code && (
-                  <div>
-                    <div className='flex items-center justify-between mb-2'>
-                      <div className='text-xs text-text-disabled'>C++ Code</div>
-                      <CopyButton text={graphInfo.cpp_code} />
-                    </div>
-                    <CodeViewer code={graphInfo.cpp_code} language='cpp' />
-                  </div>
-                )}
-                {graphInfo.cpp_spec && (
-                  <div>
-                    <div className='flex items-center justify-between mb-2'>
-                      <div className='text-xs text-text-disabled'>
-                        C++ Specification
-                      </div>
-                      <CopyButton text={graphInfo.cpp_spec} />
-                    </div>
-                    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
-                      <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
-                        {graphInfo.cpp_spec}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-                {graphInfo.proofScript && (
-                  <div>
-                    <div className='flex items-center justify-between mb-2'>
-                      <div className='text-xs text-text-disabled'>
-                        Proof Script
-                      </div>
-                      <CopyButton text={graphInfo.proofScript} />
-                    </div>
-                    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
-                      <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
-                        {graphInfo.proofScript}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-                {(graphInfo.task_status !== undefined ||
-                  graphInfo.taskStatus !== undefined) && (
-                  <div>
-                    <div className='text-xs text-text-disabled mb-2'>
-                      Task Status
-                    </div>
-                    <StatusBadge
-                      status={
-                        String(
-                          graphInfo.taskStatus ?? graphInfo.task_status
-                        ) === 'true'
-                          ? 'Success'
-                          : 'Failure'
-                      }
-                    />
-                  </div>
-                )}
-                {/* Show all other fields as JSON */}
                 <div>
-                  <div className='flex items-center justify-between mb-2'>
-                    <div className='text-xs text-text-disabled'>
-                      Additional Information
-                    </div>
-                    <CopyButton text={JSON.stringify(graphInfo.raw, null, 2)} />
+                  <div className='text-xs text-text-disabled mb-1'>
+                    Target Node
                   </div>
-                  <JsonViewer data={graphInfo.raw} />
+                  <div className='text-xs font-mono text-text break-all bg-elevation-surface-raised p-2 rounded border border-elevation-surface-overlay'>
+                    {selectedEdge.edge.target}
+                  </div>
+                </div>
+                {selectedEdge.edge.source === selectedEdge.edge.target && (
+                  <div className='text-xs text-text-warning bg-background-warning border border-border-warning rounded p-2'>
+                    ⟲ Self-loop edge
+                  </div>
+                )}
+                <div>
+                  <InformationViewer
+                    data={
+                      selectedEdge.edge.information as Record<string, unknown>
+                    }
+                    title='Edge Information'
+                  />
                 </div>
               </div>
-            </>
-          ) : (
-            <div className='text-sm text-text-disabled'>
-              Select a node or edge to see details
-            </div>
-          )}
+            ) : selectedNode ? (
+              <div className='space-y-3'>
+                <div>
+                  <div className='text-xs text-text-disabled mb-1'>Node ID</div>
+                  <div className='text-sm font-mono text-text break-all'>
+                    {selectedNode.id}
+                  </div>
+                </div>
+                {selectedNodeEdges && selectedNodeEdges.length > 0 && (
+                  <div>
+                    <div className='text-xs text-text-disabled mb-1'>
+                      Connected Edges ({selectedNodeEdges.length})
+                    </div>
+                    <div className='space-y-2 max-h-64 overflow-auto'>
+                      {selectedNodeEdges.map((edge, idx) => {
+                        const hasError =
+                          edge.information?.error === 'true' ||
+                          edge.information?.error === true;
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded border ${
+                              hasError
+                                ? 'border-border-warning bg-background-warning'
+                                : 'border-elevation-surface-overlay bg-elevation-surface-raised'
+                            } text-xs`}
+                          >
+                            <div className='font-semibold text-text mb-1'>
+                              {edge.label}
+                            </div>
+                            <div className='text-text-disabled font-mono'>
+                              {edge.source === selectedNode.id ? '→' : '←'}{' '}
+                              {edge.source === selectedNode.id
+                                ? edge.target.slice(0, 16)
+                                : edge.source.slice(0, 16)}
+                              ...
+                            </div>
+                            {hasError && (
+                              <div className='text-xs text-text-warning mt-1'>
+                                Error
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <InformationViewer
+                    data={selectedNode.information as Record<string, unknown>}
+                    title='Information'
+                  />
+                </div>
+              </div>
+            ) : graphInfo ? (
+              <>
+                <div className='space-y-3'>
+                  {/* Graph-level Information */}
+                  {graphInfo.cpp_code && (
+                    <div>
+                      <div className='flex items-center justify-between mb-2'>
+                        <div className='text-xs text-text-disabled'>
+                          C++ Code
+                        </div>
+                        <CopyButton text={graphInfo.cpp_code} />
+                      </div>
+                      <CodeViewer code={graphInfo.cpp_code} language='cpp' />
+                    </div>
+                  )}
+                  {graphInfo.cpp_spec && (
+                    <div>
+                      <div className='flex items-center justify-between mb-2'>
+                        <div className='text-xs text-text-disabled'>
+                          C++ Specification
+                        </div>
+                        <CopyButton text={graphInfo.cpp_spec} />
+                      </div>
+                      <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
+                        <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
+                          {graphInfo.cpp_spec}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                  {graphInfo.proofScript && (
+                    <div>
+                      <div className='flex items-center justify-between mb-2'>
+                        <div className='text-xs text-text-disabled'>
+                          Proof Script
+                        </div>
+                        <CopyButton text={graphInfo.proofScript} />
+                      </div>
+                      <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
+                        <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
+                          {graphInfo.proofScript}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                  {(graphInfo.task_status !== undefined ||
+                    graphInfo.taskStatus !== undefined) && (
+                    <div>
+                      <div className='text-xs text-text-disabled mb-2'>
+                        Task Status
+                      </div>
+                      <StatusBadge
+                        status={
+                          String(
+                            graphInfo.taskStatus ?? graphInfo.task_status
+                          ) === 'true'
+                            ? 'Success'
+                            : 'Failure'
+                        }
+                      />
+                    </div>
+                  )}
+                  {/* Show all other fields as JSON */}
+                  <div>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='text-xs text-text-disabled'>
+                        Additional Information
+                      </div>
+                      <CopyButton
+                        text={JSON.stringify(graphInfo.raw, null, 2)}
+                      />
+                    </div>
+                    <JsonViewer data={graphInfo.raw} />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className='text-sm text-text-disabled'>
+                Select a node or edge to see details
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 };
