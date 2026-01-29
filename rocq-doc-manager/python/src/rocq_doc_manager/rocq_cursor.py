@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any, Literal, Self, override
 
@@ -287,92 +287,75 @@ class RocqCursor(RocqCursorProtocol):
     #   non side-effecting proof sentences, batching visits, etc...)
     # - update rocq-doc-manager API to reflect that kind must be
     #   "command" or "blanks".
-    def advance_to_first_match(
+    def goto_first_match(
         self,
-        fn: Callable[[str, str], bool],
+        fn: Callable[[str, Literal["blanks", "command", "ghost"]], bool],
+        skip: int = 0,
+        include_prefix: bool = False,
         step_over_match: bool = False,
     ) -> bool:
-        """Move to the first matching point. NOTE: proofs are not skipped."""
+        """Move to the first matching point after the current cursor location.
+
+        Arguments:
+            skip: the number of matches to skip, e.g. `skip=1` will go to the second match.
+            include_prefix: include matches in the prefix
+            step_over_match: step over the matching line
+        Returns:
+            True if the target match is found, False otherwise. If `False` is
+            returned due to moving the cursor, the cursor may be in an arbitrary
+            location.
+        """
         prefix = self.doc_prefix()
         suffix = self.doc_suffix()
 
         candidate_prefix_matches = [
-            (idx, item) for idx, item in enumerate(prefix) if fn(item.text, item.kind)
+            (idx, item.text)
+            for idx, item in enumerate(prefix)
+            if fn(item.text, item.kind)
         ]
         candidate_suffix_matches = [
-            (idx + len(prefix), item)
+            (idx + len(prefix), item.text)
             for idx, item in enumerate(suffix)
             if fn(item.text, item.kind)
         ]
 
-        def pretty_match_candidates(
-            candidates: Sequence[
-                tuple[int, RocqCursor.PrefixItem | RocqCursor.SuffixItem]
-            ],
-        ) -> str:
-            return "\n".join(
-                [
-                    f"\t- {item.text} of {item.kind} @ idx {idx}"
-                    for idx, item in candidates
-                ]
-            )
-
-        # 1a. fast pass: warn if the prefix contains candidate matches;
-        # currently, we only advance through the suffix and ignore the prefix
-        if candidate_prefix_matches:
-            logger.warning(
-                "\n".join(
-                    [
-                        "Candidate match(es) in the doc prefix are skipped:",
-                        pretty_match_candidates(candidate_prefix_matches),
-                        "",
-                    ]
-                )
-            )
-
-        # 1b. fast pass: return False if the suffix doesn't contain any matches
-        if not candidate_suffix_matches:
-            return False
-
-        # 1c. fast pass: warn if the suffix contains multiple candidate
-        # matches; currently we only use the first match
-        match_idx, match_item = candidate_suffix_matches[0]
-        pretty_match = f"{match_item.text} of {match_item.kind} @ idx {match_idx}"
-        if len(candidate_suffix_matches) != 1:
-            logger.warning(
-                "\n".join(
-                    [
-                        f"Using first candidate match ({pretty_match}); skipping:",
-                        pretty_match_candidates(candidate_suffix_matches[1:]),
-                        "",
-                    ]
-                )
-            )
-
-        # 2. advance_to the match
-        #
-        # NOTE: proofs are not skipped
-        advance_to_reply = self.advance_to(match_idx)
-        if isinstance(advance_to_reply, RocqCursor.Err):
-            logger.warning(
-                " ".join(
-                    [
-                        f"Failed to advance to the match ({pretty_match}):",
-                        str(advance_to_reply),
-                    ]
-                )
-            )
-            return False
-
-        if step_over_match:
-            run_step_reply = self.run_step()
-            if isinstance(run_step_reply, RocqCursor.Err):
+        def check_result(
+            result: RocqCursor.Err | object, mtch: tuple[int, str]
+        ) -> bool:
+            if isinstance(result, RocqCursor.Err):
                 logger.warning(
-                    "Failed to step over the match: {run_step_repl}",
+                    " ".join(
+                        [
+                            f"Failed to advance to the match ({mtch[1]} @ idx {mtch[0]}):",
+                            str(advance_to_reply),
+                        ]
+                    )
                 )
                 return False
+            if step_over_match:
+                run_step_reply = self.run_step()
+                if isinstance(run_step_reply, RocqCursor.Err):
+                    logger.warning(
+                        "Failed to step over the match: {run_step_repl}",
+                    )
+                    return False
+            return True
 
-        return True
+        if include_prefix:
+            if skip < len(candidate_prefix_matches):
+                # Use this match
+                return check_result(
+                    self.go_to(candidate_prefix_matches[skip][0]),
+                    candidate_prefix_matches[skip],
+                )
+            else:
+                skip -= len(candidate_prefix_matches)
+
+        if len(candidate_suffix_matches) <= skip:
+            return False
+
+        advance_to_reply = self.advance_to(candidate_suffix_matches[skip][0])
+        return check_result(advance_to_reply, candidate_suffix_matches[skip])
 
     # ===== END: visitors =====================================================
 
