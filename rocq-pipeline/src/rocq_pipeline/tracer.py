@@ -172,7 +172,9 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
             if isinstance(loaded, ModuleType):
                 tracer = loaded.build
             else:
-                assert callable(loaded)
+                assert callable(loaded), (
+                    f"Object found at {arguments.tracer} is not callable. Its value is: {repr(loaded)}"
+                )
                 tracer = cast(Callable[[], Tracer[Any]], loaded)
         else:
             tracer = arguments.tracer
