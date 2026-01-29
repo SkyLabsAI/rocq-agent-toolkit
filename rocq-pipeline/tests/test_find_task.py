@@ -15,18 +15,14 @@ def test_test_simple() -> None:
     dict_tasks = [t.model_dump() for t in tasks]
     assert dict_tasks == [
         {
-            "name": None,
             "file": file,
             "locator": "Lemma:is_true",
             "tags": ["proof"],
-            "prompt": None,
         },
         {
-            "name": None,
             "file": file,
             "locator": "Lemma:not_false",
             "tags": ["proof"],
-            "prompt": None,
         },
     ]
 

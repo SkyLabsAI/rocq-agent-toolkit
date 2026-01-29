@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 from collections.abc import Callable
 from typing import Annotated, Any, TypeVar, override
 
@@ -43,9 +42,7 @@ class Action[T_co](Provenance.Full):
 
 class ActionWrapper[T_co](Action[T_co]):
     _base: Annotated[Action[T_co], Provenance.Reflect.Field]
-    _fn: Annotated[
-        Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
-    ]
+    _fn: Annotated[Callable[[T_co], None], Provenance.Reflect.CallableField]
 
     def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
         self._fn = fn
@@ -62,9 +59,7 @@ class LoggingAction[T_co](Action[T_co]):
     """
 
     _base: Annotated[Action[T_co], Provenance.Reflect.Field]
-    _fn: Annotated[
-        Callable[[T_co], None], Provenance.Reflect.Field(transform=inspect.getsource)
-    ]
+    _fn: Annotated[Callable[[T_co], None], Provenance.Reflect.CallableField]
 
     def __init__(self, base: Action[T_co], fn: Callable[[T_co], None]) -> None:
         self._fn = fn
@@ -84,8 +79,8 @@ class MapAction[T_co, U](Action[T_co]):
     """
 
     _base: Annotated[Action[U], Provenance.Reflect.Field]
-    _into: Annotated[Callable[[T_co], U], Provenance.Reflect.Field]
-    _outof: Annotated[Callable[[U], T_co], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T_co], U], Provenance.Reflect.CallableField]
+    _outof: Annotated[Callable[[U], T_co], Provenance.Reflect.CallableField]
 
     def __init__(
         self, base: Action[U], into: Callable[[T_co], U], outof: Callable[[U], T_co]

@@ -14,15 +14,22 @@ from pydantic import (
     field_serializer,
     field_validator,
 )
+from pydantic.fields import Field
 
 from rocq_pipeline.locator import Locator, LocatorParser
 
 
 class Project(BaseModel):
-    name: str
-    git_url: str
-    git_commit: str
-    path: Path
+    name: str = Field(description="Human readable name of the project.")
+    git_url: str = Field(
+        description="The URL to the repository that hosts the project."
+    )
+    git_commit: str = Field(
+        description="The git commit hash for this project. This is important so that projects are stable."
+    )
+    path: Path = Field(
+        description="The **local** path to the project root. This is **not** used to identify a project, it is just used for finding the tasks."
+    )
 
     @field_serializer("path")
     def serialize_path(self, path: Path):
@@ -35,11 +42,28 @@ class Project(BaseModel):
 class Task(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    name: str | None = None
-    file: Path
-    locator: Locator
-    tags: set[str]
-    prompt: str | None = None
+    name: str | None = Field(
+        None,
+        description="Human-readable name of the task. This can be used to distinguish multiple tasks on the same locator, e.g. 'with-prompt' and 'without-prompt'",
+        exclude_if=lambda x: x is None,
+    )
+    file: Path = Field(
+        description="The path from the project root to the file that hosts the task."
+    )
+    locator: Locator = Field(description="The location within the file.")
+    tags: set[str] = Field(
+        description="The tags of the task. These are often used to convey information such as how complex a task is. These are easily searchable within the dashboard."
+    )
+    prompt: str | None = Field(
+        default=None,
+        description="Additional information about the task **provided to the agent**.",
+        exclude_if=lambda x: x is None,
+    )
+    meta: dict[str, Any] | None = Field(
+        default=None,
+        description="Meta data about the task as a JSON dictionary, e.g. 'ground truth' proof script.",
+        exclude_if=lambda x: not bool(x),
+    )  # The [Any] is json-able things
 
     def get_id(self) -> str:
         if self.name is not None:
