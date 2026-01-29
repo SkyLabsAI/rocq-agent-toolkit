@@ -1,12 +1,11 @@
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, override
+from typing import Any, Literal, Protocol, TypedDict, cast
 
 from rocq_doc_manager import RocqCursor
-from rocq_pipeline.proof_state import ProofState
 
 
-class DocumentWatcher:
+class DocumentWatcher(Protocol):
     """
     Provides callback infrastructure to watch certain parts of the document.
 
@@ -14,8 +13,7 @@ class DocumentWatcher:
     the document do not affect the behavior of other parts of the file.
     """
 
-    def extra_paths(self) -> dict[str, Path]:
-        return {}
+    def extra_paths(self) -> dict[str, Path]: ...
 
     def setup(self, rdm: RocqCursor) -> None:
         """
@@ -25,7 +23,7 @@ class DocumentWatcher:
         side effects in the Rocq document, e.g. it should not alter parsing
         scopes or bring new symbols into scope.
         """
-        _ = rdm
+        ...
 
     def start_proof(self, rdm: RocqCursor) -> None:
         """
@@ -33,7 +31,7 @@ class DocumentWatcher:
 
         This is called once at the start of any proof that is being traced.
         """
-        _ = rdm
+        ...
 
     def end_proof(self, rdm: RocqCursor) -> None:
         """
@@ -42,19 +40,33 @@ class DocumentWatcher:
         Note: This occurs after the last tactic invocation. There may
         still be open subgoals if the proof is being closed by `Admitted`.
         """
-        _ = rdm
+        ...
 
 
-class StateExtractor[T](DocumentWatcher):
+class DefaultDocumentWatcher(DocumentWatcher):
+    def extra_paths(self) -> dict[str, Path]:
+        return {}
+
+    def setup(self, rdm: RocqCursor) -> None:
+        pass
+
+    def start_proof(self, rdm: RocqCursor) -> None:
+        pass
+
+    def end_proof(self, rdm: RocqCursor) -> None:
+        pass
+
+
+class StateExtractor[T](Protocol):
     """
     A StateExtractor extracts state from a Rocq proof.
     """
 
-    def __call__(self, rdm: RocqCursor) -> T | None:
+    def extract(self, rdm: RocqCursor) -> T | None:
         """
         Extract a feature from the current state.
         """
-        return None
+        ...
 
 
 def merge_into[A, B](a: dict[A, B], b: dict[A, B]) -> None:
@@ -73,6 +85,30 @@ def merge_all[A, B](
     return result
 
 
+class AllDocumentWatcher(DocumentWatcher):
+    """
+    Produce an object that contains the results of all of the state extractors
+    """
+
+    def __init__(self, watchers: dict[str, DocumentWatcher]):
+        self._watchers: dict[str, DocumentWatcher] = watchers
+
+    def extra_paths(self) -> dict[str, Path]:
+        return merge_all(w.extra_paths() for w in self._watchers.values())
+
+    def setup(self, rdm: RocqCursor) -> None:
+        for _, w in self._watchers.items():
+            w.setup(rdm)
+
+    def start_proof(self, rdm: RocqCursor) -> None:
+        for _, w in self._watchers.items():
+            w.start_proof(rdm)
+
+    def end_proof(self, rdm: RocqCursor) -> None:
+        for _, w in self._watchers.items():
+            w.end_proof(rdm)
+
+
 class AllStateExtractor(StateExtractor[dict[str, Any]]):
     """
     Produce an object that contains the results of all of the state extractors
@@ -81,192 +117,142 @@ class AllStateExtractor(StateExtractor[dict[str, Any]]):
     def __init__(self, extractors: dict[str, StateExtractor[Any]]):
         self._extractors: dict[str, StateExtractor[Any]] = extractors
 
-    @override
-    def extra_paths(self) -> dict[str, Path]:
-        return merge_all(
-            (x.extra_paths() for x in self._extractors.values()), super().extra_paths()
-        )
-
-    def setup(self, rdm: RocqCursor) -> None:
-        for _, e in self._extractors.items():
-            e.setup(rdm)
-
-    def start_proof(self, rdm: RocqCursor) -> None:
-        for _, e in self._extractors.items():
-            e.start_proof(rdm)
-
-    def end_proof(self, rdm: RocqCursor) -> None:
-        for _, e in self._extractors.items():
-            e.end_proof(rdm)
-
-    @override
-    def __call__(self, rdm: RocqCursor) -> dict[str, Any]:
+    def extract(self, rdm: RocqCursor) -> dict[str, Any]:
         result: dict[str, Any] = {}
-        for k, extract in self._extractors.items():
+        for k, extractor in self._extractors.items():
             # TODO: for now, we assume that extractors are hygeinic in the sense that they do revert any effects they might have on the document.
             # In the future, we could use the revert environment to enforce this.
-            try:
-                k_result = extract(rdm)
-                if k_result is not None:
-                    result[k] = k_result
-            except Exception:
-                pass
+            k_result = extractor.extract(rdm)
+            if k_result is not None:
+                result[k] = k_result
         return result
 
 
-class GoalAsString(StateExtractor[str]):
-    """A simple extractor that just gets the current goal the way it is printed in Rocq."""
-
-    def __call__(self, rdm: RocqCursor) -> str:
-        result = rdm.current_goal()
-        if isinstance(result, rdm.Err):
-            raise RuntimeError("Failed to parse goal: {result}")
-        return str(ProofState(result))
+type After[A] = Callable[[RocqCursor, str], A | None]
 
 
-class TacticExtractor[T](DocumentWatcher):
+class BracketInterface[A](Protocol):
     """
-    Extract information about the execution of a tactic. This class can extract
-    additional information based on the tactic, e.g. adding the types of lemmas that
-    are used.
+    Is used internally to enforce the [before]-before-[after] invariant of
+    [BracketedExtractor].
 
-    Note that [before] will always be called before [after], so you can pass state
-    from the before to the after using the class state.
+    Inheriting from [BracketedExtractor] automatically implements this interface.
     """
 
-    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
-        return None
-
-    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
-        return None
+    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A] | None: ...
 
 
-class AllTacticExtractor(TacticExtractor[dict[str, Any]]):
-    def __init__(self, extractors: dict[str, TacticExtractor[Any]]) -> None:
+class ExtractorResult[T](Protocol):
+    """
+    Wraps the result of calling an extractor in an object that allows
+    distinguishing the absence of a result value from the intent to skip the
+    current command (or tactic). Python cannot distinguish Optional[T] from
+    Optional[Optional[T]] which means we cannot use a [None] value to represent
+    a result of type Optional[T]. Instead, we use an extra boolean.
+
+    We do not use Optional[T] directly. Instead, we annotate [result] to
+    establish a weak but nonetheless helpful connection between the boolean and
+    the returned value.
+    """
+
+    def val(self) -> tuple[Literal[False], None] | tuple[Literal[True], T]: ...
+
+
+class Extracted[T](ExtractorResult[T]):
+    __slots__ = ["_result"]
+
+    def __init__(self, t: T):
+        self._result = t
+
+    def val(self) -> tuple[Literal[True], T]:
+        return (True, self._result)
+
+
+class Skip[T](ExtractorResult[T]):
+    def val(self) -> tuple[Literal[False], None]:
+        return (False, None)
+
+
+class BracketedExtractor[B, A](BracketInterface[A], Protocol):
+    """
+    Extract information about the execution of a command (or a tactic). Classes
+    implementing this protocol can extract additional information based on the
+    command, e.g. adding the types of lemmas that are used in a tactic.
+
+    Note that [before] will always be called before [after] and the return value
+    of [before] is passed to [after] as the [result_before] value.
+
+    Both [before] and [after] can return [None] to indicate that this command or
+    tactic is not supported by the extractor.
+    """
+
+    def before(self, rdm: RocqCursor, tactic: str) -> ExtractorResult[B]: ...
+
+    def after(self, rdm: RocqCursor, tactic: str, result_before: B) -> A | None: ...
+
+    def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A] | None:
+        result_before = self.before(rdm, tactic)
+        match result_before.val():
+            case (True, v):
+                v = cast(B, v)  # mypy is not smart enough to figure this out
+                return lambda rdm, tactic: self.after(rdm, tactic, v)
+            case _:
+                return None
+
+
+class OutputDict[A](TypedDict):
+    before: A
+    after: A
+
+
+class TrivialBracketedExtractor[A](
+    StateExtractor[A], BracketedExtractor[A, OutputDict[A]]
+):
+    def before(self, rdm: RocqCursor, tactic: str) -> ExtractorResult[A]:
+        match self.extract(rdm):
+            case None:
+                return Skip()
+            case val:
+                return Extracted(val)
+
+    def after(
+        self, rdm: RocqCursor, tactic: str, result_before: A
+    ) -> OutputDict[A] | None:
+        result_after = self.extract(rdm)
+        if result_after is None:
+            return None
+        return {"before": result_before, "after": result_after}
+
+
+type D = dict[str, Any]
+
+
+class AllBracketedExtractor(BracketedExtractor[D, D]):
+    def __init__(self, extractors: dict[str, BracketedExtractor[Any, Any]]) -> None:
         self._extractors = extractors
 
-    @override
-    def extra_paths(self) -> dict[str, Path]:
-        return merge_all(
-            (x.extra_paths() for x in self._extractors.values()), super().extra_paths()
-        )
+    def before(self, rdm: RocqCursor, tactic: str) -> ExtractorResult[D]:
+        state = {}
+        for k, e in self._extractors.items():
+            result = e.before(rdm, tactic)
+            if result is None:
+                continue
+            state[k] = result
+        return Extracted(state)
 
-    def setup(self, rdm: RocqCursor) -> None:
-        for _, e in self._extractors.items():
-            e.setup(rdm)
-
-    def start_proof(self, rdm: RocqCursor) -> None:
-        for _, e in self._extractors.items():
-            e.start_proof(rdm)
-
-    def end_proof(self, rdm: RocqCursor) -> None:
-        for _, e in self._extractors.items():
-            e.end_proof(rdm)
-
-    def before(self, rdm: RocqCursor, tactic: str) -> dict[str, Any] | None:
-        def go[T](e: TacticExtractor[T]) -> T | None:
-            try:
-                return e.before(rdm, tactic)
-            except Exception:
-                return None
-
-        return {key: go(e) for key, e in self._extractors.items()}
-
-    def after(self, rdm: RocqCursor, tactic: str) -> dict[str, Any] | None:
-        def go[T](e: TacticExtractor[T]) -> T | None:
-            try:
-                return e.after(rdm, tactic)
-            except Exception:
-                return None
-
-        return {key: go(e) for key, e in self._extractors.items()}
+    def after(self, rdm: RocqCursor, tactic: str, result_before) -> D:
+        results: D = {}
+        for k, e in result_before.items():
+            result_after = self._extractors[k].after(rdm, tactic, result_before=e)
+            if result_after is None:
+                continue
+            results[k] = result_after
+        return results
 
 
-class Before[T](TacticExtractor[T]):
-    """Run the StateExtractor before the tactic runs"""
+class Tracer[A](DocumentWatcher, BracketInterface[A], Protocol):
+    """
+    The protocol that the tracer relies on.
+    """
 
-    def __init__(self, state: StateExtractor[T]):
-        self._extractor = state
-
-    @override
-    def extra_paths(self) -> dict[str, Path]:
-        return self._extractor.extra_paths()
-
-    def setup(self, rdm: RocqCursor) -> None:
-        self._extractor.setup(rdm)
-
-    def start_proof(self, rdm: RocqCursor) -> None:
-        self._extractor.start_proof(rdm)
-
-    def end_proof(self, rdm: RocqCursor) -> None:
-        self._extractor.end_proof(rdm)
-
-    @override
-    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
-        return self._extractor(rdm)
-
-
-class After[T](TacticExtractor[T]):
-    """Run the StateExtractor after the tactic runs"""
-
-    def __init__(self, state: StateExtractor[T]):
-        self._extractor = state
-
-    @override
-    def extra_paths(self) -> dict[str, Path]:
-        return self._extractor.extra_paths()
-
-    def setup(self, rdm: RocqCursor) -> None:
-        self._extractor.setup(rdm)
-
-    def start_proof(self, rdm: RocqCursor) -> None:
-        self._extractor.start_proof(rdm)
-
-    def end_proof(self, rdm: RocqCursor) -> None:
-        self._extractor.end_proof(rdm)
-
-    @override
-    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
-        return self._extractor(rdm)
-
-
-class BeforeAndAfter[T](TacticExtractor[T]):
-    """Run the StateExtractor before and after the tactic runs"""
-
-    def __init__(self, state: StateExtractor[T]):
-        self._extractor = state
-
-    @override
-    def extra_paths(self) -> dict[str, Path]:
-        return self._extractor.extra_paths()
-
-    def setup(self, rdm: RocqCursor) -> None:
-        self._extractor.setup(rdm)
-
-    def start_proof(self, rdm: RocqCursor) -> None:
-        self._extractor.start_proof(rdm)
-
-    def end_proof(self, rdm: RocqCursor) -> None:
-        self._extractor.end_proof(rdm)
-
-    @override
-    def before(self, rdm: RocqCursor, tactic: str) -> T | None:
-        return self._extractor(rdm)
-
-    @override
-    def after(self, rdm: RocqCursor, tactic: str) -> T | None:
-        return self._extractor(rdm)
-
-
-class TacticExtractorBuilder:
-    @staticmethod
-    def of_tactic_extractor[T](
-        build: Callable[[], TacticExtractor[T]] | type[TacticExtractor[T]],
-    ) -> "TacticExtractorBuilder":
-        return TacticExtractorBuilder(build)
-
-    def __init__(self, build: Callable[[], TacticExtractor[Any]]) -> None:
-        self._builder = build
-
-    def build(self) -> TacticExtractor[Any]:
-        return self._builder()
+    pass

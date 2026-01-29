@@ -4,6 +4,7 @@
   $ export OCAMLPATH="$DUNE_SOURCEROOT/_build/install/default/lib"
   $ export DUNE_CACHE=disabled
 
+  $ mkdir deterministic_name && cd deterministic_name
   $ cat > dune-project <<EOF
   > (lang dune 3.17)
   > (using coq 0.10)

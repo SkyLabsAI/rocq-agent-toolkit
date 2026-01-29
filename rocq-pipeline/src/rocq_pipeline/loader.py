@@ -1,11 +1,17 @@
+import importlib
 import importlib.util
 import os
 import sys
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 
-def load_module(module_path: Path, package_name: str | None = None) -> Any:
+def load_module_qualified(module: str) -> ModuleType:
+    return importlib.import_module(module)
+
+
+def load_module_file(module_path: Path, package_name: str | None = None) -> ModuleType:
     """
     Loads a Python module from a given file path and executes its 'run' method.
     This version correctly configures the module to support relative imports
@@ -84,8 +90,15 @@ def load_module(module_path: Path, package_name: str | None = None) -> Any:
         #     del sys.modules[module_name]
 
 
+def load_module(module: str, package_name: str | None = None) -> ModuleType:
+    if module.endswith("py"):
+        return load_module_file(Path(module), package_name)
+    else:
+        return load_module_qualified(module)
+
+
 def load_definition(
-    mod_path: Path, def_name: str, package_name: str | None = None
+    mod_path: str, def_name: str, package_name: str | None = None
 ) -> Any:
     """
     Load a definition from a file.
@@ -101,12 +114,12 @@ def load_definition(
     return result
 
 
-def load_from_str(desc: str, package_name: str | None = None) -> Any:
+def load_from_str(desc: str, package_name: str | None = None) -> ModuleType | Any:
     """
     Load a value from a file. Uses the syntax `path/to/module.py:definition.to.load`.
     """
     mod_and_def = desc.rsplit(":", 1)
     if len(mod_and_def) == 2:
-        return load_definition(Path(mod_and_def[0]), mod_and_def[1], package_name)
+        return load_definition(mod_and_def[0], mod_and_def[1], package_name)
     else:
-        return load_module(Path(mod_and_def[0]), package_name)
+        return load_module(mod_and_def[0], package_name)

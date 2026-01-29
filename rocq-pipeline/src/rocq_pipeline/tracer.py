@@ -1,39 +1,44 @@
 import argparse
 import itertools
 import json
+import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from types import ModuleType
+from typing import Any, cast
 
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
+from rocq_pipeline.tracers import json_goal
 from rocq_pipeline.tracers.extractor import (
-    BeforeAndAfter,
-    TacticExtractor,
-    TacticExtractorBuilder,
+    Tracer,
 )
-from rocq_pipeline.tracers.json_goal import JsonGoal
 
 
-def trace_proof[T](
-    extractor: TacticExtractor[T],
+def trace_proof(
+    tracer: Tracer[dict[str, Any]],
     rdm: RocqCursor,
     progress: util.ProgressCallback,
     progress_min: float = 0.0,
     progress_max: float = 1.0,
-) -> list[tuple[(T | None), str, (T | None)]]:
+) -> list[dict[str, Any]]:
     tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
-    extractor.start_proof(rdm)
-    trace: list[tuple[(T | None), str, (T | None)]] = []
+    tracer.start_proof(rdm)
+    trace = []
     step_size: float = (progress_max - progress_min) / len(tactics)
     for i, tactic in enumerate(tactics):
-        pre = extractor.before(rdm, tactic)
+        after = tracer.before_internal(rdm, tactic)
         progress.status(status=tactic[:10])
         assert not isinstance(rdm.run_command(tactic), rdm.Err)
         progress.status(percent=progress_min + i * step_size)
-        post = extractor.after(rdm, tactic)
-        trace.append((pre, tactic.strip(".").strip(), post))
+        if after is not None:
+            result = after(rdm, tactic)
+            if result is not None:
+                if "tactic" not in result:
+                    result["tactic"] = tactic.strip(".").strip()
+                trace.append(result)
     return trace
 
 
@@ -59,7 +64,9 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
     )
     if with_tracer:
         parser.add_argument(
-            "--tracer", type=str, help="The tracer to use specified as: file.py:def."
+            "--tracer",
+            type=str,
+            help="The tracer to use. The argument is interpreted as follows: The forms [<path>/<module>.py:<func>] and [<package.path>.<module>:<func>] use [<module>.<func>()], whereas [<path>/<module>.py] and [<package.path>.<module>] use [<module>.build()].",
         )
     parser.add_argument(
         "-j",
@@ -72,7 +79,7 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
 
 
 def run(
-    tracer_builder: TacticExtractorBuilder,
+    tracer_builder: Callable[[], Tracer[Any]],
     output_dir: Path,
     project: Tasks.Project,
     tasks: list[Tasks.Task],
@@ -90,7 +97,7 @@ def run(
         )
 
         try:
-            tracer = tracer_builder.build()
+            tracer = tracer_builder()
             extra_paths = itertools.chain.from_iterable(
                 (["-Q", str(v), k] for k, v in tracer.extra_paths().items())
             )
@@ -121,6 +128,7 @@ def run(
 
             return True
         except Exception as err:
+            print(traceback.format_exc())
             print(f"Failed at task {task_id}.{err}")
             return False
 
@@ -155,12 +163,19 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         return False
 
     if arguments.tracer is None:
-        tracer: TacticExtractorBuilder = TacticExtractorBuilder.of_tactic_extractor(
-            lambda: BeforeAndAfter(JsonGoal())
-        )  # GoalAsString())
+
+        def tracer() -> Tracer[Any]:
+            return json_goal.build()
     else:
         if isinstance(arguments.tracer, str):
-            tracer = loader.load_from_str(arguments.tracer)
+            loaded = loader.load_from_str(arguments.tracer)
+            if isinstance(loaded, ModuleType):
+                tracer = loaded.build
+            else:
+                assert callable(loaded), (
+                    f"Object found at {arguments.tracer} is not callable. Its value is: {repr(loaded)}"
+                )
+                tracer = cast(Callable[[], Tracer[Any]], loaded)
         else:
             tracer = arguments.tracer
 
@@ -171,11 +186,17 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         #     # print(f"'{arguments.tracer}' is a '{tracer}' but expected a [TacticExtractor].")
         #     return False
 
-    run(tracer, arguments.output_dir, project, tasks, jobs=arguments.jobs)
+    run(
+        tracer,
+        arguments.output_dir,
+        project,
+        tasks,
+        jobs=arguments.jobs,
+    )
     return True
 
 
-def tracer_main(tracer: TacticExtractor[Any], args: list[str] | None = None) -> bool:
+def tracer_main(tracer: Tracer[Any], args: list[str] | None = None) -> bool:
     """
     This function can be used to create a `main` entry point for a specific tracer.
     Use it with something like:
