@@ -1,6 +1,6 @@
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Protocol, TypedDict
+from typing import Any, Literal, Protocol, TypedDict, cast
 
 from rocq_doc_manager import RocqCursor
 
@@ -142,6 +142,37 @@ class BracketInterface[A](Protocol):
     def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A] | None: ...
 
 
+class ExtractorResult[T](Protocol):
+    """
+    Wraps the result of calling an extractor in an object that allows
+    distinguishing the absence of a result value from the intent to skip the
+    current command (or tactic). Python cannot distinguish Optional[T] from
+    Optional[Optional[T]] which means we cannot use a [None] value to represent
+    a result of type Optional[T]. Instead, we use an extra boolean.
+
+    We do not use Optional[T] directly. Instead, we annotate [result] to
+    establish a weak but nonetheless helpful connection between the boolean and
+    the returned value.
+    """
+
+    def val(self) -> tuple[Literal[False], None] | tuple[Literal[True], T]: ...
+
+
+class Extracted[T](ExtractorResult[T]):
+    __slots__ = ["_result"]
+
+    def __init__(self, t: T):
+        self._result = t
+
+    def val(self) -> tuple[Literal[True], T]:
+        return (True, self._result)
+
+
+class Skip[T](ExtractorResult[T]):
+    def val(self) -> tuple[Literal[False], None]:
+        return (False, None)
+
+
 class BracketedExtractor[B, A](BracketInterface[A], Protocol):
     """
     Extract information about the execution of a command (or a tactic). Classes
@@ -155,15 +186,18 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
     tactic is not supported by the extractor.
     """
 
-    def before(self, rdm: RocqCursor, tactic: str) -> B | None: ...
+    def before(self, rdm: RocqCursor, tactic: str) -> ExtractorResult[B]: ...
 
     def after(self, rdm: RocqCursor, tactic: str, result_before: B) -> A | None: ...
 
     def before_internal(self, rdm: RocqCursor, tactic: str) -> After[A] | None:
         result_before = self.before(rdm, tactic)
-        if result_before is None:
-            return None
-        return lambda rdm, tactic: self.after(rdm, tactic, result_before)
+        match result_before.val():
+            case (True, v):
+                v = cast(B, v)  # mypy is not smart enough to figure this out
+                return lambda rdm, tactic: self.after(rdm, tactic, v)
+            case _:
+                return None
 
 
 class OutputDict[A](TypedDict):
@@ -174,8 +208,12 @@ class OutputDict[A](TypedDict):
 class TrivialBracketedExtractor[A](
     StateExtractor[A], BracketedExtractor[A, OutputDict[A]]
 ):
-    def before(self, rdm: RocqCursor, tactic: str) -> A | None:
-        return self.extract(rdm)
+    def before(self, rdm: RocqCursor, tactic: str) -> ExtractorResult[A]:
+        match self.extract(rdm):
+            case None:
+                return Skip()
+            case val:
+                return Extracted(val)
 
     def after(
         self, rdm: RocqCursor, tactic: str, result_before: A
@@ -193,14 +231,14 @@ class AllBracketedExtractor(BracketedExtractor[D, D]):
     def __init__(self, extractors: dict[str, BracketedExtractor[Any, Any]]) -> None:
         self._extractors = extractors
 
-    def before(self, rdm: RocqCursor, tactic: str) -> D:
+    def before(self, rdm: RocqCursor, tactic: str) -> ExtractorResult[D]:
         state = {}
         for k, e in self._extractors.items():
             result = e.before(rdm, tactic)
             if result is None:
                 continue
             state[k] = result
-        return state
+        return Extracted(state)
 
     def after(self, rdm: RocqCursor, tactic: str, result_before) -> D:
         results: D = {}
