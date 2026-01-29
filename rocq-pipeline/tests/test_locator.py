@@ -7,7 +7,6 @@ from rocq_pipeline.locator import (
     FirstAdmit,
     FirstLemma,
     Locator,
-    LocatorParser,
     MarkerCommentLocator,
 )
 
@@ -28,12 +27,12 @@ TEST_CASES: dict[str, Locator] = {
 
 @pytest.mark.parametrize("input, output", TEST_CASES.items(), ids=TEST_CASES.keys())
 def test_comment_marker_test(input: str, output: Locator) -> None:
-    assert LocatorParser.parse(input) == output
+    assert Locator.parse(input) == output
 
 
 def test_find_admit() -> None:
     def check(rc: RocqCursor, loc: str, expected: int) -> None:
-        assert LocatorParser.parse(loc)(rc)
+        assert Locator.parse(loc)(rc)
         assert rc.cursor_index() == expected, f"{loc}"
 
     p = Path(__file__).parent / "locator_test.v"

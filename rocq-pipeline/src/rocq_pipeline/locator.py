@@ -17,6 +17,10 @@ class NotFound(Exception):
     pass
 
 
+# This is a private static variable that tracks information about the parsers
+_parsers: list[Callable[[str], Locator]] = []
+
+
 class Locator:
     def __call__(self, rdm: RocqCursor) -> bool:
         return False
@@ -30,20 +34,18 @@ class Locator:
     def task_kind(self) -> task_output.TaskKind:
         return task_output.TaskKind(task_output.OtherTask("unknown"))
 
-
-class LocatorParser:
-    parsers: list[Callable[[str], Locator | None]] = []
-
     @staticmethod
-    def register_parser(parser: Callable[[str], Locator | None]) -> None:
-        LocatorParser.parsers.append(parser)
+    def register_parser[T: Locator](parser: Callable[[str], T]) -> None:
+        _parsers.append(parser)
 
     @staticmethod
     def parse(s: str) -> Locator:
-        for parser in LocatorParser.parsers:
-            loc = parser(s)
-            if loc is not None:
-                return loc
+        global _parsers
+        for parser in _parsers:
+            try:
+                return parser(s)
+            except BaseException:
+                pass
         raise ValueError(f"Failed to parse locator from `{s}`")
 
 
@@ -74,20 +76,19 @@ class FirstAdmit(Locator):
     PTRN_PARSE = re.compile(r"admit(\([0-9]+\))?")
 
     @staticmethod
-    def parse(s: str) -> FirstAdmit | None:
+    def parse(s: str) -> FirstAdmit:
         if not (mtch := FirstAdmit.PTRN_PARSE.match(s)):
-            return None
+            raise ValueError("Failed to parse FirstAdmit")
         if mtch.group(1):
             try:
                 index: int = int(mtch.group(1)[1:-1])
-            except BaseException as err:
-                logging.error(f"Failed to parse integer from '{mtch.group(1)}'. {err}")
-                return None
+            except ValueError as err:
+                raise ValueError("Failed to parse FirstAdmit") from err
             return FirstAdmit(index)
         return FirstAdmit()
 
 
-LocatorParser.register_parser(FirstAdmit.parse)
+Locator.register_parser(FirstAdmit.parse)
 
 
 class FirstLemma(Locator):
@@ -136,14 +137,17 @@ class FirstLemma(Locator):
         return task_output.TaskKind(task_output.FullProofTask())
 
     @staticmethod
-    def parse(s: str) -> FirstLemma | None:
+    def parse(s: str) -> FirstLemma:
         def get_index(s: str) -> tuple[str, int]:
             ptrn: re.Pattern = re.compile(r"(.+)\(([0-9]+)\)")
             mtch = ptrn.match(s)
             if mtch is None:
                 return (s, 0)
             else:
-                return mtch.group(1), int(mtch.group(2))
+                try:
+                    return mtch.group(1), int(mtch.group(2))
+                except BaseException as err:
+                    raise ValueError(f"Failed to parse `FirstLemma` from {s}") from err
 
         for kw in ["Lemma", "Theorem"]:
             kw_colon = kw + ":"
@@ -163,10 +167,10 @@ class FirstLemma(Locator):
             )
             return FirstLemma(s[len("lemma:") :])
 
-        return None
+        raise ValueError(f"Failed to parse `FirstLemma` from {s}")
 
 
-LocatorParser.register_parser(FirstLemma.parse)
+Locator.register_parser(FirstLemma.parse)
 
 # TODO: add unit tests
 
@@ -200,16 +204,18 @@ class MarkerCommentLocator(Locator):
         return task_output.TaskKind(task_output.OtherTask(self.__str__()))
 
     @staticmethod
-    def parse(s: str) -> MarkerCommentLocator | None:
+    def parse(s: str) -> MarkerCommentLocator:
         if not (mtch := MarkerCommentLocator.PTRN_PARSE.match(s)):
-            return None
+            raise ValueError(f"Failed to parse `MarkerCommentLocator` from `{s}`")
         marker = s[len(mtch.group(0)) :]
         if mtch.group(1):
             try:
                 return MarkerCommentLocator(marker, int(mtch.group(1)[1:-1]))
-            except ValueError:
-                return None
-        return MarkerCommentLocator(marker, 0)
+            except ValueError as err:
+                raise ValueError(
+                    f"Failed to parse `MarkerCommentLocator` from `{s}`"
+                ) from err
+        return MarkerCommentLocator(marker)
 
 
-LocatorParser.register_parser(MarkerCommentLocator.parse)
+Locator.register_parser(MarkerCommentLocator.parse)
