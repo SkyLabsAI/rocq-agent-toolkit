@@ -15,6 +15,8 @@ type Props = {
   successPathNodes: Set<string>;
   collapsedNodes: Set<string>;
   onToggleCollapse: (spanId: string) => void;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
 };
 
 const UnifiedView = ({
@@ -25,6 +27,8 @@ const UnifiedView = ({
   successPathNodes,
   collapsedNodes,
   onToggleCollapse,
+  isRightPanelOpen,
+  onToggleRightPanel,
 }: Props) => {
   const [viewMode, setViewMode] = useState<'split' | 'traces' | 'flamegraph'>(
     'split'
@@ -33,40 +37,51 @@ const UnifiedView = ({
   return (
     <div className='flex flex-col h-full gap-3'>
       {/* View Mode Toggle */}
-      <div className='flex items-center gap-2 bg-elevation-surface-raised p-2 rounded-lg border border-elevation-surface-overlay'>
-        <div className='text-sm text-text font-semibold'>View:</div>
-        <div className='flex gap-1'>
-          <button
-            onClick={() => setViewMode('split')}
-            className={`px-3 py-1.5 text-sm rounded border transition-colors ${
-              viewMode === 'split'
-                ? 'bg-primary-default text-white border-primary-default'
-                : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
-            }`}
-          >
-            Split View
-          </button>
-          <button
-            onClick={() => setViewMode('traces')}
-            className={`px-3 py-1.5 text-sm rounded border transition-colors ${
-              viewMode === 'traces'
-                ? 'bg-primary-default text-white border-primary-default'
-                : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
-            }`}
-          >
-            Traces Only
-          </button>
-          <button
-            onClick={() => setViewMode('flamegraph')}
-            className={`px-3 py-1.5 text-sm rounded border transition-colors ${
-              viewMode === 'flamegraph'
-                ? 'bg-primary-default text-white border-primary-default'
-                : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
-            }`}
-          >
-            Flamegraph Only
-          </button>
+      <div className='flex items-center justify-between gap-2 bg-elevation-surface-raised p-2 rounded-lg border border-elevation-surface-overlay'>
+        <div className='flex items-center gap-2'>
+          <div className='text-sm text-text font-semibold'>View:</div>
+          <div className='flex gap-1'>
+            <button
+              onClick={() => setViewMode('split')}
+              className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                viewMode === 'split'
+                  ? 'bg-primary-default text-white border-primary-default'
+                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+              }`}
+            >
+              Split View
+            </button>
+            <button
+              onClick={() => setViewMode('traces')}
+              className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                viewMode === 'traces'
+                  ? 'bg-primary-default text-white border-primary-default'
+                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+              }`}
+            >
+              Traces Only
+            </button>
+            <button
+              onClick={() => setViewMode('flamegraph')}
+              className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                viewMode === 'flamegraph'
+                  ? 'bg-primary-default text-white border-primary-default'
+                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+              }`}
+            >
+              Flamegraph Only
+            </button>
+          </div>
         </div>
+        {onToggleRightPanel && (
+          <button
+            onClick={onToggleRightPanel}
+            className='px-3 py-2 bg-elevation-surface-sunken hover:bg-elevation-surface-overlay rounded-lg border border-elevation-surface-overlay text-text text-sm font-medium transition-colors shadow-sm'
+            title={isRightPanelOpen ? 'Close panel' : 'Open panel'}
+          >
+            {isRightPanelOpen ? '→' : '←'} Info
+          </button>
+        )}
       </div>
 
       {/* Visualization Area */}
@@ -91,6 +106,8 @@ const UnifiedView = ({
                 spans={spans}
                 selectedSpanId={selectedSpanId}
                 onSelectSpanId={onSelectSpanId}
+                isRightPanelOpen={isRightPanelOpen}
+                onToggleRightPanel={onToggleRightPanel}
               />
             </div>
           </div>
@@ -108,6 +125,8 @@ const UnifiedView = ({
             spans={spans}
             selectedSpanId={selectedSpanId}
             onSelectSpanId={onSelectSpanId}
+            isRightPanelOpen={isRightPanelOpen}
+            onToggleRightPanel={onToggleRightPanel}
           />
         )}
       </div>

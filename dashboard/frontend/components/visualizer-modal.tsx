@@ -75,6 +75,9 @@ const VisualizerModal = ({
     null
   );
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const [isTracesPanelOpen, setIsTracesPanelOpen] = useState(false);
+  const [isFlamegraphPanelOpen, setIsFlamegraphPanelOpen] = useState(false);
+  const [isUnifiedPanelOpen, setIsUnifiedPanelOpen] = useState(false);
 
   const runTsMs = useMemo(
     () => normalizeRunTimestampMs(runTimestampUtc),
@@ -444,6 +447,8 @@ const VisualizerModal = ({
             spansById={spansById}
             onToggleCollapse={toggleNodeCollapse}
             onDepthChange={handleDepthChange}
+            isRightPanelOpen={isUnifiedPanelOpen}
+            setIsRightPanelOpen={setIsUnifiedPanelOpen}
           />
         ) : activeTab === 'traces' ? (
           <TracesVisualization
@@ -465,6 +470,8 @@ const VisualizerModal = ({
             spansById={spansById}
             onToggleCollapse={toggleNodeCollapse}
             onDepthChange={handleDepthChange}
+            isRightPanelOpen={isTracesPanelOpen}
+            setIsRightPanelOpen={setIsTracesPanelOpen}
           />
         ) : activeTab === 'flamegraph' ? (
           <FlamegraphVisualization
@@ -481,6 +488,8 @@ const VisualizerModal = ({
             loading={loading}
             error={error}
             spansById={new Map(spans.map(s => [s.span_id, s]))}
+            isRightPanelOpen={isFlamegraphPanelOpen}
+            setIsRightPanelOpen={setIsFlamegraphPanelOpen}
           />
         ) : (
           <TacticGraphVisualization
@@ -520,6 +529,8 @@ const TracesVisualization = ({
   spansById,
   onToggleCollapse,
   onDepthChange,
+  isRightPanelOpen,
+  setIsRightPanelOpen,
 }: {
   traceIds: string[];
   selectedTraceId: string;
@@ -539,6 +550,8 @@ const TracesVisualization = ({
   spansById: Map<string, EnhancedSpan>;
   onToggleCollapse: (spanId: string) => void;
   onDepthChange: (depth: number | null) => void;
+  isRightPanelOpen: boolean;
+  setIsRightPanelOpen: (open: boolean) => void;
 }) => {
   return (
     <>
@@ -627,7 +640,16 @@ const TracesVisualization = ({
           </div>
         </div>
 
-        <div className='flex-1 min-h-0'>
+        <div className='flex-1 min-h-0 relative'>
+          {/* Toggle button */}
+          <button
+            onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+            className='absolute top-4 right-4 z-10 px-3 py-2 bg-elevation-surface-raised hover:bg-elevation-surface-overlay rounded-lg border border-elevation-surface-overlay text-text text-sm font-medium transition-colors shadow-sm'
+            title={isRightPanelOpen ? 'Close panel' : 'Open panel'}
+          >
+            {isRightPanelOpen ? '→' : '←'} Info
+          </button>
+
           <SpanGraphView
             spans={enhancedSpans}
             selectedSpanId={selectedSpan?.span_id}
@@ -642,7 +664,8 @@ const TracesVisualization = ({
       </div>
 
       {/* Right panel - Span details and logs */}
-      <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
+      {isRightPanelOpen && (
+        <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
         <div className='p-4 space-y-4'>
           {/* Span details section */}
           <div>
@@ -706,6 +729,7 @@ const TracesVisualization = ({
           </div>
         </div>
       </div>
+      )}
     </>
   );
 };
@@ -730,6 +754,8 @@ const UnifiedVisualization = ({
   spansById,
   onToggleCollapse,
   onDepthChange,
+  isRightPanelOpen,
+  setIsRightPanelOpen,
 }: {
   traceIds: string[];
   selectedTraceId: string;
@@ -749,6 +775,8 @@ const UnifiedVisualization = ({
   spansById: Map<string, EnhancedSpan>;
   onToggleCollapse: (spanId: string) => void;
   onDepthChange: (depth: number | null) => void;
+  isRightPanelOpen: boolean;
+  setIsRightPanelOpen: (open: boolean) => void;
 }) => {
   return (
     <>
@@ -849,12 +877,15 @@ const UnifiedVisualization = ({
             successPathNodes={successPathNodes}
             collapsedNodes={collapsedNodes}
             onToggleCollapse={onToggleCollapse}
+            isRightPanelOpen={isRightPanelOpen}
+            onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
           />
         </div>
       </div>
 
       {/* Right panel - Span details and logs */}
-      <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
+      {isRightPanelOpen && (
+        <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
         <div className='p-4 space-y-4'>
           {/* Span details section */}
           <div>
@@ -918,6 +949,7 @@ const UnifiedVisualization = ({
           </div>
         </div>
       </div>
+      )}
     </>
   );
 };
@@ -1095,6 +1127,8 @@ const FlamegraphVisualization = ({
   loading,
   error,
   spansById,
+  isRightPanelOpen,
+  setIsRightPanelOpen,
 }: {
   traceIds: string[];
   selectedTraceId: string;
@@ -1107,6 +1141,8 @@ const FlamegraphVisualization = ({
   loading: boolean;
   error: string | null;
   spansById: Map<string, VisualizerSpanLite>;
+  isRightPanelOpen: boolean;
+  setIsRightPanelOpen: (open: boolean) => void;
 }) => {
   return (
     <>
@@ -1169,12 +1205,15 @@ const FlamegraphVisualization = ({
             onSelectSpanId={spanId =>
               setSelectedSpan(spansById.get(spanId) ?? null)
             }
+            isRightPanelOpen={isRightPanelOpen}
+            onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
           />
         </div>
       </div>
 
       {/* Right panel - Span details and logs */}
-      <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
+      {isRightPanelOpen && (
+        <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
         <div className='p-4 space-y-4'>
           {/* Span details section */}
           <div>
@@ -1238,6 +1277,7 @@ const FlamegraphVisualization = ({
           </div>
         </div>
       </div>
+      )}
     </>
   );
 };

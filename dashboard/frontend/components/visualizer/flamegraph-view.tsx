@@ -8,9 +8,17 @@ type Props = {
   spans: VisualizerSpanLite[];
   selectedSpanId?: string;
   onSelectSpanId: (spanId: string) => void;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
 };
 
-const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
+const FlamegraphView = ({
+  spans,
+  selectedSpanId,
+  onSelectSpanId,
+  isRightPanelOpen,
+  onToggleRightPanel,
+}: Props) => {
   const [hoveredSpanId, setHoveredSpanId] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{
     x: number;
@@ -209,7 +217,7 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
       className='w-full h-full flex flex-col rounded-lg border border-elevation-surface-overlay overflow-hidden bg-elevation-surface-sunken'
     >
       {/* Header with info */}
-      <div className='bg-elevation-surface-raised border-b border-elevation-surface-overlay p-3'>
+      <div className='bg-elevation-surface-raised border-b border-elevation-surface-overlay p-3 relative'>
         <div className='flex justify-between items-center text-xs text-text-disabled'>
           <div className='flex gap-4 items-center'>
             <span>Spans: {spans.length}</span>
@@ -227,19 +235,30 @@ const FlamegraphView = ({ spans, selectedSpanId, onSelectSpanId }: Props) => {
               </button>
             )}
           </div>
-          {hoveredSpan && (
-            <div className='text-text font-medium'>
-              <span className='font-semibold'>{hoveredSpan.span.name}</span>
-              <span className='mx-2'>•</span>
-              <span className='text-orange-500'>
-                Depth: {hoveredSpan.depth}
-              </span>
-              <span className='mx-2'>•</span>
-              <span className='text-text-disabled'>
-                {formatPercent(hoveredSpan.widthPercent)} of view
-              </span>
-            </div>
-          )}
+          <div className='flex items-center gap-3'>
+            {hoveredSpan && (
+              <div className='text-text font-medium'>
+                <span className='font-semibold'>{hoveredSpan.span.name}</span>
+                <span className='mx-2'>•</span>
+                <span className='text-orange-500'>
+                  Depth: {hoveredSpan.depth}
+                </span>
+                <span className='mx-2'>•</span>
+                <span className='text-text-disabled'>
+                  {formatPercent(hoveredSpan.widthPercent)} of view
+                </span>
+              </div>
+            )}
+            {onToggleRightPanel && (
+              <button
+                onClick={onToggleRightPanel}
+                className='px-3 py-2 bg-elevation-surface-sunken hover:bg-elevation-surface-overlay rounded-lg border border-elevation-surface-overlay text-text text-sm font-medium transition-colors shadow-sm'
+                title={isRightPanelOpen ? 'Close panel' : 'Open panel'}
+              >
+                {isRightPanelOpen ? '→' : '←'} Info
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
