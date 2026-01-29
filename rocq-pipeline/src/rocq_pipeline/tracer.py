@@ -66,7 +66,7 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
         parser.add_argument(
             "--tracer",
             type=str,
-            help="The tracer to use. The argument is interpreted as follows: 1. [<path>/<module>.py:<func>] uses [<func>()], [<path>/<module>.py] or [<package.path>.<module>] use [<module>.build()].",
+            help="The tracer to use. The argument is interpreted as follows: The forms [<path>/<module>.py:<func>] and [<package.path>.<module>:<func>] use [<module>.<func>()], whereas [<path>/<module>.py] and [<package.path>.<module>] use [<module>.build()].",
         )
     parser.add_argument(
         "-j",
