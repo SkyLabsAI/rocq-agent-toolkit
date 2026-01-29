@@ -45,6 +45,7 @@ class Task(BaseModel):
     name: str | None = Field(
         None,
         description="Human-readable name of the task. This can be used to distinguish multiple tasks on the same locator, e.g. 'with-prompt' and 'without-prompt'",
+        exclude_if=lambda x: x is None,
     )
     file: Path = Field(
         description="The path from the project root to the file that hosts the task."
@@ -56,10 +57,12 @@ class Task(BaseModel):
     prompt: str | None = Field(
         default=None,
         description="Additional information about the task **provided to the agent**.",
+        exclude_if=lambda x: x is None,
     )
     meta: dict[str, Any] | None = Field(
         default=None,
         description="Meta data about the task as a JSON dictionary, e.g. 'ground truth' proof script.",
+        exclude_if=lambda x: not bool(x),
     )  # The [Any] is json-able things
 
     def get_id(self) -> str:
