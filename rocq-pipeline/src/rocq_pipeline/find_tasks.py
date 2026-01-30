@@ -328,7 +328,7 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
     project = Project(
         name=project_name, git_url=git_url, git_commit=git_commit, path=pdir
     )
-    taskfile = TaskFile(project=project, tasks=unique_tasks)
+    taskfile = TaskFile.from_bundles([(project, unique_tasks)])
 
     logger.debug(f"Saving tasks to {output_file}")
     taskfile.to_file(output_file)
@@ -339,9 +339,7 @@ def run_ns(args: Namespace, extra_args: list[str] | None = None) -> None:
     log_level = (
         logging.DEBUG
         if args.debug
-        else logging.INFO
-        if args.verbose
-        else logging.WARNING
+        else logging.INFO if args.verbose else logging.WARNING
     )
     logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
     return run(args.output, args.pdir, args.rocq_files, jobs=args.jobs)
