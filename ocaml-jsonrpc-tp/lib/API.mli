@@ -114,15 +114,30 @@ val declare_full : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ?recoverable:bool
   -> ('s -> 'a -> ('b, string * 'e) Result.t) -> unit
 
-(** [run api ~ic ~oc s] starts an interactive request/response loop for [api].
-    Requests are expected on channel [ic], and the corresponding responses are
-    sent to channel [oc]. The set of supported requests is specified by [api],
-    and it can be extended dynamically. The API state, with initial value [s],
-    is threaded through all request handlers. If the end of file is reached on
-    [ic], or if the special ["quit"] request is received, the function returns
-    the API state. An [Error] is returned only in case of protocol error. *)
-val run : 's api -> ic:In_channel.t -> oc:Out_channel.t
-  -> 's -> (unit, string) Result.t
+(** [run_seq api ~ic ~oc s] runs an sequential JSON-RPC 2.0 request / response
+    loop for [api]. Requests are received on channel [ic], and responded to on
+    channel [oc]. When a request is issued, clients are forbidden to send more
+    data on the channel until after receiving the corresponding response. Note
+    that an initial ["ready"] notification is sent on [oc], so the client must
+    wait for it before starting to emit requests. If end of file is reached on
+    [ic], the function returns successfully after serving the ongoing request,
+    if there is one. An error value is only returned in case of protocol error
+    (e.g., an unexpected JSON-RPC 2.0 packet). The initial state of the API is
+    given by argument [s]. Note that this state is expected to be mutated when
+    running requests. Regarding the JSON-RCP 2.0 protocol: batch requests from
+    the client are supported, notifications from the client are ignored. *)
+val run_seq : 's api -> ic:In_channel.t -> oc:Out_channel.t
+   -> 's -> (unit, string) Result.t
+
+(** [run api ~ic ~oc ~workers s] is similar to [run_seq api ~ic ~oc s], but it
+    allows processing requests in parallel. This means that communication with
+    the client on [ic] and [oc] is non-blocking, and hence less restricted. In
+    particular, the client may send a request without waiting for the response
+    of previously-emitted requests. Note however that it is the responsibility
+    of the programmer to ensure that the implementation of the requests in the
+    API [api] are not subject to data races. *)
+val run : 's api -> ic:In_channel.t -> oc:Out_channel.t -> workers:int
+   -> 's -> (unit, string) Result.t
 
 (** [output_docs oc api] outputs markdown-formatted documentation for [api] to
     the output channel [oc]. *)

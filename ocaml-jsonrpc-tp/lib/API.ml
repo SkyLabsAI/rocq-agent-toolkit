@@ -211,26 +211,6 @@ let declare_full api ~name ?descr ~args ~ret ?ret_descr
   let m = M({name; descr; args; ret; ret_descr; impl}) in
   api.api_methods <- SMap.add name m (api.api_methods)
 
-module J = Jsonrpc
-
-module Response = struct
-  let error ~oc id ?data code message =
-    let e = J.Response.Error.make ?data ~code ~message () in
-    let r = J.Response.error id e in
-    Base.send ~oc (J.Packet.Response(r))
-
-  let method_not_found ~oc id f =
-    let message = Printf.sprintf "Method %s not found." f in
-    error ~oc id J.Response.Error.Code.MethodNotFound message
-
-  let invalid_params ~oc id ?msg f =
-    let message =
-      let msg = match msg with None -> "" | Some(msg) -> ": " ^ msg in
-      Printf.sprintf "Invalid parameters for method %s%s." f msg
-    in
-    error ~oc id J.Response.Error.Code.InvalidParams message
-end
-
 let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
   match (s, v) with
   | (Null       , ()     ) -> `Null
@@ -278,7 +258,8 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
   let error ctxt s = raise (Error(ctxt, s)) in
   let rec of_json : type a. context list -> a Schema.t -> json -> a =
       fun ctxt s json ->
-    let of_json_obj : type a. context list -> a api_obj -> (string * json) list -> a = fun ctxt o fields ->
+    let of_json_obj : type a. context list -> a api_obj ->
+        (string * json) list -> a = fun ctxt o fields ->
       let O(o) = get_obj api o in
       let rec make : type a. a Fields.t -> a = fun fs ->
         let open Fields in
@@ -369,67 +350,63 @@ let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
   | (Args.Cns(_), Some(`List(ls)) ) -> parse_list args ls
   | (Args.Cns(_), Some(`Assoc(fs))) -> parse_assoc args fs
 
-let notify_ready ~oc =
-  let notification = J.Notification.create ~method_:"ready" () in
-  Base.send ~oc (J.Packet.Notification(notification))
-
-let run api ~ic ~oc s =
-  notify_ready ~oc;
-  let exception Exit in
-  let exception Err of string in
-  try while true do
-    match Base.recv ~ic () with
-    | Error(msg)  -> raise (Err(msg))
-    | Ok(None)    -> raise Exit
-    | Ok(Some(p)) ->
-    let (id, f, params) =
-      match p with
-      | J.Packet.Request(r) -> (r.id, r.method_, r.params)
-      | _                   -> raise (Err("not a request packet"))
+let handle_request : type s. s api -> s -> Service.request_handler =
+    fun api s ~name ~params ~notify:_ ->
+  let invalid_params ?msg name =
+    let msg =
+      let msg = match msg with None -> "" | Some(msg) -> ": " ^ msg in
+      Printf.sprintf "Invalid parameters for method %s%s." name msg
     in
-    match SMap.find_opt f api.api_methods with
-    | None          -> Response.method_not_found ~oc id f
-    | Some(M(spec)) ->
-    match parse_params api spec.args params with
-    | Error(msg) -> Response.invalid_params ~oc id ~msg f
-    | Ok(params) ->
-    match spec.impl with
-    | Pure(impl) ->
-        begin
-          match impl.impl s params with
-          | exception Invalid_argument(msg) ->
-              Response.invalid_params ~oc id ~msg f
-          | ret                             ->
-          let ret = to_json api spec.ret ret in
-          let response = J.Response.ok id ret in
-          Base.send ~oc (J.Packet.Response(response))
-        end
-    | Rslt(impl) ->
-        begin
-          match impl.impl s params with
-          | exception Invalid_argument(msg) ->
-              Response.invalid_params ~oc id ~msg f
-          | ret_or_err                      ->
-          let response =
-            match ret_or_err with
-            | Ok(ret)             ->
-                let ret = to_json api spec.ret ret in
-                J.Response.ok id ret
-            | Error(message, err) ->
-                let data =
-                  match impl.err with
-                  | Null -> None
-                  | _    -> Some(to_json api impl.err err)
-                in
-                let code = J.Response.Error.Code.RequestFailed in
-                let err = J.Response.Error.make ?data ~code ~message () in
-                J.Response.error id err
-          in
-          Base.send ~oc (J.Packet.Response(response))
-        end
-  done with
-  | Exit   -> Ok(())
-  | Err(s) -> Error(s)
+    Service.Response.(error ~code:InvalidParams msg)
+  in
+  match SMap.find_opt name api.api_methods with
+  | None          ->
+      let msg = Printf.sprintf "Method %s not found." name in
+      Service.Response.(error ~code:MethodNotFound msg)
+  | Some(M(spec)) ->
+  match parse_params api spec.args params with
+  | Error(msg) -> invalid_params ~msg name
+  | Ok(params) ->
+  match spec.impl with
+  | Pure(impl) ->
+      begin
+        match impl.impl s params with
+        | exception Invalid_argument(msg) -> invalid_params ~msg name
+        | ret                             ->
+        let json = to_json api spec.ret ret in
+        Service.Response.ok json
+      end
+  | Rslt(impl) ->
+      begin
+        match impl.impl s params with
+        | exception Invalid_argument(msg) -> invalid_params ~msg name
+        | Ok(ret)             ->
+            let json = to_json api spec.ret ret in
+            Service.Response.ok json
+        | Error(message, err) ->
+            let data =
+              match impl.err with
+              | Null -> None
+              | _    -> Some(to_json api impl.err err)
+            in
+            Service.Response.(error ~code:RequestFailed ?data message)
+      end
+
+let handle_notification ~name:_ ~params:_ ~notify:_ = ()
+
+let notify_ready ~oc =
+  let notification = Jsonrpc.Notification.create ~method_:"ready" () in
+  Base.send ~oc (Jsonrpc.Packet.Notification(notification))
+
+let run_seq api ~ic ~oc s =
+  let handle_request = handle_request api s in
+  notify_ready ~oc;
+  Service.run_seq ~ic ~oc ~handle_request ~handle_notification
+
+let run api ~ic ~oc ~workers s =
+  let handle_request = handle_request api s in
+  notify_ready ~oc;
+  Service.run ~ic ~oc ~workers ~handle_request ~handle_notification
 
 let output_docs oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in

@@ -576,7 +576,7 @@ let _ =
     try Document.init ~args ~file with Failure(s) -> panic "Error: %s." s
   in
   let state = {fresh = 1; cursors = IntMap.singleton 0 state} in
-  match API.run api ~ic:stdin ~oc:stdout state with
+  match API.run_seq api ~ic:stdin ~oc:stdout state with
   | Ok(_)       -> exit 0
   | Error(s)    -> panic "%s" s
   | exception e ->
