@@ -17,7 +17,7 @@ class _ComputeClassProvenance(Protocol):
     """Protocol for computing class provenance data."""
 
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type[WithClassProvenance], ProvenanceT]:
+    def compute_cls_provenance(cls) -> dict[type, ProvenanceT]:
         """Compute rich provenance of klass.
 
         Returns a dictionary mapping each provenance provider type to its provenance data.
@@ -32,13 +32,13 @@ class WithClassProvenance(_ComputeClassProvenance):
     The core API is:
     - `cls_checksum()` -> str:
        Compute a semi-stable checksum for the provenance data for cls.
-    - `cls_checksums()` -> dict[type[WithClassProvenance], str]:
+    - `cls_checksums()` -> dict[type, str]:
        Compute the checksums of provenance data for cls, keyed by the type of the class
        that computed it.
     - `cls_provenance_json()` -> dict[str, str]:
        Compute provenance JSON data for cls, keyed by the type of the class that
        computed it.
-    - `cls_provenance()` -> dict[type[WithClassProvenance], ProvenanceT]:
+    - `cls_provenance()` -> dict[type, ProvenanceT]:
        Compute provenance data for cls, keyed by the type of the class that
        computed it.
 
@@ -65,7 +65,7 @@ class WithClassProvenance(_ComputeClassProvenance):
         cls,
         *,
         by: ComputeChecksumProvenanceT | None = None,
-    ) -> dict[type[WithClassProvenance], str]:
+    ) -> dict[type, str]:
         """Compute checksums for each participating base class.
 
         Returns: dict, mapping each participating class type to its computed checksum.
@@ -95,7 +95,7 @@ class WithClassProvenance(_ComputeClassProvenance):
     @classmethod
     def cls_provenance(
         cls,
-    ) -> dict[type[WithClassProvenance], ProvenanceT]:
+    ) -> dict[type, ProvenanceT]:
         """Compute provenance data for cls.
 
         Returns: dict, mapping each provenance provider type to its computed provenance data.

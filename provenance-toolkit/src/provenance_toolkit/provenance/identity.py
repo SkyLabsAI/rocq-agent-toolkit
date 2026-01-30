@@ -90,13 +90,13 @@ class WithClassIdentityProvenance(WithProvenance):
 
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type[WithClassProvenance], ProvenanceT]:
+    def compute_cls_provenance(cls) -> dict[type, ProvenanceT]:
         result = super().compute_cls_provenance()
         result[WithClassIdentityProvenance] = ClassIdentityProvenanceData(cls)
         return result
 
     @override
-    def compute_provenance(self) -> dict[type[WithInstanceProvenance], ProvenanceT]:
+    def compute_provenance(self) -> dict[type, ProvenanceT]:
         result = super().compute_provenance()
         result[WithClassIdentityProvenance] = ClassIdentityProvenanceData(type(self))
         return result

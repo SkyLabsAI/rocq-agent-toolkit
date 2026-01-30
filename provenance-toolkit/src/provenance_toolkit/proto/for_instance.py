@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class _ComputeInstanceProvenance(Protocol):
     """Protocol for computing instance provenance data."""
 
-    def compute_provenance(self) -> dict[type[WithInstanceProvenance], ProvenanceT]:
+    def compute_provenance(self) -> dict[type, ProvenanceT]:
         """Compute rich provenance of self.
 
         Returns a dictionary mapping each provenance provider type to its provenance data.
@@ -31,13 +31,13 @@ class WithInstanceProvenance(_ComputeInstanceProvenance):
     The core API is:
     - `checksum()` -> str:
        Compute a semi-stable checksum for the provenance data for self.
-    - `checksums()` -> dict[type[WithInstanceProvenance], str]:
+    - `checksums()` -> dict[type, str]:
        Compute the checksums of provenance data for self, keyed by the type of the class
        that computed it.
     - `provenance_json()` -> dict[str, str]:
        Compute provenance JSON data for self, keyed by the type of the class that
        computed it.
-    - `provenance()` -> dict[type[WithInstanceProvenance], ProvenanceT]:
+    - `provenance()` -> dict[type, ProvenanceT]:
        Compute provenance data for self, keyed by the type of the class that
        computed it.
 
@@ -62,7 +62,7 @@ class WithInstanceProvenance(_ComputeInstanceProvenance):
         self,
         *,
         by: ComputeChecksumProvenanceT | None = None,
-    ) -> dict[type[WithInstanceProvenance], str]:
+    ) -> dict[type, str]:
         """Compute checksums for each participating base class.
 
         Returns: dict, mapping each participating class type to its computed checksum.
@@ -90,7 +90,7 @@ class WithInstanceProvenance(_ComputeInstanceProvenance):
     @final
     def provenance(
         self,
-    ) -> dict[type[WithInstanceProvenance], ProvenanceT]:
+    ) -> dict[type, ProvenanceT]:
         """Compute provenance data for self.
 
         Returns: dict, mapping each provenance provider type to its computed provenance data.

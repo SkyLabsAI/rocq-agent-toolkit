@@ -46,13 +46,13 @@ class WithCustomProvenance(Provenance.Proto):
 
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type[Provenance.ProtoClass], Provenance.T]:
+    def compute_cls_provenance(cls) -> dict[type, Provenance.T]:
         result = super().compute_cls_provenance()
         result[WithCustomProvenance] = CustomProvenance()
         return result
 
     @override
-    def compute_provenance(self) -> dict[type[Provenance.ProtoInstance], Provenance.T]:
+    def compute_provenance(self) -> dict[type, Provenance.T]:
         result = super().compute_provenance()
         result[WithCustomProvenance] = CustomProvenance(
             data={"num": self._num}, instance=True
@@ -68,7 +68,7 @@ class C(A, WithCustomProvenance, VERSION="3.4.5"):
 class WithCustomProvenanceDerived(WithCustomProvenance):
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type[Provenance.ProtoClass], Provenance.T]:
+    def compute_cls_provenance(cls) -> dict[type, Provenance.T]:
         result = super().compute_cls_provenance()
         result[WithCustomProvenanceDerived] = CustomProvenance({"num": 21718})
         return result

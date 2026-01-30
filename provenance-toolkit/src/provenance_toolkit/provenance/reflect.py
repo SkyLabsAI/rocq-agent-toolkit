@@ -255,7 +255,7 @@ class WithReflectProvenance(WithProvenance):
 
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type[WithClassProvenance], ProvenanceT]:
+    def compute_cls_provenance(cls) -> dict[type, ProvenanceT]:
         result = super().compute_cls_provenance()
         data_dict = WithReflectProvenance._collect_annotated_data(cls, instance=None)
         result[WithReflectProvenance] = ReflectProvenanceData(
@@ -264,7 +264,7 @@ class WithReflectProvenance(WithProvenance):
         return result
 
     @override
-    def compute_provenance(self) -> dict[type[WithInstanceProvenance], ProvenanceT]:
+    def compute_provenance(self) -> dict[type, ProvenanceT]:
         result = super().compute_provenance()
         data_dict = WithReflectProvenance._collect_annotated_data(
             type(self), instance=self
