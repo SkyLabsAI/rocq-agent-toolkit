@@ -31,6 +31,7 @@ dev = [
     "pyright>=1.1.407",
     "ruff>=0.14.4",
     "taskipy>=1.14.1",
+    "ty>=0.0.14",
 ]
 
 [tool.uv]
@@ -54,6 +55,6 @@ where = ["src"]
 lint_ci = "ruff check"
 format_ci = "ruff format --check"
 reformat = "ruff format"
-typecheck_ci = "mypy --check-untyped-defs .; pyright ."
+typecheck_ci = "mypy --check-untyped-defs .; pyright .; ty check ."
 test_ci = "pytest"
 precommit = "task lint_ci --fix; task reformat; task typecheck_ci; task test_ci"
