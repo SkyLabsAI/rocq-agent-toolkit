@@ -101,7 +101,7 @@ val declare_object : _ api -> name:string -> ?descr:string -> ?default:'b
     behaviour. *)
 val declare : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ret:'b Schema.t -> ?ret_descr:string
-  -> ('s -> 'a -> 's * 'b) -> unit
+  -> ('s -> 'a -> 'b) -> unit
 
 (** [declare_full api ~name ...] is similar to [declare api ~name ...], but it
     allows a more general form of implementation that can report an error. The
@@ -112,7 +112,7 @@ val declare_full : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ret:'b Schema.t -> ?ret_descr:string
   -> err:'e Schema.t -> ?err_descr:string
   -> ?recoverable:bool
-  -> ('s -> 'a -> 's * ('b, string * 'e) Result.t) -> unit
+  -> ('s -> 'a -> ('b, string * 'e) Result.t) -> unit
 
 (** [run api ~ic ~oc s] starts an interactive request/response loop for [api].
     Requests are expected on channel [ic], and the corresponding responses are
@@ -122,7 +122,7 @@ val declare_full : 's api -> name:string -> ?descr:string -> args:'a Args.t
     [ic], or if the special ["quit"] request is received, the function returns
     the API state. An [Error] is returned only in case of protocol error. *)
 val run : 's api -> ic:In_channel.t -> oc:Out_channel.t
-  -> 's -> ('s, string) Result.t
+  -> 's -> (unit, string) Result.t
 
 (** [output_docs oc api] outputs markdown-formatted documentation for [api] to
     the output channel [oc]. *)

@@ -152,13 +152,13 @@ module SMap = Map.Make(String)
 
 type ('s, 'a, 'b) api_method_impl =
   | Pure : {
-      impl : ('s -> 'a -> 's * 'b);
+      impl : ('s -> 'a -> 'b);
     } -> ('s, 'a, 'b) api_method_impl
   | Rslt : {
       err : 'e Schema.t;
       err_descr : string option;
       recoverable : bool;
-      impl : ('s -> 'a -> 's * ('b, string * 'e) Result.t);
+      impl : ('s -> 'a -> ('b, string * 'e) Result.t);
     } -> ('s, 'a, 'b) api_method_impl
 
 type 's api_method = M : {
@@ -229,13 +229,6 @@ module Response = struct
       Printf.sprintf "Invalid parameters for method %s%s." f msg
     in
     error ~oc id J.Response.Error.Code.InvalidParams message
-
-  let reply ~oc id payload =
-    let response = J.Response.ok id payload in
-    Base.send ~oc (J.Packet.Response(response))
-
-  let ok ~oc id =
-    reply ~oc id `Null
 end
 
 let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
@@ -382,65 +375,61 @@ let notify_ready ~oc =
 
 let run api ~ic ~oc s =
   notify_ready ~oc;
-  let rec loop s =
+  let exception Exit in
+  let exception Err of string in
+  try while true do
     match Base.recv ~ic () with
-    | Error(msg)  -> Error(msg)
-    | Ok(None)    -> Ok(s)
+    | Error(msg)  -> raise (Err(msg))
+    | Ok(None)    -> raise Exit
     | Ok(Some(p)) ->
-    let r = match p with J.Packet.Request(r) -> Some(r) | _ -> None in
-    match r with
-    | None -> Error("not a request packet")
-    | Some(J.Request.{id; method_ = f; params}) ->
-    match (f, params) with
-    | ("quit", None           ) -> Response.ok ~oc id; Ok(s)
-    | ("quit", Some(`List([]))) -> Response.ok ~oc id; Ok(s)
-    | ("quit", _              ) -> Response.invalid_params ~oc id f; loop s
-    | (_     , _              ) ->
+    let (id, f, params) =
+      match p with
+      | J.Packet.Request(r) -> (r.id, r.method_, r.params)
+      | _                   -> raise (Err("not a request packet"))
+    in
     match SMap.find_opt f api.api_methods with
-    | None          -> Response.method_not_found ~oc id f; loop s
+    | None          -> Response.method_not_found ~oc id f
     | Some(M(spec)) ->
     match parse_params api spec.args params with
-    | Error(msg) -> Response.invalid_params ~oc id ~msg f; loop s
+    | Error(msg) -> Response.invalid_params ~oc id ~msg f
     | Ok(params) ->
-    let s =
-      match spec.impl with
-      | Pure(impl) ->
-          begin
-            match impl.impl s params with
-            | exception Invalid_argument(msg) ->
-                Response.invalid_params ~oc id ~msg f; s
-            | (s, ret)                        ->
-            let ret = to_json api spec.ret ret in
-            let response = J.Response.ok id ret in
-            Base.send ~oc (J.Packet.Response(response)); s
-          end
-      | Rslt(impl) ->
-          begin
-            match impl.impl s params with
-            | exception Invalid_argument(msg) ->
-                Response.invalid_params ~oc id ~msg f; s
-            | (s, ret_or_err)                 ->
-            let response =
-              match ret_or_err with
-              | Ok(ret)             ->
-                  let ret = to_json api spec.ret ret in
-                  J.Response.ok id ret
-              | Error(message, err) ->
-                  let data =
-                    match impl.err with
-                    | Null -> None
-                    | _    -> Some(to_json api impl.err err)
-                  in
-                  let code = J.Response.Error.Code.RequestFailed in
-                  let err = J.Response.Error.make ?data ~code ~message () in
-                  J.Response.error id err
-            in
-            Base.send ~oc (J.Packet.Response(response)); s
-          end
-    in
-    loop s
-  in
-  loop s
+    match spec.impl with
+    | Pure(impl) ->
+        begin
+          match impl.impl s params with
+          | exception Invalid_argument(msg) ->
+              Response.invalid_params ~oc id ~msg f
+          | ret                             ->
+          let ret = to_json api spec.ret ret in
+          let response = J.Response.ok id ret in
+          Base.send ~oc (J.Packet.Response(response))
+        end
+    | Rslt(impl) ->
+        begin
+          match impl.impl s params with
+          | exception Invalid_argument(msg) ->
+              Response.invalid_params ~oc id ~msg f
+          | ret_or_err                      ->
+          let response =
+            match ret_or_err with
+            | Ok(ret)             ->
+                let ret = to_json api spec.ret ret in
+                J.Response.ok id ret
+            | Error(message, err) ->
+                let data =
+                  match impl.err with
+                  | Null -> None
+                  | _    -> Some(to_json api impl.err err)
+                in
+                let code = J.Response.Error.Code.RequestFailed in
+                let err = J.Response.Error.make ?data ~code ~message () in
+                J.Response.error id err
+          in
+          Base.send ~oc (J.Packet.Response(response))
+        end
+  done with
+  | Exit   -> Ok(())
+  | Err(s) -> Error(s)
 
 let output_docs oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in

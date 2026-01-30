@@ -16,8 +16,8 @@ module IntMap = Map.Make(Int)
 (* NOTE: document update is imperative, so no need to update the map unless we
    are adding or removing an entry. *)
 type toplevel = {
-  cursors: Document.t IntMap.t;
-  fresh: int
+  mutable cursors: Document.t IntMap.t;
+  mutable fresh: int
 }
 type cursor = Document.t
 
@@ -51,7 +51,7 @@ end = struct
   let at_cursor action toplevel (cursor, args) =
     match IntMap.find_opt cursor toplevel.cursors with
     | None    -> invalid_arg "unknown cursor"
-    | Some(d) -> (toplevel, action d args)
+    | Some(d) -> action d args
 
   let declare_full ~name ?descr ~args ~ret ?ret_descr ~err ?err_descr
       ?recoverable action =
@@ -521,8 +521,9 @@ let _ =
   | Some(c) ->
   let new_cursor = Document.clone c in
   let index = d.fresh in
-  let cursors = IntMap.add index new_cursor d.cursors in
-  ({fresh = index + 1; cursors}, index)
+  d.cursors <- IntMap.add index new_cursor d.cursors;
+  d.fresh <- index + 1;
+  index
 
 let _ =
   let args =
@@ -535,7 +536,7 @@ let _ =
   match (IntMap.find_opt src d.cursors, IntMap.find_opt dst d.cursors) with
   | (None     , _        ) -> invalid_arg "unknown source cursor"
   | (_        , None     ) -> invalid_arg "unknown target cursor"
-  | (Some(src), Some(dst)) -> (d, Document.copy_contents ~from:src dst)
+  | (Some(src), Some(dst)) -> Document.copy_contents ~from:src dst
 
 let _ =
   let args =
@@ -548,7 +549,7 @@ let _ =
   | None    -> invalid_arg "unknown cursor"
   | Some(c) ->
   Document.stop c;
-  ({d with cursors = IntMap.remove cursor d.cursors}, ())
+  d.cursors <- IntMap.remove cursor d.cursors
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in
