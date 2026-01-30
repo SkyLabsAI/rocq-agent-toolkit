@@ -115,8 +115,6 @@ class RocqTacticAction(Action[RocqCursor]):
         no_evar: bool = False,
     ) -> None:
         """The tactic must be a Rocq tactic, **not** a Rocq command. See discussion above."""
-        # NOTE: some clients supply tactics with a trailing '.' and we strip it here.
-        tactic = tactic.strip().rstrip(".")
         ensure_tactic(tactic)
         # NOTE: we place the `progress` first, then the match
         tactic = f"progress ({tactic})" if progress else tactic
