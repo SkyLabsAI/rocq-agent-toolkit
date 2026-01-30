@@ -1,6 +1,6 @@
 import re
 from collections.abc import Callable
-from typing import Annotated, override
+from typing import Annotated, Literal, override
 
 from observability import get_logger
 from observability.tracing.decorators import trace
@@ -11,6 +11,7 @@ from ..action import Action
 
 logger = get_logger("rocq_agent")
 
+#
 # Rocq tactics and commands have a lot of variations that make dealing
 # with them complex. In an ideal world, we would get this information
 # from Rocq and operate at the abstract syntax level, but that requires
@@ -21,17 +22,20 @@ logger = get_logger("rocq_agent")
 #
 # - `Lemma foo : True.`
 # - `Hint Resolve foo : typeclass_instances.`
+# - `1,2: intro.
 #
 # Commands expose a very "raw", text-based level of interaction with Rocq
 # and can be used as an escape hatch when finer-grained APIs are not suitable.
 #
-# One way to build commands is via tactics, and we sometimes wish to
-# manipulate tactics, e.g. by adding `progress`, or running tactics on
-# resulting goals. Some example tactics are the following:
+# One way to build commands is via a tactic and an (optional) goal selector.
+# And we sometimes wish to  manipulate tactics, e.g. by adding `progress`,
+# or running tactics on resulting goals. The "constructor" for running
+# a tactic in a state is the following:
 #
-# - `intros`
-# - `1: reflexivity`
-# - `1,3: lia`
+# `[GOAL_SELECTOR:] <tactic>.`
+#
+# Where the `GOAL_SELECTOR` portion is optional and defaults to running the
+# tactic on the first goal.
 #
 # Tactics **do not** end in a `.`; tactic commands end in `.` or `...`[^..tactics],
 # but `...` is inessential sugar that we do not support for simplicity.
@@ -111,6 +115,9 @@ class RocqTacticAction(Action[RocqCursor]):
         self,
         tactic: str,
         *,
+        on_goals: list[int]
+        | Literal["all"]
+        | None = None,  # None = no goal selector, so first goal
         progress: bool = False,
         no_evar: bool = False,
     ) -> None:
@@ -125,7 +132,15 @@ class RocqTacticAction(Action[RocqCursor]):
             if no_evar
             else tactic
         )
-        self._tactic = tactic
+        if on_goals == "all":
+            self._tactic = f"all: {tactic}"
+        elif on_goals is None:
+            self._tactic = tactic
+        else:
+            assert isinstance(on_goals, list)
+            assert len(on_goals) >= 1
+            selector = ",".join(str(x) for x in on_goals)
+            self._tactic = f"{selector}: {tactic}"
 
     @override
     @trace("RocqTacticAction")
@@ -153,13 +168,13 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     """
     A Rocq action that retries using a given (often LLM-based) rectifier.
 
-    Inherits tactic execution from RocqTacticAction and adds:
+    Inherits command execution from `RocqCommandAction` and adds:
     - Cursor passed to rectifier for goal/context access
     - Real Rocq error message preservation
     - Retry loop with rectifier callback
 
-    After interact() completes successfully, use `final_tactic` to get the
-    tactic that actually succeeded (which may differ from the original if
+    After `interact()` completes successfully, use `final_command` to get the
+    command that actually succeeded (which may differ from the original if
     rectification occurred).
     """
 
@@ -179,8 +194,8 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     ) -> None:
         """
         Args:
-            tactic: Initial tactic string to try (tactics do not include the '.').
-            rectifier: Function (cursor, tactic, error) -> rectified_tactic | None
+            command: Initial command string to try.
+            rectifier: Function (cursor, command, error) -> rectified_tactic | None
             max_retries: Maximum number of rectification attempts
         """
         command = command.strip()
@@ -192,9 +207,9 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     @property
     def final_command(self) -> str | None:
         """
-        The tactic that actually succeeded (after any rectification).
+        The command that actually succeeded (after any rectification).
 
-        Returns None if interact() hasn't been called or failed.
+        Returns `None` if `interact()` hasn't been called or failed.
         Use this for logging/tracing what actually ran.
         """
         return self._final_command
@@ -241,15 +256,15 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     @override
     def key(self) -> str:
         """
-        Returns the original tactic for deduplication and loop detection.
+        Returns the original command for deduplication and loop detection.
 
-        We use the original (not rectified) tactic because:
+        We use the original (not rectified) command because:
         1. Deduplication: If the generator suggests "autoo." multiple times,
            we shouldn't retry it—it'll just rectify to the same thing.
         2. Loop detection: The repetition policy checks recent action keys
            to prevent cycles. Using original keys ensures we detect when
            the generator keeps suggesting the same broken tactic.
 
-        For the tactic that actually succeeded, use `final_tactic` instead.
+        For the command that actually succeeded, use `final_command` instead.
         """
         return self._initial_command
