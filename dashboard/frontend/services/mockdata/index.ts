@@ -19,6 +19,7 @@ export {
   getAgentInstanceTaskRunsMock,
   getDatasetInstanceRunsMock,
   getDetailsForDatasetMock,
+  getLatestRunsMock,
   getObservabilityLogsMock,
   getRunDetailsMock,
   getRunsByInstanceMock,

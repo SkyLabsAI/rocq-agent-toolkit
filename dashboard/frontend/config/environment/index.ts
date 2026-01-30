@@ -12,5 +12,9 @@ export const config = {
   DATA_API: process.env.NEXT_PUBLIC_DATA_API || 'http://localhost:8000/api',
   NODE_ENV: process.env.NODE_ENV || 'development',
   USE_MOCK_DATA: process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true',
+  LATEST_RUNS_LIMIT: parseInt(
+    process.env.NEXT_PUBLIC_LATEST_RUNS_LIMIT || '10',
+    10
+  ),
   // Add more environment variables as needed
 } as const;

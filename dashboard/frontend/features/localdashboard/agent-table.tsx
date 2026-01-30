@@ -1,4 +1,4 @@
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
 import Button from '@/components/base/ui/button';
@@ -14,7 +14,7 @@ import TaskSetView from './projectview';
 
 const AgentTable: React.FC = () => {
   const searchParams = useSearchParams();
-
+  const router = useRouter();
   // Initialize from URL params or default
   const initialTab =
     (searchParams.get('view') as 'agents' | 'datasets' | 'tasksets') ||
@@ -74,7 +74,7 @@ const AgentTable: React.FC = () => {
             }
           />
           <Button
-            onClick={() => window.location.reload()}
+            onClick={() => router.push('/')}
             disabled={false}
             variant='default'
             leftIcon={<RefreshIcon className='h-5 w-5' />}

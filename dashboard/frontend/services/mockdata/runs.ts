@@ -434,3 +434,221 @@ Qed.`,
   console.log(`Fetched task details for task ${taskId} (MOCK):`, mockTask);
   return mockTask;
 };
+
+/**
+ * Mock data for latest runs
+ */
+export const getLatestRunsMock = async (limit: number = 10): Promise<AgentRun[]> => {
+  await simulateDelay(300, 600);
+
+  // Predefined realistic run data
+  const predefinedRuns: AgentRun[] = [
+    {
+      run_id: 'bc9a4757-74b5-4fae-a9b4-97a1eecdb665',
+      agent_name: 'GPT4TacticAgent',
+      timestamp_utc: new Date(Date.now() - 1 * 3600000).toISOString(), // 1 hour ago
+      total_tasks: 45,
+      success_count: 42,
+      failure_count: 3,
+      dataset_id: 'mathlib_algebra',
+      metadata: {
+        tags: {
+          version: 'v2.1',
+          model: 'gpt-4-turbo',
+          environment: 'production',
+          priority: 'high',
+        },
+      },
+    },
+    {
+      run_id: '6169bedd-e162-4238-9a18-7fba40fa5aa4',
+      agent_name: 'ClaudeProofAgent',
+      timestamp_utc: new Date(Date.now() - 2.5 * 3600000).toISOString(), // 2.5 hours ago
+      total_tasks: 38,
+      success_count: 35,
+      failure_count: 3,
+      dataset_id: 'software_foundations',
+      metadata: {
+        tags: {
+          version: 'v2.0',
+          model: 'claude-3-opus',
+          environment: 'production',
+        },
+      },
+    },
+    {
+      run_id: 'a7f3c891-22e4-4b9a-b123-45678def9012',
+      agent_name: 'MistralReasoningAgent',
+      timestamp_utc: new Date(Date.now() - 4 * 3600000).toISOString(), // 4 hours ago
+      total_tasks: 50,
+      success_count: 38,
+      failure_count: 12,
+      dataset_id: 'lean_benchmark',
+      metadata: {
+        tags: {
+          version: 'v1.9',
+          model: 'mistral-large',
+          environment: 'staging',
+          priority: 'medium',
+        },
+      },
+    },
+    {
+      run_id: 'f9b2e3d4-5678-4abc-9def-012345678abc',
+      agent_name: 'GPT4TacticAgent',
+      timestamp_utc: new Date(Date.now() - 6 * 3600000).toISOString(), // 6 hours ago
+      total_tasks: 42,
+      success_count: 40,
+      failure_count: 2,
+      dataset_id: 'mathlib_topology',
+      metadata: {
+        tags: {
+          version: 'v2.1',
+          model: 'gpt-4-turbo',
+          environment: 'production',
+          experiment: 'baseline',
+        },
+      },
+    },
+    {
+      run_id: 'e1234567-89ab-cdef-0123-456789abcdef',
+      agent_name: 'LlamaCoqAgent',
+      timestamp_utc: new Date(Date.now() - 8 * 3600000).toISOString(), // 8 hours ago
+      total_tasks: 30,
+      success_count: 18,
+      failure_count: 12,
+      dataset_id: 'coq_stdlib',
+      metadata: {
+        tags: {
+          version: 'v1.5',
+          model: 'llama-3-70b',
+          environment: 'development',
+          priority: 'low',
+        },
+      },
+    },
+    {
+      run_id: 'c9876543-21fe-dcba-9876-543210fedcba',
+      agent_name: 'GeminiProofAgent',
+      timestamp_utc: new Date(Date.now() - 10 * 3600000).toISOString(), // 10 hours ago
+      total_tasks: 35,
+      success_count: 32,
+      failure_count: 3,
+      dataset_id: 'mathlib_algebra',
+      metadata: {
+        tags: {
+          version: 'v1.8',
+          model: 'gemini-pro',
+          environment: 'production',
+        },
+      },
+    },
+    {
+      run_id: 'd4567890-abcd-ef12-3456-7890abcdef12',
+      agent_name: 'ClaudeProofAgent',
+      timestamp_utc: new Date(Date.now() - 12 * 3600000).toISOString(), // 12 hours ago
+      total_tasks: 48,
+      success_count: 44,
+      failure_count: 4,
+      dataset_id: 'software_foundations',
+      metadata: {
+        tags: {
+          version: 'v2.0',
+          model: 'claude-3-opus',
+          environment: 'production',
+          priority: 'high',
+          experiment: 'optimized',
+        },
+      },
+    },
+    {
+      run_id: 'b7890123-4567-89ab-cdef-0123456789ab',
+      agent_name: 'GPT4TacticAgent',
+      timestamp_utc: new Date(Date.now() - 15 * 3600000).toISOString(), // 15 hours ago
+      total_tasks: 40,
+      success_count: 38,
+      failure_count: 2,
+      dataset_id: 'lean_benchmark',
+      metadata: {
+        tags: {
+          version: 'v2.0',
+          model: 'gpt-4',
+          environment: 'staging',
+        },
+      },
+    },
+    {
+      run_id: 'a2345678-90ab-cdef-0123-456789012345',
+      agent_name: 'MistralReasoningAgent',
+      timestamp_utc: new Date(Date.now() - 18 * 3600000).toISOString(), // 18 hours ago
+      total_tasks: 44,
+      success_count: 26,
+      failure_count: 18,
+      dataset_id: 'mathlib_topology',
+      metadata: {
+        tags: {
+          version: 'v1.9',
+          model: 'mistral-medium',
+          environment: 'development',
+          priority: 'low',
+        },
+      },
+    },
+    {
+      run_id: '98765432-10fe-dcba-9876-543210fedcba',
+      agent_name: 'LlamaCoqAgent',
+      timestamp_utc: new Date(Date.now() - 20 * 3600000).toISOString(), // 20 hours ago
+      total_tasks: 28,
+      success_count: 22,
+      failure_count: 6,
+      dataset_id: 'coq_stdlib',
+      metadata: {
+        tags: {
+          version: 'v1.6',
+          model: 'llama-3-70b',
+          environment: 'production',
+          experiment: 'cot',
+        },
+      },
+    },
+    {
+      run_id: '87654321-0fed-cba9-8765-4321fedcba98',
+      agent_name: 'GeminiProofAgent',
+      timestamp_utc: new Date(Date.now() - 22 * 3600000).toISOString(), // 22 hours ago
+      total_tasks: 36,
+      success_count: 33,
+      failure_count: 3,
+      dataset_id: 'software_foundations',
+      metadata: {
+        tags: {
+          version: 'v1.8',
+          model: 'gemini-ultra',
+          environment: 'production',
+          priority: 'high',
+        },
+      },
+    },
+    {
+      run_id: '76543210-fedc-ba98-7654-321fedcba987',
+      agent_name: 'ClaudeProofAgent',
+      timestamp_utc: new Date(Date.now() - 24 * 3600000).toISOString(), // 24 hours ago
+      total_tasks: 41,
+      success_count: 39,
+      failure_count: 2,
+      dataset_id: 'mathlib_algebra',
+      metadata: {
+        tags: {
+          version: 'v2.1',
+          model: 'claude-3-sonnet',
+          environment: 'production',
+        },
+      },
+    },
+  ];
+
+  // Return the requested number of runs
+  const runsToReturn = predefinedRuns.slice(0, Math.min(limit, predefinedRuns.length));
+
+  console.log(`Fetched ${runsToReturn.length} latest runs (MOCK)`, runsToReturn);
+  return runsToReturn;
+};

@@ -30,6 +30,12 @@ type Props = {
 const NODE_W = 220;
 const NODE_H = 120; // Increased to accommodate self-loop edges at the top
 
+// Edge spacing configuration
+const EDGE_CONFIG = {
+  // Margin for non-self-loop edges: label width + this margin
+  labelMargin: 0, // Horizontal margin around label (20px on each side)
+};
+
 const TacticGraphView = ({
   graph,
   selectedNodeId,
@@ -137,11 +143,20 @@ const TacticGraphView = ({
         const isSelfLoop = edge.source === edge.target;
         const edgeId = `edge-${edgeIndex++}`;
 
+        // Process label: extract function name from insert_command()
+        let processedLabel = edge.label;
+        const insertCommandMatch = processedLabel.match(
+          /^insert_command\((.+)\)$/
+        );
+        if (insertCommandMatch) {
+          processedLabel = insertCommandMatch[1];
+        }
+
         // Truncate label to 100 characters
         const truncatedLabel =
-          edge.label.length > 100
-            ? `${edge.label.slice(0, 100)}...`
-            : edge.label;
+          processedLabel.length > 100
+            ? `${processedLabel.slice(0, 100)}...`
+            : processedLabel;
 
         edges.push({
           id: edgeId,
@@ -344,34 +359,74 @@ const TacticGraphView = ({
   );
 };
 
+// Measure exact text width using Canvas API
+// Matches label styling: fontSize 10, fontWeight 500
+let canvasContext: CanvasRenderingContext2D | null = null;
+const getCanvasContext = (): CanvasRenderingContext2D => {
+  if (!canvasContext) {
+    const canvas = document.createElement('canvas');
+    canvasContext = canvas.getContext('2d')!;
+    // Match label font styling: fontSize 10, fontWeight 500
+    canvasContext.font =
+      '500 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  }
+  return canvasContext;
+};
+
+const measureLabelWidth = (label: string | undefined): number => {
+  if (!label) return 0;
+
+  const ctx = getCanvasContext();
+  const textWidth = ctx.measureText(label).width;
+
+  // Add horizontal padding: labelBgPadding [4, 6] = 12px total (6px * 2)
+  return textWidth + 12;
+};
+
 function layoutDagre<T extends Record<string, unknown>>(
   nodes: Array<Node<T>>,
   edges: Edge[]
 ) {
   const g = new dagre.graphlib.Graph();
 
-  // Calculate spacing based on label lengths
-  const estimateLabelWidth = (label: string | undefined): number => {
-    if (!label) return 0;
-    return label.length * 6.5 + 12 + 8;
-  };
-
   const edgeSpacingMap = new Map<string, number>();
-  const baseRanksep = 500; // Increased from 100 to 180 to accommodate 100-char labels
+  const baseRanksep = 500; // Base spacing for self-loops and edges without labels
   const baseNodesep = 200; // Increased from 50 to 60 for better vertical spacing
 
   for (const edge of edges) {
-    const labelWidth = estimateLabelWidth(edge.label as string | undefined);
-    const nodeBuffer = 20;
-    const padding = 10;
-    const requiredSpacing =
-      labelWidth > 0
-        ? nodeBuffer + labelWidth + nodeBuffer + padding
-        : baseRanksep;
-    edgeSpacingMap.set(edge.id, requiredSpacing);
+    const isSelfLoop = edge.type === 'selfloop';
+    const labelWidth = measureLabelWidth(edge.label as string | undefined);
+
+    if (isSelfLoop) {
+      // Self-loops use base spacing
+      edgeSpacingMap.set(edge.id, baseRanksep);
+    } else {
+      // Non-self-loop edges: label width + configurable margin
+      // For edges without labels, use a minimal spacing (margin only)
+      const requiredSpacing =
+        labelWidth > 0
+          ? labelWidth + EDGE_CONFIG.labelMargin
+          : EDGE_CONFIG.labelMargin;
+      edgeSpacingMap.set(edge.id, requiredSpacing);
+    }
   }
 
-  g.setGraph({ rankdir: 'LR', nodesep: baseNodesep, ranksep: baseRanksep });
+  // Calculate ranksep: use max spacing from non-self-loop edges (label width + margin)
+  // This makes non-self-loop edges tight while self-loops may also be tighter
+  const nonSelfLoopSpacings = Array.from(edgeSpacingMap.entries())
+    .filter(([edgeId]) => {
+      const edge = edges.find(e => e.id === edgeId);
+      return edge && edge.type !== 'selfloop';
+    })
+    .map(([, spacing]) => spacing);
+
+  // Use max non-self-loop spacing, or fallback to base if no non-self-loops exist
+  const ranksep =
+    nonSelfLoopSpacings.length > 0
+      ? Math.max(...nonSelfLoopSpacings)
+      : baseRanksep;
+
+  g.setGraph({ rankdir: 'LR', nodesep: baseNodesep, ranksep });
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const n of nodes) g.setNode(n.id, { width: NODE_W, height: NODE_H });

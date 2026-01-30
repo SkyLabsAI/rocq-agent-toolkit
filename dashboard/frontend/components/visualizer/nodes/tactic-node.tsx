@@ -17,7 +17,7 @@ const TacticNode = (props: NodeProps) => {
   const { node, hasError } = data;
 
   const base =
-    'rounded-lg border-2 px-3 py-2 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)] relative min-w-[200px]';
+    'rounded-full border-2 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.08)] relative w-12 h-12 flex items-center justify-center';
 
   const border = hasError
     ? 'border-border-warning'
@@ -28,7 +28,7 @@ const TacticNode = (props: NodeProps) => {
   const bg = hasError ? 'bg-background-warning' : 'bg-elevation-surface-raised';
 
   return (
-    <div className={`${base} ${border} ${bg} w-full`}>
+    <div className={`${base} ${border} ${bg}`}>
       <Handle
         type='target'
         position={Position.Left}
@@ -37,6 +37,9 @@ const TacticNode = (props: NodeProps) => {
           height: 8,
           background: 'var(--color-border-bold)',
           border: 'none',
+          left: 0,
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
         }}
       />
       <Handle
@@ -47,6 +50,9 @@ const TacticNode = (props: NodeProps) => {
           height: 8,
           background: 'var(--color-border-bold)',
           border: 'none',
+          right: 0,
+          top: '50%',
+          transform: 'translate(50%, -50%)',
         }}
       />
 
@@ -56,11 +62,6 @@ const TacticNode = (props: NodeProps) => {
           ⚠
         </div>
       )}
-
-      {/* Node ID - Full display */}
-      <div className='text-[11px] font-mono text-text font-semibold mb-2 break-all'>
-        {node.id}
-      </div>
     </div>
   );
 };
