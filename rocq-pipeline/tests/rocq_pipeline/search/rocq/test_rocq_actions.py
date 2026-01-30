@@ -39,10 +39,19 @@ class TestRocqTacticAction:
         action = RocqTacticAction("reflexivity")
         assert action.key() == "reflexivity"
 
-    def test_reject_invalid_tactic(self) -> None:
-        with pytest.raises(AssertionError) as exc_info:
-            RocqTacticAction("  reflexivity  ")
-        print(exc_info.value)
+    def test_normalize_whitespace_and_periods(self) -> None:
+        """Tactics with whitespace and trailing periods are normalized."""
+        # Test whitespace normalization
+        action1 = RocqTacticAction("  reflexivity  ")
+        assert action1.key() == "reflexivity"
+
+        # Test period stripping
+        action2 = RocqTacticAction("apply H.")
+        assert action2.key() == "apply H"
+
+        # Test both together
+        action3 = RocqTacticAction("  auto.  ")
+        assert action3.key() == "auto"
 
 
 class TestRocqRetryAction:
