@@ -53,7 +53,8 @@ def _trace_log(
             args_dict = dict(bound_args.arguments)
 
             # it is important that we get the location before we run the function
-            log_args: dict[str, Any] = {"before": self.location_info()}
+            before_loc = self.location_info()
+            log_args: dict[str, Any] = {"before": before_loc}
             log_args["args"] = fn_input(self, args_dict)
             if cmd:
                 log_args["action"] = cmd(args_dict)
@@ -64,7 +65,13 @@ def _trace_log(
                     log_args["result_type"] = str(type(result))
                     log_args["error"] = isinstance(result, RocqCursor.Err)
                 if after:
-                    log_args["after"] = self.location_info()
+                    after_loc = self.location_info()
+                    log_args["after"] = after_loc
+                    before_idx = before_loc.get("index")
+                    after_idx = after_loc.get("index")
+                    if isinstance(before_idx, int) and isinstance(after_idx, int):
+                        delta = after_idx - before_idx
+                        log_args["delta"] = delta
                 logger.info(f"RocqCursor.{func.__name__}", **log_args)
                 return result
             except Exception as err:

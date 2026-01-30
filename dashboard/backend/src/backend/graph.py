@@ -78,16 +78,24 @@ def _maybe_json(value: Any) -> Any:
 
 def _extract_proof_Script(edges: list[GraphEdge]) -> str:
     proof_script = ""
-    ptrn = re.compile(r"^insert_command\((.*)\)$", re.DOTALL)
+    insert_ptrn = re.compile(r"^insert_command\((.*)\)$", re.DOTALL)
+    revert_ptrn = re.compile(r"^revert_before\((.*)\)$", re.DOTALL)
     for edge in edges:
         status = edge.information.get("error", None)
-        match = ptrn.match(edge.label)
-        if match:
-            tactic = match.group(1)
+        insert_match = insert_ptrn.match(edge.label)
+        if insert_match:
+            tactic = insert_match.group(1)
             if status:
                 proof_script += f"(* {tactic} *) (* Failed *)\n"
             else:
                 proof_script += f"{tactic}\n"
+            continue
+
+        # `revert_before` is not a Rocq command; include it as a comment for traceability.
+        revert_match = revert_ptrn.match(edge.label)
+        if revert_match:
+            delta = revert_match.group(1)
+            proof_script += f"(* revert_before({delta}) *)\n"
 
     return proof_script
 
@@ -126,11 +134,17 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
                     elif error.lower() == "false":
                         error = False
                 info["error"] = error
+
             if not error:
                 # so that only proof state information is added to the node
                 graph.add_information(after, info)
 
             args = log.labels.get("args", None)
+            # For revert_before, prefer the computed delta (if present) for a simple label.
+            if cmd == "revert_before":
+                delta = log.labels.get("delta", None)
+                if delta is not None:
+                    args = delta
             label = f"{cmd}({args})" if args else f"{cmd}()"
             graph.add_edge(before, after, label=label, information=info)
 
