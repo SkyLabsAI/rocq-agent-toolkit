@@ -2,6 +2,21 @@
 
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
 
+// Configuration: Easy to tweak edge and label positioning
+const CONFIG = {
+  // Edge positioning
+  nodeRadius: 24,
+  horizontalShift: 24, // How far left to shift the entire edge path
+  baseHeight: 60, // Initial vertical height of the first loop
+  heightIncrement: 80, // Vertical spacing between multiple loops on same node
+
+  // Label positioning (independent from edge height)
+  labelBaseHeight: 60 - 24 / 2, // Initial vertical height for label positioning
+  labelHeightIncrement: 60, // Vertical spacing for labels between multiple loops
+  labelOffsetX: 0, // Horizontal offset: positive = right, negative = left
+  labelOffsetY: 0, // Vertical offset: positive = down, negative = up
+};
+
 const SelfLoopEdge = ({
   id,
   sourceX,
@@ -15,34 +30,28 @@ const SelfLoopEdge = ({
   const offset = (data?.offset as number) || 0;
   const onEdgeClick = (data?.onEdgeClick as (() => void) | undefined) || null;
 
-  // Node dimensions (must match tactic-graph-view.tsx)
-  const NODE_WIDTH = 220;
-  const NODE_HEIGHT = 120;
+  const startX = sourceX - CONFIG.nodeRadius - CONFIG.horizontalShift;
+  const startY = sourceY;
+  const endX = sourceX + CONFIG.nodeRadius - CONFIG.horizontalShift;
+  const endY = sourceY;
 
-  // Get node's top-left corner (using user's modification)
-  const nodeLeft = sourceX - NODE_WIDTH;
-  const nodeTop = sourceY - NODE_HEIGHT / 3;
+  const edgeHeight = CONFIG.baseHeight + offset * CONFIG.heightIncrement;
+  const labelHeight =
+    CONFIG.labelBaseHeight + offset * CONFIG.labelHeightIncrement;
 
-  // All loops start and end at the same points on the node's top edge
-  const startX = nodeLeft + 30; // Fixed start point (30px from left edge)
-  const endX = nodeLeft + NODE_WIDTH - 30; // Fixed end point (30px from right edge)
-  const y = nodeTop;
+  const control1X = startX;
+  const control1Y = startY - edgeHeight;
+  const control2X = endX;
+  const control2Y = endY - edgeHeight;
 
-  // Each loop gets progressively larger radius (stacks vertically)
-  const baseRadius = 40;
-  const radiusIncrement = 100; // Each loop adds 25px to radius
-  const loopRadius = baseRadius + offset * radiusIncrement;
-
-  // Create circular arc - control points determine the height
-  const centerX = (startX + endX) / 2;
   const path = `
-    M ${startX},${y}
-    Q ${centerX},${y - loopRadius} ${endX},${y}
+    M ${startX},${startY}
+    C ${control1X},${control1Y} ${control2X},${control2Y} ${endX},${endY}
   `;
 
-  // Label at the apex of each loop (different heights for each)
-  const labelX = centerX;
-  const labelY = y - loopRadius / 2;
+  // Label position: adjust labelOffsetX and labelOffsetY to position label on the edge
+  const labelX = sourceX - CONFIG.horizontalShift + CONFIG.labelOffsetX;
+  const labelY = sourceY - labelHeight + CONFIG.labelOffsetY;
 
   return (
     <>
