@@ -119,7 +119,7 @@ def get_groundtruth_script(
         if first_lemma is None:
             return None
 
-        def find_lemma(text: str, kind: str) -> bool:
+        def find_lemma(text: str, kind: Literal["blanks", "command", "ghost"]) -> bool:
             parts = text.split(None, 1)  # splitting on whitespace
             if len(parts) != 2:
                 return False  # raise ValueError("Input string must contain two parts separated by whitespace.")
@@ -140,7 +140,7 @@ def get_groundtruth_script(
                 res = False
             return res
 
-        found = rc.advance_to_first_match(find_lemma)
+        found = rc.goto_first_match(find_lemma)
         if not found:
             print(f"❌ Error: Could not find lemma {str(first_lemma)} in file.")
             return None
