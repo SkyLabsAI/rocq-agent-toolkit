@@ -16,7 +16,7 @@ from pydantic import (
 )
 from pydantic.fields import Field
 
-from rocq_pipeline.locator import Locator, LocatorParser
+from rocq_pipeline.locator import Locator
 
 
 class Project(BaseModel):
@@ -87,7 +87,7 @@ class Task(BaseModel):
     def parse_locator_string(cls, value: str | Locator) -> Locator:
         if isinstance(value, Locator):
             return value
-        return LocatorParser.parse(value)
+        return Locator.parse(value)
 
     @field_validator("tags")
     @classmethod
