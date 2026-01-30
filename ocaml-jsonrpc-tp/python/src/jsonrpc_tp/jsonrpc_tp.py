@@ -223,6 +223,7 @@ class JsonRPCTP:
     def quit(self) -> None:
         if self._process is None:
             return
-        _ = self.raw_request("quit", [])
+        assert self._process.stdin is not None
+        self._process.stdin.close()
         self._process.wait()
         self._process = None

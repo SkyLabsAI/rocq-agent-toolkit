@@ -10,6 +10,7 @@ let output_packet i m params =
 
 let rec process_lines i =
   match In_channel.input_line stdin with None -> () | Some(line) ->
+  match String.trim line with "" -> process_lines i | line ->
   let (m, params) =
     match String.index_opt line ' ' with
     | None    -> (line, None)

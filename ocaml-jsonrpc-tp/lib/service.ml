@@ -215,3 +215,51 @@ let run : ic:In_channel.t -> oc:Out_channel.t -> workers:int ->
   List.iter Domain.join workers;
   Domain.join responder;
   status
+
+let run_seq : ic:In_channel.t -> oc:Out_channel.t ->
+    handle_request:request_handler ->
+    handle_notification:notification_handler -> (unit, string) Result.t =
+    fun ~ic ~oc ~handle_request ~handle_notification ->
+  let notify ~name ~params =
+    let n = Jsonrpc.Notification.create ~method_:name ?params () in
+    Base.send ~oc (Jsonrpc.Packet.Notification(n))
+  in
+  let notify_ignored ~name:_ ~params:_ = () in
+  let rec loop () =
+    match Base.recv ~ic () with
+    | Ok(None) ->
+        Ok(())
+    | Ok(Some(Jsonrpc.Packet.Request(r))) ->
+        let Jsonrpc.Request.{id; method_=name; params} = r in
+        let result = handle_request ~name ~params ~notify in
+        let response = Jsonrpc.Response.{id; result} in
+        Base.send ~oc (Jsonrpc.Packet.Response(response));
+        loop ()
+    | Ok(Some(Jsonrpc.Packet.Batch_call(ps))) ->
+        let handle rs p =
+          match p with
+          | `Request(r)      ->
+              let Jsonrpc.Request.{id; method_=name; params} = r in
+              let result = handle_request ~name ~params ~notify in
+              let response = Jsonrpc.Response.{id; result} in
+              response :: rs
+          | `Notification(n) ->
+              let Jsonrpc.Notification.{method_=name; params} = n in
+              handle_notification ~name ~params ~notify:notify_ignored;
+              rs
+        in
+        let rs = List.fold_left handle [] ps in
+        if rs <> [] then Base.send ~oc (Jsonrpc.Packet.Batch_response(rs));
+        loop ()
+    | Ok(Some(Jsonrpc.Packet.Notification(n))) ->
+        let Jsonrpc.Notification.{method_=name; params} = n in
+        handle_notification ~name ~params ~notify:notify_ignored;
+        loop ()
+    | Ok(Some(Jsonrpc.Packet.Response(_))) ->
+        Error("Unexpected response received.")
+    | Ok(Some(Jsonrpc.Packet.Batch_response(_))) ->
+        Error("Unexpected batch response received.")
+    | Error(s) ->
+        Error("Invalid packet received: " ^ s ^ ".")
+  in
+  loop ()

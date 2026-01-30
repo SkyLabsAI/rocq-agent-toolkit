@@ -3,12 +3,14 @@
   > run [0,"Require Import Stdlib.ZArith.BinInt."]
   > run [0,"Require Import Stdlib.ZArith.BinIntt"]
   > run [0,"Require Import Stdlib.ZArith.BinInk."]
+  >   
   > run [0,"Lemma test : 0 = 0."]
   > run [0,"Proof."]
   > run [0,"reflexivity."]
   > run [0,"Qed."]
   > run [37,"About test."]
   > back_to [3]
+  > 
   > run [37,"About test."]
   > quit
   > EOF
