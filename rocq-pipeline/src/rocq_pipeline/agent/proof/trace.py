@@ -32,7 +32,7 @@ class TraceAgent(ProofAgent):
         self._stop_on_failure = stop_on_failure
         self._history: list[TacticApplication] = []
 
-    def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
+    async def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
         """Get the next tactic string from the agent, or a TaskResult if the agent gives up."""
         return self.give_up(rdm, message="Not implemented")
 
@@ -52,7 +52,7 @@ class TraceAgent(ProofAgent):
         self._history.append(tac_app)
 
     @override
-    def prove(self, rdm: RocqCursor) -> TaskResult:
+    async def prove(self, rdm: RocqCursor) -> TaskResult:
         """Keep trying to prove via next tactic prediction."""
 
         while True:
@@ -80,7 +80,7 @@ class TraceAgent(ProofAgent):
             # NOTE: overriders of `next` may emit additional logs
             # related to tactic prediction; we may want to create a (nested)
             # span here.
-            next_tac_or_result: str | TaskResult = self.next_tac(rdm)
+            next_tac_or_result: str | TaskResult = await self.next_tac(rdm)
             if isinstance(next_tac_or_result, TaskResult):
                 return next_tac_or_result
             assert isinstance(next_tac_or_result, str)

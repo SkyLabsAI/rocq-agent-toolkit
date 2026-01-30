@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys
 from argparse import ArgumentParser
@@ -27,7 +28,7 @@ def run_proving_agent(
             print(f"Goal {i}:{g.replace('\n', '\n  ')}")
         agent = agent_cls()
         local_rc = main_rc.clone()
-        task_result = agent.run(rc=local_rc)
+        task_result = asyncio.run(agent.run(rc=local_rc))
         if task_result.success:
             print("Agent succeeded.")
             local_rc.clear_suffix(count=1)

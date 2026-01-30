@@ -62,7 +62,7 @@ class StrategyAgent(ProofAgent):
         return ProofState(reply)
 
     @override
-    def prove(self, rc: RocqCursor) -> TaskResult:
+    async def prove(self, rc: RocqCursor) -> TaskResult:
         # Note: `prepare` uses `Strategy.MutableContext` so derivers can incrementalize
         # construction via super().prepare calls, but prove/rollout promises to leave
         # it unchanged.

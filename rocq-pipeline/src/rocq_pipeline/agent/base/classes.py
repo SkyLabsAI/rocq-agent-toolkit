@@ -21,7 +21,7 @@ logger = get_logger("rocq_agent")
 class Agent(Provenance.Full):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
-    def run(self, rdm: RocqCursor) -> TaskResult:
+    async def run(self, rdm: RocqCursor) -> TaskResult:
         """Entrypoint; use rdm to attempt a task and report the result. The
         rdm cursor is updated to reflect the changes to the proof, even in
         case of failure (partial progress is kept)."""
@@ -110,7 +110,7 @@ class ProofAgent(Agent):
             raise RuntimeError(f"{goal_ty_upperbound} is not a subclass of RocqGoal")
         self._goal_ty_upperbound = goal_ty_upperbound
 
-    def prove(self, rc: RocqCursor) -> TaskResult:
+    async def prove(self, rc: RocqCursor) -> TaskResult:
         """Prove the current goal using the restricted proof session.
 
         This method is called by run() after setting up a RocqProofSession.
@@ -119,7 +119,7 @@ class ProofAgent(Agent):
         return self.give_up(rc, message="Not implemented")
 
     @override
-    def run(self, rc: RocqCursor) -> TaskResult:
+    async def run(self, rc: RocqCursor) -> TaskResult:
         """Run the agent after ensuring there is a goal to prove."""
         goal_reply = rc.current_goal()
         if goal_reply is None:
@@ -127,7 +127,7 @@ class ProofAgent(Agent):
         if isinstance(goal_reply, RocqCursor.Err):
             return self.give_up(rc, message="No goal to prove", reason=goal_reply)
         # TODO: validate that no goals remain.
-        return self.prove(rc)
+        return await self.prove(rc)
 
     def current_proof_state(
         self,
