@@ -1,7 +1,13 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import Button from '@/components/base/ui/button';
 import Modal from '@/components/base/ui/modal';
@@ -18,6 +24,7 @@ import {
 } from '@/services/dataservice';
 import { type TaskSet, type TaskSetResults } from '@/types/types';
 
+import AddTagModal from './add-tag-modal';
 import ProjectTaskDetailsModal from './task-details-modal';
 import TaskInfoModal from './task-info-modal';
 
@@ -87,6 +94,15 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     agentName: '',
   });
   const [taskInfoModalState, setTaskInfoModalState] = useState<{
+    isOpen: boolean;
+    taskId: number;
+    taskName: string;
+  }>({
+    isOpen: false,
+    taskId: -1,
+    taskName: '',
+  });
+  const [addTagModalState, setAddTagModalState] = useState<{
     isOpen: boolean;
     taskId: number;
     taskName: string;
@@ -501,6 +517,34 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
       setIsCreatingDataset(false);
     }
   };
+
+  const handleTagAddSuccess = useCallback(() => {
+    setToastType('success');
+    setToastMessage('Successfully added tag(s) to task');
+    // Reload data after 1 second to show updated tags
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  }, []);
+
+  const handleOpenAddTagModal = useCallback(
+    (taskId: number, taskName: string) => {
+      setAddTagModalState({
+        isOpen: true,
+        taskId,
+        taskName,
+      });
+    },
+    []
+  );
+
+  const handleCloseAddTagModal = useCallback(() => {
+    setAddTagModalState({
+      isOpen: false,
+      taskId: -1,
+      taskName: '',
+    });
+  }, []);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -1175,19 +1219,34 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
                             className='mt-1 w-4 h-4 rounded border-elevation-surface-overlay text-background-accent-gray-subtlest focus:ring-2 focus:ring-border-focused'
                           />
                           <div className='flex flex-col gap-1 flex-1'>
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                setTaskInfoModalState({
-                                  isOpen: true,
-                                  taskId: task.task_id,
-                                  taskName: task.task_name,
-                                });
-                              }}
-                              className='text-left hover:text-text-information transition-colors cursor-pointer'
-                            >
-                              {task.task_name}
-                            </button>
+                            <div className='flex items-center gap-2'>
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setTaskInfoModalState({
+                                    isOpen: true,
+                                    taskId: task.task_id,
+                                    taskName: task.task_name,
+                                  });
+                                }}
+                                className='text-left hover:text-text-information transition-colors cursor-pointer flex-1'
+                              >
+                                {task.task_name}
+                              </button>
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleOpenAddTagModal(
+                                    task.task_id,
+                                    task.task_name
+                                  );
+                                }}
+                                className='px-2 py-1 text-xs bg-elevation-surface-raised border border-elevation-surface-overlay rounded text-text hover:bg-elevation-surface-sunken transition-colors whitespace-nowrap'
+                                title='Add tags to this task'
+                              >
+                                + Tag
+                              </button>
+                            </div>
                             {task.tags && Object.keys(task.tags).length > 0 && (
                               <div className='mt-1'>
                                 <TagsDisplay
@@ -1387,6 +1446,15 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Add Tag Modal */}
+      <AddTagModal
+        isOpen={addTagModalState.isOpen}
+        onClose={handleCloseAddTagModal}
+        taskId={addTagModalState.taskId}
+        taskName={addTagModalState.taskName}
+        onSuccess={handleTagAddSuccess}
+      />
 
       {/* Toast Notification */}
       <Toast
