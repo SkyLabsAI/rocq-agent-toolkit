@@ -305,7 +305,7 @@ class WithReflectProvenance(WithProvenance):
                 continue
             metadata = list(args[1:]) if len(args) > 1 else []
 
-            reflect: WithReflectProvenance.Field | None = None
+            reflect: WithReflectProvenance.Field[Any] | None = None
             for meta in metadata:
                 if isinstance(meta, WithReflectProvenance.Field):
                     # This includes CallableField since it inherits from Field
@@ -344,7 +344,7 @@ class WithReflectProvenance(WithProvenance):
 
     @staticmethod
     def _reflect_field[T](
-        value: T,
+        value: T | None,
         reflect: WithReflectProvenance.Field[T],
         field_name: str,
         is_cls_provenance: bool,
@@ -368,7 +368,7 @@ class WithReflectProvenance(WithProvenance):
             Reflected field value
         """
         # Priority 1: Explicit transform
-        if reflect.transform is not None:
+        if reflect.transform is not None and value is not None:
             try:
                 return reflect.transform(value)
             except (ValueError, TypeError, AttributeError) as e:
