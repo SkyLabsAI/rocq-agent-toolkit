@@ -56,10 +56,10 @@ class RocqCursor(RocqCursorProtocol):
         return result
 
     @override
-    def copy_contents(self, dst: RocqCursorProtocol) -> None:
-        assert isinstance(dst, RocqCursor)  # This is a bit of a leak
-        assert self._rdm == dst._rdm  # can not copy across backends
-        self._rdm.copy_contents(src=self._cursor, dst=dst._cursor)
+    def copy_contents(self, dest: RocqCursorProtocol) -> None:
+        assert isinstance(dest, RocqCursor)  # This is a bit of a leak
+        assert self._rdm == dest._rdm  # can not copy across backends
+        self._rdm.copy_contents(src=self._cursor, dst=dest._cursor)
 
     @override
     def commit(
