@@ -603,8 +603,8 @@ const TracesVisualization = ({
                     disabled={depth > maxPossibleDepth}
                     className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                       maxDepth === depth
-                        ? 'bg-primary-default text-white border-primary-default'
-                        : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                        ? 'bg-background-brand-bold text-white border-background-brand-bold font-medium'
+                        : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay hover:border-border-bold'
                     } ${depth > maxPossibleDepth ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
                     {depth}
@@ -614,8 +614,8 @@ const TracesVisualization = ({
                   onClick={() => onDepthChange(null)}
                   className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                     maxDepth === null
-                      ? 'bg-primary-default text-white border-primary-default'
-                      : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                      ? 'bg-background-brand-bold text-white border-background-brand-bold font-medium'
+                      : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay hover:border-border-bold'
                   }`}
                 >
                   All
@@ -666,69 +666,69 @@ const TracesVisualization = ({
       {/* Right panel - Span details and logs */}
       {isRightPanelOpen && (
         <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
-        <div className='p-4 space-y-4'>
-          {/* Span details section */}
-          <div>
-            <div className='flex items-center justify-between gap-2 mb-3'>
-              <div className='text-sm text-text font-semibold'>
-                Span details
-              </div>
-              {selectedSpan ? (
-                <div className='text-xs text-text-disabled'>
-                  {selectedSpan.service_name} •{' '}
-                  {selectedSpan.span_id.slice(0, 12)}…
+          <div className='p-4 space-y-4'>
+            {/* Span details section */}
+            <div>
+              <div className='flex items-center justify-between gap-2 mb-3'>
+                <div className='text-sm text-text font-semibold'>
+                  Span details
                 </div>
-              ) : null}
+                {selectedSpan ? (
+                  <div className='text-xs text-text-disabled'>
+                    {selectedSpan.service_name} •{' '}
+                    {selectedSpan.span_id.slice(0, 12)}…
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedSpan ? (
+                <div className='space-y-3'>
+                  <div>
+                    <div className='text-sm text-text font-semibold'>
+                      {selectedSpan.name}
+                    </div>
+                    <div className='text-xs text-text-disabled'>
+                      {selectedSpan.service_name}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className='text-xs text-text-disabled mb-1'>
+                      Attributes
+                    </div>
+                    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
+                      <pre className='text-xs text-text whitespace-pre-wrap'>
+                        {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className='text-sm text-text-disabled'>
+                  Select a span node to see details and logs.
+                </div>
+              )}
             </div>
 
-            {selectedSpan ? (
-              <div className='space-y-3'>
-                <div>
-                  <div className='text-sm text-text font-semibold'>
-                    {selectedSpan.name}
-                  </div>
-                  <div className='text-xs text-text-disabled'>
-                    {selectedSpan.service_name}
-                  </div>
+            {/* Logs section */}
+            <div className='border-t border-elevation-surface-overlay pt-4'>
+              <div className='text-sm text-text font-semibold mb-3'>Logs</div>
+
+              {!selectedSpan ? (
+                <div className='text-sm text-text-disabled'>—</div>
+              ) : logsLoading ? (
+                <div className='flex items-center gap-2 text-sm text-text-disabled'>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
+                  Loading logs…
                 </div>
-
-                <div>
-                  <div className='text-xs text-text-disabled mb-1'>
-                    Attributes
-                  </div>
-                  <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
-                    <pre className='text-xs text-text whitespace-pre-wrap'>
-                      {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className='text-sm text-text-disabled'>
-                Select a span node to see details and logs.
-              </div>
-            )}
-          </div>
-
-          {/* Logs section */}
-          <div className='border-t border-elevation-surface-overlay pt-4'>
-            <div className='text-sm text-text font-semibold mb-3'>Logs</div>
-
-            {!selectedSpan ? (
-              <div className='text-sm text-text-disabled'>—</div>
-            ) : logsLoading ? (
-              <div className='flex items-center gap-2 text-sm text-text-disabled'>
-                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
-                Loading logs…
-              </div>
-            ) : logs ? (
-              <LogsDisplay logs={logs} />
-            ) : (
-              <div className='text-sm text-text-disabled'>No logs.</div>
-            )}
+              ) : logs ? (
+                <LogsDisplay logs={logs} />
+              ) : (
+                <div className='text-sm text-text-disabled'>No logs.</div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       )}
     </>
   );
@@ -828,8 +828,8 @@ const UnifiedVisualization = ({
                     disabled={depth > maxPossibleDepth}
                     className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                       maxDepth === depth
-                        ? 'bg-primary-default text-white border-primary-default'
-                        : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                        ? 'bg-background-brand-bold text-white border-background-brand-bold font-medium'
+                        : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay hover:border-border-bold'
                     } ${depth > maxPossibleDepth ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
                     {depth}
@@ -839,8 +839,8 @@ const UnifiedVisualization = ({
                   onClick={() => onDepthChange(null)}
                   className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                     maxDepth === null
-                      ? 'bg-primary-default text-white border-primary-default'
-                      : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                      ? 'bg-background-brand-bold text-white border-background-brand-bold font-medium'
+                      : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay hover:border-border-bold'
                   }`}
                 >
                   All
@@ -886,69 +886,69 @@ const UnifiedVisualization = ({
       {/* Right panel - Span details and logs */}
       {isRightPanelOpen && (
         <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
-        <div className='p-4 space-y-4'>
-          {/* Span details section */}
-          <div>
-            <div className='flex items-center justify-between gap-2 mb-3'>
-              <div className='text-sm text-text font-semibold'>
-                Span details
-              </div>
-              {selectedSpan ? (
-                <div className='text-xs text-text-disabled'>
-                  {selectedSpan.service_name} •{' '}
-                  {selectedSpan.span_id.slice(0, 12)}…
+          <div className='p-4 space-y-4'>
+            {/* Span details section */}
+            <div>
+              <div className='flex items-center justify-between gap-2 mb-3'>
+                <div className='text-sm text-text font-semibold'>
+                  Span details
                 </div>
-              ) : null}
+                {selectedSpan ? (
+                  <div className='text-xs text-text-disabled'>
+                    {selectedSpan.service_name} •{' '}
+                    {selectedSpan.span_id.slice(0, 12)}…
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedSpan ? (
+                <div className='space-y-3'>
+                  <div>
+                    <div className='text-sm text-text font-semibold'>
+                      {selectedSpan.name}
+                    </div>
+                    <div className='text-xs text-text-disabled'>
+                      {selectedSpan.service_name}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className='text-xs text-text-disabled mb-1'>
+                      Attributes
+                    </div>
+                    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
+                      <pre className='text-xs text-text whitespace-pre-wrap'>
+                        {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className='text-sm text-text-disabled'>
+                  Select a span node to see details and logs.
+                </div>
+              )}
             </div>
 
-            {selectedSpan ? (
-              <div className='space-y-3'>
-                <div>
-                  <div className='text-sm text-text font-semibold'>
-                    {selectedSpan.name}
-                  </div>
-                  <div className='text-xs text-text-disabled'>
-                    {selectedSpan.service_name}
-                  </div>
+            {/* Logs section */}
+            <div className='border-t border-elevation-surface-overlay pt-4'>
+              <div className='text-sm text-text font-semibold mb-3'>Logs</div>
+
+              {!selectedSpan ? (
+                <div className='text-sm text-text-disabled'>—</div>
+              ) : logsLoading ? (
+                <div className='flex items-center gap-2 text-sm text-text-disabled'>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
+                  Loading logs…
                 </div>
-
-                <div>
-                  <div className='text-xs text-text-disabled mb-1'>
-                    Attributes
-                  </div>
-                  <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
-                    <pre className='text-xs text-text whitespace-pre-wrap'>
-                      {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className='text-sm text-text-disabled'>
-                Select a span node to see details and logs.
-              </div>
-            )}
-          </div>
-
-          {/* Logs section */}
-          <div className='border-t border-elevation-surface-overlay pt-4'>
-            <div className='text-sm text-text font-semibold mb-3'>Logs</div>
-
-            {!selectedSpan ? (
-              <div className='text-sm text-text-disabled'>—</div>
-            ) : logsLoading ? (
-              <div className='flex items-center gap-2 text-sm text-text-disabled'>
-                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
-                Loading logs…
-              </div>
-            ) : logs ? (
-              <LogsDisplay logs={logs} />
-            ) : (
-              <div className='text-sm text-text-disabled'>No logs.</div>
-            )}
+              ) : logs ? (
+                <LogsDisplay logs={logs} />
+              ) : (
+                <div className='text-sm text-text-disabled'>No logs.</div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       )}
     </>
   );
@@ -1214,69 +1214,69 @@ const FlamegraphVisualization = ({
       {/* Right panel - Span details and logs */}
       {isRightPanelOpen && (
         <div className='w-[480px] shrink-0 overflow-auto rounded-lg border border-elevation-surface-overlay bg-elevation-surface-sunken'>
-        <div className='p-4 space-y-4'>
-          {/* Span details section */}
-          <div>
-            <div className='flex items-center justify-between gap-2 mb-3'>
-              <div className='text-sm text-text font-semibold'>
-                Span details
-              </div>
-              {selectedSpan ? (
-                <div className='text-xs text-text-disabled'>
-                  {selectedSpan.service_name} •{' '}
-                  {selectedSpan.span_id.slice(0, 12)}…
+          <div className='p-4 space-y-4'>
+            {/* Span details section */}
+            <div>
+              <div className='flex items-center justify-between gap-2 mb-3'>
+                <div className='text-sm text-text font-semibold'>
+                  Span details
                 </div>
-              ) : null}
+                {selectedSpan ? (
+                  <div className='text-xs text-text-disabled'>
+                    {selectedSpan.service_name} •{' '}
+                    {selectedSpan.span_id.slice(0, 12)}…
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedSpan ? (
+                <div className='space-y-3'>
+                  <div>
+                    <div className='text-sm text-text font-semibold'>
+                      {selectedSpan.name}
+                    </div>
+                    <div className='text-xs text-text-disabled'>
+                      {selectedSpan.service_name}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className='text-xs text-text-disabled mb-1'>
+                      Attributes
+                    </div>
+                    <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
+                      <pre className='text-xs text-text whitespace-pre-wrap'>
+                        {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className='text-sm text-text-disabled'>
+                  Select a span node to see details and logs.
+                </div>
+              )}
             </div>
 
-            {selectedSpan ? (
-              <div className='space-y-3'>
-                <div>
-                  <div className='text-sm text-text font-semibold'>
-                    {selectedSpan.name}
-                  </div>
-                  <div className='text-xs text-text-disabled'>
-                    {selectedSpan.service_name}
-                  </div>
+            {/* Logs section */}
+            <div className='border-t border-elevation-surface-overlay pt-4'>
+              <div className='text-sm text-text font-semibold mb-3'>Logs</div>
+
+              {!selectedSpan ? (
+                <div className='text-sm text-text-disabled'>—</div>
+              ) : logsLoading ? (
+                <div className='flex items-center gap-2 text-sm text-text-disabled'>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
+                  Loading logs…
                 </div>
-
-                <div>
-                  <div className='text-xs text-text-disabled mb-1'>
-                    Attributes
-                  </div>
-                  <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-48 overflow-auto'>
-                    <pre className='text-xs text-text whitespace-pre-wrap'>
-                      {JSON.stringify(selectedSpan.attributes ?? {}, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className='text-sm text-text-disabled'>
-                Select a span node to see details and logs.
-              </div>
-            )}
-          </div>
-
-          {/* Logs section */}
-          <div className='border-t border-elevation-surface-overlay pt-4'>
-            <div className='text-sm text-text font-semibold mb-3'>Logs</div>
-
-            {!selectedSpan ? (
-              <div className='text-sm text-text-disabled'>—</div>
-            ) : logsLoading ? (
-              <div className='flex items-center gap-2 text-sm text-text-disabled'>
-                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
-                Loading logs…
-              </div>
-            ) : logs ? (
-              <LogsDisplay logs={logs} />
-            ) : (
-              <div className='text-sm text-text-disabled'>No logs.</div>
-            )}
+              ) : logs ? (
+                <LogsDisplay logs={logs} />
+              ) : (
+                <div className='text-sm text-text-disabled'>No logs.</div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       )}
     </>
   );

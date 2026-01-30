@@ -45,8 +45,8 @@ const UnifiedView = ({
               onClick={() => setViewMode('split')}
               className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                 viewMode === 'split'
-                  ? 'bg-primary-default text-white border-primary-default'
-                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                  ? 'bg-background-brand-bold text-white border-background-brand-bold font-medium'
+                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay hover:border-border-bold'
               }`}
             >
               Split View
@@ -55,8 +55,8 @@ const UnifiedView = ({
               onClick={() => setViewMode('traces')}
               className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                 viewMode === 'traces'
-                  ? 'bg-primary-default text-white border-primary-default'
-                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                  ? 'bg-background-brand-bold text-white border-background-brand-bold font-medium'
+                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay hover:border-border-bold'
               }`}
             >
               Traces Only
@@ -65,8 +65,8 @@ const UnifiedView = ({
               onClick={() => setViewMode('flamegraph')}
               className={`px-3 py-1.5 text-sm rounded border transition-colors ${
                 viewMode === 'flamegraph'
-                  ? 'bg-primary-default text-white border-primary-default'
-                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay'
+                  ? 'bg-background-brand-bold text-white border-background-brand-bold font-medium'
+                  : 'bg-elevation-surface-sunken text-text border-elevation-surface-overlay hover:bg-elevation-surface-overlay hover:border-border-bold'
               }`}
             >
               Flamegraph Only
