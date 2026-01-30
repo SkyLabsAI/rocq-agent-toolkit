@@ -44,11 +44,11 @@ class TestRocqTacticAction:
         # Test whitespace normalization
         action1 = RocqTacticAction("  reflexivity  ")
         assert action1.key() == "reflexivity"
-        
+
         # Test period stripping
         action2 = RocqTacticAction("apply H.")
         assert action2.key() == "apply H"
-        
+
         # Test both together
         action3 = RocqTacticAction("  auto.  ")
         assert action3.key() == "auto"
