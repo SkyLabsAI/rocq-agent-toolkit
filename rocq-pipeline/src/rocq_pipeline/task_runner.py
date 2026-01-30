@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 import os
 import sys
@@ -207,7 +208,7 @@ def run_task(
                     span.set_status(Status(StatusCode.ERROR, msg))
                     return None
                 progress.status(0.1, "💭")
-                task_result = agent.run(TracingCursor.of_cursor(rc))
+                task_result = asyncio.run(agent.run(TracingCursor.of_cursor(rc)))
         except Exception as e:
             progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
             task_result = TaskResult.from_exception(e)
