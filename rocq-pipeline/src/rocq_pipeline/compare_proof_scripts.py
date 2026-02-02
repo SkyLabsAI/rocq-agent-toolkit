@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from pydoc import text
 import sys
 from pathlib import Path
 from typing import Any, Literal
@@ -54,34 +53,38 @@ def extract_nth_inferred_proofscript(
 
     try:
         with open(file_path, encoding="utf-8") as f:
-            line_count = sum(1 for _ in f)
+            # line_count = sum(1 for _ in f)
             # print(f"File: {file_path} has {line_count} lines.")
             f.seek(0)  # Reset file pointer to beginning
-            for i, line in enumerate(f):
-                if i == target_index:
-                    try:
-                        # Parse the line to ensure it's valid JSON
-                        data = json.loads(line)
-                        # Extract task_id and status
-                        task_id = data.get("task_id", "Unknown")
-                        status = data.get("status", "Unknown")
-                        inferred_proof_script: list[str] | None = get_proofscript(data)
-                        # print(f"Line {i + 1}: Status = {str(status)}, Task_id = {str(task_id)}")
+            lines = f.readlines()
 
-                        if inferred_proof_script is None:
-                            logger.error(f"❌ Error: proof script found in line {n} is None.")
-                            return None
-                        if isinstance(task_id, str) and isinstance(status, str):
-                            status_literal: Literal["Success", "Failure"]
-                            status_literal = (
-                                "Success" if status.lower() == "success" else "Failure"
-                            )
-                            return (task_id, inferred_proof_script, status_literal)
-                        else:
-                            return None
-                    except json.JSONDecodeError:
-                        logger.error(f"❌ Error: Line {n} is not valid JSON.")
+        for i, line in enumerate(lines):
+            if i == target_index:
+                try:
+                    # Parse the line to ensure it's valid JSON
+                    data = json.loads(line)
+                    # Extract task_id and status
+                    task_id = data.get("task_id", "Unknown")
+                    status = data.get("status", "Unknown")
+                    inferred_proof_script: list[str] | None = get_proofscript(data)
+                    # print(f"Line {i + 1}: Status = {str(status)}, Task_id = {str(task_id)}")
+
+                    if inferred_proof_script is None:
+                        logger.error(
+                            f"❌ Error: proof script found in line {n} is None."
+                        )
                         return None
+                    if isinstance(task_id, str) and isinstance(status, str):
+                        status_literal: Literal["Success", "Failure"]
+                        status_literal = (
+                            "Success" if status.lower() == "success" else "Failure"
+                        )
+                        return (task_id, inferred_proof_script, status_literal)
+                    else:
+                        return None
+                except json.JSONDecodeError:
+                    logger.error(f"❌ Error: Line {n} is not valid JSON.")
+                    return None
 
         # If the loop finishes without returning, N is out of bounds
         logger.error(f"❌ Error: File {file_path} contains fewer than {n} lines.")
@@ -94,9 +97,10 @@ def extract_nth_inferred_proofscript(
         logger.error(f"❌ An unexpected error occurred: {e}")
         return None
 
-def find_lemma (lemma:str):
-    def inner(text: str, kind: Literal["blanks", "command", "ghost"]) -> bool:
-        parts = text.split(None, 1)
+
+def find_lemma(lemma: str):
+    def inner(txt: str, kind: Literal["blanks", "command", "ghost"]) -> bool:
+        parts = txt.split(None, 1)
         if len(parts) != 2:
             return False
         thm_or_lemma = parts[0]
@@ -110,11 +114,13 @@ def find_lemma (lemma:str):
         else:
             res = False
         return res
+
     return inner
 
-def get_groundtruth_script(
-        task_id: str, rocqfiles_path: str
-        ) -> tuple[FirstLemma, Path] | None:
+
+def get_groundtruth_lemma(
+    task_id: str, rocqfiles_path: str
+) -> tuple[FirstLemma, Path] | None:
     if task_id.count("#") != 1:
         raise ValueError("task_id must contain exactly one # separating two parts.")
 
@@ -130,10 +136,11 @@ def get_groundtruth_script(
         return None
     return first_lemma, gt_file
 
+
 def get_groundtruth_script_via_RDM(
     task_id: str, rocqfiles_path: str
 ) -> tuple[list[str], Literal["Success", "Failure"]] | None:
-    gt = get_groundtruth_script(task_id, rocqfiles_path)
+    gt = get_groundtruth_lemma(task_id, rocqfiles_path)
     if gt is None:
         return None
     first_lemma, gt_file = gt
@@ -150,17 +157,22 @@ def get_groundtruth_script_via_RDM(
         if len(suffix) == 0:
             logger.error("❌ Error: Suffix after locating lemma is empty.")
             return None
-        prooftask = scan_proof(suffix[1:])  # skip the first item (the lemma statement itself)
+        prooftask = scan_proof(
+            suffix[1:]
+        )  # skip the first item (the lemma statement itself)
 
         gt_script = prooftask.proof_tactics
-        status: Literal["Success", "Failure"] = "Success" if prooftask.final == "qed" else "Failure"
+        status: Literal["Success", "Failure"] = (
+            "Success" if prooftask.final == "qed" else "Failure"
+        )
 
         return (gt_script, status)
+
 
 def get_groundtruth_script_from_vfile(
     task_id: str, rocqfiles_path: str
 ) -> tuple[list[str], Literal["Success", "Failure"]] | None:
-    gt = get_groundtruth_script(task_id, rocqfiles_path)
+    gt = get_groundtruth_lemma(task_id, rocqfiles_path)
     if gt is None:
         return None
     first_lemma, gt_file = gt
@@ -168,7 +180,7 @@ def get_groundtruth_script_from_vfile(
     with open(gt_file, encoding="utf-8") as f:
         lines = f.readlines()
     found = False
-    index = i + 1
+    index = 0
     for i, line in enumerate(lines):
         if find_lemma(str(first_lemma))(line, "command"):
             found = True
@@ -180,18 +192,25 @@ def get_groundtruth_script_from_vfile(
 
     script: list[str] = []
     while index < len(lines):
-        line = f"{lines[index].strip()} " #Add trailing space here so we can split on '. ' below
-        if line.startswith("Qed.") or line.startswith("Admitted.") or line.startswith("Abort."):
+        line = f"{lines[index].strip()} "  # Add trailing space here so we can split on '. ' below
+        if (
+            line.startswith("Qed.")
+            or line.startswith("Admitted.")
+            or line.startswith("Abort.")
+        ):
             status: Literal["Success", "Failure"] = (
                 "Success" if line.startswith("Qed.") else "Failure"
             )
             return (script, status)
         if not line.startswith("Proof") and not line.startswith("cpp_sound"):
-            segments = line.split('. ')
-            cleaned_segments = [f'{segment.strip()}.' for segment in segments if segment.strip()]
+            segments = line.split(". ")
+            cleaned_segments = [
+                f"{segment.strip()}." for segment in segments if segment.strip()
+            ]
             script += cleaned_segments
         index += 1
     return None
+
 
 def extract_statistics(
     input_path: str, line_num: int, rocqfiles_path: str
@@ -248,8 +267,8 @@ def main() -> None:
     try:
         line_num = int(sys.argv[2])
         if line_num < 1:
-            print("Error: N must be 1 or greater.")
+            logger.error("Error: N must be 1 or greater.")
         else:
             extract_statistics(data_path, line_num, rocqfiles_path)
     except ValueError:
-        print("Error: N must be an integer.")
+        logger.error("Error: N must be an integer.")
