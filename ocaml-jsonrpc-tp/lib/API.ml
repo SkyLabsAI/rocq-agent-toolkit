@@ -569,7 +569,6 @@ let output_python_api oc api =
   line "class %s:" api.name;
   line "    \"\"\"Main API class.\"\"\"";
   line "";
-  line "    Reply: TypeAlias = JsonRPCTP.Reply # noqa: UP040";
   line "    Err: TypeAlias = JsonRPCTP.Err # noqa: UP040";
   line "    Resp: TypeAlias = JsonRPCTP.Resp # noqa: UP040";
   line "    Error: TypeAlias = JsonRPCTP.Error # noqa: UP040";
