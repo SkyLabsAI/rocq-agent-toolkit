@@ -16,8 +16,8 @@ module IntMap = Map.Make(Int)
 (* NOTE: document update is imperative, so no need to update the map unless we
    are adding or removing an entry. *)
 type toplevel = {
-  cursors: Document.t IntMap.t;
-  fresh: int
+  mutable cursors: Document.t IntMap.t;
+  mutable fresh: int
 }
 type cursor = Document.t
 
@@ -48,10 +48,10 @@ end = struct
     let descr = "the cursor to perform the operation on" in
     A.add ~name:"cursor" ~descr S.int rest
 
-  let at_cursor action toplevel (cursor, args) =
+  let at_cursor action _ toplevel (cursor, args) =
     match IntMap.find_opt cursor toplevel.cursors with
     | None    -> invalid_arg "unknown cursor"
-    | Some(d) -> (toplevel, action d args)
+    | Some(d) -> action d args
 
   let declare_full ~name ?descr ~args ~ret ?ret_descr ~err ?err_descr
       ?recoverable action =
@@ -515,14 +515,15 @@ let _ =
   in
   API.declare api ~name:"clone" ~descr:"clones the given cursor"
     ~args ~ret:S.int ~ret_descr:"the name of the new cursor"
-    @@ fun d (cursor, ()) ->
+    @@ fun _ d (cursor, ()) ->
   match IntMap.find_opt cursor d.cursors with
   | None    -> invalid_arg "unknown cursor"
   | Some(c) ->
   let new_cursor = Document.clone c in
   let index = d.fresh in
-  let cursors = IntMap.add index new_cursor d.cursors in
-  ({fresh = index + 1; cursors}, index)
+  d.cursors <- IntMap.add index new_cursor d.cursors;
+  d.fresh <- index + 1;
+  index
 
 let _ =
   let args =
@@ -531,11 +532,11 @@ let _ =
     A.nil
   in
   API.declare api ~name:"copy_contents" ~descr:"copies the contents of src \
-    into dst" ~args ~ret:S.null @@ fun d (src, (dst, ())) ->
+    into dst" ~args ~ret:S.null @@ fun _ d (src, (dst, ())) ->
   match (IntMap.find_opt src d.cursors, IntMap.find_opt dst d.cursors) with
   | (None     , _        ) -> invalid_arg "unknown source cursor"
   | (_        , None     ) -> invalid_arg "unknown target cursor"
-  | (Some(src), Some(dst)) -> (d, Document.copy_contents ~from:src dst)
+  | (Some(src), Some(dst)) -> Document.copy_contents ~from:src dst
 
 let _ =
   let args =
@@ -543,12 +544,12 @@ let _ =
     A.nil
   in
   API.declare api ~name:"dispose" ~descr:"destroys the cursor"
-    ~args ~ret:S.null @@ fun d (cursor, ()) ->
+    ~args ~ret:S.null @@ fun _ d (cursor, ()) ->
   match IntMap.find_opt cursor d.cursors with
   | None    -> invalid_arg "unknown cursor"
   | Some(c) ->
   Document.stop c;
-  ({d with cursors = IntMap.remove cursor d.cursors}, ())
+  d.cursors <- IntMap.remove cursor d.cursors
 
 let parse_args : argv:string array -> string * string list = fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in
@@ -575,7 +576,7 @@ let _ =
     try Document.init ~args ~file with Failure(s) -> panic "Error: %s." s
   in
   let state = {fresh = 1; cursors = IntMap.singleton 0 state} in
-  match API.run api ~ic:stdin ~oc:stdout state with
+  match API.run_seq api ~ic:stdin ~oc:stdout state with
   | Ok(_)       -> exit 0
   | Error(s)    -> panic "%s" s
   | exception e ->

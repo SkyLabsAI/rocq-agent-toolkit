@@ -148,17 +148,29 @@ type _ obj =
 type any_obj = A : 'a obj -> any_obj
 [@@unboxed]
 
+type 'a emitted_notification = {
+  name : string;
+  descr : string option;
+  args : 'a Args.t;
+}
+
+type any_emitted_notification =
+  | AEN : 'a emitted_notification -> any_emitted_notification
+[@@unboxed]
+
+type notification = N : 'a emitted_notification * 'a -> notification
+
 module SMap = Map.Make(String)
 
 type ('s, 'a, 'b) api_method_impl =
   | Pure : {
-      impl : ('s -> 'a -> 's * 'b);
+      impl : ((notification -> unit) -> 's -> 'a -> 'b);
     } -> ('s, 'a, 'b) api_method_impl
   | Rslt : {
       err : 'e Schema.t;
       err_descr : string option;
       recoverable : bool;
-      impl : ('s -> 'a -> 's * ('b, string * 'e) Result.t);
+      impl : ((notification -> unit) -> 's -> 'a -> ('b, string * 'e) Result.t);
     } -> ('s, 'a, 'b) api_method_impl
 
 type 's api_method = M : {
@@ -170,10 +182,19 @@ type 's api_method = M : {
   impl : ('s, 'a, 'b) api_method_impl;
 } -> 's api_method
 
+type handled_notification = HN : {
+  name : string;
+  descr : string option;
+  args : 'a Args.t;
+  impl : ((notification -> unit) -> 'a -> unit);
+} -> handled_notification
+
 type 's api = {
   name : string;
   mutable api_objects : any_obj list;
   mutable api_methods : 's api_method SMap.t;
+  mutable api_hd_notifs : handled_notification SMap.t;
+  mutable api_em_notifs : any_emitted_notification SMap.t;
 }
 
 let get_obj : type a. _ api -> a api_obj -> a obj = fun api k ->
@@ -182,7 +203,11 @@ let get_obj : type a. _ api -> a api_obj -> a obj = fun api k ->
   | Some(A(o)) -> Obj.magic o
 
 let create : name:string -> _ api = fun ~name ->
-  {name; api_objects = []; api_methods = SMap.empty}
+  let api_objects = [] in
+  let api_methods = SMap.empty in
+  let api_hd_notifs = SMap.empty in
+  let api_em_notifs = SMap.empty in
+  {name; api_objects; api_methods; api_hd_notifs; api_em_notifs}
 
 let duplicate fname =
   invalid_arg ("Jsonrpc_tp.Interface." ^ fname ^ ": duplicate name")
@@ -211,32 +236,20 @@ let declare_full api ~name ?descr ~args ~ret ?ret_descr
   let m = M({name; descr; args; ret; ret_descr; impl}) in
   api.api_methods <- SMap.add name m (api.api_methods)
 
-module J = Jsonrpc
+let declare_handled_notification api ~name ?descr ~args impl =
+  match SMap.mem name api.api_hd_notifs with
+  | true  -> duplicate "declare_handled_notification"
+  | false ->
+  let hn = HN({name; descr; args; impl}) in
+  api.api_hd_notifs <- SMap.add name hn api.api_hd_notifs
 
-module Response = struct
-  let error ~oc id ?data code message =
-    let e = J.Response.Error.make ?data ~code ~message () in
-    let r = J.Response.error id e in
-    Base.send ~oc (J.Packet.Response(r))
-
-  let method_not_found ~oc id f =
-    let message = Printf.sprintf "Method %s not found." f in
-    error ~oc id J.Response.Error.Code.MethodNotFound message
-
-  let invalid_params ~oc id ?msg f =
-    let message =
-      let msg = match msg with None -> "" | Some(msg) -> ": " ^ msg in
-      Printf.sprintf "Invalid parameters for method %s%s." f msg
-    in
-    error ~oc id J.Response.Error.Code.InvalidParams message
-
-  let reply ~oc id payload =
-    let response = J.Response.ok id payload in
-    Base.send ~oc (J.Packet.Response(response))
-
-  let ok ~oc id =
-    reply ~oc id `Null
-end
+let declare_emittable_notification api ~name ?descr ~args =
+  match SMap.mem name api.api_em_notifs with
+  | true  -> duplicate "declare_emittable_notification"
+  | false ->
+  let en = {name; descr; args} in
+  api.api_em_notifs <- SMap.add name (AEN(en)) api.api_em_notifs;
+  fun v -> N(en, v)
 
 let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
   match (s, v) with
@@ -285,7 +298,8 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
   let error ctxt s = raise (Error(ctxt, s)) in
   let rec of_json : type a. context list -> a Schema.t -> json -> a =
       fun ctxt s json ->
-    let of_json_obj : type a. context list -> a api_obj -> (string * json) list -> a = fun ctxt o fields ->
+    let of_json_obj : type a. context list -> a api_obj ->
+        (string * json) list -> a = fun ctxt o fields ->
       let O(o) = get_obj api o in
       let rec make : type a. a Fields.t -> a = fun fs ->
         let open Fields in
@@ -334,6 +348,16 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
 
 type params = [`List of json list | `Assoc of (string * json) list] option
 
+let make_params : type a. _ api -> a Args.t -> a -> params = fun api args v ->
+  let rec make : type a. (string * json) list -> a Args.t -> a -> params =
+      fun fs args v ->
+    match (args, v) with
+    | (Args.Nil   , ()     ) -> Some(`Assoc(fs))
+    | (Args.Cns(a), (v, vs)) ->
+    make ((a.name, to_json api a.schema v) :: fs) a.tail vs
+  in
+  make [] args v
+
 let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
     fun api args params ->
   let rec parse_list : type a. a Args.t -> json list -> (a, string) result =
@@ -376,71 +400,67 @@ let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
   | (Args.Cns(_), Some(`List(ls)) ) -> parse_list args ls
   | (Args.Cns(_), Some(`Assoc(fs))) -> parse_assoc args fs
 
-let notify_ready ~oc =
-  let notification = J.Notification.create ~method_:"ready" () in
-  Base.send ~oc (J.Packet.Notification(notification))
-
-let run api ~ic ~oc s =
-  notify_ready ~oc;
-  let rec loop s =
-    match Base.recv ~ic () with
-    | Error(msg)  -> Error(msg)
-    | Ok(None)    -> Ok(s)
-    | Ok(Some(p)) ->
-    let r = match p with J.Packet.Request(r) -> Some(r) | _ -> None in
-    match r with
-    | None -> Error("not a request packet")
-    | Some(J.Request.{id; method_ = f; params}) ->
-    match (f, params) with
-    | ("quit", None           ) -> Response.ok ~oc id; Ok(s)
-    | ("quit", Some(`List([]))) -> Response.ok ~oc id; Ok(s)
-    | ("quit", _              ) -> Response.invalid_params ~oc id f; loop s
-    | (_     , _              ) ->
-    match SMap.find_opt f api.api_methods with
-    | None          -> Response.method_not_found ~oc id f; loop s
-    | Some(M(spec)) ->
-    match parse_params api spec.args params with
-    | Error(msg) -> Response.invalid_params ~oc id ~msg f; loop s
-    | Ok(params) ->
-    let s =
-      match spec.impl with
-      | Pure(impl) ->
-          begin
-            match impl.impl s params with
-            | exception Invalid_argument(msg) ->
-                Response.invalid_params ~oc id ~msg f; s
-            | (s, ret)                        ->
-            let ret = to_json api spec.ret ret in
-            let response = J.Response.ok id ret in
-            Base.send ~oc (J.Packet.Response(response)); s
-          end
-      | Rslt(impl) ->
-          begin
-            match impl.impl s params with
-            | exception Invalid_argument(msg) ->
-                Response.invalid_params ~oc id ~msg f; s
-            | (s, ret_or_err)                 ->
-            let response =
-              match ret_or_err with
-              | Ok(ret)             ->
-                  let ret = to_json api spec.ret ret in
-                  J.Response.ok id ret
-              | Error(message, err) ->
-                  let data =
-                    match impl.err with
-                    | Null -> None
-                    | _    -> Some(to_json api impl.err err)
-                  in
-                  let code = J.Response.Error.Code.RequestFailed in
-                  let err = J.Response.Error.make ?data ~code ~message () in
-                  J.Response.error id err
-            in
-            Base.send ~oc (J.Packet.Response(response)); s
-          end
+let handle_request : type s. s api -> s -> Service.request_handler =
+    fun api s ~name ~params ~notify ->
+  let invalid_params ?msg name =
+    let msg =
+      let msg = match msg with None -> "" | Some(msg) -> ": " ^ msg in
+      Printf.sprintf "Invalid parameters for method %s%s." name msg
     in
-    loop s
+    Service.Response.(error ~code:InvalidParams msg)
   in
-  loop s
+  let notify (N({name; args; _}, v)) =
+    notify ~name ~params:(make_params api args v)
+  in
+  match SMap.find_opt name api.api_methods with
+  | None          ->
+      let msg = Printf.sprintf "Method %s not found." name in
+      Service.Response.(error ~code:MethodNotFound msg)
+  | Some(M(spec)) ->
+  match parse_params api spec.args params with
+  | Error(msg) -> invalid_params ~msg name
+  | Ok(params) ->
+  match spec.impl with
+  | Pure(impl) ->
+      begin
+        match impl.impl notify s params with
+        | exception Invalid_argument(msg) -> invalid_params ~msg name
+        | ret                             ->
+        let json = to_json api spec.ret ret in
+        Service.Response.ok json
+      end
+  | Rslt(impl) ->
+      begin
+        match impl.impl notify s params with
+        | exception Invalid_argument(msg) -> invalid_params ~msg name
+        | Ok(ret)             ->
+            let json = to_json api spec.ret ret in
+            Service.Response.ok json
+        | Error(message, err) ->
+            let data =
+              match impl.err with
+              | Null -> None
+              | _    -> Some(to_json api impl.err err)
+            in
+            Service.Response.(error ~code:RequestFailed ?data message)
+      end
+
+let handle_notification ~name:_ ~params:_ ~notify:_ = ()
+
+let notify_ready ~oc ~sequential =
+  let method_ = if sequential then "ready_seq" else "ready" in
+  let notification = Jsonrpc.Notification.create ~method_ () in
+  Base.send ~oc (Jsonrpc.Packet.Notification(notification))
+
+let run_seq api ~ic ~oc s =
+  let handle_request = handle_request api s in
+  notify_ready ~oc ~sequential:true;
+  Service.run_seq ~ic ~oc ~handle_request ~handle_notification
+
+let run api ~ic ~oc ~workers s =
+  let handle_request = handle_request api s in
+  notify_ready ~oc ~sequential:false;
+  Service.run ~ic ~oc ~workers ~handle_request ~handle_notification
 
 let output_docs oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
@@ -487,6 +507,30 @@ let output_docs oc api =
         line "- Failure mode: %srecoverable failure."
           (if m.recoverable then "" else "un");
   in
+  let document_notif (type a) emitted name descr (args : a Args.t) =
+    line "";
+    line "### `%s`" name;
+    line "";
+    Option.iter (line "- Description: %s.") descr;
+    begin
+      match args with Args.Nil -> () | _ ->
+      line "- Arguments (%snamed):" (if emitted then "" else "in order, or ");
+      let rec print_args : type a. a Args.t -> unit = fun args ->
+        match args with
+        | Args.Nil    -> ()
+        | Args.Cns(a) ->
+        line "  - `%s`: %s." a.name (describe_schema a.schema a.descr);
+        print_args a.tail
+      in
+      print_args args
+    end
+  in
+  let document_hd_notif name (HN({descr; args; _})) =
+    document_notif false name descr args
+  in
+  let document_em_notif name (AEN({descr; args; _})) =
+    document_notif true name descr args
+  in
   if api.api_objects <> [] then begin
     line "API Objects";
     line "-----------";
@@ -495,7 +539,19 @@ let output_docs oc api =
   end;
   line "API Methods";
   line "------------";
-  SMap.iter document_method api.api_methods
+  SMap.iter document_method api.api_methods;
+  if api.api_hd_notifs <> SMap.empty then begin
+    line "";
+    line "API Handled Notifications";
+    line "------------";
+    SMap.iter document_hd_notif api.api_hd_notifs
+  end;
+  if api.api_em_notifs <> SMap.empty then begin
+    line "";
+    line "API Emitted Notifications";
+    line "------------";
+    SMap.iter document_em_notif api.api_em_notifs
+  end
 
 let output_python_api oc api =
   let line fmt = Printf.fprintf oc (fmt ^^ "\n") in
@@ -579,4 +635,12 @@ let output_python_api oc api =
     in
     line "        return %s" (Schema.python_val "result.result" m.ret)
   in
-  SMap.iter output_method api.api_methods
+  SMap.iter output_method api.api_methods;
+  let output_notification _ (HN(n)) =
+    line "";
+    line "    def %s(self%a) -> None:" n.name pp_args n.args;
+    Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) n.descr;
+    line "        self._rpc.raw_notification(\"%s\", [%a])"
+      n.name pp_names n.args
+  in
+  SMap.iter output_notification api.api_hd_notifs
