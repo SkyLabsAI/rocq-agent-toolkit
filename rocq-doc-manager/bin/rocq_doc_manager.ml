@@ -48,7 +48,7 @@ end = struct
     let descr = "the cursor to perform the operation on" in
     A.add ~name:"cursor" ~descr S.int rest
 
-  let at_cursor action toplevel (cursor, args) =
+  let at_cursor action _ toplevel (cursor, args) =
     match IntMap.find_opt cursor toplevel.cursors with
     | None    -> invalid_arg "unknown cursor"
     | Some(d) -> action d args
@@ -515,7 +515,7 @@ let _ =
   in
   API.declare api ~name:"clone" ~descr:"clones the given cursor"
     ~args ~ret:S.int ~ret_descr:"the name of the new cursor"
-    @@ fun d (cursor, ()) ->
+    @@ fun _ d (cursor, ()) ->
   match IntMap.find_opt cursor d.cursors with
   | None    -> invalid_arg "unknown cursor"
   | Some(c) ->
@@ -532,7 +532,7 @@ let _ =
     A.nil
   in
   API.declare api ~name:"copy_contents" ~descr:"copies the contents of src \
-    into dst" ~args ~ret:S.null @@ fun d (src, (dst, ())) ->
+    into dst" ~args ~ret:S.null @@ fun _ d (src, (dst, ())) ->
   match (IntMap.find_opt src d.cursors, IntMap.find_opt dst d.cursors) with
   | (None     , _        ) -> invalid_arg "unknown source cursor"
   | (_        , None     ) -> invalid_arg "unknown target cursor"
@@ -544,7 +544,7 @@ let _ =
     A.nil
   in
   API.declare api ~name:"dispose" ~descr:"destroys the cursor"
-    ~args ~ret:S.null @@ fun d (cursor, ()) ->
+    ~args ~ret:S.null @@ fun _ d (cursor, ()) ->
   match IntMap.find_opt cursor d.cursors with
   | None    -> invalid_arg "unknown cursor"
   | Some(c) ->

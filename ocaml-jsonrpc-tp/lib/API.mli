@@ -78,6 +78,9 @@ type _ api
     class name when a Python API is generated. *)
 val create : name:string -> 'a api
 
+(** Type of an outgoing notification. *)
+type notification
+
 (** [declare_object api ~name ?descr ?default ~encode ~decode fs]  declares  a
     new object type [name],  with fields [fs] and an optional [default] value,
     in the given [api]. Like for [Fields.add], [descr] can be used to document
@@ -101,7 +104,8 @@ val declare_object : _ api -> name:string -> ?descr:string -> ?default:'b
     behaviour. *)
 val declare : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ret:'b Schema.t -> ?ret_descr:string
-  -> ('s -> 'a -> 'b) -> unit
+  -> ((notification -> unit) -> 's -> 'a -> 'b)
+  -> unit
 
 (** [declare_full api ~name ...] is similar to [declare api ~name ...], but it
     allows a more general form of implementation that can report an error. The
@@ -112,7 +116,22 @@ val declare_full : 's api -> name:string -> ?descr:string -> args:'a Args.t
   -> ret:'b Schema.t -> ?ret_descr:string
   -> err:'e Schema.t -> ?err_descr:string
   -> ?recoverable:bool
-  -> ('s -> 'a -> ('b, string * 'e) Result.t) -> unit
+  -> ((notification -> unit) -> 's -> 'a -> ('b, string * 'e) Result.t)
+  -> unit
+
+(** [declare_handled_notification api ~name ... impl] extends [api] with a new
+    notification handler for notifications with method [name], implemented via
+    the [impl] function. Note that the handler only runs when the notification
+    parameters are of the right shape (according to the [args] argument). When
+    this is not the case, or when a notification does not have a handler, then
+    the notification is simply ignored. *)
+val declare_handled_notification : 's api -> name:string -> ?descr:string
+  -> args:'a Args.t -> ((notification -> unit) -> 'a -> unit) -> unit
+
+(** [declare_emittable_notification api ~name ?descr ~args] extends [api] with
+    a new form of notification that can be emitted by handlers. *)
+val declare_emittable_notification : 's api -> name:string -> ?descr:string
+  -> args:'a Args.t -> ('a -> notification)
 
 (** [run_seq api ~ic ~oc s] runs an sequential JSON-RPC 2.0 request / response
     loop for [api]. Requests are received on channel [ic], and responded to on
