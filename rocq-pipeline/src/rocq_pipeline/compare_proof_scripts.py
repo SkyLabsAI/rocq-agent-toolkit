@@ -41,6 +41,31 @@ def get_proofscript(data: dict[str, Any]) -> list[str] | None:
     return None
 
 
+def parse_inference_line(
+    line: str, n: int
+) -> tuple[str, list[str], Literal["Success", "Failure"]] | None:
+    try:
+        data = json.loads(line)
+
+        task_id = data.get("task_id", "Unknown")
+        status = data.get("status", "Unknown")
+        inferred_proof_script: list[str] | None = get_proofscript(data)
+        # print(f"Line {i + 1}: Status = {str(status)}, Task_id = {str(task_id)}")
+
+        if inferred_proof_script is None:
+            logger.error(f"❌ Error: proof script found in line {n} is None.")
+            return None
+        if isinstance(task_id, str) and isinstance(status, str):
+            status_literal: Literal["Success", "Failure"]
+            status_literal = "Success" if status.lower() == "success" else "Failure"
+            return (task_id, inferred_proof_script, status_literal)
+        else:
+            return None
+    except json.JSONDecodeError:
+        logger.error(f"❌ Error: Line {n} is not valid JSON.")
+        return None
+
+
 def extract_nth_inferred_proofscript(
     file_path: str, n: int
 ) -> tuple[str, list[str], Literal["Success", "Failure"]] | None:
@@ -54,41 +79,49 @@ def extract_nth_inferred_proofscript(
     try:
         with open(file_path, encoding="utf-8") as f:
             # line_count = sum(1 for _ in f)
-            # print(f"File: {file_path} has {line_count} lines.")
             f.seek(0)  # Reset file pointer to beginning
             lines = f.readlines()
 
         for i, line in enumerate(lines):
             if i == target_index:
-                try:
-                    # Parse the line to ensure it's valid JSON
-                    data = json.loads(line)
-                    # Extract task_id and status
-                    task_id = data.get("task_id", "Unknown")
-                    status = data.get("status", "Unknown")
-                    inferred_proof_script: list[str] | None = get_proofscript(data)
-                    # print(f"Line {i + 1}: Status = {str(status)}, Task_id = {str(task_id)}")
-
-                    if inferred_proof_script is None:
-                        logger.error(
-                            f"❌ Error: proof script found in line {n} is None."
-                        )
-                        return None
-                    if isinstance(task_id, str) and isinstance(status, str):
-                        status_literal: Literal["Success", "Failure"]
-                        status_literal = (
-                            "Success" if status.lower() == "success" else "Failure"
-                        )
-                        return (task_id, inferred_proof_script, status_literal)
-                    else:
-                        return None
-                except json.JSONDecodeError:
-                    logger.error(f"❌ Error: Line {n} is not valid JSON.")
-                    return None
+                return parse_inference_line(line, i)
 
         # If the loop finishes without returning, N is out of bounds
         logger.error(f"❌ Error: File {file_path} contains fewer than {n} lines.")
         return None
+
+    except FileNotFoundError:
+        logger.error(f"❌ Error: The file '{file_path}' was not found.")
+        return None
+    except Exception as e:
+        logger.error(f"❌ An unexpected error occurred: {e}")
+        return None
+
+
+def extract_inferred_proofscripts(
+    file_path: str,
+    k: int | None = None,  # none :extract all lines, k: inly line k-1
+) -> list[tuple[str, list[str], Literal["Success", "Failure"]]] | None:
+    """
+    Extracts all lines from a JSONL file and returns their proof scripts
+    Looks under results->side_effects->summary when available.
+    """
+
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            if k is None:
+                line_count = sum(1 for _ in f)
+                print(f"File {file_path} has {line_count} lines.")
+            f.seek(0)  # Reset file pointer to beginning
+            lines = f.readlines()
+
+        result: list[tuple[str, list[str], Literal["Success", "Failure"]]] = []
+        for i, line in enumerate(lines):
+            if k is None or i == k - 1:
+                line_result = parse_inference_line(line, i)
+                if line_result is not None:
+                    result.append(line_result)
+        return result
 
     except FileNotFoundError:
         logger.error(f"❌ Error: The file '{file_path}' was not found.")
@@ -110,7 +143,9 @@ def find_lemma(lemma: str):
         if thm_or_lemma in ["Theorem", "Lemma"]:
             lemmaname = statement.split(":", 1)[0] if ":" in statement else statement
             searchstring = (f"{thm_or_lemma}:{lemmaname}").strip()
-            res: bool = kind == "command" and searchstring == lemma.strip()
+
+            # using startswith allow us to fine lemmas such as 'Theorem compiler_export_ptr_ok `{!nova.AbsPred arch}:'
+            res: bool = kind == "command" and searchstring.startswith(lemma.strip())
         else:
             res = False
         return res
@@ -151,7 +186,9 @@ def get_groundtruth_script_via_RDM(
 
         found = rc.goto_first_match(find_lemma(str(first_lemma)))
         if not found:
-            logger.error(f"❌ Error: Could not find lemma {str(first_lemma)} in file.")
+            logger.error(
+                f"❌ Error: Could not find lemma {str(first_lemma)} in file {str(gt_file)}."
+            )
             return None
         suffix: list[RocqCursor.SuffixItem] = rc.doc_suffix()
         if len(suffix) == 0:
@@ -187,10 +224,30 @@ def get_groundtruth_script_from_vfile(
             index = i + 1
             break
     if not found:
-        logger.error(f"❌ Error: Could not find locator {str(first_lemma)} in file.")
+        logger.error(
+            f"❌ Error: Could not find locator {str(first_lemma)} in file {str(gt_file)}."
+        )
         return None
 
     script: list[str] = []
+
+    # procede until we find 'Proof', 'Admitted', or 'Abort'
+    while index < len(lines):
+        line = f"{lines[index].strip()}"
+        if (
+            line.startswith("Proof")
+            or line.startswith("Admitted")
+            or line.startswith("Abort")
+        ):
+            break
+        index += 1
+
+    if index >= len(lines):
+        logger.error(
+            f"❌ Error: Could not find the proof start for {str(first_lemma)} in file {str(gt_file)}."
+        )
+        return None
+
     while index < len(lines):
         line = f"{lines[index].strip()} "  # Add trailing space here so we can split on '. ' below
         if (
@@ -212,42 +269,43 @@ def get_groundtruth_script_from_vfile(
     return None
 
 
-def extract_statistics(
-    input_path: str, line_num: int, rocqfiles_path: str
-) -> dict[str, Any] | None:
-    inferred: tuple[str, list[str], Literal["Success", "Failure"]] | None = (
-        extract_nth_inferred_proofscript(input_path, line_num)
+def treat_line(
+    inferred: tuple[str, list[str], Literal["Success", "Failure"]],
+    rocqfiles_path: str,
+    use_rdm: bool = False,
+) -> tuple[str, dict[str, tuple[list[str], Literal["Success", "Failure"]] | None]]:
+    task_id, inf_script, inf_status = inferred
+
+    gtruth_v = get_groundtruth_script_from_vfile(task_id, rocqfiles_path)
+
+    gtruth_rdm = (
+        get_groundtruth_script_via_RDM(task_id, rocqfiles_path) if use_rdm else None
     )
+
+    entry = {
+        "inferred": (inf_script, inf_status),
+        "ground_v": gtruth_v,
+        "ground_rdm": gtruth_rdm,
+    }
+    res = (task_id, entry)
+    return res
+
+
+def extract_statistics(
+    input_path: str,
+    rocqfiles_path: str,
+    line_num: int | None = None,
+    use_rdm: bool = False,
+) -> (
+    None
+    | list[
+        tuple[str, dict[str, tuple[list[str], Literal["Success", "Failure"]] | None]]
+    ]
+):
+    inferred = extract_inferred_proofscripts(input_path, line_num)
     if inferred is None:
         return None
-    task_id, inf_script, inf_status = inferred
-    i_script = " ".join(inf_script)
-
-    gt_v = get_groundtruth_script_from_vfile(task_id, rocqfiles_path)
-    if gt_v is None:
-        return None
-    v_status: Literal["Success", "Failure"]
-    v_script, v_status = gt_v
-
-    groundtruth = get_groundtruth_script_via_RDM(task_id, rocqfiles_path)
-    if groundtruth is None:
-        return None
-    gt_status: Literal["Success", "Failure"]
-    gt_script, gt_status = groundtruth
-    g_script = " ".join(gt_script)
-    res: dict[str, Any] = {
-        "v_length": len(v_script),
-        "v_script": " ".join(v_script),
-        "v_proof_status": v_status,
-        "groundtruth_length": len(gt_script),
-        "groundtruth_script": g_script,
-        "groundtruth_proof_status": gt_status,
-        "inferred_length": len(inf_script),
-        "inferred_script": i_script,
-        "inferred_proof_status": inf_status,
-    }
-    print(str(res))
-    return res
+    return [treat_line(inf, rocqfiles_path, use_rdm) for inf in inferred]
 
 
 def main() -> None:
@@ -255,20 +313,36 @@ def main() -> None:
     # run_ns(args)
 
     # Check if arguments are provided
-    if len(sys.argv) != 4:
-        print("Usage: uv run comparescript <file_path> <N> rocqfilesdir")
-        print("Example: uv run comparescript data.jsonl 5 /home/workpace/bluerock/bhv")
+    if len(sys.argv) != 5:
+        print("Usage: uv run comparescript <file_path> <N> rocqfilesdir use_rdm")
+        print(
+            "Example: uv run comparescript data.jsonl 5 /home/workpace/bluerock/bhv True"
+        )
         sys.exit(1)
 
     data_path = sys.argv[1]
 
     rocqfiles_path = sys.argv[3]
 
+    use_rdm: bool = sys.argv[4].lower() == "true"
+
     try:
-        line_num = int(sys.argv[2])
-        if line_num < 1:
-            logger.error("Error: N must be 1 or greater.")
+        arg2 = sys.argv[2]
+        line_num: int | None
+        if arg2.lower() == "all":
+            line_num = None
         else:
-            extract_statistics(data_path, line_num, rocqfiles_path)
+            line_num = int(arg2)
+            if line_num < 1:
+                logger.error("Error: N must be 1 or greater.")
+                return
+        res = extract_statistics(data_path, rocqfiles_path, line_num, use_rdm)
+        if res is not None:
+            for task_id, entry in res:
+                print(f"Task ID: {task_id}")
+                for key, value in entry.items():
+                    print(f"  {key}: {value}")
+        else:
+            print("No data extracted.")
     except ValueError:
-        logger.error("Error: N must be an integer.")
+        logger.error("Error: N must be an integer or 'all'.")
