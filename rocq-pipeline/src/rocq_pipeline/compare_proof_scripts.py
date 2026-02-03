@@ -307,6 +307,34 @@ def extract_statistics(
         return None
     return [treat_line(inf, rocqfiles_path, use_rdm) for inf in inferred]
 
+def print_entries(entries: list[tuple[str, dict[str, tuple[list[str], Literal["Success", "Failure"]] | None]]]) -> None:
+    i = 0
+    j = 0
+    v_list: list[float] = []
+    rdm_list: list[float] = []
+    for task_id, entry in entries:
+        print(f"Task ID: {task_id}")
+        inf = entry.get("inferred")
+        ground_v = entry.get("ground_v")
+        ground_rdm = entry.get("ground_rdm")
+        print(f"  inferred: {inf}")
+        print(f"  ground_v: {ground_v}")
+        print(f"  ground_rdm: {ground_rdm}")
+        if inf is not None and inf[1] == "Success":
+            if ground_v is not None and ground_v[1] == "Success":
+                print(f"  inf / ground_v = {len(inf[0])} / {len(ground_v[0])}")
+                i = i + 1
+                v_list.append((float(len(inf[0])) / float(len(ground_v[0])) if len(ground_v[0]) > 0 else 0))
+            if ground_rdm is not None and ground_rdm[1] == "Success":
+                print(f"  inf / ground_rdm = {len(inf[0])} / {len(ground_rdm[0])}")
+                j = j + 1
+                rdm_list.append((float(len(inf[0])) / float(len(ground_rdm[0])) if len(ground_rdm[0]) > 0 else 0))
+    if i > 0:
+        avg_v = sum(v_list) / float(i)
+        print(f"Average ratio inferred proof size / ground_v proof size over {i} successful proofs: {avg_v}. Note: use of ; and comments may affect the result.")
+    if j > 0:
+        avg_rdm = sum(rdm_list) / float(j)
+        print(f"Average ratio inferred proof size / ground_rdm proof size over {j} successful proofs: {avg_rdm}. Note: use of ; may affect the result.")
 
 def main() -> None:
     # args = mk_parser().parse_args()
@@ -338,10 +366,7 @@ def main() -> None:
                 return
         res = extract_statistics(data_path, rocqfiles_path, line_num, use_rdm)
         if res is not None:
-            for task_id, entry in res:
-                print(f"Task ID: {task_id}")
-                for key, value in entry.items():
-                    print(f"  {key}: {value}")
+            print_entries(res)
         else:
             print("No data extracted.")
     except ValueError:
