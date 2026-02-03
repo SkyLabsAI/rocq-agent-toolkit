@@ -35,7 +35,7 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     @override
     def rollout(
         self,
-        rdm: RocqCursor,
+        state: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
@@ -56,11 +56,11 @@ class CutAssertStrategy(Strategy):
     @override
     def rollout(
         self,
-        rdm: RocqCursor,
+        state: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        name: str | RocqCursor.Err[None] = rdm.fresh_ident(self._name)
+        name: str | RocqCursor.Err[None] = state.fresh_ident(self._name)
         if isinstance(name, RocqCursor.Err):
             return EmptyRollout()
 
@@ -91,7 +91,7 @@ class FirstTacticStrategy(Strategy):
     @override
     def rollout(
         self,
-        rdm: RocqCursor,
+        state: RocqCursor,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
