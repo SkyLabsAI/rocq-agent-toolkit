@@ -42,7 +42,7 @@ class OneShotAgent(TraceAgent):
         return f"{self._tactic}."
 
     @override
-    def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
+    async def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
         """Get the next tactic string, but only allow one application."""
         return self.tactic_sentence
 

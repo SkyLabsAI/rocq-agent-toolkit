@@ -17,7 +17,7 @@ class ChoiceAgent(MarkovAgent):
         self._check_index: int = 0
 
     @override
-    def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
+    async def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
         if self.last_failed():
             self._check_index += 1
         else:
