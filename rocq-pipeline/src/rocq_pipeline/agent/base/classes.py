@@ -133,6 +133,11 @@ class ProofAgent(Agent):
         # agent development.
         rc.insert_command("#[local] Unset SsrIdents.")
 
+        # The following command undoes `Set Default Goal Selector "!".`,
+        # and ensures we can run `tac` to apply it to the _first_ goal, as Rocq
+        # does by default.
+        rc.insert_command('#[local] Set Default Goal Selector "1".')
+
         # TODO: validate that no goals remain.
         return await self.prove(rc)
 
