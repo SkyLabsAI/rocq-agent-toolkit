@@ -21,11 +21,11 @@ logger = get_logger("rocq_agent")
 class Agent(Provenance.Full):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
-    async def run(self, rdm: RocqCursor) -> TaskResult:
+    async def run(self, rc: RocqCursor) -> TaskResult:
         """Entrypoint; use rdm to attempt a task and report the result. The
         rdm cursor is updated to reflect the changes to the proof, even in
         case of failure (partial progress is kept)."""
-        return self.give_up(rdm, message="Not implemented")
+        return self.give_up(rc, message="Not implemented")
 
     @classmethod
     def cls_name(cls) -> str:
@@ -38,7 +38,7 @@ class Agent(Provenance.Full):
 
     def finished(
         self,
-        rdm: RocqCursor,
+        rc: RocqCursor,
         message: str = "",
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
@@ -51,7 +51,7 @@ class Agent(Provenance.Full):
 
     def give_up(
         self,
-        rdm: RocqCursor,
+        rc: RocqCursor,
         message: str = "",
         reason: FailureReason | RocqCursor.Err | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
