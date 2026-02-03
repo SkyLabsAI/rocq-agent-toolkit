@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, override
+from typing import Annotated, Any, override
 
 from observability import get_logger
 from provenance_toolkit import Provenance
@@ -97,6 +97,21 @@ class AgentBuilder:
 
     def extra_rocq_args(self) -> list[str]:
         return []
+
+class RocqSetupAgent(Agent):
+    """Agent that performs Rocq setup commands before delegating to another agent.
+    """
+
+    _agent: Annotated[Agent, Provenance.Reflect.Field]
+    """The agent to delegate to after setup."""
+
+    def __init__(self, agent: Agent):
+        self._agent = agent
+
+    @override
+    async def run(self, rc: RocqCursor) -> TaskResult:
+        rc.insert_command("Unset SsrIdents.")
+        return await self._agent.run(rc)
 
 
 # TODO: integrate proof tree and structured proof states so that
