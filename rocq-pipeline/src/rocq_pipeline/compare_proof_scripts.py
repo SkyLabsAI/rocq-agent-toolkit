@@ -342,9 +342,10 @@ def main() -> None:
 
     # Check if arguments are provided
     if len(sys.argv) != 5:
-        print("Usage: uv run comparescript <file_path> <N> rocqfilesdir use_rdm")
+        print("Usage: uv run comparescript <file_path> <N/all> rocqfilesdir use_rdm")
         print(
             "Example: uv run comparescript data.jsonl 5 /home/workpace/bluerock/bhv True"
+            "Example: uv run comparescript data.jsonl all /home/workpace/bluerock/bhv False"
         )
         sys.exit(1)
 
