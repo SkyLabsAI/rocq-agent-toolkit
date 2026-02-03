@@ -16,25 +16,25 @@
     True
   Agent succeeded.
   
-  Found admitted at index 10.
+  Found admitted at index 14.
   Goal 0:
     ============================
     True /\ True
   Agent succeeded.
   
-  Found admitted at index 16.
+  Found admitted at index 24.
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admitted at index 22.
+  Found admitted at index 34.
   Goal 0:
     ============================
     42 = forty_two
   Agent succeeded.
   
-  Found admitted at index 28.
+  Found admitted at index 44.
   Goal 0:
     ============================
     forty_two = 57
@@ -44,10 +44,14 @@
   Require Import skylabs.prover.test.bar.
   
   Lemma True_is_True : True.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma True_and_True : True /\ True.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
@@ -60,10 +64,14 @@
   *)
   
   Lemma forty_two_is_42 : forty_two = 42.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_42_backwards : 42 = forty_two.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
