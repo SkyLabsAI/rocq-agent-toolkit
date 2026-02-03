@@ -11,6 +11,7 @@ from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
+from rocq_pipeline.args import load_tasks
 from rocq_pipeline.tracers import json_goal
 from rocq_pipeline.tracers.extractor import (
     Tracer,
@@ -81,15 +82,17 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
 def run(
     tracer_builder: Callable[[], Tracer[Any]],
     output_dir: Path,
-    project: Tasks.Project,
-    tasks: list[Tasks.Task],
+    tasks: list[tuple[Tasks.Project, Tasks.Task]],
     jobs: int = 1,
 ) -> None:
     output_dir.mkdir(exist_ok=True)
     if not output_dir.is_dir():
         print(f"No such output directory: {output_dir}")
 
-    def run_task(task: Tasks.Task, progress: util.ProgressCallback) -> bool:
+    def run_task(
+        proj_task: tuple[Tasks.Project, Tasks.Task], progress: util.ProgressCallback
+    ) -> bool:
+        project, task = proj_task
         # TODO: find a better ID for tasks
         task_id: str = task.get_id()
         output_file: Path = (
@@ -133,40 +136,16 @@ def run(
             return False
 
     util.parallel_runner(
-        run_task, [(t.get_id(), t) for t in tasks], lambda x: x, jobs=jobs
+        run_task,
+        [(f"{t[0].get_id()}#{t[1].get_id()}", t) for t in tasks],
+        lambda x: x,
+        jobs=jobs,
     )
 
 
 def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -> bool:
     assert extra_args is None or len(extra_args) == 0
-    if arguments.task_json and arguments.task_file:
-        print(
-            " ".join(
-                [
-                    "[--task-file ...] and [--task-json ...] shouldn't both be used;",
-                    "choosing [--task-json].",
-                ]
-            )
-        )
-    if arguments.task_json is not None:
-        tasks = arguments.task_json
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-        tasks = [Tasks.Task.model_validate(t) for t in tasks]
-        project = Tasks.Project(name="tasks", git_url="", git_commit="", path=Path("."))
-    elif arguments.task_file is not None:
-        task_file = Tasks.TaskFile.from_file(arguments.task_file)
-        # For backward compatibility, use first bundle if single-project file
-        if len(task_file.bundles) == 1:
-            project = task_file.project
-            tasks = task_file.tasks
-        else:
-            # For multi-project files, use first project and all tasks
-            project = task_file.bundles[0].project
-            tasks = task_file.get_all_tasks()
-    else:
-        print("unspecified task")
-        return False
+    _, tasks = load_tasks(arguments)
 
     if arguments.tracer is None:
 
@@ -195,7 +174,6 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     run(
         tracer,
         arguments.output_dir,
-        project,
         tasks,
         jobs=arguments.jobs,
     )

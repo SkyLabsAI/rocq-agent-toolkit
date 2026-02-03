@@ -4,6 +4,8 @@ import copy
 import json
 import os
 import sys
+from collections import defaultdict
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Literal
 
@@ -112,8 +114,10 @@ class Task(BaseModel):
 
 
 class TaskBundle(BaseModel):
-    project: Project
-    tasks: list[Task]
+    """A collection of tasks attached to the same Project."""
+
+    project: Project = Field(description="The Project that the tasks belong to.")
+    tasks: list[Task] = Field(description="The Tasks in the project.")
 
     @field_serializer("tasks")
     def serialize_tasks(self, tasks: list[Task]):
@@ -174,6 +178,19 @@ class TaskFile(BaseModel):
         sorted_bundles = sorted(self.bundles, key=lambda b: b.project.get_id())
         # Tasks are already sorted by TaskBundle serializer
         return [bundle.model_dump() for bundle in sorted_bundles]
+
+    @classmethod
+    def from_tasks(cls, tasks: Iterator[tuple[Project, Task]]):
+        projs: defaultdict[Project, list[Task]] = defaultdict(list)
+        for proj, task in tasks:
+            proj_tasks = projs.get(proj)
+            assert proj_tasks is not None
+            proj_tasks.append(task)
+        return TaskFile(
+            bundles=[
+                TaskBundle(project=proj, tasks=tasks) for proj, tasks in projs.items()
+            ]
+        )
 
     @classmethod
     def from_file(cls, file: Literal["-"] | Path) -> TaskFile:
@@ -284,30 +301,12 @@ class TaskFile(BaseModel):
         ]
         return TaskFile(bundles=task_bundles)
 
-    def get_all_tasks(self) -> list[Task]:
-        """Get all tasks from all bundles. Useful for backward compatibility."""
-        return [task for bundle in self.bundles for task in bundle.tasks]
+    def get_all_tasks(self) -> Iterator[tuple[Project, Task]]:
+        """Get all tasks from all bundles."""
+        for bundle in self.bundles:
+            for task in bundle.tasks:
+                yield (bundle.project, task)
 
     def get_all_projects(self) -> list[Project]:
-        """Get all unique projects from bundles."""
+        """Get all projects from bundles."""
         return [bundle.project for bundle in self.bundles]
-
-    @property
-    def project(self) -> Project:
-        """Get the project from a single-project TaskFile. Raises ValueError if multiple projects."""
-        if len(self.bundles) != 1:
-            raise ValueError(
-                f"TaskFile has {len(self.bundles)} projects. "
-                "Use .bundles or .get_all_projects() for multi-project files."
-            )
-        return self.bundles[0].project
-
-    @property
-    def tasks(self) -> list[Task]:
-        """Get the tasks from a single-project TaskFile. Raises ValueError if multiple projects."""
-        if len(self.bundles) != 1:
-            raise ValueError(
-                f"TaskFile has {len(self.bundles)} projects. "
-                "Use .bundles or .get_all_tasks() for multi-project files."
-            )
-        return self.bundles[0].tasks
