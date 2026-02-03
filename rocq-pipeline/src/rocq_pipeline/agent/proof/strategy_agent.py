@@ -45,6 +45,12 @@ class StrategyAgent(ProofAgent):
         """Pre-hook for prove."""
         self._initial_prove_cursor_index = rc.cursor_index()
         rc.insert_command("Unset SsrIdents.")
+
+        # The following command undoes `Set Default Goal Selector "!".`,
+        # and ensures we can run `tac` to apply it to the _first_ goal, as Rocq
+        # does by default.
+        rc.insert_command('#[local] Set Default Goal Selector "1".')
+
         return {}
 
     def conclude(self, rc: RocqCursor) -> None:
