@@ -126,6 +126,13 @@ class ProofAgent(Agent):
             return self.finished(rc, message="No goal to prove")
         if isinstance(goal_reply, RocqCursor.Err):
             return self.give_up(rc, message="No goal to prove", reason=goal_reply)
+
+        # The following command ensures that agents can refer to `_x_`-like
+        # unstable identifiers that SSReflect generates.
+        # Resulting proofs are less stable, but this is acceptable during
+        # agent development.
+        rc.insert_command("#[local] Unset SsrIdents.")
+
         # TODO: validate that no goals remain.
         return await self.prove(rc)
 
