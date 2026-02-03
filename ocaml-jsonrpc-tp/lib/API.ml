@@ -356,7 +356,9 @@ let make_params : type a. _ api -> a Args.t -> a -> params = fun api args v ->
     | (Args.Cns(a), (v, vs)) ->
     make ((a.name, to_json api a.schema v) :: fs) a.tail vs
   in
-  make [] args v
+  match args with
+  | Args.Nil -> None
+  | _        -> make [] args v
 
 let parse_params : type a. _ api -> a Args.t -> params -> (a, string) result =
     fun api args params ->
