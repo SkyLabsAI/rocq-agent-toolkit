@@ -1,0 +1,25 @@
+[project]
+name = "remote-agent-client"
+version = "0.1.0"
+description = "Client (protocol + proxy CLI) for Remote Agent server"
+readme = "README.md"
+authors = [
+    { name = "Ehtesham Zahoor", email = "ehtesham.zahoor@skylabs-ai.com" }
+]
+requires-python = "==3.13.*"
+dependencies = [
+    "rocq-doc-manager",
+    "pydantic>=2.7.0",
+    "httpx>=0.28.1",
+    "websockets>=15.0.1",
+]
+
+[tool.uv.sources]
+rocq-doc-manager = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[project.scripts]
+rocq-remote-rdm-proxy = "remote_agent_client.proxy_cli:main"
