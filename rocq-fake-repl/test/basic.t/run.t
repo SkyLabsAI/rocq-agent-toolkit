@@ -3,7 +3,7 @@
   $ export DUNE_CACHE=disabled
 
   $ dune build
-  $ dune coq top --toplevel rocq-fake-repl theories/file.v | sed 's/\/.*\/\(_build\/\)/$TESTCASE_ROOT\/\1/'
+  $ dune rocq top --toplevel rocq-fake-repl theories/file.v | sed 's/\/.*\/\(_build\/\)/$TESTCASE_ROOT\/\1/'
   -w
   -deprecated-native-compiler-option
   -w
@@ -11,63 +11,9 @@
   -native-compiler
   ondemand
   -boot
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/btauto
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/cc
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/cc_core
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/derive
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/extraction
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/firstorder
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/firstorder_core
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/funind
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac2
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ltac2_ltac1
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/micromega
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/micromega_core
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/nsatz
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/nsatz_core
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/number_string_notation
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ring
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/rtauto
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ssreflect
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/ssrmatching
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tauto
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p0
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p1
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p2
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p3
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/tutorial/p4
-  -I
-  $TESTCASE_ROOT/_build/install/default/lib/coq/../rocq-runtime/plugins/zify
   -R
   $TESTCASE_ROOT/_build/install/default/lib/coq/theories
-  Coq
+  Corelib
   -R
   $TESTCASE_ROOT/_build/default/theories
   test.theory

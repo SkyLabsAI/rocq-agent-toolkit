@@ -1,2 +1,2 @@
-(coq.theory
+(rocq.theory
  (name test.theory))
