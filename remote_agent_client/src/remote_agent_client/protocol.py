@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 PROTOCOL_VERSION: int = 1
+
+# We use JSON-compatible types for protocol payloads to avoid `Any`.
+type JsonPrimitive = str | int | float | bool | None
+type JsonValue = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
 
 
 class BudgetConfig(BaseModel):
@@ -44,7 +48,7 @@ class AgentConfig(BaseModel):
     # Stable, server-defined identifier. For Brick agents this maps nicely to
     # brick_agents' `script_entrypoint` (e.g. "react-code-proof-agent").
     name: str
-    parameters: dict[str, Any] = Field(default_factory=dict)
+    parameters: dict[str, JsonValue] = Field(default_factory=dict)
     inference: InferenceConfig | None = None
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
 
@@ -98,7 +102,7 @@ class Event(BaseModel):
     type: Literal["event"] = "event"
     level: Literal["debug", "info", "warning", "error"] = "info"
     message: str
-    data: dict[str, Any] | None = None
+    data: dict[str, JsonValue] | None = None
     time_ms: int = Field(default_factory=lambda: int(time.time() * 1000))
 
 
@@ -109,7 +113,7 @@ class Result(BaseModel):
     session_id: str
     agent_name: str
     proof: list[str]
-    summary: dict[str, Any] | None = None
+    summary: dict[str, JsonValue] | None = None
 
 
 class ErrorMsg(BaseModel):
@@ -119,7 +123,7 @@ class ErrorMsg(BaseModel):
     session_id: str | None = None
     code: str
     message: str
-    data: dict[str, Any] | None = None
+    data: dict[str, JsonValue] | None = None
 
 
 class SessionInfo(BaseModel):
@@ -129,4 +133,3 @@ class SessionInfo(BaseModel):
     token: str
     ws_path: str
     ws_url: str
-
