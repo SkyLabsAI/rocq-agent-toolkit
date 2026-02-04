@@ -9,6 +9,7 @@ cf. __init__.py for more details."""
 from __future__ import annotations
 
 import logging
+from collections.abc import MutableMapping
 from typing import Any, override
 
 from ..proto import (
@@ -90,13 +91,17 @@ class WithClassIdentityProvenance(WithProvenance):
 
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type, ProvenanceT]:
+    def compute_cls_provenance(
+        cls,
+    ) -> MutableMapping[type[WithClassProvenance], ProvenanceT]:
         result = super().compute_cls_provenance()
         result[WithClassIdentityProvenance] = ClassIdentityProvenanceData(cls)
         return result
 
     @override
-    def compute_provenance(self) -> dict[type, ProvenanceT]:
+    def compute_provenance(
+        self,
+    ) -> MutableMapping[type[WithInstanceProvenance], ProvenanceT]:
         result = super().compute_provenance()
         result[WithClassIdentityProvenance] = ClassIdentityProvenanceData(type(self))
         return result

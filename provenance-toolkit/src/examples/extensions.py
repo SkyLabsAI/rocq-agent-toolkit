@@ -1,4 +1,5 @@
 import json
+from collections.abc import MutableMapping
 from typing import Any, override
 
 from provenance_toolkit import Provenance
@@ -15,7 +16,7 @@ class B(A, VERSION="2.1.0"):
 class CustomProvenance(Provenance.T):
     def __init__(
         self,
-        data: dict[str, Any] | None = None,
+        data: MutableMapping[str, Any] | None = None,
         instance: bool = False,
     ) -> None:
         self._data = data or {}
@@ -46,13 +47,17 @@ class WithCustomProvenance(Provenance.Proto):
 
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type, Provenance.T]:
+    def compute_cls_provenance(
+        cls,
+    ) -> MutableMapping[type[Provenance.ProtoClass], Provenance.T]:
         result = super().compute_cls_provenance()
         result[WithCustomProvenance] = CustomProvenance()
         return result
 
     @override
-    def compute_provenance(self) -> dict[type, Provenance.T]:
+    def compute_provenance(
+        self,
+    ) -> MutableMapping[type[Provenance.ProtoInstance], Provenance.T]:
         result = super().compute_provenance()
         result[WithCustomProvenance] = CustomProvenance(
             data={"num": self._num}, instance=True
@@ -68,7 +73,9 @@ class C(A, WithCustomProvenance, VERSION="3.4.5"):
 class WithCustomProvenanceDerived(WithCustomProvenance):
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type, Provenance.T]:
+    def compute_cls_provenance(
+        cls,
+    ) -> MutableMapping[type[Provenance.ProtoClass], Provenance.T]:
         result = super().compute_cls_provenance()
         result[WithCustomProvenanceDerived] = CustomProvenance({"num": 21718})
         return result
