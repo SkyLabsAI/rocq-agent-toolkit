@@ -330,21 +330,17 @@ def print_entries(
                 print(f"  inf / ground_v = {len(inf[0])} / {len(ground_v[0])}")
                 i = i + 1
                 v_list.append(
-
-                        float(len(inf[0])) / float(len(ground_v[0]))
-                        if len(ground_v[0]) > 0
-                        else 0
-
+                    float(len(inf[0])) / float(len(ground_v[0]))
+                    if len(ground_v[0]) > 0
+                    else 0
                 )
             if ground_rdm is not None and ground_rdm[1] == "Success":
                 print(f"  inf / ground_rdm = {len(inf[0])} / {len(ground_rdm[0])}")
                 j = j + 1
                 rdm_list.append(
-
-                        float(len(inf[0])) / float(len(ground_rdm[0]))
-                        if len(ground_rdm[0]) > 0
-                        else 0
-
+                    float(len(inf[0])) / float(len(ground_rdm[0]))
+                    if len(ground_rdm[0]) > 0
+                    else 0
                 )
     if i > 0:
         avg_v = sum(v_list) / float(i)
