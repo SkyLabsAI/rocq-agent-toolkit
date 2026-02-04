@@ -10,31 +10,31 @@
   $ uv run auto-prover foo.v
   Running the proving agent.
   
-  Found admitted at index 4.
+  Found admitted at index 6.
   Goal 0:
     ============================
     True
   Agent succeeded.
   
-  Found admitted at index 14.
+  Found admitted at index 18.
   Goal 0:
     ============================
     True /\ True
   Agent succeeded.
   
-  Found admitted at index 24.
+  Found admitted at index 30.
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admitted at index 34.
+  Found admitted at index 42.
   Goal 0:
     ============================
     42 = forty_two
   Agent succeeded.
   
-  Found admitted at index 44.
+  Found admitted at index 54.
   Goal 0:
     ============================
     forty_two = 57
@@ -44,12 +44,14 @@
   Require Import skylabs.prover.test.bar.
   
   Lemma True_is_True : True.
+  Proof.
   #[local] Unset SsrIdents.
   #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma True_and_True : True /\ True.
+  Proof.
   #[local] Unset SsrIdents.
   #[local] Set Default Goal Selector "1".
   auto.
@@ -64,16 +66,19 @@
   *)
   
   Lemma forty_two_is_42 : forty_two = 42.
+  Proof.
   #[local] Unset SsrIdents.
   #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_42_backwards : 42 = forty_two.
+  Proof.
   #[local] Unset SsrIdents.
   #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_57 : forty_two = 57.
+  Proof.
   Admitted. (no-eol)
