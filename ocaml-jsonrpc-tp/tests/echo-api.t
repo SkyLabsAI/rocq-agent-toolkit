@@ -1,7 +1,11 @@
   $ cat > calls.txt <<EOF
   > echo [2,"Bye!"]
+  > !ok
   > echo [3,"Coucou!"]
+  > !ok
+  > !ok
   > echo [1,"Hello!"]
+  > !ok
   > echo [0,"First!"]
   > EOF
 

@@ -86,14 +86,13 @@ let worker_loop : state -> unit = fun s ->
     match p with
     | None ->
         (* No request, we have been stopped. *)
-        let pval = Atomic.fetch_and_add s.workers (-1) in
-        if pval = 1 then begin
-          Mutex.lock s.o_mutex;
+        Mutex.lock s.o_mutex;
+        if Atomic.fetch_and_add s.workers (-1) = 1 then
           Condition.broadcast s.o_cond;
-          Mutex.unlock s.o_mutex
-        end
+        Mutex.unlock s.o_mutex
     | Some(Notification(Jsonrpc.Notification.{method_=name; params})) ->
-        s.handle_notification ~name ~params ~notify
+        s.handle_notification ~name ~params ~notify;
+        loop ()
     | Some(Request(Jsonrpc.Request.{id; method_=name; params}, bd)) ->
         let result = s.handle_request ~name ~params ~notify in
         let response = Jsonrpc.Response.{id; result} in
