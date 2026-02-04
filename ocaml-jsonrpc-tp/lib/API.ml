@@ -565,7 +565,7 @@ let output_python_api oc api =
   line "from typing import Any, Literal, TypeAlias";
   line "";
   line "from dataclasses_json import DataClassJsonMixin";
-  line "from jsonrpc_tp import Err, Error, Resp, JsonRPCTP";
+  line "from jsonrpc_tp import Err, Error, JsonRPCTP, Resp";
   line "";
   line "";
   line "class %s:" api.name;
