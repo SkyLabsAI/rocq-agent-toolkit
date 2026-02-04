@@ -7,8 +7,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
 from typing import Any, TypeAlias, cast, get_type_hints
 
-from jsonrpc_tp import JsonRPCTP
-
 from .rocq_doc_manager_api import RocqDocManagerAPI
 
 logger = logging.getLogger(__name__)
@@ -19,9 +17,9 @@ class RocqCursorProtocol(ABC):
     Cursors represent a pointer into a Rocq document.
     """
 
-    Err: TypeAlias = JsonRPCTP.Err  # noqa: UP040
-    Resp: TypeAlias = JsonRPCTP.Resp  # noqa: UP040
-    Error: TypeAlias = JsonRPCTP.Error  # noqa: UP040
+    Err: TypeAlias = RocqDocManagerAPI.Err  # noqa: UP040
+    Resp: TypeAlias = RocqDocManagerAPI.Resp  # noqa: UP040
+    Error: TypeAlias = RocqDocManagerAPI.Error  # noqa: UP040
     RocqSource: TypeAlias = RocqDocManagerAPI.RocqSource  # noqa: UP040
     RocqLoc: TypeAlias = RocqDocManagerAPI.RocqLoc  # noqa: UP040
     Quickfix: TypeAlias = RocqDocManagerAPI.Quickfix  # noqa: UP040

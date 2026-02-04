@@ -5,8 +5,11 @@ constructed with the OCaml jsonrpc-tp library. Interaction happens on the
 standard input and output channels.
 """
 
-from .jsonrpc_tp import JsonRPCTP
+from .jsonrpc_tp import Err, Error, JsonRPCTP, Resp
 
 __all__ = [
     "JsonRPCTP",
+    "Err",
+    "Error",
+    "Resp",
 ]
