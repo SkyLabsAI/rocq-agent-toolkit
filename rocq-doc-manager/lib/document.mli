@@ -11,7 +11,9 @@
     to be processed. Said otherwise, the cursor is the index of the first item
     of the document's suffix. *)
 
-(** Imperative state for a Rocq document. *)
+(** Imperative state for a Rocq document. Multiple domains must not operate on
+    a document concurrently, as unsynchronized accesses can lead to an invalid
+    state. Concurrent operations on distinct documents are unrestricted. *)
 type t
 
 (** [init ~args ~file] initialises a Rocq document for the given [file], using
@@ -31,12 +33,17 @@ exception Stopped
     [clone], in order to free the underlying resources. *)
 val stop : t -> unit
 
+(** [is_stopped d] indicates whether the document [d] is already stopped. This
+    operation can be used concurrently, without restriction. *)
+val is_stopped : t -> bool
+
 (** [clone d] creates an independent clone of the document [d], that starts in
     the same state as [d]. While document [d] and the produced clone both have
     their own state, they share a single underlying Rocq top-level. This means
     that when one runs a sequence of operations on a document, an initial cost
     may need to be paid to bring the top-level in sync with the document prior
-    to running the first operation in the sequence. *)
+    to running the first operation in the sequence. Note that even if distinct
+    documents share a top-level, concurrent accesses to them are permitted. *)
 val clone : t -> t
 
 (** [copy_contents ~from d] copies the contents from document [from] into [d].
@@ -44,7 +51,7 @@ val clone : t -> t
     of sync with the contents of the document. *)
 val copy_contents : from:t -> t -> unit
 
-(** [materialize d] spaws a new, dedicated Rocq top-level for [d], that starts
+(** [materialize d] spawns a new dedicated Rocq top-level for [d], that starts
     in the same state as the current top-level of [d]. In particular, this new
     top-level is initially only used by [d], and not shared with any clone. If
     the top-level of [d] is not currently shared with any clone, the operation
@@ -60,7 +67,7 @@ val sync : t -> unit
 
 (** [is_synced d] indicates whether the Rocq toplevel that is relied on by [d]
     is in sync with [d]. If that is the case, subsequent operations on [d] can
-    be run witout paying any extra upfront cost. *)
+    be run without paying any extra upfront cost. *)
 val is_synced : t -> bool
 
 (** [file d] gives the Rocq source file path corresponding to [d]. The file is
@@ -111,7 +118,8 @@ val revert_before : ?erase:bool -> t -> index:int -> unit
 
 (** [with_rollback d f] runs [f ()], and then rolls back the document state so
     that the effects of the call to [f] are reverted. Note that [f] should not
-    raise exceptions. *)
+    raise exceptions, nor call [stop d]. If [f] calls [materialize d], the new
+    backend remains in place after the function returns. *)
 val with_rollback : t -> (unit -> 'a) -> 'a
 
 (** [clear_suffix ?count d] removes unprocessed items from the document suffix
@@ -121,6 +129,9 @@ val with_rollback : t -> (unit -> 'a) -> 'a
     [Invalid_argument] is raised. *)
 val clear_suffix : ?count:int -> t -> unit
 
+(** [run_step d] advances the cursor of document [d] over the next unprocessed
+    item of the document suffix, returning similar data to [insert_command] if
+    the item is a command. An error is also given if there is no item left. *)
 val run_step : t ->
   (command_data option, string * command_error option) result
 
@@ -140,20 +151,32 @@ val advance_to : t -> index:int -> (unit, string * command_error) result
     index of the last item in the document's suffix. *)
 val go_to : t -> index:int -> (unit, string * command_error) result
 
+(** Representation of a processed item (in the document's prefix). *)
 type processed_item = {
   index : int;
+  (** Index in the document, as passed to, e.g., [advance_to]. *)
   kind : [`Blanks | `Command | `Ghost];
+  (** Item kind. *)
   off : int;
+  (** Byte offset of the item in the document. *)
   text : string;
+  (** Text of the item. *)
 }
 
+(** Representation of an unprocessed item (in the document's suffix). *)
 type unprocessed_item = {
   kind : [`Blanks | `Command | `Ghost];
+  (** Item kind. *)
   text : string;
+  (** Text of the item. *)
 }
 
+(** [rev_prefix d] returns the reversed list of already-processed items in the
+    document [d] (in other words, its prefix). *)
 val rev_prefix : t -> processed_item list
 
+(** [suffix d] returns the list of not-yet-processed items in the document [d]
+    (in other words, its suffix). *)
 val suffix : t -> unprocessed_item list
 
 (** [contents ?include_ghost ?include_suffix d]  gives the current contents of
@@ -172,6 +195,12 @@ val contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string
 val commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool
   -> t -> (unit, string) result
 
+(** [compile d] attempts to run the Rocq compiler on the file corresponding to
+    the document [d], ignoring any uncommitted changes. The return value holds
+    a triple [(res, stdout, stderr)], where [res] indicates the success of the
+    operation, with a short error message describing the status with which the
+    compilation process terminated. The output of the process is also given in
+    [stdout] and [stderr]. *)
 val compile : t -> (unit, string) result * string * string
 
 (** [query d ~text] runs the command [text] at the cursor in document [d]. The
@@ -209,7 +238,12 @@ type json = Yojson.Safe.t
     not a valid JSON string, an [Error] is returned. *)
 val query_json : ?index:int -> t -> text:string -> (json, string) result
 
+(** [query_json_all ?indices d ~text] is similar to [query_text_all ?indices d
+    ~text], but the results are additionally turned into JSON data. If any one
+    of the results is not a valid JSON string, an [Error] is returned. *)
 val query_json_all : ?indices:int list -> t -> text:string
   -> (json list, string) result
 
+(** [dump d] gives a debug representation of the current state of document [d]
+    in JSON format. This function should solely be used for debugging. *)
 val dump : t -> json
