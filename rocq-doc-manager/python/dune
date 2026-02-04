@@ -1,11 +1,10 @@
-(subdir src 
- (subdir rocq_doc_manager
-  (rule
-   (mode promote)
-   (package rocq-doc-manager)
-   (action
-    (with-stdout-to rocq_doc_manager_api.py
-     (run rocq-doc-manager --python-api))))))
+(subdir src/rocq_doc_manager
+ (rule
+  (mode promote)
+  (package rocq-doc-manager)
+  (action
+   (with-stdout-to rocq_doc_manager_api.py
+    (run rocq-doc-manager --python-api)))))
 
 ; Ignore the test directory: its tests are driven by python.
 (data_only_dirs tests)

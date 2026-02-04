@@ -1,6 +1,8 @@
 import sys
 
-from rocq_doc_manager import RocqCursor, create
+from rocq_doc_manager import create
+
+from . import rocq_doc_manager_api as api
 
 
 def cram_test1() -> None:
@@ -11,5 +13,5 @@ def cram_test1() -> None:
             print(rc.load_file())
             print(rc.doc_suffix())
             rc.dispose()
-    except RocqCursor.Error as e:
+    except api.Error as e:
         print(e)

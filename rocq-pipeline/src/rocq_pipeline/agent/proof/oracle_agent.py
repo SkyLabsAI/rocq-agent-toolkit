@@ -1,6 +1,7 @@
 from typing import override
 
 from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as api
 
 from rocq_pipeline.agent.base import AgentBuilder
 from rocq_pipeline.agent.proof.strategy_agent import StrategyAgent
@@ -28,13 +29,13 @@ class StepAction(Action[RocqCursor]):
     @override
     def interact(self, state: RocqCursor) -> RocqCursor:
         for _ in range(0, self._ignore):
-            if isinstance(state.run_step(), RocqCursor.Err):
+            if isinstance(state.run_step(), api.Err):
                 raise Action.Failed()
         next = state.doc_suffix()
         assert next
         assert next[0].text == self._key
         assert next[0].kind == "command"
-        if isinstance(state.run_step(), RocqCursor.Err):
+        if isinstance(state.run_step(), api.Err):
             raise Action.Failed()
         return state
 

@@ -1,7 +1,7 @@
 import logging
 
 import pytest
-from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as api
 from rocq_doc_manager.rocq_doc_manager import RocqDocManager
 
 from .util import RDM_Tests
@@ -17,7 +17,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.insert_command("Check nat.")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
     def test_insert_command_without_period_warning(
@@ -27,7 +27,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.insert_command("Check nat")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "insert_command" in caplog.text
             assert "argument 'text'" in caplog.text
@@ -39,7 +39,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.query("Check nat.")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
     def test_query_without_period_warning(
@@ -49,7 +49,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.query("Check nat")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "query" in caplog.text
 
@@ -106,7 +106,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.query_text("Check nat.", index=0)
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
     def test_query_text_without_period_warning(
@@ -116,7 +116,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.query_text("Check nat", index=0)
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "query_text" in caplog.text
 
@@ -127,7 +127,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.query_text_all("Check nat.")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
     def test_query_text_all_without_period_warning(
@@ -137,7 +137,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.query_text_all("Check nat")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "query_text_all" in caplog.text
 
@@ -148,7 +148,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.run_command("Check nat.")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
     def test_run_command_without_period_warning(
@@ -158,7 +158,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.run_command("Check nat")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "run_command" in caplog.text
 
@@ -169,7 +169,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.insert_command(text="Check nat.")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
     def test_insert_command_keyword_arg_without_period_warning(
@@ -179,7 +179,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.insert_command(text="Check nat")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "insert_command" in caplog.text
 
@@ -202,7 +202,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         rc = transient_rdm.cursor()
         with caplog.at_level(logging.WARNING):
             result = rc.query_text_all("Check nat", indices=[0])
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             assert "doesn't end with '.'" in caplog.text
             assert "query_text_all" in caplog.text
 
@@ -228,7 +228,7 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
         with caplog.at_level(logging.WARNING):
             # The decorator should add the period automatically
             result = rc.insert_command("Check nat")
-            assert not isinstance(result, RocqCursor.Err)
+            assert not isinstance(result, api.Err)
             # Verify the command was actually executed with the period added
             # by checking the document prefix (where inserted commands go)
             prefix = rc.doc_prefix()

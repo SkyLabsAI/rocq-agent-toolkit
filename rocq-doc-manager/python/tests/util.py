@@ -7,6 +7,7 @@ import pytest
 import rocq_doc_manager
 from hypothesis import strategies as st
 from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as api
 from rocq_doc_manager.rocq_doc_manager import RocqDocManager
 
 
@@ -55,7 +56,7 @@ class RDM_Tests:
         rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
         assert not isinstance(
             rdm.cursor().load_file(),
-            RocqDocManager.Err,
+            api.Err,
         )
         return rdm
 
@@ -66,7 +67,7 @@ class RDM_Tests:
         rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
         assert not isinstance(
             rdm.cursor().load_file(),
-            RocqDocManager.Err,
+            api.Err,
         )
         return rdm.cursor()
 
@@ -79,7 +80,7 @@ class RDM_Tests:
     ) -> Iterator[RocqCursor]:
         assert not isinstance(
             rdm.go_to(idx),
-            RocqCursor.Err,
+            api.Err,
         )
         yield rdm
 
@@ -164,7 +165,7 @@ class RDM_Tests:
         suffix_unchanged: bool = True,
     ) -> Iterator[RocqCursor]:
         expected_prefix_extension = [
-            RocqCursor.PrefixItem(
+            api.PrefixItem(
                 text=cmd,
                 kind="command",
             )
@@ -213,7 +214,7 @@ class RDM_Tests:
         rhs: str = "Set",
     ) -> None:
         query_reply = rdm.query_text_all(f"Check {term}.", indices=None)
-        assert not isinstance(query_reply, RocqCursor.Err)
+        assert not isinstance(query_reply, api.Err)
         assert len(query_reply) == 1
         parts = [s.strip() for s in query_reply[0].split(":")]
         assert parts == [lhs, rhs]

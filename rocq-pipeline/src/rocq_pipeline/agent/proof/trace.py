@@ -2,6 +2,7 @@ from typing import Any, override
 
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as api
 
 from rocq_pipeline.agent.base import (
     ProofAgent,
@@ -57,7 +58,7 @@ class TraceAgent(ProofAgent):
 
         while True:
             pf_state_reply = self.current_proof_state(rdm)
-            if isinstance(pf_state_reply, RocqCursor.Err):
+            if isinstance(pf_state_reply, api.Err):
                 return self.give_up(
                     rdm,
                     message="{self.name()}: couldn't get current proof state",
@@ -118,7 +119,7 @@ class TraceAgent(ProofAgent):
         self,
         rdm: RocqCursor,
         message: str = "",
-        reason: FailureReason | RocqCursor.Err[Any] | BaseException | None = None,
+        reason: FailureReason | api.Err[Any] | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:

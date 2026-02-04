@@ -50,7 +50,7 @@ module Schema = struct
     let to_string v = Printf.sprintf "%S" (s.encode v) in
     "Literal[" ^ String.concat ", " (List.map to_string s.values) ^ "]"
 
-  let python_type : type a. cls:string -> a t -> string = fun ~cls ->
+  let python_type : type a. a t -> string =
     let rec python_type : type a. a t -> string = function
       | Null -> "None"
       | Any -> "Any"
@@ -60,14 +60,13 @@ module Schema = struct
       | Variant s -> python_type_variant s
       | Nullable s -> python_type s ^ " | None"
       | List s -> "list[" ^ python_type s ^ "]"
-      | Obj o -> Printf.sprintf "%s.%s" cls o.name
+      | Obj o -> Printf.sprintf "%s" o.name
     in
     python_type
 
   (* Ensure every field has a default; auto-generated methods use dictionary
      unpacking and must handle cases where null/empty fields are elided. *)
-  let python_dataclass_field : type a. cls:string -> a t -> string =
-      fun ~cls s ->
+  let python_dataclass_field : type a. a t -> string = fun s ->
     Printf.sprintf "field(kw_only=True, %s)" @@
     match s with
     | Null -> "default=None"
@@ -78,7 +77,7 @@ module Schema = struct
     | Variant s -> Printf.sprintf "default=%S" (s.encode s.default)
     | Nullable _ -> "default=None"
     | List _ -> "default_factory=list"
-    | Obj o -> Printf.sprintf "default_factory=lambda: %s.%s()" cls o.name
+    | Obj o -> Printf.sprintf "default_factory=lambda: %s()" o.name
 
   let python_val : type a. string -> a t -> string = fun var s ->
     let fresh = let c = ref 0 in fun () -> incr c; Printf.sprintf "v%i" !c in
@@ -95,7 +94,7 @@ module Schema = struct
       | List s ->
           let fresh = fresh () in
           Printf.sprintf "[%s for %s in %s]" (python_val fresh s) fresh var
-      | Obj o -> Printf.sprintf "self.%s.from_dict(%s)" o.name var
+      | Obj o -> Printf.sprintf "%s.from_dict(%s)" o.name var
     in
     python_val var s
 
@@ -560,45 +559,49 @@ let output_python_api oc api =
   let pp_capitalized oc s = output_string oc (String.capitalize_ascii s) in
   line "from __future__ import annotations";
   line "";
-  line "# ruff: noqa: C416 -- unnecessary list comprehension";
   line "from dataclasses import dataclass, field";
-  line "from typing import Any, Literal, TypeAlias";
+  line "";
+  line "# ruff: noqa: C416 -- unnecessary list comprehension";
+  line "from typing import Any, Literal";
   line "";
   line "from dataclasses_json import DataClassJsonMixin";
   line "from jsonrpc_tp import Err, Error, JsonRPCTP, Resp";
   line "";
-  line "";
-  line "class %s:" api.name;
-  line "    \"\"\"Main API class.\"\"\"";
-  line "";
-  line "    Err: TypeAlias = Err # noqa: UP040";
-  line "    Resp: TypeAlias = Resp # noqa: UP040";
-  line "    Error: TypeAlias = Error # noqa: UP040";
-  line "";
-  line "    def __init__(self, rpc: JsonRPCTP) -> None:";
-  line "        self._rpc:JsonRPCTP = rpc";
+  let exports =
+    [api.name; "Err"; "Error"; "Resp"] @
+    List.map (fun (A(O(o))) -> o.key.name) api.api_objects
+  in
+  line "__all__ = [";
+  List.iter (line "  '%s',") exports;
+  line "]";
   let output_object (A(O(o))) =
     line "";
-    line "    @dataclass(frozen=True)";
-    line "    class %s(DataClassJsonMixin):" o.key.name;
-    Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
+    line "@dataclass(frozen=True)";
+    line "class %s(DataClassJsonMixin):" o.key.name;
+    Option.iter (line "    \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->
       output_fields f.tail;
-      Option.iter (line "        # %a." pp_capitalized) f.descr;
-      line "        %s: %s = %s" f.name
-        (Schema.python_type ~cls:api.name f.schema)
-        (Schema.python_dataclass_field ~cls:api.name f.schema)
+      Option.iter (line "   # %a." pp_capitalized) f.descr;
+      line "    %s: %s = %s" f.name
+        (Schema.python_type f.schema)
+        (Schema.python_dataclass_field f.schema)
     in
     output_fields o.fields
   in
   List.iter output_object (List.rev api.api_objects);
+  line "";
+  line "class %s:" api.name;
+  line "    \"\"\"Main API class.\"\"\"";
+  line "";
+  line "    def __init__(self, rpc: JsonRPCTP) -> None:";
+  line "        self._rpc:JsonRPCTP = rpc";
   let rec pp_args : type a. _ -> a Args.t -> unit = fun oc args ->
     match args with
     | Args.Nil    -> ()
     | Args.Cns(a) ->
     Printf.fprintf oc ", %s: %s" a.name
-      (Schema.python_type ~cls:api.name a.schema);
+      (Schema.python_type a.schema);
     pp_args oc a.tail
   in
   let rec pp_names : type a. _ -> a Args.t -> unit = fun oc args ->
@@ -613,11 +616,11 @@ let output_python_api oc api =
     line "";
     let ret_ty =
       match m.impl with
-      | Pure(_) -> Schema.python_type ~cls:api.name m.ret
+      | Pure(_) -> Schema.python_type m.ret
       | Rslt(i) ->
-          let ret = Schema.python_type ~cls:api.name m.ret in
-          let err = Schema.python_type ~cls:api.name i.err in
-          Printf.sprintf "%s | %s.Err[%s]" ret api.name err
+          let ret = Schema.python_type m.ret in
+          let err = Schema.python_type i.err in
+          Printf.sprintf "%s | Err[%s]" ret err
     in
     line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
@@ -632,7 +635,7 @@ let output_python_api oc api =
       | Rslt(i) ->
         line "        if isinstance(result, Err):";
         line "            data = %s" (Schema.python_val "result.data" i.err);
-        line "            return %s.Err(result.message, data)" api.name
+        line "            return Err(result.message, data)"
     in
     line "        return %s" (Schema.python_val "result.result" m.ret)
   in

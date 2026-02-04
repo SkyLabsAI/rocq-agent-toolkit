@@ -6,6 +6,7 @@ from observability import get_logger
 from observability.tracing.decorators import trace
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as api
 
 from ..action import Action
 
@@ -89,7 +90,7 @@ class RocqCommandAction(Action[RocqCursor]):
         # If cursors were functional, we would just be returning the latest
         # cursor here.
         response = state.insert_command(self._command)
-        if isinstance(response, RocqCursor.Err):
+        if isinstance(response, api.Err):
             # Preserve the actual Rocq error message
             raise Action.Failed(
                 message=response.message,
@@ -151,7 +152,7 @@ class RocqTacticAction(Action[RocqCursor]):
         # If cursors were functional, we would just be returning the latest
         # cursor here.
         response = state.insert_command(f"{self._tactic}.")
-        if isinstance(response, RocqCursor.Err):
+        if isinstance(response, api.Err):
             # Preserve the actual Rocq error message
             raise Action.Failed(
                 message=response.message,
@@ -224,7 +225,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
 
         for attempt in range(max_attempts):
             response = state.insert_command(command)
-            if not isinstance(response, RocqCursor.Err):
+            if not isinstance(response, api.Err):
                 self._final_command = command
                 return state
 

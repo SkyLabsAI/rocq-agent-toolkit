@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from rocq_doc_manager import RocqCursor, RocqDocManager
+from rocq_doc_manager import rocq_doc_manager_api as api
 from rocq_pipeline.agent.proof import trace_cursor
 
 
@@ -31,11 +32,11 @@ def same[T](fn: Callable[[RocqCursor], T], verbose: bool) -> None:
         result = fn(rc)
         traced_result = fn(traced)
         assert type(result) is type(traced_result)
-        if isinstance(result, RocqCursor.CommandData):
-            assert isinstance(traced_result, RocqCursor.CommandData)
+        if isinstance(result, api.CommandData):
+            assert isinstance(traced_result, api.CommandData)
             assert result.proof_state == traced_result.proof_state
-        elif isinstance(result, RocqCursor.Err):
-            assert isinstance(traced_result, RocqCursor.Err)
+        elif isinstance(result, api.Err):
+            assert isinstance(traced_result, api.Err)
             assert result.data == traced_result.data
         else:
             assert result == traced_result

@@ -7,7 +7,7 @@ import copy
 import logging
 from typing import Any, overload
 
-from rocq_doc_manager import RocqDocManager as RDM
+from rocq_doc_manager import rocq_doc_manager_api as api
 
 from rocq_pipeline.proof_state import parse
 from rocq_pipeline.proof_state.goal import IrisGoal, RocqGoal
@@ -27,16 +27,16 @@ class ProofState:
 
     A proof state is a heterogenous collection of structured goals (Rocq,
     Iris or client extensions). This is a derivation atop
-    RocqDocManager.ProofState exposing a structured / hierarchical view of
+    api.ProofState exposing a structured / hierarchical view of
     the focused goals.
     """
 
     def __init__(
         self,
-        pf_state: RDM.ProofState | None,
+        pf_state: api.ProofState | None,
         goal_ty_upperbound: type[RocqGoal] = RocqGoal,
     ) -> None:
-        if pf_state is not None and not isinstance(pf_state, RDM.ProofState):
+        if pf_state is not None and not isinstance(pf_state, api.ProofState):
             raise ValueError(
                 " ".join(
                     [
@@ -64,7 +64,7 @@ class ProofState:
             self._shelved_cnt = pf_state.shelved_goals
             self._admit_cnt = pf_state.given_up_goals
 
-            # NOTE: we avoid making a shallow copy because `RDM.ProofState` is a frozen
+            # NOTE: we avoid making a shallow copy because `api.ProofState` is a frozen
             # dataclass; in the `unfocused_goals` property below we return a shallow
             # copy.
             self._unfocused_goals = pf_state.unfocused_goals
@@ -80,7 +80,7 @@ class ProofState:
                     rocq_rel_goal_num=rel_goal_num,
                     rocq_shelved_cnt=self._shelved_cnt,
                     rocq_admit_cnt=self._admit_cnt,
-                    # NOTE: we don't get this from RocqDocManager.ProofState
+                    # NOTE: we don't get this from api.ProofState
                     rocq_goal_id=None,
                 )
 

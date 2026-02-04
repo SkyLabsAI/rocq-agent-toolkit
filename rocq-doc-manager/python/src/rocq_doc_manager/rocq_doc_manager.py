@@ -5,6 +5,7 @@ from typing import Self, override
 
 from jsonrpc_tp import JsonRPCTP
 
+from . import rocq_doc_manager_api as api
 from .dune_util import dune_env_hack
 from .rocq_cursor import RocqCursor
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
@@ -62,11 +63,11 @@ class RocqDocManager(API):
         self,
         cursor: int,
         strict: bool = False,
-    ) -> None | API.Err[API.RocqLoc | None]:
+    ) -> None | api.Err[api.RocqLoc | None]:
         if self._file_loaded:
             msg = f"reloading {self._file_path} duplicates document content"
             if strict:
-                raise API.Error(msg)
+                raise api.Error(msg)
             else:
                 logger.warning(msg)
         return super().load_file(cursor)
@@ -81,13 +82,13 @@ class RocqDocManager(API):
     # @override
     # def insert_command(
     #     self, cursor: int, text: str, blanks: str | None = "\n", safe: bool = True
-    # ) -> API.CommandData | API.Err[API.CommandError | None]:
+    # ) -> api.CommandData | api.Err[api.CommandError | None]:
     #     if safe:
     #         prefix_reply = self.doc_prefix(cursor)
-    #         if isinstance(prefix_reply, API.Err):
+    #         if isinstance(prefix_reply, api.Err):
     #             # This is okay because the error is a cursor error
     #             return prefix_reply
-    #         prefix: list[API.PrefixItem] = prefix_reply
+    #         prefix: list[api.PrefixItem] = prefix_reply
     #         if prefix != [] and prefix[-1].kind != "blanks":
     #             self.insert_blanks(cursor, " ")
     #             revert = True
@@ -98,13 +99,13 @@ class RocqDocManager(API):
 
     #     try:
     #         result = super().insert_command(cursor, text)
-    #         if isinstance(result, API.CommandError):
+    #         if isinstance(result, api.CommandError):
     #             if revert:
     #                 self.revert_before(cursor, erase=True, index=len(prefix))
     #         elif blanks is not None:
     #             self.insert_blanks(cursor, blanks)
     #         return result
-    #     except API.Error:
+    #     except api.Error:
     #         if revert:
     #             self.revert_before(cursor, erase=True, index=len(prefix))
     #         raise
@@ -118,8 +119,8 @@ class RocqDocManager(API):
         with self._rpc.sess():
             if load_file:
                 load_reply = self.load_file(0)
-                if isinstance(load_reply, API.Err):
-                    raise API.Error(f"RocqDocManager.load_file failed: {load_reply}")
+                if isinstance(load_reply, api.Err):
+                    raise api.Error(f"RocqDocManager.load_file failed: {load_reply}")
 
             yield self
 
