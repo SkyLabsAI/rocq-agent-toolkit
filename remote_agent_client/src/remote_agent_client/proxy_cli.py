@@ -4,21 +4,22 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
+from typing import cast
 from urllib.parse import urlparse
 
 import httpx
 import websockets
-from websockets.exceptions import ConnectionClosed
-
 from rocq_doc_manager import DuneUtil
+from websockets.exceptions import ConnectionClosed
 
 from remote_agent_client.protocol import (
     AgentConfig,
     BudgetConfig,
     InferenceConfig,
+    JsonValue,
     LocatorConfig,
     ProxyHello,
+    ProxyMeta,
 )
 
 _TP_PREFIX = b"Content-Length: "
@@ -33,37 +34,38 @@ def _find_dune_root(file_path: Path) -> Path | None:
 
 
 class JsonRpcTpProcess:
-    """Minimal Content-Length framed transport to rocq-doc-manager subprocess.
-    """
+    """Minimal Content-Length framed transport to rocq-doc-manager subprocess."""
 
     def __init__(self, proc: asyncio.subprocess.Process):
         self._proc = proc
         assert proc.stdin is not None
         assert proc.stdout is not None
+        self._stdin: asyncio.StreamWriter = proc.stdin
+        self._stdout: asyncio.StreamReader = proc.stdout
 
-    async def send(self, msg: dict[str, Any]) -> None:
+    async def send(self, msg: dict[str, JsonValue]) -> None:
         data = json.dumps(msg).encode("utf-8")
         header = _TP_PREFIX + str(len(data) + 1).encode("ascii") + b"\r\n\r\n"
-        self._proc.stdin.write(header)
-        self._proc.stdin.write(data)
-        self._proc.stdin.write(b"\n")
-        await self._proc.stdin.drain()
+        self._stdin.write(header)
+        self._stdin.write(data)
+        self._stdin.write(b"\n")
+        await self._stdin.drain()
 
-    async def recv(self) -> dict[str, Any]:
-        header = await self._proc.stdout.readline()
+    async def recv(self) -> dict[str, JsonValue]:
+        header = await self._stdout.readline()
         if not header.startswith(_TP_PREFIX):
             raise RuntimeError(f"rdm invalid header: {header!r}")
-        n = int(header[len(_TP_PREFIX):].strip().rstrip(b"\r"))
-        _ = await self._proc.stdout.readline()
-        raw = await self._proc.stdout.readexactly(n)
-        return json.loads(raw.decode("utf-8"))
+        n = int(header[len(_TP_PREFIX) :].strip().rstrip(b"\r"))
+        _ = await self._stdout.readline()
+        raw = await self._stdout.readexactly(n)
+        return cast(dict[str, JsonValue], json.loads(raw.decode("utf-8")))
 
 
-def _parse_kv_json(raw: str) -> tuple[str, Any]:
+def _parse_kv_json(raw: str) -> tuple[str, JsonValue]:
     if "=" not in raw:
         raise ValueError("expected KEY=JSON")
     k, v = raw.split("=", 1)
-    return k.strip(), json.loads(v)
+    return k.strip(), cast(JsonValue, json.loads(v))
 
 
 async def run_proxy(
@@ -72,7 +74,7 @@ async def run_proxy(
     token: str,
     file_path: str,
     agent_name: str,
-    agent_params: dict[str, Any],
+    agent_params: dict[str, JsonValue],
     inference: InferenceConfig | None,
     budget: BudgetConfig,
     locator: LocatorConfig,
@@ -96,7 +98,7 @@ async def run_proxy(
     except (FileNotFoundError, DuneUtil.NotFound) as e:
         print(f"[proxy] dune args unavailable ({e}); using rocq_args=[]", flush=True)
         rocq_args = []
-    print(f"[proxy] rocq args: {rocq_args}", flush=True)
+    # print(f"[proxy] rocq args: {rocq_args}", flush=True)
 
     cmd = [
         "dune",
@@ -129,9 +131,7 @@ async def run_proxy(
         print("[proxy] rocq-doc-manager ready", flush=True)
 
         print(f"[proxy] connecting ws: {ws_url}", flush=True)
-        async with websockets.connect(
-            ws_url, ping_interval=20, ping_timeout=20
-        ) as ws:
+        async with websockets.connect(ws_url, ping_interval=20, ping_timeout=20) as ws:
             hello = ProxyHello(
                 token=token,
                 agent=AgentConfig(
@@ -141,11 +141,11 @@ async def run_proxy(
                     budget=budget,
                 ),
                 locator=locator,
-                meta={
-                    "file_path": file_path,
-                    "rocq_args": rocq_args,
-                    "client_version": "rocq-agent-proxy/1",
-                },
+                meta=ProxyMeta(
+                    file_path=file_path,
+                    rocq_args=rocq_args,
+                    client_version="rocq-agent-proxy/1",
+                ),
             )
             # Use JSON mode so SecretStr (BYOK) is serialized as a string.
             await ws.send(json.dumps(hello.model_dump(mode="json")))
@@ -161,7 +161,9 @@ async def run_proxy(
                     )
                     break
 
-                msg = json.loads(raw)
+                if isinstance(raw, bytes):
+                    raw = raw.decode("utf-8")
+                msg = cast(JsonValue, json.loads(raw))
                 if isinstance(msg, dict) and msg.get("type") == "event":
                     print(
                         f"[server] {msg.get('level', 'info')}: {msg.get('message')}",
@@ -178,7 +180,10 @@ async def run_proxy(
                     )
                     break
                 if isinstance(msg, dict) and msg.get("type") == "result":
-                    print(f"[proxy] server result agent={msg.get('agent_name')}", flush=True)
+                    print(
+                        f"[proxy] server result agent={msg.get('agent_name')}",
+                        flush=True,
+                    )
                     proof = msg.get("proof", [])
                     if isinstance(proof, list):
                         for line in proof:
@@ -186,7 +191,7 @@ async def run_proxy(
                     break
 
                 # Default: assume JSON-RPC request; forward to local rocq-doc-manager.
-                req = msg
+                req = cast(dict[str, JsonValue], msg)
                 await tp.send(req)
                 resp = await tp.recv()
                 await ws.send(json.dumps(resp))
@@ -283,7 +288,7 @@ def main() -> None:
     if ws_url is None or token is None:
         raise SystemExit("need either --ws-url + --token, or --server")
 
-    agent_params: dict[str, Any] = {}
+    agent_params: dict[str, JsonValue] = {}
     for item in args.agent_param:
         k, v = _parse_kv_json(item)
         agent_params[k] = v
