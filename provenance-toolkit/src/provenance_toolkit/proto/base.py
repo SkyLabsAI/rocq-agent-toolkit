@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Any, Protocol, final, runtime_checkable
 
 
@@ -76,8 +77,8 @@ class ProvenanceT(ABC):
 
     @final
     @staticmethod
-    def joint_checksum(
-        provenances: dict[type, ProvenanceT],
+    def joint_checksum[K: type](
+        provenances: Mapping[K, ProvenanceT],
         *,
         by: ComputeChecksumProvenanceT | None = None,
     ) -> str:
