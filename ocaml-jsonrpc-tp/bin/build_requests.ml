@@ -1,9 +1,15 @@
-let output_packet i m params =
-  match params with
-  | None         ->
+let output_packet id m params =
+  match (id, params) with
+  | (None   , None        ) ->
+      Printf.printf {|{"jsonrpc":"2.0","method":"%s"}|} m;
+      Printf.printf "\n%!"
+  | (Some(i), None        ) ->
       Printf.printf {|{"jsonrpc":"2.0","method":"%s","id":%i}|} m i;
       Printf.printf "\n%!"
-  | Some(params) ->
+  | (None   , Some(params)) ->
+      Printf.printf {|{"jsonrpc":"2.0","method":"%s","params":%s}|} m params;
+      Printf.printf "\n%!"
+  | (Some(i), Some(params)) ->
       Printf.printf {|{"jsonrpc":"2.0","method":"%s","id":%i,"params":%s}|}
         m i params;
       Printf.printf "\n%!"
@@ -19,7 +25,10 @@ let rec process_lines i =
         let params = String.sub line (i+1) (String.length line - i - 1) in
         (m, Some(params))
   in
-  output_packet i m params;
-  process_lines (i+1)
+  let (i, id) =
+    if m <> "" && m.[0] = '!' then (i, None) else (i+1, Some(i))
+  in
+  output_packet id m params;
+  process_lines i
 
 let _ = process_lines 1
