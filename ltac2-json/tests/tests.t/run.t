@@ -8,9 +8,9 @@
     let rec json_of_variant :=
       fun x =>
       match x with
-      | VariantA => Variant "VariantA" None
-      | VariantB => Variant "VariantB" None
-      | VariantC => Variant "VariantC" None
+      | VariantA => variant "VariantA" None
+      | VariantB => variant "VariantB" None
+      | VariantC => variant "VariantC" None
       end
     in
     json_of_variant
@@ -29,7 +29,7 @@
       fun x =>
       match x with
       | (x0, x1, x2) =>
-          Tuple
+          tuple
             [json_of_list (fun x => json_of_int x) x0; 
               json_of_bool x1; json_of_int x2]
       end

@@ -12,11 +12,18 @@ Ltac2 Type rec t := [
   | String(string)
   | Assoc((string * t) list)
   | List(t list)
-  | Tuple(t list)
-  | Variant(string, t option)
 ].
 
 Ltac2 Type json := t.
+
+Ltac2 variant : string -> t option -> t := fun c arg =>
+  match arg with
+  | None     => String c
+  | Some arg => List [String c; arg]
+  end.
+
+Ltac2 tuple : t list -> t := fun l =>
+  List l.
 
 Ltac2 @ external to_string : t -> string :=
   "ltac2-json" "to_string".

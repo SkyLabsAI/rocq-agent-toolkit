@@ -28,9 +28,9 @@ let derive : Derive.deriver = fun ts ->
           let vs = List.mapi (fun i ty -> build ty (expr_var_x i)) tys in
           Tac2quote.of_list Fun.id vs
         in
-        let tuple = "skylabs_ai.ltac2_json.JSON.Tuple" in
+        let tuple = "skylabs_ai.ltac2_json.JSON.tuple" in
         let tuple = Libnames.qualid_of_string tuple in
-        let tuple = CAst.make (CTacCst(RelId(tuple))) in
+        let tuple = CAst.make (CTacRef(RelId(tuple))) in
         let v = CAst.make (CTacApp(tuple, [v])) in
         CAst.make (CTacCse(arg, [(p, v)]))
     | GTypRef(Other(c), tys) ->
@@ -79,18 +79,18 @@ let derive : Derive.deriver = fun ts ->
                   CAst.make (CTacCst(RelId(none)))
               | _  ->
                   let args = Tac2quote.of_list Fun.id args in
-                  let tuple = "skylabs_ai.ltac2_json.JSON.Tuple" in
+                  let tuple = "skylabs_ai.ltac2_json.JSON.tuple" in
                   let tuple = Libnames.qualid_of_string tuple in
-                  let tuple = CAst.make (CTacCst(RelId(tuple))) in
+                  let tuple = CAst.make (CTacRef(RelId(tuple))) in
                   let args = CAst.make (CTacApp(tuple, [args])) in
                   let some = Libnames.qualid_of_string "Ltac2.Init.Some" in
                   let some = CAst.make (CTacCst(RelId(some))) in
                   CAst.make (CTacApp(some, [args]))
             in
             let c = CAst.make (CTacAtm(AtmStr(Names.Id.to_string c))) in
-            let variant = "skylabs_ai.ltac2_json.JSON.Variant" in
+            let variant = "skylabs_ai.ltac2_json.JSON.variant" in
             let variant = Libnames.qualid_of_string variant in
-            let variant = CAst.make (CTacCst(RelId(variant))) in
+            let variant = CAst.make (CTacRef(RelId(variant))) in
             (p, CAst.make (CTacApp(variant, [c; args])))
           in
           CAst.make (CTacCse(expr_var "x", List.map make_case cs))
