@@ -5,15 +5,15 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
 from dataclasses_json import DataClassJsonMixin
-from jsonrpc_tp import JsonRPCTP
+from jsonrpc_tp import Err, Error, JsonRPCTP, Resp
 
 
 class RocqDocManagerAPI:
     """Main API class."""
 
-    Err: TypeAlias = JsonRPCTP.Err # noqa: UP040
-    Resp: TypeAlias = JsonRPCTP.Resp # noqa: UP040
-    Error: TypeAlias = JsonRPCTP.Error # noqa: UP040
+    Err: TypeAlias = Err # noqa: UP040
+    Resp: TypeAlias = Resp # noqa: UP040
+    Error: TypeAlias = Error # noqa: UP040
 
     def __init__(self, rpc: JsonRPCTP) -> None:
         self._rpc:JsonRPCTP = rpc
@@ -111,7 +111,7 @@ class RocqDocManagerAPI:
     def advance_to(self, cursor: int, index: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]:
         """Advance the cursor before the indicated unprocessed item."""
         result = self._rpc.raw_request("advance_to", [cursor, index])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None if result.data is None else self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return None
@@ -119,73 +119,73 @@ class RocqDocManagerAPI:
     def clear_suffix(self, cursor: int, count: int | None) -> None:
         """Remove unprocessed commands from the document."""
         result = self._rpc.raw_request("clear_suffix", [cursor, count])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return None
 
     def clone(self, cursor: int) -> int:
         """Clones the given cursor."""
         result = self._rpc.raw_request("clone", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return int(result.result)
 
     def commit(self, cursor: int, file: str | None, include_ghost: bool, include_suffix: bool) -> None:
         """Write the current document contents to the file."""
         result = self._rpc.raw_request("commit", [cursor, file, include_ghost, include_suffix])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return None
 
     def compile(self, cursor: int) -> RocqDocManagerAPI.CompileResult:
         """Compile the current contents of the file with `rocq compile`."""
         result = self._rpc.raw_request("compile", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return self.CompileResult.from_dict(result.result)
 
     def contents(self, cursor: int, include_ghost: bool, include_suffix: bool) -> str:
         """Gives the current contents of the document, as if it was written to a file."""
         result = self._rpc.raw_request("contents", [cursor, include_ghost, include_suffix])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return str(result.result)
 
     def copy_contents(self, src: int, dst: int) -> None:
         """Copies the contents of src into dst."""
         result = self._rpc.raw_request("copy_contents", [src, dst])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return None
 
     def cursor_index(self, cursor: int) -> int:
         """Gives the index at the cursor."""
         result = self._rpc.raw_request("cursor_index", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return int(result.result)
 
     def dispose(self, cursor: int) -> None:
         """Destroys the cursor."""
         result = self._rpc.raw_request("dispose", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return None
 
     def doc_prefix(self, cursor: int) -> list[RocqDocManagerAPI.PrefixItem]:
         """Gives the list of all processed commands, appearing before the cursor."""
         result = self._rpc.raw_request("doc_prefix", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return [self.PrefixItem.from_dict(v1) for v1 in result.result]
 
     def doc_suffix(self, cursor: int) -> list[RocqDocManagerAPI.SuffixItem]:
         """Gives the list of all unprocessed commands, appearing after the cursor."""
         result = self._rpc.raw_request("doc_suffix", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return [self.SuffixItem.from_dict(v1) for v1 in result.result]
 
     def dump(self, cursor: int) -> Any:
         """Dump the document contents (debug)."""
         result = self._rpc.raw_request("dump", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return result.result
 
     def go_to(self, cursor: int, index: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]:
         """Move the cursor right before the indicated item (whether it is already processed or not)."""
         result = self._rpc.raw_request("go_to", [cursor, index])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None if result.data is None else self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return None
@@ -193,19 +193,19 @@ class RocqDocManagerAPI:
     def has_suffix(self, cursor: int) -> bool:
         """Indicates whether the document has a suffix (unprocessed items)."""
         result = self._rpc.raw_request("has_suffix", [cursor])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return bool(result.result)
 
     def insert_blanks(self, cursor: int, text: str) -> None:
         """Insert and process blanks at the cursor."""
         result = self._rpc.raw_request("insert_blanks", [cursor, text])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return None
 
     def insert_command(self, cursor: int, text: str) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]:
         """Insert and process a command at the cursor."""
         result = self._rpc.raw_request("insert_command", [cursor, text])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return self.CommandData.from_dict(result.result)
@@ -213,7 +213,7 @@ class RocqDocManagerAPI:
     def load_file(self, cursor: int) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc | None]:
         """Adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors)."""
         result = self._rpc.raw_request("load_file", [cursor])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None if result.data is None else self.RocqLoc.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return None
@@ -221,7 +221,7 @@ class RocqDocManagerAPI:
     def materialize(self, cursor: int) -> None | RocqDocManagerAPI.Err[None]:
         """Materializes the cursor, giving it its own dedicated top-level."""
         result = self._rpc.raw_request("materialize", [cursor])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
         return None
@@ -229,7 +229,7 @@ class RocqDocManagerAPI:
     def query(self, cursor: int, text: str) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
         result = self._rpc.raw_request("query", [cursor, text])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
         return self.CommandData.from_dict(result.result)
@@ -237,7 +237,7 @@ class RocqDocManagerAPI:
     def query_json(self, cursor: int, text: str, index: int) -> Any | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
         result = self._rpc.raw_request("query_json", [cursor, text, index])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
         return result.result
@@ -245,7 +245,7 @@ class RocqDocManagerAPI:
     def query_json_all(self, cursor: int, text: str, indices: list[int] | None) -> list[Any] | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
         result = self._rpc.raw_request("query_json_all", [cursor, text, indices])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
         return [v1 for v1 in result.result]
@@ -253,7 +253,7 @@ class RocqDocManagerAPI:
     def query_text(self, cursor: int, text: str, index: int) -> str | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
         result = self._rpc.raw_request("query_text", [cursor, text, index])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
         return str(result.result)
@@ -261,7 +261,7 @@ class RocqDocManagerAPI:
     def query_text_all(self, cursor: int, text: str, indices: list[int] | None) -> list[str] | RocqDocManagerAPI.Err[None]:
         """Runs the given query at the cursor, not updating the state."""
         result = self._rpc.raw_request("query_text_all", [cursor, text, indices])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
         return [str(v1) for v1 in result.result]
@@ -269,13 +269,13 @@ class RocqDocManagerAPI:
     def revert_before(self, cursor: int, erase: bool, index: int) -> None:
         """Revert the cursor to an earlier point in the document."""
         result = self._rpc.raw_request("revert_before", [cursor, erase, index])
-        assert not isinstance(result, JsonRPCTP.Err)
+        assert not isinstance(result, Err)
         return None
 
     def run_command(self, cursor: int, text: str) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]:
         """Process a command at the cursor without inserting it in the document."""
         result = self._rpc.raw_request("run_command", [cursor, text])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None
             return RocqDocManagerAPI.Err(result.message, data)
         return self.CommandData.from_dict(result.result)
@@ -283,7 +283,7 @@ class RocqDocManagerAPI:
     def run_step(self, cursor: int) -> RocqDocManagerAPI.CommandData | None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]:
         """Advance the cursor by stepping over an unprocessed item."""
         result = self._rpc.raw_request("run_step", [cursor])
-        if isinstance(result, JsonRPCTP.Err):
+        if isinstance(result, Err):
             data = None if result.data is None else self.CommandError.from_dict(result.data)
             return RocqDocManagerAPI.Err(result.message, data)
         return None if result.result is None else self.CommandData.from_dict(result.result)

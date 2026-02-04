@@ -2,39 +2,16 @@ import json
 import subprocess
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import (
     Any,
     Self,
 )
 
+from .types import Err, Error, Resp
+
 
 class JsonRPCTP:
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
-
-    # Note: dataclass doesn't play nicely with covariant data, cf.
-    # https://discuss.python.org/t/make-replace-stop-interfering-with-variance-inference/96092/41
-
-    # We use a workaround from the thread above that simply sets `__replace__ = None`
-    @dataclass
-    class Err[T]:
-        """JSON-RPC error response, with a message and payload."""
-
-        __replace__ = None
-        message: str
-        data: T
-
-    @dataclass
-    class Resp[R]:
-        """JSON-RPC response, with a payload."""
-
-        __replace__ = None
-        result: R
-
-    class Error(Exception):
-        """Exception raised in case of protocol error."""
-
-        pass
 
     def __init__(
         self, args: list[str], cwd: str | None = None, env: dict[str, str] | None = None
@@ -53,20 +30,20 @@ class JsonRPCTP:
             )
         except Exception as e:
             self._process = None
-            raise self.Error(f"Failed to start process: {e}") from e
+            raise Error(f"Failed to start process: {e}") from e
 
         # Check the "ready_seq" notification
         try:
             ready = self.recv()
             if "method" not in ready:
-                raise self.Error(f"Unexpected packet: {ready} (not a notification)")
+                raise Error(f"Unexpected packet: {ready} (not a notification)")
             method = ready.get("method")
             if method != "ready_seq":
-                raise self.Error(f'Got "{method}" notification instead of "ready_seq"')
+                raise Error(f'Got "{method}" notification instead of "ready_seq"')
         except Exception as e:
             self._process.kill()
             self._process = None
-            raise self.Error(f"Failed to start JSON-RPC service: {e}") from e
+            raise Error(f"Failed to start JSON-RPC service: {e}") from e
 
     @contextmanager
     def sess(self) -> Iterator[Self]:
@@ -76,7 +53,7 @@ class JsonRPCTP:
 
     def send(self, req: bytes) -> None:
         if self._process is None:
-            raise self.Error("Not running anymore.")
+            raise Error("Not running anymore.")
         assert self._process.stdin is not None
         prefix = "Content-Length: "
         self._process.stdin.write(f"{prefix}{len(req) + 1}\r\n\r\n".encode())
@@ -86,7 +63,7 @@ class JsonRPCTP:
 
     def recv(self) -> Any:
         if self._process is None:
-            raise self.Error("Not running anymore.")
+            raise Error("Not running anymore.")
         assert self._process.stdout is not None
         prefix = "Content-Length: "
         header: str = self._process.stdout.readline().decode()
@@ -94,13 +71,13 @@ class JsonRPCTP:
         if not header.startswith(prefix):
             self._process.kill()
             self._process = None
-            raise self.Error(f"Invalid message header: '{header}'")
+            raise Error(f"Invalid message header: '{header}'")
         try:
             nb_bytes = int(header[len(prefix) : -2])
         except Exception as e:
             self._process.kill()
             self._process = None
-            raise self.Error(f"Failed to parse header: {header}", e) from e
+            raise Error(f"Failed to parse header: {header}", e) from e
         assert self._process.stdout is not None
         response = self._process.stdout.read(nb_bytes).decode()
         return json.loads(response)
@@ -120,7 +97,7 @@ class JsonRPCTP:
         method: str,
         params: list[Any],
         handle_notification: Callable[[str, dict[str, Any]], None] | None = None,
-    ) -> JsonRPCTP.Resp[Any] | JsonRPCTP.Err[Any]:
+    ) -> Resp[Any] | Err[Any]:
         # Getting a fresh request id.
         self._counter = self._counter + 1
         fresh_id = self._counter
@@ -140,16 +117,16 @@ class JsonRPCTP:
                 match code:
                     # Request failed (taken from the LSP protocol)
                     case -32803:
-                        return self.Err(message, error.get("data"))
+                        return Err(message, error.get("data"))
                     # Method not found | Invalid params
                     case -32601 | -32602:
                         raise Exception(message)
                     # Anything else is unexpected.
                     case _:
-                        raise self.Error(f"Unexpected error code {code} ({message})")
+                        raise Error(f"Unexpected error code {code} ({message})")
             elif "result" in response:
                 # Normal response for the request.
-                return self.Resp(response.get("result"))
+                return Resp(response.get("result"))
             else:
                 # Notification.
                 assert "method" in response

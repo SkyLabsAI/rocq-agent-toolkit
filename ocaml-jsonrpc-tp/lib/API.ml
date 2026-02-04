@@ -563,15 +563,15 @@ let output_python_api oc api =
   line "from typing import Any, Literal, TypeAlias";
   line "";
   line "from dataclasses_json import DataClassJsonMixin";
-  line "from jsonrpc_tp import JsonRPCTP";
+  line "from jsonrpc_tp import Err, Error, Resp, JsonRPCTP";
   line "";
   line "";
   line "class %s:" api.name;
   line "    \"\"\"Main API class.\"\"\"";
   line "";
-  line "    Err: TypeAlias = JsonRPCTP.Err # noqa: UP040";
-  line "    Resp: TypeAlias = JsonRPCTP.Resp # noqa: UP040";
-  line "    Error: TypeAlias = JsonRPCTP.Error # noqa: UP040";
+  line "    Err: TypeAlias = Err # noqa: UP040";
+  line "    Resp: TypeAlias = Resp # noqa: UP040";
+  line "    Error: TypeAlias = Error # noqa: UP040";
   line "";
   line "    def __init__(self, rpc: JsonRPCTP) -> None:";
   line "        self._rpc:JsonRPCTP = rpc";
@@ -626,9 +626,9 @@ let output_python_api oc api =
          to decouple these *)
       match m.impl with
       | Pure(_) ->
-        line "        assert not isinstance(result, JsonRPCTP.Err)";
+        line "        assert not isinstance(result, Err)";
       | Rslt(i) ->
-        line "        if isinstance(result, JsonRPCTP.Err):";
+        line "        if isinstance(result, Err):";
         line "            data = %s" (Schema.python_val "result.data" i.err);
         line "            return %s.Err(result.message, data)" api.name
     in
