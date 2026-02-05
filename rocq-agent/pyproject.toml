@@ -22,6 +22,7 @@ rocq-pipeline = { workspace = true }
 
 [project.scripts]
 tool-tester = "rocq_agent.tool_tester:main"
+rocq-agent = "rocq_agent.agent:rat_main"
 
 [tool.hatch.build.targets.wheel]
 include = ["src/rocq_agent"]
