@@ -274,17 +274,6 @@ class TaskFile(BaseModel):
                         "`.yaml`, or `.yml`"
                     )
 
-    def filter_tags(self, tag: str) -> TaskFile:
-        """Filter tasks across all bundles by tag, removing empty bundles."""
-        filtered_bundles = []
-        for bundle in self.bundles:
-            filtered_tasks = [t for t in bundle.tasks if tag in t.get_tags()]
-            if filtered_tasks:
-                filtered_bundles.append(
-                    TaskBundle(project=bundle.project, tasks=filtered_tasks)
-                )
-        return TaskFile(bundles=filtered_bundles)
-
     @classmethod
     def supported_extensions(cls) -> list[str]:
         return [".json", ".yaml", ".yml"]
