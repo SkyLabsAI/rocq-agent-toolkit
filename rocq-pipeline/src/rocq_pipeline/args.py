@@ -33,7 +33,7 @@ def load_tasks(
     elif arguments.task_file is not None:
         taskfile = Tasks.TaskFile.from_file(arguments.task_file)
         tasks_name = arguments.task_file.stem
-        return (tasks_name, list(taskfile.get_all_tasks()))
+        return (tasks_name, list(taskfile.iter_tasks()))
     else:
         raise ValueError(
             "Unspecified task.\nUse '--task-json ...literal-json...' or '--task-file path/to/task/file.{json,yaml}'."

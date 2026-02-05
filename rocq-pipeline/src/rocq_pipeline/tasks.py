@@ -301,12 +301,13 @@ class TaskFile(BaseModel):
         ]
         return TaskFile(bundles=task_bundles)
 
-    def get_all_tasks(self) -> Iterator[tuple[Project, Task]]:
+    def iter_tasks(self) -> Iterator[tuple[Project, Task]]:
         """Get all tasks from all bundles."""
         for bundle in self.bundles:
             for task in bundle.tasks:
                 yield (bundle.project, task)
 
-    def get_all_projects(self) -> list[Project]:
+    def iter_projects_with_tasks(self) -> Iterator[tuple[Project, list[Task]]]:
         """Get all projects from bundles."""
-        return [bundle.project for bundle in self.bundles]
+        for bundle in self.bundles:
+            yield bundle.project, bundle.tasks

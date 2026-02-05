@@ -101,7 +101,7 @@ def run(
         return eval_options(task.get_tags(), with_tags_l, without_tags_l, only_tags)
 
     filtered_tasks: Iterator[tuple[Project, Task]] = (
-        (proj, task) for proj, task in tasks.get_all_tasks() if keep(task)
+        (proj, task) for proj, task in tasks.iter_tasks() if keep(task)
     )
 
     # # Filter tasks within each bundle to preserve project associations
@@ -145,8 +145,8 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         arguments.limit,
         arguments.random,
     )
-    result_count = len(list(result.get_all_tasks()))
-    original_count = len(list(tasks.get_all_tasks()))
+    result_count = len(list(result.iter_tasks()))
+    original_count = len(list(tasks.iter_tasks()))
     print(f"Returned {result_count} of {original_count} tasks.")
 
 
