@@ -257,7 +257,7 @@ class TaskFile(BaseModel):
 
         task_file = TaskFile(bundles=bundles)
         # Serialize as list (on-disk format)
-        data = task_file.model_dump(mode="json")
+        data = task_file.model_dump(mode="json", exclude_none=True)
 
         if file == "-":
             json.dump(data, sys.stdout, indent=2)
