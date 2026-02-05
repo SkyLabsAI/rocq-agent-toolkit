@@ -339,7 +339,9 @@ def run_ns(args: Namespace, extra_args: list[str] | None = None) -> None:
     log_level = (
         logging.DEBUG
         if args.debug
-        else logging.INFO if args.verbose else logging.WARNING
+        else logging.INFO
+        if args.verbose
+        else logging.WARNING
     )
     logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
     return run(args.output, args.pdir, args.rocq_files, jobs=args.jobs)
