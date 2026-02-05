@@ -5,4 +5,4 @@
   rocq-runtime.vernac
   yojson))
 
-(coq.pp (modules g_term_deps))
+(rocq.pp (modules g_term_deps))

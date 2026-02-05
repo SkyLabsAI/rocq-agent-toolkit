@@ -13,7 +13,7 @@ license: "LGPL-2.0"
 homepage: "https://github.com/SkylabsAI/skylabs-fm"
 bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
-  "dune" {>= "3.17"}
+  "dune" {>= "3.21"}
   "coq-stdpp"
   "coq-iris"
   "ltac2-extra"
@@ -35,3 +35,4 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/SkylabsAI/skylabs-fm.git"
+x-maintenance-intent: ["(latest)"]

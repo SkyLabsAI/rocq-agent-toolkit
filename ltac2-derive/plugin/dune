@@ -3,4 +3,4 @@
  (public_name ltac2-derive.plugin)
  (libraries rocq-runtime.plugins.ltac2 rocq-runtime.plugins.ltac))
 
-(coq.pp (modules g_derive))
+(rocq.pp (modules g_derive))

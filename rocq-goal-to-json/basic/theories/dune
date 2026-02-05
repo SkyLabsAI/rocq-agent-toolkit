@@ -1,4 +1,4 @@
-(coq.theory
+(rocq.theory
  (name skylabs_ai.extractors.goal_to_json.basic)
  (package rocq-goal-to-json)
  (flags

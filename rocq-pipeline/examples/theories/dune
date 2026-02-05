@@ -5,6 +5,6 @@
 ; Use of this file is only permitted subject to a separate written license agreement with BlueRock.
 
 (include_subdirs qualified)
-(coq.theory
+(rocq.theory
  (name skylabs.pipeline.test)
  (theories Stdlib Ltac2))

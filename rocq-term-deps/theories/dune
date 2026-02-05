@@ -1,4 +1,4 @@
-(coq.theory
+(rocq.theory
  (name skylabs_ai.tools.term_deps)
  (package rocq-term-deps)
  (plugins rocq-term-deps.plugin))

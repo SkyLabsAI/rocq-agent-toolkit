@@ -29,7 +29,7 @@ class DuneUtil:
         dune_args_result = subprocess.run(
             [
                 "dune",
-                "coq",
+                "rocq",
                 "top",
                 *(["--no-build"] if not build else []),
                 "--no-print-directory",

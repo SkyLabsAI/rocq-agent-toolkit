@@ -1,4 +1,4 @@
-(lang dune 3.17)
+(lang dune 3.21)
 (name jsonrpc-tp)
 (generate_opam_files true)
 
