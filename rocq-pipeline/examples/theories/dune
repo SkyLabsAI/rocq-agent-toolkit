@@ -1,9 +1,3 @@
-; Copyright © 2022-2025 BlueRock Security, Inc.
-;
-; This file is CONFIDENTIAL AND PROPRIETARY to BlueRock. All rights reserved.
-;
-; Use of this file is only permitted subject to a separate written license agreement with BlueRock.
-
 (include_subdirs qualified)
 (rocq.theory
  (name skylabs.pipeline.test)
