@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rocq-agent"
+version = "0.1.0"
+description = "A simple agent that interacts with Rocq to prove theorems"
+readme = "README.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "pydantic-ai>=1.5.0",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=0.24.0",
+    "rocq-doc-manager",
+    "rocq-pipeline",
+]
+
+[tool.uv.sources]
+rocq-doc-manager = { workspace = true }
+rocq-pipeline = { workspace = true }
+
+[project.scripts]
+tool-tester = "rocq_agent.tool_tester:main"
+
+[tool.hatch.build.targets.wheel]
+include = ["src/rocq_agent"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/rocq_agent" = "rocq_agent"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"rocq_agent" = ["py.typed"]
+
+[tool.taskipy.tasks]
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy ."
+test_ocaml_ci = "pytest"
+cram_ocaml_ci = "cram tests/*.t"
+# TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
+precommit = "task lint_ci --fix; task reformat; task typecheck_ci"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "black>=23.7.0,<24",
+    "isort>=5.12.0,<6",
+    "flake8>=6.0.0,<7",
+    "mypy>=1.18.2,<2",
+    "types-pyyaml>=6.0.12.20250915,<7",
+    "types-jmespath>=1.0.2.20250809,<2",
+    "ruff>=0.14.4",
+    "taskipy>=1.14.1",
+    "cram>=0.7",
+]
