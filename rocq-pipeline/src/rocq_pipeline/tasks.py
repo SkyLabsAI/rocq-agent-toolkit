@@ -163,21 +163,22 @@ class TaskBundle(BaseModel):
 
 
 class TaskFile(BaseModel):
-    bundles: list[TaskBundle]
+    project_bundles: list[TaskBundle] = Field(
+        description="Bundles of projects and their associatd tasks"
+    )
 
     @model_validator(mode="after")
     def merge_bundles(self) -> TaskFile:
         """Merge bundles with the same project and deduplicate tasks."""
-        merged_bundles = TaskBundle.merge(self.bundles)
-        # Use model_construct to avoid re-validation (which would cause recursion)
-        return self.model_construct(bundles=merged_bundles)
+        self.project_bundles = TaskBundle.merge(self.project_bundles)
+        return self
 
     @model_serializer
-    def serialize_model(self) -> list[dict[str, Any]]:
+    def serialize_model(self) -> dict[str, Any]:
         """Serialize TaskFile as a list of TaskBundle data (on-disk format)."""
-        sorted_bundles = sorted(self.bundles, key=lambda b: b.project.get_id())
+        sorted_bundles = sorted(self.project_bundles, key=lambda b: b.project.get_id())
         # Tasks are already sorted by TaskBundle serializer
-        return [bundle.model_dump() for bundle in sorted_bundles]
+        return {"project_bundles": [bundle.model_dump() for bundle in sorted_bundles]}
 
     @classmethod
     def from_tasks(cls, tasks: Iterator[tuple[Project, Task]]):
@@ -187,7 +188,7 @@ class TaskFile(BaseModel):
             assert proj_tasks is not None
             proj_tasks.append(task)
         return TaskFile(
-            bundles=[
+            project_bundles=[
                 TaskBundle(project=proj, tasks=tasks) for proj, tasks in projs.items()
             ]
         )
@@ -212,13 +213,10 @@ class TaskFile(BaseModel):
 
         # Determine format and convert to internal format
         bundles_data: list[dict[str, Any]]
-        if isinstance(raw_data, list):
-            # New format: list of TaskBundle data
-            bundles_data = raw_data
-        elif isinstance(raw_data, dict):
-            if "bundles" in raw_data:
+        if isinstance(raw_data, dict):
+            if "project_bundles" in raw_data:
                 # Legacy new format: dict with "bundles" key
-                bundles_data = raw_data["bundles"]
+                bundles_data = raw_data["project_bundles"]
             elif "project" in raw_data and "tasks" in raw_data:
                 # Old format: single project with tasks
                 bundle = TaskBundle(
@@ -233,11 +231,11 @@ class TaskFile(BaseModel):
         else:
             raise ValueError(f"Expected list or dict, got {type(raw_data).__name__}")
 
-        task_file = TaskFile.model_validate({"bundles": bundles_data})
+        task_file = TaskFile.model_validate({"project_bundles": bundles_data})
         file_dir = Path(".") if file == "-" else file.parent
 
         # Resolve paths for all projects
-        for bundle in task_file.bundles:
+        for bundle in task_file.project_bundles:
             path = file_dir / bundle.project.path
             bundle.project.path = Path(os.path.normpath(path))
 
@@ -245,7 +243,7 @@ class TaskFile(BaseModel):
 
     def to_file(self, file: Literal["-"] | Path) -> None:
         # Create a copy to avoid modifying the original
-        bundles = copy.deepcopy(self.bundles)
+        bundles = copy.deepcopy(self.project_bundles)
 
         file_dir = Path(".") if file == "-" else file.parent
 
@@ -255,7 +253,7 @@ class TaskFile(BaseModel):
                 file_dir.resolve(), walk_up=True
             )
 
-        task_file = TaskFile(bundles=bundles)
+        task_file = TaskFile(project_bundles=bundles)
         # Serialize as list (on-disk format)
         data = task_file.model_dump(mode="json", exclude_none=True)
 
@@ -288,15 +286,15 @@ class TaskFile(BaseModel):
         task_bundles = [
             TaskBundle(project=project, tasks=tasks) for project, tasks in bundles
         ]
-        return TaskFile(bundles=task_bundles)
+        return TaskFile(project_bundles=task_bundles)
 
     def iter_tasks(self) -> Iterator[tuple[Project, Task]]:
         """Get all tasks from all bundles."""
-        for bundle in self.bundles:
+        for bundle in self.project_bundles:
             for task in bundle.tasks:
                 yield (bundle.project, task)
 
     def iter_projects_with_tasks(self) -> Iterator[tuple[Project, list[Task]]]:
         """Get all projects from bundles."""
-        for bundle in self.bundles:
+        for bundle in self.project_bundles:
             yield bundle.project, bundle.tasks
