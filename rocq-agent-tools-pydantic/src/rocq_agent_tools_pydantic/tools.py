@@ -2,11 +2,12 @@ from pydantic import BaseModel, Field
 from pydantic_ai.tools import RunContext
 from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.toolsets.abstract import AbstractToolset
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor import RocqCursor
 
 
 class RocqResult[T](BaseModel):
-    """The type used to communicate results from Rocq."""
+    """The type used to communicate Rocq results."""
 
     error: str | None = Field(
         description="None on success, or the error string if an error occurs"
@@ -44,17 +45,15 @@ async def run_tactic(
     Return:
         The result field will contain the new Rocq goals after the tactic runs.
     """
-    result = ctx.deps.rocq_cursor.query(tactic)
-    if isinstance(result, RocqCursor.Err):
+    idx = ctx.deps.rocq_cursor.cursor_index()
+    result = ctx.deps.rocq_cursor.insert_command(tactic)
+    if isinstance(result, rdm_api.Err):
         return RocqResult(error=result.message, result=None)
     else:
-        assert isinstance(result, RocqCursor.CommandData)
-        idx = ctx.deps.rocq_cursor.cursor_index()
-        cresult = ctx.deps.rocq_cursor.insert_command(tactic)
+        assert isinstance(result, rdm_api.CommandData)
         ctx.deps.rocq_script.append((idx, tactic))
-        assert isinstance(cresult, RocqCursor.CommandData)
-        if cresult.proof_state:
-            return RocqResult(error=None, result=cresult.proof_state.focused_goals)
+        if result.proof_state:
+            return RocqResult(error=None, result=result.proof_state.focused_goals)
         else:
             return RocqResult(error=None, result=[])
 
@@ -68,13 +67,14 @@ async def run_query(
     Args:
         command: The Rocq query to run. It should end with a `.`, e.g. 'Search nat.'
     """
+    command = command.strip()
     if not any(command.startswith(x) for x in ["Search", "Check", "Print", "About"]):
         return RocqResult(
-            error="Must be a query using `Search`, `Check`, `Print`, or `About`.",
+            error="Query must start with one of `Search`, `Check`, `Print`, or `About`.",
             result=None,
         )
     result = ctx.deps.rocq_cursor.query(command)
-    if isinstance(result, RocqCursor.Err):
+    if isinstance(result, rdm_api.Err):
         return RocqResult(error=result.message, result=None)
     else:
         return RocqResult(
@@ -111,7 +111,7 @@ def qed(ctx: RunContext[RocqCursorDeps]) -> bool:
     Returns false if the proof can not be completed as this point.
     """
     result = ctx.deps.rocq_cursor.query("Qed.")
-    return not isinstance(result, RocqCursor.Err)
+    return not isinstance(result, rdm_api.Err)
 
 
 rocq_cursor_toolset: AbstractToolset[RocqCursorDeps] = FunctionToolset(

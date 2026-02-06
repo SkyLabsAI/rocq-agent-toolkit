@@ -1,4 +1,4 @@
 (include_subdirs qualified)
-(coq.theory
+(rocq.theory
  (name skylabs.demo_agent.test)
  (theories Stdlib Ltac2))

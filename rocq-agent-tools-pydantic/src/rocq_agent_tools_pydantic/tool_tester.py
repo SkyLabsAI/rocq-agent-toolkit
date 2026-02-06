@@ -18,7 +18,7 @@ from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_pipeline.locator import Locator, LocatorParser
 from rocq_pipeline.tasks import json
 
-from rocq_agent.tools import RocqCursorDeps, rocq_cursor_toolset
+from rocq_agent_tools_pydantic.tools import RocqCursorDeps, rocq_cursor_toolset
 
 
 @contextmanager

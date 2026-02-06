@@ -6,12 +6,12 @@
 
   $ mkdir deterministic_name && cd deterministic_name
   $ cat > dune-project <<EOF
-  > (lang dune 3.17)
-  > (using coq 0.10)
+  > (lang dune 3.21)
+  > (using rocq 0.11)
   > EOF
   $ cat > dune <<EOF
   > (include_subdirs qualified)
-  > (coq.theory
+  > (rocq.theory
   >  (name rocq_agent_toolkit.cram.simple_tools)
   >  (theories
   >   Stdlib Ltac2

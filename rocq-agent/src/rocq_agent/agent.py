@@ -65,8 +65,8 @@ class ToolAgent(ProofAgent):
         # Ideally, the RocqCursor would contain the necessary information
         result = rc.insert_command("Qed.")
         if isinstance(result, RocqCursor.Err):
-            return super().give_up(rc, agent_result.response.text or "Agent gave up")
-        return super().finished(rc)
+            return self.give_up(rc, agent_result.response.text or "Agent gave up")
+        return self.finished(rc)
 
 
 builder = AgentBuilder.of_agent(ToolAgent)
