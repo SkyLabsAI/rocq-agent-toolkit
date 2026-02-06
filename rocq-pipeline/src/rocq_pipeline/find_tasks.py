@@ -13,10 +13,10 @@ import git
 import sexpdata  # type: ignore
 from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_doc_manager.locator import FirstLemma
 from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.args_util import valid_file
-from rocq_pipeline.locator import FirstLemma, NotFound
 from rocq_pipeline.taggers.tactic_tagger import extract_tactics
 from rocq_pipeline.tasks import Project, Task, TaskFile
 from rocq_pipeline.util import parallel_runner
