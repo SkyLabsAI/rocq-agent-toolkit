@@ -72,7 +72,7 @@ class CutAssertStrategy(Strategy):
         return singleton(RocqTacticAction(tac), score=math.log(self._logprob))
 
 
-class FirstTacticStrategy(Strategy):
+class FirstTacticStrategy(Strategy[RocqCursor,Action[RocqCursor]]):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
     _tactics: Annotated[

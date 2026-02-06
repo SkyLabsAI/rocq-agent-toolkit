@@ -5,6 +5,7 @@ import inspect
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
+from types import FunctionType
 from typing import Any, cast, get_type_hints
 
 from . import rocq_doc_manager_api as rdm_api
@@ -78,6 +79,8 @@ class RocqCursorProtocol(ABC):
         def _validated_signature(fn: Callable[P, T]) -> inspect.Signature:
             signature = inspect.signature(fn)
 
+            assert isinstance(fn, FunctionType)
+
             # Validate argument names if specified
             if argnames_set is not None:
                 fn_argnames = signature.parameters.keys()
@@ -145,6 +148,8 @@ class RocqCursorProtocol(ABC):
 
             @functools.wraps(fn)
             def _wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+                assert isinstance(fn, FunctionType)
+
                 def _ensure_endswith_period[S: str](value: S, name: str) -> S:
                     assert isinstance(value, str)
                     if not value.endswith("."):

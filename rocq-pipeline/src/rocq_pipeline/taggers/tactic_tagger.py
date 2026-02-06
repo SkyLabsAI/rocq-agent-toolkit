@@ -425,7 +425,7 @@ def extract_tactics(s: str) -> tuple[dict[str, int], list[str]]:
     """
 
     # Sort prefixes by length (longest first)
-    sorted_prefixes = sorted(allowed_prefixes, key=len, reverse=True)
+    sorted_prefixes = sorted(allowed_prefixes, key=str.__len__, reverse=True)
 
     # flatten the string to a list of tactics
     tactics = flatten_tactic_string(s)

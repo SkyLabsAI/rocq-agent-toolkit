@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import MutableMapping
 from typing import Any, ClassVar, override
 
 from semver import Version
@@ -55,13 +56,17 @@ class WithVersionProvenance(WithProvenance):
 
     @override
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type[WithClassProvenance], ProvenanceT]:
+    def compute_cls_provenance(
+        cls,
+    ) -> MutableMapping[type[WithClassProvenance], ProvenanceT]:
         result = super().compute_cls_provenance()
         result[WithVersionProvenance] = WithVersionProvenance._VERSION(cls)
         return result
 
     @override
-    def compute_provenance(self) -> dict[type[WithInstanceProvenance], ProvenanceT]:
+    def compute_provenance(
+        self,
+    ) -> MutableMapping[type[WithInstanceProvenance], ProvenanceT]:
         result = super().compute_provenance()
         result[WithVersionProvenance] = WithVersionProvenance._VERSION(self.__class__)
         return result

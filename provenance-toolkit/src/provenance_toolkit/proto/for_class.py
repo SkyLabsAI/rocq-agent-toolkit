@@ -5,6 +5,7 @@ cf. __init__.py for more details."""
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping, MutableMapping
 from typing import Protocol, final, runtime_checkable
 
 from .base import ComputeChecksumProvenanceT, ProvenanceT
@@ -17,10 +18,12 @@ class _ComputeClassProvenance(Protocol):
     """Protocol for computing class provenance data."""
 
     @classmethod
-    def compute_cls_provenance(cls) -> dict[type[WithClassProvenance], ProvenanceT]:
-        """Compute rich provenance of klass.
+    def compute_cls_provenance(
+        cls,
+    ) -> MutableMapping[type[WithClassProvenance], ProvenanceT]:
+        """Compute rich provenance of klass (mutable variant for cooperative inheritance).
 
-        Returns a dictionary mapping each provenance provider type to its provenance data.
+        Returns a mutable dictionary mapping each provenance provider type to its provenance data.
         Classes should use super() to get parent provenance and add their own entry.
         """
         return {}
@@ -32,17 +35,17 @@ class WithClassProvenance(_ComputeClassProvenance):
     The core API is:
     - `cls_checksum()` -> str:
        Compute a semi-stable checksum for the provenance data for cls.
-    - `cls_checksums()` -> dict[type[WithClassProvenance], str]:
+    - `cls_checksums()` -> Mapping[type[WithClassProvenance], str]:
        Compute the checksums of provenance data for cls, keyed by the type of the class
        that computed it.
     - `cls_provenance_json()` -> dict[str, str]:
        Compute provenance JSON data for cls, keyed by the type of the class that
        computed it.
-    - `cls_provenance()` -> dict[type[WithClassProvenance], ProvenanceT]:
+    - `cls_provenance()` -> Mapping[type[WithClassProvenance], ProvenanceT]:
        Compute provenance data for cls, keyed by the type of the class that
        computed it.
 
-    Classes should override `compute_cls_provenance()` to return a dictionary mapping
+    Classes should override `compute_cls_provenance()` to return a mutable dictionary mapping
     their provenance provider type to their provenance data. They should use super()
     to get parent provenance dictionaries and merge them with their own entry.
 
@@ -65,10 +68,10 @@ class WithClassProvenance(_ComputeClassProvenance):
         cls,
         *,
         by: ComputeChecksumProvenanceT | None = None,
-    ) -> dict[type[WithClassProvenance], str]:
+    ) -> Mapping[type[WithClassProvenance], str]:
         """Compute checksums for each participating base class.
 
-        Returns: dict, mapping each participating class type to its computed checksum.
+        Returns: Mapping, mapping each participating class type to its computed checksum.
         """
         return {
             klass: provenance.checksum(by=by)
@@ -95,10 +98,10 @@ class WithClassProvenance(_ComputeClassProvenance):
     @classmethod
     def cls_provenance(
         cls,
-    ) -> dict[type[WithClassProvenance], ProvenanceT]:
+    ) -> Mapping[type[WithClassProvenance], ProvenanceT]:
         """Compute provenance data for cls.
 
-        Returns: dict, mapping each provenance provider type to its computed provenance data.
+        Returns: Mapping, mapping each provenance provider type to its computed provenance data.
 
         Note: cf. class docstring for more details.
         """

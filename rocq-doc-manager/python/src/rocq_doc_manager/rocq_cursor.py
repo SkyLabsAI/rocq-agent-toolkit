@@ -56,10 +56,10 @@ class RocqCursor(RocqCursorProtocol):
         return result
 
     @override
-    def copy_contents(self, dst: RocqCursorProtocol) -> None:
-        assert isinstance(dst, RocqCursor)  # This is a bit of a leak
-        assert self._rdm == dst._rdm  # can not copy across backends
-        self._rdm.copy_contents(src=self._cursor, dst=dst._cursor)
+    def copy_contents(self, dest: RocqCursorProtocol) -> None:
+        assert isinstance(dest, RocqCursor)  # This is a bit of a leak
+        assert self._rdm == dest._rdm  # can not copy across backends
+        self._rdm.copy_contents(src=self._cursor, dst=dest._cursor)
 
     @override
     def commit(
@@ -121,11 +121,7 @@ class RocqCursor(RocqCursorProtocol):
         self, text: str, blanks: str | None = "\n", safe: bool = True
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         if safe:
-            prefix_reply = self.doc_prefix()
-            if isinstance(prefix_reply, rdm_api.Err):
-                # This is okay because the error is a cursor error
-                return prefix_reply
-            prefix: list[rdm_api.PrefixItem] = prefix_reply
+            prefix = self.doc_prefix()
             if prefix != [] and prefix[-1].kind != "blanks":
                 self.insert_blanks(" ")
                 revert = True
