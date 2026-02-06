@@ -19,7 +19,8 @@ from observability import (
     trace_context,
 )
 from opentelemetry.trace import Link, SpanContext, Status, StatusCode
-from rocq_doc_manager import DuneUtil, RocqDocManager
+from rocq_doc_manager import RocqDocManager
+from rocq_dune_util import DuneError, rocq_args_for
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, util
@@ -187,10 +188,11 @@ def run_task(
             task_file = task.file
             progress.status(0.01, "🔃")
             try:
-                rocq_args = DuneUtil.rocq_args_for(task_file, cwd=project.path)
-            except DuneUtil.NotFound:
+                task_file_path = project.path / task_file
+                rocq_args = rocq_args_for(task_file_path, cwd=project.path)
+            except DuneError as e:
                 logger.error(
-                    f"Could not get arguments for file {task_file}, using no arguments."
+                    f"Could not get arguments for file {task_file}, using no arguments.\n{e.stderr}"
                 )
                 rocq_args = []
             rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())

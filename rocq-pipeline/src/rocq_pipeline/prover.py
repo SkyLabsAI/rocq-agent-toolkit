@@ -4,7 +4,8 @@ import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
-from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
+from rocq_doc_manager import RocqCursor, RocqDocManager
+from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.agent import ProofAgent
 from rocq_pipeline.args_util import valid_file
@@ -70,14 +71,12 @@ def main_prover(agent_cls: type[ProofAgent]):
             output = output.relative_to(rocq_file.parent, walk_up=True)
     logging.basicConfig(level=logging.ERROR)
     try:
-        rocq_args = DuneUtil.rocq_args_for(
-            rocq_file.name, cwd=rocq_file.parent, build=True
-        )
+        rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
         with RocqDocManager(
             rocq_args, str(rocq_file.name), dune=True, chdir=str(rocq_file.parent)
         ).sess(load_file=True) as rdm:
             run_proving_agent(rdm.cursor(), agent_cls, output)
-    except DuneUtil.NotFound as err:
-        sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{err}")
+    except DuneError as e:
+        sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}")
     except Exception as e:
         sys.exit(f"Error: failed with {e}.")

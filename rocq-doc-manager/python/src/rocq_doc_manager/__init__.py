@@ -4,7 +4,6 @@ This package provides a Python interface to interact with the Rocq document
 manager.
 """
 
-from .dune_util import DuneUtil, dune_env_hack
 from .rocq_cursor import RocqCursor
 from .rocq_doc_manager import RocqDocManager
 
@@ -21,8 +20,6 @@ def create(
 
 __all__ = [
     "create",
-    "dune_env_hack",
-    "DuneUtil",
     "RocqDocManager",
     "RocqCursor",
 ]

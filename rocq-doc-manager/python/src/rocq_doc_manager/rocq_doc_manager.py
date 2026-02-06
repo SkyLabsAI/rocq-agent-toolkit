@@ -4,9 +4,9 @@ from contextlib import contextmanager
 from typing import Self, override
 
 from jsonrpc_tp import JsonRPCTP
+from rocq_dune_util import dune_env_hack
 
 from . import rocq_doc_manager_api as rdm_api
-from .dune_util import dune_env_hack
 from .rocq_cursor import RocqCursor
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
 

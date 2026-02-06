@@ -15,6 +15,7 @@ dependencies = [
     "jsonrpc-tp",
     "dataclasses-json>=0.6.7",
     "hypothesis>=6.148.2",
+    "rocq-dune-util",
 ]
 
 [project.urls]
@@ -39,6 +40,7 @@ dev = [
 
 [tool.uv.sources]
 jsonrpc-tp = { workspace = true }
+rocq-dune-util = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/rocq_doc_manager"]
