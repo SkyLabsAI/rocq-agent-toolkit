@@ -9,6 +9,7 @@ from typing import Annotated, override
 
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from ..action import Action
 from ..rollout import ApproximatingRollout, EmptyRollout, Rollout, singleton
@@ -60,8 +61,8 @@ class CutAssertStrategy(Strategy):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        name: str | RocqCursor.Err[None] = state.fresh_ident(self._name)
-        if isinstance(name, RocqCursor.Err):
+        name: str | rdm_api.Err[None] = state.fresh_ident(self._name)
+        if isinstance(name, rdm_api.Err):
             return EmptyRollout()
 
         # For now, it is important that we fail if this fact is already known,

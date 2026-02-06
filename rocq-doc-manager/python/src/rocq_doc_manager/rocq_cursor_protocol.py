@@ -5,9 +5,9 @@ import inspect
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
-from typing import Any, TypeAlias, cast, get_type_hints
+from typing import Any, cast, get_type_hints
 
-from .rocq_doc_manager_api import RocqDocManagerAPI
+from . import rocq_doc_manager_api as rdm_api
 
 logger = logging.getLogger(__name__)
 
@@ -16,21 +16,6 @@ class RocqCursorProtocol(ABC):
     """
     Cursors represent a pointer into a Rocq document.
     """
-
-    Err: TypeAlias = RocqDocManagerAPI.Err  # noqa: UP040
-    Resp: TypeAlias = RocqDocManagerAPI.Resp  # noqa: UP040
-    Error: TypeAlias = RocqDocManagerAPI.Error  # noqa: UP040
-    RocqSource: TypeAlias = RocqDocManagerAPI.RocqSource  # noqa: UP040
-    RocqLoc: TypeAlias = RocqDocManagerAPI.RocqLoc  # noqa: UP040
-    Quickfix: TypeAlias = RocqDocManagerAPI.Quickfix  # noqa: UP040
-    FeedbackMessage: TypeAlias = RocqDocManagerAPI.FeedbackMessage  # noqa: UP040
-    GlobrefsDiff: TypeAlias = RocqDocManagerAPI.GlobrefsDiff  # noqa: UP040
-    ProofState: TypeAlias = RocqDocManagerAPI.ProofState  # noqa: UP040
-    CommandData: TypeAlias = RocqDocManagerAPI.CommandData  # noqa: UP040
-    CommandError: TypeAlias = RocqDocManagerAPI.CommandError  # noqa: UP040
-    PrefixItem: TypeAlias = RocqDocManagerAPI.PrefixItem  # noqa: UP040
-    SuffixItem: TypeAlias = RocqDocManagerAPI.SuffixItem  # noqa: UP040
-    CompileResult: TypeAlias = RocqDocManagerAPI.CompileResult  # noqa: UP040
 
     @staticmethod
     def ensure_return_endswith_period[**P, T](fn: Callable[P, T]) -> Callable[P, T]:
@@ -204,7 +189,7 @@ class RocqCursorProtocol(ABC):
     @abstractmethod
     def advance_to(
         self, index: int
-    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]: ...
+    ) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
 
     @abstractmethod
     def clear_suffix(self, count: int | None = None) -> None: ...
@@ -230,7 +215,7 @@ class RocqCursorProtocol(ABC):
     ) -> None: ...
 
     @abstractmethod
-    def compile(self) -> RocqDocManagerAPI.CompileResult: ...
+    def compile(self) -> rdm_api.CompileResult: ...
 
     @abstractmethod
     def cursor_index(self) -> int: ...
@@ -239,15 +224,13 @@ class RocqCursorProtocol(ABC):
     def dispose(self) -> None: ...
 
     @abstractmethod
-    def doc_prefix(self) -> list[RocqDocManagerAPI.PrefixItem]: ...
+    def doc_prefix(self) -> list[rdm_api.PrefixItem]: ...
 
     @abstractmethod
-    def doc_suffix(self) -> list[RocqDocManagerAPI.SuffixItem]: ...
+    def doc_suffix(self) -> list[rdm_api.SuffixItem]: ...
 
     @abstractmethod
-    def go_to(
-        self, index: int
-    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]: ...
+    def go_to(self, index: int) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
 
     @abstractmethod
     def has_suffix(self) -> bool: ...
@@ -258,58 +241,41 @@ class RocqCursorProtocol(ABC):
     @abstractmethod
     def insert_command(
         self, text: str
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError]
-    ): ...
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
 
     @abstractmethod
     def load_file(
         self,
-    ) -> None | RocqDocManagerAPI.Err[RocqDocManagerAPI.RocqLoc | None]: ...
+    ) -> None | rdm_api.Err[rdm_api.RocqLoc | None]: ...
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     @abstractmethod
-    def query(
-        self, text: str
-    ) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]: ...
+    def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
 
     @abstractmethod
-    def query_json(
-        self, text: str, *, index: int
-    ) -> Any | RocqDocManagerAPI.Err[None]: ...
+    def query_json(self, text: str, *, index: int) -> Any | rdm_api.Err[None]: ...
 
     @abstractmethod
     def query_json_all(
         self, text: str, *, indices: list[int] | None
-    ) -> list[Any] | RocqDocManagerAPI.Err[None]: ...
+    ) -> list[Any] | rdm_api.Err[None]: ...
 
     @abstractmethod
-    def query_text(
-        self, text: str, *, index: int
-    ) -> str | RocqDocManagerAPI.Err[None]: ...
+    def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]: ...
 
     @abstractmethod
     def query_text_all(
         self, text: str, *, indices: list[int] | None
-    ) -> list[str] | RocqDocManagerAPI.Err[None]: ...
+    ) -> list[str] | rdm_api.Err[None]: ...
 
     @abstractmethod
-    def revert_before(
-        self, erase: bool, index: int
-    ) -> None | RocqDocManagerAPI.Err[None]: ...
+    def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]: ...
 
     @abstractmethod
-    def run_command(
-        self, text: str
-    ) -> RocqDocManagerAPI.CommandData | RocqDocManagerAPI.Err[None]: ...
+    def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
 
     @abstractmethod
     def run_step(
         self,
-    ) -> (
-        RocqDocManagerAPI.CommandData
-        | None
-        | RocqDocManagerAPI.Err[RocqDocManagerAPI.CommandError | None]
-    ): ...
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]: ...

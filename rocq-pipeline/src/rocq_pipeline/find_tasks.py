@@ -12,6 +12,7 @@ from typing import Any, Literal
 import git
 import sexpdata  # type: ignore
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from rocq_pipeline.args_util import valid_file
 from rocq_pipeline.locator import FirstLemma, NotFound
@@ -30,7 +31,7 @@ class ProofTask:
     proof_tactics: list[str]
 
 
-def scan_proof(suffix: list[RocqCursor.SuffixItem]) -> ProofTask:
+def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
     tactics: list[str] = []
     start = 0
     for i, sentence in enumerate(suffix):

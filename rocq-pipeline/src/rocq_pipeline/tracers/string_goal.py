@@ -1,4 +1,5 @@
 from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_pipeline.proof_state import ProofState
 
 from .extractor import DefaultDocumentWatcher, StateExtractor, TrivialBracketedExtractor
@@ -9,7 +10,7 @@ class ExtractGoalAsString(StateExtractor[str]):
 
     def extract(self, rdm: RocqCursor) -> str:
         result = rdm.current_goal()
-        if isinstance(result, rdm.Err):
+        if isinstance(result, rdm_api.Err):
             raise RuntimeError("Failed to parse goal: {result}")
         return str(ProofState(result))
 

@@ -7,6 +7,7 @@ from typing import Any, Literal, Self, override
 
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocol
 
+from . import rocq_doc_manager_api as rdm_api
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
 
 logger = logging.getLogger(__name__)
@@ -30,9 +31,7 @@ class RocqCursor(RocqCursorProtocol):
         return self._the_rdm
 
     @override
-    def advance_to(
-        self, index: int
-    ) -> None | RocqCursor.Err[RocqCursor.CommandError | None]:
+    def advance_to(self, index: int) -> None | rdm_api.Err[rdm_api.CommandError | None]:
         """Advance the cursor before the indicated unprocessed item."""
         return self._rdm.advance_to(self._cursor, index)
 
@@ -46,7 +45,7 @@ class RocqCursor(RocqCursorProtocol):
         result = self._rdm.materialize(self._cursor)
         if result is None:
             return None
-        assert isinstance(result, RocqCursor.Err)
+        assert isinstance(result, rdm_api.Err)
         raise Exception(result.message)
 
     @override
@@ -78,7 +77,7 @@ class RocqCursor(RocqCursorProtocol):
         )
 
     @override
-    def compile(self) -> RocqCursor.CompileResult:
+    def compile(self) -> rdm_api.CompileResult:
         return self._rdm.compile(self._cursor)
 
     @override
@@ -91,17 +90,15 @@ class RocqCursor(RocqCursorProtocol):
         self._the_rdm = None
 
     @override
-    def doc_prefix(self) -> list[RocqCursor.PrefixItem]:
+    def doc_prefix(self) -> list[rdm_api.PrefixItem]:
         return self._rdm.doc_prefix(self._cursor)
 
     @override
-    def doc_suffix(self) -> list[RocqCursor.SuffixItem]:
+    def doc_suffix(self) -> list[rdm_api.SuffixItem]:
         return self._rdm.doc_suffix(self._cursor)
 
     @override
-    def go_to(
-        self, index: int
-    ) -> None | RocqCursor.Err[RocqCursor.CommandError | None]:
+    def go_to(self, index: int) -> None | rdm_api.Err[rdm_api.CommandError | None]:
         return self._rdm.go_to(self._cursor, index)
 
     @override
@@ -115,20 +112,20 @@ class RocqCursor(RocqCursorProtocol):
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def _insert_command(
         self, text: str
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         return self._rdm.insert_command(self._cursor, text)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def insert_command(
         self, text: str, blanks: str | None = "\n", safe: bool = True
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         if safe:
             prefix_reply = self.doc_prefix()
-            if isinstance(prefix_reply, API.Err):
+            if isinstance(prefix_reply, rdm_api.Err):
                 # This is okay because the error is a cursor error
                 return prefix_reply
-            prefix: list[API.PrefixItem] = prefix_reply
+            prefix: list[rdm_api.PrefixItem] = prefix_reply
             if prefix != [] and prefix[-1].kind != "blanks":
                 self.insert_blanks(" ")
                 revert = True
@@ -139,52 +136,52 @@ class RocqCursor(RocqCursorProtocol):
 
         try:
             result = self._insert_command(text)
-            if isinstance(result, API.CommandError):
+            if isinstance(result, rdm_api.CommandError):
                 if revert:
                     self.revert_before(erase=True, index=len(prefix))
             elif blanks is not None:
                 self.insert_blanks(blanks)
             return result
-        except API.Error:
+        except rdm_api.Error:
             if revert:
                 self.revert_before(erase=True, index=len(prefix))
             raise
 
     @override
-    def load_file(self) -> None | RocqCursor.Err[RocqCursor.RocqLoc | None]:
+    def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
         return self._rdm.load_file(self._cursor)
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
-    def query(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
+    def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return self._rdm.query(self._cursor, text)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def query_json(
         self, text: str, *, index: int
-    ) -> Any | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> Any | rdm_api.Err[rdm_api.CommandError]:
         return self._rdm.query_json(self._cursor, text, index=index)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def query_json_all(
         self, text: str, *, indices: list[int] | None = None
-    ) -> list[Any] | RocqCursor.Err[None]:
+    ) -> list[Any] | rdm_api.Err[None]:
         return self._rdm.query_json_all(self._cursor, text, indices=indices)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
-    def query_text(self, text: str, *, index: int) -> str | RocqCursor.Err[None]:
+    def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
         return self._rdm.query_text(self._cursor, text, index=index)
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
     def query_text_all(
         self, text: str, *, indices: list[int] | None = None
-    ) -> list[str] | RocqCursor.Err[None]:
+    ) -> list[str] | rdm_api.Err[None]:
         return self._rdm.query_text_all(self._cursor, text, indices=indices)
 
     @override
@@ -193,13 +190,13 @@ class RocqCursor(RocqCursorProtocol):
 
     @override
     @RocqCursorProtocol.ensure_endswith_period(argnames="text")
-    def run_command(self, text: str) -> RocqCursor.CommandData | RocqCursor.Err[None]:
+    def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return self._rdm.run_command(self._cursor, text)
 
     @override
     def run_step(
         self,
-    ) -> RocqCursor.CommandData | None | RocqCursor.Err[RocqCursor.CommandError | None]:
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]:
         return self._rdm.run_step(self._cursor)
 
     # ===== BEGIN: contextmanagers ============================================
@@ -215,8 +212,8 @@ class RocqCursor(RocqCursorProtocol):
             # ensure that the document is left unchanged.
             marker_cmd = "Check tt."
             insert_command_reply = self.insert_command(marker_cmd)
-            if isinstance(insert_command_reply, RocqCursor.Err):
-                raise RocqCursor.Error(
+            if isinstance(insert_command_reply, rdm_api.Err):
+                raise rdm_api.Error(
                     " ".join(
                         [
                             f"RocqDocManager failed to insert {marker_cmd}:",
@@ -229,8 +226,8 @@ class RocqCursor(RocqCursorProtocol):
 
         if rollback:
             revert_reply = self.revert_before(True, current_idx)
-            if isinstance(revert_reply, RocqCursor.Err):
-                raise RocqCursor.Error(
+            if isinstance(revert_reply, rdm_api.Err):
+                raise rdm_api.Error(
                     " ".join(
                         [
                             "RocqDocManager failed to rollback to",
@@ -246,14 +243,14 @@ class RocqCursor(RocqCursorProtocol):
         """RDM context manager that sets up an aborted goal."""
         with self.ctx(rollback=rollback):
             goal_reply = self.insert_command(f"Goal {goal}.")
-            if isinstance(goal_reply, RocqCursor.Err):
-                raise RocqCursor.Error(goal_reply)
+            if isinstance(goal_reply, rdm_api.Err):
+                raise rdm_api.Error(goal_reply)
 
             yield self
 
             abort_reply = self.insert_command("Abort.")
-            if isinstance(abort_reply, RocqCursor.Err):
-                raise RocqCursor.Error(abort_reply)
+            if isinstance(abort_reply, rdm_api.Err):
+                raise rdm_api.Error(abort_reply)
 
     # NOTE: we could expose a more structured way to build the context list.
     @contextmanager
@@ -265,19 +262,19 @@ class RocqCursor(RocqCursorProtocol):
     ) -> Iterator[Self]:
         with self.ctx(rollback=rollback):
             begin_section_reply = self.insert_command(f"Section {name}.")
-            if isinstance(begin_section_reply, RocqCursor.Err):
-                raise RocqCursor.Error(begin_section_reply)
+            if isinstance(begin_section_reply, rdm_api.Err):
+                raise rdm_api.Error(begin_section_reply)
 
             if context is not None:
                 context_reply = self.insert_command(f"Context {' '.join(context)}.")
-                if isinstance(context_reply, RocqCursor.Err):
-                    raise RocqCursor.Error(context_reply)
+                if isinstance(context_reply, rdm_api.Err):
+                    raise rdm_api.Error(context_reply)
 
             yield self
 
             end_section_reply = self.insert_command(f"End {name}.")
-            if isinstance(end_section_reply, RocqCursor.Err):
-                raise RocqCursor.Error(end_section_reply)
+            if isinstance(end_section_reply, rdm_api.Err):
+                raise rdm_api.Error(end_section_reply)
 
     # ===== END: contextmanagers ==============================================
 
@@ -319,10 +316,8 @@ class RocqCursor(RocqCursorProtocol):
             if fn(item.text, item.kind)
         ]
 
-        def check_result(
-            result: RocqCursor.Err | object, mtch: tuple[int, str]
-        ) -> bool:
-            if isinstance(result, RocqCursor.Err):
+        def check_result(result: rdm_api.Err | object, mtch: tuple[int, str]) -> bool:
+            if isinstance(result, rdm_api.Err):
                 logger.warning(
                     " ".join(
                         [
@@ -334,7 +329,7 @@ class RocqCursor(RocqCursorProtocol):
                 return False
             if step_over_match:
                 run_step_reply = self.run_step()
-                if isinstance(run_step_reply, RocqCursor.Err):
+                if isinstance(run_step_reply, rdm_api.Err):
                     logger.warning(
                         "Failed to step over the match: {run_step_repl}",
                     )
@@ -366,9 +361,9 @@ class RocqCursor(RocqCursorProtocol):
         rollback: bool = True,
     ) -> (
         tuple[str, str]
-        | RocqCursor.Err[RocqCursor.CommandError]
-        | RocqCursor.Err[list[str]]
-        | RocqCursor.Err[None]
+        | rdm_api.Err[rdm_api.CommandError]
+        | rdm_api.Err[list[str]]
+        | rdm_api.Err[None]
     ):
         """Run [Compute {term}.] and return the resulting value and type.
 
@@ -386,7 +381,7 @@ class RocqCursor(RocqCursorProtocol):
         """
         with self.aborted_goal_ctx(goal=f"exists v, v = ({term})", rollback=rollback):
             command_reply = self.insert_command("vm_compute.")
-            if isinstance(command_reply, RocqCursor.Err):
+            if isinstance(command_reply, rdm_api.Err):
                 return command_reply
 
             query_reply = self.query_text_all(
@@ -395,20 +390,20 @@ class RocqCursor(RocqCursorProtocol):
 end.""",
                 indices=None,
             )
-            if isinstance(query_reply, RocqCursor.Err):
+            if isinstance(query_reply, rdm_api.Err):
                 return query_reply
 
             if len(query_reply) != 2:
-                return RocqCursor.Err(
+                return rdm_api.Err(
                     message="RocqDocManager.Compute: expected a term and type",
                     data=query_reply,
                 )
 
             return (query_reply[0], query_reply[1])
 
-    def current_goal(self) -> RocqCursor.ProofState | None:
+    def current_goal(self) -> rdm_api.ProofState | None:
         result = self.query("About nat.")
-        assert not isinstance(result, RocqCursor.Err)
+        assert not isinstance(result, rdm_api.Err)
         return result.proof_state
 
     def _import_export_cmd(
@@ -416,37 +411,37 @@ end.""",
         kind: Literal["Import"] | Literal["Export"],
         logpath: str,
         require: bool = True,
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         cmd: str = f"{'Require ' if require else ''}{kind} {logpath}."
         return self.insert_command(cmd)
 
     def Import(
         self,
         logpath: str,
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         return self._import_export_cmd("Import", logpath, require=False)
 
     def Export(
         self,
         logpath: str,
         require: bool = True,
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         return self._import_export_cmd("Export", logpath, require=False)
 
     def RequireImport(
         self,
         logpath: str,
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         return self._import_export_cmd("Import", logpath, require=True)
 
     def RequireExport(
         self,
         logpath: str,
         require: bool = True,
-    ) -> RocqCursor.CommandData | RocqCursor.Err[RocqCursor.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         return self._import_export_cmd("Export", logpath, require=True)
 
-    def fresh_ident(self, ident: str) -> str | RocqCursor.Err[None]:
+    def fresh_ident(self, ident: str) -> str | rdm_api.Err[None]:
         """Return a fresh name based on [ident].
 
         Arguments:
@@ -463,8 +458,8 @@ end.""",
         result = self.query_text(
             f'Eval lazy in ltac:(let nm := fresh "{ident}" in idtac nm).', index=0
         )
-        if isinstance(result, RocqCursor.Err):
-            return RocqCursor.Err("Not in proof mode", None)
+        if isinstance(result, rdm_api.Err):
+            return rdm_api.Err("Not in proof mode", None)
         return result
 
     # ===== END: macros =======================================================

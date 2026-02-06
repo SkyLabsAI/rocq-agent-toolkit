@@ -1,5 +1,5 @@
 import pytest
-from rocq_doc_manager import RocqDocManager as RDM
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_pipeline.proof_state import (
     IrisGoal,
     ProofState,
@@ -50,7 +50,7 @@ def focused_goal_strings() -> list[str]:
 @pytest.fixture(scope="module")
 def proof_state(focused_goal_strings) -> ProofState:
     """Parses the main example string and returns the ProofState object."""
-    rdm_pf_state: RDM.ProofState = RDM.ProofState(
+    rdm_pf_state: rdm_api.ProofState = rdm_api.ProofState(
         focused_goals=focused_goal_strings,
         unfocused_goals=[5, 6],
         shelved_goals=2,

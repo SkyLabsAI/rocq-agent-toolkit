@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from rocq_doc_manager import RocqCursor
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_pipeline.proof_state import ProofState
 from rocq_pipeline.proof_state.goal import RocqGoal
 
@@ -45,7 +46,7 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
         result = rdm.query_text(
             "Locate iris.proofmode.environments.envs_entails.", index=0
         )
-        assert not isinstance(result, RocqCursor.Err)
+        assert not isinstance(result, rdm_api.Err)
         return not result.startswith("No object")
 
     def extra_paths(self) -> dict[str, Path]:
@@ -70,7 +71,7 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
             self._iris = self._check_iris(rdm)
 
         result = rdm.run_command(f"Require {self._mod()}.")
-        if isinstance(result, RocqCursor.Err):
+        if isinstance(result, rdm_api.Err):
             raise Exception(f"Failed to initialize JsonGoal extractor: {result}")
 
     _NO_GOAL_PREFIXES: list[str] = [
@@ -81,7 +82,7 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
 
     def get_goals(self, rdm: RocqCursor) -> list[str] | None:
         result = rdm.query_text_all(self._tactic(), indices=None)
-        if isinstance(result, rdm.Err):
+        if isinstance(result, rdm_api.Err):
             if "Init.Not_focussed" in result.message:
                 return []
             return None
