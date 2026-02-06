@@ -67,7 +67,7 @@ module Schema = struct
   (* Ensure every field has a default; auto-generated methods use dictionary
      unpacking and must handle cases where null/empty fields are elided. *)
   let python_dataclass_field : type a. a t -> string = fun s ->
-    Printf.sprintf "field(kw_only=True, %s)" @@
+    Printf.sprintf "field(\n        kw_only=True,\n        %s,\n    )" @@
     match s with
     | Null -> "default=None"
     | Any -> "default=None"
@@ -572,17 +572,18 @@ let output_python_api oc api =
     List.map (fun (A(O(o))) -> o.key.name) api.api_objects
   in
   line "__all__ = [";
-  List.iter (line "  '%s',") exports;
+  List.iter (line "    %S,") exports;
   line "]";
   let output_object (A(O(o))) =
     line "";
+    line "";
     line "@dataclass(frozen=True)";
     line "class %s(DataClassJsonMixin):" o.key.name;
-    Option.iter (line "    \"\"\"%a.\"\"\"" pp_capitalized) o.descr;
+    Option.iter (line "    \"\"\"%a.\"\"\"\n" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->
       output_fields f.tail;
-      Option.iter (line "   # %a." pp_capitalized) f.descr;
+      Option.iter (line "    # %a." pp_capitalized) f.descr;
       line "    %s: %s = %s" f.name
         (Schema.python_type f.schema)
         (Schema.python_dataclass_field f.schema)
@@ -591,18 +592,18 @@ let output_python_api oc api =
   in
   List.iter output_object (List.rev api.api_objects);
   line "";
+  line "";
   line "class %s:" api.name;
   line "    \"\"\"Main API class.\"\"\"";
   line "";
   line "    def __init__(self, rpc: JsonRPCTP) -> None:";
-  line "        self._rpc:JsonRPCTP = rpc";
-  let rec pp_args : type a. _ -> a Args.t -> unit = fun oc args ->
+  line "        self._rpc: JsonRPCTP = rpc";
+  let rec pp_args : type a. a Args.t -> unit = fun args ->
     match args with
     | Args.Nil    -> ()
     | Args.Cns(a) ->
-    Printf.fprintf oc ", %s: %s" a.name
-      (Schema.python_type a.schema);
-    pp_args oc a.tail
+    line "        %s: %s," a.name (Schema.python_type a.schema);
+    pp_args a.tail
   in
   let rec pp_names : type a. _ -> a Args.t -> unit = fun oc args ->
     match args with
@@ -622,10 +623,15 @@ let output_python_api oc api =
           let err = Schema.python_type i.err in
           Printf.sprintf "%s | Err[%s]" ret err
     in
-    line "    def %s(self%a) -> %s:" m.name pp_args m.args ret_ty;
+    line "    def %s(" m.name;
+    line "        self,";
+    pp_args m.args;
+    line "    ) -> %s:" ret_ty;
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
-    line "        result = self._rpc.raw_request(\"%s\", [%a])"
-      m.name pp_names m.args;
+    line "        result = self._rpc.raw_request(";
+    line "            \"%s\"," m.name;
+    line "            [%a]," pp_names m.args;
+    line "        )";
     let _ =
       (* We check the result against [JsonRPCTP.Err] rather than [self.Err]
          to decouple these *)
@@ -642,7 +648,10 @@ let output_python_api oc api =
   SMap.iter output_method api.api_methods;
   let output_notification _ (HN(n)) =
     line "";
-    line "    def %s(self%a) -> None:" n.name pp_args n.args;
+    line "    def %s(" n.name;
+    line "        self,";
+    pp_args n.args;
+    line "    ) -> None:";
     Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) n.descr;
     line "        self._rpc.raw_notification(\"%s\", [%a])"
       n.name pp_names n.args
