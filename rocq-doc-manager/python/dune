@@ -1,10 +1,12 @@
 (subdir src/rocq_doc_manager
  (rule
-  (mode promote)
-  (package rocq-doc-manager)
   (action
-   (with-stdout-to rocq_doc_manager_api.py
-    (run rocq-doc-manager --python-api)))))
+   (with-stdout-to rocq_doc_manager_api.py.gen
+    (run rocq-doc-manager --python-api))))
+ (rule
+  (alias all)
+  (action
+   (diff rocq_doc_manager_api.py rocq_doc_manager_api.py.gen))))
 
 ; Ignore the test directory: its tests are driven by python.
 (data_only_dirs tests)
