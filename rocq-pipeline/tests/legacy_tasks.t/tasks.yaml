@@ -1,0 +1,6 @@
+project:
+  name: test
+  git_url: dummy
+  git_commit: dummy
+  path: .
+tasks: []

@@ -1,4 +1,3 @@
-import argparse
 import asyncio
 import json
 import os
@@ -32,6 +31,7 @@ from rocq_pipeline.agent import (
     TaskResult,
 )
 from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
+from rocq_pipeline.args import load_tasks
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.prover import main_prover
 from rocq_pipeline.schema import task_output
@@ -285,36 +285,6 @@ def run_task(
         )
 
 
-def load_tasks(
-    arguments: argparse.Namespace,
-) -> tuple[str, Tasks.Project, list[Tasks.Task]]:
-    if arguments.task_json and arguments.task_file:
-        logger.warning(
-            " ".join(
-                [
-                    "[--task-file ...] and [--task-json ...] shouldn't both be used;",
-                    "choosing [--task-json].",
-                ]
-            )
-        )
-
-    if arguments.task_json is not None:
-        tasks = arguments.task_json
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-        tasks = [Tasks.Task.model_validate(t) for t in tasks]
-        project = Tasks.Project(name="tasks", git_url="", git_commit="", path=Path("."))
-        return ("tasks", project, tasks)
-    elif arguments.task_file is not None:
-        taskfile = Tasks.TaskFile.from_file(arguments.task_file)
-        tasks_name = arguments.task_file.stem
-        return (tasks_name, taskfile.project, taskfile.tasks)
-    else:
-        raise ValueError(
-            "Unspecified task.\nUse '--task-json ...literal-json...' or '--task-file path/to/task/file.{json,yaml}'."
-        )
-
-
 def load_agent(agent_desc: str) -> AgentBuilder:
     try:
         agent_builder = loader.load_from_str(agent_desc, "dyn_loaded_agent")
@@ -328,8 +298,7 @@ def load_agent(agent_desc: str) -> AgentBuilder:
 @dataclass
 class RunConfiguration:
     agent_builder: AgentBuilder
-    project: Tasks.Project
-    tasks: list[Tasks.Task]
+    tasks: list[tuple[Tasks.Project, Tasks.Task]]
     tasks_name: str
     output_dir: Path
     trace: bool
@@ -346,7 +315,7 @@ def parse_arguments(
             raise ValueError("Missing agent configuration. Pass [--agent ...].")
         agent_builder = load_agent(arguments.agent)
 
-    (tasks_name, project, tasks) = load_tasks(arguments)
+    (tasks_name, tasks) = load_tasks(arguments)
 
     # Get deployment environment
     env_name = getattr(arguments, "env", "none")
@@ -358,7 +327,6 @@ def parse_arguments(
     tags = collect_env_tags()
     return RunConfiguration(
         agent_builder,
-        project,
         tasks,
         tasks_name,
         arguments.output_dir,
@@ -411,10 +379,13 @@ def run_config(config: RunConfiguration) -> bool:
 
     # Dispatcher span is now closed - workers will run independently
 
-    def run_it(task: Tasks.Task, progress: Any) -> task_output.TaskOutput | None:
+    def run_it(
+        proj_task: tuple[Tasks.Project, Tasks.Task], progress: Any
+    ) -> task_output.TaskOutput | None:
+        proj, task = proj_task
         return run_task(
             config.agent_builder,
-            config.project,
+            proj,
             task,
             run_id,
             tags=config.tags,
@@ -438,7 +409,7 @@ def run_config(config: RunConfiguration) -> bool:
 
     results = util.parallel_runner(
         run_it,
-        [(t.get_id(), t) for t in config.tasks],
+        [(f"{t[0].get_id()}#{t[1].get_id()}", t) for t in config.tasks],
         succeeded=succeeded,
         jobs=config.jobs,
     )

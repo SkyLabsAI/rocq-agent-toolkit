@@ -77,7 +77,7 @@ def main_prover(agent_cls: type[ProofAgent]):
             rocq_args, str(rocq_file.name), dune=True, chdir=str(rocq_file.parent)
         ).sess(load_file=True) as rdm:
             run_proving_agent(rdm.cursor(), agent_cls, output)
-    except DuneUtil.NotFound:
-        sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.")
+    except DuneUtil.NotFound as err:
+        sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{err}")
     except Exception as e:
         sys.exit(f"Error: failed with {e}.")

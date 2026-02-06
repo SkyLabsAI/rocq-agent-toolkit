@@ -328,7 +328,7 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
     project = Project(
         name=project_name, git_url=git_url, git_commit=git_commit, path=pdir
     )
-    taskfile = TaskFile(project=project, tasks=unique_tasks)
+    taskfile = TaskFile.from_bundles([(project, unique_tasks)])
 
     logger.debug(f"Saving tasks to {output_file}")
     taskfile.to_file(output_file)

@@ -13,7 +13,8 @@ def dune_env_hack() -> dict[str, str]:
 # TODO: hoist into a separate `rocq-dune-util` package.
 class DuneUtil:
     class NotFound(Exception):
-        pass
+        def __init__(self, message: str) -> None:
+            self.message = message
 
     @staticmethod
     def rocq_args_for(
@@ -40,6 +41,6 @@ class DuneUtil:
             cwd=str(cwd) if cwd is not None else None,
         )
         if dune_args_result.returncode != 0:
-            raise DuneUtil.NotFound(dune_args_result.stderr)
+            raise DuneUtil.NotFound(dune_args_result.stderr.decode())
         dune_args = dune_args_result.stdout.decode(encoding="utf-8")
         return [x.strip() for x in dune_args.splitlines()]

@@ -1,6 +1,7 @@
-project:
-  name: test
-  git_url: dummy
-  git_commit: dummy
-  path: .
-tasks: []
+project_bundles:
+  - project:
+      name: test
+      git_url: dummy
+      git_commit: dummy
+      path: .
+    tasks: []
