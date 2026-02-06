@@ -110,6 +110,8 @@ def qed(ctx: RunContext[RocqCursorDeps]) -> bool:
 
     Returns false if the proof can not be completed as this point.
     """
+    # NOTE: Using `Qed` here prevents this from being used to prove single goals within
+    # a larger proof.
     result = ctx.deps.rocq_cursor.query("Qed.")
     return not isinstance(result, rdm_api.Err)
 
