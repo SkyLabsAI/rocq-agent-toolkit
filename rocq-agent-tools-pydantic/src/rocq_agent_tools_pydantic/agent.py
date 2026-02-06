@@ -46,7 +46,8 @@ class ToolAgent(ProofAgent):
             format_goal(goal),
         ]
         if self._prompt:
-            prompt_lines.extend(["", self._prompt])
+            prompt_lines.insert(0, "")
+            prompt_lines.insert(0, self._prompt)
 
         agent_result = await self._agent.run(
             prompt_lines,
