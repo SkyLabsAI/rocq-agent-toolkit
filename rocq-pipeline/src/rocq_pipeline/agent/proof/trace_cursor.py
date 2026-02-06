@@ -8,7 +8,7 @@ from typing import Any, override
 
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_doc_manager_api import RocqDocManagerAPI
 
 logger = get_logger("RocqCursor")
@@ -64,7 +64,7 @@ def _trace_log(
                 log_args["result"] = fn_output(result)
                 if result is not None:
                     log_args["result_type"] = str(type(result))
-                    log_args["error"] = isinstance(result, api.Err)
+                    log_args["error"] = isinstance(result, rdm_api.Err)
                 if after:
                     after_loc = self.location_info()
                     log_args["after"] = after_loc
@@ -87,7 +87,7 @@ def _trace_log(
 
 class TracingCursor(RocqCursor):
     """
-    An implementation of the api.API that traces all document interactions recording
+    An implementation of the rdm_api.API that traces all document interactions recording
     a state_id.
     """
 
@@ -114,12 +114,12 @@ class TracingCursor(RocqCursor):
     @_trace_log(after=True, inputs=lambda _, args: args["text"])
     def insert_command(
         self, text: str, blanks: str | None = "\n", safe: bool = True
-    ) -> api.CommandData | api.Err[api.CommandError]:
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         return super().insert_command(text, blanks, safe)
 
     @override
     @_trace_log(after=True, inputs=lambda _, args: args["text"])
-    def run_command(self, text: str) -> api.CommandData | api.Err[None]:
+    def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return super().run_command(text)
 
     @staticmethod
@@ -131,36 +131,38 @@ class TracingCursor(RocqCursor):
     @_trace_log(after=True, inputs=_next_command)
     def run_step(
         self,
-    ) -> api.CommandData | None | api.Err[api.CommandError | None]:
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]:
         return super().run_step()
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
-    def query(self, text: str) -> api.CommandData | api.Err[None]:
+    def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return super().query(text)
 
     @override
     @_trace_log(inputs=lambda _, args: args)
-    def query_json(self, text: str, *, index: int) -> Any | api.Err[api.CommandError]:
+    def query_json(
+        self, text: str, *, index: int
+    ) -> Any | rdm_api.Err[rdm_api.CommandError]:
         return super().query_json(text, index=index)
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query_json_all(
         self, text: str, *, indices: list[int] | None = None
-    ) -> list[Any] | api.Err[None]:
+    ) -> list[Any] | rdm_api.Err[None]:
         return super().query_json_all(text, indices=indices)
 
     @override
     @_trace_log(inputs=lambda _, args: args)
-    def query_text(self, text: str, *, index: int) -> str | api.Err[None]:
+    def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
         return super().query_text(text, index=index)
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query_text_all(
         self, text: str, *, indices: list[int] | None = None
-    ) -> list[str] | api.Err[None]:
+    ) -> list[str] | rdm_api.Err[None]:
         return super().query_text_all(text, indices=indices)
 
     # NAVIGATION
@@ -177,7 +179,7 @@ class TracingCursor(RocqCursor):
 
     @override
     @_trace_log(inputs=lambda _, args: args, after=True)
-    def go_to(self, index: int) -> None | api.Err[api.CommandError | None]:
+    def go_to(self, index: int) -> None | rdm_api.Err[rdm_api.CommandError | None]:
         return super().go_to(index)
 
     def location_info(self) -> dict[str, Any]:
@@ -194,12 +196,12 @@ class TracingCursor(RocqCursor):
             result["goal"] = goal.to_json()
         return result
 
-    def _untraced_current_goal(self) -> api.ProofState | None:
+    def _untraced_current_goal(self) -> rdm_api.ProofState | None:
         # Avoid cycle leading to unbounded recursion & stack overflow:
         #                         TracingCursor.query
         # -[via _trace_log]->     TracingCursor.location_info
         # ------------------>     TracingCursor.current_goal ~= RocqCursor.current_goal
         # -[via self.query]->     TracingCursor.query
         result = super().query("About nat.")
-        assert not isinstance(result, api.Err)
+        assert not isinstance(result, rdm_api.Err)
         return result.proof_state

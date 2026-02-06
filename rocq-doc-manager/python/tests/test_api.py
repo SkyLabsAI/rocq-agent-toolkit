@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from rocq_doc_manager import RocqCursor, RocqDocManager
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocol
 
 from .util import RDM_Tests
@@ -16,25 +16,27 @@ class Test_API(RDM_Tests):
 
         result = rc.doc_suffix()
         assert result == [
-            api.SuffixItem(kind="command", text="Require Import Stdlib.ZArith.BinInt."),
-            api.SuffixItem(kind="blanks", text="\n\n"),
-            api.SuffixItem(kind="command", text="About nil."),
-            api.SuffixItem(kind="blanks", text="\n    "),
-            api.SuffixItem(kind="command", text="Definition junk :=\n\n\nnat."),
-            api.SuffixItem(kind="blanks", text="\n"),
-            api.SuffixItem(kind="command", text="Check 12 < 42 <= 100."),
-            api.SuffixItem(kind="blanks", text="\n\n\n"),
-            api.SuffixItem(
+            rdm_api.SuffixItem(
+                kind="command", text="Require Import Stdlib.ZArith.BinInt."
+            ),
+            rdm_api.SuffixItem(kind="blanks", text="\n\n"),
+            rdm_api.SuffixItem(kind="command", text="About nil."),
+            rdm_api.SuffixItem(kind="blanks", text="\n    "),
+            rdm_api.SuffixItem(kind="command", text="Definition junk :=\n\n\nnat."),
+            rdm_api.SuffixItem(kind="blanks", text="\n"),
+            rdm_api.SuffixItem(kind="command", text="Check 12 < 42 <= 100."),
+            rdm_api.SuffixItem(kind="blanks", text="\n\n\n"),
+            rdm_api.SuffixItem(
                 kind="command", text="Theorem test : forall x : nat, x = x."
             ),
-            api.SuffixItem(kind="blanks", text="\n"),
-            api.SuffixItem(kind="command", text="Proof."),
-            api.SuffixItem(kind="blanks", text="\n  "),
-            api.SuffixItem(kind="command", text="intro x."),
-            api.SuffixItem(kind="blanks", text="\n  "),
-            api.SuffixItem(kind="command", text="reflexivity."),
-            api.SuffixItem(kind="blanks", text="\n"),
-            api.SuffixItem(kind="command", text="Qed."),
+            rdm_api.SuffixItem(kind="blanks", text="\n"),
+            rdm_api.SuffixItem(kind="command", text="Proof."),
+            rdm_api.SuffixItem(kind="blanks", text="\n  "),
+            rdm_api.SuffixItem(kind="command", text="intro x."),
+            rdm_api.SuffixItem(kind="blanks", text="\n  "),
+            rdm_api.SuffixItem(kind="command", text="reflexivity."),
+            rdm_api.SuffixItem(kind="blanks", text="\n"),
+            rdm_api.SuffixItem(kind="command", text="Qed."),
         ]
 
     def test_Check_query_text(
@@ -43,7 +45,7 @@ class Test_API(RDM_Tests):
     ) -> None:
         rc = transient_rdm.cursor()
         check_reply = rc.query_text("Check nat.", index=0)
-        assert not isinstance(check_reply, api.Err)
+        assert not isinstance(check_reply, rdm_api.Err)
         assert check_reply == "nat\n     : Set"
 
     def test_doc_suffix(
@@ -53,71 +55,71 @@ class Test_API(RDM_Tests):
         with loadable_rdm.sess() as rdm:
             rc = rdm.cursor()
             assert rc.doc_suffix() == [
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="Require Import Stdlib.ZArith.BinInt.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n\n",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="About nil.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n    ",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="Definition junk :=\n\n\nnat.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="Check 12 < 42 <= 100.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n\n\n",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="Theorem test : forall x : nat, x = x.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="Proof.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n  ",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="intro x.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n  ",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="reflexivity.",
                     kind="command",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="\n",
                     kind="blanks",
                 ),
-                api.SuffixItem(
+                rdm_api.SuffixItem(
                     text="Qed.",
                     kind="command",
                 ),
@@ -130,7 +132,7 @@ class Test_API(RDM_Tests):
         rc = transient_rdm.cursor()
         with rc.aborted_goal_ctx(goal="False"):
             fail_tac_reply = rc.run_command("solve [auto].")
-            assert isinstance(fail_tac_reply, api.Err)
+            assert isinstance(fail_tac_reply, rdm_api.Err)
             assert fail_tac_reply.message == "No applicable tactic."
 
     def _test_API_PATCH_insert_commands_without_intervening_blanks(
@@ -146,12 +148,12 @@ class Test_API(RDM_Tests):
             rc = tmp_rdm.cursor()
             assert not isinstance(
                 rc_cls.insert_command(rc, "Check tt."),
-                api.Err,
+                rdm_api.Err,
             )
             # NOTE: no intervening blank
             assert not isinstance(
                 rc_cls.insert_command(rc, "Check tt."),
-                api.Err,
+                rdm_api.Err,
             )
             rc_cls.commit(rc, None, include_suffix=True)
             compile_result = rc_cls.compile(rc)
@@ -192,12 +194,12 @@ class Test_API(RDM_Tests):
         with caplog.at_level(logging.WARNING):
             assert not isinstance(
                 rc_cls.load_file(rc),
-                api.Err,
+                rdm_api.Err,
             )
             suffix = rc.doc_suffix()
             assert not isinstance(
                 rc_cls.load_file(rc),
-                api.Err,
+                rdm_api.Err,
             )
             if duplicates_doc_content:
                 assert rc.doc_suffix() == suffix * 2

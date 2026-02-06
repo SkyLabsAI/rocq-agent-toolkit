@@ -3,7 +3,7 @@ import itertools
 import pytest
 from hypothesis import given, settings
 from rocq_doc_manager import RocqCursor, RocqDocManager
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from .util import RDM_Tests
 
@@ -22,11 +22,11 @@ class Test_RDM_sess(RDM_Tests):
     def test_sess_load(self, loadable_rdm: RocqDocManager) -> None:
         with loadable_rdm.sess():
             rc = loadable_rdm.cursor()
-            assert not isinstance(rc.run_step(), api.Resp)
+            assert not isinstance(rc.run_step(), rdm_api.Resp)
             RDM_Tests.assert_check_ok(rc, term="N", lhs="N")
 
     def test_sess_load_nonexistent(self, transient_rdm: RocqDocManager) -> None:
-        with pytest.raises(api.Error) as exc_info:
+        with pytest.raises(rdm_api.Error) as exc_info:
             with transient_rdm.sess():
                 pass
         assert exc_info.match("my_fake.v: No such file or directory")
@@ -51,7 +51,7 @@ class Test_RDM_ctx(RDM_Tests):
             with rc.ctx(rollback=rollback):
                 with RDM_Tests.assert_commands_inserted(rc, cmds=cmds):
                     for cmd in cmds:
-                        assert not isinstance(rc.insert_command(cmd), api.Err)
+                        assert not isinstance(rc.insert_command(cmd), rdm_api.Err)
 
     @given(
         prefix=RDM_Tests.rocq_trivial_blank_cmd_sequence_strategy(),
@@ -70,7 +70,7 @@ class Test_RDM_ctx(RDM_Tests):
             for text, is_cmd in items:
                 if is_cmd:
                     assert not isinstance(
-                        transient_shared_rc.insert_command(text), api.Err
+                        transient_shared_rc.insert_command(text), rdm_api.Err
                     )
                 else:
                     transient_shared_rc.insert_blanks(text)
@@ -109,12 +109,12 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
         ):
             with rc.aborted_goal_ctx(goal=goal, rollback=rollback):
                 idtac_reply = rc.run_command("idtac.")
-                assert isinstance(idtac_reply, api.CommandData)
+                assert isinstance(idtac_reply, rdm_api.CommandData)
                 assert idtac_reply.proof_state is not None
                 assert idtac_reply.proof_state.focused_goals == [proof_goal]
 
                 tac_reply = rc.insert_command(tac)
-                assert isinstance(tac_reply, api.CommandData)
+                assert isinstance(tac_reply, rdm_api.CommandData)
                 assert tac_reply.proof_state is not None
                 assert tac_reply.proof_state.focused_goals == []
                 assert tac_reply.proof_state.shelved_goals == 0

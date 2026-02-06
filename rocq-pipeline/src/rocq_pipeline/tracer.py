@@ -8,7 +8,7 @@ from types import ModuleType
 from typing import Any, cast
 
 from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
@@ -33,7 +33,7 @@ def trace_proof(
     for i, tactic in enumerate(tactics):
         after = tracer.before_internal(rdm, tactic)
         progress.status(status=tactic[:10])
-        assert not isinstance(rdm.run_command(tactic), api.Err)
+        assert not isinstance(rdm.run_command(tactic), rdm_api.Err)
         progress.status(percent=progress_min + i * step_size)
         if after is not None:
             result = after(rdm, tactic)

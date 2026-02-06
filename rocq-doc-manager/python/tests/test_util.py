@@ -1,5 +1,5 @@
 from rocq_doc_manager import RocqDocManager
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from .util import RDM_Tests
 
@@ -13,16 +13,16 @@ class Test_RDM_Tests(RDM_Tests):
     ) -> None:
         assert not isinstance(
             transient_shared_rdm.cursor().cursor_index(),
-            api.Err,
+            rdm_api.Err,
         )
         assert not isinstance(
             transient_rdm.cursor().cursor_index(),
-            api.Err,
+            rdm_api.Err,
         )
         with loadable_rdm.sess() as rdm:
             assert not isinstance(
                 rdm.cursor().cursor_index(),
-                api.Err,
+                rdm_api.Err,
             )
 
     @classmethod

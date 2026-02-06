@@ -2,7 +2,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from rocq_doc_manager import RocqDocManager
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from .util import RDM_Tests
 
@@ -28,7 +28,7 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
         with RDM_Tests.starting_from(loaded_shared_rdm.cursor(), idx=0) as rc:
             assert not isinstance(
                 rc.advance_to(steps),
-                api.Err,
+                rdm_api.Err,
             )
             assert not rc.goto_first_match(
                 self._no_match,
@@ -51,14 +51,14 @@ class Test_RDM_advance_to_first_match(RDM_Tests):
         with RDM_Tests.starting_from(loaded_shared_rdm.cursor(), idx=0) as rdm:
             assert not isinstance(
                 rdm.advance_to(steps),
-                api.Err,
+                rdm_api.Err,
             )
             assert rdm.goto_first_match(
                 self._match_any_Theorem,
                 step_over_match=step_over_match,
             )
 
-            theorem_item: api.PrefixItem | api.SuffixItem
+            theorem_item: rdm_api.PrefixItem | rdm_api.SuffixItem
             if step_over_match:
                 theorem_item = rdm.doc_prefix()[-1]
             else:

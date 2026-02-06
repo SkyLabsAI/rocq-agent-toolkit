@@ -8,7 +8,7 @@ from typing import Annotated, Any, override
 from observability import get_logger, trace_context
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from rocq_pipeline.agent.base import ProofAgent
 from rocq_pipeline.agent.base.dataclasses import TaskResult
@@ -54,11 +54,11 @@ class StrategyAgent(ProofAgent):
 
     @dataclass
     class NoProofState(Exception):
-        reason: api.Err
+        reason: rdm_api.Err
 
     def _current_state(self, rc: RocqCursor) -> ProofState:
         reply = rc.current_goal()
-        if isinstance(reply, api.Err):
+        if isinstance(reply, rdm_api.Err):
             raise StrategyAgent.NoProofState(reply)
         return ProofState(reply)
 
@@ -151,7 +151,7 @@ class StrategyAgent(ProofAgent):
         self,
         rdm: RocqCursor,
         message: str = "",
-        reason: FailureReason | api.Err[Any] | BaseException | None = None,
+        reason: FailureReason | rdm_api.Err[Any] | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:

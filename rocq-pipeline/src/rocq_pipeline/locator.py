@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import override
 
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from rocq_pipeline.schema import task_output
 
@@ -125,7 +125,7 @@ class FirstLemma(Locator):
                     cmd.kind == "command" and cmd.text.startswith("Proof")
                 ):
                     run_step_reply = rdm.run_step()
-                    if isinstance(run_step_reply, api.Err):
+                    if isinstance(run_step_reply, rdm_api.Err):
                         logger.warning(f"RocqCursor.run_step failed: {run_step_reply}")
                         return False
                 else:

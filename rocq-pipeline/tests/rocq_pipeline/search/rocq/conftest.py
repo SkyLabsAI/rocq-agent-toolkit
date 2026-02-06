@@ -4,7 +4,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from rocq_doc_manager import rocq_doc_manager_api as api
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 
 class MockRocqCursor:
@@ -21,7 +21,7 @@ class MockRocqCursor:
     def insert_command(self, cmd: str) -> Any:
         self._commands.append(cmd)
         if cmd in self._fail_commands:
-            return api.Err(data=None, message=self._fail_commands[cmd])
+            return rdm_api.Err(data=None, message=self._fail_commands[cmd])
         return MagicMock()  # Success response
 
     def set_failure(self, command: str, error: str) -> None:
