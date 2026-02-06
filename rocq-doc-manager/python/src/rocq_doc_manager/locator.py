@@ -16,8 +16,12 @@ class Locator:
 
     Beyond __call__, implementers must override '__str__'."""
 
-    def __call__(self, rc: RocqCursor) -> bool:
-        """Move the cursor to the line identified by the Locator."""
+    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
+        """Move the cursor to the line identified by the Locator.
+
+        If `next` is True, then the search occurs **forward** from the
+        current position of the RocqCursor.
+        """
         return False
 
     @override
@@ -56,14 +60,14 @@ class FirstAdmit(Locator):
         return f"admit({self._index})"
 
     @override
-    def __call__(self, rc: RocqCursor) -> bool:
+    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
         def is_admit(
             text: str,
             kind: str,
         ) -> bool:
             return kind == "command" and text.startswith("admit")
 
-        return rc.goto_first_match(is_admit, skip=self._index)
+        return rc.goto_first_match(is_admit, skip=self._index, include_prefix=not next)
 
     PTRN_PARSE = re.compile(r"admit(\([0-9]+\))?")
 
@@ -99,7 +103,7 @@ class FirstLemma(Locator):
         self._index = index
 
     @override
-    def __call__(self, rc: RocqCursor) -> bool:
+    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
         if self._style is None:
             prefix = "Lemma|Theorem"
         else:
@@ -113,7 +117,9 @@ class FirstLemma(Locator):
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
-        if rc.goto_first_match(is_lemma, step_over_match=True, skip=self._index):
+        if rc.goto_first_match(
+            is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
+        ):
             for cmd in rc.doc_suffix():
                 if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
@@ -177,14 +183,14 @@ class CommentMarkerLocator(Locator):
         return f"{CommentMarkerLocator.PREFIX}{self._marker}"
 
     @override
-    def __call__(self, rc: RocqCursor) -> bool:
+    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
         def is_marker_comment(
             text: str,
             kind: str,
         ) -> bool:
             return kind == "blanks" and self._marker in text
 
-        return rc.goto_first_match(is_marker_comment)
+        return rc.goto_first_match(is_marker_comment, include_prefix=not next)
 
     @staticmethod
     def parse(s: str) -> CommentMarkerLocator:
