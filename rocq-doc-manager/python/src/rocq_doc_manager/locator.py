@@ -67,7 +67,7 @@ class FirstAdmit(Locator):
         ) -> bool:
             return kind == "command" and text.startswith("admit")
 
-        return rc.goto_first_match(is_admit, skip=self._index, include_prefix=next)
+        return rc.goto_first_match(is_admit, skip=self._index, include_prefix=not next)
 
     PTRN_PARSE = re.compile(r"admit(\([0-9]+\))?")
 
@@ -118,7 +118,7 @@ class FirstLemma(Locator):
             return kind == "command" and mtch.match(text) is not None
 
         if rc.goto_first_match(
-            is_lemma, step_over_match=True, skip=self._index, include_prefix=next
+            is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
         ):
             for cmd in rc.doc_suffix():
                 if cmd.kind != "command" or (
@@ -190,7 +190,7 @@ class CommentMarkerLocator(Locator):
         ) -> bool:
             return kind == "blanks" and self._marker in text
 
-        return rc.goto_first_match(is_marker_comment, include_prefix=next)
+        return rc.goto_first_match(is_marker_comment, include_prefix=not next)
 
     @staticmethod
     def parse(s: str) -> CommentMarkerLocator:
