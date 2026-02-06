@@ -15,8 +15,14 @@ class RocqResult[T](BaseModel):
     result: T | None = Field(description="The result of the action")
 
 
-class RocqCursorDeps:
-    """The context information used to interact with Rocq."""
+class RocqProofStateDeps:
+    """The context information used to interact with a **single Rocq proof state**.
+    Specfically, agents can not use these tools to manipulate the document outside
+    of the scope of the target theorem.
+
+    These tools might be generalized in the future to provide different
+    interaction paradigms.
+    """
 
     rocq_cursor: RocqCursor
     rocq_script: list[tuple[int, str]]  # the cursor index and the command
@@ -26,7 +32,7 @@ class RocqCursorDeps:
         self.rocq_script = []
 
 
-async def current_goals(ctx: RunContext[RocqCursorDeps]) -> list[str] | None:
+async def current_goals(ctx: RunContext[RocqProofStateDeps]) -> list[str] | None:
     """Get the focused goals."""
     result = ctx.deps.rocq_cursor.current_goal()
     if result is None:
@@ -35,7 +41,7 @@ async def current_goals(ctx: RunContext[RocqCursorDeps]) -> list[str] | None:
 
 
 async def run_tactic(
-    ctx: RunContext[RocqCursorDeps], tactic: str
+    ctx: RunContext[RocqProofStateDeps], tactic: str
 ) -> RocqResult[list[str]]:
     """Run a tactic on the current goal.
 
@@ -59,7 +65,7 @@ async def run_tactic(
 
 
 async def run_query(
-    ctx: RunContext[RocqCursorDeps], command: str
+    ctx: RunContext[RocqProofStateDeps], command: str
 ) -> RocqResult[list[str]]:
     """Run the Rocq query, the results will not be added to the document.
     Only use this to run the commands `Search`, `Check`, `Print`, and `About`.
@@ -82,12 +88,12 @@ async def run_query(
         )
 
 
-async def proof_script(ctx: RunContext[RocqCursorDeps]) -> list[str]:
+async def proof_script(ctx: RunContext[RocqProofStateDeps]) -> list[str]:
     """Returns the current tactics in the proof."""
     return [cmd for _, cmd in ctx.deps.rocq_script]
 
 
-async def backtrack(ctx: RunContext[RocqCursorDeps], count: int) -> bool:
+async def backtrack(ctx: RunContext[RocqProofStateDeps], count: int) -> bool:
     """Backtrack before the last several commands within the proof.
 
     Args:
@@ -105,7 +111,7 @@ async def backtrack(ctx: RunContext[RocqCursorDeps], count: int) -> bool:
     return True
 
 
-def qed(ctx: RunContext[RocqCursorDeps]) -> bool:
+def qed(ctx: RunContext[RocqProofStateDeps]) -> bool:
     """Finish the current proof.
 
     Returns false if the proof can not be completed as this point.
@@ -116,6 +122,6 @@ def qed(ctx: RunContext[RocqCursorDeps]) -> bool:
     return not isinstance(result, rdm_api.Err)
 
 
-rocq_cursor_toolset: AbstractToolset[RocqCursorDeps] = FunctionToolset(
+rocq_cursor_toolset: AbstractToolset[RocqProofStateDeps] = FunctionToolset(
     [current_goals, run_tactic, proof_script, backtrack, qed]
 )

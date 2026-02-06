@@ -15,7 +15,7 @@ from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_pipeline.agent import AgentBuilder, ProofAgent, TaskResult
 from rocq_pipeline.args_util import validate_url
 
-from rocq_agent_tools_pydantic.tools import RocqCursorDeps, rocq_cursor_toolset
+from rocq_agent_tools_pydantic.tools import RocqProofStateDeps, rocq_cursor_toolset
 
 
 def format_goal(pfs: rdm_api.ProofState) -> str:
@@ -28,12 +28,12 @@ class ToolAgent(ProofAgent):
         self._agent = Agent(
             model,
             system_prompt="You are an expert in verification using the Rocq proof assistant.",
-            deps_type=RocqCursorDeps,
+            deps_type=RocqProofStateDeps,
             retries=2,
         )
 
     async def prove(self, rc: RocqCursor) -> TaskResult:
-        deps = RocqCursorDeps(rc)
+        deps = RocqProofStateDeps(rc)
         goal = rc.current_goal()
         if goal is None:
             return self.finished(rc)

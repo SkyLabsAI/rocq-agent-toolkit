@@ -18,7 +18,7 @@ from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_pipeline.locator import Locator, LocatorParser
 from rocq_pipeline.tasks import json
 
-from rocq_agent_tools_pydantic.tools import RocqCursorDeps, rocq_cursor_toolset
+from rocq_agent_tools_pydantic.tools import RocqProofStateDeps, rocq_cursor_toolset
 
 
 @contextmanager
@@ -71,11 +71,11 @@ async def amain(args: list[str]) -> None:
     messages = [parse_tool_call(arg) for arg in args]
 
     with build_cursor(file, locator) as rc:
-        deps = RocqCursorDeps(rc)
+        deps = RocqProofStateDeps(rc)
         agent = Agent(
             build_model(messages),
             system_prompt="Tool call testing",
-            deps_type=RocqCursorDeps,
+            deps_type=RocqProofStateDeps,
             toolsets=[rocq_cursor_toolset],
         )
         result: AgentRunResult = await agent.run(deps=deps)
