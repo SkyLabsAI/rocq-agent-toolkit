@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, override
+from typing import Annotated, Any, override
 
 from observability import get_logger
 from provenance_toolkit import Provenance
@@ -106,10 +106,21 @@ class AgentBuilder:
 class ProofAgent(Agent):
     """Agents tasked with completing proof obligations."""
 
-    def __init__(self, goal_ty_upperbound: type[RocqGoal] = RocqGoal) -> None:
+    _unset_ssr_idents: Annotated[bool, Provenance.Reflect.Field]
+    _reset_default_goal_selector: Annotated[bool, Provenance.Reflect.Field]
+
+    def __init__(
+        self,
+        *,
+        unset_ssr_idents: bool = True,
+        reset_default_goal_selector: bool = True,
+        goal_ty_upperbound: type[RocqGoal] = RocqGoal,
+    ) -> None:
         if not issubclass(goal_ty_upperbound, RocqGoal):
             raise RuntimeError(f"{goal_ty_upperbound} is not a subclass of RocqGoal")
         self._goal_ty_upperbound = goal_ty_upperbound
+        self._unset_ssr_idents = unset_ssr_idents
+        self._reset_default_goal_selector = reset_default_goal_selector
 
     async def prove(self, rc: RocqCursor) -> TaskResult:
         """Prove the current goal using the restricted proof session.
@@ -127,6 +138,20 @@ class ProofAgent(Agent):
             return self.finished(rc, message="No goal to prove")
         if isinstance(goal_reply, rdm_api.Err):
             return self.give_up(rc, message="No goal to prove", reason=goal_reply)
+
+        # The following command ensures that agents can refer to `_x_`-like
+        # unstable identifiers that SSReflect generates.
+        # Resulting proofs are less stable, but this is acceptable during
+        # agent development.
+        if self._unset_ssr_idents:
+            rc.insert_command("#[local] Unset SsrIdents.")
+
+        # The following command undoes `Set Default Goal Selector "!".`,
+        # and ensures we can run `tac` to apply it to the _first_ goal, as Rocq
+        # does by default.
+        if self._reset_default_goal_selector:
+            rc.insert_command('#[local] Set Default Goal Selector "1".')
+
         # TODO: validate that no goals remain.
         return await self.prove(rc)
 
