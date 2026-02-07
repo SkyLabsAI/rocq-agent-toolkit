@@ -2,6 +2,7 @@ import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 def valid_file(
@@ -41,3 +42,11 @@ def valid_file(
         return path
 
     return validator
+
+
+def validate_url(url: str) -> str:
+    """Custom validator to check if the input is a valid URL."""
+    result = urlparse(url)
+    if all([result.scheme, result.netloc]):
+        return url
+    raise ValueError(f"Invalid URL: '{url}'")
