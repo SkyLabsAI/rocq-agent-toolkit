@@ -427,7 +427,7 @@ class TaskKind:
         return self.value.kind
 
     @classmethod
-    def from_json(cls, x: Any) -> "TaskKind":
+    def from_json(cls, x: Any) -> TaskKind:
         if isinstance(x, str):
             if x == "FullProofTask":
                 return cls(FullProofTask())
@@ -443,7 +443,7 @@ class TaskKind:
         return self.value.to_json()
 
     @classmethod
-    def from_json_string(cls, x: str) -> "TaskKind":
+    def from_json_string(cls, x: str) -> TaskKind:
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -457,14 +457,14 @@ class Tags:
     value: Dict[str, str]
 
     @classmethod
-    def from_json(cls, x: Any) -> "Tags":
+    def from_json(cls, x: Any) -> Tags:
         return cls(_atd_read_assoc_object_into_dict(_atd_read_string)(x))
 
     def to_json(self) -> Any:
         return _atd_write_assoc_dict_to_object(_atd_write_string)(self.value)
 
     @classmethod
-    def from_json_string(cls, x: str) -> "Tags":
+    def from_json_string(cls, x: str) -> Tags:
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -480,7 +480,7 @@ class ResourceUsage:
     gpu_time_sec: float = field(default_factory=lambda: 0.0)
 
     @classmethod
-    def from_json(cls, x: Any) -> "ResourceUsage":
+    def from_json(cls, x: Any) -> ResourceUsage:
         if isinstance(x, dict):
             return cls(
                 execution_time_sec=_atd_read_float(x["execution_time_sec"])
@@ -504,7 +504,7 @@ class ResourceUsage:
         return res
 
     @classmethod
-    def from_json_string(cls, x: str) -> "ResourceUsage":
+    def from_json_string(cls, x: str) -> ResourceUsage:
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -559,7 +559,7 @@ class ResourceExhaustionKind:
         return self.value.kind
 
     @classmethod
-    def from_json(cls, x: Any) -> "ResourceExhaustionKind":
+    def from_json(cls, x: Any) -> ResourceExhaustionKind:
         if isinstance(x, List) and len(x) == 2:
             cons = x[0]
             if cons == "Timeout":
@@ -573,7 +573,7 @@ class ResourceExhaustionKind:
         return self.value.to_json()
 
     @classmethod
-    def from_json_string(cls, x: str) -> "ResourceExhaustionKind":
+    def from_json_string(cls, x: str) -> ResourceExhaustionKind:
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -616,7 +616,7 @@ class Metrics:
         return res
 
     @classmethod
-    def from_json_string(cls, x: str) -> "Metrics":
+    def from_json_string(cls, x: str) -> Metrics:
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:
@@ -630,7 +630,7 @@ class Metadata:
     tags: Tags = field(default_factory=lambda: Tags({}))
 
     @classmethod
-    def from_json(cls, x: Any) -> "Metadata":
+    def from_json(cls, x: Any) -> Metadata:
         if isinstance(x, dict):
             return cls(
                 tags=Tags.from_json(x["tags"]) if "tags" in x else Tags({}),
@@ -717,7 +717,7 @@ class FailureReason:
         return self.value.kind
 
     @classmethod
-    def from_json(cls, x: Any) -> "FailureReason":
+    def from_json(cls, x: Any) -> FailureReason:
         if isinstance(x, List) and len(x) == 2:
             cons = x[0]
             if cons == "ResourceExhaustion":
@@ -733,7 +733,7 @@ class FailureReason:
         return self.value.to_json()
 
     @classmethod
-    def from_json_string(cls, x: str) -> "FailureReason":
+    def from_json_string(cls, x: str) -> FailureReason:
         return cls.from_json(json.loads(x))
 
     def to_json_string(self, **kw: Any) -> str:

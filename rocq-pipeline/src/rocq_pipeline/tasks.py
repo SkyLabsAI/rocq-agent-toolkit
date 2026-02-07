@@ -19,8 +19,9 @@ from pydantic import (
     model_validator,
 )
 from pydantic.fields import Field
+from rocq_doc_manager.locator import Locator, LocatorParser
 
-from rocq_pipeline.locator import Locator, LocatorParser
+from rocq_pipeline.schema.task_output import FullProofTask, TaskKind
 
 
 class Project(BaseModel):
@@ -68,6 +69,9 @@ class Task(BaseModel):
         description="Meta data about the task as a JSON dictionary, e.g. 'ground truth' proof script.",
         exclude_if=lambda x: not bool(x),
     )  # The [Any] is json-able things
+
+    def get_kind(self) -> TaskKind:
+        return TaskKind(FullProofTask())
 
     def get_id(self) -> str:
         if self.name is not None:

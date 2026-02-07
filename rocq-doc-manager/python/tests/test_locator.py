@@ -2,14 +2,14 @@ from pathlib import Path
 
 import pytest
 from rocq_doc_manager import RocqDocManager
-from rocq_doc_manager.rocq_cursor import RocqCursor
-from rocq_pipeline.locator import (
+from rocq_doc_manager.locator import (
+    CommentMarkerLocator,
     FirstAdmit,
     FirstLemma,
     Locator,
     LocatorParser,
-    MarkerCommentLocator,
 )
+from rocq_doc_manager.rocq_cursor import RocqCursor
 
 TEST_CASES: dict[str, Locator] = {
     "Lemma:foo": FirstLemma("foo", "Lemma", 0),
@@ -17,10 +17,10 @@ TEST_CASES: dict[str, Locator] = {
     "Theorem:foo": FirstLemma("foo", "Theorem", 0),
     "Theorem:foo(0)": FirstLemma("foo", "Theorem", 0),
     "Theorem:foo(1)": FirstLemma("foo", "Theorem", 1),
-    "comment_marker:hello": MarkerCommentLocator("hello"),
-    "comment_marker(1):hello": MarkerCommentLocator("hello", 1),
-    "comment_marker(2):work": MarkerCommentLocator("work", 2),
-    "comment_marker(77):work ok": MarkerCommentLocator("work ok", 77),
+    "comment_marker:hello": CommentMarkerLocator("hello"),
+    "comment_marker(1):hello": CommentMarkerLocator("hello", 1),
+    "comment_marker(2):work": CommentMarkerLocator("work", 2),
+    "comment_marker(77):work ok": CommentMarkerLocator("work ok", 77),
     "admit": FirstAdmit(0),
     "admit(33)": FirstAdmit(33),
 }
