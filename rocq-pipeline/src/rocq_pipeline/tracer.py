@@ -7,8 +7,9 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
 
-from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
+from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_dune_util import rocq_args_for
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, rocq_args, util
@@ -108,9 +109,7 @@ def run(
 
             task_file: Path = project.path / task.file
             with RocqDocManager(
-                rocq_args.extend_args(
-                    DuneUtil.rocq_args_for(task_file), list(extra_paths)
-                ),
+                rocq_args.extend_args(rocq_args_for(task_file), list(extra_paths)),
                 str(task_file),
                 dune=True,
             ).sess(load_file=True) as rdm:
