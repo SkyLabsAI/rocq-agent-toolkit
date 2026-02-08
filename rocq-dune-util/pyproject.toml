@@ -1,0 +1,27 @@
+[project]
+name = "rocq-dune-util"
+version = "0.1.0"
+description = "Collection of utilities around dune and Rocq"
+readme = "README.md"
+authors = [
+    { name = "Rodolphe Lepigre", email = "rodolphe.lepigre@skylabs-ai.com" }
+]
+requires-python = "==3.13.*"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9.27,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0",
+    "ruff>=0.14.8",
+    "taskipy>=1.14.1",
+]
+
+[tool.taskipy.tasks]
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy ."

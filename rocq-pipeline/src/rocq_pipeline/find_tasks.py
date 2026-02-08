@@ -11,8 +11,9 @@ from typing import Any, Literal
 
 import git
 import sexpdata  # type: ignore
-from rocq_doc_manager import DuneUtil, RocqCursor, RocqDocManager
+from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.args_util import valid_file
 from rocq_pipeline.locator import FirstLemma, NotFound
@@ -263,10 +264,10 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
     def run_it(path: Path, _: Any) -> list[Task]:
         try:
             file = Path(path)
-            args = DuneUtil.rocq_args_for(file)
+            args = rocq_args_for(file)
             file_tasks: list[Task] = find_tasks(pdir, file, args, tagger=my_tagger)
-        except DuneUtil.NotFound as e:
-            logger.error(f"Unable to get CLI arguments for file {path}. Exception: {e}")
+        except DuneError as e:
+            logger.error(f"Unable to get CLI arguments for file {path}: {e.stderr}")
             return []
         except Exception as err:
             logger.error(f"Error occured while scanning file {path}. {err}")
