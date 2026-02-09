@@ -14,6 +14,20 @@ def test_trivial_shutdown():
 
     asyncio.run(main())
 
+async def echo_test_helper(api : API):
+    messages = ["Bye!", "Coucou!", "Hello!", "Bye!"]
+
+    responses = await asyncio.gather(
+        api.raw_request("echo", [2, messages[0]]),
+        api.raw_request("echo", [3, messages[1]]),
+        api.raw_request("echo", [1, messages[2]]),
+        api.raw_request("echo", [0, messages[3]]),
+    )
+
+    for i in range(4):
+        r = responses[i]
+        assert isinstance(r, Resp)
+        assert r.result == messages[i]
 
 def test_echo():
     async def main():
@@ -36,19 +50,7 @@ def test_echo():
         )
         api_ref = api
 
-        messages = ["Bye!", "Coucou!", "Hello!", "Bye!"]
-
-        responses = await asyncio.gather(
-            api.raw_request("echo", [2, messages[0]]),
-            api.raw_request("echo", [3, messages[1]]),
-            api.raw_request("echo", [1, messages[2]]),
-            api.raw_request("echo", [0, messages[3]]),
-        )
-
-        for i in range(4):
-            r = responses[i]
-            assert isinstance(r, Resp)
-            assert r.result == messages[i]
+        await echo_test_helper(api)
 
         await api.quit()
         assert n == 4

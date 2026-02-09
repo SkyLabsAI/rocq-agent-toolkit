@@ -1,10 +1,12 @@
 import asyncio
 
 from jsonrpc_tp import AsyncJsonRPCTP as API
-from jsonrpc_tp import Process, Resp
+from jsonrpc_tp import Process
 from jsonrpc_tp.websocket_proxy import Handlers, ProxyBackend
 from websockets import connect, serve
 
+
+from .test_async import echo_test_helper
 
 def test_echo():
     async def main():
@@ -21,9 +23,10 @@ def test_echo():
             ["dune", "exec", "jsonrpc-tp.delayed-echo-api", "--", "4"]
         )
         handler = Handlers(process)
-        async with serve(handler.handle, host="127.0.0.1", port=None) as server:
+        async with await serve(handler.handle, host="127.0.0.1", port=None) as server:
+            host = server.sockets[0].getsockname()[0]
             port = server.sockets[0].getsockname()[1]
-            async with connect(f"ws://172.0.0.1:{port}") as client:
+            async with connect(f"ws://{host}:{port}") as client:
                 proxy = ProxyBackend(client)
                 api = API(
                     proxy,
@@ -31,21 +34,9 @@ def test_echo():
                 )
                 api_ref = api
 
-                messages = ["Bye!", "Coucou!", "Hello!", "Bye!"]
+                await echo_test_helper(api)
 
-                responses = await asyncio.gather(
-                    api.raw_request("echo", [2, messages[0]]),
-                    api.raw_request("echo", [3, messages[1]]),
-                    api.raw_request("echo", [1, messages[2]]),
-                    api.raw_request("echo", [0, messages[3]]),
-                )
-
-                for i in range(4):
-                    r = responses[i]
-                    assert isinstance(r, Resp)
-                    assert r.result == messages[i]
-
-        await api.quit()
-        assert n == 4
+                await api.quit()
+                assert n == 4
 
     asyncio.run(main())
