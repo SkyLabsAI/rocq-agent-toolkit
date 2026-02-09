@@ -59,6 +59,16 @@ class RemoteProofAgent(ProofAgent):
 
     @override
     async def prove(self, rc: RocqCursor) -> TaskResult:
+        # NOTE: `TracingCursor` (rocq-pipeline) is a subclass of RocqCursor and
+        # exposes the underlying RDM API via `_the_rdm`. We rely on that to
+        # forward JSON-RPC methods generically.
+        api = getattr(rc, "_the_rdm", None)
+        if api is None:
+            return self.give_up(
+                rc,
+                message="RemoteProofAgent requires a RocqCursor backed by RocqDocManagerAPI",
+            )
+
         base = self._config.server.rstrip("/")
         async with httpx.AsyncClient() as client:
             session = await client.post(f"{base}/v1/session")
