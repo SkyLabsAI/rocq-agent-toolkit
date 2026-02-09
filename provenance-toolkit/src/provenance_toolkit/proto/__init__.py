@@ -6,10 +6,10 @@
 The core API is:
 - `checksum(self)`/`cls_checksum(cls) -> str:
    Compute a semi-stable instance/class checksum for the provenance data.
-- `checksums(self)`/`cls_checksums(cls)` -> dict[type[WithClassProvenance], str]:
+- `checksums(self)`/`cls_checksums(cls)` -> Mapping[type[WithInstanceProvenance], str] / Mapping[type[WithClassProvenance], str]:
    Compute the instance/class checksums of provenance data, keyed by the type of the
    class that computed it.
-- `provenance(self)`/`cls_provenance(cls)` -> dict[type[WithClassProvenance], ProvenanceT]:
+- `provenance(self)`/`cls_provenance(cls)` -> Mapping[type[WithInstanceProvenance], ProvenanceT] / Mapping[type[WithClassProvenance], ProvenanceT]:
    Compute instance/class provenance data, keyed by the type of the class that
    computed it.
 

@@ -158,7 +158,7 @@ class MyClassUnset(
     # Annotated but not assigned - should use None
     model: Annotated[
         str,
-        Provenance.Reflect.Field(transform=lambda x: f"model_{x}" if x else "none"),
+        Provenance.Reflect.Field(transform=lambda x: f"model_{x}"),
     ]
 
 
@@ -472,7 +472,7 @@ class TestWithReflectProvenance:
         assert isinstance(reflect_prov, ReflectProvenanceData)
         _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
-        assert reflect_prov.data["model"] == "none"
+        assert reflect_prov.data["model"] is None
 
     def test_instance_provenance_with_values(self):
         """Test instance provenance with fields that have values."""
@@ -496,7 +496,7 @@ class TestWithReflectProvenance:
         assert isinstance(reflect_prov, ReflectProvenanceData)
         _assert_stable_serialize_no_error(reflect_prov)
         assert reflect_prov.data["x"] == 42
-        assert reflect_prov.data["model"] == "none"  # transform(None)
+        assert reflect_prov.data["model"] is None
 
     def test_provenance_aware_auto_detection(self):
         """Test best-effort auto-detection of provenance-aware objects."""
