@@ -1,7 +1,7 @@
 [project]
-name = "remote-agent-client"
+name = "remote_agent_client"
 version = "0.1.0"
-description = "Client (protocol + proxy CLI) for Remote Agent server"
+description = "Remote proof agent for Rocq using rocq-pipeline"
 readme = "README.md"
 authors = [
     { name = "Ehtesham Zahoor", email = "ehtesham.zahoor@skylabs-ai.com" }
@@ -9,44 +9,25 @@ authors = [
 requires-python = "==3.13.*"
 dependencies = [
     "rocq-doc-manager",
-    "pydantic>=2.7.0",
+    "rocq-pipeline",
+    "brick-agents",
+    "observability",
     "httpx>=0.28.1",
-    "websockets>=15.0.1",
+    "websockets>=14.3",
 ]
 
-[dependency-groups]
-dev = [
-    "mypy>=1.18.2,<2",
-    "ruff>=0.14.2",
-    "taskipy>=1.14.1",
-]
-
-[tool.uv]
+[project.scripts]
+remote-proof-agent = "remote_agent_client.cli:main"
 
 [tool.uv.sources]
 rocq-doc-manager = { workspace = true }
+rocq-pipeline = { workspace = true }
+brick-agents = { workspace = true }
+observability = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.9.5,<0.10.0"]
 build-backend = "uv_build"
-
-[project.scripts]
-rocq-remote-rdm-proxy = "remote_agent_client.proxy_cli:main"
-
-[tool.ruff]
-line-length = 88
-target-version = "py313"
-extend-exclude = ["build"]
-
-[tool.ruff.lint]
-select = ["E", "W", "F", "I", "B", "C4", "UP"]
-ignore = ["E501"] # line too long, handled by formatter
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
 
 [tool.mypy]
 python_version = "3.13"
