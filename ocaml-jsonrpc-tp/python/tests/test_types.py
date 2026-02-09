@@ -2,7 +2,7 @@ import re
 from collections.abc import Callable, Sequence
 
 import pytest
-from jsonrpc_tp.types import Err, Reply, Resp
+from jsonrpc_tp.types import Err, Resp
 
 # Note: tests are tightly coupled to the underlying implementation
 # since we are patching dataclass to play nicely with covariant data,
@@ -10,14 +10,8 @@ from jsonrpc_tp.types import Err, Reply, Resp
 
 
 class ReplyFixtures:
-    type _mk_Reply[T] = Callable[[T], Reply[T]]
     type _mk_Err[T] = Callable[[str, T], Err[T]]
     type _mk_Resp[T] = Callable[[T], Resp[T]]
-
-    @pytest.fixture(scope="session")
-    @staticmethod
-    def mk_Reply[T]() -> _mk_Reply[T]:
-        return lambda data: Reply(data=data)
 
     @pytest.fixture(scope="session")
     @staticmethod
@@ -34,11 +28,6 @@ class ReplyFixtures:
 
     @pytest.fixture
     @staticmethod
-    def Reply_None(mk_Reply: _mk_Reply[None]) -> Reply[None]:
-        return mk_Reply(None)
-
-    @pytest.fixture
-    @staticmethod
     def Err_None(mk_Err: _mk_Err[None]) -> Err[None]:
         return mk_Err("", None)
 
@@ -48,18 +37,17 @@ class ReplyFixtures:
         return mk_Resp(None)
 
 
-class TestReplyErrResp(ReplyFixtures):
+class TestErrResp(ReplyFixtures):
     @pytest.mark.parametrize(
         "reply_cls, expected_positional_args",
         [
-            (Reply, ["data"]),
             (Err, ["message", "data"]),
             (Resp, ["result"]),
         ],
     )
     @staticmethod
     def test_required_positional_args(
-        reply_cls: type[Reply],
+        reply_cls: type[Err[object]] | type[Resp[object]],
         expected_positional_args: Sequence[str],
     ) -> None:
         with pytest.raises(TypeError) as exc_info:
@@ -81,10 +69,6 @@ class TestReplyErrResp(ReplyFixtures):
             )
         )
 
-    def test_bool_Reply_not_implemented(self, Reply_None: Reply[None]) -> None:
-        with pytest.raises(NotImplementedError):
-            bool(Reply_None)
-
     def test_bool_Err(self, Err_None: Err[None]) -> None:
         assert not bool(Err_None)
 
@@ -93,16 +77,18 @@ class TestReplyErrResp(ReplyFixtures):
 
     def test_eq_other_types(
         self,
-        Reply_None: Reply[None],
         Err_None: Err[None],
         Resp_None: Resp[None],
     ) -> None:
-        replies_None = [Reply_None, Err_None, Resp_None]
+        replies_None = [Err_None, Resp_None]
 
         class SomeCls:
             pass
 
-        class MyReply(Reply[None]):
+        class MyErr(Err[None]):
+            pass
+
+        class MyResp(Resp[None]):
             pass
 
         for i in range(len(replies_None)):
@@ -110,17 +96,20 @@ class TestReplyErrResp(ReplyFixtures):
             for mk in [None, "", 0, [], {}, set(), float(0), SomeCls()]:
                 assert replies_None[i].__eq__(mk) is NotImplemented
 
-            eq = replies_None[i].__eq__(MyReply(None))
+            # Test with subclass of the same type
+            if isinstance(replies_None[i], Err):
+                eq = replies_None[i].__eq__(MyErr("", None))
+            else:
+                eq = replies_None[i].__eq__(MyResp(None))
             assert eq is not NotImplemented
             assert not eq
 
     def test_eq_None(
         self,
-        Reply_None: Reply[None],
         Err_None: Err[None],
         Resp_None: Resp[None],
     ) -> None:
-        replies_None = [Reply_None, Err_None, Resp_None]
+        replies_None = [Err_None, Resp_None]
 
         for i in range(len(replies_None)):
             for j in range(len(replies_None)):
@@ -129,15 +118,16 @@ class TestReplyErrResp(ReplyFixtures):
                 a_eq_b = a.__eq__(b)
                 b_eq_a = b.__eq__(a)
 
-                assert a_eq_b is not NotImplemented
-                assert b_eq_a is not NotImplemented
-                assert isinstance(a_eq_b, bool)
-                assert isinstance(b_eq_a, bool)
-
                 if i == j:
+                    assert a_eq_b is not NotImplemented
+                    assert b_eq_a is not NotImplemented
+                    assert isinstance(a_eq_b, bool)
+                    assert isinstance(b_eq_a, bool)
                     assert a_eq_b and b_eq_a
                 else:
-                    assert not (a_eq_b or b_eq_a)
+                    assert a_eq_b is NotImplemented
+                    assert b_eq_a is NotImplemented
+                    assert not (a == b or b == a)
 
     def test_eq_Err_messages(self, mk_Err: ReplyFixtures._mk_Err[None]) -> None:
         strs = ["", "Foo", "Bar", "Baz", "Qux"]
@@ -151,10 +141,6 @@ class TestReplyErrResp(ReplyFixtures):
     def test_repr_roundtrip_None(self) -> None:
         # Note: we could use `eval`, but we avoid it since it introduces a
         # potential security hole.
-        _test_reply = Reply(data=None)
-        reply_repr = "Reply(data=None)"
-        assert repr(_test_reply) == reply_repr
-
         _test_err = Err(message="", data=None)
         err_repr = "Err(message='', data=None)"
         assert repr(_test_err) == err_repr
@@ -163,22 +149,42 @@ class TestReplyErrResp(ReplyFixtures):
         resp_repr = "Resp(result=None)"
         assert repr(_test_resp) == resp_repr
 
-    def test_covariant_Reply(
+    def test_covariant_Err(
         self,
-        mk_Reply: ReplyFixtures._mk_Reply,
+        mk_Err: ReplyFixtures._mk_Err,
     ) -> None:
-        r1: Reply[None] = mk_Reply(None)
-        r2: Reply[str] = mk_Reply("FooBar")
-        r3: Reply[Exception] = mk_Reply(Exception())
+        e1: Err[None] = mk_Err("", None)
+        e2: Err[str] = mk_Err("", "FooBar")
+        e3: Err[Exception] = mk_Err("", Exception())
+
+        assert e1 != e2
+        assert e1 != e3
+        assert e2 != e3
+
+        def es() -> Sequence[Err[None | str | Exception]]:
+            return [e1, e2, e3]
+
+        _e: Err[None | str | Exception]
+        for e in es():
+            _e = e
+            assert _e == e
+
+    def test_covariant_Resp(
+        self,
+        mk_Resp: ReplyFixtures._mk_Resp,
+    ) -> None:
+        r1: Resp[None] = mk_Resp(None)
+        r2: Resp[str] = mk_Resp("FooBar")
+        r3: Resp[Exception] = mk_Resp(Exception())
 
         assert r1 != r2
         assert r1 != r3
         assert r2 != r3
 
-        def rs() -> Sequence[Reply[None | str | Exception]]:
+        def rs() -> Sequence[Resp[None | str | Exception]]:
             return [r1, r2, r3]
 
-        _r: Reply[None | str | Exception]
+        _r: Resp[None | str | Exception]
         for r in rs():
             _r = r
             assert _r == r
