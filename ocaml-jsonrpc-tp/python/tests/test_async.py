@@ -14,7 +14,8 @@ def test_trivial_shutdown():
 
     asyncio.run(main())
 
-async def echo_test_helper(api : API):
+
+async def echo_test_helper(api: API):
     messages = ["Bye!", "Coucou!", "Hello!", "Bye!"]
 
     responses = await asyncio.gather(
@@ -28,6 +29,7 @@ async def echo_test_helper(api : API):
         r = responses[i]
         assert isinstance(r, Resp)
         assert r.result == messages[i]
+
 
 def test_echo():
     async def main():

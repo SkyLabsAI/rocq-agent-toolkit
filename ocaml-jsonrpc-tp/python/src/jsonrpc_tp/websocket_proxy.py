@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from dataclasses_json import dataclass_json
-from websockets import ClientConnection, ServerConnection
+from websockets import ConnectionClosed
 
 from .protocol import Backend
 from .types import Err, Resp
@@ -27,16 +29,33 @@ class Response[T, E]:
     payload: Resp[T] | Err[E]
 
 
-class Handler:
-    """Internal class that forwards requests from a websocket server connection
-    to an existing Backend and relays responses back."""
+class WSConnection(Protocol):
+    async def send(self, message: bytes) -> None: ...
+    async def recv(self, decode: Literal[False]) -> bytes: ...
+
+
+class WebsocketToBackend:
+    """Forwards requests from a websocket connection to an existing
+    Backend and relays responses back.
+
+    Example use in a server:
+    > backend = Process(...)
+    > async with websockets.serve(WebsocketToBackend.make_handler(backend), ...):
+    >    ...
+
+    Example use in a client:
+    > backed = Process(...)
+    > async with websockets.connect(...) as conn:
+    >     ws2b = WebsocketToBackend(backend, conn)
+    >     asyncio.create_task(ws2b.loop())
+    """
 
     _backend: Backend
-    _conn: ServerConnection
+    _conn: WSConnection
     _receiver: asyncio.Task[None]
     _sender: asyncio.Task[None]
 
-    def __init__(self, backend: Backend, conn: ServerConnection):
+    def __init__(self, backend: Backend, conn: WSConnection):
         self._backend = backend
         self._conn = conn
         self._receiver = asyncio.create_task(self._recv())
@@ -52,38 +71,40 @@ class Handler:
             packet = await self._backend.recv()
             await self._conn.send(packet)
 
-    async def handle(self) -> None:
-        await asyncio.gather(self._receiver, self._sender)
+    async def loop(self) -> None:
+        try:
+            await asyncio.gather(self._receiver, self._sender)
+        except asyncio.CancelledError:
+            pass
+        except ConnectionClosed:
+            pass
 
+    @asynccontextmanager
+    @classmethod
+    async def forward(
+        cls, backend: Backend, conn: WSConnection
+    ) -> AsyncIterator[asyncio.Task]:
+        inst = WebsocketToBackend(backend, conn)
+        task = asyncio.create_task(inst.loop())
+        yield task
+        inst._receiver.cancel("Shutdown")
+        inst._sender.cancel("Shutdown")
+        await task
 
-class Handlers:
-    """Handlers connects an existing backend to a websocket server, forwarding
-    requests that are sent to the websocket server to the backend and relaying
-    responses from the backend through the server to clients.
-
-    Use as follows:
-    > handlers = Handlers(backend)
-    > with websockets.serve(Handlers.handle, ...):
-    >     ...
-    """
-
-    _backend: Backend
-
-    def __init__(self, backend: Backend) -> None:
-        self._backend = backend
-
-    async def handle(self, conn: ServerConnection) -> None:
-        handler = Handler(self._backend, conn)
-        await handler.handle()
+    @classmethod
+    def make_handler(
+        cls, backend: Backend
+    ) -> Callable[[WSConnection], Awaitable[None]]:
+        return lambda conn: cls(backend, conn).loop()
 
 
 class ProxyBackend(Backend):
     """A backend that directly forwards requests to and responses from a
     websocket client connection."""
 
-    _conn: ClientConnection
+    _conn: WSConnection
 
-    def __init__(self, conn: ClientConnection):
+    def __init__(self, conn: WSConnection):
         self._conn = conn
 
     async def send(self, payload: bytes) -> None:
