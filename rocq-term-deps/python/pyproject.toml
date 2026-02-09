@@ -1,0 +1,33 @@
+[project]
+name = "rocq-term-deps"
+version = "0.1.0"
+description = "Python bindings to DepsOf & DepsOfJSON plugins."
+readme = "README.md"
+authors = [
+    { name = "Jasper Haag", email = "jasper@skylabs-ai.com" }
+]
+requires-python = "==3.13.*"
+dependencies = [
+    "rocq-doc-manager",
+]
+
+[project.entry-points."rocq_doc_manager.plugins"]
+rocq-term-deps = "rocq_term_deps:_register_plugin"
+
+[build-system]
+requires = ["uv_build>=0.9.4,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0",
+    "ruff>=0.14.8",
+    "taskipy>=1.14.1",
+]
+
+[tool.taskipy.tasks]
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy ."
+precommit = "task lint_ci; task reformat; task typecheck_ci"
