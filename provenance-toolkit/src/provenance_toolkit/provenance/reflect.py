@@ -371,8 +371,12 @@ class WithReflectProvenance(WithProvenance):
         Returns:
             Reflected field value
         """
+        # Fast pass: return None as-is
+        if value is None:
+            return value
+
         # Priority 1: Explicit transform
-        if reflect.transform is not None and value is not None:
+        if reflect.transform is not None:
             try:
                 return reflect.transform(value)
             except (ValueError, TypeError, AttributeError) as e:
