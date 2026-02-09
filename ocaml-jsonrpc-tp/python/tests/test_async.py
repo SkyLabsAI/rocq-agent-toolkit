@@ -1,13 +1,15 @@
 import asyncio
 
 from jsonrpc_tp import AsyncJsonRPCTP as API
-from jsonrpc_tp import Resp
+from jsonrpc_tp import Process, Resp
 
 
 def test_trivial_shutdown():
     async def main():
-        api = API(["dune", "exec", "jsonrpc-tp.delayed-echo-api", "--", "4"])
-        await api.start()
+        backend = await Process.start(
+            ["dune", "exec", "jsonrpc-tp.delayed-echo-api", "--", "4"]
+        )
+        api = API(backend)
         await api.quit()
 
     asyncio.run(main())
@@ -24,12 +26,15 @@ def test_echo():
             n += 1
             await api_ref.raw_notification("ok", [])
 
+        backend = await Process.start(
+            ["dune", "exec", "jsonrpc-tp.delayed-echo-api", "--", "4"]
+        )
+
         api = API(
-            ["dune", "exec", "jsonrpc-tp.delayed-echo-api", "--", "4"],
+            backend,
             handle_notification=handle_notification,
         )
         api_ref = api
-        await api.start()
 
         messages = ["Bye!", "Coucou!", "Hello!", "Bye!"]
 

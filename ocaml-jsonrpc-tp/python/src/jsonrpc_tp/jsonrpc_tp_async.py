@@ -11,24 +11,29 @@ from typing import (
 from collections.abc import Awaitable
 from collections.abc import Callable
 
-from .types import Err, Error, Resp
+from .types import Err, Error, Resp, parse_response, parse_notification
+from .protocol import Backend
 
 
 class AsyncJsonRPCTP:
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
+    _backend: Backend
+    _counter: int
+    _notification_handler: Callable[[str, dict[str, Any]], Awaitable[None]] | None
+    _handlers: asyncio.Queue[asyncio.Task] = asyncio.Queue()
+    _send_queue: asyncio.Queue[bytes] = asyncio.Queue()
+    _pending_requests: dict[int, asyncio.Future[Resp[Any] | Err[Any]]] = {}
+    _running: bool
+
     def __init__(
         self,
-        args: list[str],
-        cwd: str | None = None,
-        env: dict[str, str] | None = None,
+        backend: Backend,
         handle_notification: Callable[[str, dict[str, Any]], Awaitable[None]]
         | None = None,
     ) -> None:
         self._counter: int = -1
-        self._args: list[str] = args
-        self._cwd: str | None = cwd
-        self._env: dict[str, str] | None = env
+        self._backend = backend
         self._notification_handler: (
             Callable[[str, dict[str, Any]], Awaitable[None]] | None
         ) = handle_notification
@@ -37,34 +42,6 @@ class AsyncJsonRPCTP:
         self._send_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._pending_requests: dict[int, asyncio.Future[Resp[Any] | Err[Any]]] = {}
         self._running: bool = True
-
-    async def start(self) -> None:
-        try:
-            self._process = await asyncio.create_subprocess_exec(
-                self._args[0],
-                *self._args[1:],
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=self._cwd,
-                env=self._env,
-            )
-        except Exception as e:
-            raise Error(f"Failed to start process: {e}") from e
-
-        # Check the "ready_seq" notification
-        try:
-            ready = await self._recv()
-            if "method" not in ready:
-                raise Error(f"Unexpected packet: {ready} (not a notification)")
-            method = ready.get("method")
-            if method != "ready":
-                raise Error(f'Got "{method}" notification instead of "ready"')
-        except Exception as e:
-            assert self._process is not None
-            self._process.kill()
-            raise Error(f"Failed to start JSON-RPC service: {e}") from e
-
         self._sender_task = asyncio.create_task(self._sender_loop())
         self._receiver_task = asyncio.create_task(self._receiver_loop())
         self._handlers_task = asyncio.create_task(self._handlers_loop())
@@ -114,13 +91,13 @@ class AsyncJsonRPCTP:
         # Make sure we send all the requests in the queue.
         self._send_queue.shutdown(immediate=False)
         await self._send_queue.join()
-        await self._sender_task
-        # Close the outgoing pipe.
-        assert self._process.stdin is not None
-        self._process.stdin.close()
-        # Wait for the process.
-        await self._process.wait()
-        await self._receiver_task
+        self._sender_task.cancel("Shutdown")
+        self._receiver_task.cancel("Shutdown")
+        try:
+            await self._sender_task
+            await self._receiver_task
+        except asyncio.CancelledError:
+            pass
         # Wait for the notification handlers
         self._handlers.shutdown(immediate=False)
         await self._handlers.join()
@@ -137,8 +114,6 @@ class AsyncJsonRPCTP:
                 packet = await self._send_queue.get()
                 await self._send(packet)
                 self._send_queue.task_done()
-        except asyncio.CancelledError:
-            pass
         except asyncio.QueueShutDown:
             pass
         except Exception as e:
@@ -147,38 +122,14 @@ class AsyncJsonRPCTP:
     async def _handle_response(self, response: Any) -> None:
         req_id = response.get("id")
         future = self._pending_requests.pop(req_id)
-
-        if "error" in response:
-            # Error response for the request.
-            error = response.get("error")
-            message = error.get("message")
-            code = error.get("code")
-            data = error.get("data", None)
-            match code:
-                # Request failed (taken from the LSP protocol)
-                case -32803:
-                    future.set_result(Err(message, data))
-                # Method not found | Invalid params
-                case -32601 | -32602:
-                    future.set_exception(Exception(message))
-                # Anything else is unexpected.
-                case _:
-                    future.set_exception(
-                        Error(f"Unexpected error code {code}: {message}")
-                    )
-        elif "result" in response:
-            # Normal response for the request.
-            result = response.get("result")
-            future.set_result(Resp(result))
+        try:
+            r = parse_response(response)
+            future.set_result(r)
+        except Exception as e:
+            future.set_exception(e)
 
     async def _handle_notification(self, notification: Any) -> None:
-        # Notification.
-        assert "method" in notification
-        assert "id" not in notification
-        method = notification.get("method")
-        assert isinstance(method, str)
-        params = notification.get("params", {})
-        assert isinstance(params, dict)
+        method, params = parse_notification(notification)
         if self._notification_handler:
 
             async def handler():
@@ -202,8 +153,6 @@ class AsyncJsonRPCTP:
                         await self._handle_response(response)
                 else:
                     await self._handle_notification(packet)
-        except asyncio.CancelledError:
-            pass
         except Exception as e:
             raise Exception(f"Receiver error: {e}") from e
 
@@ -222,32 +171,7 @@ class AsyncJsonRPCTP:
             raise Exception(f"Notification handler loop error: {e}") from e
 
     async def _send(self, req: bytes) -> None:
-        assert self._process.stdin is not None
-        prefix = "Content-Length: "
-        self._process.stdin.write(f"{prefix}{len(req) + 1}\r\n\r\n".encode())
-        self._process.stdin.write(req)
-        self._process.stdin.write(b"\n")
-        await self._process.stdin.drain()
+        await self._backend.send(req)
 
     async def _recv(self) -> Any:
-        assert self._process.stdout is not None
-        prefix = "Content-Length: "
-        try:
-            raw_header: bytes = await self._process.stdout.readuntil()
-        except asyncio.IncompleteReadError as e:
-            if not self._running and e.partial == b"":
-                raise asyncio.CancelledError() from e
-            raise
-        header: str = raw_header.decode()
-        _ = await self._process.stdout.readuntil()
-        if not header.startswith(prefix):
-            self._process.kill()
-            raise Error(f"Invalid message header: '{header}'")
-        try:
-            nb_bytes = int(header[len(prefix) : -2])
-        except Exception as e:
-            self._process.kill()
-            raise Error(f"Failed to parse header: {header}", e) from e
-        assert self._process.stdout is not None
-        response: bytes = await self._process.stdout.readexactly(nb_bytes)
-        return json.loads(response.decode())
+        return json.loads(await self._backend.recv())

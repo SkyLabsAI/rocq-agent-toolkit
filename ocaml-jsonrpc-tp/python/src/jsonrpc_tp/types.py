@@ -81,3 +81,38 @@ class Resp[T_co]:
 
 class Error(Exception):
     """Exception raised in case of protocol error."""
+
+
+def parse_response(response: Any) -> Resp[Any] | Err[Any]:
+    """Handle raw json response from OCaml process"""
+    if "error" in response:
+        # Error response for the request.
+        error = response.get("error")
+        message = error.get("message")
+        code = error.get("code")
+        match code:
+            # Request failed (taken from the LSP protocol)
+            case -32803:
+                return Err(message, error.get("data"))
+            # Method not found | Invalid params
+            case -32601 | -32602:
+                raise Exception(message)
+            # Anything else is unexpected.
+            case _:
+                raise Error(f"Unexpected error code {code} ({message})")
+    elif "result" in response:
+        # Normal response for the request.
+        return Resp(response.get("result"))
+    else:
+        raise Exception("Unknown response")
+
+
+def parse_notification(response: Any) -> tuple[str, dict]:
+    """Handle raw json notification from OCaml process"""
+    # Notification.
+    assert "method" in response
+    method = response.get("method")
+    assert isinstance(method, str)
+    params = response.get("params", {})
+    assert isinstance(params, dict)
+    return (method, params)

@@ -7,6 +7,7 @@ standard input and output channels.
 
 from .jsonrpc_tp import Err, Error, JsonRPCTP, Resp
 from .jsonrpc_tp_async import AsyncJsonRPCTP
+from .process import Process
 
 __all__ = [
     "AsyncJsonRPCTP",
@@ -14,4 +15,5 @@ __all__ = [
     "Err",
     "Error",
     "Resp",
+    "Process",
 ]
