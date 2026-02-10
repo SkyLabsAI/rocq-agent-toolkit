@@ -1,16 +1,40 @@
 import json
 import subprocess
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from typing import (
     Any,
-    Self,
+    Protocol,
 )
 
-from .types import Err, Error, Resp
+from .jsonrpc_tp_types import Err, Error, Resp
 
 
-class JsonRPCTP:
+class SyncProtocol(Protocol):
+    """Protocol for a synchronous JSON-RPC API."""
+
+    def raw_notification(
+        self,
+        method: str,
+        params: list[Any],
+    ) -> None:
+        """Send a JSON-RPC notification."""
+        ...
+
+    def raw_request(
+        self,
+        method: str,
+        params: list[Any],
+        handle_notification: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> Resp[Any] | Err[Any]:
+        """Send a JSON-RPC request."""
+        ...
+
+    def quit(self) -> None:
+        """Terminate the connection with the underlying "server"."""
+        ...
+
+
+class JsonRPCTP(SyncProtocol):
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
     def __init__(
@@ -44,12 +68,6 @@ class JsonRPCTP:
             self._process.kill()
             self._process = None
             raise Error(f"Failed to start JSON-RPC service: {e}") from e
-
-    @contextmanager
-    def sess(self) -> Iterator[Self]:
-        """Context manager that calls quit upon __exit__."""
-        yield self
-        self.quit()
 
     def send(self, req: bytes) -> None:
         if self._process is None:

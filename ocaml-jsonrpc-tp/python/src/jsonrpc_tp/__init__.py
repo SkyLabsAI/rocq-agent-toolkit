@@ -5,13 +5,16 @@ constructed with the OCaml jsonrpc-tp library. Interaction happens on the
 standard input and output channels.
 """
 
-from .jsonrpc_tp import Err, Error, JsonRPCTP, Resp
-from .jsonrpc_tp_async import AsyncJsonRPCTP
+from .jsonrpc_tp import JsonRPCTP, SyncProtocol
+from .jsonrpc_tp_async import AsyncJsonRPCTP, AsyncProtocol
+from .jsonrpc_tp_types import Err, Error, Resp
 
 __all__ = [
     "AsyncJsonRPCTP",
-    "JsonRPCTP",
+    "AsyncProtocol",
     "Err",
     "Error",
+    "JsonRPCTP",
     "Resp",
+    "SyncProtocol",
 ]
