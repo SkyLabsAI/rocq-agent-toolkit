@@ -46,6 +46,21 @@ class RemoteProofAgentBuilder(AgentBuilder):
                 "KEY=JSON parameter passed to server-side agent (repeatable)"
             ),
         )
+        p.add_argument(
+            "--provider",
+            type=str,
+            default="openrouter",
+            help="LLM provider name (e.g. openrouter, openai).",
+        )
+        p.add_argument(
+            "--api-key-env",
+            type=str,
+            default="OPENROUTER_API_KEY",
+            help=(
+                "Name of the environment variable containing the API Key. "
+                "Defaults to 'OPENROUTER_API_KEY'."
+            ),
+        )
         parsed, _unknown = p.parse_known_args(args)
 
         params: dict[str, JsonValue] = {}
@@ -53,10 +68,25 @@ class RemoteProofAgentBuilder(AgentBuilder):
             k, v = _parse_kv_json(item)
             params[k] = v
 
+        env_var_name = parsed.api_key_env
+        api_key_value = os.environ.get(env_var_name)
+
+        if not api_key_value:
+            raise ValueError(
+                f"RemoteProofAgent error: The environment variable '{env_var_name}' "
+                "is not set or is empty. Please export it before running."
+            )
+
+        inference_config = {
+            "provider": parsed.provider,
+            "api_key": api_key_value,
+        }
+
         self._config = RemoteProofAgentConfig(
             server=str(parsed.server),
             remote_agent=str(parsed.remote_agent),
             remote_parameters=params,
+            inference=inference_config,
         )
 
     def __call__(self, prompt: str | None = None) -> Agent:

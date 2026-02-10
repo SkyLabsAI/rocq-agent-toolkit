@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 
 import httpx
 import websockets
-from brick_agents.registry import register_agent
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
@@ -37,7 +36,6 @@ def _to_jsonable(x: object) -> object:
     return x
 
 
-@register_agent(script_name="remote-proof-agent")
 class RemoteProofAgent(ProofAgent):
     """ProofAgent wrapper that runs a server-side agent.
 
@@ -53,12 +51,40 @@ class RemoteProofAgent(ProofAgent):
         super().__init__()
         self._config = config
 
+        if not self._config.inference:
+             raise ValueError(
+                "RemoteProofAgent Error: 'inference' configuration is missing. "
+                "The agent cannot authenticate with the backend."
+            )
+
+        api_key = self._config.inference.get("api_key")
+        if not api_key:
+             # We can make a helpful error message here
+             provider = self._config.inference.get("provider", "unknown")
+             raise ValueError(
+                f"RemoteProofAgent Error: No API Key found for provider '{provider}'.\n"
+                "Please ensure you have set the required environment variable "
+                "(e.g. OPENROUTER_API_KEY) before running."
+            )
+
     @classmethod
     def config_type(cls) -> type[RemoteProofAgentConfig]:
         return RemoteProofAgentConfig
 
     @override
     async def prove(self, rc: RocqCursor) -> TaskResult:
+
+        ws_headers = {}
+        if self._config.inference:
+            # Provider (e.g. "openrouter", "openai")
+            if "provider" in self._config.inference:
+                ws_headers["X-LLM-Provider"] = str(self._config.inference["provider"])
+            
+            # API Key (The Secret)
+            if "api_key" in self._config.inference:
+                ws_headers["X-LLM-Api-Key"] = str(self._config.inference["api_key"])
+        
+
         # NOTE: `TracingCursor` (rocq-pipeline) is a subclass of RocqCursor and
         # exposes the underlying RDM API via `_the_rdm`. We rely on that to
         # forward JSON-RPC methods generically.
@@ -83,6 +109,9 @@ class RemoteProofAgent(ProofAgent):
             parsed = urlparse(base)
             scheme = "wss" if parsed.scheme == "https" else "ws"
             ws_url = f"{scheme}://{parsed.netloc}{ws_path}"
+
+        if ws_url.startswith("ws://") and "localhost" not in ws_url and "127.0.0.1" not in ws_url:
+            ws_url = ws_url.replace("ws://", "wss://", 1)
 
         logger.info(
             "remote session created",
@@ -135,6 +164,7 @@ class RemoteProofAgent(ProofAgent):
             ws_url,
             ping_interval=self._config.ping_interval_s,
             ping_timeout=self._config.ping_timeout_s,
+            additional_headers=ws_headers,
         ) as ws:
             hello = {
                 "type": "hello",
@@ -143,7 +173,7 @@ class RemoteProofAgent(ProofAgent):
                 "agent": {
                     "name": self._config.remote_agent,
                     "parameters": self._config.remote_parameters,
-                    "inference": self._config.inference,
+                    "inference": {},
                     "budget": self._config.budget,
                 },
                 "locator": {"kind": "current_goal"},
