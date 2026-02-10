@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from dataclasses_json import DataClassJsonMixin
-from jsonrpc_tp import Err, Error, Resp, SyncProtocol
+from jsonrpc_tp import AsyncProtocol, Err, Error, Resp, SyncProtocol
 
 __all__ = [
     "RocqDocManagerAPI",
@@ -607,6 +607,372 @@ class RocqDocManagerAPI:
     ) -> CommandData | None | Err[CommandError | None]:
         """Advance the cursor by stepping over an unprocessed item."""
         result = self._rpc.raw_request(
+            "run_step",
+            [cursor],
+        )
+        if isinstance(result, Err):
+            data = None if result.data is None else CommandError.from_dict(result.data)
+            return Err(result.message, data)
+        return None if result.result is None else CommandData.from_dict(result.result)
+
+
+class RocqDocManagerAPIAsync:
+    """Main API class."""
+
+    def __init__(self, rpc: AsyncProtocol) -> None:
+        self._rpc: AsyncProtocol = rpc
+
+    async def advance_to(
+        self,
+        cursor: int,
+        index: int,
+    ) -> None | Err[CommandError | None]:
+        """Advance the cursor before the indicated unprocessed item."""
+        result = await self._rpc.raw_request(
+            "advance_to",
+            [cursor, index],
+        )
+        if isinstance(result, Err):
+            data = None if result.data is None else CommandError.from_dict(result.data)
+            return Err(result.message, data)
+        return None
+
+    async def clear_suffix(
+        self,
+        cursor: int,
+        count: int | None,
+    ) -> None:
+        """Remove unprocessed commands from the document."""
+        result = await self._rpc.raw_request(
+            "clear_suffix",
+            [cursor, count],
+        )
+        assert not isinstance(result, Err)
+        return None
+
+    async def clone(
+        self,
+        cursor: int,
+    ) -> int:
+        """Clones the given cursor."""
+        result = await self._rpc.raw_request(
+            "clone",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return int(result.result)
+
+    async def commit(
+        self,
+        cursor: int,
+        file: str | None,
+        include_ghost: bool,
+        include_suffix: bool,
+    ) -> None:
+        """Write the current document contents to the file."""
+        result = await self._rpc.raw_request(
+            "commit",
+            [cursor, file, include_ghost, include_suffix],
+        )
+        assert not isinstance(result, Err)
+        return None
+
+    async def compile(
+        self,
+        cursor: int,
+    ) -> CompileResult:
+        """Compile the current contents of the file with `rocq compile`."""
+        result = await self._rpc.raw_request(
+            "compile",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return CompileResult.from_dict(result.result)
+
+    async def contents(
+        self,
+        cursor: int,
+        include_ghost: bool,
+        include_suffix: bool,
+    ) -> str:
+        """Gives the current contents of the document, as if it was written to a file."""
+        result = await self._rpc.raw_request(
+            "contents",
+            [cursor, include_ghost, include_suffix],
+        )
+        assert not isinstance(result, Err)
+        return str(result.result)
+
+    async def copy_contents(
+        self,
+        src: int,
+        dst: int,
+    ) -> None:
+        """Copies the contents of src into dst."""
+        result = await self._rpc.raw_request(
+            "copy_contents",
+            [src, dst],
+        )
+        assert not isinstance(result, Err)
+        return None
+
+    async def cursor_index(
+        self,
+        cursor: int,
+    ) -> int:
+        """Gives the index at the cursor."""
+        result = await self._rpc.raw_request(
+            "cursor_index",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return int(result.result)
+
+    async def dispose(
+        self,
+        cursor: int,
+    ) -> None:
+        """Destroys the cursor."""
+        result = await self._rpc.raw_request(
+            "dispose",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return None
+
+    async def doc_prefix(
+        self,
+        cursor: int,
+    ) -> list[PrefixItem]:
+        """Gives the list of all processed commands, appearing before the cursor."""
+        result = await self._rpc.raw_request(
+            "doc_prefix",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return [PrefixItem.from_dict(v1) for v1 in result.result]
+
+    async def doc_suffix(
+        self,
+        cursor: int,
+    ) -> list[SuffixItem]:
+        """Gives the list of all unprocessed commands, appearing after the cursor."""
+        result = await self._rpc.raw_request(
+            "doc_suffix",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return [SuffixItem.from_dict(v1) for v1 in result.result]
+
+    async def dump(
+        self,
+        cursor: int,
+    ) -> Any:
+        """Dump the document contents (debug)."""
+        result = await self._rpc.raw_request(
+            "dump",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return result.result
+
+    async def go_to(
+        self,
+        cursor: int,
+        index: int,
+    ) -> None | Err[CommandError | None]:
+        """Move the cursor right before the indicated item (whether it is already processed or not)."""
+        result = await self._rpc.raw_request(
+            "go_to",
+            [cursor, index],
+        )
+        if isinstance(result, Err):
+            data = None if result.data is None else CommandError.from_dict(result.data)
+            return Err(result.message, data)
+        return None
+
+    async def has_suffix(
+        self,
+        cursor: int,
+    ) -> bool:
+        """Indicates whether the document has a suffix (unprocessed items)."""
+        result = await self._rpc.raw_request(
+            "has_suffix",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return bool(result.result)
+
+    async def insert_blanks(
+        self,
+        cursor: int,
+        text: str,
+    ) -> None:
+        """Insert and process blanks at the cursor."""
+        result = await self._rpc.raw_request(
+            "insert_blanks",
+            [cursor, text],
+        )
+        assert not isinstance(result, Err)
+        return None
+
+    async def insert_command(
+        self,
+        cursor: int,
+        text: str,
+    ) -> CommandData | Err[CommandError]:
+        """Insert and process a command at the cursor."""
+        result = await self._rpc.raw_request(
+            "insert_command",
+            [cursor, text],
+        )
+        if isinstance(result, Err):
+            data = CommandError.from_dict(result.data)
+            return Err(result.message, data)
+        return CommandData.from_dict(result.result)
+
+    async def load_file(
+        self,
+        cursor: int,
+    ) -> None | Err[RocqLoc | None]:
+        """Adds the (unprocessed) file contents to the document (note that this requires running sentence-splitting, which requires the input file not to have syntax errors)."""
+        result = await self._rpc.raw_request(
+            "load_file",
+            [cursor],
+        )
+        if isinstance(result, Err):
+            data = None if result.data is None else RocqLoc.from_dict(result.data)
+            return Err(result.message, data)
+        return None
+
+    async def materialize(
+        self,
+        cursor: int,
+    ) -> None | Err[None]:
+        """Materializes the cursor, giving it its own dedicated top-level."""
+        result = await self._rpc.raw_request(
+            "materialize",
+            [cursor],
+        )
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
+        return None
+
+    async def query(
+        self,
+        cursor: int,
+        text: str,
+    ) -> CommandData | Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = await self._rpc.raw_request(
+            "query",
+            [cursor, text],
+        )
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
+        return CommandData.from_dict(result.result)
+
+    async def query_json(
+        self,
+        cursor: int,
+        text: str,
+        index: int,
+    ) -> Any | Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = await self._rpc.raw_request(
+            "query_json",
+            [cursor, text, index],
+        )
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
+        return result.result
+
+    async def query_json_all(
+        self,
+        cursor: int,
+        text: str,
+        indices: list[int] | None,
+    ) -> list[Any] | Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = await self._rpc.raw_request(
+            "query_json_all",
+            [cursor, text, indices],
+        )
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
+        return [v1 for v1 in result.result]
+
+    async def query_text(
+        self,
+        cursor: int,
+        text: str,
+        index: int,
+    ) -> str | Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = await self._rpc.raw_request(
+            "query_text",
+            [cursor, text, index],
+        )
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
+        return str(result.result)
+
+    async def query_text_all(
+        self,
+        cursor: int,
+        text: str,
+        indices: list[int] | None,
+    ) -> list[str] | Err[None]:
+        """Runs the given query at the cursor, not updating the state."""
+        result = await self._rpc.raw_request(
+            "query_text_all",
+            [cursor, text, indices],
+        )
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
+        return [str(v1) for v1 in result.result]
+
+    async def revert_before(
+        self,
+        cursor: int,
+        erase: bool,
+        index: int,
+    ) -> None:
+        """Revert the cursor to an earlier point in the document."""
+        result = await self._rpc.raw_request(
+            "revert_before",
+            [cursor, erase, index],
+        )
+        assert not isinstance(result, Err)
+        return None
+
+    async def run_command(
+        self,
+        cursor: int,
+        text: str,
+    ) -> CommandData | Err[None]:
+        """Process a command at the cursor without inserting it in the document."""
+        result = await self._rpc.raw_request(
+            "run_command",
+            [cursor, text],
+        )
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
+        return CommandData.from_dict(result.result)
+
+    async def run_step(
+        self,
+        cursor: int,
+    ) -> CommandData | None | Err[CommandError | None]:
+        """Advance the cursor by stepping over an unprocessed item."""
+        result = await self._rpc.raw_request(
             "run_step",
             [cursor],
         )

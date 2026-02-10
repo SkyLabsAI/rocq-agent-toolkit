@@ -565,7 +565,7 @@ let output_python_api oc api =
   line "from typing import Any, Literal";
   line "";
   line "from dataclasses_json import DataClassJsonMixin";
-  line "from jsonrpc_tp import Err, Error, Resp, SyncProtocol";
+  line "from jsonrpc_tp import AsyncProtocol, Err, Error, Resp, SyncProtocol";
   line "";
   let exports =
     [api.name; "Err"; "Error"; "Resp"] @
@@ -591,13 +591,6 @@ let output_python_api oc api =
     output_fields o.fields
   in
   List.iter output_object (List.rev api.api_objects);
-  line "";
-  line "";
-  line "class %s:" api.name;
-  line "    \"\"\"Main API class.\"\"\"";
-  line "";
-  line "    def __init__(self, rpc: SyncProtocol) -> None:";
-  line "        self._rpc: SyncProtocol = rpc";
   let rec pp_args : type a. a Args.t -> unit = fun args ->
     match args with
     | Args.Nil    -> ()
@@ -613,45 +606,61 @@ let output_python_api oc api =
     Printf.fprintf oc "%s%s" a.name comma;
     pp_names oc a.tail
   in
-  let output_method _ (M(m)) =
-    line "";
-    let ret_ty =
-      match m.impl with
-      | Pure(_) -> Schema.python_type m.ret
-      | Rslt(i) ->
-          let ret = Schema.python_type m.ret in
-          let err = Schema.python_type i.err in
-          Printf.sprintf "%s | Err[%s]" ret err
+  let output_class ~async =
+    let (api_name, protocol, async, await) =
+      match async with
+      | false -> (api.name, "SyncProtocol", "", "")
+      | true  -> (api.name ^ "Async", "AsyncProtocol", "async ", "await ") 
     in
-    line "    def %s(" m.name;
-    line "        self,";
-    pp_args m.args;
-    line "    ) -> %s:" ret_ty;
-    Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
-    line "        result = self._rpc.raw_request(";
-    line "            \"%s\"," m.name;
-    line "            [%a]," pp_names m.args;
-    line "        )";
-    let _ =
-      match m.impl with
-      | Pure(_) ->
-        line "        assert not isinstance(result, Err)";
-      | Rslt(i) ->
-        line "        if isinstance(result, Err):";
-        line "            data = %s" (Schema.python_val "result.data" i.err);
-        line "            return Err(result.message, data)"
-    in
-    line "        return %s" (Schema.python_val "result.result" m.ret)
-  in
-  SMap.iter output_method api.api_methods;
-  let output_notification _ (HN(n)) =
     line "";
-    line "    def %s(" n.name;
-    line "        self,";
-    pp_args n.args;
-    line "    ) -> None:";
-    Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) n.descr;
-    line "        self._rpc.raw_notification(\"%s\", [%a])"
-      n.name pp_names n.args
+    line "";
+    line "class %s:" api_name;
+    line "    \"\"\"Main API class.\"\"\"";
+    line "";
+    line "    def __init__(self, rpc: %s) -> None:" protocol;
+    line "        self._rpc: %s = rpc" protocol;
+    let output_method _ (M(m)) =
+      line "";
+      let ret_ty =
+        match m.impl with
+        | Pure(_) -> Schema.python_type m.ret
+        | Rslt(i) ->
+            let ret = Schema.python_type m.ret in
+            let err = Schema.python_type i.err in
+            Printf.sprintf "%s | Err[%s]" ret err
+      in
+      line "    %sdef %s(" async m.name;
+      line "        self,";
+      pp_args m.args;
+      line "    ) -> %s:" ret_ty;
+      Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) m.descr;
+      line "        result = %sself._rpc.raw_request(" await;
+      line "            \"%s\"," m.name;
+      line "            [%a]," pp_names m.args;
+      line "        )";
+      let _ =
+        match m.impl with
+        | Pure(_) ->
+          line "        assert not isinstance(result, Err)";
+        | Rslt(i) ->
+          line "        if isinstance(result, Err):";
+          line "            data = %s" (Schema.python_val "result.data" i.err);
+          line "            return Err(result.message, data)"
+      in
+      line "        return %s" (Schema.python_val "result.result" m.ret)
+    in
+    SMap.iter output_method api.api_methods;
+    let output_notification _ (HN(n)) =
+      line "";
+      line "    %sdef %s(" async n.name;
+      line "        self,";
+      pp_args n.args;
+      line "    ) -> None:";
+      Option.iter (line "        \"\"\"%a.\"\"\"" pp_capitalized) n.descr;
+      line "        %sself._rpc.raw_notification(\"%s\", [%a])"
+        await n.name pp_names n.args
+    in
+    SMap.iter output_notification api.api_hd_notifs
   in
-  SMap.iter output_notification api.api_hd_notifs
+  output_class ~async:false;
+  output_class ~async:true
