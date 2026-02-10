@@ -15,7 +15,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.run import AgentRunResult
 from rocq_doc_manager import RocqCursor, RocqDocManager
-from rocq_pipeline.locator import Locator, LocatorParser
+from rocq_doc_manager.locator import Locator, LocatorParser
 from rocq_pipeline.tasks import json
 
 from rocq_agent_tools_pydantic.tools import RocqProofStateDeps, rocq_cursor_toolset

@@ -276,7 +276,7 @@ def run_task(
         )
         return task_result.to_task_output(
             run_id=run_id,
-            task_kind=task.locator.task_kind(),
+            task_kind=task.get_kind(),
             task_id=task_id,
             dataset_id=dataset_id,
             timestamp_utc=timestamp_iso_8601,

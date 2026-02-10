@@ -13,10 +13,10 @@ import git
 import sexpdata  # type: ignore
 from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_doc_manager.locator import FirstLemma
 from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.args_util import valid_file
-from rocq_pipeline.locator import FirstLemma, NotFound
 from rocq_pipeline.taggers.tactic_tagger import extract_tactics
 from rocq_pipeline.tasks import Project, Task, TaskFile
 from rocq_pipeline.util import parallel_runner
@@ -49,7 +49,7 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
             return ProofTask(start, i, "admitted", tactics)
         else:
             tactics.append(txt)
-    raise NotFound
+    raise ValueError("Failed to find the end of the proof")
 
 
 def find_tasks(
@@ -85,9 +85,10 @@ def find_tasks(
                     tags = {"proof"}
                     if tagger is not None:
                         tags.update(tagger(proof))
-                except NotFound:
+                except ValueError as err:
                     logger.error(
-                        f"In file {path}, no end found for {m.group(1)} {m.group(2)}."
+                        f"In file {path}, no end found for {m.group(1)} {m.group(2)}.\n"
+                        f"From {err}"
                     )
                     # tags = {"proof", "incomplete"}
                     break
