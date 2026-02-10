@@ -28,12 +28,12 @@ class AsyncJsonRPCTP:
 
     def __init__(
         self,
-        backend: Backend,
+        backend: Callable[[], Backend],
         handle_notification: Callable[[str, dict[str, Any]], Awaitable[None]]
         | None = None,
     ) -> None:
         self._counter: int = -1
-        self._backend = backend
+        self._backend = backend()
         self._notification_handler: (
             Callable[[str, dict[str, Any]], Awaitable[None]] | None
         ) = handle_notification
@@ -91,8 +91,11 @@ class AsyncJsonRPCTP:
         # Make sure we send all the requests in the queue.
         self._send_queue.shutdown(immediate=False)
         await self._send_queue.join()
-        self._sender_task.cancel("Shutdown")
-        self._receiver_task.cancel("Shutdown")
+        await self._backend.quit()
+        if not self._sender_task.done():
+            self._sender_task.cancel("Shutdown")
+        if not self._receiver_task.done():
+            self._receiver_task.cancel("Shutdown")
         try:
             await self._sender_task
             await self._receiver_task

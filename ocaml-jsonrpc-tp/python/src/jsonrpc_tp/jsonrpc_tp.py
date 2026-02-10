@@ -6,17 +6,17 @@ from typing import (
     Self,
 )
 
-from .protocol import Backend
+from .protocol import BackendSync
 from .types import Err, Error, Resp, parse_notification, parse_response
 
 
 class JsonRPCTP:
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
-    _backend: Backend | None
+    _backend: BackendSync | None
 
-    def __init__(self, backend: Backend) -> None:
-        self._backend = backend
+    def __init__(self, backend: Callable[[], BackendSync]) -> None:
+        self._backend = backend()
         self._counter: int = -1
 
     @contextmanager
@@ -26,7 +26,7 @@ class JsonRPCTP:
         self.quit()
 
     @contextmanager
-    def backend(self) -> Iterator[Backend]:
+    def backend(self) -> Iterator[BackendSync]:
         if self._backend is None:
             raise Error("Not running anymore.")
         yield self._backend
@@ -34,6 +34,7 @@ class JsonRPCTP:
     def quit(self) -> None:
         if self._backend is None:
             return
+        self._backend.quit_sync()
         self._backend = None
 
     def send(self, req: bytes) -> None:

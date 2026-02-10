@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
 from dataclasses_json import dataclass_json
-from websockets import ConnectionClosed
+from websockets import ConnectionClosedOK
 
 from .protocol import Backend
 from .types import Err, Resp
@@ -32,7 +32,7 @@ class Response[T, E]:
 class WSConnection(Protocol):
     async def send(self, message: bytes) -> None: ...
     async def recv(self, decode: Literal[False]) -> bytes: ...
-
+    async def close(self) -> None: ...
 
 class WebsocketToBackend:
     """Forwards requests from a websocket connection to an existing
@@ -76,7 +76,7 @@ class WebsocketToBackend:
             await asyncio.gather(self._receiver, self._sender)
         except asyncio.CancelledError:
             pass
-        except ConnectionClosed:
+        except ConnectionClosedOK:
             pass
 
     @asynccontextmanager
@@ -112,3 +112,6 @@ class ProxyBackend(Backend):
 
     async def recv(self) -> bytes:
         return await self._conn.recv(decode=False)
+
+    async def quit(self) -> None:
+        await self._conn.close()

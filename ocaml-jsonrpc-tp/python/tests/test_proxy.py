@@ -27,7 +27,8 @@ def test_echo():
         ) as server:
             (host, port) = server.sockets[0].getsockname()
             async with connect(f"ws://{host}:{port}") as client:
-                proxy = ProxyBackend(client)
+                def proxy():
+                    return ProxyBackend(client)
                 api = API(
                     proxy,
                     handle_notification=handle_notification,
@@ -54,7 +55,9 @@ def test_echo_dual():
                 n += 1
                 await api_ref.raw_notification("ok", [])
 
-            proxy = ProxyBackend(conn)
+            def proxy():
+                return ProxyBackend(conn)
+
             api = API(
                 proxy,
                 handle_notification=handle_notification,
