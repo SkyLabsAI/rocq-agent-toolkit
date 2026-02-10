@@ -2,7 +2,7 @@ import re
 from collections.abc import Callable, Sequence
 
 import pytest
-from jsonrpc_tp.types import Err, Resp
+from jsonrpc_tp import Err, Resp
 
 # Note: tests are tightly coupled to the underlying implementation
 # since we are patching dataclass to play nicely with covariant data,

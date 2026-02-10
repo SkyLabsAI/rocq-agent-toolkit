@@ -2,19 +2,41 @@ from __future__ import annotations  # noqa:I001
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from typing import (
     Any,
-    Self,
+    Protocol,
 )
 from collections.abc import Awaitable
 from collections.abc import Callable
 
-from .types import Err, Error, Resp
+from .jsonrpc_tp_types import Err, Error, Resp
 
 
-class AsyncJsonRPCTP:
+class AsyncProtocol(Protocol):
+    """Protocol for a asynchronous JSON-RPC API."""
+
+    async def raw_notification(
+        self,
+        method: str,
+        params: list[Any],
+    ) -> None:
+        """Send a JSON-RPC notification."""
+        ...
+
+    async def raw_request(
+        self,
+        method: str,
+        params: list[Any],
+    ) -> Resp[Any] | Err[Any]:
+        """Send a JSON-RPC request."""
+        ...
+
+    async def quit(self) -> None:
+        """Terminate the connection with the underlying "server"."""
+        ...
+
+
+class AsyncJsonRPCTP(AsyncProtocol):
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
     def __init__(
@@ -100,12 +122,6 @@ class AsyncJsonRPCTP:
         await self._send_queue.put(request)
         response = await future
         return response
-
-    @asynccontextmanager
-    async def sess(self) -> AsyncIterator[Self]:
-        """Context manager that calls quit upon __exit__."""
-        yield self
-        await self.quit()
 
     async def quit(self) -> None:
         self._check_running()

@@ -565,7 +565,7 @@ let output_python_api oc api =
   line "from typing import Any, Literal";
   line "";
   line "from dataclasses_json import DataClassJsonMixin";
-  line "from jsonrpc_tp import Err, Error, JsonRPCTP, Resp";
+  line "from jsonrpc_tp import Err, Error, Resp, SyncProtocol";
   line "";
   let exports =
     [api.name; "Err"; "Error"; "Resp"] @
@@ -596,8 +596,8 @@ let output_python_api oc api =
   line "class %s:" api.name;
   line "    \"\"\"Main API class.\"\"\"";
   line "";
-  line "    def __init__(self, rpc: JsonRPCTP) -> None:";
-  line "        self._rpc: JsonRPCTP = rpc";
+  line "    def __init__(self, rpc: SyncProtocol) -> None:";
+  line "        self._rpc: SyncProtocol = rpc";
   let rec pp_args : type a. a Args.t -> unit = fun args ->
     match args with
     | Args.Nil    -> ()
@@ -633,8 +633,6 @@ let output_python_api oc api =
     line "            [%a]," pp_names m.args;
     line "        )";
     let _ =
-      (* We check the result against [JsonRPCTP.Err] rather than [self.Err]
-         to decouple these *)
       match m.impl with
       | Pure(_) ->
         line "        assert not isinstance(result, Err)";

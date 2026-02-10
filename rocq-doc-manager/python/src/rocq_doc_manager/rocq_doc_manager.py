@@ -116,14 +116,11 @@ class RocqDocManager(API):
     @contextmanager
     def sess(self, load_file: bool = True) -> Iterator[Self]:
         """A session will close the RDM after it completes"""
-        with self._rpc.sess():
-            if load_file:
-                load_reply = self.load_file(0)
-                if isinstance(load_reply, rdm_api.Err):
-                    raise rdm_api.Error(
-                        f"RocqDocManager.load_file failed: {load_reply}"
-                    )
-
-            yield self
+        if load_file:
+            load_reply = self.load_file(0)
+            if isinstance(load_reply, rdm_api.Err):
+                raise rdm_api.Error(f"RocqDocManager.load_file failed: {load_reply}")
+        yield self
+        self.quit()
 
     # ===== END: context managers ==============================================

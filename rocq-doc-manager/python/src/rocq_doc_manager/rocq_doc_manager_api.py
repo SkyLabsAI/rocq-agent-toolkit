@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from dataclasses_json import DataClassJsonMixin
-from jsonrpc_tp import Err, Error, JsonRPCTP, Resp
+from jsonrpc_tp import Err, Error, Resp, SyncProtocol
 
 __all__ = [
     "RocqDocManagerAPI",
@@ -253,8 +253,8 @@ class CompileResult(DataClassJsonMixin):
 class RocqDocManagerAPI:
     """Main API class."""
 
-    def __init__(self, rpc: JsonRPCTP) -> None:
-        self._rpc: JsonRPCTP = rpc
+    def __init__(self, rpc: SyncProtocol) -> None:
+        self._rpc: SyncProtocol = rpc
 
     def advance_to(
         self,
