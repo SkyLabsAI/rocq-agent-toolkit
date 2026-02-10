@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
@@ -6,7 +7,8 @@ from typing import Literal
 
 
 class DuneError(Exception):
-    def __init__(self, *, stdout: str, stderr: str) -> None:
+    def __init__(self, message: str, *, stdout: str, stderr: str) -> None:
+        super().__init__(message)
         self.stdout = stdout
         self.stderr = stderr
 
@@ -20,7 +22,8 @@ def _run_dune(args: list[str], cwd: str | Path | None) -> str:
     stdout = res.stdout.decode(encoding="utf-8")
     if res.returncode != 0:
         stderr = res.stderr.decode(encoding="utf-8")
-        raise DuneError(stdout=stdout, stderr=stderr)
+        message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
+        raise DuneError(message, stdout=stdout, stderr=stderr)
     return stdout
 
 
