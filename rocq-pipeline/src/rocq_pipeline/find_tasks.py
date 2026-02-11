@@ -106,11 +106,13 @@ def my_tagger(task: ProofTask) -> set[str]:
     tags: set[str] = set()
     numtactics = 0
     omitted: set[str] = set()
+    deprecated: set[str] = set()
 
     for sentence in task.proof_tactics:
         identified_tactics: dict[str, int]
         leftovers: list[str]
-        identified_tactics, leftovers = extract_tactics(sentence)
+        dep: list[str]
+        identified_tactics, leftovers, dep = extract_tactics(sentence)
 
         # increment numtactics by adding the identified_tactics according to their multiplicities
         numtactics = numtactics + sum(identified_tactics.values())
@@ -127,6 +129,7 @@ def my_tagger(task: ProofTask) -> set[str]:
 
         tags.update(tactics)
         omitted.update(set(leftovers))
+        deprecated.update(set(dep))
 
     tags.add(f"NumTactics={numtactics}")
 
@@ -134,6 +137,8 @@ def my_tagger(task: ProofTask) -> set[str]:
 
     if omitted:
         tags.add(f"UnmatchedTactics={sorted(omitted)}")
+    if deprecated:
+        tags.add(f"DeprecatedTactics={sorted(deprecated)}")
 
     return tags
 
