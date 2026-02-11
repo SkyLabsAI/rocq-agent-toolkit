@@ -229,5 +229,5 @@ class Test_API(RDM_Tests):
             caplog,
             loadable_rdm,
             rc_cls=RocqCursor,
-            duplicates_doc_content=True,
+            duplicates_doc_content=False,
         )
