@@ -406,10 +406,12 @@ let _ =
     A.add ~name:"file" ~descr:"optional target file" S.(nullable string) @@
     common_contents_args
   in
-  declare ~name:"commit" ~descr:"write the current document \
-      contents to the file" ~args ~ret:S.null
+  declare_full ~name:"commit" ~descr:"write the current document \
+      contents to the file, failing in case of file system error" ~args
+      ~ret:S.null ~err:S.null
     @@ fun d (file, (include_ghost, (include_suffix, ()))) ->
-  Document.commit ?file ~include_ghost ~include_suffix d
+  let res = Document.commit ?file ~include_ghost ~include_suffix d in
+  Result.map_error (fun s -> (s, ())) res
 
 let compile_result =
   let fields =
@@ -580,8 +582,4 @@ let _ =
   | Ok(_)       -> exit 0
   | Error(s)    -> panic "%s" s
   | exception e ->
-  match e with
-  | Sys_error(s)     -> panic "Error: %s" s
-  | Document.Stopped -> panic "Error: use of stopped document."
-  | _                ->
-  panic "Error: uncaught exception.\n%s" (Printexc.to_string e)
+      panic "Error: uncaught exception.\n%s" (Printexc.to_string e)

@@ -167,10 +167,10 @@ val contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string
     output of [contents ?include_ghost ?include_suffix d] to the given [file].
     When [file] is omitted, the contents is written to the file initially used
     at document creation via the [init] function. Note that the target file is
-    simply overwritten if it exists. Exception [Sys_error] is raised upon file
-    system errors. *)
+    simply overwritten if it exists. An error value is only ever returned upon
+    file system errors. *)
 val commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool
-  -> t -> unit
+  -> t -> (unit, string) result
 
 val compile : t -> (unit, string) result * string * string
 

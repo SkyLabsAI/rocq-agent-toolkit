@@ -302,13 +302,15 @@ class RocqDocManagerAPI:
         file: str | None,
         include_ghost: bool,
         include_suffix: bool,
-    ) -> None:
-        """Write the current document contents to the file."""
+    ) -> None | Err[None]:
+        """Write the current document contents to the file, failing in case of file system error."""
         result = self._rpc.raw_request(
             "commit",
             [cursor, file, include_ghost, include_suffix],
         )
-        assert not isinstance(result, Err)
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
         return None
 
     def compile(
@@ -668,13 +670,15 @@ class RocqDocManagerAPIAsync:
         file: str | None,
         include_ghost: bool,
         include_suffix: bool,
-    ) -> None:
-        """Write the current document contents to the file."""
+    ) -> None | Err[None]:
+        """Write the current document contents to the file, failing in case of file system error."""
         result = await self._rpc.raw_request(
             "commit",
             [cursor, file, include_ghost, include_suffix],
         )
-        assert not isinstance(result, Err)
+        if isinstance(result, Err):
+            data = None
+            return Err(result.message, data)
         return None
 
     async def compile(
