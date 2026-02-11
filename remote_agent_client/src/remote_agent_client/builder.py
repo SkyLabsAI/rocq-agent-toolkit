@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from typing import cast
 
 from rocq_pipeline.agent.base import Agent, AgentBuilder
