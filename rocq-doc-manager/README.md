@@ -146,14 +146,15 @@ API Methods
 
 ### `commit`
 
-- Description: write the current document contents to the file.
+- Description: write the current document contents to the file, failing in case of file system error.
 - Arguments (in order, or named):
   - `cursor`: the cursor to perform the operation on (as an integer).
   - `file`: optional target file (as either `null` or a string).
   - `include_ghost`: indicate whether ghost commands should be included (as a boolean).
   - `include_suffix`: indicate whether the suffix should be included (as a boolean).
 - Response payload: a `null` value.
-- Failure mode: never fails.
+- Error payload: a `null` value.
+- Failure mode: recoverable failure.
 
 ### `compile`
 

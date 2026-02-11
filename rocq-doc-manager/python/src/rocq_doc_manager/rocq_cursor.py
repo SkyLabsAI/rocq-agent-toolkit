@@ -68,7 +68,7 @@ class RocqCursor(RocqCursorProtocol):
         *,
         include_ghost: bool = False,
         include_suffix: bool = True,
-    ) -> None:
+    ) -> None | rdm_api.Err[None]:
         return self._rdm.commit(
             self._cursor,
             file,

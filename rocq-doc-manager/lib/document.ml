@@ -327,20 +327,25 @@ let contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string =
   Buffer.contents b
 
 let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
-    -> unit = fun ?file ?(include_ghost=false) ?(include_suffix=true) d ->
+    -> (unit, string) result =
+    fun ?file ?(include_ghost=false) ?(include_suffix=true) d ->
   let backend = get_backend d in
   let file = Stdlib.Option.value file ~default:backend.file in
-  Out_channel.with_open_text file @@ fun oc ->
-  let output_processed (p : processed_item) =
-    if p.kind <> `Ghost || include_ghost then
-      Out_channel.output_string oc p.text
-  in
-  let output_unprocessed u =
-    if u.kind <> `Ghost || include_ghost then
-      Out_channel.output_string oc u.text
-  in
-  List.iter output_processed (List.rev d.rev_prefix);
-  if include_suffix then List.iter output_unprocessed d.suffix
+  try
+    Out_channel.with_open_text file @@ fun oc ->
+    let output_processed (p : processed_item) =
+      if p.kind <> `Ghost || include_ghost then
+        Out_channel.output_string oc p.text
+    in
+    let output_unprocessed u =
+      if u.kind <> `Ghost || include_ghost then
+        Out_channel.output_string oc u.text
+    in
+    List.iter output_processed (List.rev d.rev_prefix);
+    if include_suffix then List.iter output_unprocessed d.suffix;
+    Ok(())
+  with Sys_error(s) ->
+    Error(Format.sprintf "System error: %s." s)
 
 let compile : t -> (unit, string) result * string * string = fun d ->
   let {file; args; _} = get_backend d in
@@ -354,12 +359,16 @@ let compile : t -> (unit, string) result * string * string = fun d ->
     | Unix.WEXITED(i)   -> Error(Format.sprintf "Exited with code %i." i)
     | Unix.WSIGNALED(i) -> Error(Format.sprintf "Killed with signal %i." i)
     | Unix.WSTOPPED(i)  -> Error(Format.sprintf "Stopped by signal %i." i)
+    | exception Unix.Unix_error(e,_,_) ->
+        Error(Format.sprintf "Unix error: %s." (Unix.error_message e))
   in
-  let out = In_channel.with_open_text stdout In_channel.input_all in
-  Sys.remove stdout;
-  let err = In_channel.with_open_text stderr In_channel.input_all in
-  Sys.remove stderr;
-  (ret, out, err)
+  let collect file =
+    try
+      let contents = In_channel.with_open_text file In_channel.input_all in
+      Sys.remove file; contents
+    with Sys_error(s) -> Format.sprintf "<FAILED TO READ FILE %S: %s>" file s
+  in
+  (ret, collect stdout, collect stderr)
 
 let query : t -> text:string -> (command_data, string) result = fun d ~text ->
   with_rollback d @@ fun _ -> run_command d ~text
