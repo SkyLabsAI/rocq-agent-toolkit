@@ -79,11 +79,11 @@ class RemoteProofAgent(ProofAgent):
             # Provider (e.g. "openrouter", "openai")
             if "provider" in self._config.inference:
                 ws_headers["X-LLM-Provider"] = str(self._config.inference["provider"])
-            
+
             # API Key (The Secret)
             if "api_key" in self._config.inference:
                 ws_headers["X-LLM-Api-Key"] = str(self._config.inference["api_key"])
-        
+
 
         # NOTE: `TracingCursor` (rocq-pipeline) is a subclass of RocqCursor and
         # exposes the underlying RDM API via `_the_rdm`. We rely on that to
