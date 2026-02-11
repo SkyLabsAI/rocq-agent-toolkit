@@ -332,7 +332,8 @@ let _ =
     ~descr:"process a command at the cursor without inserting it in the \
       document" ~args:text_args ~ret:S.(obj command_data) ~err:S.null
     @@ fun d (text, ()) ->
-  Result.map_error (fun s -> (s, ())) (Document.run_command d ~text)
+  let res = Document.insert_command ~ghost:true d ~text in
+  Result.map_error (fun (s, _) -> (s, ())) res
 
 let _ =
   declare ~name:"cursor_index"

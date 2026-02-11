@@ -91,18 +91,14 @@ type command_error = Rocq_toplevel.run_error
     the cursor in document [d], and advances the cursor past them. *)
 val insert_blanks : t -> text:string -> unit
 
-(** [insert_command d ~text] inserts, and processes the Rocq command [text] at
-    the cursor in document [d]. The cursor is advanced past the command if and
-    only if it is processed successfully. In case of failure, an error message
-    is returned together with additional information. *)
-val insert_command : t -> text:string
+(** [insert_command ?ghost d ~text] processes the given Rocq command [text] at
+    the cursor in document [d], and inserts it in the prefix if successful. If
+    an error occurs while processing the command, then the document is left in
+    the same state, and an error message is returned together with information
+    about the error. The [ghost] boolean, [false] by default, indicates if the
+    inserted command is meant to be "hidden" (see [commit]). *)
+val insert_command : ?ghost:bool -> t -> text:string
   -> (command_data, string * command_error) result
-
-(** [run_command d ~text] is similar to [insert_command d ~text], but does not
-    record the run command in the document. Note however that any side-effects
-    that the command may have on the Rocq state is preserved. Note that in the
-    [Error] case, no location is provided. *)
-val run_command : t -> text:string -> (command_data, string) result
 
 (** [cursor_index d] returns the index currently at the cursor in the document
     [d]. Note that this corresponds to the index of the first unprocessed item

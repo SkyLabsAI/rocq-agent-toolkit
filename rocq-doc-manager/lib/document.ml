@@ -202,32 +202,21 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
     backend.synced <- [d]
   end
 
-let insert_command : t -> text:string ->
-    (command_data, string * command_error) result = fun d ~text ->
+let insert_command : ?ghost:bool -> t -> text:string ->
+    (command_data, string * command_error) result =
+    fun ?(ghost=false) d ~text ->
   with_synced_backend d @@ fun backend ->
-  let off = d.cursor_off in
+  let off = if ghost then 0 else d.cursor_off in
   let sid_before = Rocq_toplevel.StateID.current backend.top in
   let res = Rocq_toplevel.run backend.top ~off ~text in
   match res with Error(_,_) -> res | Ok(_) ->
-  let processed = {index = cursor_index d; kind = `Command; off; text} in
+  let kind = if ghost then `Ghost else `Command in
+  let processed = {index = cursor_index d; kind; off; text} in
   d.rev_prefix <- processed :: d.rev_prefix;
-  d.cursor_off <- d.cursor_off + String.length text;
+  if not ghost then d.cursor_off <- d.cursor_off + String.length text;
   backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
   backend.synced <- [d];
   res
-
-let run_command : t -> text:string -> (command_data, string) result =
-    fun d ~text ->
-  with_synced_backend d @@ fun backend ->
-  let sid_before = Rocq_toplevel.StateID.current backend.top in
-  let res = Rocq_toplevel.run backend.top ~off:0 ~text in
-  match res with Error(s,_) -> Error(s) | Ok(data) ->
-  let off = d.cursor_off in
-  let processed = {index = cursor_index d; kind = `Ghost; off; text} in
-  d.rev_prefix <- processed :: d.rev_prefix;
-  backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
-  backend.synced <- [d];
-  Ok(data)
 
 let revert_before : ?erase:bool -> t -> index:int -> unit =
     fun ?(erase=false) d ~index:i ->
@@ -286,18 +275,27 @@ let run_step : t ->
   | {kind = `Blanks ; text} :: suffix ->
       d.suffix <- suffix;
       insert_blanks d ~text; Ok(None)
-  | {kind = `Command; text} :: suffix ->
+  | {kind           ; text} :: suffix ->
       begin
-        match insert_command d ~text with
+        match insert_command ~ghost:(kind = `Ghost) d ~text with
         | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
         | Error(s,d) -> Error(s, Some(d))
       end
-  | {kind = `Ghost  ; text} :: suffix ->
-      begin
-        match run_command d ~text with
-        | Ok(v)    -> d.suffix <- suffix; Ok(Some(v))
-        | Error(s) -> Error(s, None)
-      end
+
+(*
+let run_steps : t -> count:int ->
+    (unit, int * string * command_error option) result = fun d ~count ->
+  let _ = get_backend d in
+  if count < 0 then invalid_arg "negative count";
+  let rec loop nb_processed =
+    if n = count then Ok(()) else
+    match run_step d with
+    | Ok(_) -> loop (nb_processed + 1)
+    | Error(s, Some(d)) -> Error(s, d)
+    | Error(_, None) -> assert false (* Unreachable since correct index. *)
+  in
+  loop 0
+*)
 
 let advance_to : t -> index:int -> (unit, string * command_error) result =
     fun d ~index ->
@@ -391,7 +389,8 @@ let compile : t -> (unit, string) result * string * string = fun d ->
   (ret, collect stdout, collect stderr)
 
 let query : t -> text:string -> (command_data, string) result = fun d ~text ->
-  with_rollback d @@ fun _ -> run_command d ~text
+  with_rollback d @@ fun _ ->
+  Result.map_error fst (insert_command ~ghost:true d ~text)
 
 let get_info_or_notice : command_data -> string list = fun data ->
   let filter Rocq_toplevel.{level; text; _} =
