@@ -3,17 +3,94 @@ from __future__ import annotations
 import functools
 import inspect
 import logging
-from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection
 from types import FunctionType
-from typing import Any, cast, get_type_hints
+from typing import Any, Protocol, cast, get_type_hints
 
 from . import rocq_doc_manager_api as rdm_api
 
 logger = logging.getLogger(__name__)
 
 
-class RocqCursorProtocol(ABC):
+class RocqCursorProtocolAsync(Protocol):
+    async def advance_to(
+        self, index: int
+    ) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
+
+    async def clear_suffix(self, count: int | None = None) -> None: ...
+
+    async def materialize(self) -> None:
+        """Enable parallel processing on this cursor."""
+        ...
+
+    async def clone(self, *, materialize: bool = False) -> RocqCursorProtocolAsync: ...
+
+    async def copy_contents(self, dest: RocqCursorProtocol) -> None: ...
+
+    async def commit(
+        self,
+        file: str | None,
+        *,
+        include_ghost: bool = False,
+        include_suffix: bool = True,
+    ) -> None | rdm_api.Err[None]: ...
+
+    async def compile(self) -> rdm_api.CompileResult: ...
+
+    async def cursor_index(self) -> int: ...
+
+    async def dispose(self) -> None: ...
+
+    async def doc_prefix(self) -> list[rdm_api.PrefixItem]: ...
+
+    async def doc_suffix(self) -> list[rdm_api.SuffixItem]: ...
+
+    async def go_to(
+        self, index: int
+    ) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
+
+    async def has_suffix(self) -> bool: ...
+
+    async def insert_blanks(self, text: str) -> None: ...
+
+    async def insert_command(
+        self, text: str
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
+
+    async def load_file(
+        self,
+    ) -> None | rdm_api.Err[rdm_api.RocqLoc | None]: ...
+
+    # TODO: we should really reduce the repetition on [query],
+    # there are 5 functions, but they all do basically the same thing
+    async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
+
+    async def query_json(self, text: str, *, index: int) -> Any | rdm_api.Err[None]: ...
+
+    async def query_json_all(
+        self, text: str, *, indices: list[int] | None
+    ) -> list[Any] | rdm_api.Err[None]: ...
+
+    async def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]: ...
+
+    async def query_text_all(
+        self, text: str, *, indices: list[int] | None
+    ) -> list[str] | rdm_api.Err[None]: ...
+
+    async def revert_before(
+        self, erase: bool, index: int
+    ) -> None | rdm_api.Err[None]: ...
+
+    async def run_command(
+        self, text: str
+    ) -> rdm_api.CommandData | rdm_api.Err[None]: ...
+
+    async def run_step(
+        self,
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]: ...
+
+
+class RocqCursorProtocol(Protocol):
     """
     Cursors represent a pointer into a Rocq document.
     """
@@ -191,26 +268,20 @@ class RocqCursorProtocol(ABC):
 
         return decorator
 
-    @abstractmethod
     def advance_to(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
 
-    @abstractmethod
     def clear_suffix(self, count: int | None = None) -> None: ...
 
-    @abstractmethod
     def materialize(self) -> None:
         """Enable parallel processing on this cursor."""
         ...
 
-    @abstractmethod
     def clone(self, *, materialize: bool = False) -> RocqCursorProtocol: ...
 
-    @abstractmethod
     def copy_contents(self, dest: RocqCursorProtocol) -> None: ...
 
-    @abstractmethod
     def commit(
         self,
         file: str | None,
@@ -219,71 +290,52 @@ class RocqCursorProtocol(ABC):
         include_suffix: bool = True,
     ) -> None | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def compile(self) -> rdm_api.CompileResult: ...
 
-    @abstractmethod
     def cursor_index(self) -> int: ...
 
-    @abstractmethod
     def dispose(self) -> None: ...
 
-    @abstractmethod
     def doc_prefix(self) -> list[rdm_api.PrefixItem]: ...
 
-    @abstractmethod
     def doc_suffix(self) -> list[rdm_api.SuffixItem]: ...
 
-    @abstractmethod
     def go_to(self, index: int) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
 
-    @abstractmethod
     def has_suffix(self) -> bool: ...
 
-    @abstractmethod
     def insert_blanks(self, text: str) -> None: ...
 
-    @abstractmethod
     def insert_command(
         self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
 
-    @abstractmethod
     def load_file(
         self,
     ) -> None | rdm_api.Err[rdm_api.RocqLoc | None]: ...
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
-    @abstractmethod
     def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def query_json(self, text: str, *, index: int) -> Any | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def query_json_all(
         self, text: str, *, indices: list[int] | None
     ) -> list[Any] | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def query_text_all(
         self, text: str, *, indices: list[int] | None
     ) -> list[str] | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
 
-    @abstractmethod
     def run_step(
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]: ...
 
-    @abstractmethod
     def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]: ...
