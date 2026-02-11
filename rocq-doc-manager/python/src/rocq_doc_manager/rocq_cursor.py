@@ -13,7 +13,7 @@ from .rocq_doc_manager_api import RocqDocManagerAPI as API
 logger = logging.getLogger(__name__)
 
 
-class RocqCursor(RocqCursorProtocol):
+class RocqCursor(RocqCursorProtocol, RocqCursorQuery):
     """
     Cursors represent a pointer into a Rocq document.
     """

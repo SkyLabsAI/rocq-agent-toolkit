@@ -1,12 +1,14 @@
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Self, override
+from pathlib import Path
+from typing import Literal, Self, override
 
 from jsonrpc_tp import JsonRPCTP
-from rocq_dune_util import dune_env_hack
+from rocq_dune_util import dune_env_hack, rocq_args_for
 
 from . import rocq_doc_manager_api as rdm_api
+from .plugin_registry import PluginRegistry
 from .rocq_cursor import RocqCursor
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
 
@@ -23,7 +25,29 @@ class RocqDocManager(API):
         chdir: str | None = None,
         dune: bool = False,
         dune_disable_global_lock: bool = True,
+        *,
+        auto_discover_plugins: bool = True,
+        plugin_names: list[str] | None = None,
     ) -> None:
+        # Collect plugin dependencies if auto-discovery is enabled
+        if auto_discover_plugins:
+            extra_deps, workspace_deps = PluginRegistry.collect_plugin_deps(
+                plugin_names=plugin_names
+            )
+            if extra_deps or workspace_deps:
+                # Use rocq_args_for to get args with plugin dependencies
+                # Convert workspace_deps to strings if needed
+                workspace_deps_str = (
+                    [str(d) for d in workspace_deps] if workspace_deps else None
+                )
+                rocq_args = rocq_args_for(
+                    file_path,
+                    cwd=chdir,
+                    build=False,
+                    extra_deps=extra_deps if extra_deps else None,
+                    workspace_deps=workspace_deps_str,
+                )
+
         env: dict[str, str] | None = None
         args: list[str] = []
         if dune:
@@ -44,6 +68,7 @@ class RocqDocManager(API):
             ] + rocq_args
         else:
             args = ["rocq-doc-manager", file_path, "--"] + rocq_args
+
         super().__init__(JsonRPCTP(args=args, cwd=chdir, env=env))
         self._file_path: str = file_path
         self._file_loaded: bool = False
