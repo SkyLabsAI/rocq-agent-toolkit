@@ -76,7 +76,7 @@ class Task(BaseModel):
     def get_id(self) -> str:
         if self.name is not None:
             return self.name
-        return f"{self.file}#{self.locator}"
+        return f"{self.file}#{str(self.name)}#{self.locator}"
 
     def get_tags(self) -> set[str]:
         return self.tags

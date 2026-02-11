@@ -207,7 +207,7 @@ def filter_tactics(
         num_tactics)
         2. leftovers: A list of unique processed tactics that did not
         match.
-        3. leftovers: A list of unique processed tactics that are considered deprecated
+        3. deprecated: A list of unique processed tactics that are considered deprecated
 
     """
 
