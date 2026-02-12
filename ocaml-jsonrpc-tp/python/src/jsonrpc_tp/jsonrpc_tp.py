@@ -79,8 +79,10 @@ class JsonRPCTP(SyncProtocol):
             if method != "ready_seq":
                 raise Error(f'Got "{method}" notification instead of "ready_seq"')
         except Exception as e:
-            self._process.kill()
-            self._process = None
+            if self._process is not None:
+                # [recv] often sets `self._process` to None when there is an error
+                self._process.kill()
+                self._process = None
             raise Error(f"Failed to start JSON-RPC service: {e}") from e
 
     def send(self, req: bytes) -> None:
