@@ -93,6 +93,12 @@ API Objects
 - Field `feedback_messages`: a list where each element is an instance of the `FeedbackMessage` object.
 - Field `error_loc`: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 
+### `StepsError`
+
+- Description: data returned by `run_steps`.
+- Field `cmd_error`: an instance of the `CommandError` object.
+- Field `nb_processed`: number of unprocessed items that were processed successfully (as an integer).
+
 ### `PrefixItem`
 
 - Description: document prefix item, appearing before the cursor.
@@ -358,5 +364,15 @@ API Methods
 - Arguments (in order, or named):
   - `cursor`: the cursor to perform the operation on (as an integer).
 - Response payload: data for the command that was run, if any (as either `null` or an instance of the `CommandData` object).
-- Error payload: error data for the command that was run, if any (as either `null` or an instance of the `CommandError` object).
+- Error payload: error data for the command that was run (as an instance of the `CommandError` object).
+- Failure mode: recoverable failure.
+
+### `run_steps`
+
+- Description: advance the cursor by stepping over the given number of unprocessed item.
+- Arguments (in order, or named):
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `count`: the number of unprocessed items to process (as an integer).
+- Response payload: a `null` value.
+- Error payload: error data for the command that was run (as an instance of the `StepsError` object).
 - Failure mode: recoverable failure.

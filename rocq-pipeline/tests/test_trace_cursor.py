@@ -29,10 +29,21 @@ def build_both(verbose: bool) -> Generator[tuple[RocqCursor, RocqCursor]]:
 
 def same[T](fn: Callable[[RocqCursor], T], verbose: bool) -> None:
     with build_both(verbose) as (rc, traced):
-        result = fn(rc)
-        traced_result = fn(traced)
+        result: T | Exception | None = None
+        traced_result: T | Exception | None = None
+        try:
+            result = fn(rc)
+        except Exception as e:
+            result = e
+        try:
+            traced_result = fn(traced)
+        except Exception as e:
+            traced_result = e
         assert type(result) is type(traced_result)
-        if isinstance(result, rdm_api.CommandData):
+        if isinstance(result, Exception):
+            assert isinstance(traced_result, Exception)
+            assert str(result) == str(traced_result)
+        elif isinstance(result, rdm_api.CommandData):
             assert isinstance(traced_result, rdm_api.CommandData)
             assert result.proof_state == traced_result.proof_state
         elif isinstance(result, rdm_api.Err):

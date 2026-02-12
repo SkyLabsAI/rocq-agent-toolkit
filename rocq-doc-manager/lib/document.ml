@@ -184,7 +184,7 @@ let load_file : t -> (unit, string * loc) result = fun d ->
   Ok(())
 
 type command_data = Rocq_toplevel.run_data
-type command_error = Rocq_toplevel.run_error
+type command_error = string * Rocq_toplevel.run_error
 
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
   let backend = get_backend d in
@@ -203,7 +203,7 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
   end
 
 let insert_command : ?ghost:bool -> t -> text:string ->
-    (command_data, string * command_error) result =
+    (command_data, command_error) result =
     fun ?(ghost=false) d ~text ->
   with_synced_backend d @@ fun backend ->
   let off = if ghost then 0 else d.cursor_off in
@@ -267,11 +267,10 @@ let clear_suffix : ?count:int -> t -> unit = fun ?count d ->
   if List.length d.suffix < count then invalid_arg "invalid count";
   d.suffix <- List.drop count d.suffix
 
-let run_step : t ->
-    (command_data option, string * command_error option) result = fun d ->
+let run_step : t -> (command_data option, command_error) result = fun d ->
   let _ = get_backend d in
   match d.suffix with
-  | []                                -> Error("no step left to run", None)
+  | []                                -> invalid_arg "no step left to run"
   | {kind = `Blanks ; text} :: suffix ->
       d.suffix <- suffix;
       insert_blanks d ~text; Ok(None)
@@ -279,43 +278,33 @@ let run_step : t ->
       begin
         match insert_command ~ghost:(kind = `Ghost) d ~text with
         | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
-        | Error(s,d) -> Error(s, Some(d))
+        | Error(s,d) -> Error(s, d)
       end
 
-(*
-let run_steps : t -> count:int ->
-    (unit, int * string * command_error option) result = fun d ~count ->
+let run_steps : t -> count:int -> (unit, int * command_error) result =
+    fun d ~count ->
   let _ = get_backend d in
   if count < 0 then invalid_arg "negative count";
+  if List.length d.suffix < count then invalid_arg "invalid count";
+  (* NOTE: we could avoid locking the backend at each step here. *)
   let rec loop nb_processed =
-    if n = count then Ok(()) else
+    if nb_processed = count then Ok(()) else
     match run_step d with
-    | Ok(_) -> loop (nb_processed + 1)
-    | Error(s, Some(d)) -> Error(s, d)
-    | Error(_, None) -> assert false (* Unreachable since correct index. *)
+    | Ok(_)    -> loop (nb_processed + 1)
+    | Error(e) -> Error(nb_processed, e)
   in
   loop 0
-*)
 
-let advance_to : t -> index:int -> (unit, string * command_error) result =
+let advance_to : t -> index:int -> (unit, command_error) result =
     fun d ~index ->
   let _ = get_backend d in
   let cur = cursor_index d in
   let len_suffix = List.length d.suffix in
   let one_past = cur + len_suffix in
   if index < cur || one_past < index then invalid_arg "index out of bounds";
-  (* NOTE: could be optimized to lock the backend just once. *)
-  let rec loop cur =
-    if cur = index then Ok(()) else
-    match run_step d with
-    | Ok(_) -> loop (cur + 1)
-    | Error(s, Some(d)) -> Error(s, d)
-    | Error(_, None) -> assert false (* Unreachable since correct index. *)
-  in
-  loop cur
+  Result.map_error snd (run_steps d ~count:(index - cur))
 
-let go_to : t -> index:int -> (unit, string * command_error) result =
-    fun d ~index ->
+let go_to : t -> index:int -> (unit, command_error) result = fun d ~index ->
   let _ = get_backend d in
   let cur = cursor_index d in
   match index < cur with

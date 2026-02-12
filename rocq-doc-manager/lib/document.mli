@@ -84,8 +84,9 @@ val load_file : t -> (unit, string * Rocq_loc.t option) result
 (** Data returned by the top-level when running a command. *)
 type command_data = Rocq_toplevel.run_data
 
-(** Data returned upon failure of the top-level when running a command. *)
-type command_error = Rocq_toplevel.run_error
+(** Error message and data returned upon failure of the top-level when running
+    a command. *)
+type command_error = string * Rocq_toplevel.run_error
 
 (** [insert_blanks d ~text] inserts the sequence of blank characters [text] at
     the cursor in document [d], and advances the cursor past them. *)
@@ -98,7 +99,7 @@ val insert_blanks : t -> text:string -> unit
     about the error. The [ghost] boolean, [false] by default, indicates if the
     inserted command is meant to be "hidden" (see [commit]). *)
 val insert_command : ?ghost:bool -> t -> text:string
-  -> (command_data, string * command_error) result
+  -> (command_data, command_error) result
 
 (** [cursor_index d] returns the index currently at the cursor in the document
     [d]. Note that this corresponds to the index of the first unprocessed item
@@ -127,25 +128,34 @@ val clear_suffix : ?count:int -> t -> unit
 
 (** [run_step d] advances the cursor of document [d] over the next unprocessed
     item of the document suffix, returning similar data to [insert_command] if
-    the item is a command. An error is also given if there is no item left. *)
-val run_step : t ->
-  (command_data option, string * command_error option) result
+    the item is a command. If the document suffix is empty, [Invalid_argument]
+    is raised. *)
+val run_step : t -> (command_data option, command_error) result
+
+(** [run_steps d ~count] is similar to [run_step d], but it steps over [count]
+    unprocessed items. If the document suffix does not hold enough items, then
+    [Invalid_argument] is raised immediately (without processing any item). If
+    an error occurs while processing a command, then the function returns with
+    a value [Error(n, data)], where [n < count] indicates how many unprocessed
+    items have been processed successfully prior to the the failure. Note that
+    these items remain processed after the error is returned. *)
+val run_steps : t -> count:int -> (unit, int * command_error) result
 
 (** [advance_to d ~index] advances the cursor of document [d] to place it just
     before the item with the given [index]. If [index] is invalid, which means
     that it does not point to a valid item index (or one past the index of the
     last item), or that it points to an already processed item, then exception
     [Invalid_argument] is raised. In case of error while processing a command,
-    the cursor is left at the reached position, and [Error (loc,msg)] is given
-    similarly to what [insert_command] or [run_step] do. *)
-val advance_to : t -> index:int -> (unit, string * command_error) result
+    the cursor is left at the reached position, and [Error] is given similarly
+    to what [insert_command] or [run_step] do. *)
+val advance_to : t -> index:int -> (unit, command_error) result
 
 (** [go_to d ~index] is the same as [advance_to d ~index], but it additionally
     allows to revert to an earlier index like [revert_before d ~index]. In any
     case, no item is erased from the document. If the [index] is invalid, then
     [Invalid_argument] is raised. Valid indices range from [0] to one past the
     index of the last item in the document's suffix. *)
-val go_to : t -> index:int -> (unit, string * command_error) result
+val go_to : t -> index:int -> (unit, command_error) result
 
 (** Representation of a processed item (in the document's prefix). *)
 type processed_item = {

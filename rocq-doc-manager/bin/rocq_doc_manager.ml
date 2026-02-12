@@ -107,9 +107,11 @@ end = struct
   let at_cursor action _ toplevel (cursor, args) =
     let d = State.get_cursor toplevel cursor in
     Cursor.lock d;
-    let res = action d.doc args in
-    Cursor.unlock d;
-    res
+    try
+      let res = action d.doc args in
+      Cursor.unlock d; res
+    with Invalid_argument(_) as e ->
+      Cursor.unlock d; raise e
 
   let declare_full ~name ?descr ~args ~ret ?ret_descr ~err ?err_descr
       ?recoverable action =
@@ -315,6 +317,18 @@ let command_error =
   API.declare_object api ~name:"CommandError"
     ~descr:"data returned on Rocq command errors" ~encode ~decode fields
 
+let steps_error =
+  let fields =
+    API.Fields.add ~name:"nb_processed" ~descr:"number of unprocessed items \
+      that were processed successfully" S.int @@
+    API.Fields.add ~name:"cmd_error" S.(obj command_error) @@
+    API.Fields.nil
+  in
+  let encode (nb_processed, (cmd_error, ())) = (nb_processed, cmd_error) in
+  let decode (nb_processed, cmd_error) = (nb_processed, (cmd_error, ())) in
+  API.declare_object api ~name:"StepsError"
+    ~descr:"data returned by `run_steps`" ~encode ~decode fields
+
 let text_args =
   A.add ~name:"text" ~descr:"text of the command to insert" S.string A.nil
 
@@ -389,10 +403,24 @@ let _ =
       stepping over an unprocessed item" ~args:A.nil
     ~ret:S.(nullable (obj command_data))
     ~ret_descr:"data for the command that was run, if any"
-    ~err:S.(nullable (obj command_error))
-    ~err_descr:"error data for the command that was run, if any"
+    ~err:S.(obj command_error)
+    ~err_descr:"error data for the command that was run"
     @@ fun d () ->
   Document.run_step d
+
+let _ =
+  let args =
+    A.add ~name:"count" ~descr:"the number of unprocessed items to process"
+      S.int @@
+    A.nil
+  in
+  declare_full ~name:"run_steps" ~descr:"advance the cursor by stepping over \
+      the given number of unprocessed item" ~args ~ret:S.null
+    ~err:S.(obj steps_error)
+    ~err_descr:"error data for the command that was run"
+    @@ fun d (count, ()) ->
+  let res = Document.run_steps d ~count in
+  Result.map_error (fun (i, (s, e)) -> (s, (i, e))) res
 
 let item_kind =
   let values = [`Blanks; `Command; `Ghost] in

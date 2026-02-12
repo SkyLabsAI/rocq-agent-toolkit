@@ -131,7 +131,7 @@ class TracingCursor(RocqCursor):
     @_trace_log(after=True, inputs=_next_command)
     def run_step(
         self,
-    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]:
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         return super().run_step()
 
     @override
