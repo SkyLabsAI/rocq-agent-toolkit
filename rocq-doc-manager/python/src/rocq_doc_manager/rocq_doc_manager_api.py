@@ -16,6 +16,7 @@ __all__ = [
     "CompileResult",
     "SuffixItem",
     "PrefixItem",
+    "StepsError",
     "CommandError",
     "CommandData",
     "ProofState",
@@ -192,6 +193,21 @@ class CommandError(DataClassJsonMixin):
     error_loc: RocqLoc | None = field(
         kw_only=True,
         default=None,
+    )
+
+
+@dataclass(frozen=True)
+class StepsError(DataClassJsonMixin):
+    """Data returned by `run_steps`."""
+
+    cmd_error: CommandError = field(
+        kw_only=True,
+        default_factory=lambda: CommandError(),
+    )
+    # Number of unprocessed items that were processed successfully.
+    nb_processed: int = field(
+        kw_only=True,
+        default=0,
     )
 
 
@@ -606,16 +622,31 @@ class RocqDocManagerAPI:
     def run_step(
         self,
         cursor: int,
-    ) -> CommandData | None | Err[CommandError | None]:
+    ) -> CommandData | None | Err[CommandError]:
         """Advance the cursor by stepping over an unprocessed item."""
         result = self._rpc.raw_request(
             "run_step",
             [cursor],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else CommandError.from_dict(result.data)
+            data = CommandError.from_dict(result.data)
             return Err(result.message, data)
         return None if result.result is None else CommandData.from_dict(result.result)
+
+    def run_steps(
+        self,
+        cursor: int,
+        count: int,
+    ) -> None | Err[StepsError]:
+        """Advance the cursor by stepping over the given number of unprocessed item."""
+        result = self._rpc.raw_request(
+            "run_steps",
+            [cursor, count],
+        )
+        if isinstance(result, Err):
+            data = StepsError.from_dict(result.data)
+            return Err(result.message, data)
+        return None
 
 
 class RocqDocManagerAPIAsync:
@@ -974,13 +1005,28 @@ class RocqDocManagerAPIAsync:
     async def run_step(
         self,
         cursor: int,
-    ) -> CommandData | None | Err[CommandError | None]:
+    ) -> CommandData | None | Err[CommandError]:
         """Advance the cursor by stepping over an unprocessed item."""
         result = await self._rpc.raw_request(
             "run_step",
             [cursor],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else CommandError.from_dict(result.data)
+            data = CommandError.from_dict(result.data)
             return Err(result.message, data)
         return None if result.result is None else CommandData.from_dict(result.result)
+
+    async def run_steps(
+        self,
+        cursor: int,
+        count: int,
+    ) -> None | Err[StepsError]:
+        """Advance the cursor by stepping over the given number of unprocessed item."""
+        result = await self._rpc.raw_request(
+            "run_steps",
+            [cursor, count],
+        )
+        if isinstance(result, Err):
+            data = StepsError.from_dict(result.data)
+            return Err(result.message, data)
+        return None

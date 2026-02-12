@@ -192,8 +192,12 @@ class RocqCursor(RocqCursorProtocol):
     @override
     def run_step(
         self,
-    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]:
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         return self._rdm.run_step(self._cursor)
+
+    @override
+    def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
+        return self._rdm.run_steps(self._cursor, count)
 
     # ===== BEGIN: contextmanagers ============================================
     @contextmanager

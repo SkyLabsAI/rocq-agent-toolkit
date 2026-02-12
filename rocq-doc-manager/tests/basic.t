@@ -200,7 +200,10 @@
   {
     "id": 24,
     "jsonrpc": "2.0",
-    "error": { "data": null, "code": -32803, "message": "no step left to run" }
+    "error": {
+      "code": -32602,
+      "message": "Invalid parameters for method run_step: no step left to run."
+    }
   }
   {
     "id": 25,

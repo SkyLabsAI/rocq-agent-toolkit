@@ -13,15 +13,71 @@ module S = API.Schema
 
 module IntMap = Map.Make(Int)
 
-(* NOTE: document update is imperative, so no need to update the map unless we
-   are adding or removing an entry. *)
-type toplevel = {
-  mutable cursors: Document.t IntMap.t;
-  mutable fresh: int
-}
-type cursor = Document.t
+(** A cursor is a document handle, that cannot be worked on by several threads
+    at the same time. A maximum of one request can run on any given cursor, at
+    any given time. *)
+module Cursor = struct
+  type t = {
+    doc : Document.t;
+    (** Underlying document handle. *)
+    active : bool Atomic.t;
+    (** Boolean indicating whether the cursor is currently in use. *)
+  }
 
-let api : toplevel API.api = API.create ~name:"RocqDocManagerAPI"
+  let make : Document.t -> t = fun doc ->
+    {doc; active = Atomic.make false}
+
+  let lock : t -> unit = fun c ->
+    match Atomic.compare_and_set c.active false true with
+    | true  -> ()
+    | false ->
+    match Document.is_stopped c.doc with
+    | true  -> invalid_arg "cursor already stopped"
+    | false -> invalid_arg "cursor already in use"
+
+  let unlock : t -> unit = fun c ->
+    Atomic.set c.active false
+end
+
+(** State of the API. *)
+module State : sig
+  type t
+
+  val create : Document.t -> t
+
+  val get_cursor : t -> int -> Cursor.t
+
+  val insert_cursor : t -> Cursor.t -> int
+end = struct
+  (** State of the API, holding a map of active cursors. *)
+  type t = {
+    mutex : Mutex.t;
+    mutable cursors: Cursor.t IntMap.t;
+    mutable fresh: int
+  }
+
+  let create : Document.t -> t = fun doc ->
+    let cursors = IntMap.singleton 0 (Cursor.make doc) in
+    {mutex = Mutex.create (); fresh = 1; cursors}
+
+  let get_cursor : t -> int -> Cursor.t = fun s k ->
+    let get () = IntMap.find_opt k s.cursors in
+    match Mutex.protect s.mutex get with
+    | None         -> invalid_arg "unknown cursor"
+    | Some(cursor) -> cursor
+
+  let insert_cursor : t -> Cursor.t -> int = fun s cursor ->
+    let new_key = ref 0 in
+    let insert () =
+      let k = s.fresh in
+      s.fresh <- k + 1;
+      new_key := k;
+      s.cursors <- IntMap.add k cursor s.cursors
+    in
+    Mutex.protect s.mutex insert; !new_key
+end
+
+let api : State.t API.api = API.create ~name:"RocqDocManagerAPI"
 
 module WithCursor : sig
   val declare_full : name:string ->
@@ -32,7 +88,7 @@ module WithCursor : sig
     err:'c S.t ->
     ?err_descr:string ->
     ?recoverable:bool ->
-    (cursor -> 'a -> ('b, string * 'c) result) ->
+    (Document.t -> 'a -> ('b, string * 'c) result) ->
     unit
 
   val declare :
@@ -41,7 +97,7 @@ module WithCursor : sig
     args:'a A.t ->
     ret:'b S.t ->
     ?ret_descr:string ->
-    (cursor -> 'a -> 'b) ->
+    (Document.t -> 'a -> 'b) ->
     unit
 end = struct
   let add_cursor_arg rest =
@@ -49,9 +105,13 @@ end = struct
     A.add ~name:"cursor" ~descr S.int rest
 
   let at_cursor action _ toplevel (cursor, args) =
-    match IntMap.find_opt cursor toplevel.cursors with
-    | None    -> invalid_arg "unknown cursor"
-    | Some(d) -> action d args
+    let d = State.get_cursor toplevel cursor in
+    Cursor.lock d;
+    try
+      let res = action d.doc args in
+      Cursor.unlock d; res
+    with Invalid_argument(_) as e ->
+      Cursor.unlock d; raise e
 
   let declare_full ~name ?descr ~args ~ret ?ret_descr ~err ?err_descr
       ?recoverable action =
@@ -257,6 +317,18 @@ let command_error =
   API.declare_object api ~name:"CommandError"
     ~descr:"data returned on Rocq command errors" ~encode ~decode fields
 
+let steps_error =
+  let fields =
+    API.Fields.add ~name:"nb_processed" ~descr:"number of unprocessed items \
+      that were processed successfully" S.int @@
+    API.Fields.add ~name:"cmd_error" S.(obj command_error) @@
+    API.Fields.nil
+  in
+  let encode (nb_processed, (cmd_error, ())) = (nb_processed, cmd_error) in
+  let decode (nb_processed, cmd_error) = (nb_processed, (cmd_error, ())) in
+  API.declare_object api ~name:"StepsError"
+    ~descr:"data returned by `run_steps`" ~encode ~decode fields
+
 let text_args =
   A.add ~name:"text" ~descr:"text of the command to insert" S.string A.nil
 
@@ -274,7 +346,8 @@ let _ =
     ~descr:"process a command at the cursor without inserting it in the \
       document" ~args:text_args ~ret:S.(obj command_data) ~err:S.null
     @@ fun d (text, ()) ->
-  Result.map_error (fun s -> (s, ())) (Document.run_command d ~text)
+  let res = Document.insert_command ~ghost:true d ~text in
+  Result.map_error (fun (s, _) -> (s, ())) res
 
 let _ =
   declare ~name:"cursor_index"
@@ -330,10 +403,24 @@ let _ =
       stepping over an unprocessed item" ~args:A.nil
     ~ret:S.(nullable (obj command_data))
     ~ret_descr:"data for the command that was run, if any"
-    ~err:S.(nullable (obj command_error))
-    ~err_descr:"error data for the command that was run, if any"
+    ~err:S.(obj command_error)
+    ~err_descr:"error data for the command that was run"
     @@ fun d () ->
   Document.run_step d
+
+let _ =
+  let args =
+    A.add ~name:"count" ~descr:"the number of unprocessed items to process"
+      S.int @@
+    A.nil
+  in
+  declare_full ~name:"run_steps" ~descr:"advance the cursor by stepping over \
+      the given number of unprocessed item" ~args ~ret:S.null
+    ~err:S.(obj steps_error)
+    ~err_descr:"error data for the command that was run"
+    @@ fun d (count, ()) ->
+  let res = Document.run_steps d ~count in
+  Result.map_error (fun (i, (s, e)) -> (s, (i, e))) res
 
 let item_kind =
   let values = [`Blanks; `Command; `Ghost] in
@@ -518,14 +605,11 @@ let _ =
   API.declare api ~name:"clone" ~descr:"clones the given cursor"
     ~args ~ret:S.int ~ret_descr:"the name of the new cursor"
     @@ fun _ d (cursor, ()) ->
-  match IntMap.find_opt cursor d.cursors with
-  | None    -> invalid_arg "unknown cursor"
-  | Some(c) ->
-  let new_cursor = Document.clone c in
-  let index = d.fresh in
-  d.cursors <- IntMap.add index new_cursor d.cursors;
-  d.fresh <- index + 1;
-  index
+  let c = State.get_cursor d cursor in
+  Cursor.lock c;
+  let new_c = State.insert_cursor d (Cursor.make (Document.clone c.doc)) in
+  Cursor.unlock c;
+  new_c
 
 let _ =
   let args =
@@ -535,10 +619,15 @@ let _ =
   in
   API.declare api ~name:"copy_contents" ~descr:"copies the contents of src \
     into dst" ~args ~ret:S.null @@ fun _ d (src, (dst, ())) ->
-  match (IntMap.find_opt src d.cursors, IntMap.find_opt dst d.cursors) with
-  | (None     , _        ) -> invalid_arg "unknown source cursor"
-  | (_        , None     ) -> invalid_arg "unknown target cursor"
-  | (Some(src), Some(dst)) -> Document.copy_contents ~from:src dst
+  let same = src = dst in
+  let src = State.get_cursor d src in
+  let dst = State.get_cursor d dst in
+  if same then invalid_arg "source and target cursors are the same";
+  Cursor.lock src;
+  Cursor.lock dst;
+  Document.copy_contents ~from:src.doc dst.doc;
+  Cursor.unlock dst;
+  Cursor.unlock src
 
 let _ =
   let args =
@@ -547,22 +636,32 @@ let _ =
   in
   API.declare api ~name:"dispose" ~descr:"destroys the cursor"
     ~args ~ret:S.null @@ fun _ d (cursor, ()) ->
-  match IntMap.find_opt cursor d.cursors with
-  | None    -> invalid_arg "unknown cursor"
-  | Some(c) ->
-  Document.stop c;
-  d.cursors <- IntMap.remove cursor d.cursors
+  let c = State.get_cursor d cursor in
+  Cursor.lock c; (* We never unlock stopped cursors. *)
+  Document.stop c.doc
 
-let parse_args : argv:string array -> string * string list = fun ~argv ->
-  let (argv, rocq_args) = Rocq_args.split ~argv in
-  let file =
+type config = {
+  workers : int option;
+  file : string;
+  args : string list;
+}
+
+let parse_args : argv:string array -> config = fun ~argv ->
+  let (argv, args) = Rocq_args.split ~argv in
+  let (workers, file) =
+    let usage () =
+      panic "Usage: %s [--workers N] FILE.v [-- ROCQ ARGS]" argv.(0)
+    in
     match argv with
-    | [|_; file|] -> file
-    | _           -> panic "Usage: %s FILE.v [-- ROCQ ARGS]" argv.(0)
+    | [|_; file|] -> (None, file)
+    | [|_; "--workers"; workers; file|] ->
+        let workers = try int_of_string workers with Failure(_) -> usage () in
+        (Some(workers), file)
+    | _ -> usage ()
   in
   if not (Filename.check_suffix file ".v") then
     panic "Error: a Rocq source file was expected as argument.";
-  (file, rocq_args)
+  {workers; file; args}
 
 let _ =
   match Sys.argv with
@@ -573,12 +672,19 @@ let _ =
       Printf.printf "%a%!" API.output_python_api api;
       exit 0
   | _                     ->
-  let (file, args) = parse_args ~argv:Sys.argv in
+  let {workers; file; args} = parse_args ~argv:Sys.argv in
   let state =
-    try Document.init ~args ~file with Failure(s) -> panic "Error: %s." s
+    let doc =
+      try Document.init ~args ~file with Failure(s) -> panic "Error: %s." s
+    in
+    State.create doc
   in
-  let state = {fresh = 1; cursors = IntMap.singleton 0 state} in
-  match API.run_seq api ~ic:stdin ~oc:stdout state with
+  let run =
+    match workers with
+    | None -> API.run_seq
+    | Some(workers) -> API.run ~workers
+  in
+  match run api ~ic:stdin ~oc:stdout state with
   | Ok(_)       -> exit 0
   | Error(s)    -> panic "%s" s
   | exception e ->

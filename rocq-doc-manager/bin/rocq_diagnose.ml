@@ -31,11 +31,7 @@ let main : Document.t -> unit = fun state ->
     | _  ->
     match Document.run_step state with
     | Error(s,err) ->
-        let loc =
-          match err with
-          | None -> None
-          | Some(err) -> err.Rocq_toplevel.error_loc
-        in
+        let loc = err.Rocq_toplevel.error_loc in
         let fields =
           ("status" , `String("error")) ::
           ("message", `String(s)) ::

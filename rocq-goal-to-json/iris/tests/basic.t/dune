@@ -8,7 +8,6 @@
  (theories
   Stdlib Ltac2
   stdpp iris
-  skylabs.ltac2.extra
   skylabs_ai.ltac2_derive
   skylabs_ai.ltac2_json
   skylabs_ai.extractors.goal_to_json.iris))

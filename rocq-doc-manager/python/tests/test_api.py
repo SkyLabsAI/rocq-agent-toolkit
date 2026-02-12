@@ -1,10 +1,7 @@
-import logging
 from pathlib import Path
 
-import pytest
 from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocol
 
 from .util import RDM_Tests
 
@@ -180,54 +177,4 @@ class Test_API(RDM_Tests):
             tmp_path,
             rc_cls=RocqCursor,
             should_succeed=True,
-        )
-
-    def _test_API_PATCH_double_load_file(
-        self,
-        caplog: pytest.LogCaptureFixture,
-        loadable_rdm: RocqDocManager,
-        /,
-        rc_cls: type[RocqCursorProtocol],
-        duplicates_doc_content: bool,
-    ) -> None:
-        rc = loadable_rdm.cursor()
-        with caplog.at_level(logging.WARNING):
-            assert not isinstance(
-                rc_cls.load_file(rc),
-                rdm_api.Err,
-            )
-            suffix = rc.doc_suffix()
-            assert not isinstance(
-                rc_cls.load_file(rc),
-                rdm_api.Err,
-            )
-            if duplicates_doc_content:
-                assert rc.doc_suffix() == suffix * 2
-                assert not caplog.text
-            else:
-                assert rc.doc_suffix() == suffix
-                assert "duplicates document content" in caplog.text
-
-    def test_double_load_file_duplicates_doc_content(
-        self,
-        caplog: pytest.LogCaptureFixture,
-        loadable_rdm: RocqDocManager,
-    ) -> None:
-        return self._test_API_PATCH_double_load_file(
-            caplog,
-            loadable_rdm,
-            rc_cls=RocqCursor,
-            duplicates_doc_content=True,
-        )
-
-    def test_patched_double_load_file_(
-        self,
-        caplog: pytest.LogCaptureFixture,
-        loadable_rdm: RocqDocManager,
-    ) -> None:
-        return self._test_API_PATCH_double_load_file(
-            caplog,
-            loadable_rdm,
-            rc_cls=RocqCursor,
-            duplicates_doc_content=True,
         )

@@ -11,7 +11,9 @@
     to be processed. Said otherwise, the cursor is the index of the first item
     of the document's suffix. *)
 
-(** Imperative state for a Rocq document. *)
+(** Imperative state for a Rocq document. Multiple domains must not operate on
+    a document concurrently, as unsynchronized accesses can lead to an invalid
+    state. Concurrent operations on distinct documents are unrestricted. *)
 type t
 
 (** [init ~args ~file] initialises a Rocq document for the given [file], using
@@ -31,12 +33,17 @@ exception Stopped
     [clone], in order to free the underlying resources. *)
 val stop : t -> unit
 
+(** [is_stopped d] indicates whether the document [d] is already stopped. This
+    operation can be used concurrently, without restriction. *)
+val is_stopped : t -> bool
+
 (** [clone d] creates an independent clone of the document [d], that starts in
     the same state as [d]. While document [d] and the produced clone both have
     their own state, they share a single underlying Rocq top-level. This means
     that when one runs a sequence of operations on a document, an initial cost
     may need to be paid to bring the top-level in sync with the document prior
-    to running the first operation in the sequence. *)
+    to running the first operation in the sequence. Note that even if distinct
+    documents share a top-level, concurrent accesses to them are permitted. *)
 val clone : t -> t
 
 (** [copy_contents ~from d] copies the contents from document [from] into [d].
@@ -44,7 +51,7 @@ val clone : t -> t
     of sync with the contents of the document. *)
 val copy_contents : from:t -> t -> unit
 
-(** [materialize d] spaws a new, dedicated Rocq top-level for [d], that starts
+(** [materialize d] spawns a new dedicated Rocq top-level for [d], that starts
     in the same state as the current top-level of [d]. In particular, this new
     top-level is initially only used by [d], and not shared with any clone. If
     the top-level of [d] is not currently shared with any clone, the operation
@@ -60,7 +67,7 @@ val sync : t -> unit
 
 (** [is_synced d] indicates whether the Rocq toplevel that is relied on by [d]
     is in sync with [d]. If that is the case, subsequent operations on [d] can
-    be run witout paying any extra upfront cost. *)
+    be run without paying any extra upfront cost. *)
 val is_synced : t -> bool
 
 (** [file d] gives the Rocq source file path corresponding to [d]. The file is
@@ -77,25 +84,22 @@ val load_file : t -> (unit, string * Rocq_loc.t option) result
 (** Data returned by the top-level when running a command. *)
 type command_data = Rocq_toplevel.run_data
 
-(** Data returned upon failure of the top-level when running a command. *)
-type command_error = Rocq_toplevel.run_error
+(** Error message and data returned upon failure of the top-level when running
+    a command. *)
+type command_error = string * Rocq_toplevel.run_error
 
 (** [insert_blanks d ~text] inserts the sequence of blank characters [text] at
     the cursor in document [d], and advances the cursor past them. *)
 val insert_blanks : t -> text:string -> unit
 
-(** [insert_command d ~text] inserts, and processes the Rocq command [text] at
-    the cursor in document [d]. The cursor is advanced past the command if and
-    only if it is processed successfully. In case of failure, an error message
-    is returned together with additional information. *)
-val insert_command : t -> text:string
-  -> (command_data, string * command_error) result
-
-(** [run_command d ~text] is similar to [insert_command d ~text], but does not
-    record the run command in the document. Note however that any side-effects
-    that the command may have on the Rocq state is preserved. Note that in the
-    [Error] case, no location is provided. *)
-val run_command : t -> text:string -> (command_data, string) result
+(** [insert_command ?ghost d ~text] processes the given Rocq command [text] at
+    the cursor in document [d], and inserts it in the prefix if successful. If
+    an error occurs while processing the command, then the document is left in
+    the same state, and an error message is returned together with information
+    about the error. The [ghost] boolean, [false] by default, indicates if the
+    inserted command is meant to be "hidden" (see [commit]). *)
+val insert_command : ?ghost:bool -> t -> text:string
+  -> (command_data, command_error) result
 
 (** [cursor_index d] returns the index currently at the cursor in the document
     [d]. Note that this corresponds to the index of the first unprocessed item
@@ -111,7 +115,8 @@ val revert_before : ?erase:bool -> t -> index:int -> unit
 
 (** [with_rollback d f] runs [f ()], and then rolls back the document state so
     that the effects of the call to [f] are reverted. Note that [f] should not
-    raise exceptions. *)
+    raise exceptions, nor call [stop d]. If [f] calls [materialize d], the new
+    backend remains in place after the function returns. *)
 val with_rollback : t -> (unit -> 'a) -> 'a
 
 (** [clear_suffix ?count d] removes unprocessed items from the document suffix
@@ -121,39 +126,63 @@ val with_rollback : t -> (unit -> 'a) -> 'a
     [Invalid_argument] is raised. *)
 val clear_suffix : ?count:int -> t -> unit
 
-val run_step : t ->
-  (command_data option, string * command_error option) result
+(** [run_step d] advances the cursor of document [d] over the next unprocessed
+    item of the document suffix, returning similar data to [insert_command] if
+    the item is a command. If the document suffix is empty, [Invalid_argument]
+    is raised. *)
+val run_step : t -> (command_data option, command_error) result
+
+(** [run_steps d ~count] is similar to [run_step d], but it steps over [count]
+    unprocessed items. If the document suffix does not hold enough items, then
+    [Invalid_argument] is raised immediately (without processing any item). If
+    an error occurs while processing a command, then the function returns with
+    a value [Error(n, data)], where [n < count] indicates how many unprocessed
+    items have been processed successfully prior to the the failure. Note that
+    these items remain processed after the error is returned. *)
+val run_steps : t -> count:int -> (unit, int * command_error) result
 
 (** [advance_to d ~index] advances the cursor of document [d] to place it just
     before the item with the given [index]. If [index] is invalid, which means
     that it does not point to a valid item index (or one past the index of the
     last item), or that it points to an already processed item, then exception
     [Invalid_argument] is raised. In case of error while processing a command,
-    the cursor is left at the reached position, and [Error (loc,msg)] is given
-    similarly to what [insert_command] or [run_step] do. *)
-val advance_to : t -> index:int -> (unit, string * command_error) result
+    the cursor is left at the reached position, and [Error] is given similarly
+    to what [insert_command] or [run_step] do. *)
+val advance_to : t -> index:int -> (unit, command_error) result
 
 (** [go_to d ~index] is the same as [advance_to d ~index], but it additionally
     allows to revert to an earlier index like [revert_before d ~index]. In any
     case, no item is erased from the document. If the [index] is invalid, then
     [Invalid_argument] is raised. Valid indices range from [0] to one past the
     index of the last item in the document's suffix. *)
-val go_to : t -> index:int -> (unit, string * command_error) result
+val go_to : t -> index:int -> (unit, command_error) result
 
+(** Representation of a processed item (in the document's prefix). *)
 type processed_item = {
   index : int;
+  (** Index in the document, as passed to, e.g., [advance_to]. *)
   kind : [`Blanks | `Command | `Ghost];
+  (** Item kind. *)
   off : int;
+  (** Byte offset of the item in the document. *)
   text : string;
+  (** Text of the item. *)
 }
 
+(** Representation of an unprocessed item (in the document's suffix). *)
 type unprocessed_item = {
   kind : [`Blanks | `Command | `Ghost];
+  (** Item kind. *)
   text : string;
+  (** Text of the item. *)
 }
 
+(** [rev_prefix d] returns the reversed list of already-processed items in the
+    document [d] (in other words, its prefix). *)
 val rev_prefix : t -> processed_item list
 
+(** [suffix d] returns the list of not-yet-processed items in the document [d]
+    (in other words, its suffix). *)
 val suffix : t -> unprocessed_item list
 
 (** [contents ?include_ghost ?include_suffix d]  gives the current contents of
@@ -172,6 +201,12 @@ val contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string
 val commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool
   -> t -> (unit, string) result
 
+(** [compile d] attempts to run the Rocq compiler on the file corresponding to
+    the document [d], ignoring any uncommitted changes. The return value holds
+    a triple [(res, stdout, stderr)], where [res] indicates the success of the
+    operation, with a short error message describing the status with which the
+    compilation process terminated. The output of the process is also given in
+    [stdout] and [stderr]. *)
 val compile : t -> (unit, string) result * string * string
 
 (** [query d ~text] runs the command [text] at the cursor in document [d]. The
@@ -209,7 +244,12 @@ type json = Yojson.Safe.t
     not a valid JSON string, an [Error] is returned. *)
 val query_json : ?index:int -> t -> text:string -> (json, string) result
 
+(** [query_json_all ?indices d ~text] is similar to [query_text_all ?indices d
+    ~text], but the results are additionally turned into JSON data. If any one
+    of the results is not a valid JSON string, an [Error] is returned. *)
 val query_json_all : ?indices:int list -> t -> text:string
   -> (json list, string) result
 
+(** [dump d] gives a debug representation of the current state of document [d]
+    in JSON format. This function should solely be used for debugging. *)
 val dump : t -> json

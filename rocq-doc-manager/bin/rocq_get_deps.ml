@@ -38,9 +38,9 @@ let main : Document.t -> unit = fun state ->
   in
   let _ =
     let text = "Require Import skylabs_ai.tools.term_deps.plugin." in
-    match Document.run_command state ~text with
-    | Ok(_)    -> ()
-    | Error(e) -> panic "Error: %s" e
+    match Document.insert_command ~ghost:true state ~text with
+    | Ok(_)      -> ()
+    | Error(s,_) -> panic "Error: %s" s
   in
   let removed_inductives = Hashtbl.create 11 in
   let handle_removed_inductive loc i =

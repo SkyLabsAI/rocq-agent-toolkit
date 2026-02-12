@@ -184,6 +184,7 @@ let run : ic:In_channel.t -> oc:Out_channel.t -> workers:int ->
     handle_request:request_handler ->
     handle_notification:notification_handler -> (unit, string) Result.t =
     fun ~ic ~oc ~workers ~handle_request ~handle_notification ->
+  let workers = Int.max 1 workers in
   let state =
     let i_channel = ic in
     let i_queue = Queue.create () in
