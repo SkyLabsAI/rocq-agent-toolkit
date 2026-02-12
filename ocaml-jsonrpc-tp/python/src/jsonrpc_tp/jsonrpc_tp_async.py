@@ -83,7 +83,6 @@ class AsyncJsonRPCTP(AsyncProtocol):
             if method != "ready":
                 raise Error(f'Got "{method}" notification instead of "ready"')
         except Exception as e:
-            assert self._process is not None
             self._process.kill()
             raise Error(f"Failed to start JSON-RPC service: {e}") from e
 
@@ -143,7 +142,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
         await self._handlers_task
 
     def _check_running(self) -> None:
-        if not self._running:
+        if not self._running or not hasattr(self, "_process"):
             raise Error("Process has been stopped or is stopping.")
 
     async def _sender_loop(self) -> None:
