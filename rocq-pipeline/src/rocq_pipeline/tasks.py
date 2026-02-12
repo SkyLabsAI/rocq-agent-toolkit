@@ -116,6 +116,10 @@ class Task(BaseModel):
     def serialize_locator(self, locator: Locator):
         return str(locator)
 
+    @field_serializer("name")
+    def serialize_name(self, name: str | None):
+        return str(name)
+
 
 class TaskBundle(BaseModel):
     """A collection of tasks attached to the same Project."""
@@ -125,7 +129,7 @@ class TaskBundle(BaseModel):
 
     @field_serializer("tasks")
     def serialize_tasks(self, tasks: list[Task]):
-        return sorted(tasks, key=lambda t: (t.file, t.name, str(t.locator)))
+        return sorted(tasks, key=lambda t: (t.file, str(t.name), str(t.locator)))
 
     @classmethod
     def merge(cls, bundles: list[TaskBundle]) -> list[TaskBundle]:
