@@ -34,6 +34,20 @@ class SyncProtocol(Protocol):
         ...
 
 
+def _read_exactly(stream, nb_bytes: int) -> bytes:
+    buf = bytearray(nb_bytes)
+    view = memoryview(buf)
+    bytes_received = 0
+    while bytes_received < nb_bytes:
+        n = stream.readinto(view[bytes_received:])
+        if n == 0:
+            raise Error(
+                f"End of file reached with {bytes_received}/{nb_bytes} bytes received."
+            )
+        bytes_received += n
+    return bytes(buf)
+
+
 class JsonRPCTP(SyncProtocol):
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
@@ -97,7 +111,7 @@ class JsonRPCTP(SyncProtocol):
             self._process = None
             raise Error(f"Failed to parse header: {header}", e) from e
         assert self._process.stdout is not None
-        response = self._process.stdout.read(nb_bytes).decode()
+        response = _read_exactly(self._process.stdout, nb_bytes).decode()
         return json.loads(response)
 
     def raw_notification(
