@@ -25,6 +25,8 @@ import typing
 from collections.abc import Callable
 from typing import Any, Protocol
 
+# TODO: Maybe we could simply derive this entire file using pydantic serialization?
+
 
 class TypeMismatch(Exception):
     pass
@@ -226,3 +228,8 @@ class UnguidedDecoder:
     def add_decoders(self, decoders: dict[Any, DecoderFn]) -> None:
         for ty, fn in decoders.items():
             self.add_decoder(ty, fn)
+
+
+class EncoderProtocol(Protocol):
+    def encode(self, o: Any) -> Any:
+        pass
