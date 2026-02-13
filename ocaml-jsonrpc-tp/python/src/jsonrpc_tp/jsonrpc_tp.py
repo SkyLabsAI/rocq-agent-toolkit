@@ -1,10 +1,7 @@
 import json
 import subprocess
 from collections.abc import Callable
-from typing import (
-    Any,
-    Protocol,
-)
+from typing import IO, Any, Protocol
 
 from .jsonrpc_tp_types import Err, Error, Resp
 
@@ -62,7 +59,7 @@ class JsonRPCTP(SyncProtocol):
                 args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
                 cwd=cwd,
                 env=env,
             )
@@ -70,9 +67,15 @@ class JsonRPCTP(SyncProtocol):
             self._process = None
             raise Error(f"Failed to start process: {e}") from e
 
+        # Gather the pipes.
+        assert self._process.stdin is not None
+        self._stdin: IO[bytes] = self._process.stdin
+        assert self._process.stdout is not None
+        self._stdout: IO[bytes] = self._process.stdout
+
         # Check the "ready_seq" notification
         try:
-            ready = self.recv()
+            ready = self._recv()
             if "method" not in ready:
                 raise Error(f"Unexpected packet: {ready} (not a notification)")
             method = ready.get("method")
@@ -82,44 +85,20 @@ class JsonRPCTP(SyncProtocol):
             self._kill_process()
             raise Error(f"Failed to start JSON-RPC service: {e}") from e
 
-    def send(self, req: bytes) -> None:
-        if self._process is None:
-            raise Error("Not running anymore.")
-        assert self._process.stdin is not None
-        prefix = "Content-Length: "
-        self._process.stdin.write(f"{prefix}{len(req) + 1}\r\n\r\n".encode())
-        self._process.stdin.write(req)
-        self._process.stdin.write(b"\n")
-        self._process.stdin.flush()
-
-    def recv(self) -> Any:
-        if self._process is None:
-            raise Error("Not running anymore.")
-        assert self._process.stdout is not None
-        prefix = "Content-Length: "
-        header: str = self._process.stdout.readline().decode()
-        _ = self._process.stdout.readline()
-        if not header.startswith(prefix):
-            self._kill_process()
-            raise Error(f"Invalid message header: '{header}'")
-        try:
-            nb_bytes = int(header[len(prefix) : -2])
-        except Exception as e:
-            self._kill_process()
-            raise Error(f"Failed to parse header: {header}", e) from e
-        assert self._process.stdout is not None
-        response = _read_exactly(self._process.stdout, nb_bytes).decode()
-        return json.loads(response)
+    def __del__(self) -> None:
+        if self._process is not None:
+            self.quit()
 
     def raw_notification(
         self,
         method: str,
         params: list[Any],
     ) -> None:
+        self._check_running()
         notification = json.dumps(
             {"jsonrpc": "2.0", "method": method, "params": params}
         ).encode()
-        self.send(notification)
+        self._send(notification)
 
     def raw_request(
         self,
@@ -127,6 +106,7 @@ class JsonRPCTP(SyncProtocol):
         params: list[Any],
         handle_notification: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> Resp[Any] | Err[Any]:
+        self._check_running()
         # Getting a fresh request id.
         self._counter = self._counter + 1
         fresh_id = self._counter
@@ -134,10 +114,10 @@ class JsonRPCTP(SyncProtocol):
         req = json.dumps(
             {"jsonrpc": "2.0", "method": method, "params": params, "id": fresh_id}
         ).encode()
-        self.send(req)
+        self._send(req)
         # Reading the response.
         while True:
-            response = self.recv()
+            response = self._recv()
             if "error" in response:
                 # Error response for the request.
                 error = response.get("error")
@@ -166,19 +146,40 @@ class JsonRPCTP(SyncProtocol):
                 if handle_notification:
                     handle_notification(method, params)
 
-    # Note: we could potentially fuse this with `quit` (using a `wait: bool = True` flag)
-    def _kill_process(self) -> None:
-        """Idempotent helper to kill the process in case of errors."""
-        if self._process is None:
-            return
-
-        self._process.kill()
-        self._process = None
-
     def quit(self) -> None:
-        if self._process is None:
-            return
-        assert self._process.stdin is not None
-        self._process.stdin.close()
+        self._check_running()
+        assert self._process is not None
+        self._stdin.close()
         self._process.wait()
         self._process = None
+
+    def _check_running(self) -> None:
+        if self._process is None:
+            raise Error("Not running anymore.")
+
+    def _kill_process(self) -> None:
+        if self._process is not None:
+            self._process.kill()
+            self._process = None
+
+    def _send(self, req: bytes) -> None:
+        prefix = "Content-Length: "
+        self._stdin.write(f"{prefix}{len(req) + 1}\r\n\r\n".encode())
+        self._stdin.write(req)
+        self._stdin.write(b"\n")
+        self._stdin.flush()
+
+    def _recv(self) -> Any:
+        prefix = "Content-Length: "
+        header: str = self._stdout.readline().decode()
+        _ = self._stdout.readline()
+        if not header.startswith(prefix):
+            self._kill_process()
+            raise Error(f"Invalid message header: '{header}'")
+        try:
+            nb_bytes = int(header[len(prefix) : -2])
+        except Exception as e:
+            self._kill_process()
+            raise Error(f"Failed to parse header: {header}", e) from e
+        response = _read_exactly(self._stdout, nb_bytes).decode()
+        return json.loads(response)

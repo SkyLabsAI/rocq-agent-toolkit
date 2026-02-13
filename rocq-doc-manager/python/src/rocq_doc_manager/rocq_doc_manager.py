@@ -50,10 +50,6 @@ class RocqDocManager(API):
         args = command + [file_path, "--"] + rocq_args
         super().__init__(JsonRPCTP(args=args, cwd=chdir, env=env))
 
-    def __del__(self) -> None:
-        if hasattr(self, "_rpc") and self._rpc:
-            self._rpc.quit()
-
     def cursor(self) -> RocqCursor:
         return RocqCursor(self, 0)
 
