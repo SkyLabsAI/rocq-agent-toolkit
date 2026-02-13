@@ -79,8 +79,7 @@ class JsonRPCTP(SyncProtocol):
             if method != "ready_seq":
                 raise Error(f'Got "{method}" notification instead of "ready_seq"')
         except Exception as e:
-            self._process.kill()
-            self._process = None
+            self._kill_process()
             raise Error(f"Failed to start JSON-RPC service: {e}") from e
 
     def send(self, req: bytes) -> None:
@@ -101,14 +100,12 @@ class JsonRPCTP(SyncProtocol):
         header: str = self._process.stdout.readline().decode()
         _ = self._process.stdout.readline()
         if not header.startswith(prefix):
-            self._process.kill()
-            self._process = None
+            self._kill_process()
             raise Error(f"Invalid message header: '{header}'")
         try:
             nb_bytes = int(header[len(prefix) : -2])
         except Exception as e:
-            self._process.kill()
-            self._process = None
+            self._kill_process()
             raise Error(f"Failed to parse header: {header}", e) from e
         assert self._process.stdout is not None
         response = _read_exactly(self._process.stdout, nb_bytes).decode()
@@ -168,6 +165,15 @@ class JsonRPCTP(SyncProtocol):
                 assert isinstance(params, dict)
                 if handle_notification:
                     handle_notification(method, params)
+
+    # Note: we could potentially fuse this with `quit` (using a `wait: bool = True` flag)
+    def _kill_process(self) -> None:
+        """Idempotent helper to kill the process in case of errors."""
+        if self._process is None:
+            return
+
+        self._process.kill()
+        self._process = None
 
     def quit(self) -> None:
         if self._process is None:
