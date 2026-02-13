@@ -193,7 +193,7 @@ class TracingCursor(RocqCursor):
         )
         result = {"id": hashlib.md5(raw.encode("utf-8")).hexdigest()}
         if self._verbose and (goal := self._untraced_current_goal()):
-            result["goal"] = goal.to_json()
+            result["goal"] = goal.model_dump_json()
         return result
 
     def _untraced_current_goal(self) -> rdm_api.ProofState | None:

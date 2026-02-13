@@ -208,8 +208,6 @@ let quickfix =
 
 let feedback_message =
   let level =
-    let values = Feedback.[Debug; Info; Notice; Warning; Error] in
-    let default = Feedback.Notice in
     let encode v =
       match v with
       | Feedback.Debug   -> "debug"
@@ -218,7 +216,7 @@ let feedback_message =
       | Feedback.Warning -> "warning"
       | Feedback.Error   -> "error"
     in
-    S.variant ~values ~default ~encode
+    S.variant ~encode Feedback.[Debug; Info; Notice; Warning; Error]
   in
   let fields =
     API.Fields.add ~name:"level" level @@
@@ -423,15 +421,13 @@ let _ =
   Result.map_error (fun (i, (s, e)) -> (s, (i, e))) res
 
 let item_kind =
-  let values = [`Blanks; `Command; `Ghost] in
-  let default = `Command in
   let encode v =
     match v with
     | `Blanks  -> "blanks"
     | `Command -> "command"
     | `Ghost   -> "ghost"
   in
-  S.variant ~values ~default ~encode
+  S.variant ~encode [`Blanks; `Command; `Ghost]
 
 let prefix_item =
   let fields =

@@ -167,6 +167,7 @@ class RDM_Tests:
         expected_prefix_extension = [
             rdm_api.PrefixItem(
                 text=cmd,
+                offset=0,
                 kind="command",
             )
             for cmd in cmds

@@ -5,7 +5,7 @@ type json = Yojson.Safe.t
 module Schema = struct
   type 'a variant_spec = {
     values : 'a list;
-    default : 'a;
+    default : 'a option;
     encode : 'a -> string;
   }
 
@@ -25,7 +25,7 @@ module Schema = struct
   let int = Int
   let bool = Bool
   let string = String
-  let variant ~values ~default ~encode = Variant({values; default; encode})
+  let variant ?default ~encode values = Variant({values; default; encode})
   let nullable s = Nullable(s)
   let list s = List(s)
   let obj o = Obj(o)
@@ -64,21 +64,6 @@ module Schema = struct
     in
     python_type
 
-  (* Ensure every field has a default; auto-generated methods use dictionary
-     unpacking and must handle cases where null/empty fields are elided. *)
-  let python_dataclass_field : type a. a t -> string = fun s ->
-    Printf.sprintf "field(\n        kw_only=True,\n        %s,\n    )" @@
-    match s with
-    | Null -> "default=None"
-    | Any -> "default=None"
-    | Int -> "default=0"
-    | Bool -> "default=False"
-    | String -> "default=\"\""
-    | Variant s -> Printf.sprintf "default=%S" (s.encode s.default)
-    | Nullable _ -> "default=None"
-    | List _ -> "default_factory=list"
-    | Obj o -> Printf.sprintf "default_factory=lambda: %s()" o.name
-
   let python_val : type a. string -> a t -> string = fun var s ->
     let fresh = let c = ref 0 in fun () -> incr c; Printf.sprintf "v%i" !c in
     let rec python_val : type a. string -> a t -> string = fun var s ->
@@ -94,7 +79,7 @@ module Schema = struct
       | List s ->
           let fresh = fresh () in
           Printf.sprintf "[%s for %s in %s]" (python_val fresh s) fresh var
-      | Obj o -> Printf.sprintf "%s.from_dict(%s)" o.name var
+      | Obj o -> Printf.sprintf "%s.model_validate(%s)" o.name var
     in
     python_val var s
 
@@ -103,6 +88,7 @@ module Schema = struct
     | (Null       , ()   ) -> true
     | (Bool       , false) -> true
     | (List(_)    , []   ) -> true
+    | (Variant(v) , c    ) -> Some(c) = v.default
     | (Nullable(_), None ) -> true
     | (Obj(o)     , v    ) -> Some(v) = o.default
     | (_          , _    ) -> false
@@ -112,9 +98,26 @@ module Schema = struct
     | Null        -> Some(())
     | Bool        -> Some(false)
     | List(_)     -> Some([])
+    | Variant(v)  -> v.default
     | Nullable(_) -> Some(None)
     | Obj(o)      -> o.default
     | _           -> None
+
+  let pp_python_default : type a. prefix:string -> Out_channel.t -> a t
+      -> unit = fun ~prefix oc s ->
+    let line fmt = Printf.fprintf oc ("%s" ^^ fmt ^^ ",\n") prefix in
+    match s with
+    | Null        -> line "default=None"
+    | Bool        -> line "default=False"
+    | Variant(v)  ->
+        let default d = line "default=%S" (v.encode d) in
+        Option.iter default v.default
+    | Nullable(_) -> line "default=None"
+    | List(_)     -> line "default_factory=list"
+    | Obj(o)      ->
+        let default _ = line "default_factory=lambda: %s()" o.name in
+        Option.iter default o.default
+    | _           -> ()
 end
 
 module GenList() = struct
@@ -211,7 +214,22 @@ let create : name:string -> _ api = fun ~name ->
 let duplicate fname =
   invalid_arg ("Jsonrpc_tp.Interface." ^ fname ^ ": duplicate name")
 
+let invalid_default name =
+  invalid_arg ("default value for field " ^ name ^ " is not valid")
+
 let declare_object api ~name ?descr ?default ~encode ~decode fields =
+  let check_default d =
+    let rec check : type a. a Fields.t -> a -> unit = fun fields vs ->
+      match (fields, vs) with
+      | (Fields.Nil   , ()     ) -> ()
+      | (Fields.Cns(f), (v, vs)) ->
+      match Some(v) = Schema.default f.schema with
+      | true  -> check f.tail vs
+      | false -> invalid_default f.name
+    in
+    check fields (decode d)
+  in
+  Option.iter check_default default;
   match List.exists (fun (A(O(r))) -> r.key.name = name) api.api_objects with
   | true  -> duplicate "declare_object"
   | false ->
@@ -559,13 +577,11 @@ let output_python_api oc api =
   let pp_capitalized oc s = output_string oc (String.capitalize_ascii s) in
   line "from __future__ import annotations";
   line "";
-  line "from dataclasses import dataclass, field";
-  line "";
   line "# ruff: noqa: C416 -- unnecessary list comprehension";
   line "from typing import Any, Literal";
   line "";
-  line "from dataclasses_json import DataClassJsonMixin";
   line "from jsonrpc_tp import AsyncProtocol, Err, Error, Resp, SyncProtocol";
+  line "from pydantic import BaseModel, Field";
   line "";
   let exports =
     [api.name; "Err"; "Error"; "Resp"] @
@@ -577,16 +593,16 @@ let output_python_api oc api =
   let output_object (A(O(o))) =
     line "";
     line "";
-    line "@dataclass(frozen=True)";
-    line "class %s(DataClassJsonMixin):" o.key.name;
+    line "class %s(BaseModel):" o.key.name;
     Option.iter (line "    \"\"\"%a.\"\"\"\n" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->
       output_fields f.tail;
-      Option.iter (line "    # %a." pp_capitalized) f.descr;
-      line "    %s: %s = %s" f.name
-        (Schema.python_type f.schema)
-        (Schema.python_dataclass_field f.schema)
+      line "    %s: %s = Field(" f.name (Schema.python_type f.schema);
+      line "        kw_only=True,";
+      Schema.pp_python_default ~prefix:"        " oc f.schema;
+      Option.iter (line "        description=%S,") f.descr;
+      line "    )"
     in
     output_fields o.fields
   in

@@ -9,6 +9,8 @@ from typing import (
     override,
 )
 
+from pydantic import BaseModel
+
 from rocq_doc_manager.microrpc.dipatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
 from rocq_doc_manager.rocq_cursor_protocol import (
@@ -51,6 +53,8 @@ class Encoder(json.JSONEncoder, EncoderProtocol):
             return {"_ty": "rdm_api.Err", "message": o.message, "data": o.data}
         elif isinstance(o, rdm_api.Resp):
             return {"_ty": "rdm_api.Resp", "result": o.result}
+        elif isinstance(o, BaseModel):
+            return o.model_dump()
         elif dataclasses.is_dataclass(type(o)):
             result = {k.name: getattr(o, k.name) for k in dataclasses.fields(o)}
             assert "_ty" not in result
