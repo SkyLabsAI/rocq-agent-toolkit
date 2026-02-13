@@ -6,7 +6,7 @@ from jsonrpc_tp import AsyncJsonRPCTP, JsonRPCTP
 from rocq_dune_util import dune_env_hack
 
 from . import rocq_doc_manager_api as rdm_api
-from .rocq_cursor import RocqCursor
+from .rocq_cursor import RDMRocqCursor, RocqCursor
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
 from .rocq_doc_manager_api import RocqDocManagerAPIAsync as AsyncAPI
 
@@ -51,7 +51,7 @@ class RocqDocManager(API):
         super().__init__(JsonRPCTP(args=args, cwd=chdir, env=env))
 
     def cursor(self) -> RocqCursor:
-        return RocqCursor(self, 0)
+        return RDMRocqCursor(self, 0)
 
     def quit(self) -> None:
         self._rpc.quit()
