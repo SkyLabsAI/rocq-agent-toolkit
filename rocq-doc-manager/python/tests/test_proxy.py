@@ -4,13 +4,16 @@ from typing import Any
 import pytest
 import pytest_asyncio
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_doc_manager.microrpc.tunnel import WSMux, WSServer
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocolAsync
 from rocq_doc_manager.rocq_cursor_websocket import (
+    ClosedError,
+    ClosedOK,
     CursorDispatcher,
     CursorId,
     WSCursor,
-    WSMux,
-    WSServer,
+    decoder,
+    encoder,
 )
 from websockets import connect, serve
 
@@ -27,13 +30,20 @@ class Test_API(RDM_Tests):
         id = CursorId(cursor=0)
 
         async def handle(conn):
-            server = WSServer(conn, CursorDispatcher({id: rc}))
+            server = WSServer(
+                conn,
+                CursorDispatcher({id: rc}),
+                encoder,
+                decoder,
+            )
             await server.serve()
 
         async with serve(handle, host="127.0.0.1", port=None) as server:
             (host, port) = list(server.sockets)[0].getsockname()
             async with connect(f"ws://{host}:{port}") as client:
-                mux = WSMux(client)
+                mux = WSMux(
+                    client, encoder, decoder, closed_ok=ClosedOK, closed_err=ClosedError
+                )
                 await mux.start()
                 yield WSCursor.create(mux, id)
 
