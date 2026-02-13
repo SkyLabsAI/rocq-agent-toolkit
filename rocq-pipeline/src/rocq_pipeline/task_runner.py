@@ -184,6 +184,29 @@ def run_task(
         task_result: TaskResult | None = None
         agent = build_agent(task.prompt)
 
+        agent_class_checksum = agent.cls_checksum()
+        agent_instance_checksum = agent.checksum()
+        agent_class_provenance = agent.cls_provenance_json()
+        agent_instance_provenance = agent.provenance_json()
+        # Simply printing the Provenance data make them separate key value pairs in the log.
+        # To keep them together so they are easy to retrieve, we wrap them in a "json".
+        #
+        # TODO: avoid re-logging if we've already logged AgentClassProvenance
+        # or AgentProvenance with this checksum.
+        logger.info(
+            "AgentClassProvenance",
+            cls_checksum=agent_class_checksum,
+            cls_name=agent.cls_name(),
+            cls_provenance={"cls_provenance": agent_class_provenance},
+        )
+        logger.info(
+            "AgentProvenance",
+            cls_checksum=agent_class_checksum,  # For correlation with class
+            checksum=agent_instance_checksum,
+            name=agent.name(),
+            provenance={"provenance": agent_instance_provenance},
+        )
+
         try:
             task_file = task.file
             progress.status(0.01, "🔃")
@@ -255,33 +278,14 @@ def run_task(
         for task_tag in task.tags:
             tags.value.update({f"TASK_{task_tag}": task_tag})
 
-        # TODO: avoid re-logging if we've already logged AgentClassProvenance
-        # or AgentProvenance with this checksum.
-        class_provenance = agent.cls_provenance_json()
-        instance_provenance = agent.provenance_json()
-        # Simply printing the Provenance data make them separate key value pairs in the log.
-        # To keep them together so they are easy to retrieve, we wrap them in a "json".
-        logger.info(
-            "AgentClassProvenance",
-            cls_checksum=agent.cls_checksum(),
-            cls_name=agent.cls_name(),
-            cls_provenance={"cls_provenance": class_provenance},
-        )
-        logger.info(
-            "AgentProvenance",
-            cls_checksum=agent.cls_checksum(),  # For correlation with class
-            checksum=agent.checksum(),
-            name=agent.name(),
-            provenance={"provenance": instance_provenance},
-        )
         return task_result.to_task_output(
             run_id=run_id,
             task_kind=task.get_kind(),
             task_id=task_id,
             dataset_id=dataset_id,
             timestamp_utc=timestamp_iso_8601,
-            agent_cls_checksum=agent.cls_checksum(),
-            agent_checksum=agent.checksum(),
+            agent_cls_checksum=agent_class_checksum,
+            agent_checksum=agent_instance_checksum,
             trace_id=trace_id,
             metadata=task_output.Metadata(tags=tags),
         )
