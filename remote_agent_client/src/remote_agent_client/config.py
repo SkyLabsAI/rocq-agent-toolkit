@@ -19,6 +19,10 @@ class RemoteProofAgentConfig:
     # Optional BYOK/model selection passed through to the server.
     inference: dict[str, JsonValue] | None = None
 
+    # GitHub auth token to present to the remote server.
+    # This is sent as an HTTP `Authorization: Bearer ...` header during session creation.
+    github_token: str | None = None
+
     # Budget controls enforced by the server.
     budget: dict[str, JsonValue] = field(default_factory=dict)
 
