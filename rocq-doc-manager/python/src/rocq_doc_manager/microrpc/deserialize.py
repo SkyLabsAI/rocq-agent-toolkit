@@ -25,6 +25,8 @@ import typing
 from collections.abc import Callable
 from typing import Any, Protocol
 
+from pydantic import BaseModel, ValidationError
+
 # TODO: Maybe we could simply derive this entire file using pydantic serialization?
 
 
@@ -123,13 +125,19 @@ class Decoder(DecoderAPI):
                 # print("-> NoneType")
                 assert params == []
                 if value is not None:
-                    raise TypeMismatch
+                    raise TypeMismatch()
                 return value
             case builtins.str | builtins.bool | builtins.int | builtins.float:
                 assert params == []
                 if not isinstance(value, ty):
                     raise TypeMismatch()
                 return value
+            case _ if isinstance(ty, type) and issubclass(ty, BaseModel):
+                # print("-> BaseModel")
+                try:
+                    return ty.model_validate(value, strict=True, extra="forbid")
+                except ValidationError as e:
+                    raise TypeMismatch(e.errors()) from e
             case _ if dataclasses.is_dataclass(ty):
                 # print("-> DataClassJsonMixin")
                 if not isinstance(value, dict):

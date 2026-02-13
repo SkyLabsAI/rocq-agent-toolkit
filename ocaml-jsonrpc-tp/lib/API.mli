@@ -26,7 +26,7 @@ module Schema : sig
   val string : string t
 
   (** [variant] is a schema specifying an alternative of literal values. *)
-  val variant : values:'a list -> default:'a -> encode:('a -> string) -> 'a t
+  val variant : ?default:'a -> encode:('a -> string) -> 'a list -> 'a t
 
   (** [nullable s] is a schema that specifies either the same kind of value as
       [s], or a "null" value. The interpretation is [None] in the latter case,
@@ -87,7 +87,7 @@ type notification
     what the object type represent. The [encode] and [decode] functions may be
     used to specify a higher-level OCaml type for the object's representation.
     Exception [Invalid_argument] is raised if an object of the same [name] was
-    already declared in [api]. *)
+    already declared in [api], or if the [default] value is invalid. *)
 val declare_object : _ api -> name:string -> ?descr:string -> ?default:'b
   -> encode:('a -> 'b) -> decode:('b -> 'a) -> 'a Fields.t -> 'b api_obj
 

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 # ruff: noqa: C416 -- unnecessary list comprehension
 from typing import Any, Literal
 
-from dataclasses_json import DataClassJsonMixin
 from jsonrpc_tp import AsyncProtocol, Err, Error, Resp, SyncProtocol
+from pydantic import BaseModel, Field
 
 __all__ = [
     "RocqDocManagerAPI",
@@ -28,239 +26,205 @@ __all__ = [
 ]
 
 
-@dataclass(frozen=True)
-class RocqSource(DataClassJsonMixin):
+class RocqSource(BaseModel):
     """Rocq source file information."""
 
-    file: str = field(
+    file: str = Field(
         kw_only=True,
-        default="",
     )
-    dirpath: str | None = field(
+    dirpath: str | None = Field(
         kw_only=True,
         default=None,
     )
 
 
-@dataclass(frozen=True)
-class RocqLoc(DataClassJsonMixin):
+class RocqLoc(BaseModel):
     """Rocq source code location."""
 
-    # End position.
-    ep: int = field(
+    ep: int = Field(
         kw_only=True,
-        default=0,
+        description="end position",
     )
-    # Start position.
-    bp: int = field(
+    bp: int = Field(
         kw_only=True,
-        default=0,
+        description="start position",
     )
-    # Position of the beginning of end line.
-    bol_pos_last: int = field(
+    bol_pos_last: int = Field(
         kw_only=True,
-        default=0,
+        description="position of the beginning of end line",
     )
-    # End line number.
-    line_nb_last: int = field(
+    line_nb_last: int = Field(
         kw_only=True,
-        default=0,
+        description="end line number",
     )
-    # Position of the beginning of start line.
-    bol_pos: int = field(
+    bol_pos: int = Field(
         kw_only=True,
-        default=0,
+        description="position of the beginning of start line",
     )
-    # Start line number.
-    line_nb: int = field(
+    line_nb: int = Field(
         kw_only=True,
-        default=0,
+        description="start line number",
     )
-    # Source file identification if not run as a toplevel.
-    fname: RocqSource | None = field(
+    fname: RocqSource | None = Field(
         kw_only=True,
         default=None,
+        description="source file identification if not run as a toplevel",
     )
 
 
-@dataclass(frozen=True)
-class Quickfix(DataClassJsonMixin):
+class Quickfix(BaseModel):
     """Quick fix hint."""
 
-    text: str = field(
+    text: str = Field(
         kw_only=True,
-        default="",
     )
-    loc: RocqLoc = field(
+    loc: RocqLoc = Field(
         kw_only=True,
-        default_factory=lambda: RocqLoc(),
     )
 
 
-@dataclass(frozen=True)
-class FeedbackMessage(DataClassJsonMixin):
+class FeedbackMessage(BaseModel):
     """Rocq feedback message."""
 
-    text: str = field(
+    text: str = Field(
         kw_only=True,
-        default="",
     )
-    quickfix: list[Quickfix] = field(
+    quickfix: list[Quickfix] = Field(
         kw_only=True,
         default_factory=list,
     )
-    loc: RocqLoc | None = field(
+    loc: RocqLoc | None = Field(
         kw_only=True,
         default=None,
     )
-    level: Literal["debug", "info", "notice", "warning", "error"] = field(
+    level: Literal["debug", "info", "notice", "warning", "error"] = Field(
         kw_only=True,
-        default="notice",
     )
 
 
-@dataclass(frozen=True)
-class GlobrefsDiff(DataClassJsonMixin):
+class GlobrefsDiff(BaseModel):
     """Environment modification performed by a Rocq command."""
 
-    removed_inductives: list[str] = field(
+    removed_inductives: list[str] = Field(
         kw_only=True,
         default_factory=list,
     )
-    added_inductives: list[str] = field(
+    added_inductives: list[str] = Field(
         kw_only=True,
         default_factory=list,
     )
-    removed_constants: list[str] = field(
+    removed_constants: list[str] = Field(
         kw_only=True,
         default_factory=list,
     )
-    added_constants: list[str] = field(
+    added_constants: list[str] = Field(
         kw_only=True,
         default_factory=list,
     )
 
 
-@dataclass(frozen=True)
-class ProofState(DataClassJsonMixin):
+class ProofState(BaseModel):
     """Summary of a Rocq proof state, including the text of focused goals."""
 
-    focused_goals: list[str] = field(
+    focused_goals: list[str] = Field(
         kw_only=True,
         default_factory=list,
     )
-    unfocused_goals: list[int] = field(
+    unfocused_goals: list[int] = Field(
         kw_only=True,
         default_factory=list,
     )
-    shelved_goals: int = field(
+    shelved_goals: int = Field(
         kw_only=True,
-        default=0,
     )
-    given_up_goals: int = field(
+    given_up_goals: int = Field(
         kw_only=True,
-        default=0,
     )
 
 
-@dataclass(frozen=True)
-class CommandData(DataClassJsonMixin):
+class CommandData(BaseModel):
     """Data gathered while running a Rocq command."""
 
-    proof_state: ProofState | None = field(
+    proof_state: ProofState | None = Field(
         kw_only=True,
         default=None,
     )
-    feedback_messages: list[FeedbackMessage] = field(
+    feedback_messages: list[FeedbackMessage] = Field(
         kw_only=True,
         default_factory=list,
     )
-    globrefs_diff: GlobrefsDiff = field(
+    globrefs_diff: GlobrefsDiff = Field(
         kw_only=True,
         default_factory=lambda: GlobrefsDiff(),
     )
 
 
-@dataclass(frozen=True)
-class CommandError(DataClassJsonMixin):
+class CommandError(BaseModel):
     """Data returned on Rocq command errors."""
 
-    feedback_messages: list[FeedbackMessage] = field(
+    feedback_messages: list[FeedbackMessage] = Field(
         kw_only=True,
         default_factory=list,
     )
-    # Optional source code location for the error.
-    error_loc: RocqLoc | None = field(
+    error_loc: RocqLoc | None = Field(
         kw_only=True,
         default=None,
+        description="optional source code location for the error",
     )
 
 
-@dataclass(frozen=True)
-class StepsError(DataClassJsonMixin):
+class StepsError(BaseModel):
     """Data returned by `run_steps`."""
 
-    cmd_error: CommandError = field(
+    cmd_error: CommandError = Field(
         kw_only=True,
-        default_factory=lambda: CommandError(),
     )
-    # Number of unprocessed items that were processed successfully.
-    nb_processed: int = field(
+    nb_processed: int = Field(
         kw_only=True,
-        default=0,
+        description="number of unprocessed items that were processed successfully",
     )
 
 
-@dataclass(frozen=True)
-class PrefixItem(DataClassJsonMixin):
+class PrefixItem(BaseModel):
     """Document prefix item, appearing before the cursor."""
 
-    text: str = field(
+    text: str = Field(
         kw_only=True,
-        default="",
     )
-    offset: int = field(
+    offset: int = Field(
         kw_only=True,
-        default=0,
     )
-    kind: Literal["blanks", "command", "ghost"] = field(
+    kind: Literal["blanks", "command", "ghost"] = Field(
         kw_only=True,
-        default="command",
     )
 
 
-@dataclass(frozen=True)
-class SuffixItem(DataClassJsonMixin):
+class SuffixItem(BaseModel):
     """Document suffix item, appearing after the cursor."""
 
-    text: str = field(
+    text: str = Field(
         kw_only=True,
-        default="",
     )
-    kind: Literal["blanks", "command", "ghost"] = field(
+    kind: Literal["blanks", "command", "ghost"] = Field(
         kw_only=True,
-        default="command",
     )
 
 
-@dataclass(frozen=True)
-class CompileResult(DataClassJsonMixin):
+class CompileResult(BaseModel):
     """Result of the `compile` method."""
 
-    # Non-null if success is false.
-    error: str | None = field(
+    error: str | None = Field(
         kw_only=True,
         default=None,
+        description="non-null if success is false",
     )
-    stderr: str = field(
+    stderr: str = Field(
         kw_only=True,
-        default="",
     )
-    stdout: str = field(
+    stdout: str = Field(
         kw_only=True,
-        default="",
     )
-    success: bool = field(
+    success: bool = Field(
         kw_only=True,
         default=False,
     )
@@ -283,7 +247,7 @@ class RocqDocManagerAPI:
             [cursor, index],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else CommandError.from_dict(result.data)
+            data = None if result.data is None else CommandError.model_validate(result.data)
             return Err(result.message, data)
         return None
 
@@ -339,7 +303,7 @@ class RocqDocManagerAPI:
             [cursor],
         )
         assert not isinstance(result, Err)
-        return CompileResult.from_dict(result.result)
+        return CompileResult.model_validate(result.result)
 
     def contents(
         self,
@@ -402,7 +366,7 @@ class RocqDocManagerAPI:
             [cursor],
         )
         assert not isinstance(result, Err)
-        return [PrefixItem.from_dict(v1) for v1 in result.result]
+        return [PrefixItem.model_validate(v1) for v1 in result.result]
 
     def doc_suffix(
         self,
@@ -414,7 +378,7 @@ class RocqDocManagerAPI:
             [cursor],
         )
         assert not isinstance(result, Err)
-        return [SuffixItem.from_dict(v1) for v1 in result.result]
+        return [SuffixItem.model_validate(v1) for v1 in result.result]
 
     def dump(
         self,
@@ -439,7 +403,7 @@ class RocqDocManagerAPI:
             [cursor, index],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else CommandError.from_dict(result.data)
+            data = None if result.data is None else CommandError.model_validate(result.data)
             return Err(result.message, data)
         return None
 
@@ -479,9 +443,9 @@ class RocqDocManagerAPI:
             [cursor, text],
         )
         if isinstance(result, Err):
-            data = CommandError.from_dict(result.data)
+            data = CommandError.model_validate(result.data)
             return Err(result.message, data)
-        return CommandData.from_dict(result.result)
+        return CommandData.model_validate(result.result)
 
     def load_file(
         self,
@@ -493,7 +457,7 @@ class RocqDocManagerAPI:
             [cursor],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else RocqLoc.from_dict(result.data)
+            data = None if result.data is None else RocqLoc.model_validate(result.data)
             return Err(result.message, data)
         return None
 
@@ -524,7 +488,7 @@ class RocqDocManagerAPI:
         if isinstance(result, Err):
             data = None
             return Err(result.message, data)
-        return CommandData.from_dict(result.result)
+        return CommandData.model_validate(result.result)
 
     def query_json(
         self,
@@ -617,7 +581,7 @@ class RocqDocManagerAPI:
         if isinstance(result, Err):
             data = None
             return Err(result.message, data)
-        return CommandData.from_dict(result.result)
+        return CommandData.model_validate(result.result)
 
     def run_step(
         self,
@@ -629,9 +593,9 @@ class RocqDocManagerAPI:
             [cursor],
         )
         if isinstance(result, Err):
-            data = CommandError.from_dict(result.data)
+            data = CommandError.model_validate(result.data)
             return Err(result.message, data)
-        return None if result.result is None else CommandData.from_dict(result.result)
+        return None if result.result is None else CommandData.model_validate(result.result)
 
     def run_steps(
         self,
@@ -644,7 +608,7 @@ class RocqDocManagerAPI:
             [cursor, count],
         )
         if isinstance(result, Err):
-            data = StepsError.from_dict(result.data)
+            data = StepsError.model_validate(result.data)
             return Err(result.message, data)
         return None
 
@@ -666,7 +630,7 @@ class RocqDocManagerAPIAsync:
             [cursor, index],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else CommandError.from_dict(result.data)
+            data = None if result.data is None else CommandError.model_validate(result.data)
             return Err(result.message, data)
         return None
 
@@ -722,7 +686,7 @@ class RocqDocManagerAPIAsync:
             [cursor],
         )
         assert not isinstance(result, Err)
-        return CompileResult.from_dict(result.result)
+        return CompileResult.model_validate(result.result)
 
     async def contents(
         self,
@@ -785,7 +749,7 @@ class RocqDocManagerAPIAsync:
             [cursor],
         )
         assert not isinstance(result, Err)
-        return [PrefixItem.from_dict(v1) for v1 in result.result]
+        return [PrefixItem.model_validate(v1) for v1 in result.result]
 
     async def doc_suffix(
         self,
@@ -797,7 +761,7 @@ class RocqDocManagerAPIAsync:
             [cursor],
         )
         assert not isinstance(result, Err)
-        return [SuffixItem.from_dict(v1) for v1 in result.result]
+        return [SuffixItem.model_validate(v1) for v1 in result.result]
 
     async def dump(
         self,
@@ -822,7 +786,7 @@ class RocqDocManagerAPIAsync:
             [cursor, index],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else CommandError.from_dict(result.data)
+            data = None if result.data is None else CommandError.model_validate(result.data)
             return Err(result.message, data)
         return None
 
@@ -862,9 +826,9 @@ class RocqDocManagerAPIAsync:
             [cursor, text],
         )
         if isinstance(result, Err):
-            data = CommandError.from_dict(result.data)
+            data = CommandError.model_validate(result.data)
             return Err(result.message, data)
-        return CommandData.from_dict(result.result)
+        return CommandData.model_validate(result.result)
 
     async def load_file(
         self,
@@ -876,7 +840,7 @@ class RocqDocManagerAPIAsync:
             [cursor],
         )
         if isinstance(result, Err):
-            data = None if result.data is None else RocqLoc.from_dict(result.data)
+            data = None if result.data is None else RocqLoc.model_validate(result.data)
             return Err(result.message, data)
         return None
 
@@ -907,7 +871,7 @@ class RocqDocManagerAPIAsync:
         if isinstance(result, Err):
             data = None
             return Err(result.message, data)
-        return CommandData.from_dict(result.result)
+        return CommandData.model_validate(result.result)
 
     async def query_json(
         self,
@@ -1000,7 +964,7 @@ class RocqDocManagerAPIAsync:
         if isinstance(result, Err):
             data = None
             return Err(result.message, data)
-        return CommandData.from_dict(result.result)
+        return CommandData.model_validate(result.result)
 
     async def run_step(
         self,
@@ -1012,9 +976,9 @@ class RocqDocManagerAPIAsync:
             [cursor],
         )
         if isinstance(result, Err):
-            data = CommandError.from_dict(result.data)
+            data = CommandError.model_validate(result.data)
             return Err(result.message, data)
-        return None if result.result is None else CommandData.from_dict(result.result)
+        return None if result.result is None else CommandData.model_validate(result.result)
 
     async def run_steps(
         self,
@@ -1027,6 +991,6 @@ class RocqDocManagerAPIAsync:
             [cursor, count],
         )
         if isinstance(result, Err):
-            data = StepsError.from_dict(result.data)
+            data = StepsError.model_validate(result.data)
             return Err(result.message, data)
         return None
