@@ -12,7 +12,7 @@ def test_auto() -> None:
             AgentBuilder.of_agent(AutoAgent),
             [
                 "--task-json",
-                make_task_str("examples/theories/test_simple.v", "Lemma:is_true"),
+                make_task_str("examples/theories/test_simple.v", None, "Lemma:is_true"),
                 "--output-dir",
                 temp_dir,
             ],
@@ -26,7 +26,7 @@ def test_failure() -> None:
             AgentBuilder.of_agent(ProofAgent),
             [
                 "--task-json",
-                make_task_str("examples/theories/test_simple.v", "Lemma:is_true"),
+                make_task_str("examples/theories/test_simple.v", None, "Lemma:is_true"),
                 "--output-dir",
                 temp_dir,
             ],
@@ -43,6 +43,7 @@ def test_parallel_tasks() -> None:
                 "--task-json",
                 make_repeated_tasks_str(
                     "examples/theories/test_simple.v",
+                    None,
                     "Lemma:is_true",
                     num_tasks=num_tasks,
                 ),

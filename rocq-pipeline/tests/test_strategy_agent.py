@@ -47,7 +47,7 @@ def test_strategy_agent_doc_interaction() -> None:
             agent_builder,
             [
                 "--task-json",
-                make_task_str("tests/test.v", "Lemma:test_true"),
+                make_task_str("tests/test.v", None, "Lemma:test_true"),
                 "--output-dir",
                 str(output_dir),
             ],
