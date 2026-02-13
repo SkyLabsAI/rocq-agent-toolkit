@@ -52,17 +52,18 @@ class RemoteProofAgent(ProofAgent):
         self._config = config
 
         if not self._config.inference:
-             raise ValueError(
+            raise ValueError(
                 "RemoteProofAgent Error: 'inference' configuration is missing. "
                 "The agent cannot authenticate with the backend."
             )
 
         api_key = self._config.inference.get("api_key")
         if not api_key:
-             # We can make a helpful error message here
-             provider = self._config.inference.get("provider", "unknown")
-             raise ValueError(
-                f"RemoteProofAgent Error: No API Key found for provider '{provider}'.\n"
+            # We can make a helpful error message here
+            provider = self._config.inference.get("provider", "unknown")
+            raise ValueError(
+                "RemoteProofAgent Error: No API Key found for provider "
+                f"'{provider}'.\n"
                 "Please ensure you have set the required environment variable "
                 "(e.g. OPENROUTER_API_KEY) before running."
             )
@@ -78,12 +79,28 @@ class RemoteProofAgent(ProofAgent):
         if self._config.inference:
             # Provider (e.g. "openrouter", "openai")
             if "provider" in self._config.inference:
-                ws_headers["X-LLM-Provider"] = str(self._config.inference["provider"])
+                ws_headers["X-LLM-Provider"] = str(
+                    self._config.inference["provider"]
+                )
 
             # API Key (The Secret)
             if "api_key" in self._config.inference:
-                ws_headers["X-LLM-Api-Key"] = str(self._config.inference["api_key"])
+                ws_headers["X-LLM-Api-Key"] = str(
+                    self._config.inference["api_key"]
+                )
 
+        # GitHub auth (server access control). We send this on both session
+        # creation and websocket connection so the server can enforce either/both
+        # paths.
+        session_headers: dict[str, str] = {}
+        if self._config.github_token:
+            session_headers["Authorization"] = (
+                f"Bearer {self._config.github_token}"
+            )
+            ws_headers.setdefault(
+                "Authorization",
+                session_headers["Authorization"],
+            )
 
         # NOTE: `TracingCursor` (rocq-pipeline) is a subclass of RocqCursor and
         # exposes the underlying RDM API via `_the_rdm`. We rely on that to
@@ -92,12 +109,18 @@ class RemoteProofAgent(ProofAgent):
         if api is None:
             return self.give_up(
                 rc,
-                message="RemoteProofAgent requires a RocqCursor backed by RocqDocManagerAPI",
+                message=(
+                    "RemoteProofAgent requires a RocqCursor backed by "
+                    "RocqDocManagerAPI"
+                ),
             )
 
         base = self._config.server.rstrip("/")
         async with httpx.AsyncClient() as client:
-            session = await client.post(f"{base}/v1/session")
+            session = await client.post(
+                f"{base}/v1/session",
+                headers=session_headers or None,
+            )
             session.raise_for_status()
             sess_data = session.json()
         token = cast(str, sess_data["token"])
@@ -110,7 +133,11 @@ class RemoteProofAgent(ProofAgent):
             scheme = "wss" if parsed.scheme == "https" else "ws"
             ws_url = f"{scheme}://{parsed.netloc}{ws_path}"
 
-        if ws_url.startswith("ws://") and "localhost" not in ws_url and "127.0.0.1" not in ws_url:
+        if (
+            ws_url.startswith("ws://")
+            and "localhost" not in ws_url
+            and "127.0.0.1" not in ws_url
+        ):
             ws_url = ws_url.replace("ws://", "wss://", 1)
 
         logger.info(
