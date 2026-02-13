@@ -58,6 +58,33 @@ end
     to [t], exception [Toplevel_mismatch] is raised. *)
 val back_to : toplevel -> sid:StateID.t -> (unit, string) result
 
+(** {2 Splitting sentences} *)
+
+(** File item, either a sequence of blank characters or a command. *)
+type item = {
+  kind : [`Blanks | `Command];
+  (** Item kind. *)
+  text : string;
+  (** Text of the item. *)
+}
+
+(** Type of a parse error, used by [sentence_split] in case of error. *)
+type parse_error = {
+  byte_loc : int;
+  (** Byte location (index) of the parsing error in the parsed string. *)
+  parsed : item list;
+  (** Successfully parsed items before the parse error. *)
+  message : string;
+  (** Error message produced by Rocq. *)
+}
+
+(** [sentence_split t ~text] attempts to parse [text] as a chunk of Rocq code,
+    interpreted at the current state of the top-level. Note that the top-level
+    state is not modified in the process. Upon success, the function returns a
+    list of parsed items, and error data is provided otherwise. *)
+val sentence_split : toplevel -> text:string
+  -> (item list, parse_error) result
+
 (** {2 Running a Rocq command} *)
 
 type quickfix = {

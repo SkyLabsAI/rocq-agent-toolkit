@@ -79,6 +79,10 @@ let back_to : toplevel -> sid:StateID.t -> (unit, string) result =
     fun s ~sid ->
   request s (BackTo({sid = StateID.to_int s sid}))
 
+let sentence_split : toplevel -> text:string
+    -> (item list, parse_error) result = fun s ~text ->
+  request s (Split({text}))
+
 let run : toplevel -> off:int -> text:string ->
     (run_data, string * run_error) result = fun s ~off ~text ->
   request s (Run({off; text}))

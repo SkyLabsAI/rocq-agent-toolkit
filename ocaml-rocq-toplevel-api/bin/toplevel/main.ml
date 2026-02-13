@@ -187,11 +187,21 @@ let fork : state -> pipe_in:string -> pipe_out:string ->
   with Unix.Unix_error(e,_,_) ->
     (state, Error(Unix.error_message e))
 
+let split : state -> string -> state * (item list, parse_error) result =
+    fun state text ->
+  let parse text =
+    ignore text;
+    Error({byte_loc = 0; parsed = []; message = "Not implemented."})
+    (* TODO *)
+  in
+  (state, parse text)
+
 let run_command : type r e. state -> (r, e) command -> state * (r, e) result =
     fun state c ->
   match c with
   | Run({off; text})          -> run state off text
   | BackTo({sid})             -> back_to state sid
+  | Split({text})             -> split state text
   | Fork({pipe_in; pipe_out}) -> fork state ~pipe_in ~pipe_out
 
 let interact : state -> unit = fun state ->

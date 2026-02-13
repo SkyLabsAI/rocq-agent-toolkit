@@ -67,7 +67,19 @@ type run_error = {
 }
 [@@deriving to_yojson]
 
+type item = {
+  kind : [`Blanks | `Command];
+  text : string;
+}
+
+type parse_error = {
+  byte_loc : int;
+  parsed : item list;
+  message : string;
+}
+
 type (_, _) command =
   | Run : {off : int; text : string} -> (run_data, string * run_error) command
   | BackTo : {sid : int} -> (unit, string) command
+  | Split : {text : string} -> (item list, parse_error) command
   | Fork : {pipe_in : string; pipe_out : string} -> (int, string) command
