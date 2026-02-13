@@ -1,5 +1,6 @@
 import json
 import subprocess
+import tempfile
 from collections.abc import Callable
 from typing import IO, Any, Protocol
 
@@ -53,13 +54,14 @@ class JsonRPCTP(SyncProtocol):
     ) -> None:
         self._process: subprocess.Popen | None = None
         self._counter: int = -1
+        self._stderr = tempfile.TemporaryFile(mode="w+t")
 
         try:
             self._process = subprocess.Popen(
                 args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
+                stderr=self._stderr,
                 cwd=cwd,
                 env=env,
             )
@@ -83,7 +85,10 @@ class JsonRPCTP(SyncProtocol):
                 raise Error(f'Got "{method}" notification instead of "ready_seq"')
         except Exception as e:
             self._kill_process()
-            raise Error(f"Failed to start JSON-RPC service: {e}") from e
+            self._stderr.seek(0)
+            stderr_data = self._stderr.read()
+            stderr = None if not stderr_data else stderr_data
+            raise Error(f"Failed to start JSON-RPC service: {e}", stderr=stderr) from e
 
     def __del__(self) -> None:
         if self._process is not None:

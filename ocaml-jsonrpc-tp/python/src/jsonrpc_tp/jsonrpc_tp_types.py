@@ -81,3 +81,7 @@ class Resp[T_co]:
 
 class Error(Exception):
     """Exception raised in case of protocol error."""
+
+    def __init__(self, *args, stderr: str | None = None) -> None:
+        super().__init__(*args)
+        self.stderr = stderr
