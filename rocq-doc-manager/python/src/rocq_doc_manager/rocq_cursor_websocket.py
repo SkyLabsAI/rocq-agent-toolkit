@@ -12,11 +12,11 @@ from typing import (
     Any,
     Literal,
     Protocol,
-    TypeVar,
     get_protocol_members,
     get_type_hints,
     is_protocol,
     overload,
+    override,
 )
 
 import websockets
@@ -39,9 +39,8 @@ class CursorId:
 
 
 @dataclass
-class Request[T]:
-    id: int
-    obj: T
+class Request:
+    id: int  # This is the JSON-RPC request ID
     method: str
     args: list[Any]
     kwargs: dict[str, Any]
@@ -213,6 +212,11 @@ def _proxy_protocol(protocol) -> Callable[[type[_RPC]], type]:
     return wrap
 
 
+# ===============================================================
+#  Server Code
+# ===============================================================
+
+
 @_proxy_protocol(RocqCursorProtocolAsync)
 class WSCursor:
     """A cursor that proxies method calls through WSMux.
@@ -232,13 +236,15 @@ class WSCursor:
         return cls(mux, id)  # type: ignore[return-value]
 
     async def clone(self, **kwargs) -> WSCursor:
-        cursor = await self._rpc(CursorId, "_clone", [], kwargs)
+        cursor = await self._rpc(CursorId, "clone", [], kwargs)
         return WSCursor(self._mux, cursor)
 
-    async def _rpc(self, ty, method, args, kwargs):
-        (is_exception, value_json) = await self._mux.send(
-            self._id, method, args, kwargs
-        )
+    async def _rpc(
+        self, ty: type, method: str, args: list[Any], kwargs: dict[str, Any]
+    ):
+        bundled_args: list[Any] = [self._id]
+        bundled_args.extend(args)
+        (is_exception, value_json) = await self._mux.send(method, bundled_args, kwargs)
         if not is_exception:
             value = decoder.decode(json.loads(value_json), ty)
         else:
@@ -249,6 +255,18 @@ class WSCursor:
 
 
 class WSMux:
+    """This an asynchronous wrapper around a `WSConnection` and represents the client-side
+    of a connection.
+
+    This class and `WSServer` dictate the wire-level protocol which is
+    the JSON representation of the `Request` and `Response` types defined
+    at the top of this file. This is parametric over the interpretation of
+    messages.
+
+    NOTE: This class, and `WSServer` are likely implemented in other places
+    as well, e.g. tinyrpc. We might want to switch to this library in the future.
+    """
+
     _conn: WSConnection
     _fresh: int = -1
     _receiver: asyncio.Task[None]
@@ -286,11 +304,11 @@ class WSMux:
             pass
 
     async def send(
-        self, obj: Any, method: str, args: list[Any], kwargs: dict[str, Any]
+        self, method: str, args: list[Any], kwargs: dict[str, Any]
     ) -> tuple[bool, Any]:
         self._fresh += 1
         id = self._fresh
-        req = Request(id=id, obj=obj, method=method, args=args, kwargs=kwargs)
+        req = Request(id=id, method=method, args=args, kwargs=kwargs)
         loop = asyncio.get_running_loop()
         future = loop.create_future()
         self._futures[id] = future
@@ -306,20 +324,59 @@ class WSMux:
         return await future
 
 
-T_inv = TypeVar("T_inv", covariant=False, contravariant=False)
+# ===============================================================
+#  Client Code
+# ===============================================================
 
 
-class WSServer[T_inv](Protocol):
+class Dispatcher(Protocol):
+    """Dispatchers capture a JSON-RPC-style protocol.
+    They interpret methods given arguments and keyword arguments.
+    """
+
+    async def dispatch(
+        self, method: str, args: list[Any], kwargs: dict[str, Any]
+    ) -> Any:
+        pass
+
+
+class NamespaceDispatcher(Dispatcher):
+    _dispatchers: dict[str, Dispatcher]
+
+    def __init__(self, dispatchers: dict[str, Dispatcher]):
+        self._dispatchers = dispatchers
+
+    @override
+    async def dispatch(
+        self, method: str, args: list[Any], kwargs: dict[str, Any]
+    ) -> Any:
+        try:
+            [ns, ns_method] = method.split("/", 1)
+        except ValueError as e:
+            # Since this is communicated back to the caller, it may
+            # not make sense to propagate e
+            raise ValueError(f"Unsupported method: '{method}'") from e
+        if ns in self._dispatchers:
+            return await self._dispatchers[ns].dispatch(ns_method, args, kwargs)
+
+
+class WSServer:
+    """A WSServer provides a dispatch loop for an asynchronous server.
+    Clients will build a `Dispatcher` for the appropriate protocol and
+    then pass it to this object to serve the protocol.
+    """
+
     _conn: WSConnection
     _receiver: asyncio.Task[None]
     _futures: dict[int, asyncio.Future] = {}
+    _dispatch: Dispatcher
 
-    _request_type: type[Request[T_inv]]
     """We cannot use the generic type [T_inv] in the call to [decode.decode] in
     [_recv] because the type variable is not instantiated at runtime."""
 
-    def __init__(self, conn: WSConnection):
+    def __init__(self, conn: WSConnection, dispatcher: Dispatcher):
         self._conn = conn
+        self._dispatch = dispatcher
 
     async def serve(self):
         self._receiver = asyncio.create_task(self._recv())
@@ -332,16 +389,10 @@ class WSServer[T_inv](Protocol):
         except asyncio.CancelledError:
             pass
 
-    async def _handle(
-        self, obj: T_inv, method: str, args: list[Any], kwargs: dict[str, Any]
-    ) -> Any: ...
-
-    async def _handle_del(
-        self, id, obj: T_inv, method, args: list[Any], kwargs: dict[str, Any]
-    ):
+    async def _handle_del(self, id, method, args: list[Any], kwargs: dict[str, Any]):
         is_exception = False
         try:
-            result = await self._handle(obj, method, args, kwargs)
+            result = await self._dispatch.dispatch(method, args, kwargs)
         except Exception as e:
             # print(f"RPC call to {method}: failed with {repr(e)} : {type(e)}")
             is_exception = True
@@ -362,14 +413,14 @@ class WSServer[T_inv](Protocol):
                 req_json = json.loads(req_bytes)
                 # print(f"req: {req_json}")
                 try:
-                    req = decoder.decode(req_json, self._request_type)
+                    req = decoder.decode(req_json, Request)
                 except Exception as e:
                     print(
                         f"Decoding of request {req_json} failed with: {repr(e)} : {type(e)}"
                     )
                     raise e from e
                 future = asyncio.create_task(
-                    self._handle_del(req.id, req.obj, req.method, req.args, req.kwargs)
+                    self._handle_del(req.id, req.method, req.args, req.kwargs)
                 )
                 self._futures[req.id] = future
         except websockets.ConnectionClosedOK:
@@ -379,23 +430,41 @@ class WSServer[T_inv](Protocol):
             pass
 
 
-class WSCursorServer(WSServer[CursorId]):
+class CursorDispatcher(Dispatcher):
+    """This is a multi-dispatcher over `RocqCursorProtocol`.
+
+    The first positional argument in each request is the cursor
+    identifier. All of the other arguments are passed through to
+    the corresponding cursor.
+    """
+
     _cursors: dict[CursorId, RocqCursorProtocol]
     _fresh: int
-    _request_type = Request[CursorId]
 
-    def __init__(self, conn: WSConnection, cursors: dict[CursorId, RocqCursorProtocol]):
-        super().__init__(conn)
+    def __init__(self, cursors: dict[CursorId, RocqCursorProtocol]):
         self._cursors = cursors
         self._fresh = max([c.cursor for c in cursors])
 
-    async def _handle(self, obj, method, args, kwargs) -> Any:
-        cursor = obj
+    def extract_cursor(self, args: list[Any]) -> tuple[RocqCursorProtocol, list[Any]]:
+        cursor_idx = args.pop(0)
+        cursor = decoder.decode(cursor_idx, CursorId)
+        # if not isinstance(cursor_idx, int):
+        #     raise ValueError(f"Invalid cursor, expected integer, got '{cursor_idx}'")
+        # cursor = CursorId(cursor=cursor_idx)
+        if cursor not in self._cursors:
+            raise ValueError(f"Unbound cursor. {cursor}")
+        return (self._cursors[cursor], args)
+
+    @override
+    async def dispatch(
+        self, method: str, args: list[Any], kwargs: dict[str, Any]
+    ) -> Any:
+        (cursor, args) = self.extract_cursor(args)
         match method:
-            case "_clone":
+            case "clone":
 
                 async def fn(args, kwargs):
-                    new_cursor = self._cursors[cursor].clone()
+                    new_cursor = cursor.clone()
                     self._fresh += 1
                     new_id = CursorId(cursor=self._fresh)
                     self._cursors[new_id] = new_cursor
@@ -404,6 +473,6 @@ class WSCursorServer(WSServer[CursorId]):
 
                 async def fn(args, kwargs):
                     # TODO: insert await below when wrapped cursors are async
-                    return getattr(self._cursors[cursor], method)(*args, **kwargs)
+                    return getattr(cursor, method)(*args, **kwargs)
 
         return await fn(args, kwargs)
