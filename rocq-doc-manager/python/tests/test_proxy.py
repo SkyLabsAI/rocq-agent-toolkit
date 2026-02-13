@@ -6,10 +6,11 @@ import pytest_asyncio
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocolAsync
 from rocq_doc_manager.rocq_cursor_websocket import (
+    CursorDispatcher,
     CursorId,
     WSCursor,
-    WSCursorServer,
     WSMux,
+    WSServer,
 )
 from websockets import connect, serve
 
@@ -26,7 +27,7 @@ class Test_API(RDM_Tests):
         id = CursorId(cursor=0)
 
         async def handle(conn):
-            server = WSCursorServer(conn, {id: rc})
+            server = WSServer(conn, CursorDispatcher({id: rc}))
             await server.serve()
 
         async with serve(handle, host="127.0.0.1", port=None) as server:
