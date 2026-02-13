@@ -15,13 +15,13 @@
  (libraries jsonrpc-tp))
 
 (executable
- (name delayed_echo_service)
- (public_name jsonrpc-tp.delayed-echo-service)
+ (name test_service)
+ (public_name jsonrpc-tp.test-service)
  (package jsonrpc-tp)
  (libraries jsonrpc-tp unix))
 
 (executable
- (name delayed_echo_api)
- (public_name jsonrpc-tp.delayed-echo-api)
+ (name test_api)
+ (public_name jsonrpc-tp.test-api)
  (package jsonrpc-tp)
  (libraries jsonrpc-tp unix))
