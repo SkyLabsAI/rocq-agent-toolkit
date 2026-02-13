@@ -3,13 +3,16 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
-from rocq_doc_manager import RocqCursor, RocqDocManager
+from rocq_doc_manager import RocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
 from rocq_pipeline.agent.proof import trace_cursor
 
 
 @contextmanager
-def build_both(verbose: bool) -> Generator[tuple[RocqCursor, RocqCursor]]:
+def build_both(
+    verbose: bool,
+) -> Generator[tuple[RocqCursor, RocqCursor]]:
     rdm = RocqDocManager(
         [],
         str(Path(__file__).parent / "test.v"),
