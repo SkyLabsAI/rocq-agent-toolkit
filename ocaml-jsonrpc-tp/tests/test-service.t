@@ -5,7 +5,7 @@
   > echo [0,"First!"]
   > EOF
 
-  $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap | jsonrpc-tp.delayed-echo-service 4 | jsonrpc-tp.tp_unwrap
+  $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap | jsonrpc-tp.test-service 4 | jsonrpc-tp.tp_unwrap
   { "method": "done_sleeping", "jsonrpc": "2.0" }
   { "id": 4, "jsonrpc": "2.0", "result": "First!" }
   { "method": "done_sleeping", "jsonrpc": "2.0" }
