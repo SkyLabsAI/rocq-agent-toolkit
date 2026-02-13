@@ -4,7 +4,8 @@ This package provides a Python interface to interact with the Rocq document
 manager.
 """
 
-from .rocq_cursor import RocqCursor
+from .rocq_cursor import RDMRocqCursor
+from .rocq_cursor_protocol import RocqCursor
 from .rocq_doc_manager import RocqDocManager
 
 
@@ -20,6 +21,7 @@ def create(
 
 __all__ = [
     "create",
-    "RocqDocManager",
     "RocqCursor",
+    "RocqDocManager",
+    "RDMRocqCursor",
 ]
