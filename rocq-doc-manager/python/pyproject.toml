@@ -16,6 +16,8 @@ dependencies = [
     "dataclasses-json>=0.6.7",
     "hypothesis>=6.148.2",
     "rocq-dune-util",
+    "websockets>=15.0.1",
+    "pytest-asyncio>=0.24.0",
 ]
 
 [project.urls]
