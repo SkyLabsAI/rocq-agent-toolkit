@@ -36,6 +36,7 @@ from backend.dal import (
     get_instances_for_class_in_dataset_from_db,
     get_latest_runs_from_db,
     get_run_details_from_db,
+    get_run_source_file_name_from_db,
     get_runs_by_agent_and_dataset_from_db,
     get_runs_by_agent_from_db,
     get_runs_by_agent_instance_and_dataset_from_db,
@@ -78,7 +79,7 @@ from backend.models import (
     TaskDetailsResponse,
     TaskResult,
 )
-from backend.s3 import upload_bytes_to_s3
+from backend.s3 import download_bytes_from_s3, upload_bytes_to_s3
 from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
 from backend.visualizer_data import router as visualizer_data_router
 
@@ -1078,6 +1079,53 @@ async def get_task_result(
         raise HTTPException(
             status_code=500,
             detail=f"Error fetching task result: {str(e)}",
+        ) from e
+
+
+@app.get("/api/runs/{run_id}/jsonl")
+async def get_run_jsonl(
+    run_id: str,
+    session: Session = Depends(get_session),
+) -> Response:
+    """
+    Download the raw JSONL that was ingested for a given run.
+
+    This uses the run's stored `source_file_name` to fetch the JSONL from S3
+    (if S3 backup was enabled at ingestion time).
+    """
+    try:
+        source_file_name = get_run_source_file_name_from_db(session, run_id)
+        if source_file_name is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Run not found, or no source_file_name recorded for this run",
+            )
+
+        data = await run_in_threadpool(
+            download_bytes_from_s3,
+            object_key=source_file_name,
+        )
+        if data is None:
+            raise HTTPException(
+                status_code=404,
+                detail="JSONL not found in S3 (or S3 is not configured on the server)",
+            )
+
+        safe_filename = source_file_name.replace('"', "").replace("\n", "")
+        return Response(
+            content=data,
+            media_type="application/x-ndjson",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}"'
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error fetching JSONL for run_id='%s': %s", run_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching JSONL for run '{run_id}': {str(e)}",
         ) from e
 
 

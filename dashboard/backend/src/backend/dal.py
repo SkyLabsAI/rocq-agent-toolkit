@@ -1794,6 +1794,43 @@ def set_best_run_flag_for_run(session: Session, run_id: str, best_run: bool) -> 
     return run.is_best_run
 
 
+def get_run_source_file_name_from_db(session: Session, run_id: str) -> str | None:
+    """
+    Fetch the stored `source_file_name` for a run.
+
+    Args:
+        session: Database session.
+        run_id: String representation of the run UUID.
+
+    Returns:
+        The `source_file_name` if the run exists and has one, otherwise None.
+    """
+    try:
+        run_uuid = UUID(run_id)
+    except ValueError:
+        logger.warning(
+            "get_run_source_file_name_from_db: Invalid run_id format '%s' (not a valid UUID)",
+            run_id,
+        )
+        return None
+
+    run = session.get(Run, run_uuid)
+    if run is None:
+        logger.warning(
+            "get_run_source_file_name_from_db: Run not found for run_id='%s'", run_id
+        )
+        return None
+
+    if not run.source_file_name:
+        logger.warning(
+            "get_run_source_file_name_from_db: source_file_name missing for run_id='%s'",
+            run_id,
+        )
+        return None
+
+    return run.source_file_name
+
+
 def get_agent_class_provenance_from_db(
     session: Session, cls_checksum: str
 ) -> AgentClassProvenance | None:
