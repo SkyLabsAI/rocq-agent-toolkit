@@ -185,6 +185,9 @@ class JsonRPCTP(SyncProtocol):
             nb_bytes = int(header[len(prefix) : -2])
         except Exception as e:
             self._kill_process()
-            raise Error(f"Failed to parse header: {header}", e) from e
+            raise Error(f"Failed to parse header: '{header}'", e) from e
         response = _read_exactly(self._stdout, nb_bytes).decode()
-        return json.loads(response)
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError as err:
+            raise Error(f"Invalid JSON in response: {err.msg}.\n{response}.") from err

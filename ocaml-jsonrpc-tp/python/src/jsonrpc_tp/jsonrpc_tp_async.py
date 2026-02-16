@@ -265,4 +265,8 @@ class AsyncJsonRPCTP(AsyncProtocol):
             raise Error(f"Failed to parse header: {header}", e) from e
         assert self._process.stdout is not None
         response: bytes = await self._process.stdout.readexactly(nb_bytes)
-        return json.loads(response.decode())
+        decoded = response.decode()
+        try:
+            return json.loads(decoded)
+        except json.JSONDecodeError as err:
+            raise Error(f"Invalid JSON in response: {err.msg}.\n{decoded}.") from err

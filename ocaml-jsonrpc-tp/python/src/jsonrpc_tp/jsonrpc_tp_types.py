@@ -1,4 +1,4 @@
-from typing import Any, TypeVar
+from typing import Any, TypeVar, override
 
 # Note: this file uses custom implementations of Reply/Err/Resp because dataclass
 # doesn't play nicely with covariant data, cf. github.com/python/mypy/issues/17623
@@ -85,3 +85,10 @@ class Error(Exception):
     def __init__(self, *args, stderr: str | None = None) -> None:
         super().__init__(*args)
         self.stderr = stderr
+
+    @override
+    def __str__(self) -> str:
+        if self.stderr:
+            return f"{super().__str__()}\n(stderr='{self.stderr}')"
+        else:
+            return super().__str__()
