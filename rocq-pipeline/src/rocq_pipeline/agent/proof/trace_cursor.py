@@ -227,8 +227,14 @@ class TracingCursor(RocqCursor):
         )
 
     def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
-        # TODO: this is wrong
-        return self._cursor.run_steps(count)
+        for cnt in range(count):
+            result = self.run_step()
+            if isinstance(result, rdm_api.Err):
+                return rdm_api.Err(
+                    message=result.message,
+                    data=rdm_api.StepsError(cmd_error=result.data, nb_processed=cnt),
+                )
+        return None
 
     def compile(self) -> rdm_api.CompileResult:
         return self._cursor.compile()
