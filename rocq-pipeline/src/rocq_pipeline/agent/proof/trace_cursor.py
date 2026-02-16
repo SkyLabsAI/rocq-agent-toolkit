@@ -9,7 +9,6 @@ from typing import Any, override
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_doc_manager_api import RocqDocManagerAPI
 
 logger = get_logger("RocqCursor")
 
@@ -33,8 +32,9 @@ def _default_fn(x: Any) -> Any:
 def _trace_log(
     *,
     after: bool = False,
+    method: str | None = None,
     cmd: Callable[[dict[str, Any]], str] | None = None,
-    inputs: Callable[[RocqCursor, dict[str, Any]], Any] | None = None,
+    inputs: Callable[[TracingCursor, dict[str, Any]], Any] | None = None,
     output: Callable[[Any], Any] | None = None,
     exception: Callable[[Any], Any] | None = None,
 ):
@@ -44,6 +44,7 @@ def _trace_log(
 
     def wrap(func: Callable):
         sig = inspect.signature(func)
+        meth = method or func.__name__
 
         @functools.wraps(func)
         def wrapper(self: TracingCursor, *args, **kwargs):
@@ -73,11 +74,11 @@ def _trace_log(
                     if isinstance(before_idx, int) and isinstance(after_idx, int):
                         delta = after_idx - before_idx
                         log_args["delta"] = delta
-                logger.info(f"RocqCursor.{func.__name__}", **log_args)
+                logger.info(f"RocqCursor.{meth}", **log_args)
                 return result
             except Exception as err:
                 log_args["exception"] = fn_except(err)
-                logger.info(f"RocqCursor.{func.__name__}", **log_args)
+                logger.info(f"RocqCursor.{meth}", **log_args)
                 raise
 
         return wrapper
@@ -93,37 +94,36 @@ class TracingCursor(RocqCursor):
 
     @staticmethod
     def of_cursor(rc: RocqCursor, *, verbose: bool = False) -> TracingCursor:
-        assert rc._the_rdm is not None
-        return TracingCursor(rc._the_rdm, rc._cursor, verbose=verbose)
+        return TracingCursor(rc, verbose=verbose)
 
-    def __init__(
-        self, rdm: RocqDocManagerAPI, cursor: int, *, verbose: bool = True
-    ) -> None:
-        super().__init__(rdm, cursor)
+    def __init__(self, rc: RocqCursor, *, verbose: bool = True) -> None:
+        self._cursor = rc
         self._verbose = verbose
 
     @override
     def clone(self, *, materialize: bool = False):
         # We don't trace this because we don't care about the cursor, but
         # we do care that the result is also traced in the same way
-        result = super().clone(materialize=materialize)
-        assert result._the_rdm is not None
-        return TracingCursor(result._the_rdm, result._cursor, verbose=self._verbose)
+        return TracingCursor(
+            self._cursor.clone(materialize=materialize), verbose=self._verbose
+        )
 
     @override
-    @_trace_log(after=True, inputs=lambda _, args: args["text"])
-    def insert_command(
-        self, text: str, blanks: str | None = "\n", safe: bool = True
+    @_trace_log(
+        method="insert_command", after=True, inputs=lambda _, args: args["text"]
+    )
+    def _insert_command(
+        self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return super().insert_command(text, blanks, safe)
+        return self._cursor._insert_command(text)
 
     @override
     @_trace_log(after=True, inputs=lambda _, args: args["text"])
     def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
-        return super().run_command(text)
+        return self._cursor.run_command(text)
 
     @staticmethod
-    def _next_command(me: RocqCursor, args: dict[str, Any]) -> str | None:
+    def _next_command(me: TracingCursor, args: dict[str, Any]) -> str | None:
         suffix = [item.text for item in me.doc_suffix() if item.kind == "command"]
         return suffix[0] if suffix else None
 
@@ -132,55 +132,55 @@ class TracingCursor(RocqCursor):
     def run_step(
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
-        return super().run_step()
+        return self._cursor.run_step()
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
-        return super().query(text)
+        return self._cursor.query(text)
 
     @override
     @_trace_log(inputs=lambda _, args: args)
     def query_json(
         self, text: str, *, index: int
     ) -> Any | rdm_api.Err[rdm_api.CommandError]:
-        return super().query_json(text, index=index)
+        return self._cursor.query_json(text, index=index)
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query_json_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[Any] | rdm_api.Err[None]:
-        return super().query_json_all(text, indices=indices)
+        return self._cursor.query_json_all(text, indices=indices)
 
     @override
     @_trace_log(inputs=lambda _, args: args)
     def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
-        return super().query_text(text, index=index)
+        return self._cursor.query_text(text, index=index)
 
     @override
     @_trace_log(inputs=lambda _, args: args["text"])
     def query_text_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[str] | rdm_api.Err[None]:
-        return super().query_text_all(text, indices=indices)
+        return self._cursor.query_text_all(text, indices=indices)
 
     # NAVIGATION
     @override
     @_trace_log(inputs=lambda _, args: args, after=True)
     def revert_before(self, erase: bool, index: int) -> None:
-        return super().revert_before(erase, index)
+        self._cursor.revert_before(erase, index)
 
     @override
     @_trace_log(inputs=lambda _, args: args, after=True)
     def advance_to(self, index: int) -> None:
         # TODO: it might be necessary to insert all of the commands here
-        super().advance_to(index=index)
+        self._cursor.advance_to(index=index)
 
     @override
     @_trace_log(inputs=lambda _, args: args, after=True)
     def go_to(self, index: int) -> None | rdm_api.Err[rdm_api.CommandError | None]:
-        return super().go_to(index)
+        return self._cursor.go_to(index)
 
     def location_info(self) -> dict[str, Any]:
         """Construct a functional location by computing the hash of the effectful commands."""
@@ -202,6 +202,57 @@ class TracingCursor(RocqCursor):
         # -[via _trace_log]->     TracingCursor.location_info
         # ------------------>     TracingCursor.current_goal ~= RocqCursor.current_goal
         # -[via self.query]->     TracingCursor.query
-        result = super().query("About nat.")
+        result = self._cursor.query("About nat.")
         assert not isinstance(result, rdm_api.Err)
         return result.proof_state
+
+    def doc_prefix(self) -> list[rdm_api.PrefixItem]:
+        return self._cursor.doc_prefix()
+
+    def doc_suffix(self) -> list[rdm_api.SuffixItem]:
+        return self._cursor.doc_suffix()
+
+    def clear_suffix(self, count: int | None = None) -> None:
+        return self._cursor.clear_suffix(count)
+
+    def commit(
+        self,
+        file: str | None,
+        *,
+        include_ghost: bool = False,
+        include_suffix: bool = True,
+    ) -> None | rdm_api.Err[None]:
+        return self._cursor.commit(
+            file, include_ghost=include_ghost, include_suffix=include_suffix
+        )
+
+    def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
+        for cnt in range(count):
+            result = self.run_step()
+            if isinstance(result, rdm_api.Err):
+                return rdm_api.Err(
+                    message=result.message,
+                    data=rdm_api.StepsError(cmd_error=result.data, nb_processed=cnt),
+                )
+        return None
+
+    def compile(self) -> rdm_api.CompileResult:
+        return self._cursor.compile()
+
+    def materialize(self) -> None:
+        return self._cursor.materialize()
+
+    def cursor_index(self) -> int:
+        return self._cursor.cursor_index()
+
+    def dispose(self) -> None:
+        return self._cursor.dispose()
+
+    def has_suffix(self) -> bool:
+        return self._cursor.has_suffix()
+
+    def insert_blanks(self, text: str) -> None:
+        return self._cursor.insert_blanks(text)
+
+    def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
+        return self._cursor.load_file()

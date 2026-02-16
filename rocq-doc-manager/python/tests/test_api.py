@@ -2,6 +2,7 @@ from pathlib import Path
 
 from rocq_doc_manager import RocqCursor, RocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_doc_manager.rocq_cursor import RDMRocqCursor
 
 from .util import RDM_Tests
 
@@ -175,6 +176,6 @@ class Test_API(RDM_Tests):
     ) -> None:
         self._test_API_PATCH_insert_commands_without_intervening_blanks(
             tmp_path,
-            rc_cls=RocqCursor,
+            rc_cls=RDMRocqCursor,
             should_succeed=True,
         )

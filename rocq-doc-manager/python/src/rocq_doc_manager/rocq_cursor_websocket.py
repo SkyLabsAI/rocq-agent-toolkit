@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from rocq_doc_manager.microrpc.dipatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
 from rocq_doc_manager.rocq_cursor_protocol import (
-    RocqCursorProtocol,
+    RocqCursor,
     RocqCursorProtocolAsync,
 )
 
@@ -200,14 +200,14 @@ class CursorDispatcher(Dispatcher):
     the corresponding cursor.
     """
 
-    _cursors: dict[CursorId, RocqCursorProtocol]
+    _cursors: dict[CursorId, RocqCursor]
     _fresh: int
 
-    def __init__(self, cursors: dict[CursorId, RocqCursorProtocol]):
+    def __init__(self, cursors: dict[CursorId, RocqCursor]):
         self._cursors = cursors
         self._fresh = max([c.cursor for c in cursors])
 
-    def extract_cursor(self, args: list[Any]) -> tuple[RocqCursorProtocol, list[Any]]:
+    def extract_cursor(self, args: list[Any]) -> tuple[RocqCursor, list[Any]]:
         cursor_idx = args.pop(0)
         cursor = decoder.decode(cursor_idx, CursorId)
         # if not isinstance(cursor_idx, int):
