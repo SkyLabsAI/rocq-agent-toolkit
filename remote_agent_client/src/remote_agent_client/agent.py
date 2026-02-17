@@ -90,26 +90,6 @@ class RemoteProofAgent(ProofAgent):
                 session_headers["Authorization"],
             )
 
-        def _unwrap_cursor(c: RocqCursor) -> RocqCursor:
-            # rocq-pipeline wraps cursors (e.g. TracingCursor) by storing the
-            # underlying cursor on `._cursor`. Unwrap to reach the concrete
-            # RDM-backed cursor which exposes the underlying RocqDocManagerAPI.
-            cur: RocqCursor = c
-            for _ in range(16):
-                inner = getattr(cur, "_cursor", None)
-                if inner is None:
-                    break
-                # Stop before unwrapping into raw cursor ids (ints) used by
-                # concrete cursor implementations like RDMRocqCursor.
-                if not hasattr(inner, "cursor_index"):
-                    break
-                cur = cast(RocqCursor, inner)
-            return cur
-
-        # We'll serve cursor operations by dispatching to the (possibly wrapped)
-        # public RocqCursor API, so we only need a cursor, not the raw API.
-        base_cursor = _unwrap_cursor(rc)
-
         base = self._config.server.rstrip("/")
         parsed = urlparse(base)
         scheme = "wss" if parsed.scheme == "https" else "ws"
@@ -152,7 +132,7 @@ class RemoteProofAgent(ProofAgent):
                     await self._inner.close()
 
             # Serve `rdm/*` requests coming from the server.
-            cursor_dispatcher = CursorDispatcher({CursorId(cursor=0): base_cursor})
+            cursor_dispatcher = CursorDispatcher({CursorId(cursor=0): rc})
             mux = DuplexMux(
                 _WebsocketsConn(ws),
                 dispatcher=cursor_dispatcher,
