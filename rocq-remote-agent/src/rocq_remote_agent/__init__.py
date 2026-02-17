@@ -1,10 +1,10 @@
 from .agent import RemoteAgent
-from .builder import RemoteProofAgentBuilder, builder
+from .builder import RemoteAgentBuilder, builder
 from .config import RemoteProofAgentConfig
 
 __all__ = [
     "RemoteAgent",
-    "RemoteProofAgentBuilder",
+    "RemoteAgentBuilder",
     "RemoteProofAgentConfig",
     "builder",
 ]
