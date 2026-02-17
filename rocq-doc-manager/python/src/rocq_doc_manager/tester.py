@@ -8,7 +8,7 @@ from . import rocq_doc_manager_api as rdm_api
 
 async def acram_test1() -> None:
     try:
-        async with (await create([], sys.argv[1])).sess() as dm:
+        async with (await create(sys.argv[1], [])).sess() as dm:
             rc = dm.cursor()
             # print(dm.raw_request("non-existant", []))
             print(await rc.load_file())

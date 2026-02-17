@@ -1,16 +1,23 @@
 import os
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from typing import Any
 
 import pytest
+import pytest_asyncio
 import rocq_doc_manager
 from hypothesis import strategies as st
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_doc_manager import RocqDocManager
+from rocq_doc_manager.rocq_doc_manager import AsyncRocqDocManager
+
+LOADABLE_DOC = "./tests/test.v"
+TRANSIENT_DOC = "my_fake.v"
 
 
+# NOTE: The interaction of async and fixtures is quite complex, and,
+# to make matters worse, fixtures are not type checked which means that
+# we get a lot of runtime errors during tests.
 class RDM_Tests:
     # NOTE: these are dynamically computed by code at the end of this file.
     TEST_DOT_V_DOC_LEN: int | None = None
@@ -28,85 +35,85 @@ class RDM_Tests:
         return {nm: getattr(cls, nm, None) for nm in cls.CONSTANT_NAMES()}
 
     @staticmethod
-    def mk_rdm(
+    async def mk_rdm(
         path: str = "my_fake.v", rocq_args: list[str] | None = None
-    ) -> RocqDocManager:
-        return rocq_doc_manager.create(
-            [] if rocq_args is None else rocq_args,
+    ) -> AsyncRocqDocManager:
+        return await rocq_doc_manager.create(
             path,
+            rocq_args,
             dune=os.environ.get("RDM_USE_DUNE", "True") == "True",
         )
 
-    @pytest.fixture(scope="class")
+    @pytest_asyncio.fixture(scope="class")
     @staticmethod
-    def transient_shared_rdm() -> RocqDocManager:
+    async def transient_shared_rdm() -> AsyncRocqDocManager:
         """A RocqCursor for a fake file that can't be loaded."""
-        return RDM_Tests.mk_rdm()
+        return await RDM_Tests.mk_rdm()
 
-    @pytest.fixture(scope="class")
+    @pytest_asyncio.fixture(scope="class")
     @staticmethod
-    def transient_shared_rc() -> RocqCursor:
+    async def transient_shared_rc() -> RocqCursor:
         """A RocqCursor for a fake file that can't be loaded."""
-        return RDM_Tests.mk_rdm().cursor()
+        return (await RDM_Tests.mk_rdm()).cursor()
 
-    @pytest.fixture(scope="class")
+    @pytest_asyncio.fixture(scope="class")
     @staticmethod
-    def loaded_shared_rdm() -> RocqDocManager:
+    async def loaded_shared_rdm() -> AsyncRocqDocManager:
         """A RocqCursor for a real file that can be loaded."""
-        rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
+        rdm = await RDM_Tests.mk_rdm(path="./tests/test.v")
         assert not isinstance(
-            rdm.cursor().load_file(),
+            await rdm.cursor().load_file(),
             rdm_api.Err,
         )
         return rdm
 
-    @pytest.fixture(scope="class")
+    @pytest_asyncio.fixture(scope="class")
     @staticmethod
-    def loaded_shared_rc() -> RocqCursor:
+    async def loaded_shared_rc() -> RocqCursor:
         """A RocqCursor for a real file that can be loaded."""
-        rdm = RDM_Tests.mk_rdm(path="./tests/test.v")
+        rdm = await RDM_Tests.mk_rdm(path="./tests/test.v")
         assert not isinstance(
-            rdm.cursor().load_file(),
+            await rdm.cursor().load_file(),
             rdm_api.Err,
         )
         return rdm.cursor()
 
-    @contextmanager
+    @asynccontextmanager
     @staticmethod
-    def starting_from(
+    async def starting_from(
         rdm: RocqCursor,
         /,
         idx: int,
-    ) -> Iterator[RocqCursor]:
+    ) -> AsyncIterator[RocqCursor]:
         assert not isinstance(
-            rdm.go_to(idx),
+            await rdm.go_to(idx),
             rdm_api.Err,
         )
         yield rdm
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     @staticmethod
-    def transient_rdm() -> RocqDocManager:
+    async def transient_rdm() -> AsyncRocqDocManager:
         """A RocqCursor for a fake file that can't be loaded."""
-        return RDM_Tests.mk_rdm()
+        return await RDM_Tests.mk_rdm()
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     @staticmethod
-    def transient_rc() -> RocqCursor:
+    async def transient_rc() -> RocqCursor:
         """A RocqCursor for a fake file that can't be loaded."""
-        return RDM_Tests.mk_rdm().cursor()
+        return (await RDM_Tests.mk_rdm()).cursor()
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     @staticmethod
-    def loadable_rdm() -> RocqDocManager:
+    async def loadable_rdm() -> AsyncRocqDocManager:
         """A RocqCursor for a real file that can be loaded."""
-        return RDM_Tests.mk_rdm(path="./tests/test.v")
+        return await RDM_Tests.mk_rdm(path="./tests/test.v")
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     @staticmethod
-    def loadable_rc() -> RocqCursor:
+    async def loadable_rc() -> RocqCursor:
         """A RocqCursor for a real file that can be loaded."""
-        return RDM_Tests.mk_rdm(path="./tests/test.v").cursor()
+        return (await RDM_Tests.mk_rdm(path="./tests/test.v")).cursor()
 
     @staticmethod
     def rocq_whitespace_strategy() -> st.SearchStrategy[str]:
@@ -156,14 +163,14 @@ class RDM_Tests:
             )
         )
 
-    @contextmanager
+    @asynccontextmanager
     @staticmethod
-    def assert_commands_inserted(
+    async def assert_commands_inserted(
         rdm: RocqCursor,
         cmds: list[str],
         ignore_blanks: bool = True,
         suffix_unchanged: bool = True,
-    ) -> Iterator[RocqCursor]:
+    ) -> AsyncIterator[RocqCursor]:
         expected_prefix_extension = [
             rdm_api.PrefixItem(
                 text=cmd,
@@ -173,12 +180,12 @@ class RDM_Tests:
             for cmd in cmds
         ]
 
-        doc_prefix = rdm.doc_prefix()
-        doc_suffix = rdm.doc_suffix()
+        doc_prefix = await rdm.doc_prefix()
+        doc_suffix = await rdm.doc_suffix()
 
         yield rdm
 
-        new_doc_prefix = rdm.doc_prefix()
+        new_doc_prefix = await rdm.doc_prefix()
         if ignore_blanks:
             new_doc_prefix = new_doc_prefix[: len(doc_prefix)] + list(
                 filter(
@@ -196,40 +203,42 @@ class RDM_Tests:
             assert expected_item.kind == new_item.kind
 
         if suffix_unchanged:
-            assert doc_suffix == rdm.doc_suffix()
+            assert doc_suffix == await rdm.doc_suffix()
 
-    @contextmanager
+    @asynccontextmanager
     @staticmethod
-    def assert_doc_unchanged(rdm: RocqCursor) -> Iterator[RocqCursor]:
-        doc_prefix = rdm.doc_prefix()
-        doc_suffix = rdm.doc_suffix()
+    async def assert_doc_unchanged(rdm: RocqCursor) -> AsyncIterator[RocqCursor]:
+        doc_prefix = await rdm.doc_prefix()
+        doc_suffix = await rdm.doc_suffix()
         yield rdm
-        assert doc_prefix == rdm.doc_prefix()
-        assert doc_suffix == rdm.doc_suffix()
+        assert doc_prefix == await rdm.doc_prefix()
+        assert doc_suffix == await rdm.doc_suffix()
 
     @staticmethod
-    def assert_check_ok(
+    async def assert_check_ok(
         rdm: RocqCursor,
         term: str = "nat",
         lhs: str = "nat",
         rhs: str = "Set",
     ) -> None:
-        query_reply = rdm.query_text_all(f"Check {term}.", indices=None)
+        query_reply = await rdm.query_text_all(f"Check {term}.", indices=None)
         assert not isinstance(query_reply, rdm_api.Err)
         assert len(query_reply) == 1
         parts = [s.strip() for s in query_reply[0].split(":")]
         assert parts == [lhs, rhs]
 
 
-with RDM_Tests.mk_rdm("./tests/test.v").sess() as rdm:
-    doc_contents = rdm.cursor().doc_suffix()
+@pytest.mark.asyncio
+async def test_something() -> None:
+    async with (await RDM_Tests.mk_rdm("./tests/test.v")).sess() as rdm:
+        doc_contents = await rdm.cursor().doc_suffix()
 
-    RDM_Tests.TEST_DOT_V_DOC_LEN = len(doc_contents)
+        RDM_Tests.TEST_DOT_V_DOC_LEN = len(doc_contents)
 
-    idx = 0
-    for item in doc_contents:
-        if item.kind == "blanks" or not item.text.startswith("Theorem"):
-            idx += 1
-        else:
-            break
-    RDM_Tests.TEST_DOT_V_NO_THEOREM_PREFIX_LEN = idx
+        idx = 0
+        for item in doc_contents:
+            if item.kind == "blanks" or not item.text.startswith("Theorem"):
+                idx += 1
+            else:
+                break
+        RDM_Tests.TEST_DOT_V_NO_THEOREM_PREFIX_LEN = idx

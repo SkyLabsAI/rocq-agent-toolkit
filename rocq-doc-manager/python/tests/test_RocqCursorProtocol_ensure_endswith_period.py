@@ -3,7 +3,6 @@ import re
 
 import pytest
 from rocq_doc_manager.decorators import ensure_endswith_period
-from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
 
 
 class Test_RocqCursorProtocol_ensure_args_endswith_period:

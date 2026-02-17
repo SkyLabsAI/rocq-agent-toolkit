@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager.locator import (
     CommentMarkerLocator,
     FirstAdmit,
@@ -9,7 +9,8 @@ from rocq_doc_manager.locator import (
     Locator,
     LocatorParser,
 )
-from rocq_doc_manager.rocq_cursor import RocqCursor
+
+from .util import RDM_Tests
 
 TEST_CASES: dict[str, Locator] = {
     "Lemma:foo": FirstLemma("foo", "Lemma", 0),
@@ -31,44 +32,44 @@ def test_comment_marker_test(input: str, output: Locator) -> None:
     assert LocatorParser.parse(input) == output
 
 
-def check(rc: RocqCursor, loc: str, expected: int, next: bool = False) -> None:
-    assert LocatorParser.parse(loc)(rc, next=next)
-    assert rc.cursor_index() == expected, f"{loc}"
+async def check(rc: RocqCursor, loc: str, expected: int, next: bool = False) -> None:
+    assert await LocatorParser.parse(loc).go_to(rc, next=next)
+    assert await rc.cursor_index() == expected, f"{loc}"
 
 
-def test_find_admit() -> None:
+@pytest.mark.asyncio
+async def test_find_admit() -> None:
     p = Path(__file__).parent / "locator_test.v"
-    with RocqDocManager([], str(p)).sess(load_file=True) as rdm:
-        rc = rdm.cursor()
-        check(rc, "admit", 4)
-        check(rc, "admit(1)", 12)
-        check(rc, "admit", 4, next=False)
-        check(rc, "admit(1)", 12, next=False)
-        check(rc, "admit", 4, next=False)
+    async with rc_sess(str(p), load_file=True) as rc:
+        await check(rc, "admit", 4)
+        await check(rc, "admit(1)", 12)
+        await check(rc, "admit", 4, next=False)
+        await check(rc, "admit(1)", 12, next=False)
+        await check(rc, "admit", 4, next=False)
 
 
-def test_find_lemma() -> None:
+@pytest.mark.asyncio
+async def test_find_lemma() -> None:
     p = Path(__file__).parent / "locator_test.v"
-    with RocqDocManager([], str(p)).sess(load_file=True) as rdm:
-        rc = rdm.cursor()
-        rc.go_to(0)
-        check(rc, "Lemma:foo", 4)
-        check(rc, "Lemma:foo(1)", 42, next=True)
-        rc.go_to(0)
-        check(rc, "Lemma:foo(1)", 22, next=True)
-        check(rc, "Lemma:foo", 4, next=False)
-        check(rc, "Lemma:foo(2)", 42, next=False)
+    async with rc_sess(str(p), load_file=True) as rc:
+        await rc.go_to(0)
+        await check(rc, "Lemma:foo", 4)
+        await check(rc, "Lemma:foo(1)", 42, next=True)
+        await rc.go_to(0)
+        await check(rc, "Lemma:foo(1)", 22, next=True)
+        await check(rc, "Lemma:foo", 4, next=False)
+        await check(rc, "Lemma:foo(2)", 42, next=False)
 
 
-def test_find_theorem() -> None:
+@pytest.mark.asyncio
+async def test_find_theorem() -> None:
     p = Path(__file__).parent / "locator_test.v"
-    with RocqDocManager([], str(p)).sess(load_file=True) as rdm:
-        rc = rdm.cursor()
-        rc.go_to(0)
-        check(rc, "Theorem:bar", 12)
-        check(rc, "Theorem:bar(1)", 30)
+    async with rc_sess(str(p), load_file=True) as rc:
+        await rc.go_to(0)
+        await check(rc, "Theorem:bar", 12)
+        await check(rc, "Theorem:bar(1)", 30)
 
-        check(rc, "Theorem:bar", 12, next=False)
-        check(rc, "Theorem:bar(1)", 30, next=False)
-        check(rc, "Theorem:bar(2)", 50, next=False)
-        check(rc, "Theorem:bar(1)", 30, next=False)
+        await check(rc, "Theorem:bar", 12, next=False)
+        await check(rc, "Theorem:bar(1)", 30, next=False)
+        await check(rc, "Theorem:bar(2)", 50, next=False)
+        await check(rc, "Theorem:bar(1)", 30, next=False)
