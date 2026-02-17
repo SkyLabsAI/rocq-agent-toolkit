@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import websockets
-
-from rocq_doc_manager.microrpc.dipatcher import Dispatcher
 from rocq_doc_manager.microrpc.deserialize import Decoder, EncoderProtocol
+from rocq_doc_manager.microrpc.dipatcher import Dispatcher
 
 
 @dataclass
