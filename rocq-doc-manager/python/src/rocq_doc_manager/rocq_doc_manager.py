@@ -1,5 +1,5 @@
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from typing import Self
 
 from jsonrpc_tp import AsyncJsonRPCTP, JsonRPCTP
@@ -50,8 +50,10 @@ class RocqDocManager(API):
         args = command + [file_path, "--"] + rocq_args
         super().__init__(JsonRPCTP(args=args, cwd=chdir, env=env))
 
+    # TODO: We can not implement this without a synchronous interface
     def cursor(self) -> RocqCursor:
-        return RDMRocqCursor(self, 0)
+        assert False
+        # return RDMRocqCursor(self, 0)
 
     def quit(self) -> None:
         self._rpc.quit()
@@ -74,6 +76,7 @@ class AsyncRocqDocManager(AsyncAPI):
         self,
         rocq_args: list[str],
         file_path: str,
+        *,
         workers: int | None = None,
         chdir: str | None = None,
         dune: bool = False,
@@ -89,5 +92,20 @@ class AsyncRocqDocManager(AsyncAPI):
         )
         super().__init__(AsyncJsonRPCTP(args=args, cwd=chdir, env=env))
 
+    def cursor(self) -> RocqCursor:
+        return RDMRocqCursor(self, 0)
+
     async def quit(self) -> None:
         await self._rpc.quit()
+
+    @asynccontextmanager
+    async def sess(self, load_file: bool = True) -> AsyncIterator[Self]:
+        """A session will close the RDM after it completes"""
+        if load_file:
+            load_reply = await self.load_file(0)
+            if isinstance(load_reply, rdm_api.Err):
+                raise rdm_api.Error(
+                    f"RocqDocManager.load_file failed: {load_reply.message}"
+                )
+        yield self
+        await self.quit()

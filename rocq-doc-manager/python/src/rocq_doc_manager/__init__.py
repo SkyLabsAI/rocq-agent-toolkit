@@ -6,7 +6,7 @@ manager.
 
 from .rocq_cursor import RDMRocqCursor
 from .rocq_cursor_protocol import RocqCursor
-from .rocq_doc_manager import RocqDocManager
+from .rocq_doc_manager import AsyncRocqDocManager, RocqDocManager
 
 
 def create(
@@ -15,8 +15,14 @@ def create(
     chdir: str | None = None,
     dune: bool = False,
     dune_disable_global_lock: bool = True,
-) -> RocqDocManager:
-    return RocqDocManager(rocq_args, file_path, chdir, dune, dune_disable_global_lock)
+) -> AsyncRocqDocManager:
+    return AsyncRocqDocManager(
+        rocq_args,
+        file_path,
+        chdir=chdir,
+        dune=dune,
+        dune_disable_global_lock=dune_disable_global_lock,
+    )
 
 
 __all__ = [

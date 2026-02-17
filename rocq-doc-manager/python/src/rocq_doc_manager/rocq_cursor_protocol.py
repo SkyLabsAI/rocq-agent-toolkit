@@ -391,24 +391,24 @@ class RocqCursorProtocolAsync(Protocol):
     # ===== END: contextmanagers ===============================================
 
 
-class RocqCursor(Protocol):
+class RocqCursorProtocolSync(Protocol):
     """
     Cursors represent a pointer into a Rocq document.
     """
 
-    def advance_to(
+    def advance_to_sync(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
 
-    def clear_suffix(self, count: int | None = None) -> None: ...
+    def clear_suffix_sync(self, count: int | None = None) -> None: ...
 
-    def materialize(self) -> None:
+    def materialize_sync(self) -> None:
         """Enable parallel processing on this cursor."""
         ...
 
-    def clone(self, *, materialize: bool = False) -> RocqCursor: ...
+    def clone_sync(self, *, materialize: bool = False) -> RocqCursor: ...
 
-    def commit(
+    def commit_sync(
         self,
         file: str | None,
         *,
@@ -416,34 +416,36 @@ class RocqCursor(Protocol):
         include_suffix: bool = True,
     ) -> None | rdm_api.Err[None]: ...
 
-    def compile(self) -> rdm_api.CompileResult: ...
+    def compile_sync(self) -> rdm_api.CompileResult: ...
 
-    def cursor_index(self) -> int: ...
+    def cursor_index_sync(self) -> int: ...
 
-    def dispose(self) -> None: ...
+    def dispose_sync(self) -> None: ...
 
-    def doc_prefix(self) -> list[rdm_api.PrefixItem]: ...
+    def doc_prefix_sync(self) -> list[rdm_api.PrefixItem]: ...
 
-    def doc_suffix(self) -> list[rdm_api.SuffixItem]: ...
+    def doc_suffix_sync(self) -> list[rdm_api.SuffixItem]: ...
 
-    def go_to(self, index: int) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
+    def go_to_sync(
+        self, index: int
+    ) -> None | rdm_api.Err[rdm_api.CommandError | None]: ...
 
-    def has_suffix(self) -> bool: ...
+    def has_suffix_sync(self) -> bool: ...
 
-    def insert_blanks(self, text: str) -> None: ...
+    def insert_blanks_sync(self, text: str) -> None: ...
 
-    def _insert_command(
+    def _insert_command_sync(
         self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
 
     @ensure_endswith_period(argnames="text")
-    def insert_command(
+    def insert_command_sync(
         self, text: str, blanks: str | None = "\n", safe: bool = True
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         if safe:
-            prefix = self.doc_prefix()
+            prefix = self.doc_prefix_sync()
             if prefix != [] and prefix[-1].kind != "blanks":
-                self.insert_blanks(" ")
+                self.insert_blanks_sync(" ")
                 revert = True
             else:
                 revert = False
@@ -451,61 +453,65 @@ class RocqCursor(Protocol):
             revert = False
 
         try:
-            result = self._insert_command(text)
+            result = self._insert_command_sync(text)
             if isinstance(result, rdm_api.CommandError):
                 if revert:
-                    self.revert_before(erase=True, index=len(prefix))
+                    self.revert_before_sync(erase=True, index=len(prefix))
             elif blanks is not None:
-                self.insert_blanks(blanks)
+                self.insert_blanks_sync(blanks)
             return result
         except rdm_api.Error:
             if revert:
-                self.revert_before(erase=True, index=len(prefix))
+                self.revert_before_sync(erase=True, index=len(prefix))
             raise
 
-    def load_file(
+    def load_file_sync(
         self,
     ) -> None | rdm_api.Err[rdm_api.RocqLoc | None]: ...
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
-    def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
+    def query_sync(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
 
-    def query_json(self, text: str, *, index: int) -> Any | rdm_api.Err[None]: ...
+    def query_json_sync(self, text: str, *, index: int) -> Any | rdm_api.Err[None]: ...
 
-    def query_json_all(
+    def query_json_all_sync(
         self, text: str, *, indices: list[int] | None
     ) -> list[Any] | rdm_api.Err[None]: ...
 
-    def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]: ...
+    def query_text_sync(self, text: str, *, index: int) -> str | rdm_api.Err[None]: ...
 
-    def query_text_all(
+    def query_text_all_sync(
         self, text: str, *, indices: list[int] | None
     ) -> list[str] | rdm_api.Err[None]: ...
 
-    def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]: ...
+    def revert_before_sync(
+        self, erase: bool, index: int
+    ) -> None | rdm_api.Err[None]: ...
 
-    def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
+    def run_command_sync(
+        self, text: str
+    ) -> rdm_api.CommandData | rdm_api.Err[None]: ...
 
-    def run_step(
+    def run_step_sync(
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]: ...
 
-    def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]: ...
+    def run_steps_sync(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]: ...
 
     # ===== BEGIN: contextmanagers ============================================
     @contextmanager
-    def ctx(self, rollback: bool = True) -> Iterator[Self]:
+    def ctx_sync(self, rollback: bool = True) -> Iterator[Self]:
         """Base RDM context manager supporting optional doc rollback."""
         current_idx: int = 0  # satisfies pyright.
         if rollback:
-            current_idx = self.cursor_index()
+            current_idx = self.cursor_index_sync()
             # NOTE: blanks are fused, so inserting blanks at the beginning
             # of a rollback context can leave the document in a modified state.
             # By inserting a real (but trivial) command that we rollback, we
             # ensure that the document is left unchanged.
             marker_cmd = "Check tt."
-            insert_command_reply = self.insert_command(marker_cmd)
+            insert_command_reply = self.insert_command_sync(marker_cmd)
             if isinstance(insert_command_reply, rdm_api.Err):
                 raise rdm_api.Error(
                     " ".join(
@@ -519,7 +525,7 @@ class RocqCursor(Protocol):
         yield self
 
         if rollback:
-            revert_reply = self.revert_before(True, current_idx)
+            revert_reply = self.revert_before_sync(True, current_idx)
             if isinstance(revert_reply, rdm_api.Err):
                 raise rdm_api.Error(
                     " ".join(
@@ -531,42 +537,44 @@ class RocqCursor(Protocol):
                 )
 
     @contextmanager
-    def aborted_goal_ctx(
+    def aborted_goal_ctx_sync(
         self, goal: str = "True", rollback: bool = True
     ) -> Iterator[Self]:
         """RDM context manager that sets up an aborted goal."""
-        with self.ctx(rollback=rollback):
-            goal_reply = self.insert_command(f"Goal {goal}.")
+        with self.ctx_sync(rollback=rollback):
+            goal_reply = self.insert_command_sync(f"Goal {goal}.")
             if isinstance(goal_reply, rdm_api.Err):
                 raise rdm_api.Error(goal_reply)
 
             yield self
 
-            abort_reply = self.insert_command("Abort.")
+            abort_reply = self.insert_command_sync("Abort.")
             if isinstance(abort_reply, rdm_api.Err):
                 raise rdm_api.Error(abort_reply)
 
     # NOTE: we could expose a more structured way to build the context list.
     @contextmanager
-    def Section(
+    def Section_sync(
         self,
         name: str,
         context: list[str] | None = None,
         rollback: bool = False,
     ) -> Iterator[Self]:
-        with self.ctx(rollback=rollback):
-            begin_section_reply = self.insert_command(f"Section {name}.")
+        with self.ctx_sync(rollback=rollback):
+            begin_section_reply = self.insert_command_sync(f"Section {name}.")
             if isinstance(begin_section_reply, rdm_api.Err):
                 raise rdm_api.Error(begin_section_reply)
 
             if context is not None:
-                context_reply = self.insert_command(f"Context {' '.join(context)}.")
+                context_reply = self.insert_command_sync(
+                    f"Context {' '.join(context)}."
+                )
                 if isinstance(context_reply, rdm_api.Err):
                     raise rdm_api.Error(context_reply)
 
             yield self
 
-            end_section_reply = self.insert_command(f"End {name}.")
+            end_section_reply = self.insert_command_sync(f"End {name}.")
             if isinstance(end_section_reply, rdm_api.Err):
                 raise rdm_api.Error(end_section_reply)
 
@@ -578,7 +586,7 @@ class RocqCursor(Protocol):
     #   non side-effecting proof sentences, batching visits, etc...)
     # - update rocq-doc-manager API to reflect that kind must be
     #   "command" or "blanks".
-    def goto_first_match(
+    def goto_first_match_sync(
         self,
         fn: Callable[[str, Literal["blanks", "command", "ghost"]], bool],
         skip: int = 0,
@@ -596,8 +604,8 @@ class RocqCursor(Protocol):
             returned due to moving the cursor, the cursor may be in an arbitrary
             location.
         """
-        prefix = self.doc_prefix()
-        suffix = self.doc_suffix()
+        prefix = self.doc_prefix_sync()
+        suffix = self.doc_suffix_sync()
 
         candidate_prefix_matches = [
             (idx, item.text)
@@ -610,7 +618,9 @@ class RocqCursor(Protocol):
             if fn(item.text, item.kind)
         ]
 
-        def check_result(result: rdm_api.Err | object, mtch: tuple[int, str]) -> bool:
+        def check_result_sync(
+            result: rdm_api.Err | object, mtch: tuple[int, str]
+        ) -> bool:
             if isinstance(result, rdm_api.Err):
                 logger.warning(
                     " ".join(
@@ -622,7 +632,7 @@ class RocqCursor(Protocol):
                 )
                 return False
             if step_over_match:
-                run_step_reply = self.run_step()
+                run_step_reply = self.run_step_sync()
                 if isinstance(run_step_reply, rdm_api.Err):
                     logger.warning(
                         "Failed to step over the match: {run_step_repl}",
@@ -633,8 +643,8 @@ class RocqCursor(Protocol):
         if include_prefix:
             if skip < len(candidate_prefix_matches):
                 # Use this match
-                return check_result(
-                    self.go_to(candidate_prefix_matches[skip][0]),
+                return check_result_sync(
+                    self.go_to_sync(candidate_prefix_matches[skip][0]),
                     candidate_prefix_matches[skip],
                 )
             else:
@@ -643,13 +653,13 @@ class RocqCursor(Protocol):
         if len(candidate_suffix_matches) <= skip:
             return False
 
-        advance_to_reply = self.advance_to(candidate_suffix_matches[skip][0])
-        return check_result(advance_to_reply, candidate_suffix_matches[skip])
+        advance_to_reply = self.advance_to_sync(candidate_suffix_matches[skip][0])
+        return check_result_sync(advance_to_reply, candidate_suffix_matches[skip])
 
     # ===== END: visitors =====================================================
 
     # ===== BEGIN: macros =====================================================
-    def Compute(
+    def Compute_sync(
         self,
         term: str,
         rollback: bool = True,
@@ -673,15 +683,17 @@ class RocqCursor(Protocol):
                 - the computed value
                 - the type of the computed value
         """
-        with self.aborted_goal_ctx(goal=f"exists v, v = ({term})", rollback=rollback):
-            command_reply = self.insert_command("vm_compute.")
+        with self.aborted_goal_ctx_sync(
+            goal=f"exists v, v = ({term})", rollback=rollback
+        ):
+            command_reply = self.insert_command_sync("vm_compute.")
             if isinstance(command_reply, rdm_api.Err):
                 return command_reply
 
-            query_reply = self.query_text_all(
+            query_reply = self.query_text_all_sync(
                 """match goal with
-| |- context[@ex ?TY (fun x => x = ?RESULT)] => idtac RESULT; idtac TY
-end.""",
+                | |- context[@ex ?TY (fun x => x = ?RESULT)] => idtac RESULT; idtac TY
+                end.""",
                 indices=None,
             )
             if isinstance(query_reply, rdm_api.Err):
@@ -695,47 +707,47 @@ end.""",
 
             return (query_reply[0], query_reply[1])
 
-    def current_goal(self) -> rdm_api.ProofState | None:
-        result = self.query("About nat.")
+    def current_goal_sync(self) -> rdm_api.ProofState | None:
+        result = self.query_sync("About nat.")
         assert not isinstance(result, rdm_api.Err)
         return result.proof_state
 
-    def _import_export_cmd(
+    def _import_export_cmd_sync(
         self,
         kind: Literal["Import"] | Literal["Export"],
         logpath: str,
         require: bool = True,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         cmd: str = f"{'Require ' if require else ''}{kind} {logpath}."
-        return self.insert_command(cmd)
+        return self.insert_command_sync(cmd)
 
-    def Import(
+    def Import_sync(
         self,
         logpath: str,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return self._import_export_cmd("Import", logpath, require=False)
+        return self._import_export_cmd_sync("Import", logpath, require=False)
 
-    def Export(
-        self,
-        logpath: str,
-        require: bool = True,
-    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return self._import_export_cmd("Export", logpath, require=False)
-
-    def RequireImport(
-        self,
-        logpath: str,
-    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return self._import_export_cmd("Import", logpath, require=True)
-
-    def RequireExport(
+    def Export_sync(
         self,
         logpath: str,
         require: bool = True,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return self._import_export_cmd("Export", logpath, require=True)
+        return self._import_export_cmd_sync("Export", logpath, require=False)
 
-    def fresh_ident(self, ident: str) -> str | rdm_api.Err[None]:
+    def RequireImport_sync(
+        self,
+        logpath: str,
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        return self._import_export_cmd_sync("Import", logpath, require=True)
+
+    def RequireExport_sync(
+        self,
+        logpath: str,
+        require: bool = True,
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        return self._import_export_cmd_sync("Export", logpath, require=True)
+
+    def fresh_ident_sync(self, ident: str) -> str | rdm_api.Err[None]:
         """Return a fresh name based on [ident].
 
         Arguments:
@@ -749,7 +761,7 @@ end.""",
             - a Rocq name which is guaranteed to be fresh at the
                   current loc. within [mgr]
         """
-        result = self.query_text(
+        result = self.query_text_sync(
             f'Eval lazy in ltac:(let nm := fresh "{ident}" in idtac nm).', index=0
         )
         if isinstance(result, rdm_api.Err):
@@ -760,8 +772,36 @@ end.""",
 
     # ===== BEGIN: contextmanagers ============================================
     @contextmanager
-    def sess(self) -> Iterator[Self]:
+    def sess_sync(self) -> Iterator[Self]:
         yield self
-        self.dispose()
+        self.dispose_sync()
 
     # ===== END: contextmanagers ===============================================
+
+
+class RocqCursor(RocqCursorProtocolAsync, Protocol):
+    # TODO: Add the Sync protocol here as well?
+    """A RocqCursor represents a cursor into a Rocq document."""
+
+    ...
+
+
+# class FromAsync(RocqCursor):
+#     """Build a full RocqCursor from an asynchronous RocqCursor"""
+
+#     def __init__(self, async_cursor: RocqCursorProtocolAsync) -> None:
+#         self._async_cursor = async_cursor
+
+
+# class FromSync(RocqCursor):
+#     """Build a full RocqCursor from a synchronous RocqCursor"""
+
+#     def __init__(self, sync_cursor: RocqCursorProtocolSync) -> None:
+#         self._sync_cursor = sync_cursor
+
+
+# class Delegate(RocqCursor):
+#     """Delegate the entire RocqCursor interface."""
+
+#     def __init__(self, target: RocqCursor) -> None:
+#         self._target = target
