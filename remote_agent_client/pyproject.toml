@@ -46,6 +46,10 @@ strict_equality = true
 disable_error_code = ["import-untyped"]
 
 [tool.taskipy.tasks]
-format_ci = "ruff format --check src/"
-reformat = "ruff format src/ && ruff check src/ --fix"
-typecheck_ci = "mypy src/"
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy ."
+test_ocaml_ci = "pytest"
+# TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
+precommit = "task lint_ci --fix; task reformat; task typecheck_ci"
