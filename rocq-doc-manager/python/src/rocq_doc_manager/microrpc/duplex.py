@@ -7,7 +7,7 @@ from typing import Any
 import websockets
 
 from .deserialize import Decoder, EncoderProtocol
-from .dipatcher import Dispatcher
+from .dispatcher import Dispatcher
 from .tunnel import Request, Response
 
 

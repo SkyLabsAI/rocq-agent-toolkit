@@ -18,9 +18,8 @@ from typing import (
 
 import websockets
 
-from rocq_doc_manager.microrpc.dipatcher import Dispatcher
-
 from .deserialize import Decoder, EncoderProtocol
+from .dispatcher import Dispatcher
 
 
 @dataclass
