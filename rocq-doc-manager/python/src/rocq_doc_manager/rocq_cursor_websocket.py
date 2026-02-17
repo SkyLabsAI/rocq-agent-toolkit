@@ -142,12 +142,12 @@ unguided_decoder.add_decoder("Exception", ug_decode_exception)
 
 class ClosedOK(rdm_api.Error):
     def __init__(self):
-        return super("Connection to remote cursor closed normally.")
+        return super().__init__("Connection to remote cursor closed normally.")
 
 
 class ClosedError(rdm_api.Error):
     def __init__(self):
-        return super("Connection to remote cursor closed unexpectedly.")
+        return super().__init__("Connection to remote cursor closed unexpectedly.")
 
 
 # ===============================================================
