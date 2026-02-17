@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import heapq
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from dataclasses import dataclass, field
 from typing import TypeVar, override
 
@@ -44,7 +44,7 @@ class Rollout[T_co](ABC):
 
     For functional readers, this is similar to:
     ```
-    Rollout[Action] := float -> tuple[float, Action | None, Rollout[Action]] | raise StopIteration
+    Rollout[Action] := float -> tuple[float, Action | None, Rollout[Action]] | raise StopAsyncIteration
     ```
     """
 
@@ -63,14 +63,14 @@ class Rollout[T_co](ABC):
 
         An implementation is only allowed to return `None` in the `result` field
         if `Pr < min_logprob`, otherwise, it must produce a value, or raise
-        `StopIteration`.
+        `StopAsyncIteration`.
 
-        raises `StopIteration` when complete
+        raises `StopAsyncIteration` when complete
         """
         ...
 
     async def __anext__(self) -> tuple[float, T_co]:
-        result = self.next()
+        result = await self.next()
         assert isinstance(result, Rollout.Approx)
         assert result.result is not None
         return (result.logprob, result.result)
@@ -121,17 +121,20 @@ class ApproximatingRollout[T_co](Rollout[T_co]):
     async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
         if self._last is not None and min_logprob > self._last:
             return Rollout.Approx(logprob=self._last, result=None)
-        result = next(self._values)
-        if result.result is None:
-            self._last = (
-                result.logprob
-                if self._last is None
-                else min(self._last, result.logprob)
-            )
-            # recursive call, but we consumed one value out of the generator
-            return await self.next(min_logprob=min_logprob)
-        self._last = result.logprob
-        return result
+
+        for result in self._values:
+            if result.result is None:
+                self._last = (
+                    result.logprob
+                    if self._last is None
+                    else min(self._last, result.logprob)
+                )
+                # recursive call, but we consumed one value out of the generator
+                return await self.next(min_logprob=min_logprob)
+            else:
+                self._last = result.logprob
+                return result
+        raise StopAsyncIteration
 
 
 class IteratorRollout[T_co](Rollout[T_co]):
@@ -144,8 +147,9 @@ class IteratorRollout[T_co](Rollout[T_co]):
 
     @override
     async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
-        logprob, act = next(self._values)
-        return Rollout.Approx(logprob=logprob, result=act)
+        for logprob, act in self._values:
+            return Rollout.Approx(logprob=logprob, result=act)
+        raise StopAsyncIteration
 
 
 class MapRollout[T_co, U_co](Rollout[U_co]):
@@ -202,7 +206,7 @@ class InterleaveRollout[U_co](Rollout[U_co]):
     ) -> float:
         try:
             result = await rollout.next(min_logprob)
-        except StopIteration:
+        except StopAsyncIteration:
             return min_logprob
         heapq.heappush(
             self._queue,
@@ -255,7 +259,7 @@ class InterleaveRollout[U_co](Rollout[U_co]):
         for n in stashed:
             try:
                 r_next = await n.rest.next(highest)
-            except StopIteration:
+            except StopAsyncIteration:
                 continue
             if r_next.result is not None:
                 if candidate is None:
@@ -295,7 +299,7 @@ class InterleaveRollout[U_co](Rollout[U_co]):
         else:
             if self._queue:
                 return Rollout.Approx(logprob=highest, result=None)
-            raise StopIteration()
+            raise StopAsyncIteration()
 
     def stop(self) -> dict[int, Rollout[U_co]]:
         def mk(logprob: float, act: U_co | None, rest: Rollout[U_co]) -> Rollout[U_co]:
@@ -315,28 +319,28 @@ class StagedRollout[T_co](Rollout[T_co]):
     @dataclass(slots=True)
     class YieldUntil[U](Rollout[U]):
         active: Rollout[U]
-        waiting: Callable[[], Rollout[U]]
+        waiting: Callable[[], Awaitable[Rollout[U]]]
         cutoff: float | None
         parent: StagedRollout[U]
 
         @override
-        def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U]:
+        async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U]:
             try:
-                result = self.active.next(min_logprob=min_logprob)
-            except StopIteration:
-                self.parent._state = self.waiting()
-                return self.parent._state.next(min_logprob=min_logprob)
+                result = await self.active.next(min_logprob=min_logprob)
+            except StopAsyncIteration:
+                self.parent._state = await self.waiting()
+                return await self.parent._state.next(min_logprob=min_logprob)
 
             if self.cutoff is None or result.logprob >= self.cutoff:
                 assert result.result is not None or result.logprob < min_logprob
                 return result
             self.parent._state = StagedRollout.Merge(
-                next_pull=self.waiting(),
+                next_pull=await self.waiting(),
                 other=self.active,
                 last_pull=result,
                 parent=self.parent,
             )
-            return self.parent._state.next(min_logprob=min_logprob)
+            return await self.parent._state.next(min_logprob=min_logprob)
 
     @dataclass(slots=True)
     class Merge[U](Rollout[U]):
@@ -355,13 +359,13 @@ class StagedRollout[T_co](Rollout[T_co]):
             self.last_pull = last_pull
 
         @override
-        def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U]:
+        async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U]:
             try:
-                result = self.next_pull.next(min_logprob=min_logprob)
-            except StopIteration:
+                result = await self.next_pull.next(min_logprob=min_logprob)
+            except StopAsyncIteration:
                 self.parent._state = self.other
                 if self.last_pull.result is None:
-                    return self.parent._state.next(min_logprob=min_logprob)
+                    return await self.parent._state.next(min_logprob=min_logprob)
                 else:
                     return self.last_pull
             if result.logprob > self.last_pull.logprob:
@@ -382,8 +386,8 @@ class StagedRollout[T_co](Rollout[T_co]):
             else:
                 # i can not yield last_pull, i need to query again
                 try:
-                    result2 = self.other.next(min_logprob=min_logprob)
-                except StopIteration:
+                    result2 = await self.other.next(min_logprob=min_logprob)
+                except StopAsyncIteration:
                     # There is nothing left in self.other, and last_pull did not contain
                     # an item, so I return `result`
                     self.parent._state = self.next_pull
@@ -401,7 +405,7 @@ class StagedRollout[T_co](Rollout[T_co]):
     def __init__(
         self,
         r1: Rollout[T_co],
-        r2: Callable[[], Rollout[T_co]],
+        r2: Callable[[], Awaitable[Rollout[T_co]]],
         cutoff: float | None = None,
     ) -> None:
         self._state: Rollout[T_co] = StagedRollout.YieldUntil(

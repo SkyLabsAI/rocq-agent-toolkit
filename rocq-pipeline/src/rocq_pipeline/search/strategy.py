@@ -244,7 +244,7 @@ class FailStrategy[State, Action](Strategy[State, Action]):
     """A simple strategy that fails."""
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -260,12 +260,12 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
     """
 
     @abstractmethod
-    def check(
+    async def check(
         self, state: State, context: Strategy.Context | None = None
     ) -> With | None: ...
 
     @abstractmethod
-    def rollout_with(
+    async def rollout_with(
         self,
         val: With,
         rdm: State,
@@ -274,16 +274,16 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
     ) -> Rollout[Action]: ...
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        val = self.check(state)
+        val = await self.check(state)
         if val is None:
-            return super().rollout(state, max_rollout, context)
-        return self.rollout_with(val, state, max_rollout, context)
+            return await super().rollout(state, max_rollout, context)
+        return await self.rollout_with(val, state, max_rollout, context)
 
 
 class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
@@ -307,7 +307,7 @@ class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
         self._fn_action = fn_action
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: T,
         max_rollout: int | None = None,
@@ -316,7 +316,7 @@ class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
         u_state = self._fn_state(state)
         fn = self._fn_action
         return MapRollout(
-            self._base.rollout(u_state, max_rollout, context),
+            await self._base.rollout(u_state, max_rollout, context),
             lambda act: fn(state, u_state, act),
         )
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import itertools
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Annotated, Any, override
 
+from asyncstdlib import itertools
 from observability import get_logger, trace_context
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
@@ -93,10 +93,10 @@ class StrategyAgent(ProofAgent):
                         message=f"depth limit exceeded({self._max_depth})",
                     )
 
-                rollout = self._strategy.rollout(
+                rollout = await self._strategy.rollout(
                     rc, max_rollout=self._max_breadth, context=strategy_ctx
                 )
-                for _, action in (
+                async for _, action in (
                     rollout
                     if self._max_breadth is None
                     else itertools.islice(rollout, self._max_breadth)
@@ -112,7 +112,7 @@ class StrategyAgent(ProofAgent):
                         process.set_attribute("action", action.key())
                         action_rc = rc.clone()
                         try:
-                            rc = action.interact(action_rc)
+                            rc = await action.interact(action_rc)
                             if rc is not action_rc:
                                 action_rc.dispose()
                             current_id = fresh()
