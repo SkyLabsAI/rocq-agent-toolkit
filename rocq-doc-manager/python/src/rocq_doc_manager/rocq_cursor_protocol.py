@@ -50,9 +50,36 @@ class RocqCursorProtocolAsync(Protocol):
 
     async def insert_blanks(self, text: str) -> None: ...
 
-    async def insert_command(
+    async def _insert_command(
         self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
+
+    @ensure_endswith_period(argnames="text")
+    async def insert_command(
+        self, text: str, blanks: str | None = "\n", safe: bool = True
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        if safe:
+            prefix = await self.doc_prefix()
+            if prefix != [] and prefix[-1].kind != "blanks":
+                await self.insert_blanks(" ")
+                revert = True
+            else:
+                revert = False
+        else:
+            revert = False
+
+        try:
+            result = await self._insert_command(text)
+            if isinstance(result, rdm_api.CommandError):
+                if revert:
+                    await self.revert_before(erase=True, index=len(prefix))
+            elif blanks is not None:
+                await self.insert_blanks(blanks)
+            return result
+        except rdm_api.Error:
+            if revert:
+                await self.revert_before(erase=True, index=len(prefix))
+            raise
 
     async def load_file(
         self,
