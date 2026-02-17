@@ -7,7 +7,7 @@ from typing import cast
 
 from rocq_pipeline.agent.base import Agent, AgentBuilder
 
-from .agent import RemoteProofAgent
+from .agent import RemoteAgent
 from .config import RemoteProofAgentConfig
 from .github_auth import (
     interactive_github_login_device_flow,
@@ -28,7 +28,7 @@ def _parse_kv_json(raw: str) -> tuple[str, JsonValue]:
 
 class RemoteProofAgentBuilder(AgentBuilder):
     def __init__(self) -> None:
-        super().__init__(agent_type=RemoteProofAgent)
+        super().__init__(agent_type=RemoteAgent)
         self._config = RemoteProofAgentConfig()
 
     def add_args(self, args: list[str]) -> None:
@@ -37,9 +37,7 @@ class RemoteProofAgentBuilder(AgentBuilder):
             "--server",
             type=str,
             default=self._config.server,
-            help=(
-                "Remote agent server base URL (creates session via /v1/session)"
-            ),
+            help=("Remote agent server base URL (creates session via /v1/session)"),
         )
         p.add_argument(
             "--remote-agent",
@@ -51,9 +49,7 @@ class RemoteProofAgentBuilder(AgentBuilder):
             "--remote-param",
             action="append",
             default=[],
-            help=(
-                "KEY=JSON parameter passed to server-side agent (repeatable)"
-            ),
+            help=("KEY=JSON parameter passed to server-side agent (repeatable)"),
         )
         p.add_argument(
             "--provider",
@@ -133,7 +129,7 @@ class RemoteProofAgentBuilder(AgentBuilder):
         )
 
     def __call__(self, prompt: str | None = None) -> Agent:
-        return RemoteProofAgent(self._config)
+        return RemoteAgent(self._config)
 
 
 # Convenient builder for rocq-pipeline `--agent brick_agents....:builder`

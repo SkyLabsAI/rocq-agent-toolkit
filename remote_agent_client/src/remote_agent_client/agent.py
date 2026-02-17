@@ -18,7 +18,7 @@ from rocq_doc_manager.rocq_cursor_websocket import (
 from rocq_doc_manager.rocq_cursor_websocket import (
     encoder as rdm_encoder,
 )
-from rocq_pipeline.agent.base import ProofAgent
+from rocq_pipeline.agent.base import Agent
 from rocq_pipeline.agent.base.dataclasses import TaskResult
 from websockets.exceptions import ConnectionClosed
 
@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 PROTOCOL_VERSION: int = 3
 
 
-class RemoteProofAgent(ProofAgent):
+class RemoteAgent(Agent):
     """ProofAgent wrapper that runs a server-side agent.
 
     This agent fits into rocq-pipeline like any other proof agent, but
@@ -67,7 +67,7 @@ class RemoteProofAgent(ProofAgent):
         return RemoteProofAgentConfig
 
     @override
-    async def prove(self, rc: RocqCursor) -> TaskResult:
+    async def run(self, rc: RocqCursor) -> TaskResult:
         ws_headers = {}
         if self._config.inference:
             # Provider (e.g. "openrouter", "openai")
