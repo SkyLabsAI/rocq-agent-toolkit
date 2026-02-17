@@ -32,20 +32,6 @@ class SyncProtocol(Protocol):
         ...
 
 
-def _read_exactly(stream, nb_bytes: int) -> bytes:
-    buf = bytearray(nb_bytes)
-    view = memoryview(buf)
-    bytes_received = 0
-    while bytes_received < nb_bytes:
-        n = stream.readinto(view[bytes_received:])
-        if n == 0:
-            raise Error(
-                f"End of file reached with {bytes_received}/{nb_bytes} bytes received."
-            )
-        bytes_received += n
-    return bytes(buf)
-
-
 class JsonRPCTP(SyncProtocol):
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
@@ -85,10 +71,7 @@ class JsonRPCTP(SyncProtocol):
                 raise Error(f'Got "{method}" notification instead of "ready_seq"')
         except Exception as e:
             self._kill_process()
-            self._stderr.seek(0)
-            stderr_data = self._stderr.read()
-            stderr = None if not stderr_data else stderr_data
-            raise Error(f"Failed to start JSON-RPC service: {e}", stderr=stderr) from e
+            self._error_with_stderr(f"Failed to start JSON-RPC service: {e}", e)
 
     def __del__(self) -> None:
         if self._process is not None:
@@ -158,14 +141,38 @@ class JsonRPCTP(SyncProtocol):
         self._process.wait()
         self._process = None
 
+    def _error_with_stderr(self, msg: str, e: Exception | None = None) -> None:
+        self._stderr.seek(0)
+        stderr_data = self._stderr.read()
+        stderr = None if not stderr_data else stderr_data
+        raise Error(msg, stderr=stderr)
+
     def _check_running(self) -> None:
         if self._process is None:
             raise Error("Not running anymore.")
+        code = self._process.poll()
+        if code:
+            self._process = None
+            self._error_with_stderr(f"The process exited with return code {code}")
 
     def _kill_process(self) -> None:
         if self._process is not None:
             self._process.kill()
             self._process = None
+
+    def _read_exactly(self, stream, nb_bytes: int) -> bytes:
+        buf = bytearray(nb_bytes)
+        view = memoryview(buf)
+        bytes_received = 0
+        while bytes_received < nb_bytes:
+            n = stream.readinto(view[bytes_received:])
+            if n == 0:
+                self._kill_process()
+                self._error_with_stderr(
+                    f"End of file reached with {bytes_received}/{nb_bytes} bytes received."
+                )
+            bytes_received += n
+        return bytes(buf)
 
     def _send(self, req: bytes) -> None:
         prefix = "Content-Length: "
@@ -180,14 +187,17 @@ class JsonRPCTP(SyncProtocol):
         _ = self._stdout.readline()
         if not header.startswith(prefix):
             self._kill_process()
-            raise Error(f"Invalid message header: '{header}'")
+            self._error_with_stderr(f"Invalid message header: '{header}'")
         try:
             nb_bytes = int(header[len(prefix) : -2])
         except Exception as e:
             self._kill_process()
-            raise Error(f"Failed to parse header: '{header}'", e) from e
-        response = _read_exactly(self._stdout, nb_bytes).decode()
+            self._error_with_stderr(f"Failed to parse header: '{header}'", e)
+        response = self._read_exactly(self._stdout, nb_bytes).decode()
         try:
             return json.loads(response)
-        except json.JSONDecodeError as err:
-            raise Error(f"Invalid JSON in response: {err.msg}.\n{response}.") from err
+        except json.JSONDecodeError as e:
+            self._kill_process()
+            self._error_with_stderr(
+                f"Invalid JSON in response: {e.msg}.\n{response}.", e
+            )
