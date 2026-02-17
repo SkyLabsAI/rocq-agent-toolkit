@@ -64,7 +64,7 @@ class Strategy[State, Action](Provenance.Full, ABC):
     """
 
     @abstractmethod
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -102,7 +102,8 @@ class SingletonStrategy[State, Action](Strategy[State, Action]):
         self._value = value
         self._logprob = logprob
 
-    def rollout(
+    @override
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -120,7 +121,8 @@ class IteratorStrategy[State, Action](Strategy[State, Action]):
     def __init__(self, i: Iterable[tuple[float, Action]]) -> None:
         self._collection = i
 
-    def rollout(
+    @override
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -157,7 +159,7 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
         self._children = children
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -165,7 +167,7 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
     ) -> Rollout[Action]:
         return InterleaveRollout(
             [
-                strat.rollout(state, max_rollout, context=context)
+                await strat.rollout(state, max_rollout, context=context)
                 for strat in self._children
             ]
         )
@@ -202,17 +204,21 @@ class StagedStrategy[State, Action](Strategy[State, Action]):
         self._prob = prob
         super().__init__()
 
-    def rollout(
+    @override
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        return StagedRollout(
-            self._strat1.rollout(state, max_rollout=max_rollout, context=context),
-            lambda: self._strat2.rollout(
+        async def fn():
+            return await self._strat2.rollout(
                 state, max_rollout=max_rollout, context=context
-            ),
+            )
+
+        return StagedRollout(
+            await self._strat1.rollout(state, max_rollout=max_rollout, context=context),
+            fn,
             self._prob,
         )
 
