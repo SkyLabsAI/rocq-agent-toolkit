@@ -123,5 +123,5 @@ def qed(ctx: RunContext[RocqProofStateDeps]) -> bool:
 
 
 rocq_cursor_toolset: AbstractToolset[RocqProofStateDeps] = FunctionToolset(
-    [current_goals, run_tactic, proof_script, backtrack, qed]
+    [current_goals, run_tactic, proof_script, backtrack, qed], sequential=True
 )
