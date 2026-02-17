@@ -24,11 +24,11 @@ class CountingStateManipulator(StateManipulator[int]):
         self.copy_count: int = 0
         self.dispose_count: int = 0
 
-    def copy(self, state: int) -> int:
+    async def copy(self, state: int) -> int:
         self.copy_count += 1
         return state
 
-    def dispose(self, state: int) -> None:
+    async def dispose(self, state: int) -> None:
         self.dispose_count += 1
 
 
