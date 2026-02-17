@@ -2,12 +2,12 @@
 
 import rocq_pipeline.task_runner as RAT
 
-from remote_agent_client.builder import RemoteProofAgentBuilder
+from rocq_remote_agent.builder import RemoteAgentBuilder
 
 
 def main() -> bool:
     """Main entrypoint for remote-proof-agent."""
-    return RAT.agent_main(RemoteProofAgentBuilder())
+    return RAT.agent_main(RemoteAgentBuilder())
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ PROTOCOL_VERSION: int = 3
 
 
 class RemoteAgent(Agent):
-    """ProofAgent wrapper that runs a server-side agent.
+    """Agent wrapper that runs a server-side agent.
 
     This agent fits into rocq-pipeline like any other proof agent, but
     delegates the proof search/LLM/tool logic to a remote server.

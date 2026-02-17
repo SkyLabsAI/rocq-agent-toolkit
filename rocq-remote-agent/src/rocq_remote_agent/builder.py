@@ -26,7 +26,7 @@ def _parse_kv_json(raw: str) -> tuple[str, JsonValue]:
     return k.strip(), cast(JsonValue, json.loads(v))
 
 
-class RemoteProofAgentBuilder(AgentBuilder):
+class RemoteAgentBuilder(AgentBuilder):
     def __init__(self) -> None:
         super().__init__(agent_type=RemoteAgent)
         self._config = RemoteProofAgentConfig()
@@ -133,4 +133,4 @@ class RemoteProofAgentBuilder(AgentBuilder):
 
 
 # Convenient builder for rocq-pipeline `--agent brick_agents....:builder`
-builder = RemoteProofAgentBuilder()
+builder = RemoteAgentBuilder()

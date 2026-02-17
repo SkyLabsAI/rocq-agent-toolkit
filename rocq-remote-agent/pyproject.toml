@@ -1,5 +1,5 @@
 [project]
-name = "remote_agent_client"
+name = "rocq-remote-agent"
 version = "0.1.0"
 description = "Remote proof agent for Rocq using rocq-pipeline"
 readme = "README.md"
@@ -10,7 +10,6 @@ requires-python = "==3.13.*"
 dependencies = [
     "rocq-doc-manager",
     "rocq-pipeline",
-    "brick-agents",
     "observability",
     "httpx>=0.28.1",
     "websockets>=14.3",
