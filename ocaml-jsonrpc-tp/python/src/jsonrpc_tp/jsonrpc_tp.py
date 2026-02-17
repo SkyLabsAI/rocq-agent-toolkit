@@ -1,6 +1,7 @@
 import json
 import subprocess
 import tempfile
+import threading
 from collections.abc import Callable
 from typing import IO, Any, Protocol
 
@@ -55,6 +56,7 @@ class JsonRPCTP(SyncProtocol):
         self._process: subprocess.Popen | None = None
         self._counter: int = -1
         self._stderr = tempfile.TemporaryFile(mode="w+t")
+        self._mutex = threading.Lock()
 
         try:
             self._process = subprocess.Popen(
@@ -111,52 +113,56 @@ class JsonRPCTP(SyncProtocol):
         params: list[Any],
         handle_notification: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> Resp[Any] | Err[Any]:
-        self._check_running()
-        # Getting a fresh request id.
-        self._counter = self._counter + 1
-        fresh_id = self._counter
-        # Preparing and sending the request.
-        req = json.dumps(
-            {"jsonrpc": "2.0", "method": method, "params": params, "id": fresh_id}
-        ).encode()
-        self._send(req)
-        # Reading the response.
-        while True:
-            response = self._recv()
-            if "error" in response:
-                # Error response for the request.
-                error = response.get("error")
-                message = error.get("message")
-                code = error.get("code")
-                match code:
-                    # Request failed (taken from the LSP protocol)
-                    case -32803:
-                        return Err(message, error.get("data"))
-                    # Method not found | Invalid params
-                    case -32601 | -32602:
-                        raise Exception(message)
-                    # Anything else is unexpected.
-                    case _:
-                        raise Error(f"Unexpected error code {code} ({message})")
-            elif "result" in response:
-                # Normal response for the request.
-                return Resp(response.get("result"))
-            else:
-                # Notification.
-                assert "method" in response
-                method = response.get("method")
-                assert isinstance(method, str)
-                params = response.get("params", {})
-                assert isinstance(params, dict)
-                if handle_notification:
-                    handle_notification(method, params)
+        with self._mutex:
+            # We need to ensure that the _counter is incremented atomically
+            # and that we process the send and recv with the lock acquired
+            self._check_running()
+            # Getting a fresh request id.
+            self._counter = self._counter + 1
+            fresh_id = self._counter
+            # Preparing and sending the request.
+            req = json.dumps(
+                {"jsonrpc": "2.0", "method": method, "params": params, "id": fresh_id}
+            ).encode()
+            self._send(req)
+            # Reading the response.
+            while True:
+                response = self._recv()
+                if "error" in response:
+                    # Error response for the request.
+                    error = response.get("error")
+                    message = error.get("message")
+                    code = error.get("code")
+                    match code:
+                        # Request failed (taken from the LSP protocol)
+                        case -32803:
+                            return Err(message, error.get("data"))
+                        # Method not found | Invalid params
+                        case -32601 | -32602:
+                            raise Exception(message)
+                        # Anything else is unexpected.
+                        case _:
+                            raise Error(f"Unexpected error code {code} ({message})")
+                elif "result" in response:
+                    # Normal response for the request.
+                    return Resp(response.get("result"))
+                else:
+                    # Notification.
+                    assert "method" in response
+                    method = response.get("method")
+                    assert isinstance(method, str)
+                    params = response.get("params", {})
+                    assert isinstance(params, dict)
+                    if handle_notification:
+                        handle_notification(method, params)
 
     def quit(self) -> None:
-        self._check_running()
-        assert self._process is not None
-        self._stdin.close()
-        self._process.wait()
-        self._process = None
+        with self._mutex:
+            self._check_running()
+            assert self._process is not None
+            self._stdin.close()
+            self._process.wait()
+            self._process = None
 
     def _check_running(self) -> None:
         if self._process is None:
