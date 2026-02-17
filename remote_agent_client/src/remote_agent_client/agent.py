@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from typing import Any, cast, override
 from urllib.parse import urlparse
@@ -8,7 +7,6 @@ from urllib.parse import urlparse
 import websockets
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_websocket import (
     CursorDispatcher,
 )
