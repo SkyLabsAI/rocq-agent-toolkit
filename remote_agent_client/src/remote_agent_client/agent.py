@@ -12,7 +12,11 @@ from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_websocket import (
     CursorDispatcher,
     CursorId,
+)
+from rocq_doc_manager.rocq_cursor_websocket import (
     decoder as rdm_decoder,
+)
+from rocq_doc_manager.rocq_cursor_websocket import (
     encoder as rdm_encoder,
 )
 from rocq_pipeline.agent.base import ProofAgent
@@ -65,29 +69,22 @@ class RemoteProofAgent(ProofAgent):
 
     @override
     async def prove(self, rc: RocqCursor) -> TaskResult:
-
         ws_headers = {}
         if self._config.inference:
             # Provider (e.g. "openrouter", "openai")
             if "provider" in self._config.inference:
-                ws_headers["X-LLM-Provider"] = str(
-                    self._config.inference["provider"]
-                )
+                ws_headers["X-LLM-Provider"] = str(self._config.inference["provider"])
 
             # API Key (The Secret)
             if "api_key" in self._config.inference:
-                ws_headers["X-LLM-Api-Key"] = str(
-                    self._config.inference["api_key"]
-                )
+                ws_headers["X-LLM-Api-Key"] = str(self._config.inference["api_key"])
 
         # GitHub auth (server access control). We send this on both session
         # creation and websocket connection so the server can enforce
         # either/both paths.
         session_headers: dict[str, str] = {}
         if self._config.github_token:
-            session_headers["Authorization"] = (
-                f"Bearer {self._config.github_token}"
-            )
+            session_headers["Authorization"] = f"Bearer {self._config.github_token}"
             ws_headers.setdefault(
                 "Authorization",
                 session_headers["Authorization"],
@@ -137,6 +134,7 @@ class RemoteProofAgent(ProofAgent):
             ping_timeout=self._config.ping_timeout_s,
             additional_headers=ws_headers,
         ) as ws:
+
             class _WebsocketsConn:
                 def __init__(self, inner: Any) -> None:
                     self._inner = inner
