@@ -118,11 +118,11 @@ class StateManipulator[T]:
     imperative semantics appear more functional.
     """
 
-    def copy(self, state: T) -> T:
+    async def copy(self, state: T) -> T:
         """Copy"""
         return state
 
-    def dispose(self, state: T) -> None:
+    async def dispose(self, state: T) -> None:
         """Destroy"""
         return None
 
@@ -207,7 +207,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
 
                     # clone_state must return a state that is safe to discard without
                     # affecting the parent; apply_action should return the state to enqueue.
-                    fresh_state = smanip.copy(candidate.state)
+                    fresh_state = await smanip.copy(candidate.state)
                     try:
                         next_state = await action.interact(fresh_state)
                         new_node = Node(next_state, candidate, action_key=action_key)
@@ -215,7 +215,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                         node = worklist.push(new_node, parent)
                         span.set_attribute("id", node.ident)
                     except Action.Failed:
-                        smanip.dispose(fresh_state)
+                        await smanip.dispose(fresh_state)
 
             # Rollout each node independently so explore_width is per node.
             for node, parent in candidates:
