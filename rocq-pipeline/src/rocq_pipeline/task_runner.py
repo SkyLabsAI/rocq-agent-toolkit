@@ -275,8 +275,10 @@ def run_task(
                 "Missing project name in task file; cannot derive dataset_id."
             )
 
+
+        task_tags = task_output.Tags(dict(tags.value))
         for task_tag in task.tags:
-            tags.value.update({f"TASK_{task_tag}": task_tag})
+            task_tags.value.update({f"TASK_{task_tag}": task_tag})
 
         return task_result.to_task_output(
             run_id=run_id,
@@ -287,7 +289,7 @@ def run_task(
             agent_cls_checksum=agent_class_checksum,
             agent_checksum=agent_instance_checksum,
             trace_id=trace_id,
-            metadata=task_output.Metadata(tags=tags),
+            metadata=task_output.Metadata(tags=task_tags),
         )
 
 
