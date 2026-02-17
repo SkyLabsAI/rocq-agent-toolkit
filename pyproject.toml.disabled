@@ -9,10 +9,11 @@ members = [
     "ocaml-jsonrpc-tp/python",
     "provenance-toolkit",
     "rocq-pipeline",
+    "rocq-agent-tools-pydantic",
     "rocq-doc-manager/python",
-    "psi-agent",
     "observability",
-    "dashboard/backend"
+    "dashboard/backend",
+    "rocq-dune-util",
 ]
 
 [tool.ruff]
