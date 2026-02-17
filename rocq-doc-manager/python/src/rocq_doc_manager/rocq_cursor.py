@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class RDMRocqCursor(RocqCursor):
     """
-    Cursors represent a pointer into a Rocq document.
+    A RocqCursor backed by a a RocqDocManager.
     """
 
     def __init__(self, rdm: API, cursor: int) -> None:
