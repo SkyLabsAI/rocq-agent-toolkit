@@ -203,9 +203,11 @@ class CursorDispatcher(Dispatcher):
     _cursors: dict[CursorId, RocqCursor]
     _fresh: int
 
-    def __init__(self, cursors: dict[CursorId, RocqCursor]):
-        self._cursors = cursors
-        self._fresh = max([c.cursor for c in cursors])
+    def __init__(self, cursors: dict[int, RocqCursor]):
+        self._cursors = {
+            CursorId(cursor=idx): cursor for idx, cursor in cursors.items()
+        }
+        self._fresh = max(cursors.keys())
 
     def extract_cursor(self, args: list[Any]) -> tuple[RocqCursor, list[Any]]:
         cursor_idx = args.pop(0)
