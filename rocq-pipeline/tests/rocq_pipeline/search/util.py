@@ -27,7 +27,7 @@ class FixedStrategy[State, Action](Strategy[State, Action]):
         self._mapping = mapping
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -50,7 +50,7 @@ class RecordingAction(Action[int]):
         self._advance_by = advance_by
 
     @override
-    def interact(self, state: int) -> int:
+    async def interact(self, state: int) -> int:
         self._on_record(self._key)
         return state + self._advance_by
 
@@ -77,7 +77,7 @@ def seeded_bfs[S](candidates: list[Node[S]]) -> BFS[Node[S]]:
     return frontier
 
 
-def run_search[S, FNode](
+async def run_search[S, FNode](
     strategy: Strategy[S, Action[S]],
     worklist: Frontier[Node[S], FNode],
     beam_width: int = 1,
@@ -87,7 +87,7 @@ def run_search[S, FNode](
     max_depth: int | None = None,
 ) -> Frontier[Node[S], FNode]:
     """Call continue_search with a concrete Frontier instance (mypy helper)."""
-    return Search.continue_search(
+    return await Search.continue_search(
         strategy,
         worklist,
         beam_width=beam_width,

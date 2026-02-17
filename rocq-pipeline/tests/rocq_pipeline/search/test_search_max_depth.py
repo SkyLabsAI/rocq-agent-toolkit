@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.search import Node
 
 from .util import FixedStrategy, RecordingAction, run_search, seeded_bfs
 
+pytestmark = pytest.mark.asyncio
 
-def test_max_depth_blocks_deeper_nodes() -> None:
+
+async def test_max_depth_blocks_deeper_nodes() -> None:
     """Ensure nodes deeper than max_depth are skipped while depth==max_depth proceeds."""
     record: list[str] = []
     root = Node(0, None)
@@ -20,6 +23,6 @@ def test_max_depth_blocks_deeper_nodes() -> None:
     }
     strategy = FixedStrategy(actions)
     frontier = seeded_bfs([depth_one, depth_two])
-    run_search(strategy, frontier, beam_width=2, explore_width=2, max_depth=1)
+    await run_search(strategy, frontier, beam_width=2, explore_width=2, max_depth=1)
 
     assert record == ["d1"]

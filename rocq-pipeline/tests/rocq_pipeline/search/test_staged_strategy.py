@@ -1,4 +1,3 @@
-import itertools
 from typing import override
 
 # Import the function we want to test
@@ -14,13 +13,15 @@ from rocq_pipeline.search.strategy import (
     Strategy,
 )
 
+from .rollout_util import is_empty
+
 
 class SimpleAction[T](Action[list[T]]):
     def __init__(self, value: T) -> None:
         self._value = value
 
     @override
-    def interact(self, state: list[T]) -> list[T]:
+    async def interact(self, state: list[T]) -> list[T]:
         return state + [self._value]
 
 
@@ -29,94 +30,116 @@ type RolloutAL[T] = Rollout[ActionL[T]]
 type StrategyAL[T] = Strategy[list[T], ActionL[T]]
 
 
-def is_empty[T](x: RolloutAL[int]) -> None:
-    try:
-        elem = next(x)
-        raise AssertionError(f"empty contains element {elem}")
-    except StopIteration:
-        pass
+async def take_n[T](x: RolloutAL[T], n: int) -> list[tuple[float, ActionL[T]]]:
+    out: list[tuple[float, ActionL[T]]] = []
+    for _ in range(n):
+        proposal = await x.next()
+        if proposal.result is None:
+            continue
+        out.append((proposal.logprob, proposal.result))
+    return out
 
 
-def test_empty() -> None:
+async def take_all[T](x: RolloutAL[T]) -> list[tuple[float, ActionL[T]]]:
+    out: list[tuple[float, ActionL[T]]] = []
+    while True:
+        try:
+            proposal = await x.next()
+        except StopAsyncIteration:
+            return out
+        if proposal.result is None:
+            continue
+        out.append((proposal.logprob, proposal.result))
+
+
+@pytest.mark.asyncio
+async def test_empty() -> None:
     strat: StrategyAL[int] = StagedStrategy(FailStrategy(), FailStrategy())
-    actions = strat.rollout([])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    await is_empty(actions)
 
 
-def next_eval(actions: RolloutAL[int], st: list[int]) -> tuple[float, list[int]]:
-    pr, act = next(actions)
-    return (pr, act.interact(st))
+async def next_eval(actions: RolloutAL[int], st: list[int]) -> tuple[float, list[int]]:
+    proposal = await actions.next()
+    assert proposal.result is not None
+    return (proposal.logprob, await proposal.result.interact(st))
 
 
-def test_empty_1() -> None:
+@pytest.mark.asyncio
+async def test_empty_1() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         FailStrategy(), SingletonStrategy(SimpleAction(0), 0.5)
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
+    await is_empty(actions)
 
 
-def test_empty_2() -> None:
+@pytest.mark.asyncio
+async def test_empty_2() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5), FailStrategy()
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
+    await is_empty(actions)
 
 
-def test_both_1() -> None:
+@pytest.mark.asyncio
+async def test_both_1() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         SingletonStrategy(SimpleAction(1), 0.75),
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
-    assert (0.75, [1]) == next_eval(actions, [])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
+    assert (0.75, [1]) == await next_eval(actions, [])
+    await is_empty(actions)
 
 
-def test_both_2() -> None:
+@pytest.mark.asyncio
+async def test_both_2() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         SingletonStrategy(SimpleAction(1), 0.75),
         prob=0.5,
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
-    assert (0.75, [1]) == next_eval(actions, [])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
+    assert (0.75, [1]) == await next_eval(actions, [])
+    await is_empty(actions)
 
 
-def test_both_3() -> None:
+@pytest.mark.asyncio
+async def test_both_3() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         SingletonStrategy(SimpleAction(1), 0.75),
         prob=0.8,
     )
-    actions = strat.rollout([])
-    assert (0.75, [1]) == next_eval(actions, [])
-    assert (0.5, [0]) == next_eval(actions, [])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    assert (0.75, [1]) == await next_eval(actions, [])
+    assert (0.5, [0]) == await next_eval(actions, [])
+    await is_empty(actions)
 
 
-def test_both_4() -> None:
+@pytest.mark.asyncio
+async def test_both_4() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
         SingletonStrategy(SimpleAction(2), 0.75),
         prob=0.2,
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
-    assert (0.4, [1]) == next_eval(actions, [])
-    assert (0.75, [2]) == next_eval(actions, [])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
+    assert (0.4, [1]) == await next_eval(actions, [])
+    assert (0.75, [2]) == await next_eval(actions, [])
+    await is_empty(actions)
 
 
 class NeverStrategy[T, A](Strategy[T, A]):
     @override
-    def rollout(
+    async def rollout(
         self,
         state: T,
         max_rollout: int | None = None,
@@ -125,35 +148,38 @@ class NeverStrategy[T, A](Strategy[T, A]):
         raise AssertionError("Should not Run")
 
 
-def test_delayed() -> None:
+@pytest.mark.asyncio
+async def test_delayed() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         NeverStrategy(),
         prob=0.3,
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
 
 
-def test_delayed_edge() -> None:
+@pytest.mark.asyncio
+async def test_delayed_edge() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         SingletonStrategy(SimpleAction(0), 0.5),
         NeverStrategy(),
         prob=0.5,
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
 
 
-def test_delayed_edge2() -> None:
+@pytest.mark.asyncio
+async def test_delayed_edge2() -> None:
     strat: StrategyAL[int] = StagedStrategy(
         IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
         NeverStrategy(),
         prob=0.2,
     )
-    actions = strat.rollout([])
-    assert (0.5, [0]) == next_eval(actions, [])
-    assert (0.4, [1]) == next_eval(actions, [])
+    actions = await strat.rollout([])
+    assert (0.5, [0]) == await next_eval(actions, [])
+    assert (0.4, [1]) == await next_eval(actions, [])
 
 
 VALUES = [
@@ -211,8 +237,9 @@ VALUES = [
 ]
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("lls, expected", VALUES, ids=[str(x) for _, x in VALUES])
-def test_many(
+async def test_many(
     lls: list[tuple[float, list[tuple[float, int]]]], expected: list[tuple[float, int]]
 ):
     strat: StrategyAL[int] = strategy.staged(
@@ -224,12 +251,13 @@ def test_many(
 
     result: list[tuple[float, int]] = []
     for _ in range(0, 2):
-        result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
+        rollout = await strat.rollout([])
+        pairs = await take_all(rollout)
+        result = [(prob, (await n.interact([]))[0]) for prob, n in pairs]
         assert result == expected
 
     for pre_len in range(0, len(result)):
-        x = [
-            (prob, n.interact([])[0])
-            for prob, n in itertools.islice(strat.rollout([]), pre_len)
-        ]
+        rollout = await strat.rollout([])
+        pairs = await take_n(rollout, pre_len)
+        x = [(prob, (await n.interact([]))[0]) for prob, n in pairs]
         assert x == expected[:pre_len]
