@@ -4,6 +4,7 @@ import logging
 import re
 from collections.abc import Callable
 from typing import override
+from warnings import deprecated
 
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
@@ -16,7 +17,11 @@ class Locator:
 
     Beyond __call__, implementers must override '__str__'."""
 
+    @deprecated("use `go_to`")
     def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
+        return self.go_to(rc, next=next)
+
+    def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
         """Move the cursor to the line identified by the Locator.
 
         If `next` is True, then the search occurs **forward** from the
@@ -60,7 +65,7 @@ class FirstAdmit(Locator):
         return f"admit({self._index})"
 
     @override
-    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
+    def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
         def is_admit(
             text: str,
             kind: str,
@@ -103,7 +108,7 @@ class FirstLemma(Locator):
         self._index = index
 
     @override
-    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
+    def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
         if self._style is None:
             prefix = "Lemma|Theorem"
         else:
@@ -183,7 +188,7 @@ class CommentMarkerLocator(Locator):
         return f"{CommentMarkerLocator.PREFIX}{self._marker}"
 
     @override
-    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
+    def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
         def is_marker_comment(
             text: str,
             kind: str,
