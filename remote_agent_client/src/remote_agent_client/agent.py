@@ -5,7 +5,6 @@ import json
 from typing import Any, cast, override
 from urllib.parse import urlparse
 
-import httpx
 import websockets
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
@@ -18,10 +17,22 @@ from .config import RemoteProofAgentConfig
 
 logger = get_logger(__name__)
 
-PROTOCOL_VERSION: int = 1
+PROTOCOL_VERSION: int = 2
 
 
 def _to_jsonable(x: object) -> object:
+    # Pydantic v2 models (used by newer rocq-doc-manager) expose `model_dump`.
+    dump = getattr(x, "model_dump", None)
+    if callable(dump):
+        return dump()
+    # Pydantic v1 fallback (just in case).
+    dump_v1 = getattr(x, "dict", None)
+    if callable(dump_v1):
+        try:
+            return dump_v1()
+        except TypeError:
+            # Some `dict()` implementations require keyword args; fall through.
+            pass
     if hasattr(x, "to_dict") and callable(x.to_dict):
         return cast(Any, x).to_dict()
     if hasattr(x, "to_json") and callable(x.to_json):
@@ -90,8 +101,8 @@ class RemoteProofAgent(ProofAgent):
                 )
 
         # GitHub auth (server access control). We send this on both session
-        # creation and websocket connection so the server can enforce either/both
-        # paths.
+        # creation and websocket connection so the server can enforce
+        # either/both paths.
         session_headers: dict[str, str] = {}
         if self._config.github_token:
             session_headers["Authorization"] = (
@@ -116,22 +127,9 @@ class RemoteProofAgent(ProofAgent):
             )
 
         base = self._config.server.rstrip("/")
-        async with httpx.AsyncClient() as client:
-            session = await client.post(
-                f"{base}/v1/session",
-                headers=session_headers or None,
-            )
-            session.raise_for_status()
-            sess_data = session.json()
-        token = cast(str, sess_data["token"])
-        ws_url: str
-        if "ws_url" in sess_data:
-            ws_url = cast(str, sess_data["ws_url"])
-        else:
-            ws_path = cast(str, sess_data["ws_path"])
-            parsed = urlparse(base)
-            scheme = "wss" if parsed.scheme == "https" else "ws"
-            ws_url = f"{scheme}://{parsed.netloc}{ws_path}"
+        parsed = urlparse(base)
+        scheme = "wss" if parsed.scheme == "https" else "ws"
+        ws_url = f"{scheme}://{parsed.netloc}/v2/ws"
 
         if (
             ws_url.startswith("ws://")
@@ -160,7 +158,10 @@ class RemoteProofAgent(ProofAgent):
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,
-                    "error": {"code": -32601, "message": f"method not found: {method}"},
+                    "error": {
+                        "code": -32601,
+                        "message": f"method not found: {method}",
+                    },
                 }
 
             try:
@@ -196,7 +197,7 @@ class RemoteProofAgent(ProofAgent):
             hello = {
                 "type": "hello",
                 "protocol_version": PROTOCOL_VERSION,
-                "token": token,
+                "run_id": None,
                 "agent": {
                     "name": self._config.remote_agent,
                     "parameters": self._config.remote_parameters,
@@ -220,7 +221,9 @@ class RemoteProofAgent(ProofAgent):
                     )
 
                 try:
-                    obj = json.loads(raw if isinstance(raw, str) else raw.decode("utf-8"))
+                    obj = json.loads(
+                        raw if isinstance(raw, str) else raw.decode("utf-8")
+                    )
                 except Exception:
                     continue
 
@@ -230,7 +233,11 @@ class RemoteProofAgent(ProofAgent):
                     continue
 
                 # JSON-RPC request from server (forward to local RDM API).
-                if obj.get("jsonrpc") == "2.0" and "id" in obj and "method" in obj:
+                if (
+                    obj.get("jsonrpc") == "2.0"
+                    and "id" in obj
+                    and "method" in obj
+                ):
                     if not hello_ack:
                         continue
                     req_id = obj.get("id")
