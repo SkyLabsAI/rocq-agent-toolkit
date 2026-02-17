@@ -1,9 +1,9 @@
-from .agent import RemoteProofAgent
+from .agent import RemoteAgent
 from .builder import RemoteProofAgentBuilder, builder
 from .config import RemoteProofAgentConfig
 
 __all__ = [
-    "RemoteProofAgent",
+    "RemoteAgent",
     "RemoteProofAgentBuilder",
     "RemoteProofAgentConfig",
     "builder",
