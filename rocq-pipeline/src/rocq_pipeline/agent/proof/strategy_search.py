@@ -47,7 +47,7 @@ class SearchAgent(ProofAgent):
         heapq.heappush(
             states,
             SearchAgent.State(
-                -math.log(1.0), 0, fresh(), rc, self._strategy.rollout(rc)
+                -math.log(1.0), 0, fresh(), rc, await self._strategy.rollout(rc)
             ),
         )
 
@@ -58,12 +58,13 @@ class SearchAgent(ProofAgent):
                 break
             state = heapq.heappop(states)
 
+            # TODO: this looks incorrect because the rollout is not actually used
             try:
-                prob, action = next(state.rollout)
+                prob, action = await anext(state.rollout)
                 heapq.heappush(
                     states, state
                 )  # push again in case there are more elements in the rollout
-            except StopIteration:
+            except StopAsyncIteration:
                 # This is just pruning an empty rollout
                 state.cursor.dispose()
                 iteration -= 1
@@ -75,7 +76,7 @@ class SearchAgent(ProofAgent):
             # ultimately fails (which is probably common).
             fresh_rc = state.cursor.clone()
             try:
-                result_rc = action.interact(fresh_rc)
+                result_rc = await action.interact(fresh_rc)
             except Action.Failed:
                 # the action failed, so we discard this
                 fresh_rc.dispose()
@@ -92,7 +93,7 @@ class SearchAgent(ProofAgent):
                 state.depth - 1,
                 fresh(),
                 fresh_rc,
-                self._strategy.rollout(fresh_rc),
+                await self._strategy.rollout(fresh_rc),
             )
             heapq.heappush(states, next_state)
         return self.give_up(rc, "out of fuel")

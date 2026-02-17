@@ -2,7 +2,7 @@ import re
 from collections.abc import Callable
 from typing import Annotated, Literal, override
 
-from observability import get_logger
+from observability import get_logger, trace_async
 from observability.tracing.decorators import trace
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
@@ -83,7 +83,7 @@ class RocqCommandAction(Action[RocqCursor]):
 
     @override
     @trace("RocqCommandAction")
-    def interact(self, state: RocqCursor) -> RocqCursor:
+    async def interact(self, state: RocqCursor) -> RocqCursor:
         # TODO: the fact that cursors are not functional is quite annoying here.
         # It should be the caller that creates a new cursor, but in this case
         # we will basically always be returning our own cursor.
@@ -144,8 +144,8 @@ class RocqTacticAction(Action[RocqCursor]):
             self._tactic = f"{selector}: {tactic}"
 
     @override
-    @trace("RocqTacticAction")
-    def interact(self, state: RocqCursor) -> RocqCursor:
+    @trace_async("RocqTacticAction")
+    async def interact(self, state: RocqCursor) -> RocqCursor:
         # TODO: the fact that cursors are not functional is quite annoying here.
         # It should be the caller that creates a new cursor, but in this case
         # we will basically always be returning our own cursor.
@@ -216,7 +216,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
         return self._final_command
 
     @override
-    def interact(self, state: RocqCursor) -> RocqCursor:
+    async def interact(self, state: RocqCursor) -> RocqCursor:
         self._final_command = None
         command = self._initial_command
 

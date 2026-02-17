@@ -27,7 +27,7 @@ class StepAction(Action[RocqCursor]):
         return self._key
 
     @override
-    def interact(self, state: RocqCursor) -> RocqCursor:
+    async def interact(self, state: RocqCursor) -> RocqCursor:
         for _ in range(0, self._ignore):
             if isinstance(state.run_step(), rdm_api.Err):
                 raise Action.Failed()
@@ -46,7 +46,8 @@ class OracleStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
     When the `doc_suffix` is hidden, this strategy will no longer work.
     """
 
-    def rollout(
+    @override
+    async def rollout(
         self,
         state: RocqCursor,
         max_rollout: int | None = None,

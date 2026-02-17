@@ -34,7 +34,7 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         self._prob = prob
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: RocqCursor,
         max_rollout: int | None = None,
@@ -55,7 +55,7 @@ class CutAssertStrategy(Strategy):
         self._logprob: float = math.log(prob)
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: RocqCursor,
         max_rollout: int | None = None,
@@ -90,7 +90,7 @@ class FirstTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         ]
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: RocqCursor,
         max_rollout: int | None = None,

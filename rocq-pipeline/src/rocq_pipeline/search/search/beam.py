@@ -74,7 +74,7 @@ class BeamSearch[T]:
         self._state_manip = freshen or StateManipulator()
         self._state_key = state_key
 
-    def search(self, start_state: T) -> list[T]:
+    async def search(self, start_state: T) -> list[T]:
         """
         Run beam search from the start state.
 
@@ -120,7 +120,7 @@ class BeamSearch[T]:
                 )
 
             # Run search - it will loop internally until frontier is empty or solutions found
-            result = search(
+            result = await search(
                 strategy=self._strategy,
                 start=start_state,
                 frontier=make_frontier,

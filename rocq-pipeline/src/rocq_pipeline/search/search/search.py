@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -83,12 +82,12 @@ class Node[CNode]:
         self._action_key = action_key
         self._seen_action_keys = set()
 
-    def rollout(
+    async def rollout(
         self, strategy: Strategy[CNode, Action[CNode]], **kwargs
     ) -> Rollout[Action[CNode]]:
         # Cache the rollout per node to avoid re-asking the strategy.
         if self._rollout is None:
-            self._rollout = strategy.rollout(self.state, **kwargs)
+            self._rollout = await strategy.rollout(self.state, **kwargs)
         return self._rollout
 
     def update_rollout(self, rollout: Rollout[Action[CNode]]) -> None:
@@ -131,7 +130,7 @@ class StateManipulator[T]:
 class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
     # This class seems to just help type checking a bit.
     @staticmethod
-    def search[FrontierT: Frontier[Node[CState], FNode]](
+    async def search[FrontierT: Frontier[Node[CState], FNode]](
         strategy: Strategy[CState, Action[CState]],
         start: CState,
         frontier: Callable[[], FrontierT],
@@ -146,7 +145,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
         with trace_context("search") as span:
             root = worklist.push(Node(start, None), None)
             span.set_attribute("root_id", root.ident)
-            return Search.continue_search(
+            return await Search.continue_search(
                 strategy,
                 worklist,
                 beam_width=beam_width,
@@ -157,7 +156,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
             )
 
     @staticmethod
-    def continue_search[FrontierT: Frontier[Node[CState], FNode]](
+    async def continue_search[FrontierT: Frontier[Node[CState], FNode]](
         strategy: Strategy[CState, Action[CState]],
         worklist: FrontierT,
         beam_width: int = 1,
@@ -182,7 +181,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                 # This implies that the frontier is empty
                 return worklist
 
-            def process(
+            async def process(
                 candidate: Node[CState], parent: FNode, action: Action[CState]
             ) -> None:
                 with trace_context("search/process") as span:
@@ -210,7 +209,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                     # affecting the parent; apply_action should return the state to enqueue.
                     fresh_state = smanip.copy(candidate.state)
                     try:
-                        next_state = action.interact(fresh_state)
+                        next_state = await action.interact(fresh_state)
                         new_node = Node(next_state, candidate, action_key=action_key)
                         # Enqueue the child for future expansion.
                         node = worklist.push(new_node, parent)
@@ -222,16 +221,17 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
             for node, parent in candidates:
                 if max_depth is not None and node.depth > max_depth:
                     continue
-                rollout = node.rollout(strategy, max_rollout=explore_width)
+                rollout = await node.rollout(strategy, max_rollout=explore_width)
                 count = 0
-                for _, action in itertools.islice(rollout, explore_width):
+                async for _, action in rollout:
                     count += 1
-                    process(node, parent, action)
-                # If we got to the end of the iterator, then there might
-                # be more.
-                if count == explore_width:
-                    node.update_rollout(rollout)
-                    worklist.repush(parent)
+                    await process(node, parent, action)
+                    # If we got to the end of the iterator, then there might
+                    # be more.
+                    if count == explore_width:
+                        node.update_rollout(rollout)
+                        worklist.repush(parent)
+                        break
 
 
 search = Search.search
