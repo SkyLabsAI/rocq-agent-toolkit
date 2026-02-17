@@ -275,7 +275,6 @@ def run_task(
                 "Missing project name in task file; cannot derive dataset_id."
             )
 
-
         task_tags = task_output.Tags(dict(tags.value))
         for task_tag in task.tags:
             task_tags.value.update({f"TASK_{task_tag}": task_tag})
