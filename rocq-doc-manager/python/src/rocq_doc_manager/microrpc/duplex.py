@@ -2,27 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass
 from typing import Any
 
 import websockets
-from rocq_doc_manager.microrpc.deserialize import Decoder, EncoderProtocol
-from rocq_doc_manager.microrpc.dipatcher import Dispatcher
 
-
-@dataclass
-class Request:
-    id: int
-    method: str
-    args: list[Any]
-    kwargs: dict[str, Any]
-
-
-@dataclass
-class Response:
-    id: int
-    is_exception: bool
-    payload: Any
+from .deserialize import Decoder, EncoderProtocol
+from .dipatcher import Dispatcher
+from .tunnel import Request, Response
 
 
 class DuplexMux:
