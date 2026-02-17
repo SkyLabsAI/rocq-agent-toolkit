@@ -38,14 +38,21 @@ def build_cursor(filename: Path, loc: Locator) -> Generator[RocqCursor]:
         rdm.quit()
 
 
-def build_model(calls: list[tuple[str, Any]]) -> Model:
+def build_model(calls: list[list[tuple[str, Any]]]) -> Model:
     calls = calls.copy()
 
     def handler(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         nonlocal calls
         try:
-            tool_name, args = calls.pop(0)
-            return ModelResponse(parts=[ToolCallPart(tool_name=tool_name, args=args)])
+            tool_calls = calls.pop(0)
+            if not isinstance(tool_calls, list):
+                tool_calls = [tool_calls]
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name=tool_name, args=args)
+                    for tool_name, args in tool_calls
+                ]
+            )
 
         except IndexError:
             return ModelResponse(parts=[TextPart(content="Done")])
@@ -59,13 +66,14 @@ async def amain(args: list[str]) -> None:
     file = Path(args.pop(0))
     locator = LocatorParser.parse(args.pop(0))
 
-    def parse_tool_call(s: str) -> tuple[str, Any]:
+    def parse_tool_call(s: str) -> list[tuple[str, Any]]:
         js = json.loads(s)
         if isinstance(js, str):
-            return (js, {})
+            # Simple case, a single string is interpreted as a 0-argument
+            # function call
+            return [(js, {})]
         if isinstance(js, list):
-            assert len(js) == 2
-            return (js[0], js[1])
+            return [(method, args) for [method, args] in js]
         raise ValueError(f"Parsing tool call from: {s}")
 
     messages = [parse_tool_call(arg) for arg in args]

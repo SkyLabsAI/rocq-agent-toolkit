@@ -21,7 +21,7 @@
 
   $ uv run tool-tester theories/test1.v Lemma:test \
   > '"current_goals"' \
-  > '[["run_tactic", {"tactic": "split."}]]' \
+  > '[["run_tactic", {"tactic": "split."}],["current_goals", {}]]' \
   > '"proof_script"' \
   > '[["run_tactic", {"tactic": "trivial."}]]' \
   > '"proof_script"' \
@@ -34,7 +34,9 @@
   current_goals({})
   = ['\n============================\nTrue /\\ True']
   run_tactic({'tactic': 'split.'})
+  current_goals({})
   = error=None result=['\n============================\nTrue', '\n============================\nTrue']
+  = ['\n============================\nTrue', '\n============================\nTrue']
   proof_script({})
   = ['split.']
   run_tactic({'tactic': 'trivial.'})
