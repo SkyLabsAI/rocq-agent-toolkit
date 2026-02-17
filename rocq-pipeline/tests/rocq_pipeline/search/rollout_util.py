@@ -6,12 +6,12 @@
 from rocq_pipeline.search.rollout import Rollout
 
 
-def is_empty[T](r: Rollout[T]) -> None:
+async def is_empty[T](r: Rollout[T]) -> None:
     """Assert that the Rollout is empty"""
     try:
-        result = r.next()
+        result = await r.next()
         raise AssertionError(f"Should be empty, but got {result}")
-    except StopIteration:
+    except StopAsyncIteration:
         pass
 
 

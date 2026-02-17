@@ -49,16 +49,17 @@ class StaticFrontier[T](Frontier[T, BasicNode[T]]):
         return []
 
 
-def run_search_with_factory[A, B](
+async def run_search_with_factory[A, B](
     strategy: Strategy[A, Action[A]],
     start: A,
     frontier: Callable[[], Frontier[A, B]],
 ) -> Frontier[A, B]:
     """Call search with a frontier factory (mypy helper)."""
-    return Search.search(strategy, start, frontier=frontier)  # type: ignore[type-var]
+    return await Search.search(strategy, start, frontier=frontier)  # type: ignore[type-var]
 
 
-def test_search_returns_frontier_instance() -> None:
+@pytest.mark.asyncio
+async def test_search_returns_frontier_instance() -> None:
     """Verify Search.search calls the frontier factory once and returns that instance."""
     frontier: StaticFrontier[int] = StaticFrontier([[]])
     calls = 0
@@ -68,37 +69,41 @@ def test_search_returns_frontier_instance() -> None:
         calls += 1
         return frontier
 
-    result = run_search_with_factory(FailStrategy(), 0, make_frontier)
+    result = await run_search_with_factory(FailStrategy(), 0, make_frontier)
     assert result is frontier
     assert calls == 1
     assert len(frontier.pushed) == 1
 
 
-def test_continue_search_terminates_on_none() -> None:
+@pytest.mark.asyncio
+async def test_continue_search_terminates_on_none() -> None:
     """Ensure continue_search returns when take() yields None."""
     frontier: StaticFrontier[Node[int]] = StaticFrontier([[]])
-    result = run_search(FailStrategy(), frontier, beam_width=2)
+    result = await run_search(FailStrategy(), frontier, beam_width=2)
     assert result is frontier
     assert frontier.take_calls == [2]
 
 
-def test_continue_search_terminates_on_empty_list() -> None:
+@pytest.mark.asyncio
+async def test_continue_search_terminates_on_empty_list() -> None:
     """Ensure continue_search returns when take() yields an empty list."""
     frontier: StaticFrontier[Node[int]] = StaticFrontier([[]])
-    result = run_search(FailStrategy(), frontier, beam_width=1)
+    result = await run_search(FailStrategy(), frontier, beam_width=1)
     assert result is frontier
     assert frontier.take_calls == [1]
 
 
-def test_continue_search_asserts_explore_width_positive() -> None:
+@pytest.mark.asyncio
+async def test_continue_search_asserts_explore_width_positive() -> None:
     """Ensure explore_width must be positive (assertion guard)."""
     frontier: StaticFrontier[Node[int]] = StaticFrontier([[]])
     with pytest.raises(AssertionError):
-        run_search(FailStrategy(), frontier, explore_width=0)
+        await run_search(FailStrategy(), frontier, explore_width=0)
 
 
-def test_continue_search_passes_beam_width_to_take() -> None:
+@pytest.mark.asyncio
+async def test_continue_search_passes_beam_width_to_take() -> None:
     """Ensure beam_width controls the count passed into take()."""
     frontier: StaticFrontier[Node[int]] = StaticFrontier([[]])
-    run_search(FailStrategy(), frontier, beam_width=3)
+    await run_search(FailStrategy(), frontier, beam_width=3)
     assert frontier.take_calls == [3]

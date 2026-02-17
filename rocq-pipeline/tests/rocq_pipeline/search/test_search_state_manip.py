@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import override
 
+import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.search import Node, RepetitionPolicy, StateManipulator
 
@@ -38,14 +39,15 @@ class FailingAction(Action[int]):
         self._key = key
 
     @override
-    def interact(self, state: int) -> int:
+    async def interact(self, state: int) -> int:
         raise Action.Failed()
 
     def key(self) -> str:
         return self._key
 
 
-def test_copy_called_on_success() -> None:
+@pytest.mark.asyncio
+async def test_copy_called_on_success() -> None:
     """Ensure copy() is called for successful action attempts."""
     record: list[str] = []
     manip = CountingStateManipulator()
@@ -55,14 +57,15 @@ def test_copy_called_on_success() -> None:
     }
     strategy = FixedStrategy(actions)
     frontier = seeded_bfs([candidate])
-    run_search(strategy, frontier, state_manip=manip)
+    await run_search(strategy, frontier, state_manip=manip)
 
     assert manip.copy_count == 1
     assert manip.dispose_count == 0
     assert record == ["ok"]
 
 
-def test_dispose_called_on_failure() -> None:
+@pytest.mark.asyncio
+async def test_dispose_called_on_failure() -> None:
     """Ensure dispose() is called when an action fails."""
     manip = CountingStateManipulator()
     candidate = Node(0, None)
@@ -71,13 +74,14 @@ def test_dispose_called_on_failure() -> None:
     }
     strategy = FixedStrategy(actions)
     frontier = seeded_bfs([candidate])
-    run_search(strategy, frontier, state_manip=manip)
+    await run_search(strategy, frontier, state_manip=manip)
 
     assert manip.copy_count == 1
     assert manip.dispose_count == 1
 
 
-def test_copy_not_called_on_dedup_skip() -> None:
+@pytest.mark.asyncio
+async def test_copy_not_called_on_dedup_skip() -> None:
     """Ensure copy() is not called when a duplicate action is skipped."""
     manip = CountingStateManipulator()
     record: list[str] = []
@@ -88,13 +92,14 @@ def test_copy_not_called_on_dedup_skip() -> None:
     }
     strategy = FixedStrategy(actions)
     frontier = seeded_bfs([candidate])
-    run_search(strategy, frontier, state_manip=manip)
+    await run_search(strategy, frontier, state_manip=manip)
 
     assert manip.copy_count == 0
     assert record == []
 
 
-def test_copy_not_called_on_repetition_skip() -> None:
+@pytest.mark.asyncio
+async def test_copy_not_called_on_repetition_skip() -> None:
     """Ensure copy() is not called when repetition policy skips an action."""
     manip = CountingStateManipulator()
     record: list[str] = []
@@ -107,13 +112,14 @@ def test_copy_not_called_on_repetition_skip() -> None:
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
     frontier = seeded_bfs([candidate])
-    run_search(strategy, frontier, repetition_policy=policy, state_manip=manip)
+    await run_search(strategy, frontier, repetition_policy=policy, state_manip=manip)
 
     assert manip.copy_count == 0
     assert record == []
 
 
-def test_copy_not_called_on_max_depth_skip() -> None:
+@pytest.mark.asyncio
+async def test_copy_not_called_on_max_depth_skip() -> None:
     """Ensure copy() is not called when max_depth skips an action."""
     manip = CountingStateManipulator()
     record: list[str] = []
@@ -125,7 +131,7 @@ def test_copy_not_called_on_max_depth_skip() -> None:
     }
     strategy = FixedStrategy(actions)
     frontier = seeded_bfs([candidate])
-    run_search(strategy, frontier, max_depth=1, state_manip=manip)
+    await run_search(strategy, frontier, max_depth=1, state_manip=manip)
 
     assert manip.copy_count == 0
     assert record == []

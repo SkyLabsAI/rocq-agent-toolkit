@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.search import (
     RepetitionPolicy,
@@ -37,7 +38,8 @@ def test_has_action_repetition_cyclic() -> None:
     assert reason == "cyclic_len2"
 
 
-def test_repetition_policy_skips_repeated_action() -> None:
+@pytest.mark.asyncio
+async def test_repetition_policy_skips_repeated_action() -> None:
     """Ensure repetition policy skips actions that repeat recent history."""
     record: list[str] = []
     candidate = make_chain(["x", "x"])
@@ -49,14 +51,15 @@ def test_repetition_policy_skips_repeated_action() -> None:
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
     frontier = seeded_bfs([candidate])
-    run_search(
+    await run_search(
         strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy
     )
 
     assert record == []
 
 
-def test_repetition_policy_uses_bounded_history() -> None:
+@pytest.mark.asyncio
+async def test_repetition_policy_uses_bounded_history() -> None:
     """Ensure repetition checks ignore action history outside the bounded tail."""
     record: list[str] = []
     candidate = make_chain(["a", "a", "a", "b", "c"])
@@ -68,7 +71,7 @@ def test_repetition_policy_uses_bounded_history() -> None:
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
     frontier = seeded_bfs([candidate])
-    run_search(
+    await run_search(
         strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy
     )
 

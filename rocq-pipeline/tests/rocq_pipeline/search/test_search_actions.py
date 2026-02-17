@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import override
 
+import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.search import Node
 
@@ -20,7 +21,7 @@ class KeyedAction(Action[int]):
         self._record = record
 
     @override
-    def interact(self, state: int) -> int:
+    async def interact(self, state: int) -> int:
         self._record(self._tag)
         return state
 
@@ -28,7 +29,8 @@ class KeyedAction(Action[int]):
         return self._key
 
 
-def test_action_dedup_per_node() -> None:
+@pytest.mark.asyncio
+async def test_action_dedup_per_node() -> None:
     """Ensure duplicate action keys are skipped within the same node."""
     record: list[str] = []
     actions: dict[int, list[tuple[float, Action[int]]]] = {
@@ -40,12 +42,13 @@ def test_action_dedup_per_node() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None)])
 
-    run_search(strategy, frontier, beam_width=1, explore_width=2)
+    await run_search(strategy, frontier, beam_width=1, explore_width=2)
 
     assert record == ["first"]
 
 
-def test_action_key_stripping() -> None:
+@pytest.mark.asyncio
+async def test_action_key_stripping() -> None:
     """Ensure action keys are normalized by stripping whitespace."""
     record: list[str] = []
     actions: dict[int, list[tuple[float, Action[int]]]] = {
@@ -57,12 +60,13 @@ def test_action_key_stripping() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None)])
 
-    run_search(strategy, frontier, beam_width=1, explore_width=2)
+    await run_search(strategy, frontier, beam_width=1, explore_width=2)
 
     assert record == ["first"]
 
 
-def test_action_key_allowed_across_nodes() -> None:
+@pytest.mark.asyncio
+async def test_action_key_allowed_across_nodes() -> None:
     """Ensure identical action keys can be used on different nodes."""
     record: list[str] = []
     actions: dict[int, list[tuple[float, Action[int]]]] = {
@@ -72,6 +76,6 @@ def test_action_key_allowed_across_nodes() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None), Node(1, None)])
 
-    run_search(strategy, frontier, beam_width=2, explore_width=2)
+    await run_search(strategy, frontier, beam_width=2, explore_width=2)
 
     assert record == ["node0", "node1"]

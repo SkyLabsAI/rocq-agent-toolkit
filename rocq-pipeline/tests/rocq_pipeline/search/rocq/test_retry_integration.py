@@ -8,12 +8,15 @@ These tests demonstrate the full flow of:
 4. Corrected tactic is retried
 """
 
-from typing import Any, cast
+from typing import cast
 
+import pytest
 from rocq_doc_manager import RocqCursor
 from rocq_pipeline.search.rocq.actions import RocqRetryCommandAction, RocqTacticAction
 
 from .conftest import MockRocqCursor
+
+pytestmark = pytest.mark.asyncio
 
 
 class TestRocqRetryActionIntegration:
@@ -21,13 +24,13 @@ class TestRocqRetryActionIntegration:
     Integration tests showing how RocqRetryAction works with generators and rectifiers.
     """
 
-    def test_generator_with_rectifier_flow(self) -> None:
+    async def test_generator_with_rectifier_flow(self) -> None:
         """
         Simulates an LLM generator that produces a tactic with a typo,
         and a rectifier that fixes it based on the error message.
         """
         # Setup: cursor that fails on "autoo." but succeeds on "auto."
-        cursor: Any = MockRocqCursor(goal="∀ n : nat, n = n")
+        cursor = MockRocqCursor(goal="∀ n : nat, n = n")
         cursor.set_failure("autoo.", "Unknown command: autoo")
 
         # Mock LLM generator that produces a tactic with a typo
@@ -49,7 +52,9 @@ class TestRocqRetryActionIntegration:
             return None  # Can't fix
 
         # Create action with rectifier
-        generated_tactics = mock_generator(cast(str, cursor.current_goal()))
+        goal = cursor.current_goal()
+        assert goal is not None
+        generated_tactics = mock_generator(goal)
         first_tactic = generated_tactics[0][1]  # "autoo."
 
         action = RocqRetryCommandAction(
@@ -59,27 +64,29 @@ class TestRocqRetryActionIntegration:
         )
 
         # Execute - should fail first, then rectify and succeed
-        result = action.interact(cursor)
+        result = await action.interact(cast(RocqCursor, cursor))
 
         # Verify the flow
         assert result is cursor
         assert cursor._commands == ["autoo.", "auto."]  # Tried typo, then fixed
 
-    def test_generator_strategy_simulation(self) -> None:
+    async def test_generator_strategy_simulation(self) -> None:
         """
         Simulates how GeneratorStrategy would use RocqRetryAction.
 
         In real code, GeneratorStrategy yields (prob, Action) pairs.
         Here we simulate that flow with retry-enabled actions.
         """
-        cursor: Any = MockRocqCursor(goal="n + 0 = n")
+        cursor = MockRocqCursor(goal="n + 0 = n")
         cursor.set_failure("simpl;", "Syntax error: ';' instead of '.'")
 
         # Track rectifier calls for verification
         rectifier_calls: list[tuple[str, str, str]] = []
 
         def tracking_rectifier(rc: RocqCursor, tactic: str, error: str) -> str | None:
-            rectifier_calls.append((cast(str, rc.current_goal()), tactic, error))
+            goal = cast(MockRocqCursor, rc).current_goal()
+            assert goal is not None
+            rectifier_calls.append((goal, tactic, error))
             if "Syntax error" in error and ";" in tactic:
                 return tactic.replace(";", ".")  # Fix semicolon to period
             return None
@@ -97,7 +104,7 @@ class TestRocqRetryActionIntegration:
 
         # Try first tactic (has error, will be rectified)
         action1 = create_retry_action(commands_from_llm[0])
-        result = action1.interact(cursor)
+        result = await action1.interact(cast(RocqCursor, cursor))
 
         assert result is cursor
         assert cursor._commands == ["simpl;", "simpl."]  # Tried bad, then fixed
@@ -109,20 +116,23 @@ class TestRocqRetryActionIntegration:
         assert tactic == "simpl;"
         assert "Syntax error" in error
 
-    def test_multiple_tactics_with_selective_retry(self) -> None:
+    async def test_multiple_tactics_with_selective_retry(self) -> None:
         """
         Shows how to use retry for some tactics but not others.
 
         Useful when you want retry for LLM-generated tactics
         but not for mechanical/hardcoded tactics.
         """
-        cursor: Any = MockRocqCursor(goal="goal")
+        cursor = MockRocqCursor(goal="goal")
         cursor.set_failure("llm_tactic.", "Error from LLM tactic")
+
+        def always_fix(_rc: RocqCursor, _t: str, _e: str) -> str | None:
+            return "fixed_tactic."
 
         # LLM tactic with retry
         llm_action = RocqRetryCommandAction(
             command="llm_tactic.",
-            rectifier=lambda rc, t, e: "fixed_tactic.",
+            rectifier=always_fix,
             max_retries=2,
         )
 
@@ -130,22 +140,22 @@ class TestRocqRetryActionIntegration:
         mechanical_action = RocqTacticAction("auto")
 
         # Execute LLM action (will retry and fix)
-        llm_action.interact(cursor)
+        await llm_action.interact(cast(RocqCursor, cursor))
         assert cursor._commands == ["llm_tactic.", "fixed_tactic."]
 
         # Execute mechanical action (no retry needed)
         cursor._commands.clear()
-        mechanical_action.interact(cursor)
+        await mechanical_action.interact(cast(RocqCursor, cursor))
         assert cursor._commands == ["auto."]
 
-    def test_rectifier_receives_updated_goal_context(self) -> None:
+    async def test_rectifier_receives_updated_goal_context(self) -> None:
         """
         Verifies that rectifier receives the cursor to read the current goal.
 
         This is important because the goal may change between attempts if using
         checkpoint-based state (though not in this mock).
         """
-        cursor: Any = MockRocqCursor(goal="current goal state")
+        cursor = MockRocqCursor(goal="current goal state")
         cursor.set_failure("tactic1.", "First error")
 
         received_goals: list[str] = []
@@ -153,7 +163,9 @@ class TestRocqRetryActionIntegration:
         def goal_tracking_rectifier(
             rc: RocqCursor, tactic: str, error: str
         ) -> str | None:
-            received_goals.append(cast(str, rc.current_goal()))
+            goal = cast(MockRocqCursor, rc).current_goal()
+            assert goal is not None
+            received_goals.append(goal)
             return "tactic2."  # Fixed
 
         action = RocqRetryCommandAction(
@@ -162,19 +174,19 @@ class TestRocqRetryActionIntegration:
             max_retries=1,
         )
 
-        action.interact(cursor)
+        await action.interact(cast(RocqCursor, cursor))
 
         # Rectifier should have received the goal from cursor
         assert received_goals == ["current goal state"]
 
-    def test_chain_of_corrections(self) -> None:
+    async def test_chain_of_corrections(self) -> None:
         """
         Tests a scenario where multiple corrections are needed.
 
         Simulates an LLM that gradually improves the tactic
         based on successive error messages.
         """
-        cursor: Any = MockRocqCursor(goal="complex goal")
+        cursor = MockRocqCursor(goal="complex goal")
         cursor.set_failure("step1.", "Missing argument")
         cursor.set_failure("step2.", "Type mismatch")
         cursor.set_failure("step3.", "Almost there")
@@ -200,7 +212,7 @@ class TestRocqRetryActionIntegration:
             max_retries=5,
         )
 
-        result = action.interact(cursor)
+        result = await action.interact(cast(RocqCursor, cursor))
 
         assert result is cursor
         assert cursor._commands == ["step1.", "step2.", "step3.", "step4."]
