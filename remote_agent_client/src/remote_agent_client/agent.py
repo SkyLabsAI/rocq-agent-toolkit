@@ -11,7 +11,6 @@ from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_websocket import (
     CursorDispatcher,
-    CursorId,
 )
 from rocq_doc_manager.rocq_cursor_websocket import (
     decoder as rdm_decoder,
@@ -132,7 +131,7 @@ class RemoteProofAgent(ProofAgent):
                     await self._inner.close()
 
             # Serve `rdm/*` requests coming from the server.
-            cursor_dispatcher = CursorDispatcher({CursorId(cursor=0): rc})
+            cursor_dispatcher = CursorDispatcher({0: rc})
             mux = DuplexMux(
                 _WebsocketsConn(ws),
                 dispatcher=cursor_dispatcher,
