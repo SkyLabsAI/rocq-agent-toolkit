@@ -70,7 +70,7 @@ def _build_target(target: tuple[Path, str] | Path) -> str:
 
 def _canonical_rel_path(path: Path, cwd: str | Path | None) -> Path:
     rel_base = Path(".") if cwd is None else Path(cwd)
-    return path.resolve().relative_to(rel_base.resolve(), walk_up=True)
+    return path.absolute().relative_to(rel_base.absolute(), walk_up=True)
 
 
 def _relative_target(
