@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import sys
+from argparse import ArgumentParser, Namespace
 from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
@@ -20,6 +21,7 @@ from pydantic import (
 )
 from pydantic.fields import Field
 from rocq_doc_manager.locator import Locator, LocatorParser
+from rocq_dune_util import dune_build
 
 from rocq_pipeline.schema.task_output import FullProofTask, TaskKind
 from rocq_pipeline.task_modifiers import task_mod
@@ -140,6 +142,24 @@ class TaskBundle(BaseModel):
     project: Project = Field(description="The Project that the tasks belong to.")
     tasks: list[Task] = Field(description="The Tasks in the project.")
 
+    def dune_build(
+        self,
+        *,
+        cli: bool = False,
+        quiet: bool = True,
+    ) -> None:
+        """Use dune to build the .v files needed by tasks in the project."""
+        targets: set[str] = set()
+        for task in self.tasks:
+            targets.add(str(self.project.path / task.file.with_suffix(".vo")))
+
+        dune_build(
+            targets=list(targets),
+            cwd=self.project.path,
+            cli=cli,
+            quiet=quiet,
+        )
+
     @field_serializer("tasks")
     def serialize_tasks(self, tasks: list[Task]):
         return sorted(tasks, key=lambda t: (t.file, t.name, str(t.locator)))
@@ -187,6 +207,19 @@ class TaskFile(BaseModel):
     project_bundles: list[TaskBundle] = Field(
         description="Bundles of projects and their associatd tasks"
     )
+
+    def dune_build(
+        self,
+        *,
+        cli: bool = False,
+        quiet: bool = True,
+    ) -> None:
+        """Use dune to build all the .v files needed by all project_bundles."""
+        for project_bundle in self.project_bundles:
+            project_bundle.dune_build(
+                cli=cli,
+                quiet=quiet,
+            )
 
     @model_validator(mode="after")
     def merge_bundles(self) -> TaskFile:
@@ -308,6 +341,36 @@ class TaskFile(BaseModel):
             TaskBundle(project=project, tasks=tasks) for project, tasks in bundles
         ]
         return TaskFile(project_bundles=task_bundles)
+
+    @classmethod
+    def cli_build_mk_parser(cls, parent: Any | None = None) -> ArgumentParser:
+        """Used in ./cli.py to expose a 'build' subcommand of 'rat'."""
+        description = "Build .vo dependencies for the task_file using dune."
+        help = "Supply a path to a task file and build its .vo dependencies using dune."
+        if parent:
+            parser = parent.add_parser("build", description=description, help=help)
+        else:
+            parser = ArgumentParser(description=description)
+        parser.add_argument("task_file", type=Path, help="The path to the task file")
+        parser.add_argument(
+            "--quiet",
+            default=False,
+            action="store_true",
+            help="hide the dune build output",
+        )
+        return parser
+
+    @classmethod
+    def cli_build_run_ns(
+        cls, arguments: Namespace, extra_args: list[str] | None = None
+    ) -> None:
+        """Used in ./cli.py to expose a 'build' subcommand of 'rat'."""
+        assert extra_args is None or len(extra_args) == 0
+        taskfile = cls.from_file(arguments.task_file)
+        taskfile.dune_build(
+            cli=True,
+            quiet=arguments.quiet,
+        )
 
     def iter_tasks(self) -> Iterator[tuple[Project, Task]]:
         """Get all tasks from all bundles."""

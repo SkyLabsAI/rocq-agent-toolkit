@@ -4,6 +4,7 @@ from typing import Any
 
 from rocq_pipeline import find_tasks, service_cli, task_manip, task_runner, tracer
 from rocq_pipeline.args_util import split_args
+from rocq_pipeline.tasks import TaskFile
 
 # TODO: cleanup these type annotations
 #
@@ -12,6 +13,7 @@ type mk_parserT[PARSER] = Callable[[Any | None], Any]
 type run_nsT = Callable[[Namespace, list[str] | None], Any]
 _entrypoints: dict[str, tuple[mk_parserT[Any], run_nsT]] = {
     "ingest": (find_tasks.mk_parser, find_tasks.run_ns),
+    "build": (TaskFile.cli_build_mk_parser, TaskFile.cli_build_run_ns),
     "run": (
         lambda subparsers: task_runner.mk_parser(subparsers, with_agent=True),
         task_runner.run_ns,
