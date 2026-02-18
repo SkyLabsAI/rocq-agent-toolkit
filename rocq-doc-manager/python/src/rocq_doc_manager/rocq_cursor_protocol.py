@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator, Sized
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Literal, Protocol, Self
 
@@ -61,25 +61,28 @@ class RocqCursorProtocolAsync(Protocol):
         if safe:
             prefix = await self.doc_prefix()
             if prefix != [] and prefix[-1].kind != "blanks":
-                await self.insert_blanks(" ")
+                await self.insert_blanks(blanks if blanks is not None else "\n")
                 revert = True
             else:
                 revert = False
         else:
             revert = False
 
+        # When revert=True, prefix is a local variable that supports `len`
+        if revert:
+            assert "prefix" in locals()
+            assert isinstance(prefix, Sized)
+
         try:
             result = await self._insert_command(text)
-            if isinstance(result, rdm_api.CommandError):
-                if revert:
-                    await self.revert_before(erase=True, index=len(prefix))
-            elif blanks is not None:
-                await self.insert_blanks(blanks)
+            if isinstance(result, rdm_api.CommandData):
+                revert = False
+                if blanks is not None:
+                    await self.insert_blanks(blanks)
             return result
-        except rdm_api.Error:
+        finally:
             if revert:
                 await self.revert_before(erase=True, index=len(prefix))
-            raise
 
     async def load_file(
         self,
@@ -447,25 +450,28 @@ class RocqCursorProtocolSync(Protocol):
         if safe:
             prefix = self.doc_prefix_sync()
             if prefix != [] and prefix[-1].kind != "blanks":
-                self.insert_blanks_sync(" ")
+                self.insert_blanks_sync(blanks if blanks is not None else "\n")
                 revert = True
             else:
                 revert = False
         else:
             revert = False
 
+        # When revert=True, prefix is a local variable that supports `len`
+        if revert:
+            assert "prefix" in locals()
+            assert isinstance(prefix, Sized)
+
         try:
             result = self._insert_command_sync(text)
-            if isinstance(result, rdm_api.CommandError):
-                if revert:
-                    self.revert_before_sync(erase=True, index=len(prefix))
-            elif blanks is not None:
-                self.insert_blanks_sync(blanks)
+            if isinstance(result, rdm_api.CommandData):
+                revert = False
+                if blanks is not None:
+                    self.insert_blanks_sync(blanks)
             return result
-        except rdm_api.Error:
+        finally:
             if revert:
                 self.revert_before_sync(erase=True, index=len(prefix))
-            raise
 
     def load_file_sync(
         self,
