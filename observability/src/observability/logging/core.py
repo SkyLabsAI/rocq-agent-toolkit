@@ -307,6 +307,7 @@ def _get_or_init_log_context() -> dict[str, Any]:
         _log_context_var.set(ctx)
     return ctx
 
+
 # Per-event schemas. The value is a list of allowed payload keys.
 _event_schemas: dict[str, list[str]] = {}
 
@@ -475,6 +476,7 @@ def clear_log_context() -> None:
 def get_log_context() -> dict[str, Any]:
     """Return a *copy* of the current task-local log context."""
     return _get_or_init_log_context().copy()
+
 
 def set_log_context(context: dict[str, Any]) -> Token[dict[str, Any] | None]:
     """Replace the current task-local log context, returning a token for reset()."""

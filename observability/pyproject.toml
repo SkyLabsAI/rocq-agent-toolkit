@@ -53,6 +53,7 @@ build-backend = "hatchling.build"
 
 [tool.taskipy.tasks]
 lint_ci = "ruff check"
+format_ci = "ruff format --check"
 reformat = "ruff format"
 typecheck_ci = "mypy ."
 test_ocaml_ci = "pytest"

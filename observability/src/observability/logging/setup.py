@@ -45,10 +45,9 @@ def setup_logging(config: LoggingConfig) -> None:
         root_logger = logging.getLogger()
 
         def is_console_stream_handler(h: logging.Handler) -> bool:
-            return (
-                isinstance(h, logging.StreamHandler)
-                and getattr(h, "stream", None) in {sys.stdout, sys.stderr}
-            )
+            return isinstance(h, logging.StreamHandler) and getattr(
+                h, "stream", None
+            ) in {sys.stdout, sys.stderr}
 
         root_logger.handlers = [
             h for h in root_logger.handlers if not is_console_stream_handler(h)
