@@ -1,4 +1,3 @@
-import asyncio
 import itertools
 import logging
 import re
@@ -53,7 +52,7 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
     raise ValueError("Failed to find the end of the proof")
 
 
-def find_tasks(
+async def find_tasks(
     pdir: Path,
     path: Path,
     args: list[str],
@@ -61,54 +60,51 @@ def find_tasks(
 ) -> list[Task]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
 
-    async def _run() -> list[Task]:
-        async with rc_sess(
-            str(path),
-            rocq_args=args,
-            dune=True,
-            load_file=True,
-        ) as rc:
-            tasks: list[Task] = []
-            counts: dict[str, int] = defaultdict(int)
+    async with rc_sess(
+        str(path),
+        rocq_args=args,
+        dune=True,
+        load_file=True,
+    ) as rc:
+        tasks: list[Task] = []
+        counts: dict[str, int] = defaultdict(int)
 
-            suffix = await rc.doc_suffix()
-            total_sentences = len(suffix)
-            idx = 0
-            mtch = re.compile("(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")
-            while idx < total_sentences:
-                logger.debug(f"Running at index {idx}")
-                sentence = suffix[idx]
-                idx += 1
-                if sentence.kind != "command":
-                    continue
-                m = mtch.match(sentence.text)
-                if m is not None:
-                    canon_name = f"{m.group(1)}:{m.group(2)}"
-                    current = counts[canon_name]
-                    counts[canon_name] += 1
-                    try:
-                        proof: ProofTask = scan_proof(suffix[idx:])
-                        idx += proof.end
-                        tags = {"proof"}
-                        if tagger is not None:
-                            tags.update(tagger(proof))
-                    except ValueError as err:
-                        logger.error(
-                            f"In file {path}, no end found for {m.group(1)} {m.group(2)}.\n"
-                            f"From {err}"
-                        )
-                        # tags = {"proof", "incomplete"}
-                        break
-                    locator = FirstLemma(m.group(2), m.group(1), current)
-                    file = path.relative_to(pdir)
-                    task = Task(
-                        name=None, file=file, locator=locator, tags=tags, prompt=None
+        suffix = await rc.doc_suffix()
+        total_sentences = len(suffix)
+        idx = 0
+        mtch = re.compile("(Lemma|Theorem)\\s+([0-9a-zA-Z_']+)[^0-9a-zA-Z_]")
+        while idx < total_sentences:
+            logger.debug(f"Running at index {idx}")
+            sentence = suffix[idx]
+            idx += 1
+            if sentence.kind != "command":
+                continue
+            m = mtch.match(sentence.text)
+            if m is not None:
+                canon_name = f"{m.group(1)}:{m.group(2)}"
+                current = counts[canon_name]
+                counts[canon_name] += 1
+                try:
+                    proof: ProofTask = scan_proof(suffix[idx:])
+                    idx += proof.end
+                    tags = {"proof"}
+                    if tagger is not None:
+                        tags.update(tagger(proof))
+                except ValueError as err:
+                    logger.error(
+                        f"In file {path}, no end found for {m.group(1)} {m.group(2)}.\n"
+                        f"From {err}"
                     )
-                    tasks.append(task)
+                    # tags = {"proof", "incomplete"}
+                    break
+                locator = FirstLemma(m.group(2), m.group(1), current)
+                file = path.relative_to(pdir)
+                task = Task(
+                    name=None, file=file, locator=locator, tags=tags, prompt=None
+                )
+                tasks.append(task)
 
-            return tasks
-
-    return asyncio.run(_run())
+        return tasks
 
 
 def my_tagger(task: ProofTask) -> set[str]:
@@ -275,7 +271,9 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
         try:
             file = Path(path)
             args = rocq_args_for(file, cwd=pdir)
-            file_tasks: list[Task] = find_tasks(pdir, file, args, tagger=my_tagger)
+            file_tasks: list[Task] = await find_tasks(
+                pdir, file, args, tagger=my_tagger
+            )
         except DuneError as e:
             logger.error(f"Unable to get CLI arguments for file {path}: {e.stderr}")
             return []
