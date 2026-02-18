@@ -11,7 +11,7 @@ from typing import (
 
 from pydantic import BaseModel
 
-from rocq_doc_manager.microrpc.dipatcher import Dispatcher
+from rocq_doc_manager.microrpc.dispatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
 from rocq_doc_manager.rocq_cursor_protocol import (
     RocqCursor,
