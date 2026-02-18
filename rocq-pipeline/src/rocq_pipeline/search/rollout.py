@@ -170,6 +170,26 @@ class MapRollout[T_co, U_co](Rollout[U_co]):
             )
 
 
+class AsyncMapRollout[T_co, U_co](Rollout[U_co]):
+    """Change the values of a Rollout, but not their scores"""
+
+    def __init__(
+        self, base: Rollout[T_co], fn: Callable[[T_co], Awaitable[U_co]]
+    ) -> None:
+        self._base = base
+        self._fn = fn
+
+    @override
+    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U_co]:
+        result = await self._base.next(min_logprob=min_logprob)
+        if result.result is None:
+            return Rollout.Approx(logprob=result.logprob, result=None)
+        else:
+            return Rollout.Approx(
+                logprob=result.logprob, result=await self._fn(result.result)
+            )
+
+
 class InterleaveRollout[U_co](Rollout[U_co]):
     """Interleave the results from many rollouts in a fair way."""
 

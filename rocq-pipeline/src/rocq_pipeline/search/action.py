@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Any, TypeVar, override
 
 from provenance_toolkit import Provenance
@@ -92,3 +92,33 @@ class MapAction[T_co, U](Action[T_co]):
     @override
     async def interact(self, state: T_co) -> T_co:
         return self._outof(await self._base.interact(self._into(state)))
+
+
+class AsyncMapAction[T_co, U](Action[T_co]):
+    """
+    Transport an action to another state type.
+
+    Note that this is *invariant*.
+    """
+
+    _base: Annotated[Action[U], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T_co], Awaitable[U]], Provenance.Reflect.CallableField]
+    _outof: Annotated[
+        Callable[[T_co, U], Awaitable[T_co]], Provenance.Reflect.CallableField
+    ]
+
+    def __init__(
+        self,
+        base: Action[U],
+        into: Callable[[T_co], Awaitable[U]],
+        outof: Callable[[T_co, U], Awaitable[T_co]],
+    ) -> None:
+        self._base = base
+        self._into = into
+        self._outof = outof
+
+    @override
+    async def interact(self, state: T_co) -> T_co:
+        return await self._outof(
+            state, await self._base.interact(await self._into(state))
+        )

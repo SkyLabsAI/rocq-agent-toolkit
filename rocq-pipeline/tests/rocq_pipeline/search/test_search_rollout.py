@@ -28,7 +28,7 @@ class CountingStrategy(MapStategy[int, Action[int], int, Action[int]]):
             return state
 
         super().__init__(
-            FixedStrategy(mapping), record, lambda _state, _state2, act: act
+            FixedStrategy(mapping), into=record, outof=lambda _state, _state2, act: act
         )
 
 
