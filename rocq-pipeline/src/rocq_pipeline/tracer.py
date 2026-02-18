@@ -114,51 +114,48 @@ def run(
     async def run_task(
         proj_task: tuple[Tasks.Project, Tasks.Task], progress: util.ProgressCallback
     ) -> bool:
-        async def run_task_async() -> bool:
-            project, task = proj_task
-            # TODO: find a better ID for tasks
-            task_id: str = task.get_id()
-            output_file: Path = (
-                output_dir / f"{task_id.replace('/', '_').replace('#', '_')}.json"
+        project, task = proj_task
+        # TODO: find a better ID for tasks
+        task_id: str = task.get_id()
+        output_file: Path = (
+            output_dir / f"{task_id.replace('/', '_').replace('#', '_')}.json"
+        )
+
+        try:
+            tracer = tracer_builder()
+            extra_paths = itertools.chain.from_iterable(
+                (["-Q", str(v), k] for k, v in tracer.extra_paths().items())
             )
 
-            try:
-                tracer = tracer_builder()
-                extra_paths = itertools.chain.from_iterable(
-                    (["-Q", str(v), k] for k, v in tracer.extra_paths().items())
-                )
+            task_file: Path = project.path / task.file
+            async with rc_sess(
+                str(task_file),
+                rocq_args=rocq_args.extend_args(
+                    rocq_args_for(task_file), list(extra_paths)
+                ),
+                dune=True,
+                load_file=True,
+            ) as rc:
+                tracer.setup(rc)
+                progress.status(0.05, "🔃")
 
-                task_file: Path = project.path / task.file
-                async with rc_sess(
-                    str(task_file),
-                    rocq_args=rocq_args.extend_args(
-                        rocq_args_for(task_file), list(extra_paths)
-                    ),
-                    dune=True,
-                    load_file=True,
-                ) as rc:
-                    tracer.setup(rc)
-                    progress.status(0.05, "🔃")
+                if not await task.locator(rc):
+                    print(f"Failed to find task: {task_id}")
+                    return False
+                progress.status(0.1, "💭")
 
-                    if not await task.locator(rc):
-                        print(f"Failed to find task: {task_id}")
-                        return False
-                    progress.status(0.1, "💭")
+                trace = await trace_proof_async(tracer, rc, progress, 0.1, 0.95)
+                progress.status(0.95, "💭")
 
-                    trace = await trace_proof_async(tracer, rc, progress, 0.1, 0.95)
-                    progress.status(0.95, "💭")
+            with open(output_file, "w") as output:
+                json.dump(trace, output)
+            progress.status(1)
 
-                with open(output_file, "w") as output:
-                    json.dump(trace, output)
-                progress.status(1)
-
-                return True
-            except Exception as err:
-                print(traceback.format_exc())
-                print(f"Failed at task {task_id}.{err}")
-                return False
-
-        return asyncio.run(run_task_async())
+            return True
+        except Exception as err:
+            print(traceback.format_exc())
+            print(f"Failed at task {task_id}.{err}")
+            return False
 
     util.parallel_runner(
         run_task,
