@@ -7,8 +7,7 @@ from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
 
 from . import rocq_doc_manager_api as rdm_api
 from .decorators import ensure_endswith_period
-from .rocq_doc_manager import AsyncAPI
-from .rocq_doc_manager_api import RocqDocManagerAPI as API
+from .rocq_doc_manager_api import RocqDocManagerAPIAsync as AsyncAPI
 
 logger = logging.getLogger(__name__)
 

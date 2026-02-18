@@ -124,14 +124,14 @@ class FirstLemma(Locator):
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
-        if rc.goto_first_match(
+        if await rc.goto_first_match(
             is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
         ):
             for cmd in await rc.doc_suffix():
                 if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
                 ):
-                    run_step_reply = rc.run_step()
+                    run_step_reply = await rc.run_step()
                     if isinstance(run_step_reply, rdm_api.Err):
                         logger.warning(f"RocqCursor.run_step failed: {run_step_reply}")
                         return False

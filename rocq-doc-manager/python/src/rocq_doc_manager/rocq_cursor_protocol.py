@@ -156,13 +156,13 @@ class RocqCursorProtocolAsync(Protocol):
     ) -> AsyncIterator[Self]:
         """RDM context manager that sets up an aborted goal."""
         async with self.ctx(rollback=rollback):
-            goal_reply = self.insert_command(f"Goal {goal}.")
+            goal_reply = await self.insert_command(f"Goal {goal}.")
             if isinstance(goal_reply, rdm_api.Err):
                 raise rdm_api.Error(goal_reply)
 
             yield self
 
-            abort_reply = self.insert_command("Abort.")
+            abort_reply = await self.insert_command("Abort.")
             if isinstance(abort_reply, rdm_api.Err):
                 raise rdm_api.Error(abort_reply)
 
@@ -175,18 +175,18 @@ class RocqCursorProtocolAsync(Protocol):
         rollback: bool = False,
     ) -> AsyncIterator[Self]:
         async with self.ctx(rollback=rollback):
-            begin_section_reply = self.insert_command(f"Section {name}.")
+            begin_section_reply = await self.insert_command(f"Section {name}.")
             if isinstance(begin_section_reply, rdm_api.Err):
                 raise rdm_api.Error(begin_section_reply)
 
             if context is not None:
-                context_reply = self.insert_command(f"Context {' '.join(context)}.")
+                context_reply = await self.insert_command(f"Context {' '.join(context)}.")
                 if isinstance(context_reply, rdm_api.Err):
                     raise rdm_api.Error(context_reply)
 
             yield self
 
-            end_section_reply = self.insert_command(f"End {name}.")
+            end_section_reply = await self.insert_command(f"End {name}.")
             if isinstance(end_section_reply, rdm_api.Err):
                 raise rdm_api.Error(end_section_reply)
 
