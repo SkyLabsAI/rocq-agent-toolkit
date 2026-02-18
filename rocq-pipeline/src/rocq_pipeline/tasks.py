@@ -356,9 +356,7 @@ class TaskFile(BaseModel):
         else:
             parser = ArgumentParser(description=description)
         parser.add_argument(
-            "task_file",
-            type=Path,
-            help="The path to a single task file"
+            "task_file", type=Path, help="The path to a single task file"
         )
         parser.add_argument(
             "--quiet",
