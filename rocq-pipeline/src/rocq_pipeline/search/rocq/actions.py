@@ -1,5 +1,5 @@
 import re
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal, override
 
 from observability import get_logger, trace_async
@@ -180,7 +180,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     """
 
     _rectifier: Annotated[
-        Callable[[RocqCursor, str, str], str | None] | None,
+        Callable[[RocqCursor, str, str], Awaitable[str | None]] | None,
         Provenance.Reflect.CallableField,
     ]
     _max_retries: Annotated[int, Provenance.Reflect.Field]
@@ -189,7 +189,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     def __init__(
         self,
         command: str,
-        rectifier: Callable[[RocqCursor, str, str], str | None] | None,
+        rectifier: Callable[[RocqCursor, str, str], Awaitable[str | None]] | None,
         max_retries: int = 3,
         **kwargs,
     ) -> None:
@@ -241,7 +241,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
 
             # We know self._rectifier is not None because max_attempts > 1
             assert self._rectifier is not None
-            rectified = self._rectifier(state, command, response.message)
+            rectified = await self._rectifier(state, command, response.message)
 
             if rectified is None:
                 raise Action.Failed(
