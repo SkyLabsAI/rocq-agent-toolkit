@@ -34,9 +34,9 @@ class ToolAgent(ProofAgent):
 
     async def prove(self, rc: RocqCursor) -> TaskResult:
         deps = RocqProofStateDeps(rc)
-        goal = rc.current_goal()
+        goal = await rc.current_goal()
         if goal is None:
-            return self.finished(rc)
+            return await self.finished(rc)
 
         prompt_lines = [
             "Prove this Rocq theorem using the provided tools. Use the `current_goals` tool to get the current goal. To check whether your proof is complete, use the `qed` command.",
@@ -58,10 +58,10 @@ class ToolAgent(ProofAgent):
         # Check whether the proof is complete.
         # When we are doing something like filling and `admit`, `Qed` will not work.
         # Ideally, the RocqCursor would contain the necessary information
-        result = rc.insert_command("Qed.")
+        result = await rc.insert_command("Qed.")
         if isinstance(result, rdm_api.Err):
-            return self.give_up(rc, agent_result.response.text or "Agent gave up")
-        return self.finished(rc)
+            return await self.give_up(rc, agent_result.response.text or "Agent gave up")
+        return await self.finished(rc)
 
 
 class ToolAgentBuilder(AgentBuilder):
