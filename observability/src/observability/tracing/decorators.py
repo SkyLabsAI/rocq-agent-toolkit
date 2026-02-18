@@ -96,7 +96,7 @@ def trace[**P, T](
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Initialize extractor
             operation_extractor = _get_operation_extractor(
                 extractor, **extractor_kwargs
@@ -204,7 +204,7 @@ def trace_async[**P, T](
         func: Callable[P, Awaitable[T]],
     ) -> Callable[P, Coroutine[Any, Any, T]]:
         @functools.wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> T:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Initialize extractor
             operation_extractor = _get_operation_extractor(
                 extractor, **extractor_kwargs
