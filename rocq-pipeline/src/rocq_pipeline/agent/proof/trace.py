@@ -35,7 +35,7 @@ class TraceAgent(ProofAgent):
 
     async def next_tac(self, rdm: RocqCursor) -> str | TaskResult:
         """Get the next tactic string from the agent, or a TaskResult if the agent gives up."""
-        return self.give_up(rdm, message="Not implemented")
+        return await self.give_up(rdm, message="Not implemented")
 
     def history(self) -> list[TacticApplication]:
         """Get a shallow copy of the history."""
@@ -57,9 +57,9 @@ class TraceAgent(ProofAgent):
         """Keep trying to prove via next tactic prediction."""
 
         while True:
-            pf_state_reply = self.current_proof_state(rdm)
+            pf_state_reply = await self.current_proof_state(rdm)
             if isinstance(pf_state_reply, rdm_api.Err):
-                return self.give_up(
+                return await self.give_up(
                     rdm,
                     message="{self.name()}: couldn't get current proof state",
                     reason=pf_state_reply,
@@ -68,12 +68,12 @@ class TraceAgent(ProofAgent):
                 break
 
             if self._max_fuel is not None and self._tac_app_cnt >= self._max_fuel:
-                return self.give_up(
+                return await self.give_up(
                     rdm,
                     message=f"{self.name()}: out of fuel after {self._tac_app_cnt} tactic applications",
                 )
             elif self._stop_on_failure and self.last_failed():
-                return self.give_up(
+                return await self.give_up(
                     rdm,
                     message=f"{self.name()}: last tactic application failed after {self._tac_app_cnt} tactic applications",
                 )
@@ -92,14 +92,22 @@ class TraceAgent(ProofAgent):
                 )
                 next_tac += "."
 
-            tac_app: TacticApplication = self.run_tactic(rdm, next_tac)
+            tac_app: TacticApplication = await self.run_tactic(rdm, next_tac)
             self.update_history(tac_app)
             self._tac_app_cnt += 1
 
-        return self.finished(rdm)
+        return await self.finished(rdm)
+
+    # ==================================================================
+    # TODO
+    # These methods are extending the side_effects using the RocqCursor
+    # but it would probably be better to do this elsewhere.
+    # It would be easiest to just return the desired RocqCursor and let
+    # the client determine what ultimately happened.
+    # ==================================================================
 
     @override
-    def finished(
+    async def finished(
         self,
         rdm: RocqCursor,
         message: str = "",
@@ -107,15 +115,15 @@ class TraceAgent(ProofAgent):
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rdm, side_effects)
-        return super().finished(
+        await self._extend_side_effects(rdm, side_effects)
+        return await super().finished(
             rdm,
             message=message,
             side_effects=side_effects,
         )
 
     @override
-    def give_up(
+    async def give_up(
         self,
         rdm: RocqCursor,
         message: str = "",
@@ -124,8 +132,8 @@ class TraceAgent(ProofAgent):
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rdm, side_effects)
-        return super().give_up(
+        await self._extend_side_effects(rdm, side_effects)
+        return await super().give_up(
             rdm,
             message=message,
             reason=reason,
@@ -135,21 +143,21 @@ class TraceAgent(ProofAgent):
     # NOTE: cf. similar note for _extend_side_effects + _task_doc_interaction
     # in ./strategy_agent.py
 
-    def _extend_side_effects(
+    async def _extend_side_effects(
         self, rdm: RocqCursor, side_effects: dict[str, Any]
     ) -> None:
         assert side_effects is not None and isinstance(side_effects, dict)
         for k, v in {
-            "doc_interaction": self._task_doc_interaction_json(rdm),
+            "doc_interaction": await self._task_doc_interaction_json(rdm),
         }.items():
             if k in side_effects:
                 logger.warning(f"overriding {k} with {v} in {side_effects}")
             side_effects[k] = v
 
-    def _task_doc_interaction(self, rdm: RocqCursor) -> str:
+    async def _task_doc_interaction(self, rdm: RocqCursor) -> str:
         return "\n".join(
             [tac_app.tactic for tac_app in self.history() if tac_app.err is None]
         )
 
-    def _task_doc_interaction_json(self, rdm: RocqCursor) -> Any:
-        return self._task_doc_interaction(rdm)
+    async def _task_doc_interaction_json(self, rdm: RocqCursor) -> Any:
+        return await self._task_doc_interaction(rdm)

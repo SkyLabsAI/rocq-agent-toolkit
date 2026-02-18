@@ -29,13 +29,13 @@ class StepAction(Action[RocqCursor]):
     @override
     async def interact(self, state: RocqCursor) -> RocqCursor:
         for _ in range(0, self._ignore):
-            if isinstance(state.run_step(), rdm_api.Err):
+            if isinstance(await state.run_step(), rdm_api.Err):
                 raise Action.Failed()
-        next = state.doc_suffix()
+        next = await state.doc_suffix()
         assert next
         assert next[0].text == self._key
         assert next[0].kind == "command"
-        if isinstance(state.run_step(), rdm_api.Err):
+        if isinstance(await state.run_step(), rdm_api.Err):
             raise Action.Failed()
         return state
 
@@ -53,7 +53,7 @@ class OracleStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        for count, cmd in enumerate(state.doc_suffix()):
+        for count, cmd in enumerate(await state.doc_suffix()):
             if cmd.kind != "command":
                 continue
             if cmd.text.startswith("Proof"):

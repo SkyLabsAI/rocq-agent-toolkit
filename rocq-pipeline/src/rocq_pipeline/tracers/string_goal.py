@@ -8,8 +8,8 @@ from .extractor import DefaultDocumentWatcher, StateExtractor, TrivialBracketedE
 class ExtractGoalAsString(StateExtractor[str]):
     """A simple extractor that just gets the current goal the way it is printed in Rocq."""
 
-    def extract(self, rdm: RocqCursor) -> str:
-        result = rdm.current_goal()
+    async def extract(self, rdm: RocqCursor) -> str:
+        result = await rdm.current_goal()
         if isinstance(result, rdm_api.Err):
             raise RuntimeError("Failed to parse goal: {result}")
         return str(ProofState(result))

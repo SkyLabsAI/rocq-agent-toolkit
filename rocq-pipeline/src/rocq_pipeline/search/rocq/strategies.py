@@ -61,7 +61,7 @@ class CutAssertStrategy(Strategy):
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action[RocqCursor]]:
-        name: str | rdm_api.Err[None] = state.fresh_ident(self._name)
+        name: str | rdm_api.Err[None] = await state.fresh_ident(self._name)
         if isinstance(name, rdm_api.Err):
             return EmptyRollout()
 

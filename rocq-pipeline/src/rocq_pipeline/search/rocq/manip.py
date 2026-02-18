@@ -10,8 +10,8 @@ from ...search.search.search import StateManipulator
 class RocqManipulator(StateManipulator[RocqCursor]):
     @override
     async def copy(self, state: RocqCursor) -> RocqCursor:
-        return state.clone()
+        return await state.clone()
 
     @override
     async def dispose(self, state: RocqCursor) -> None:
-        state.dispose()
+        await state.dispose()

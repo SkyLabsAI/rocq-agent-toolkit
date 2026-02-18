@@ -42,8 +42,8 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
     def _tactic(self) -> str:
         return f"all: {self._mod()}.goal_to_json."
 
-    def _check_iris(self, rdm: RocqCursor) -> bool:
-        result = rdm.query_text(
+    async def _check_iris(self, rdm: RocqCursor) -> bool:
+        result = await rdm.query_text(
             "Locate iris.proofmode.environments.envs_entails.", index=0
         )
         assert not isinstance(result, rdm_api.Err)
@@ -65,10 +65,10 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
         ]
         return {k: ext(user, k.split(".")) for k in PATHS}
 
-    def start_proof(self, rdm: RocqCursor) -> None:
+    async def start_proof(self, rdm: RocqCursor) -> None:
         # Detect iris
         if self._iris is None:
-            self._iris = self._check_iris(rdm)
+            self._iris = await self._check_iris(rdm)
 
         result = rdm.run_command(f"Require {self._mod()}.")
         if isinstance(result, rdm_api.Err):
@@ -80,8 +80,8 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
         "All the remaining goals are on the shelf",
     ]
 
-    def get_goals(self, rdm: RocqCursor) -> list[str] | None:
-        result = rdm.query_text_all(self._tactic(), indices=None)
+    async def get_goals(self, rdm: RocqCursor) -> list[str] | None:
+        result = await rdm.query_text_all(self._tactic(), indices=None)
         if isinstance(result, rdm_api.Err):
             if "Init.Not_focussed" in result.message:
                 return []
@@ -100,11 +100,11 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
         # TODO: ask the tagger if the tactic starts with a goal selector
         return tactic.endswith(".") or tactic in ["{", "}"]
 
-    def before(self, rdm: RocqCursor, tactic: str):
+    async def before(self, rdm: RocqCursor, tactic: str):
         if not self.supported_tactic(tactic):
             return Skip()
-        result = self.get_goals(rdm)
-        return Extracted((ProofState(rdm.current_goal()).goals, result))
+        result = await self.get_goals(rdm)
+        return Extracted((ProofState(await rdm.current_goal()).goals, result))
 
     def by_goal(
         self, preGoals: goals, preResult: results, goals: goals, result: results
@@ -123,14 +123,14 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
                 changed.add(preIdx)
         return (changed, new)
 
-    def after(
+    async def after(
         self,
         rdm: RocqCursor,
         tactic: str,
         result_before: state,
     ) -> OutputDict[Any]:
-        result = self.get_goals(rdm)
-        goals = ProofState(rdm.current_goal()).goals
+        result = await self.get_goals(rdm)
+        goals = ProofState(await rdm.current_goal()).goals
 
         preGoals, preResult = result_before
 

@@ -24,7 +24,7 @@ class ChoiceAgent(MarkovAgent):
             self._check_index = 0
 
         if self._check_index >= len(self._all_choices):
-            return self.give_up(
+            return await self.give_up(
                 rdm,
                 message="No more tactics to choose from.",
             )

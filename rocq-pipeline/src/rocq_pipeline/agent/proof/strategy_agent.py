@@ -41,9 +41,9 @@ class StrategyAgent(ProofAgent):
         self._fuel = fuel
         self._initial_prove_cursor_index: int | None = None
 
-    def prepare(self, rc: RocqCursor) -> Strategy.MutableContext:
+    async def prepare(self, rc: RocqCursor) -> Strategy.MutableContext:
         """Pre-hook for prove."""
-        self._initial_prove_cursor_index = rc.cursor_index()
+        self._initial_prove_cursor_index = await rc.cursor_index()
         return {}
 
     def conclude(self, rc: RocqCursor) -> None:
@@ -54,10 +54,8 @@ class StrategyAgent(ProofAgent):
     class NoProofState(Exception):
         reason: rdm_api.Err
 
-    def _current_state(self, rc: RocqCursor) -> ProofState:
-        reply = rc.current_goal()
-        if isinstance(reply, rdm_api.Err):
-            raise StrategyAgent.NoProofState(reply)
+    async def _current_state(self, rc: RocqCursor) -> ProofState:
+        reply = await rc.current_goal()
         return ProofState(reply)
 
     @override
@@ -65,7 +63,7 @@ class StrategyAgent(ProofAgent):
         # Note: `prepare` uses `Strategy.MutableContext` so derivers can incrementalize
         # construction via super().prepare calls, but prove/rollout promises to leave
         # it unchanged.
-        strategy_ctx: Strategy.Context = MappingProxyType(self.prepare(rc))
+        strategy_ctx: Strategy.Context = MappingProxyType(await self.prepare(rc))
 
         fresh_id: int = 0
 
@@ -82,12 +80,12 @@ class StrategyAgent(ProofAgent):
             depth: int = 0
             rem_fuel: int | None = self._fuel
             while True:
-                state = self._current_state(rc)
+                state = await self._current_state(rc)
                 if state.closed(proof=True):
-                    return self.finished(rc)
+                    return await self.finished(rc)
 
                 if self._max_depth is not None and depth >= self._max_depth:
-                    return self.give_up(
+                    return await self.give_up(
                         rc,
                         message=f"depth limit exceeded({self._max_depth})",
                     )
@@ -102,7 +100,7 @@ class StrategyAgent(ProofAgent):
                         self._max_breadth is not None
                         and current_breadth == self._max_breadth
                     ):
-                        return self.give_up(
+                        return await self.give_up(
                             rc, f"No more proposals (max_breadth={self._max_breadth})"
                         )
                     current_breadth += 1
@@ -110,31 +108,39 @@ class StrategyAgent(ProofAgent):
                     if rem_fuel is not None:
                         rem_fuel -= 1
                         if rem_fuel <= 0:
-                            return self.give_up(
+                            return await self.give_up(
                                 rc, message=f"out of fuel ({self._fuel})"
                             )
                     with trace_context("strategy_agent/process") as process:
                         process.set_attribute("parent", current_id)
                         process.set_attribute("action", action.key())
-                        action_rc = rc.clone()
+                        action_rc = await rc.clone()
                         try:
                             rc = await action.interact(action_rc)
                             if rc is not action_rc:
-                                action_rc.dispose()
+                                await action_rc.dispose()
                             current_id = fresh()
                             process.set_attribute("id", current_id)
                             depth += 1
                             break
                         except Action.Failed:
-                            action_rc.dispose()
+                            await action_rc.dispose()
                 else:
                     # not executed if we see a break
-                    return self.give_up(
+                    return await self.give_up(
                         rc, f"No more proposals (max_breadth={self._max_breadth})"
                     )
 
+    # ==================================================================
+    # TODO
+    # These methods are extending the side_effects using the RocqCursor
+    # but it would probably be better to do this elsewhere.
+    # It would be easiest to just return the desired RocqCursor and let
+    # the client determine what ultimately happened.
+    # ==================================================================
+
     @override
-    def finished(
+    async def finished(
         self,
         rdm: RocqCursor,
         message: str = "",
@@ -142,8 +148,8 @@ class StrategyAgent(ProofAgent):
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rdm, side_effects)
-        result = super().finished(
+        await self._extend_side_effects(rdm, side_effects)
+        result = await super().finished(
             rdm,
             message=message,
             side_effects=side_effects,
@@ -152,7 +158,7 @@ class StrategyAgent(ProofAgent):
         return result
 
     @override
-    def give_up(
+    async def give_up(
         self,
         rdm: RocqCursor,
         message: str = "",
@@ -161,8 +167,8 @@ class StrategyAgent(ProofAgent):
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        self._extend_side_effects(rdm, side_effects)
-        result = super().give_up(
+        await self._extend_side_effects(rdm, side_effects)
+        result = await super().give_up(
             rdm,
             message=message,
             reason=reason,
@@ -185,23 +191,24 @@ class StrategyAgent(ProofAgent):
     #   leverage this in order to compute doc-interaction strings on demand, which
     #   enables us to capture both the "final" and "intermediate" proof scripts.
 
-    def _extend_side_effects(
+    async def _extend_side_effects(
         self, rc: RocqCursor, side_effects: dict[str, Any]
     ) -> None:
         assert side_effects is not None and isinstance(side_effects, dict)
         for k, v in {
-            "doc_interaction": self._task_doc_interaction_json(rc),
+            "doc_interaction": await self._task_doc_interaction_json(rc),
         }.items():
             if k in side_effects:
                 logger.warning(f"overriding {k} with {v} in {side_effects}")
             side_effects[k] = v
 
-    def _task_doc_interaction(self, rc: RocqCursor) -> str:
+    async def _task_doc_interaction(self, rc: RocqCursor) -> str:
         assert self._initial_prove_cursor_index is not None
+        prefix = await rc.doc_prefix()
         return "".join(
             prefix_item.text
-            for prefix_item in rc.doc_prefix()[self._initial_prove_cursor_index :]
+            for prefix_item in prefix[self._initial_prove_cursor_index :]
         )
 
-    def _task_doc_interaction_json(self, rc: RocqCursor) -> Any:
-        return self._task_doc_interaction(rc)
+    async def _task_doc_interaction_json(self, rc: RocqCursor) -> Any:
+        return await self._task_doc_interaction(rc)

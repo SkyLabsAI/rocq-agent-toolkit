@@ -151,7 +151,7 @@ class RocqTacticAction(Action[RocqCursor]):
         # we will basically always be returning our own cursor.
         # If cursors were functional, we would just be returning the latest
         # cursor here.
-        response = state.insert_command(f"{self._tactic}.")
+        response = await state.insert_command(f"{self._tactic}.")
         if isinstance(response, rdm_api.Err):
             # Preserve the actual Rocq error message
             raise Action.Failed(
@@ -224,7 +224,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
         max_attempts = (self._max_retries + 1) if self._rectifier else 1
 
         for attempt in range(max_attempts):
-            response = state.insert_command(command)
+            response = await state.insert_command(command)
             if not isinstance(response, rdm_api.Err):
                 self._final_command = command
                 return state
