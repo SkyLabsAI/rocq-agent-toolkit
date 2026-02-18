@@ -193,16 +193,20 @@ def trace_async[**P, T](
     include_result: bool = False,
     record_exception: bool = True,
     **extractor_kwargs: Any,
-) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Coroutine[Any, Any, T]]]:
+) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Coroutine[None, None, T]]]:
     """
-    Universal tracing decorator for any async operation.
+    Universal tracing decorator for `async def`s.
 
     See the documentation of `trace` for more information.
+
+    Note: in the future we could stratify this further to:
+    - a) expose `trace_coroutine` with non-`None` yield/send types, implementing `trace_async` in terms of it
+    - b) expose `trace_awaitable` for plain callables that produce explicit `Task` / `Future` objects
     """
 
     def decorator(
         func: Callable[P, Awaitable[T]],
-    ) -> Callable[P, Coroutine[Any, Any, T]]:
+    ) -> Callable[P, Coroutine[None, None, T]]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Initialize extractor
