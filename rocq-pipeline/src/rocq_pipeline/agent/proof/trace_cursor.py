@@ -4,7 +4,7 @@ import functools
 import hashlib
 import inspect
 from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar, override
+from typing import Any, override
 
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
@@ -29,10 +29,7 @@ def _default_fn(x: Any) -> Any:
     return x
 
 
-T = TypeVar("T")
-
-
-async def _maybe_await(val: T | Awaitable[T]) -> T:
+async def _maybe_await[T](val: T | Awaitable[T]) -> T:
     if inspect.isawaitable(val):
         return await val
     return val
