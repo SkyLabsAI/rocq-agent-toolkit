@@ -70,7 +70,7 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
         if self._iris is None:
             self._iris = await self._check_iris(rdm)
 
-        result = rdm.run_command(f"Require {self._mod()}.")
+        result = await rdm.run_command(f"Require {self._mod()}.")
         if isinstance(result, rdm_api.Err):
             raise Exception(f"Failed to initialize JsonGoal extractor: {result}")
 
