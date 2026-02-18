@@ -151,17 +151,6 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
     # Finding the Task Status By seeing the result and proof state
     last_node = list(graph.nodes.values())[-1]
     result = last_node.information.get("result", None)
-    if result is None:
-        graph.update_graph_information({"taskStatus": False})
-    else:
-        # Default to "NoProofState" string if key is missing to distinguish from explicit None/null value
-        proof_state = result.get("proof_state", "NoProofState")
-        if proof_state == "NoProofState":
-            graph.update_graph_information({"taskStatus": False})
-        elif proof_state is None:  # proof_state = null means no goals are left to prove
-            graph.update_graph_information({"taskStatus": True})
-        else:
-            graph.update_graph_information({"taskStatus": False})
 
     proof_script = _extract_proof_Script(graph.edges)
     graph.update_graph_information({"proofScript": proof_script})
