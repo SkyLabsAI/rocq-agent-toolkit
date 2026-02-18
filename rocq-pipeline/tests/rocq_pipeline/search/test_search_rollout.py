@@ -8,14 +8,14 @@ import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.frontier import BasicNode, Frontier
 from rocq_pipeline.search.search.search import Node
-from rocq_pipeline.search.strategy import MapStategy
+from rocq_pipeline.search.strategy import MapStrategy
 
 from .util import FixedStrategy, OneShotFrontier, RecordingAction, run_search
 
 pytestmark = pytest.mark.asyncio
 
 
-class CountingStrategy(MapStategy[int, Action[int], int, Action[int]]):
+class CountingStrategy(MapStrategy[int, Action[int], int, Action[int]]):
     """Strategy that returns fixed rollouts per state and counts calls."""
 
     def __init__(self, mapping: dict[int, list[tuple[float, Action[int]]]]) -> None:

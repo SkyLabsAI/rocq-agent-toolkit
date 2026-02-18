@@ -294,14 +294,7 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
         return await self.rollout_with(val, state, max_rollout, context)
 
 
-def lift_async[**P, T](fn: Callable[P, T]) -> Callable[P, Awaitable[T]]:
-    async def result(*args, **kwargs) -> T:
-        return fn(*args, **kwargs)
-
-    return result
-
-
-class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
+class MapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
     """A wrapper of `Strategy` based on lenses.
 
     See the documentation for `WrapAction`.
@@ -337,7 +330,7 @@ class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
         )
 
 
-class AsyncMapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
+class AsyncMapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
     """A wrapper of `Strategy` based on lenses.
 
     See the documentation for `AsyncWrapAction`.
