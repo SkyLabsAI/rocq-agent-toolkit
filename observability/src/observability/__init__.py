@@ -54,6 +54,7 @@ from .tracing.context import (
 )
 from .tracing.decorators import (
     trace,
+    trace_async,
     trace_database,
     trace_http,
     trace_langchain,
@@ -81,6 +82,7 @@ __version__ = "2.0.0"
 __all__ = [
     # Core API (recommended for most users)
     "trace",
+    "trace_async",
     "trace_context",
     "get_current_span",
     "add_span_event",
