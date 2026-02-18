@@ -10,8 +10,6 @@ from rocq_doc_manager.locator import (
     LocatorParser,
 )
 
-from .util import RDM_Tests
-
 TEST_CASES: dict[str, Locator] = {
     "Lemma:foo": FirstLemma("foo", "Lemma", 0),
     "Lemma:foo(22)": FirstLemma("foo", "Lemma", 22),

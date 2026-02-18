@@ -7,10 +7,10 @@ from rocq_doc_manager.rocq_doc_manager import AsyncRocqDocManager
 from .util import RDM_Tests
 
 
+@pytest.mark.asyncio(loop_scope="class")
 class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
     """Test the ensure_text_endswith_period decorator usage in RocqCursor methods."""
 
-    @pytest.mark.asyncio
     async def test_insert_command_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -21,7 +21,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert not isinstance(result, rdm_api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_insert_command_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -34,7 +33,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "insert_command" in caplog.text
             assert "argument 'text'" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -45,7 +43,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert not isinstance(result, rdm_api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -57,7 +54,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "query" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_json_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -69,7 +65,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             await rc.query_json("Check nat.", index=0)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_json_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -82,7 +77,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "query_json" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_json_all_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -94,7 +88,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             await rc.query_json_all("Check nat.", indices=None)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_json_all_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -107,7 +100,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "query_json_all" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_text_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -118,7 +110,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert not isinstance(result, rdm_api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_text_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -130,7 +121,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "query_text" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_text_all_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -141,7 +131,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert not isinstance(result, rdm_api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_text_all_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -153,7 +142,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "query_text_all" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_run_command_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -164,7 +152,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert not isinstance(result, rdm_api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_run_command_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -176,7 +163,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "run_command" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_insert_command_keyword_arg_with_period_no_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -187,7 +173,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert not isinstance(result, rdm_api.Err)
             assert "doesn't end with '.'" not in caplog.text
 
-    @pytest.mark.asyncio
     async def test_insert_command_keyword_arg_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -199,7 +184,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "insert_command" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_json_all_with_indices_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -212,7 +196,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "query_json_all" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_query_text_all_with_indices_without_period_warning(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -224,7 +207,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "doesn't end with '.'" in caplog.text
             assert "query_text_all" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_multiple_calls_accumulate_warnings(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:
@@ -239,7 +221,6 @@ class Test_RocqCursor_ensure_text_endswith_period(RDM_Tests):
             assert "query" in caplog.text
             assert "run_command" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_period_added_automatically(
         self, caplog: pytest.LogCaptureFixture, transient_rdm: AsyncRocqDocManager
     ) -> None:

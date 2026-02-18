@@ -20,7 +20,7 @@ from websockets import connect, serve
 from .util import RDM_Tests
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="class")
 class Test_API(RDM_Tests):
     @pytest_asyncio.fixture
     @staticmethod

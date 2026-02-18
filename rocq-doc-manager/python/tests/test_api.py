@@ -8,8 +8,8 @@ from rocq_doc_manager.rocq_cursor import RDMRocqCursor
 from .util import RDM_Tests
 
 
+@pytest.mark.asyncio(loop_scope="class")
 class Test_API(RDM_Tests):
-    @pytest.mark.asyncio
     async def test_load_file(self, loadable_rdm: AsyncRocqDocManager) -> None:
         rc = loadable_rdm.cursor()
         assert await rc.load_file() is None
@@ -39,7 +39,6 @@ class Test_API(RDM_Tests):
             rdm_api.SuffixItem(kind="command", text="Qed."),
         ]
 
-    @pytest.mark.asyncio
     async def test_Check_query_text(
         self,
         transient_rdm: AsyncRocqDocManager,
@@ -49,7 +48,6 @@ class Test_API(RDM_Tests):
         assert not isinstance(check_reply, rdm_api.Err)
         assert check_reply == "nat\n     : Set"
 
-    @pytest.mark.asyncio
     async def test_doc_suffix(
         self,
         loadable_rdm: AsyncRocqDocManager,
@@ -127,7 +125,6 @@ class Test_API(RDM_Tests):
                 ),
             ]
 
-    @pytest.mark.asyncio
     async def test_run_command_tac_fail(
         self,
         transient_rdm: AsyncRocqDocManager,
@@ -175,7 +172,6 @@ class Test_API(RDM_Tests):
     #         should_succeed=False,
     #     )
 
-    @pytest.mark.asyncio
     async def test_patched_insert_commands_without_intervening_blanks_works(
         self,
         tmp_path: Path,

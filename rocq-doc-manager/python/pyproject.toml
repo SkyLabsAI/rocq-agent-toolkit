@@ -61,6 +61,10 @@ where = ["src", "tests"]
 "rocq_doc_manager" = ["py.typed"]
 "tests" = ["py.typed"]
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "class"
+# asyncio_default_test_loop_scope = "class" # TODO: bump pytest-asyncio but we need to remove upper bounds in other python projects first
+
 [tool.taskipy.tasks]
 lint_ci = "ruff check"
 format_ci = "ruff format --exclude src/rocq_doc_manager/rocq_doc_manager_api.py --check"

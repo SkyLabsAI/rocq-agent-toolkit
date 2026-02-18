@@ -1,9 +1,7 @@
 import os
-from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager, contextmanager
-from typing import Any
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-import pytest
 import pytest_asyncio
 import rocq_doc_manager
 from hypothesis import strategies as st
@@ -18,22 +16,12 @@ TRANSIENT_DOC = "my_fake.v"
 # NOTE: The interaction of async and fixtures is quite complex, and,
 # to make matters worse, fixtures are not type checked which means that
 # we get a lot of runtime errors during tests.
+
+
+# We now set default fixture and test event loops to "class" in pyproject.toml.
+# We still need `@pytest.mark.asyncio(loop_scope="class")` on top of every
+# class that implements tests using fixtures from `RDM_Tests`
 class RDM_Tests:
-    # NOTE: these are dynamically computed by code at the end of this file.
-    TEST_DOT_V_DOC_LEN: int | None = None
-    TEST_DOT_V_NO_THEOREM_PREFIX_LEN: int | None = None
-
-    @classmethod
-    def CONSTANT_NAMES(cls) -> list[str]:
-        return [
-            "TEST_DOT_V_DOC_LEN",
-            "TEST_DOT_V_NO_THEOREM_PREFIX_LEN",
-        ]
-
-    @classmethod
-    def CONSTANTS(cls) -> dict[str, Any | None]:
-        return {nm: getattr(cls, nm, None) for nm in cls.CONSTANT_NAMES()}
-
     @staticmethod
     async def mk_rdm(
         path: str = "my_fake.v", rocq_args: list[str] | None = None
@@ -44,19 +32,19 @@ class RDM_Tests:
             dune=os.environ.get("RDM_USE_DUNE", "True") == "True",
         )
 
-    @pytest_asyncio.fixture(scope="class")
+    @pytest_asyncio.fixture
     @staticmethod
     async def transient_shared_rdm() -> AsyncRocqDocManager:
         """A RocqCursor for a fake file that can't be loaded."""
         return await RDM_Tests.mk_rdm()
 
-    @pytest_asyncio.fixture(scope="class")
+    @pytest_asyncio.fixture
     @staticmethod
     async def transient_shared_rc() -> RocqCursor:
         """A RocqCursor for a fake file that can't be loaded."""
         return (await RDM_Tests.mk_rdm()).cursor()
 
-    @pytest_asyncio.fixture(scope="class")
+    @pytest_asyncio.fixture
     @staticmethod
     async def loaded_shared_rdm() -> AsyncRocqDocManager:
         """A RocqCursor for a real file that can be loaded."""
@@ -67,7 +55,7 @@ class RDM_Tests:
         )
         return rdm
 
-    @pytest_asyncio.fixture(scope="class")
+    @pytest_asyncio.fixture
     @staticmethod
     async def loaded_shared_rc() -> RocqCursor:
         """A RocqCursor for a real file that can be loaded."""
@@ -226,19 +214,3 @@ class RDM_Tests:
         assert len(query_reply) == 1
         parts = [s.strip() for s in query_reply[0].split(":")]
         assert parts == [lhs, rhs]
-
-
-@pytest.mark.asyncio
-async def test_something() -> None:
-    async with (await RDM_Tests.mk_rdm("./tests/test.v")).sess() as rdm:
-        doc_contents = await rdm.cursor().doc_suffix()
-
-        RDM_Tests.TEST_DOT_V_DOC_LEN = len(doc_contents)
-
-        idx = 0
-        for item in doc_contents:
-            if item.kind == "blanks" or not item.text.startswith("Theorem"):
-                idx += 1
-            else:
-                break
-        RDM_Tests.TEST_DOT_V_NO_THEOREM_PREFIX_LEN = idx
