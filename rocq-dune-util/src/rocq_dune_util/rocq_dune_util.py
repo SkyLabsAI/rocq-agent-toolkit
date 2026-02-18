@@ -28,12 +28,16 @@ class DuneError(Exception):
     def __str__(self) -> str:
         msg_line = super().__str__()
         cmd_line = f"COMMAND: [[[\n{self.working_dir}$ {self.command}\n]]]"
+
         if self.verbose and self.stdout is not None:
-            stdout_lines = f"STDOUT: [[[\n{self.stdout}\n]]]"
+            stdout_no_trailing_newline = self.stdout.rstrip("\n")
+            stdout_lines = f"STDOUT: [[[\n{stdout_no_trailing_newline}\n]]]"
         else:
             stdout_lines = ""
+
         if self.stderr is not None:
-            stderr_lines = f"STDERR: [[[\n{self.stderr}\n]]]"
+            stderr_no_trailing_newline = self.stdout.rstrip("\n")
+            stderr_lines = f"STDERR: [[[\n{stderr_no_trailing_newline}\n]]]"
         else:
             stderr_lines = ""
 
