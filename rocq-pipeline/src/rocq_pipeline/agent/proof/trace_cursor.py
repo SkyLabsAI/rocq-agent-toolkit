@@ -132,9 +132,7 @@ class TracingCursor(RocqCursor):
 
     @staticmethod
     async def _next_command(me: TracingCursor, args: dict[str, Any]) -> str | None:
-        suffix = [
-            item.text for item in await me.doc_suffix() if item.kind == "command"
-        ]
+        suffix = [item.text for item in await me.doc_suffix() if item.kind == "command"]
         return suffix[0] if suffix else None
 
     @override
@@ -178,9 +176,7 @@ class TracingCursor(RocqCursor):
     # NAVIGATION
     @override
     @_trace_log(inputs=lambda _, args: args, after=True)
-    async def revert_before(
-        self, erase: bool, index: int
-    ) -> None | rdm_api.Err[None]:
+    async def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]:
         return await self._cursor.revert_before(erase, index)
 
     @override
@@ -243,9 +239,7 @@ class TracingCursor(RocqCursor):
             file, include_ghost=include_ghost, include_suffix=include_suffix
         )
 
-    async def run_steps(
-        self, count: int
-    ) -> None | rdm_api.Err[rdm_api.StepsError]:
+    async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
         for cnt in range(count):
             result = await self.run_step()
             if isinstance(result, rdm_api.Err):

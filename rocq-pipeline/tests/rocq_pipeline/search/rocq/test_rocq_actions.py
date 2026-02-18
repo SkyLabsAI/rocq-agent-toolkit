@@ -2,7 +2,7 @@
 
 from collections.abc import Awaitable, Callable
 from typing import cast
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from rocq_doc_manager import RocqCursor

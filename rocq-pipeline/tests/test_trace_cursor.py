@@ -13,7 +13,9 @@ from rocq_pipeline.agent.proof import trace_cursor
 async def build_both(
     verbose: bool,
 ) -> AsyncGenerator[tuple[RocqCursor, RocqCursor]]:
-    async with rc_sess(Path(__file__).parent / "test.v", rocq_args=[], load_file=True) as rc:
+    async with rc_sess(
+        Path(__file__).parent / "test.v", rocq_args=[], load_file=True
+    ) as rc:
         traced = trace_cursor.TracingCursor.of_cursor(await rc.clone(), verbose=verbose)
         try:
             print(await rc.doc_prefix())
