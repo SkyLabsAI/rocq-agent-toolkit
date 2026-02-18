@@ -14,10 +14,10 @@ class MockRocqCursor:
         self._commands: list[str] = []
         self._fail_commands: dict[str, str] = {}  # command -> error message
 
-    def current_goal(self) -> str | None:
+    async def current_goal(self) -> str | None:
         return self._goal
 
-    def insert_command(
+    async def insert_command(
         self, text: str, blanks: str | None = "\n", safe: bool = True
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         del blanks, safe
