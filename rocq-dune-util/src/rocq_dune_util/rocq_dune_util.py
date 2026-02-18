@@ -22,10 +22,15 @@ class DuneError(Exception):
         return result
 
 
-def _run_dune(args: list[str], cwd: str | Path | None) -> str:
+def _run_dune(
+    args: list[str],
+    cwd: str | Path | None,
+    env: dict[str, str] | None = None,
+) -> str:
     res = subprocess.run(
         ["dune"] + args,
         capture_output=True,
+        env=env,
         cwd=str(cwd) if cwd is not None else None,
     )
     stdout = res.stdout.decode(encoding="utf-8")
@@ -45,7 +50,7 @@ def dune_sourceroot(*, cwd: str | Path | None = None) -> Path:
     @raises DuneError: if the source root cannot be located
     """
     args = ["exec", "--no-build", "--", "env"]
-    output = _run_dune(args, cwd=cwd)
+    output = _run_dune(args, env=dune_env_hack(), cwd=cwd)
     for line in output.splitlines():
         parts = line.split("=", 1)
         if len(parts) != 2:
@@ -300,27 +305,27 @@ def rocq_args_for(
     """
 
     # Validate the input files.
-    def check_v_file(file: str | Path) -> Path:
+    def check_v_filename(file: str | Path) -> Path:
         path = Path(file)
         if path.suffix != ".v":
             raise ValueError(f"Expected Rocq source file, given {str(path)}")
         return path
 
-    path: Path = check_v_file(file)
+    path: Path = check_v_filename(file)
 
     source_root: Path | None = None
 
     # Resolving the extra dependencies.
     deps: list[Path] = []
     for file in extra_deps if extra_deps else []:
-        deps.append(check_v_file(file))
+        deps.append(check_v_filename(file))
 
     # Resolving the workspace dependencies.
     if workspace_deps:
         if source_root is None:
             source_root = dune_sourceroot(cwd=cwd)
         for file in workspace_deps:
-            rel = check_v_file(file)
+            rel = check_v_filename(file)
             if rel.is_absolute():
                 raise ValueError(f"Expected relative path, given {str(rel)}")
             deps.append(source_root / rel)

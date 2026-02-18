@@ -19,6 +19,8 @@ class Test_RDM_macros(RDM_Tests):
         expected_prefix = [
             ("command", "Goal True."),
             ("blanks", "\n"),
+            ("command", "Proof."),
+            ("blanks", "\n"),
             ("command", "Abort."),
             ("blanks", "\n"),
         ]

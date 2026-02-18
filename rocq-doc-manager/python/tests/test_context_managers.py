@@ -101,6 +101,7 @@ async def test_aborted_goal_ctx_side_effects(
         tac = "intuition auto."
         cmds = [
             f"Goal {goal}.",
+            "Proof.",
             tac,
             "Abort.",
         ]
