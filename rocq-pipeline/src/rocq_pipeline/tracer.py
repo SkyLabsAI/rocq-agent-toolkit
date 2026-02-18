@@ -111,7 +111,7 @@ def run(
     if not output_dir.is_dir():
         print(f"No such output directory: {output_dir}")
 
-    def run_task(
+    async def run_task(
         proj_task: tuple[Tasks.Project, Tasks.Task], progress: util.ProgressCallback
     ) -> bool:
         async def run_task_async() -> bool:

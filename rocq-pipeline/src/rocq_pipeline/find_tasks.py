@@ -20,7 +20,7 @@ from rocq_dune_util import DuneError, rocq_args_for
 from rocq_pipeline.args_util import valid_file
 from rocq_pipeline.taggers.tactic_tagger import extract_tactics
 from rocq_pipeline.tasks import Project, Task, TaskFile
-from rocq_pipeline.util import parallel_runner
+from rocq_pipeline.util import ProgressCallback, parallel_runner
 
 logger = logging.getLogger(__name__)
 
@@ -271,7 +271,7 @@ def git_repo_data(project_dir: Path) -> tuple[str, str]:
 
 
 def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) -> None:
-    def run_it(path: Path, _: Any) -> list[Task]:
+    async def run_it(path: Path, _: ProgressCallback) -> list[Task]:
         try:
             file = Path(path)
             args = rocq_args_for(file, cwd=pdir)

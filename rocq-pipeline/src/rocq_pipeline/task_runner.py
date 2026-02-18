@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 import sys
@@ -19,7 +18,7 @@ from observability import (
     trace_context,
 )
 from opentelemetry.trace import Link, SpanContext, Status, StatusCode
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import rc_sess
 from rocq_dune_util import DuneError, rocq_args_for
 
 import rocq_pipeline.tasks as Tasks
@@ -132,7 +131,7 @@ def collect_env_tags(prefix: str = "TAG_") -> task_output.Tags:
     return task_output.Tags(tags)
 
 
-def run_task(
+async def run_task(
     build_agent: AgentBuilder,
     project: Tasks.Project,
     task: Tasks.Task,
@@ -218,22 +217,22 @@ def run_task(
                     f"Could not get arguments for file {task_file}, using no arguments.\n{e.stderr}"
                 )
                 rocq_args = []
+
             rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())
-            with RocqDocManager(
-                rocq_args,
-                str(task_file),
-                dune=True,
+            async with rc_sess(
+                task_file,
+                rocq_args=rocq_args,
                 chdir=str(project.path),
-            ).sess(load_file=True) as rdm:
-                rc = rdm.cursor()
+                load_file=True,
+            ) as rc:
                 progress.status(0.05, "🔃")
-                if not task.locator(rc):
+                if not await task.locator.go_to(rc):
                     msg = f"{task_id}: locator returned false"
                     progress.log(msg)
                     span.set_status(Status(StatusCode.ERROR, msg))
-                    return None
+                    raise ValueError("Locator failed to find position in file")
                 progress.status(0.1, "💭")
-                task_result = asyncio.run(agent.run(TracingCursor.of_cursor(rc)))
+                task_result = await agent.run(TracingCursor.of_cursor(rc))
         except Exception as e:
             progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
             task_result = TaskResult.from_exception(e)
@@ -386,11 +385,11 @@ def run_config(config: RunConfiguration) -> bool:
 
     # Dispatcher span is now closed - workers will run independently
 
-    def run_it(
-        proj_task: tuple[Tasks.Project, Tasks.Task], progress: Any
+    async def run_it(
+        proj_task: tuple[Tasks.Project, Tasks.Task], progress: util.ProgressCallback
     ) -> task_output.TaskOutput | None:
         proj, task = proj_task
-        return run_task(
+        return await run_task(
             config.agent_builder,
             proj,
             task,
