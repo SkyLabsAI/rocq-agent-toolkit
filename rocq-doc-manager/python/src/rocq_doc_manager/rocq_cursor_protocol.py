@@ -180,7 +180,9 @@ class RocqCursorProtocolAsync(Protocol):
                 raise rdm_api.Error(begin_section_reply)
 
             if context is not None:
-                context_reply = await self.insert_command(f"Context {' '.join(context)}.")
+                context_reply = await self.insert_command(
+                    f"Context {' '.join(context)}."
+                )
                 if isinstance(context_reply, rdm_api.Err):
                     raise rdm_api.Error(context_reply)
 
