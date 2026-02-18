@@ -42,7 +42,7 @@ class TestRocqRetryActionIntegration:
             ]
 
         # Mock LLM rectifier that fixes the typo
-        def mock_rectifier(rc: RocqCursor, tactic: str, error: str) -> str | None:
+        async def mock_rectifier(rc: RocqCursor, tactic: str, error: str) -> str | None:
             """
             Simulates LLM fixing a tactic based on error.
             In real usage, this would call the LLM with context.
@@ -52,7 +52,7 @@ class TestRocqRetryActionIntegration:
             return None  # Can't fix
 
         # Create action with rectifier
-        goal = cursor.current_goal()
+        goal = await cursor.current_goal()
         assert goal is not None
         generated_tactics = mock_generator(goal)
         first_tactic = generated_tactics[0][1]  # "autoo."
@@ -83,8 +83,10 @@ class TestRocqRetryActionIntegration:
         # Track rectifier calls for verification
         rectifier_calls: list[tuple[str, str, str]] = []
 
-        def tracking_rectifier(rc: RocqCursor, tactic: str, error: str) -> str | None:
-            goal = cast(MockRocqCursor, rc).current_goal()
+        async def tracking_rectifier(
+            rc: RocqCursor, tactic: str, error: str
+        ) -> str | None:
+            goal = await cast(MockRocqCursor, rc).current_goal()
             assert goal is not None
             rectifier_calls.append((goal, tactic, error))
             if "Syntax error" in error and ";" in tactic:
@@ -126,7 +128,7 @@ class TestRocqRetryActionIntegration:
         cursor = MockRocqCursor(goal="goal")
         cursor.set_failure("llm_tactic.", "Error from LLM tactic")
 
-        def always_fix(_rc: RocqCursor, _t: str, _e: str) -> str | None:
+        async def always_fix(_rc: RocqCursor, _t: str, _e: str) -> str | None:
             return "fixed_tactic."
 
         # LLM tactic with retry
@@ -160,10 +162,10 @@ class TestRocqRetryActionIntegration:
 
         received_goals: list[str] = []
 
-        def goal_tracking_rectifier(
+        async def goal_tracking_rectifier(
             rc: RocqCursor, tactic: str, error: str
         ) -> str | None:
-            goal = cast(MockRocqCursor, rc).current_goal()
+            goal = await cast(MockRocqCursor, rc).current_goal()
             assert goal is not None
             received_goals.append(goal)
             return "tactic2."  # Fixed
@@ -194,7 +196,9 @@ class TestRocqRetryActionIntegration:
 
         correction_history: list[str] = []
 
-        def iterative_rectifier(_rc: RocqCursor, tactic: str, error: str) -> str | None:
+        async def iterative_rectifier(
+            _rc: RocqCursor, tactic: str, error: str
+        ) -> str | None:
             correction_history.append(f"{tactic} -> error: {error}")
 
             # Simulate progressive fixing

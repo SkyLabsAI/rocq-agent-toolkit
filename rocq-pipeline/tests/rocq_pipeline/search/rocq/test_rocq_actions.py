@@ -1,7 +1,8 @@
 """Unit tests for RocqTacticAction and RocqRetryAction."""
 
+from collections.abc import Awaitable, Callable
 from typing import cast
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from rocq_doc_manager import RocqCursor
@@ -60,10 +61,21 @@ class TestRocqTacticAction:
 class TestRocqRetryAction:
     """Tests for RocqRetryAction."""
 
+    @staticmethod
+    def fixed_rectifier(
+        return_value: str, trace: list[tuple[RocqCursor, str, str]]
+    ) -> Callable[[RocqCursor, str, str], Awaitable[str | None]]:
+        async def fn(rc: RocqCursor, tactic: str, error: str) -> str | None:
+            nonlocal trace
+            trace.append((rc, tactic, error))
+            return "good."
+
+        return fn
+
     async def test_succeeds_on_first_attempt(self) -> None:
         """No rectification needed when first attempt succeeds."""
         cursor = MockRocqCursor()
-        rectifier = MagicMock(return_value="fixed.")
+        rectifier = AsyncMock(return_value="fixed.")
         action = RocqRetryCommandAction("auto.", rectifier=rectifier, max_retries=3)
 
         result = await action.interact(cast(RocqCursor, cursor))
@@ -78,14 +90,14 @@ class TestRocqRetryAction:
         cursor.set_failure("bad.", "Syntax error")
 
         # Rectifier returns fixed tactic
-        rectifier = MagicMock(return_value="good.")
+        rectifier = AsyncMock(return_value="good.")
 
         action = RocqRetryCommandAction("bad.", rectifier=rectifier, max_retries=3)
         result = await action.interact(cast(RocqCursor, cursor))
 
         assert result is cursor
         assert cursor._commands == ["bad.", "good."]
-        rectifier.assert_called_once_with(cursor, "bad.", "Syntax error")
+        rectifier.assert_awaited_with(cast(RocqCursor, cursor), "bad.", "Syntax error")
 
     async def test_multiple_rectification_attempts(self) -> None:
         """Rectifier is called multiple times if needed."""
@@ -94,21 +106,21 @@ class TestRocqRetryAction:
         cursor.set_failure("try2.", "Error 2")
 
         # First rectification also fails, second succeeds
-        rectifier = MagicMock(side_effect=["try2.", "try3."])
+        rectifier = AsyncMock(side_effect=["try2.", "try3."])
 
         action = RocqRetryCommandAction("try1.", rectifier=rectifier, max_retries=3)
         result = await action.interact(cast(RocqCursor, cursor))
 
         assert result is cursor
         assert cursor._commands == ["try1.", "try2.", "try3."]
-        assert rectifier.call_count == 2
+        assert rectifier.await_count == 2
 
     async def test_fails_after_max_retries(self) -> None:
         """Raises Action.Failed after exhausting retries."""
         cursor = MockRocqCursor()
         cursor.set_failure("always_fails.", "Specific Rocq Error")
 
-        rectifier = MagicMock(
+        rectifier = AsyncMock(
             return_value="always_fails."
         )  # Keeps returning same bad tactic
 
@@ -131,7 +143,7 @@ class TestRocqRetryAction:
         cursor = MockRocqCursor()
         cursor.set_failure("bad.", "Original Error")
 
-        rectifier = MagicMock(return_value=None)  # Gives up
+        rectifier = AsyncMock(return_value=None)  # Gives up
 
         action = RocqRetryCommandAction("bad.", rectifier=rectifier, max_retries=3)
 
@@ -192,7 +204,7 @@ class TestRocqRetryAction:
         """final_tactic differs from key() after rectification."""
         cursor = MockRocqCursor()
         cursor.set_failure("bad.", "Error")
-        rectifier = MagicMock(return_value="good.")
+        rectifier = AsyncMock(return_value="good.")
 
         action = RocqRetryCommandAction("bad.", rectifier=rectifier, max_retries=3)
         await action.interact(cast(RocqCursor, cursor))
