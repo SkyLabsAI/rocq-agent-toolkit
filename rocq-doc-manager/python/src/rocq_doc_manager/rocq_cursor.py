@@ -238,17 +238,22 @@ class RocqCursor(RocqCursorProtocol):
 
     @contextmanager
     def aborted_goal_ctx(
-        self, goal: str = "True", rollback: bool = True
+        self, goal: str = "True",
+            close : str = "Abort",
+            rollback: bool = True
     ) -> Iterator[Self]:
         """RDM context manager that sets up an aborted goal."""
         with self.ctx(rollback=rollback):
             goal_reply = self.insert_command(f"Goal {goal}.")
             if isinstance(goal_reply, rdm_api.Err):
                 raise rdm_api.Error(goal_reply)
+            proof_reply = self.insert_command("Proof.")
+            if isinstance(proof_reply, rdm_api.Err):
+                raise RocqCursor.Error(proof_reply)
 
             yield self
 
-            abort_reply = self.insert_command("Abort.")
+            abort_reply = self.insert_command(f'{close}.')
             if isinstance(abort_reply, rdm_api.Err):
                 raise rdm_api.Error(abort_reply)
 
@@ -275,6 +280,7 @@ class RocqCursor(RocqCursorProtocol):
             end_section_reply = self.insert_command(f"End {name}.")
             if isinstance(end_section_reply, rdm_api.Err):
                 raise rdm_api.Error(end_section_reply)
+
 
     # ===== END: contextmanagers ==============================================
 

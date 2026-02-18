@@ -99,6 +99,7 @@ class Test_RDM_aborted_goal_ctx(RDM_Tests):
         tac = "intuition auto."
         cmds = [
             f"Goal {goal}.",
+            "Proof.",
             tac,
             "Abort.",
         ]

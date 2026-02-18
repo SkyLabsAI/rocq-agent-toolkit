@@ -20,6 +20,8 @@ class Test_RDM_macros(RDM_Tests):
         expected_prefix = [
             ("command", "Goal True."),
             ("blanks", "\n"),
+            ("command", "Proof."),
+            ("blanks", "\n"),
             ("command", "Abort."),
             ("blanks", "\n"),
         ]
@@ -30,6 +32,69 @@ class Test_RDM_macros(RDM_Tests):
             assert prefix[i].text == text, f"text @ {i}"
         outside_goal_reply = transient_rc.current_goal()
         assert outside_goal_reply is None
+
+    def test_current_goal_False(
+        self,
+        transient_rc: RocqCursor,
+    ) -> None:
+        with transient_rc.aborted_goal_ctx('False', close = 'Abort'):
+            x = transient_rc.insert_command("solve [trivial].")
+            assert isinstance(x, rdm_api.Err) and x.message == 'No applicable tactic.', x
+            # if isinstance(x, RocqCursor.Err):
+                # raise AssertionError(x)
+
+
+
+    def test_find_and_update(
+        self,
+        loadable_rc: RocqCursor,
+    ) -> None:
+        # def
+        with loadable_rc.sess():
+            assert not isinstance(loadable_rc.load_file(), rdm_api.Err)
+
+            init_suff = loadable_rc.doc_suffix()
+            assert loadable_rc.goto_first_match(
+                lambda cmd, kind: cmd.startswith('intro'),
+            )
+            if loadable_rc.doc_suffix()[0].text == "intro x.":
+                x = loadable_rc.insert_command("intro y.")
+            else:
+                assert loadable_rc.doc_suffix()[0].text == "intro y."
+                x = loadable_rc.insert_command("intro x.")
+            assert x
+            assert x.proof_state
+            assert (not x.proof_state.focused_goals ==
+                    [ '\n'.join(["",
+                                 "y : nat",
+                                 "============================"
+                                 "y = y'"]) ])
+
+            loadable_rc.clear_suffix(1)
+            blank = loadable_rc.doc_suffix()[0]
+            if blank.kind == 'blanks':
+                loadable_rc.clear_suffix(1)
+
+            loadable_rc.go_to(0)
+            cmd = init_suff[12].text
+            if cmd == "intro x.":
+                cmd = "intro y."
+            else:
+                assert cmd == "intro y."
+                cmd = "intro x."
+            init_suff[12] = rdm_api.SuffixItem(text = cmd, kind = 'command')
+            init_suff[13] = rdm_api.SuffixItem(text = '\n', kind = 'blanks')
+            assert loadable_rc.doc_suffix() == init_suff
+
+            # loadable_rc.commit(file = None, include_suffix = True)
+
+
+        # with loadable_rc.aborted_goal_ctx('False', close = 'Qed'):
+        # with loadable_rc.aborted_goal_ctx('False', close = 'Qed'):
+            # x = transient_rc.insert_command("solve [trivial].")
+            # assert not isinstance(x, RocqCursor.Err), x.message
+            # if isinstance(x, RocqCursor.Err):
+                # raise AssertionError(x)
 
     def test_current_goal_True(
         self,
