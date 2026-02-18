@@ -4,8 +4,6 @@
 
 import asyncio
 import sys
-from collections.abc import Generator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -14,28 +12,11 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCall
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.run import AgentRunResult
-from rocq_doc_manager import RocqCursor, RocqDocManager
-from rocq_doc_manager.locator import Locator, LocatorParser
+from rocq_doc_manager import rc_sess
+from rocq_doc_manager.locator import LocatorParser
 from rocq_pipeline.tasks import json
 
 from rocq_agent_tools_pydantic.tools import RocqProofStateDeps, rocq_cursor_toolset
-
-
-@contextmanager
-def build_cursor(filename: Path, loc: Locator) -> Generator[RocqCursor]:
-    rdm = RocqDocManager([], str(filename.name), chdir=str(filename.parent), dune=True)
-    rc = rdm.cursor()
-    load_result = rc.load_file()
-    if load_result is not None:
-        print(load_result)
-        raise AssertionError
-    assert loc(rc)
-
-    try:
-        yield rc
-    finally:
-        rc.dispose()
-        rdm.quit()
 
 
 def build_model(calls: list[tuple[str, Any]]) -> Model:
@@ -70,7 +51,13 @@ async def amain(args: list[str]) -> None:
 
     messages = [parse_tool_call(arg) for arg in args]
 
-    with build_cursor(file, locator) as rc:
+    async with rc_sess(
+        str(file.name),
+        chdir=str(file.parent),
+        dune=True,
+        load_file=True,
+    ) as rc:
+        assert await locator.go_to(rc)
         deps = RocqProofStateDeps(rc)
         agent = Agent(
             build_model(messages),
