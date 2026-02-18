@@ -36,7 +36,7 @@ class DuneError(Exception):
             stdout_lines = ""
 
         if self.stderr is not None:
-            stderr_no_trailing_newline = self.stdout.rstrip("\n")
+            stderr_no_trailing_newline = self.stderr.rstrip("\n")
             stderr_lines = f"STDERR: [[[\n{stderr_no_trailing_newline}\n]]]"
         else:
             stderr_lines = ""
