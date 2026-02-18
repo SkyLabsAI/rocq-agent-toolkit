@@ -146,6 +146,7 @@ class TaskBundle(BaseModel):
         self,
         *,
         cli: bool = False,
+        jobs: int | None = None,
         quiet: bool = True,
     ) -> None:
         """Use dune to build the .v files needed by tasks in the project."""
@@ -157,6 +158,7 @@ class TaskBundle(BaseModel):
             targets=list(targets),
             cwd=self.project.path,
             cli=cli,
+            jobs=jobs,
             quiet=quiet,
         )
 
@@ -212,12 +214,14 @@ class TaskFile(BaseModel):
         self,
         *,
         cli: bool = False,
+        jobs: int | None,
         quiet: bool = True,
     ) -> None:
         """Use dune to build all the .v files needed by all project_bundles."""
         for project_bundle in self.project_bundles:
             project_bundle.dune_build(
                 cli=cli,
+                jobs=jobs,
                 quiet=quiet,
             )
 
@@ -345,18 +349,29 @@ class TaskFile(BaseModel):
     @classmethod
     def cli_build_mk_parser(cls, parent: Any | None = None) -> ArgumentParser:
         """Used in ./cli.py to expose a 'build' subcommand of 'rat'."""
-        description = "Build .vo dependencies for the task_file using dune."
-        help = "Supply a path to a task file and build its .vo dependencies using dune."
+        description = "Build .vo dependencies for a single task_file using dune."
+        help = "Supply a path to a single task file and build its .vo dependencies using dune."
         if parent:
             parser = parent.add_parser("build", description=description, help=help)
         else:
             parser = ArgumentParser(description=description)
-        parser.add_argument("task_file", type=Path, help="The path to the task file")
+        parser.add_argument(
+            "task_file",
+            type=Path,
+            help="The path to a single task file"
+        )
         parser.add_argument(
             "--quiet",
             default=False,
             action="store_true",
-            help="hide the dune build output",
+            help="hide the dune build output (`--no-print-directory --display=quiet`)",
+        )
+        parser.add_argument(
+            "-j",
+            "--jobs",
+            type=lambda N: max(int(N), 1),
+            metavar="N",
+            help="explicit parallelism, corresponding to `-j` flag for dune; when elided use dune configuration (https://dune.readthedocs.io/en/latest/reference/config/index.html)",
         )
         return parser
 
@@ -369,6 +384,7 @@ class TaskFile(BaseModel):
         taskfile = cls.from_file(arguments.task_file)
         taskfile.dune_build(
             cli=True,
+            jobs=arguments.jobs,
             quiet=arguments.quiet,
         )
 

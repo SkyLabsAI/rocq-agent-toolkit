@@ -144,6 +144,7 @@ def dune_build(
     *,
     cwd: str | Path | None = None,
     cli: bool = False,
+    jobs: int | None = None,
     quiet: bool = True,
 ) -> int:
     """
@@ -154,6 +155,7 @@ def dune_build(
     @param targets: the targets to build
     @param cwd: alternative current working directory (optional)
     @param cli: whether the build should be done using subprocess.Popen with parent pipes (optional)
+    @param jobs: the number of parallel jobs, corresponding to the `-j` flag for dune (optional)
     @param quiet: whether the build should be done with `--no-print-directory --display=quiet` (optional)
     @raises ValueError: in case of ill-formed target
     @raises DuneError: in case of build failure
@@ -165,6 +167,8 @@ def dune_build(
         return _build_target(_relative_target(_parse_target(target), cwd))
 
     args = ["build"]
+    if jobs is not None:
+        args.append(f"-j{int(max(jobs, 1))}")
     if quiet:
         args.extend(["--no-print-directory", "--display=quiet"])
     args.extend([make_target(t) for t in targets])
