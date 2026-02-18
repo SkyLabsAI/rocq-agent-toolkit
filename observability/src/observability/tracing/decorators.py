@@ -22,7 +22,7 @@ from .extractors.base import AttributeExtractor, NoOpExtractor
 logger = logging.getLogger(__name__)
 
 
-def trace(
+def trace[**P, T](
     name: str | None = None,
     *,
     extractor: str | type[AttributeExtractor] | AttributeExtractor | None = None,
@@ -32,7 +32,7 @@ def trace(
     include_result: bool = False,
     record_exception: bool = True,
     **extractor_kwargs: Any,
-) -> Callable:
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """
     Universal tracing decorator for any operation.
 
@@ -94,9 +94,9 @@ def trace(
             return stripe.charge(amount, currency)
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             # Initialize extractor
             operation_extractor = _get_operation_extractor(
                 extractor, **extractor_kwargs
