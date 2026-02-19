@@ -37,7 +37,9 @@ class Response:
     payload: Any
 
 
-class WSConnection(Protocol):
+class PacketChannel(Protocol):
+    """A packet-based channel."""
+
     @overload
     async def send(self, message: bytes) -> None: ...
     @overload
@@ -101,7 +103,7 @@ class WSServer:
     then pass it to this object to serve the protocol.
     """
 
-    _conn: WSConnection
+    _conn: PacketChannel
     _receiver: asyncio.Task[None]
     _futures: dict[int, asyncio.Future] = {}
     _dispatch: Dispatcher
@@ -111,7 +113,8 @@ class WSServer:
 
     def __init__(
         self,
-        conn: WSConnection,
+        conn: PacketChannel,
+        *,
         dispatcher: Dispatcher,
         encoder: EncoderProtocol,
         decoder: Decoder,
@@ -122,7 +125,7 @@ class WSServer:
         self._dispatch = dispatcher
 
     async def serve(self):
-        self._receiver = asyncio.create_task(self._recv())
+        self._receiver = asyncio.create_task(self._recv_loop())
         await self._receiver
 
     async def stop(self):
@@ -132,10 +135,10 @@ class WSServer:
         except asyncio.CancelledError:
             pass
 
-    async def _handle_del(self, id, method, args: list[Any], kwargs: dict[str, Any]):
+    async def _handle_request(self, req: Request):
         is_exception = False
         try:
-            result = await self._dispatch.dispatch(method, args, kwargs)
+            result = await self._dispatch.dispatch(req.method, req.args, req.kwargs)
         except Exception as e:
             # print(f"RPC call to {method}: failed with {repr(e)} : {type(e)}")
             is_exception = True
@@ -144,12 +147,12 @@ class WSServer:
             payload = self._encoder.encode(result)
         except Exception as e:
             print(f"encoding of response {result} failed with {e}")
-            raise e from e
-        resp = Response(id=id, is_exception=is_exception, payload=payload)
+            raise
+        resp = Response(id=req.id, is_exception=is_exception, payload=payload)
         await self._conn.send(self._encoder.encode(resp))
-        del self._futures[id]
+        del self._futures[req.id]
 
-    async def _recv(self):
+    async def _recv_loop(self):
         try:
             while True:
                 req_bytes = await self._conn.recv(decode=False)
@@ -162,9 +165,7 @@ class WSServer:
                         f"Decoding of request {req_json} failed with: {repr(e)} : {type(e)}"
                     )
                     raise e from e
-                future = asyncio.create_task(
-                    self._handle_del(req.id, req.method, req.args, req.kwargs)
-                )
+                future = asyncio.create_task(self._handle_request(req))
                 self._futures[req.id] = future
         except websockets.ConnectionClosedOK:
             pass
@@ -179,7 +180,7 @@ class WSServer:
 
 
 class WSMux:
-    """This an asynchronous wrapper around a `WSConnection` and represents the client-side
+    """This an asynchronous wrapper around a `PacketConnection` and represents the client-side
     of a connection.
 
     This class and `WSServer` dictate the wire-level protocol which is
@@ -191,7 +192,7 @@ class WSMux:
     as well, e.g. tinyrpc. We might want to switch to this library in the future.
     """
 
-    _conn: WSConnection
+    _conn: PacketChannel
     _fresh: int = -1
     _receiver: asyncio.Task[None]
     _futures: dict[int, asyncio.Future[tuple[bool, Any]]] = {}
@@ -200,7 +201,7 @@ class WSMux:
 
     def __init__(
         self,
-        conn: WSConnection,
+        conn: PacketChannel,
         encoder: EncoderProtocol,
         decoder: Decoder,
         *,
