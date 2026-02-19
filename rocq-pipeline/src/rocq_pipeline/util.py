@@ -101,15 +101,6 @@ def parallel_runner[T, U](
         async def _await(aw: Awaitable[U]) -> U:
             return await aw
 
-        def _run_awaitable(aw: Awaitable[U]) -> U:
-            try:
-                asyncio.get_running_loop()
-            except RuntimeError:
-                return asyncio.run(_await(aw))
-            raise RuntimeError(
-                "parallel_runner worker thread unexpectedly has a running event loop"
-            )
-
         def go(name_val: tuple[str, T]) -> tuple[str, U]:
             [name, val] = name_val
             MAX_NAME_LEN = 35
@@ -125,7 +116,7 @@ def parallel_runner[T, U](
                 feedback = Feedback(show_name, pb, current_task_id, PROGRESS_MAX)
             else:
                 feedback = Feedback(show_name)
-            result = _run_awaitable(run(val, feedback))
+            result = asyncio.run(_await(run(val, feedback)))
             pb.update(
                 current_task_id,
                 completed=PROGRESS_MAX,
