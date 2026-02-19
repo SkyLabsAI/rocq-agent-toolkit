@@ -70,7 +70,8 @@ def _build_target(target: tuple[Path, str] | Path) -> str:
 
 def _canonical_rel_path(path: Path, cwd: str | Path | None) -> Path:
     rel_base = Path(".") if cwd is None else Path(cwd)
-    return path.absolute().relative_to(rel_base.absolute(), walk_up=True)
+    rel_base = Path(os.path.normpath(rel_base.absolute()))
+    return path.absolute().relative_to(rel_base, walk_up=True)
 
 
 def _relative_target(
@@ -168,6 +169,96 @@ def _extra_args(args: list[str], extra_args: list[list[str]]) -> list[str]:
     return new_args
 
 
+class DuneRocqPluginNotFound(Exception):
+    """Exception raised if a plugin cannot be found."""
+
+    pass
+
+
+class DuneRocqPlugin:
+    """
+    Specification of a dune Rocq Plugin. Such plugins can be requested while
+    computing command-line arguments, and they are resolved based on their
+    opam package name (and ocamlfind package).
+    """
+
+    def __init__(
+        self,
+        *,
+        opam_pkg: str,
+        entry_points: list[str],
+        findlib_pkg: str | None = None,
+    ) -> None:
+        """
+        @param opam_pkg: name of the opam package for the plugin
+        @param entry_points: relative paths to Rocq sources under the package
+        @param findlib_pkg: findlib package name (defaults to `opam_pkg`)
+        """
+        self.opam_pkg = opam_pkg
+        self.entry_points = entry_points
+        self.findlib_pkg = opam_pkg if findlib_pkg is None else findlib_pkg
+
+    def locate_in_workspace(self, source_root: Path) -> Path | None:
+        """
+        Tries to locate the plugin's main directory under the dune workspace
+        whose root is specified by `source_root`.
+
+        @param source_root: root of the dune workspace to explore
+        @returns: a relative path from `source_root` if the plugin is located
+        """
+        opam_file = f"{self.opam_pkg}.opam"
+        excluded_dirs = {".git", "_build"}
+        opam_files = source_root.rglob(opam_file, recurse_symlinks=True)
+        candidate_dirs = [
+            file.parent
+            for file in opam_files
+            if not any(d in file.parts for d in excluded_dirs)
+        ]
+        # NOTE: dune would complain if there was more than one.
+        assert len(candidate_dirs) < 2
+        if len(candidate_dirs) == 1:
+            return candidate_dirs[0]
+        return None
+
+    def is_installed(self, source_root: Path) -> bool:
+        """
+        Indicates whether the plugin is installed, based on ocamlfind. To make
+        sure that the package is searched for in the right opam switch, the
+        query is run from the given `source_root`.
+
+        @param source_root: root of the dune workspace
+        @returns: boolean indicating if the plugin is installed
+        """
+        args = ["query", "-qo", "-qe", self.findlib_pkg]
+        res = subprocess.run(
+            ["opam", "exec", "--", "ocamlfind"] + args,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            cwd=str(source_root),
+        )
+        return res.returncode == 0
+
+    def resolve(self, source_root: Path) -> list[str]:
+        """
+        Resolves the plugin to Rocq files paths relative to `source_root`. If
+        the plugin is not in the workspace, an empty list of files is given,
+        and it is checked that the package is available in an installed form.
+        Installed plugins are currently always available to Rocq, so we don't
+        need to do anything specific for Rocq to have access to them.
+
+        @param source_root: root of the dune workspace
+        @returns: list of paths to Rocq sources, relative to `source_root`
+        """
+        path = self.locate_in_workspace(source_root)
+        if path is None:
+            if self.is_installed(source_root):
+                return []
+            raise DuneRocqPluginNotFound(
+                f"Cannot locate the plugin (opam package) '{self.opam_pkg}'."
+            )
+        return [str(path / file) for file in self.entry_points]
+
+
 def rocq_args_for(
     file: str | Path,
     *,
@@ -175,11 +266,12 @@ def rocq_args_for(
     build: bool = False,
     extra_deps: list[str | Path] | None = None,
     workspace_deps: list[str | Path] | None = None,
+    plugins: list[DuneRocqPlugin] | None = None,
 ) -> list[str]:
     """
     Give the Rocq command line arguments that are needed to build / process
     the given Rocq source file. If `extra_deps` and/or `workspace_deps` is
-    given, the returned Rocq arguments are guanranteed to be suitable for
+    given, the returned Rocq arguments are guaranteed to be suitable for
     "Require"-ing the corresponding Rocq modules in the file, even if it does
     not depend on them explicitly.
 
@@ -188,9 +280,11 @@ def rocq_args_for(
     @param build: should the dependencies of `file` and `extra_deps` be built?
     @param extra_deps: additional Rocq files to be made available
     @param workspace_deps: same with paths relative to the dune workspace root
+    @param plugins: same but specified via a plugin (installed or not)
     @returns: the command line arguments
     @raises ValueError: if the provided files don't have the ".v" suffix
     @raises DuneError: if command line arguments cannot be collected
+    @raises DuneRocqPluginNotFound: if a plugin cannot be located
     """
 
     # Validate the input files.
@@ -202,17 +296,30 @@ def rocq_args_for(
 
     path: Path = check_v_file(file)
 
+    source_root: Path | None = None
+
     # Resolving the extra dependencies.
     deps: list[Path] = []
     for file in extra_deps if extra_deps else []:
         deps.append(check_v_file(file))
+
+    # Resolving the workspace dependencies.
     if workspace_deps:
-        source_root = dune_sourceroot(cwd=cwd)
+        if source_root is None:
+            source_root = dune_sourceroot(cwd=cwd)
         for file in workspace_deps:
             rel = check_v_file(file)
             if rel.is_absolute():
                 raise ValueError(f"Expected relative path, given {str(rel)}")
             deps.append(source_root / rel)
+
+    # Resolving the plugins.
+    if plugins:
+        if source_root is None:
+            source_root = dune_sourceroot(cwd=cwd)
+        for plugin in plugins:
+            for dep in plugin.resolve(source_root):
+                deps.append(source_root / dep)
 
     # Build the extra dependencies if needed. Note that the dependencies of
     # the main file are built separately, when calling `_rocq_args`, as there

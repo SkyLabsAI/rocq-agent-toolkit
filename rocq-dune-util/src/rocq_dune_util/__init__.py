@@ -8,6 +8,8 @@ the ability to query dune for Rocq CLI arguments for a Rocq source file.
 
 from .rocq_dune_util import (
     DuneError,
+    DuneRocqPlugin,
+    DuneRocqPluginNotFound,
     dune_build,
     dune_env_hack,
     dune_sourceroot,
@@ -16,6 +18,8 @@ from .rocq_dune_util import (
 
 __all__ = [
     "DuneError",
+    "DuneRocqPlugin",
+    "DuneRocqPluginNotFound",
     "dune_build",
     "dune_env_hack",
     "dune_sourceroot",
