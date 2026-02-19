@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 import itertools
 import json
 import traceback
@@ -21,25 +20,7 @@ from rocq_pipeline.tracers.extractor import (
 )
 
 
-def trace_proof(
-    tracer: Tracer[dict[str, Any]],
-    rdm: RocqCursor,
-    progress: util.ProgressCallback,
-    progress_min: float = 0.0,
-    progress_max: float = 1.0,
-) -> list[dict[str, Any]]:
-    return asyncio.run(
-        trace_proof_async(
-            tracer,
-            rdm,
-            progress,
-            progress_min=progress_min,
-            progress_max=progress_max,
-        )
-    )
-
-
-async def trace_proof_async(
+async def trace_proof(
     tracer: Tracer[dict[str, Any]],
     rdm: RocqCursor,
     progress: util.ProgressCallback,
@@ -139,12 +120,12 @@ def run(
                 tracer.setup(rc)
                 progress.status(0.05, "🔃")
 
-                if not await task.locator(rc):
+                if not await task.locator.go_to(rc):
                     print(f"Failed to find task: {task_id}")
                     return False
                 progress.status(0.1, "💭")
 
-                trace = await trace_proof_async(tracer, rc, progress, 0.1, 0.95)
+                trace = await trace_proof(tracer, rc, progress, 0.1, 0.95)
                 progress.status(0.95, "💭")
 
             with open(output_file, "w") as output:
