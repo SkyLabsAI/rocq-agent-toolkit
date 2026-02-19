@@ -17,9 +17,9 @@ from typing import (
 )
 
 import websockets
-from rocq_doc_manager.microrpc.dipatcher import Dispatcher
 
 from .deserialize import Decoder, EncoderProtocol
+from .dispatcher import Dispatcher
 
 
 @dataclass
@@ -64,7 +64,9 @@ def _wrap_func(name, func):
     return wrapped
 
 
-def proxy_protocol(protocol) -> Callable[[type[_RPC]], type]:
+def proxy_protocol(
+    protocol, passthru: list[str] | None = None
+) -> Callable[[type[_RPC]], type]:
     """A class decorator that implements the methods of a Protocol using the
     underlying RPC mechanism."""
 
@@ -77,7 +79,12 @@ def proxy_protocol(protocol) -> Callable[[type[_RPC]], type]:
             func = getattr(protocol, fn)
             if not isinstance(func, FunctionType):
                 raise AssertionError
-            setattr(cls, fn, _wrap_func(fn, func))
+            if passthru is not None and fn in passthru:
+                # passthru functions are not made remote.
+                # These are necessary because we can not proxy higher-order functions
+                setattr(cls, fn, getattr(protocol, fn))
+            else:
+                setattr(cls, fn, _wrap_func(fn, func))
         return type(cls.__name__, cls.__bases__, dict(cls.__dict__))
 
     return wrap

@@ -1,0 +1,63 @@
+[project]
+name = "rocq-remote-agent"
+version = "0.1.0"
+description = "Remote proof agent for Rocq using rocq-pipeline"
+readme = "README.md"
+authors = [
+    { name = "Ehtesham Zahoor", email = "ehtesham.zahoor@skylabs-ai.com" }
+]
+requires-python = "==3.13.*"
+dependencies = [
+    "rocq-doc-manager",
+    "rocq-pipeline",
+    "observability",
+    "httpx>=0.28.1",
+    "websockets>=14.3",
+]
+
+[project.scripts]
+remote-proof-agent = "remote_agent_client.cli:main"
+
+[tool.uv.sources]
+rocq-doc-manager = { workspace = true }
+rocq-pipeline = { workspace = true }
+brick-agents = { workspace = true }
+observability = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "mypy>=1.18.2,<2",
+    "ruff>=0.14.4",
+    "taskipy>=1.14.1",
+]
+
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+disable_error_code = ["import-untyped"]
+
+[tool.taskipy.tasks]
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy ."
+# test_ocaml_ci = "pytest" -- no tests currently
+# TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
+precommit = "task lint_ci --fix; task reformat; task typecheck_ci"

@@ -11,7 +11,7 @@ from typing import (
 
 from pydantic import BaseModel
 
-from rocq_doc_manager.microrpc.dipatcher import Dispatcher
+from rocq_doc_manager.microrpc.dispatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
 from rocq_doc_manager.rocq_cursor_protocol import (
     RocqCursor,
@@ -155,7 +155,10 @@ class ClosedError(rdm_api.Error):
 # ===============================================================
 
 
-@proxy_protocol(RocqCursorProtocolAsync)
+@proxy_protocol(
+    RocqCursorProtocolAsync,
+    passthru=["ctx", "aborted_goal_ctx", "Section", "goto_first_match"],
+)
 class WSCursor:
     """A cursor that proxies method calls through WSMux.
 
@@ -203,9 +206,11 @@ class CursorDispatcher(Dispatcher):
     _cursors: dict[CursorId, RocqCursor]
     _fresh: int
 
-    def __init__(self, cursors: dict[CursorId, RocqCursor]):
-        self._cursors = cursors
-        self._fresh = max([c.cursor for c in cursors])
+    def __init__(self, cursors: dict[int, RocqCursor]):
+        self._cursors = {
+            CursorId(cursor=idx): cursor for idx, cursor in cursors.items()
+        }
+        self._fresh = max(cursors.keys())
 
     def extract_cursor(self, args: list[Any]) -> tuple[RocqCursor, list[Any]]:
         cursor_idx = args.pop(0)

@@ -14,6 +14,7 @@ members = [
     "observability",
     "dashboard/backend",
     "rocq-dune-util",
+    "rocq-remote-agent",
 ]
 
 [tool.ruff]
