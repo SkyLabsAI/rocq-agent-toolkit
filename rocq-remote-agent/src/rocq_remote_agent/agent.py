@@ -148,7 +148,7 @@ class RemoteAgent(Agent):
             try:
                 is_exc, payload = await mux.send("control/run", [run_req], {})
             except ConnectionClosed as e:
-                return self.give_up(
+                return await self.give_up(
                     rc,
                     message=f"websocket closed: {e.code}: {e.reason}",
                 )
@@ -157,14 +157,14 @@ class RemoteAgent(Agent):
 
             if is_exc:
                 # payload is a JSON string encoded by the shared encoder
-                return self.give_up(rc, message=f"remote exception: {payload}")
+                return await self.give_up(rc, message=f"remote exception: {payload}")
 
             try:
                 obj = json.loads(cast(str, payload))
             except Exception:
                 obj = {"summary": None}
 
-            return self.finished(
+            return await self.finished(
                 rc,
                 message="remote agent finished",
                 side_effects={"remote_summary": obj.get("summary")},
