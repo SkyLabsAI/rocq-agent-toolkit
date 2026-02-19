@@ -33,7 +33,7 @@ class Test_API(RDM_Tests):
         async def handle(conn):
             server = WSServer(
                 conn,
-                CursorDispatcher({id: rc}),
+                CursorDispatcher({0: rc}),
                 encoder,
                 decoder,
             )

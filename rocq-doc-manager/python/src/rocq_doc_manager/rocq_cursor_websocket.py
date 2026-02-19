@@ -155,7 +155,10 @@ class ClosedError(rdm_api.Error):
 # ===============================================================
 
 
-@proxy_protocol(RocqCursorProtocolAsync)
+@proxy_protocol(
+    RocqCursorProtocolAsync,
+    passthru=["ctx", "aborted_goal_ctx", "Section", "goto_first_match"],
+)
 class WSCursor:
     """A cursor that proxies method calls through WSMux.
 
