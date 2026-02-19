@@ -34,7 +34,7 @@ class RocqProofStateDeps:
 
 async def current_goals(ctx: RunContext[RocqProofStateDeps]) -> list[str] | None:
     """Get the focused goals."""
-    result = ctx.deps.rocq_cursor.current_goal()
+    result = await ctx.deps.rocq_cursor.current_goal()
     if result is None:
         return None
     return result.focused_goals
@@ -51,8 +51,8 @@ async def run_tactic(
     Return:
         The result field will contain the new Rocq goals after the tactic runs.
     """
-    idx = ctx.deps.rocq_cursor.cursor_index()
-    result = ctx.deps.rocq_cursor.insert_command(tactic)
+    idx = await ctx.deps.rocq_cursor.cursor_index()
+    result = await ctx.deps.rocq_cursor.insert_command(tactic)
     if isinstance(result, rdm_api.Err):
         return RocqResult(error=result.message, result=None)
     else:
@@ -79,7 +79,7 @@ async def run_query(
             error="Query must start with one of `Search`, `Check`, `Print`, or `About`.",
             result=None,
         )
-    result = ctx.deps.rocq_cursor.query(command)
+    result = await ctx.deps.rocq_cursor.query(command)
     if isinstance(result, rdm_api.Err):
         return RocqResult(error=result.message, result=None)
     else:
@@ -106,19 +106,19 @@ async def backtrack(ctx: RunContext[RocqProofStateDeps], count: int) -> bool:
 
     idx, _ = ctx.deps.rocq_script[-count]
 
-    ctx.deps.rocq_cursor.revert_before(erase=True, index=idx)
+    await ctx.deps.rocq_cursor.revert_before(erase=True, index=idx)
     ctx.deps.rocq_script = ctx.deps.rocq_script[:-count]
     return True
 
 
-def qed(ctx: RunContext[RocqProofStateDeps]) -> bool:
+async def qed(ctx: RunContext[RocqProofStateDeps]) -> bool:
     """Finish the current proof.
 
     Returns false if the proof can not be completed as this point.
     """
     # NOTE: Using `Qed` here prevents this from being used to prove single goals within
     # a larger proof.
-    result = ctx.deps.rocq_cursor.query("Qed.")
+    result = await ctx.deps.rocq_cursor.query("Qed.")
     return not isinstance(result, rdm_api.Err)
 
 

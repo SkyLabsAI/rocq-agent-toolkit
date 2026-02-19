@@ -26,7 +26,7 @@ class Agent(Provenance.Full):
         """Entrypoint; use rdm to attempt a task and report the result. The
         rdm cursor is updated to reflect the changes to the proof, even in
         case of failure (partial progress is kept)."""
-        return self.give_up(rc, message="Not implemented")
+        return await self.give_up(rc, message="Not implemented")
 
     @classmethod
     def cls_name(cls) -> str:
@@ -37,7 +37,7 @@ class Agent(Provenance.Full):
         """Return the unique name for an instance of this type of agent."""
         return self.cls_name()
 
-    def finished(
+    async def finished(
         self,
         rc: RocqCursor,
         message: str = "",
@@ -50,7 +50,7 @@ class Agent(Provenance.Full):
             _metrics=self._task_metrics(),
         )
 
-    def give_up(
+    async def give_up(
         self,
         rc: RocqCursor,
         message: str = "",
@@ -128,34 +128,32 @@ class ProofAgent(Agent):
         This method is called by run() after setting up a RocqProofSession.
         Subclasses should implement their proof logic here.
         """
-        return self.give_up(rc, message="Not implemented")
+        return await self.give_up(rc, message="Not implemented")
 
     @override
     async def run(self, rc: RocqCursor) -> TaskResult:
         """Run the agent after ensuring there is a goal to prove."""
-        goal_reply = rc.current_goal()
+        goal_reply = await rc.current_goal()
         if goal_reply is None:
-            return self.finished(rc, message="No goal to prove")
-        if isinstance(goal_reply, rdm_api.Err):
-            return self.give_up(rc, message="No goal to prove", reason=goal_reply)
+            return await self.finished(rc, message="No goal to prove")
 
         # The following command ensures that agents can refer to `_x_`-like
         # unstable identifiers that SSReflect generates.
         # Resulting proofs are less stable, but this is acceptable during
         # agent development.
         if self._unset_ssr_idents:
-            rc.insert_command("#[local] Unset SsrIdents.")
+            await rc.insert_command("#[local] Unset SsrIdents.")
 
         # The following command undoes `Set Default Goal Selector "!".`,
         # and ensures we can run `tac` to apply it to the _first_ goal, as Rocq
         # does by default.
         if self._reset_default_goal_selector:
-            rc.insert_command('#[local] Set Default Goal Selector "1".')
+            await rc.insert_command('#[local] Set Default Goal Selector "1".')
 
         # TODO: validate that no goals remain.
         return await self.prove(rc)
 
-    def current_proof_state(
+    async def current_proof_state(
         self,
         rdm: RocqCursor,
         goal_ty_upperbound: type[RocqGoal] | None = None,
@@ -165,15 +163,15 @@ class ProofAgent(Agent):
         Note: self._goal_ty_upperbound can be overriden."""
         if goal_ty_upperbound is None:
             goal_ty_upperbound = self._goal_ty_upperbound
-        goal_reply = rdm.current_goal()
-        if isinstance(goal_reply, rdm_api.Err):
-            return goal_reply
+        goal_reply = await rdm.current_goal()
+        if goal_reply is None:
+            return rdm_api.Err("No goal to prove", None)
         return ProofState(
             goal_reply,
             goal_ty_upperbound=goal_ty_upperbound,
         )
 
-    def run_tactic(
+    async def run_tactic(
         self,
         rdm: RocqCursor,
         tac: str,
@@ -181,7 +179,7 @@ class ProofAgent(Agent):
         """Get the result of running tac using rdm, tracing the interaction."""
         tac_app = TacticApplication(tactic=tac)
 
-        pre_pf_state_reply = self.current_proof_state(rdm)
+        pre_pf_state_reply = await self.current_proof_state(rdm)
         if isinstance(pre_pf_state_reply, rdm_api.Err):
             tac_app.err = pre_pf_state_reply
             return tac_app
@@ -196,7 +194,7 @@ class ProofAgent(Agent):
             "Tactic Application",
             tactic_application_tactic=tac,
         )
-        tac_reply = rdm.insert_command(tac)
+        tac_reply = await rdm.insert_command(tac)
         if isinstance(tac_reply, rdm_api.Err):
             logger.info(
                 "Tactic Application Status",
@@ -211,7 +209,7 @@ class ProofAgent(Agent):
             status="Success",
         )
 
-        post_pf_state_reply = self.current_proof_state(rdm)
+        post_pf_state_reply = await self.current_proof_state(rdm)
         if isinstance(post_pf_state_reply, rdm_api.Err):
             tac_app.err = post_pf_state_reply
             return tac_app

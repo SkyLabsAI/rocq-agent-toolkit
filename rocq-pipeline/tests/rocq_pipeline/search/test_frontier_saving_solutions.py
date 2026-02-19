@@ -2,54 +2,70 @@
 
 from __future__ import annotations
 
+import pytest
 from rocq_pipeline.search.search.frontier import BFS, SavingSolutions
 
 
-def test_saving_solutions_capture() -> None:
+@pytest.mark.asyncio
+async def test_saving_solutions_capture() -> None:
     """Verify SavingSolutions captures solutions without stopping. This is intended when stop_on_first_solution is False."""
     base = BFS[int]()
+
+    async def _is_solution(v: int) -> bool:
+        return v % 2 == 0
+
     frontier = SavingSolutions(
         base,
-        is_solution=lambda v: v % 2 == 0,
+        is_solution=_is_solution,
         stop_on_first_solution=False,
     )
-    frontier.push(1, None)
-    frontier.push(2, None)
-    frontier.push(4, None)
+    await frontier.push(1, None)
+    await frontier.push(2, None)
+    await frontier.push(4, None)
     assert frontier.solutions() == [2, 4]
-    taken = base.take(10)
+    taken = await base.take(10)
     states = [state for state, _ in taken] if taken else []
     assert states == [1, 2, 4]
 
 
-def test_saving_solutions_stop_on_first() -> None:
+@pytest.mark.asyncio
+async def test_saving_solutions_stop_on_first() -> None:
     """Verify SavingSolutions stops after the first solution. This is intended when stop_on_first_solution is True."""
     base = BFS[int]()
+
+    async def _is_solution(v: int) -> bool:
+        return v == 2
+
     frontier = SavingSolutions(
         base,
-        is_solution=lambda v: v == 2,
+        is_solution=_is_solution,
         stop_on_first_solution=True,
     )
-    frontier.push(1, None)
-    frontier.push(2, None)
-    frontier.push(3, None)
+    await frontier.push(1, None)
+    await frontier.push(2, None)
+    await frontier.push(3, None)
     assert frontier.solutions() == [2]
-    assert not frontier.take(1)  # take always returns [] after a solution.
+    assert not await frontier.take(1)  # take always returns [] after a solution.
 
 
-def test_saving_solutions_clear_resets() -> None:
+@pytest.mark.asyncio
+async def test_saving_solutions_clear_resets() -> None:
     """Ensure SavingSolutions clear resets stop state and solutions. A fresh run should not inherit prior results."""
     base = BFS[int]()
+
+    async def _is_solution(v: int) -> bool:
+        return v == 1
+
     frontier = SavingSolutions(
         base,
-        is_solution=lambda v: v == 1,
+        is_solution=_is_solution,
         stop_on_first_solution=True,
     )
-    frontier.push(1, None)
+    await frontier.push(1, None)
     assert frontier.solutions() == [1]
-    frontier.clear()
+    await frontier.clear()
     assert frontier.solutions() == []
-    frontier.push(2, None)
-    taken = base.take(10)
+    await frontier.push(2, None)
+    taken = await base.take(10)
     states = [state for state, _ in taken]
     assert states == [2]

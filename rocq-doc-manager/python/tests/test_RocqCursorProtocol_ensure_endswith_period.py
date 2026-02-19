@@ -2,7 +2,7 @@ import logging
 import re
 
 import pytest
-from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
+from rocq_doc_manager.decorators import ensure_endswith_period
 
 
 class Test_RocqCursorProtocol_ensure_args_endswith_period:
@@ -11,7 +11,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_positional_only_parameter(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test that POSITIONAL_ONLY parameters are handled correctly."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str, /) -> str:
             return text
 
@@ -32,7 +32,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test POSITIONAL_OR_KEYWORD parameter passed positionally."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str) -> str:
             return text
 
@@ -46,7 +46,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test POSITIONAL_OR_KEYWORD parameter passed as keyword."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str) -> str:
             return text
 
@@ -58,7 +58,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_keyword_only_parameter(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test that KEYWORD_ONLY parameters are handled correctly."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(*, text: str) -> str:
             return text
 
@@ -70,7 +70,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_multiple_parameters(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test multiple parameters being checked."""
 
-        @RocqCursor.ensure_endswith_period(argnames={"text1", "text2"})
+        @ensure_endswith_period(argnames={"text1", "text2"})
         def func(text1: str, text2: str) -> tuple[str, str]:
             return (text1, text2)
 
@@ -82,7 +82,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_mixed_parameter_kinds(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test mixing POSITIONAL_ONLY, POSITIONAL_OR_KEYWORD, and KEYWORD_ONLY."""
 
-        @RocqCursor.ensure_endswith_period(
+        @ensure_endswith_period(
             argnames={"pos_only", "pos_or_kw", "kw_only"},
         )
         def func(
@@ -100,7 +100,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test POSITIONAL_OR_KEYWORD passed as keyword in mixed signature."""
 
-        @RocqCursor.ensure_endswith_period(argnames="pos_or_kw")
+        @ensure_endswith_period(argnames="pos_or_kw")
         def func(
             pos_only: str,
             /,
@@ -119,7 +119,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_var_positional_skipped(self) -> None:
         """Test that VAR_POSITIONAL (*args) parameters are skipped."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str, *args: str) -> tuple[str, tuple[str, ...]]:
             return (text, args)
 
@@ -130,7 +130,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_var_keyword_skipped(self) -> None:
         """Test that VAR_KEYWORD (**kwargs) parameters are skipped."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str, **kwargs: str) -> tuple[str, dict[str, str]]:
             return (text, kwargs)
 
@@ -141,7 +141,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_var_positional_and_keyword_skipped(self) -> None:
         """Test that both VAR_POSITIONAL and VAR_KEYWORD are skipped."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(
             text: str, *args: str, **kwargs: str
         ) -> tuple[str, tuple[str, ...], dict[str, str]]:
@@ -161,7 +161,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
             return text
 
         with pytest.raises(ValueError, match="not found in parameters"):
-            RocqCursor.ensure_endswith_period(
+            ensure_endswith_period(
                 argnames="nonexistent",
             )(func)
 
@@ -172,7 +172,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
             return text
 
         try:
-            RocqCursor.ensure_endswith_period(argnames="text")(func)
+            ensure_endswith_period(argnames="text")(func)
         except Exception as e:
             pytest.fail(f"Unexpected failure: {e}")
 
@@ -181,7 +181,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test that parameters already ending with period don't trigger warning."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str) -> str:
             return text
 
@@ -195,7 +195,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test the ensure_endswith_period decorator with text argument."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str) -> str:
             return text
 
@@ -207,7 +207,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_decorator_without_parens(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test decorator usage with argnames parameter."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str) -> str:
             return text
 
@@ -226,12 +226,12 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
             ValueError,
             match=re.escape("at least one of argnames or return_ must be specified"),
         ):
-            RocqCursor.ensure_endswith_period()(func)
+            ensure_endswith_period()(func)
 
     def test_complex_signature(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test a complex function signature with all parameter kinds."""
 
-        @RocqCursor.ensure_endswith_period(
+        @ensure_endswith_period(
             argnames={"pos_only", "pos_or_kw1", "pos_or_kw2", "kw_only"},
         )
         def func(
@@ -264,7 +264,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test that default arguments work correctly at runtime."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str = "Check nat") -> str:
             return text
 
@@ -279,7 +279,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test that only specified parameters are checked."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text1")
+        @ensure_endswith_period(argnames="text1")
         def func(text1: str, text2: str, text3: str) -> tuple[str, str, str]:
             return (text1, text2, text3)
 
@@ -293,7 +293,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_function_metadata_preserved(self) -> None:
         """Test that functools.wraps preserves function metadata."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text")
+        @ensure_endswith_period(argnames="text")
         def func(text: str) -> str:
             """A test function."""
             return text
@@ -305,7 +305,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
         """Test decorator on a method (with self parameter)."""
 
         class TestClass:
-            @RocqCursor.ensure_endswith_period(argnames="text")
+            @ensure_endswith_period(argnames="text")
             def method(self, text: str) -> str:
                 return text
 
@@ -320,7 +320,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
 
         class TestClass:
             @staticmethod
-            @RocqCursor.ensure_endswith_period(argnames="text")
+            @ensure_endswith_period(argnames="text")
             def static_method(text: str) -> str:
                 return text
 
@@ -334,7 +334,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
 
         class TestClass:
             @classmethod
-            @RocqCursor.ensure_endswith_period(argnames="text")
+            @ensure_endswith_period(argnames="text")
             def class_method(cls, text: str) -> str:
                 return text
 
@@ -346,7 +346,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_return_only_without_period(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test return_=True with return value that doesn't end with period."""
 
-        @RocqCursor.ensure_endswith_period(return_=True)
+        @ensure_endswith_period(return_=True)
         def func() -> str:
             return "Check nat"
 
@@ -359,7 +359,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_return_only_with_period(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test return_=True with return value that already ends with period."""
 
-        @RocqCursor.ensure_endswith_period(return_=True)
+        @ensure_endswith_period(return_=True)
         def func() -> str:
             return "Check nat."
 
@@ -371,7 +371,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     def test_return_only_non_string_raises(self) -> None:
         """Test return_=True with non-string return value raises RuntimeError."""
 
-        @RocqCursor.ensure_endswith_period(return_=True)
+        @ensure_endswith_period(return_=True)
         def func() -> str:
             return 42  # type: ignore[return-value]
 
@@ -386,7 +386,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test mixed argnames and return_ where both need periods added."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text", return_=True)
+        @ensure_endswith_period(argnames="text", return_=True)
         def func(text: str) -> str:  # noqa: ARG001
             # Return a different value that also needs a period
             return "Check bool"
@@ -405,7 +405,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test mixed argnames and return_ where arg has period but return doesn't."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text", return_=True)
+        @ensure_endswith_period(argnames="text", return_=True)
         def func(text: str) -> str:
             return text
 
@@ -421,7 +421,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test mixed argnames and return_ where return has period but arg doesn't."""
 
-        @RocqCursor.ensure_endswith_period(argnames="text", return_=True)
+        @ensure_endswith_period(argnames="text", return_=True)
         def func(text: str) -> str:  # noqa: ARG001
             _ = text
             # ...
@@ -440,7 +440,7 @@ class Test_RocqCursorProtocol_ensure_args_endswith_period:
     ) -> None:
         """Test mixed multiple argnames and return_ all needing periods."""
 
-        @RocqCursor.ensure_endswith_period(argnames={"text1", "text2"}, return_=True)
+        @ensure_endswith_period(argnames={"text1", "text2"}, return_=True)
         def func(text1: str, text2: str) -> str:  # noqa: ARG001, ARG002
             # Return a different value that also needs a period
             _ = text1

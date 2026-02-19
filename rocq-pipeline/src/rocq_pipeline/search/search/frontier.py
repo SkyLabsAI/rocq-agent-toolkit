@@ -3,7 +3,7 @@ from __future__ import annotations
 import heapq
 import random
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Protocol, override, runtime_checkable
 
@@ -37,25 +37,25 @@ class Frontier[T, Node](ABC):
 
     @abstractmethod
     # Action metadata is intentionally handled by search-level tracing, not stored in the frontier.
-    def push(self, val: T, parent: Node | None) -> Node:
+    async def push(self, val: T, parent: Node | None) -> Node:
         """Insert a new item into the frontier"""
         ...
 
     @abstractmethod
-    def repush(self, node: Node) -> None:
+    async def repush(self, node: Node) -> None:
         """Re-add a pulled item back into the frontier.
         This can be used if too many nodes were pulled.
         """
         ...
 
     @abstractmethod
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Remove all pending items from the frontier."""
         ...
 
     @abstractmethod
     # Remove up to [count] items in frontier order.
-    def take(self, count: int) -> list[tuple[T, Node]]:
+    async def take(self, count: int) -> list[tuple[T, Node]]:
         """
         Take up to count nodes from the frontier.
         Returns None if no elements exist
@@ -86,21 +86,21 @@ class DFS[T](Frontier[T, DFSNode[T]]):
         return self._next
 
     @override
-    def push(self, val: T, parent: DFSNode[T] | None) -> DFSNode[T]:
+    async def push(self, val: T, parent: DFSNode[T] | None) -> DFSNode[T]:
         # Prepend to the linked list for LIFO order.
         self._worklist = DFSNode(self._fresh(), self._worklist, val)
         return self._worklist
 
     @override
-    def repush(self, node: DFSNode[T]) -> None:
+    async def repush(self, node: DFSNode[T]) -> None:
         self._worklist = DFSNode(node.ident, self._worklist, node.state)
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         self._worklist = None
 
     @override
-    def take(self, count: int) -> list[tuple[T, DFSNode[T]]]:
+    async def take(self, count: int) -> list[tuple[T, DFSNode[T]]]:
         if self._worklist is None:
             return []
         result: list[tuple[T, DFSNode[T]]] = []
@@ -125,22 +125,22 @@ class BFS[T](Frontier[T, BasicNode[T]]):
         return self._next
 
     @override
-    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
+    async def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
         # Append for FIFO order.
         node = BasicNode(self._fresh(), val)
         self._worklist.append(node)
         return node
 
     @override
-    def repush(self, node: BasicNode[T]) -> None:
+    async def repush(self, node: BasicNode[T]) -> None:
         self._worklist.append(node)
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         self._worklist = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
+    async def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if self._worklist:
             # Slice out the next [count] items and retain the rest.
             result = self._worklist[:count]
@@ -184,22 +184,22 @@ class PQueue[T](Frontier[T, Wrapper[T, Any]]):
         return self._next
 
     @override
-    def push(self, val: T, parent: Wrapper[T, Any] | None) -> Wrapper[T, Any]:
+    async def push(self, val: T, parent: Wrapper[T, Any] | None) -> Wrapper[T, Any]:
         # Wrap with score so heapq can order items.
         node = Wrapper(self._fresh(), val, self._score(val), self._compare)
         heapq.heappush(self._worklist, node)
         return node
 
     @override
-    def repush(self, node: Wrapper[T, Any]) -> None:
+    async def repush(self, node: Wrapper[T, Any]) -> None:
         heapq.heappush(self._worklist, node)
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         self._worklist = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]]:
+    async def take(self, count: int) -> list[tuple[T, Wrapper[T, Any]]]:
         if self._worklist:
             result: list[Wrapper[T, Any]] = []
             while self._worklist and count > 0:
@@ -232,29 +232,29 @@ class SingleDepth[T, Node: HasId[int]](Frontier[T, WithDepth[Node]]):
         self._max_depth = 0
 
     @override
-    def take(self, count: int) -> list[tuple[T, WithDepth[Node]]]:
-        result = self._base.take(count)
+    async def take(self, count: int) -> list[tuple[T, WithDepth[Node]]]:
+        result = await self._base.take(count)
         return [(state, WithDepth(depth, node)) for ((state, depth), node) in result]
 
     @override
-    def push(self, val: T, parent: WithDepth[Node] | None) -> WithDepth[Node]:
+    async def push(self, val: T, parent: WithDepth[Node] | None) -> WithDepth[Node]:
         depth = parent.depth + 1 if parent is not None else 0
         if depth > self._max_depth:
-            self._base.clear()
+            await self._base.clear()
             self._max_depth = depth
-        node = self._base.push(
+        node = await self._base.push(
             (val, depth), parent.value if parent is not None else None
         )
         return WithDepth(depth, node)
 
     @override
-    def repush(self, node: WithDepth[Node]) -> None:
+    async def repush(self, node: WithDepth[Node]) -> None:
         if node.depth >= self._max_depth:
-            self._base.repush(node.value)
+            await self._base.repush(node.value)
 
     @override
-    def clear(self) -> None:
-        self._base.clear()
+    async def clear(self) -> None:
+        await self._base.clear()
         self._max_depth = 0
 
 
@@ -266,8 +266,8 @@ class Sampled[T, Node](Frontier[T, Node]):
         self._spread = spread
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]]:
-        pulled = self._base.take(self._spread * count)
+    async def take(self, count: int) -> list[tuple[T, Node]]:
+        pulled = await self._base.take(self._spread * count)
         num_pulled = len(pulled)
         if num_pulled <= count:
             return pulled
@@ -278,20 +278,20 @@ class Sampled[T, Node](Frontier[T, Node]):
             if i in indexes:
                 result.append(v)
             else:
-                self._base.repush(v[1])
+                await self._base.repush(v[1])
         return result
 
     @override
-    def push(self, val: T, parent: Node | None) -> Node:
-        return self._base.push(val, parent)
+    async def push(self, val: T, parent: Node | None) -> Node:
+        return await self._base.push(val, parent)
 
     @override
-    def repush(self, node: Node) -> None:
-        return self._base.repush(node)
+    async def repush(self, node: Node) -> None:
+        return await self._base.repush(node)
 
     @override
-    def clear(self) -> None:
-        return self._base.clear()
+    async def clear(self) -> None:
+        return await self._base.clear()
 
 
 class Deduplicate[T, Node](Frontier[T, Node]):
@@ -306,15 +306,15 @@ class Deduplicate[T, Node](Frontier[T, Node]):
         self._cmp = cmp
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]]:
-        return self._base.take(count)
+    async def take(self, count: int) -> list[tuple[T, Node]]:
+        return await self._base.take(count)
 
     @override
-    def repush(self, node: Node) -> None:
-        return self._base.repush(node)
+    async def repush(self, node: Node) -> None:
+        return await self._base.repush(node)
 
     @override
-    def push(self, val: T, parent: Node | None) -> Node:
+    async def push(self, val: T, parent: Node | None) -> Node:
         # TODO: A better implementation of this would be to use
         # something like a hash table which would require an embedding
         # into some type.
@@ -322,13 +322,13 @@ class Deduplicate[T, Node](Frontier[T, Node]):
             if self._cmp(val, x):
                 return n
         # test_frontier_deduplicate.py: record unique values before push.
-        node = self._base.push(val, parent)
+        node = await self._base.push(val, parent)
         self._seen.append((val, node))
         return node
 
     @override
-    def clear(self) -> None:
-        self._base.clear()
+    async def clear(self) -> None:
+        await self._base.clear()
         self._seen.clear()
 
 
@@ -347,15 +347,15 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
         self._key = key
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]]:
-        return self._base.take(count)
+    async def take(self, count: int) -> list[tuple[T, Node]]:
+        return await self._base.take(count)
 
     @override
-    def repush(self, node: Node) -> None:
-        return self._base.repush(node)
+    async def repush(self, node: Node) -> None:
+        return await self._base.repush(node)
 
     @override
-    def push(self, val: T, parent: Node | None) -> Node:
+    async def push(self, val: T, parent: Node | None) -> Node:
         # TODO: A better implementation of this would be to use
         # something like a hash table which would require an embedding
         # into some type.
@@ -365,13 +365,13 @@ class DeduplicateWithKey[T, Node, U](Frontier[T, Node]):
             # TODO: log message to drop already visited state.
             return self._seen[key]
         # test_frontier_deduplicate.py: record new key before push.
-        node = self._base.push(val, parent)
+        node = await self._base.push(val, parent)
         self._seen[key] = node
         return node
 
     @override
-    def clear(self) -> None:
-        self._base.clear()
+    async def clear(self) -> None:
+        await self._base.clear()
         self._seen.clear()
 
 
@@ -383,7 +383,7 @@ class SavingSolutions[T, Node](Frontier[T, Node]):
     def __init__(
         self,
         base: Frontier[T, Node],
-        is_solution: Callable[[T], bool],
+        is_solution: Callable[[T], Awaitable[bool]],
         stop_on_first_solution: bool,
     ) -> None:
         self._base = base
@@ -396,29 +396,29 @@ class SavingSolutions[T, Node](Frontier[T, Node]):
         return self._solutions
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]]:
+    async def take(self, count: int) -> list[tuple[T, Node]]:
         if self._stop:
             return []
-        return self._base.take(count)
+        return await self._base.take(count)
 
     @override
-    def push(self, val: T, parent: Node | None) -> Node:
-        if self._check_solution(val):
+    async def push(self, val: T, parent: Node | None) -> Node:
+        if await self._check_solution(val):
             self._solutions.append(val)
             self._stop = self._stop or self._stop_on_first_solution
 
-        return self._base.push(val, parent)
+        return await self._base.push(val, parent)
 
     @override
-    def repush(self, node: Node) -> None:
+    async def repush(self, node: Node) -> None:
         if self._stop:
             return
-        return self._base.repush(node)
+        return await self._base.repush(node)
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         # Clear cached solutions so a new run does not inherit prior results.
-        self._base.clear()
+        await self._base.clear()
         self._stop = False
         self._solutions.clear()
 
@@ -431,7 +431,7 @@ class RememberTrace[T, Node](Frontier[T, Node]):
     def __init__(
         self,
         base: Frontier[T, Node],
-        is_solution: Callable[[T], bool],
+        is_solution: Callable[[T], Awaitable[bool]],
         stop_on_first_solution: bool,
     ) -> None:
         self._base = base
@@ -441,21 +441,21 @@ class RememberTrace[T, Node](Frontier[T, Node]):
         return self._everything
 
     @override
-    def take(self, count: int) -> list[tuple[T, Node]]:
-        return self._base.take(count)
+    async def take(self, count: int) -> list[tuple[T, Node]]:
+        return await self._base.take(count)
 
     @override
-    def push(self, val: T, parent: Node | None) -> Node:
+    async def push(self, val: T, parent: Node | None) -> Node:
         self._everything.append((val, parent))
-        return self._base.push(val, parent)
+        return await self._base.push(val, parent)
 
     @override
-    def repush(self, node: Node) -> None:
+    async def repush(self, node: Node) -> None:
         self._everything.append((None, node))
-        return self._base.repush(node)
+        return await self._base.repush(node)
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         # Clear trace history so visited_nodes reflects only the next run.
-        self._base.clear()
+        await self._base.clear()
         self._everything.clear()

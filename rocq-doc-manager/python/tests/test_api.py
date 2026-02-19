@@ -1,18 +1,20 @@
 from pathlib import Path
 
-from rocq_doc_manager import RocqCursor, RocqDocManager
+import pytest
+from rocq_doc_manager import AsyncRocqDocManager, RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor import RDMRocqCursor
 
 from .util import RDM_Tests
 
 
+@pytest.mark.asyncio(loop_scope="class")
 class Test_API(RDM_Tests):
-    def test_load_file(self, loadable_rdm: RocqDocManager) -> None:
+    async def test_load_file(self, loadable_rdm: AsyncRocqDocManager) -> None:
         rc = loadable_rdm.cursor()
-        assert rc.load_file() is None
+        assert await rc.load_file() is None
 
-        result = rc.doc_suffix()
+        result = await rc.doc_suffix()
         assert result == [
             rdm_api.SuffixItem(
                 kind="command", text="Require Import Stdlib.ZArith.BinInt."
@@ -37,22 +39,22 @@ class Test_API(RDM_Tests):
             rdm_api.SuffixItem(kind="command", text="Qed."),
         ]
 
-    def test_Check_query_text(
+    async def test_Check_query_text(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: AsyncRocqDocManager,
     ) -> None:
         rc = transient_rdm.cursor()
-        check_reply = rc.query_text("Check nat.", index=0)
+        check_reply = await rc.query_text("Check nat.", index=0)
         assert not isinstance(check_reply, rdm_api.Err)
         assert check_reply == "nat\n     : Set"
 
-    def test_doc_suffix(
+    async def test_doc_suffix(
         self,
-        loadable_rdm: RocqDocManager,
+        loadable_rdm: AsyncRocqDocManager,
     ) -> None:
-        with loadable_rdm.sess() as rdm:
+        async with loadable_rdm.sess() as rdm:
             rc = rdm.cursor()
-            assert rc.doc_suffix() == [
+            assert await rc.doc_suffix() == [
                 rdm_api.SuffixItem(
                     text="Require Import Stdlib.ZArith.BinInt.",
                     kind="command",
@@ -123,17 +125,17 @@ class Test_API(RDM_Tests):
                 ),
             ]
 
-    def test_run_command_tac_fail(
+    async def test_run_command_tac_fail(
         self,
-        transient_rdm: RocqDocManager,
+        transient_rdm: AsyncRocqDocManager,
     ) -> None:
         rc = transient_rdm.cursor()
-        with rc.aborted_goal_ctx(goal="False"):
-            fail_tac_reply = rc.run_command("solve [auto].")
+        async with rc.aborted_goal_ctx(goal="False"):
+            fail_tac_reply = await rc.run_command("solve [auto].")
             assert isinstance(fail_tac_reply, rdm_api.Err)
             assert fail_tac_reply.message == "No applicable tactic."
 
-    def _test_API_PATCH_insert_commands_without_intervening_blanks(
+    async def _test_API_PATCH_insert_commands_without_intervening_blanks(
         self,
         tmp_path: Path,
         /,
@@ -141,20 +143,20 @@ class Test_API(RDM_Tests):
         should_succeed: bool,
     ) -> None:
         tmp_v = tmp_path / "foo.v"
-        tmp_rdm = RDM_Tests.mk_rdm(path=str(tmp_v))
-        with tmp_rdm.sess(load_file=False):
+        tmp_rdm = await RDM_Tests.mk_rdm(path=str(tmp_v))
+        async with tmp_rdm.sess(load_file=False):
             rc = tmp_rdm.cursor()
             assert not isinstance(
-                rc_cls.insert_command(rc, "Check tt."),
+                await rc_cls.insert_command(rc, "Check tt."),
                 rdm_api.Err,
             )
             # NOTE: no intervening blank
             assert not isinstance(
-                rc_cls.insert_command(rc, "Check tt."),
+                await rc_cls.insert_command(rc, "Check tt."),
                 rdm_api.Err,
             )
-            rc_cls.commit(rc, None, include_suffix=True)
-            compile_result = rc_cls.compile(rc)
+            await rc_cls.commit(rc, None, include_suffix=True)
+            compile_result = await rc_cls.compile(rc)
             if should_succeed:
                 assert compile_result.error is None
             else:
@@ -170,11 +172,11 @@ class Test_API(RDM_Tests):
     #         should_succeed=False,
     #     )
 
-    def test_patched_insert_commands_without_intervening_blanks_works(
+    async def test_patched_insert_commands_without_intervening_blanks_works(
         self,
         tmp_path: Path,
     ) -> None:
-        self._test_API_PATCH_insert_commands_without_intervening_blanks(
+        await self._test_API_PATCH_insert_commands_without_intervening_blanks(
             tmp_path,
             rc_cls=RDMRocqCursor,
             should_succeed=True,

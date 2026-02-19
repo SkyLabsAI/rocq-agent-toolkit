@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from typing import override
 
+import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.search.frontier import BasicNode, Frontier
 from rocq_pipeline.search.search.search import Node
-from rocq_pipeline.search.strategy import MapStategy
+from rocq_pipeline.search.strategy import MapStrategy
 
 from .util import FixedStrategy, OneShotFrontier, RecordingAction, run_search
 
+pytestmark = pytest.mark.asyncio
 
-class CountingStrategy(MapStategy[int, Action[int], int, Action[int]]):
+
+class CountingStrategy(MapStrategy[int, Action[int], int, Action[int]]):
     """Strategy that returns fixed rollouts per state and counts calls."""
 
     def __init__(self, mapping: dict[int, list[tuple[float, Action[int]]]]) -> None:
@@ -25,7 +28,7 @@ class CountingStrategy(MapStategy[int, Action[int], int, Action[int]]):
             return state
 
         super().__init__(
-            FixedStrategy(mapping), record, lambda _state, _state2, act: act
+            FixedStrategy(mapping), into=record, outof=lambda _state, _state2, act: act
         )
 
 
@@ -42,20 +45,20 @@ class QueueFrontier[T](Frontier[T, BasicNode[T]]):
         return self._fresh
 
     @override
-    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
+    async def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
         return BasicNode(self._next(), val)
 
     @override
-    def repush(self, node: BasicNode[T]) -> None:
+    async def repush(self, node: BasicNode[T]) -> None:
         self.repush_count += 1
         self._queue.append(node)
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         self._queue = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
+    async def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if not self._queue:
             return []
         pulled = self._queue[:count]
@@ -63,7 +66,7 @@ class QueueFrontier[T](Frontier[T, BasicNode[T]]):
         return [(x.state, x) for x in pulled]
 
 
-def test_explore_width_is_per_node_budget() -> None:
+async def test_explore_width_is_per_node_budget() -> None:
     """Verify explore_width limits actions per node per iteration."""
     record: list[str] = []
     actions: dict[int, list[tuple[float, Action[int]]]] = {
@@ -79,12 +82,12 @@ def test_explore_width_is_per_node_budget() -> None:
     strategy = FixedStrategy(actions)
     frontier = OneShotFrontier([Node(0, None), Node(1, None)])
 
-    run_search(strategy, frontier, beam_width=2, explore_width=2)
+    await run_search(strategy, frontier, beam_width=2, explore_width=2)
 
     assert record == ["c1_a1", "c1_a2", "c2_a1", "c2_a2"]
 
 
-def test_repush_and_rollout_reuse() -> None:
+async def test_repush_and_rollout_reuse() -> None:
     """Verify repush happens when rollouts remain and rollouts are reused per node."""
     record: list[str] = []
     actions: dict[int, list[tuple[float, Action[int]]]] = {
@@ -96,7 +99,7 @@ def test_repush_and_rollout_reuse() -> None:
     strategy = CountingStrategy(actions)
     frontier = QueueFrontier([Node(0, None)])
 
-    run_search(strategy, frontier, beam_width=1, explore_width=1)
+    await run_search(strategy, frontier, beam_width=1, explore_width=1)
 
     assert record == ["a1", "a2"]
     assert frontier.repush_count == 2

@@ -47,7 +47,7 @@ class SearchAgent(ProofAgent):
         heapq.heappush(
             states,
             SearchAgent.State(
-                -math.log(1.0), 0, fresh(), rc, self._strategy.rollout(rc)
+                -math.log(1.0), 0, fresh(), rc, await self._strategy.rollout(rc)
             ),
         )
 
@@ -58,14 +58,15 @@ class SearchAgent(ProofAgent):
                 break
             state = heapq.heappop(states)
 
+            # TODO: this looks incorrect because the rollout is not actually used
             try:
-                prob, action = next(state.rollout)
+                prob, action = await anext(state.rollout)
                 heapq.heappush(
                     states, state
                 )  # push again in case there are more elements in the rollout
-            except StopIteration:
+            except StopAsyncIteration:
                 # This is just pruning an empty rollout
-                state.cursor.dispose()
+                await state.cursor.dispose()
                 iteration -= 1
                 continue
 
@@ -73,26 +74,27 @@ class SearchAgent(ProofAgent):
             # clone operation and only do it on success and then it would
             # revert. This avoids the creation of a cursor when the action
             # ultimately fails (which is probably common).
-            fresh_rc = state.cursor.clone()
+            fresh_rc = await state.cursor.clone()
             try:
-                result_rc = action.interact(fresh_rc)
+                result_rc = await action.interact(fresh_rc)
             except Action.Failed:
                 # the action failed, so we discard this
-                fresh_rc.dispose()
+                await fresh_rc.dispose()
                 continue
-            if result_rc != fresh_rc:
-                fresh_rc.dispose()
+            next_rc = result_rc
+            if next_rc is not fresh_rc:
+                await fresh_rc.dispose()
 
-            pf_state = ProofState(result_rc.current_goal())
+            pf_state = ProofState(await next_rc.current_goal())
             if pf_state.closed(proof=True):
-                return self.finished(fresh_rc, "done")
+                return await self.finished(next_rc, "done")
 
             next_state = SearchAgent.State(
                 state.log_prob - math.log(prob),
                 state.depth - 1,
                 fresh(),
-                fresh_rc,
-                self._strategy.rollout(fresh_rc),
+                next_rc,
+                await self._strategy.rollout(next_rc),
             )
             heapq.heappush(states, next_state)
-        return self.give_up(rc, "out of fuel")
+        return await self.give_up(rc, "out of fuel")

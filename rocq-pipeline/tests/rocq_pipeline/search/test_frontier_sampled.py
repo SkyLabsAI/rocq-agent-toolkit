@@ -46,7 +46,8 @@ def sample_indices(sample_count: int) -> list[int]:
     return _env_int_list("ROCQ_FRONTIER_SAMPLE_INDEXES", default)
 
 
-def test_sampled_deterministic_sample(
+@pytest.mark.asyncio
+async def test_sampled_deterministic_sample(
     monkeypatch: pytest.MonkeyPatch,
     sample_values: list[int],
     sample_count: int,
@@ -58,7 +59,7 @@ def test_sampled_deterministic_sample(
         pytest.skip("sample_count must be positive for sampling checks.")
     base = BFS[int]()
     for value in sample_values:
-        base.push(value, None)
+        await base.push(value, None)
     frontier = Sampled(base, spread=sample_spread)
     pulled = min(sample_spread * sample_count, len(sample_values))
     if pulled <= sample_count:
@@ -73,12 +74,12 @@ def test_sampled_deterministic_sample(
 
     monkeypatch.setattr(frontier_module.random, "sample", fixed_sample)
 
-    result = frontier.take(sample_count)
+    result = await frontier.take(sample_count)
     assert result is not None
     states = [state for state, _ in result]
     assert states == [sample_values[i] for i in selected]
 
-    remaining = base.take(len(sample_values))
+    remaining = await base.take(len(sample_values))
     remaining_states = [state for state, _ in remaining] if remaining else []
     expected_remaining = sample_values[pulled:] + [
         sample_values[i] for i in range(pulled) if i not in selected
@@ -86,7 +87,8 @@ def test_sampled_deterministic_sample(
     assert remaining_states == expected_remaining
 
 
-def test_sampled_small_pull(
+@pytest.mark.asyncio
+async def test_sampled_small_pull(
     sample_values: list[int], sample_count: int, sample_spread: int
 ) -> None:
     """Ensure Sampled returns all items when pulled <= count. This exercises the early-return branch."""
@@ -95,10 +97,10 @@ def test_sampled_small_pull(
     values = sample_values[:sample_count]
     base = BFS[int]()
     for value in values:
-        base.push(value, None)
+        await base.push(value, None)
     frontier = Sampled(base, spread=sample_spread)
-    result = frontier.take(sample_count)
+    result = await frontier.take(sample_count)
     assert result is not None
     states = [state for state, _ in result]
     assert states == values
-    assert not base.take(1)
+    assert not await base.take(1)

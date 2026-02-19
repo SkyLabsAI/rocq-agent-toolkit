@@ -14,10 +14,8 @@ dependencies = [
     "pyyaml>=6.0.3,<7",
     "jsonrpc-tp",
     "dataclasses-json>=0.6.7",
-    "hypothesis>=6.148.2",
     "rocq-dune-util",
     "websockets>=15.0.1",
-    "pytest-asyncio>=0.24.0",
     "pydantic>=2.12.5",
 ]
 
@@ -32,6 +30,8 @@ cram_test1 = "rocq_doc_manager.tester:cram_test1"
 [dependency-groups]
 dev = [
     "pytest>=8.4.2,<9",
+    "pytest-asyncio>=0.24.0",
+    "hypothesis>=6.148.2",
     "flake8>=6.0.0,<7",
     "mypy>=1.18.2,<2",
     "types-pyyaml>=6.0.12.20250915,<7",
@@ -61,6 +61,10 @@ where = ["src", "tests"]
 "rocq_doc_manager" = ["py.typed"]
 "tests" = ["py.typed"]
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "class"
+asyncio_default_test_loop_scope = "class"
+
 [tool.taskipy.tasks]
 lint_ci = "ruff check"
 format_ci = "ruff format --exclude src/rocq_doc_manager/rocq_doc_manager_api.py --check"
@@ -68,3 +72,5 @@ reformat = "ruff format --exclude src/rocq_doc_manager/rocq_doc_manager_api.py"
 typecheck_ci = "mypy ."
 test_local = "RDM_USE_DUNE=True pytest tests/"
 test_ocaml_ci = "RDM_USE_DUNE=False pytest tests/"
+# TODO: ensure `test_local` task works with async RDM, then add to `precommit` task
+precommit = "task lint_ci; task reformat; task typecheck_ci"

@@ -1,4 +1,3 @@
-import itertools
 from typing import override
 
 # Import the function we want to test
@@ -13,100 +12,125 @@ from rocq_pipeline.search.strategy import (
     Strategy,
 )
 
+from .rollout_util import is_empty
+
+pytestmark = pytest.mark.asyncio
+
 
 class SimpleAction[T](Action[list[T]]):
     def __init__(self, value: T) -> None:
         self._value = value
 
     @override
-    def interact(self, state: list[T]) -> list[T]:
+    async def interact(self, state: list[T]) -> list[T]:
         return state + [self._value]
 
 
-def is_empty[T](x: Rollout[T]) -> None:
-    try:
-        elem = next(x)
-        raise AssertionError(f"empty contains element {elem}")
-    except StopIteration:
-        pass
+async def take_n[T](x: Rollout[T], n: int) -> list[tuple[float, T]]:
+    out: list[tuple[float, T]] = []
+    for _ in range(n):
+        proposal = await x.next()
+        if proposal.result is None:
+            continue
+        out.append((proposal.logprob, proposal.result))
+    return out
+
+
+async def take_all[T](x: Rollout[T]) -> list[tuple[float, T]]:
+    out: list[tuple[float, T]] = []
+    while True:
+        try:
+            proposal = await x.next()
+        except StopAsyncIteration:
+            return out
+        if proposal.result is None:
+            continue
+        out.append((proposal.logprob, proposal.result))
 
 
 type ActionStrategy = Strategy[list[int], Action[list[int]]]
 
 
-def test_empty() -> None:
+async def test_empty() -> None:
     strat: ActionStrategy = CompositeStrategy([])
-    actions = strat.rollout([])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    await is_empty(actions)
 
 
-def test_empty_empty() -> None:
+async def test_empty_empty() -> None:
     strat: ActionStrategy = CompositeStrategy([FailStrategy()])
-    actions = strat.rollout([])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    await is_empty(actions)
 
 
-def test_empty_empty_empty() -> None:
+async def test_empty_empty_empty() -> None:
     strat: ActionStrategy = CompositeStrategy([FailStrategy(), FailStrategy()])
-    actions = strat.rollout([])
-    is_empty(actions)
+    actions = await strat.rollout([])
+    await is_empty(actions)
 
 
-def test_singleton() -> None:
+async def test_singleton() -> None:
     strat: ActionStrategy = CompositeStrategy([SingletonStrategy(SimpleAction(0), 0.5)])
-    actions = strat.rollout([])
+    actions = await strat.rollout([])
 
-    assert [(prob, n.interact([])) for prob, n in actions] == [(0.5, [0])]
+    pairs = await take_all(actions)
+    assert [(prob, await n.interact([])) for prob, n in pairs] == [(0.5, [0])]
 
-    is_empty(actions)
+    await is_empty(actions)
 
 
-def test_multi() -> None:
+async def test_multi() -> None:
     strat: ActionStrategy = CompositeStrategy(
         [
             SingletonStrategy(SimpleAction(0), 0.5),
             SingletonStrategy(SimpleAction(1), 0.75),
         ],
     )
-    actions = strat.rollout([])
+    actions = await strat.rollout([])
 
-    assert [(prob, n.interact([])) for prob, n in actions] == [(0.75, [1]), (0.5, [0])]
+    pairs = await take_all(actions)
+    assert [(prob, await n.interact([])) for prob, n in pairs] == [
+        (0.75, [1]),
+        (0.5, [0]),
+    ]
 
-    is_empty(actions)
+    await is_empty(actions)
 
 
-def test_multi2() -> None:
+async def test_multi2() -> None:
     ls: list[ActionStrategy] = [
         IteratorStrategy(iter([(0.5, SimpleAction(0)), (0.25, SimpleAction(2))])),
         SingletonStrategy(SimpleAction(1), 0.75),
     ]
     strat = CompositeStrategy(ls)
-    actions = strat.rollout([])
+    actions = await strat.rollout([])
 
-    assert [(prob, n.interact([])) for prob, n in actions] == [
+    pairs = await take_all(actions)
+    assert [(prob, await n.interact([])) for prob, n in pairs] == [
         (0.75, [1]),
         (0.5, [0]),
         (0.25, [2]),
     ]
 
-    is_empty(actions)
+    await is_empty(actions)
 
 
-def test_multi_same() -> None:
+async def test_multi_same() -> None:
     ls: list[ActionStrategy] = [
         SingletonStrategy(SimpleAction(1), 0.75),
         SingletonStrategy(SimpleAction(2), 0.75),
         SingletonStrategy(SimpleAction(3), 0.75),
     ]
     strat = CompositeStrategy(ls)
-    actions = strat.rollout([])
+    actions = await strat.rollout([])
 
-    result = [(prob, n.interact([])) for prob, n in actions]
+    pairs = await take_all(actions)
+    result = [(prob, await n.interact([])) for prob, n in pairs]
     assert (0.75, [1]) in result
     assert (0.75, [2]) in result
     assert (0.75, [3]) in result
 
-    is_empty(actions)
+    await is_empty(actions)
 
 
 VALUES = [
@@ -160,7 +184,9 @@ VALUES = [
 
 
 @pytest.mark.parametrize("lls, expected", VALUES, ids=[str(x) for _, x in VALUES])
-def test_many(lls: list[list[tuple[float, int]]], expected: list[tuple[float, int]]):
+async def test_many(
+    lls: list[list[tuple[float, int]]], expected: list[tuple[float, int]]
+) -> None:
     strat: Strategy[list[int], Action[list[int]]] = CompositeStrategy(
         [IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]) for x in lls]
     )
@@ -169,12 +195,13 @@ def test_many(lls: list[list[tuple[float, int]]], expected: list[tuple[float, in
 
     # make sure we get the same results more than once
     for _ in range(2):
-        result = [(prob, n.interact([])[0]) for prob, n in strat.rollout([])]
+        rollout = await strat.rollout([])
+        pairs = await take_all(rollout)
+        result = [(prob, (await n.interact([]))[0]) for prob, n in pairs]
         assert result == expected
 
     for pre_len in range(len(result)):
-        x = [
-            (prob, n.interact([])[0])
-            for prob, n in itertools.islice(strat.rollout([]), pre_len)
-        ]
+        rollout = await strat.rollout([])
+        pairs = await take_n(rollout, pre_len)
+        x = [(prob, (await n.interact([]))[0]) for prob, n in pairs]
         assert x == expected[:pre_len]

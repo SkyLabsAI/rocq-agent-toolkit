@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Any, TypeVar, override
 
 from provenance_toolkit import Provenance
@@ -27,7 +27,7 @@ class Action[T_co](Provenance.Full):
             self.details = details
             super().__init__(message)
 
-    def interact(self, state: T_co) -> T_co:
+    async def interact(self, state: T_co) -> T_co:
         """
         Returns the post state after the action.
 
@@ -48,9 +48,9 @@ class ActionWrapper[T_co](Action[T_co]):
         self._fn = fn
         self._base = base
 
-    def interact(self, state: T_co) -> T_co:
+    async def interact(self, state: T_co) -> T_co:
         self._fn(state)
-        return self._base.interact(state)
+        return await self._base.interact(state)
 
 
 class LoggingAction[T_co](Action[T_co]):
@@ -66,9 +66,9 @@ class LoggingAction[T_co](Action[T_co]):
         self._base = base
 
     @override
-    def interact(self, state: T_co) -> T_co:
+    async def interact(self, state: T_co) -> T_co:
         self._fn(state)
-        return self._base.interact(state)
+        return await self._base.interact(state)
 
 
 class MapAction[T_co, U](Action[T_co]):
@@ -90,5 +90,35 @@ class MapAction[T_co, U](Action[T_co]):
         self._outof = outof
 
     @override
-    def interact(self, state: T_co) -> T_co:
-        return self._outof(self._base.interact(self._into(state)))
+    async def interact(self, state: T_co) -> T_co:
+        return self._outof(await self._base.interact(self._into(state)))
+
+
+class AsyncMapAction[T_co, U](Action[T_co]):
+    """
+    Transport an action to another state type.
+
+    Note that this is *invariant*.
+    """
+
+    _base: Annotated[Action[U], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T_co], Awaitable[U]], Provenance.Reflect.CallableField]
+    _outof: Annotated[
+        Callable[[T_co, U], Awaitable[T_co]], Provenance.Reflect.CallableField
+    ]
+
+    def __init__(
+        self,
+        base: Action[U],
+        into: Callable[[T_co], Awaitable[U]],
+        outof: Callable[[T_co, U], Awaitable[T_co]],
+    ) -> None:
+        self._base = base
+        self._into = into
+        self._outof = outof
+
+    @override
+    async def interact(self, state: T_co) -> T_co:
+        return await self._outof(
+            state, await self._base.interact(await self._into(state))
+        )

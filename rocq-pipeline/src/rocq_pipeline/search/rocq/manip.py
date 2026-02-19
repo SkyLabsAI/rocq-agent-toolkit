@@ -9,8 +9,9 @@ from ...search.search.search import StateManipulator
 
 class RocqManipulator(StateManipulator[RocqCursor]):
     @override
-    def copy(self, state: RocqCursor) -> RocqCursor:
-        return state.clone()
+    async def copy(self, state: RocqCursor) -> RocqCursor:
+        return await state.clone()
 
-    def dispose(self, state: RocqCursor) -> None:
-        state.dispose()
+    @override
+    async def dispose(self, state: RocqCursor) -> None:
+        await state.dispose()

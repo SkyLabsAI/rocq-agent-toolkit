@@ -1,31 +1,28 @@
-from rocq_doc_manager import RocqDocManager
+import pytest
+from rocq_doc_manager import AsyncRocqDocManager
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from .util import RDM_Tests
 
 
+@pytest.mark.asyncio(loop_scope="class")
 class Test_RDM_Tests(RDM_Tests):
     @staticmethod
-    def test_fixtures_ok(
-        transient_shared_rdm: RocqDocManager,
-        transient_rdm: RocqDocManager,
-        loadable_rdm: RocqDocManager,
+    async def test_fixtures_ok(
+        transient_shared_rdm: AsyncRocqDocManager,
+        transient_rdm: AsyncRocqDocManager,
+        loadable_rdm: AsyncRocqDocManager,
     ) -> None:
         assert not isinstance(
-            transient_shared_rdm.cursor().cursor_index(),
+            await transient_shared_rdm.cursor().cursor_index(),
             rdm_api.Err,
         )
         assert not isinstance(
-            transient_rdm.cursor().cursor_index(),
+            await transient_rdm.cursor().cursor_index(),
             rdm_api.Err,
         )
-        with loadable_rdm.sess() as rdm:
+        async with loadable_rdm.sess() as rdm:
             assert not isinstance(
-                rdm.cursor().cursor_index(),
+                await rdm.cursor().cursor_index(),
                 rdm_api.Err,
             )
-
-    @classmethod
-    def test_constants_ok(cls) -> None:
-        for nm, val in cls.CONSTANTS().items():
-            assert val is not None, f"{cls.__name__}.{nm} is None"

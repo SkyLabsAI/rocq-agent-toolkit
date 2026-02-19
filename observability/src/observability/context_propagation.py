@@ -48,5 +48,3 @@ def bind_execution_context(ctx: ExecutionContext) -> Iterator[None]:
             yield
     finally:
         otel_context.detach(token)
-
-

@@ -142,12 +142,12 @@ unguided_decoder.add_decoder("Exception", ug_decode_exception)
 
 class ClosedOK(rdm_api.Error):
     def __init__(self):
-        return super("Connection to remote cursor closed normally.")
+        return super().__init__("Connection to remote cursor closed normally.")
 
 
 class ClosedError(rdm_api.Error):
     def __init__(self):
-        return super("Connection to remote cursor closed unexpectedly.")
+        return super().__init__("Connection to remote cursor closed unexpectedly.")
 
 
 # ===============================================================
@@ -226,7 +226,7 @@ class CursorDispatcher(Dispatcher):
             case "clone":
 
                 async def fn(args, kwargs):
-                    new_cursor = cursor.clone()
+                    new_cursor = await cursor.clone()
                     self._fresh += 1
                     new_id = CursorId(cursor=self._fresh)
                     self._cursors[new_id] = new_cursor
@@ -235,6 +235,6 @@ class CursorDispatcher(Dispatcher):
 
                 async def fn(args, kwargs):
                     # TODO: insert await below when wrapped cursors are async
-                    return getattr(cursor, method)(*args, **kwargs)
+                    return await getattr(cursor, method)(*args, **kwargs)
 
         return await fn(args, kwargs)

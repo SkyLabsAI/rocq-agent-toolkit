@@ -20,13 +20,14 @@ from websockets import connect, serve
 from .util import RDM_Tests
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="class")
 class Test_API(RDM_Tests):
     @pytest_asyncio.fixture
     @staticmethod
     async def async_rc() -> AsyncIterator[RocqCursorProtocolAsync]:
         """A websocket RocqCursor for a real file that can be loaded."""
-        rc = RDM_Tests.mk_rdm(path="./tests/test.v").cursor()
+        rdm = await RDM_Tests.mk_rdm(path="./tests/test.v")
+        rc = rdm.cursor()
         id = CursorId(cursor=0)
 
         async def handle(conn):
@@ -45,7 +46,10 @@ class Test_API(RDM_Tests):
                     client, encoder, decoder, closed_ok=ClosedOK, closed_err=ClosedError
                 )
                 await mux.start()
-                yield WSCursor.create(mux, id)
+                try:
+                    yield WSCursor.create(mux, id)
+                finally:
+                    await rdm.quit()
 
     async def test_1(self, async_rc: RocqCursorProtocolAsync) -> None:
         c = async_rc

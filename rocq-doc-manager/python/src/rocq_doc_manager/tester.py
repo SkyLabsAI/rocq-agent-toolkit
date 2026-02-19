@@ -1,3 +1,4 @@
+import asyncio
 import sys
 
 from rocq_doc_manager import create
@@ -5,13 +6,17 @@ from rocq_doc_manager import create
 from . import rocq_doc_manager_api as rdm_api
 
 
-def cram_test1() -> None:
+async def acram_test1() -> None:
     try:
-        with create([], sys.argv[1]).sess() as dm:
+        async with (await create(sys.argv[1], [])).sess() as dm:
             rc = dm.cursor()
             # print(dm.raw_request("non-existant", []))
-            print(rc.load_file())
-            print(rc.doc_suffix())
-            rc.dispose()
+            print(await rc.load_file())
+            print(await rc.doc_suffix())
+            await rc.dispose()
     except rdm_api.Error as e:
         print(e)
+
+
+def cram_test1() -> None:
+    asyncio.run(acram_test1())

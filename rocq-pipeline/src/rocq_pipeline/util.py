@@ -1,6 +1,9 @@
-from collections.abc import Callable
+import asyncio
+from collections.abc import Awaitable, Callable
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import Any
+from itertools import count
+from types import TracebackType
+from typing import cast
 from warnings import deprecated
 
 from rich.progress import (
@@ -13,20 +16,29 @@ from rich.progress import (
 
 
 class MockProgress:
-    def add_task(self, name: str, **kwargs) -> Any:  # type: ignore
-        return None
+    def __init__(self) -> None:
+        self._ids = count(0)
 
-    def remove_task(self, name: TaskID, **kwargs) -> Any:  # type: ignore
-        return None
+    def add_task(self, name: str, **kwargs: object) -> TaskID:
+        _ = (name, kwargs)
+        return cast(TaskID, next(self._ids))
 
-    def update(self, which: Any, **kwargs) -> Any:  # type: ignore
-        return None
+    def remove_task(self, name: TaskID, **kwargs: object) -> None:
+        _ = (name, kwargs)
+
+    def update(self, which: TaskID, **kwargs: object) -> None:
+        _ = (which, kwargs)
 
     def __enter__(self) -> "MockProgress":
         return self
 
-    def __exit__(self, a: Any, b: Any, c: Any) -> Any:
-        pass
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        _ = (exc_type, exc, tb)
 
 
 class Feedback:
@@ -67,7 +79,7 @@ type ProgressCallback = Feedback
 
 
 def parallel_runner[T, U](
-    run: Callable[[T, ProgressCallback], U],
+    run: Callable[[T, ProgressCallback], Awaitable[U]],
     tasks: list[tuple[str, T]],
     succeeded: Callable[[U], bool] | None = None,
     jobs: int = 1,
@@ -86,6 +98,18 @@ def parallel_runner[T, U](
     ) as pb:
         overall = pb.add_task("[green]Overall Progress", total=total_tasks, completed=0)
 
+        async def _await(aw: Awaitable[U]) -> U:
+            return await aw
+
+        def _run_awaitable(aw: Awaitable[U]) -> U:
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                return asyncio.run(_await(aw))
+            raise RuntimeError(
+                "parallel_runner worker thread unexpectedly has a running event loop"
+            )
+
         def go(name_val: tuple[str, T]) -> tuple[str, U]:
             [name, val] = name_val
             MAX_NAME_LEN = 35
@@ -100,8 +124,8 @@ def parallel_runner[T, U](
             if isinstance(pb, Progress):
                 feedback = Feedback(show_name, pb, current_task_id, PROGRESS_MAX)
             else:
-                feedback = Feedback(show_name)  # pyright: ignore
-            result = run(val, feedback)
+                feedback = Feedback(show_name)
+            result = _run_awaitable(run(val, feedback))
             pb.update(
                 current_task_id,
                 completed=PROGRESS_MAX,
@@ -139,7 +163,7 @@ def main() -> None:
     import time
     from random import random
 
-    def delay(x: int, _: Any) -> bool:
+    async def delay(x: int, _: ProgressCallback) -> bool:
         time.sleep(random())
         return 0.5 < random()
 

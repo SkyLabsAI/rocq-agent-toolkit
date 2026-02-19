@@ -1,45 +1,41 @@
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
-from rocq_doc_manager import RocqDocManager
+from rocq_doc_manager import rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
 from rocq_pipeline.agent.proof import trace_cursor
 
 
-@contextmanager
-def build_both(
+@asynccontextmanager
+async def build_both(
     verbose: bool,
-) -> Generator[tuple[RocqCursor, RocqCursor]]:
-    rdm = RocqDocManager(
-        [],
-        str(Path(__file__).parent / "test.v"),
-    )
-    rc = rdm.cursor()
-    traced = trace_cursor.TracingCursor.of_cursor(rc.clone(), verbose=verbose)
-
-    try:
-        print(rc.doc_prefix())
-        print(rc.doc_suffix())
-        yield (rc, traced)
-    finally:
-        rc.dispose()
-        traced.dispose()
-        rdm.quit()
+) -> AsyncGenerator[tuple[RocqCursor, RocqCursor]]:
+    async with rc_sess(
+        Path(__file__).parent / "test.v", rocq_args=[], load_file=True
+    ) as rc:
+        traced = trace_cursor.TracingCursor.of_cursor(await rc.clone(), verbose=verbose)
+        try:
+            print(await rc.doc_prefix())
+            print(await rc.doc_suffix())
+            yield (rc, traced)
+        finally:
+            await traced.dispose()
+            await rc.dispose()
 
 
-def same[T](fn: Callable[[RocqCursor], T], verbose: bool) -> None:
-    with build_both(verbose) as (rc, traced):
+async def same[T](fn: Callable[[RocqCursor], Awaitable[T]], verbose: bool) -> None:
+    async with build_both(verbose) as (rc, traced):
         result: T | Exception | None = None
         traced_result: T | Exception | None = None
         try:
-            result = fn(rc)
+            result = await fn(rc)
         except Exception as e:
             result = e
         try:
-            traced_result = fn(traced)
+            traced_result = await fn(traced)
         except Exception as e:
             traced_result = e
         assert type(result) is type(traced_result)
@@ -70,8 +66,12 @@ _methods = [
     _methods,
     ids=_methods,
 )
-def test_insert_command(verbose: bool, method: str) -> None:
-    same(lambda rc: getattr(rc, method)("About nat."), verbose)
+@pytest.mark.asyncio
+async def test_insert_command(verbose: bool, method: str) -> None:
+    async def call(rc: RocqCursor):
+        return await getattr(rc, method)("About nat.")
+
+    await same(call, verbose)
 
 
 @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
@@ -80,8 +80,12 @@ def test_insert_command(verbose: bool, method: str) -> None:
     ["query_json", "query_text"],
     ids=["query_json", "query_text"],
 )
-def test_with_index(verbose: bool, method: str) -> None:
-    same(lambda rc: getattr(rc, method)("About nat.", index=0), verbose)
+@pytest.mark.asyncio
+async def test_with_index(verbose: bool, method: str) -> None:
+    async def call(rc: RocqCursor):
+        return await getattr(rc, method)("About nat.", index=0)
+
+    await same(call, verbose)
 
 
 # @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
@@ -95,5 +99,9 @@ def test_with_index(verbose: bool, method: str) -> None:
 
 
 @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
-def test_run_step(verbose: bool) -> None:
-    same(lambda rc: rc.run_step(), verbose)
+@pytest.mark.asyncio
+async def test_run_step(verbose: bool) -> None:
+    async def call(rc: RocqCursor):
+        return await rc.run_step()
+
+    await same(call, verbose)

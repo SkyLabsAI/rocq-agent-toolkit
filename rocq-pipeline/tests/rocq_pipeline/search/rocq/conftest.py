@@ -1,7 +1,6 @@
 """Shared test fixtures and mocks for rocq search tests."""
 
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
@@ -15,14 +14,20 @@ class MockRocqCursor:
         self._commands: list[str] = []
         self._fail_commands: dict[str, str] = {}  # command -> error message
 
-    def current_goal(self) -> str | None:
+    async def current_goal(self) -> str | None:
         return self._goal
 
-    def insert_command(self, cmd: str) -> Any:
-        self._commands.append(cmd)
-        if cmd in self._fail_commands:
-            return rdm_api.Err(data=None, message=self._fail_commands[cmd])
-        return MagicMock()  # Success response
+    async def insert_command(
+        self, text: str, blanks: str | None = "\n", safe: bool = True
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        del blanks, safe
+        self._commands.append(text)
+        if text in self._fail_commands:
+            return rdm_api.Err(
+                message=self._fail_commands[text],
+                data=rdm_api.CommandError(),
+            )
+        return rdm_api.CommandData()
 
     def set_failure(self, command: str, error: str) -> None:
         """Configure a command to fail with given error."""

@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
-from rocq_doc_manager import RocqCursor, RocqDocManager
+from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.agent import ProofAgent
@@ -15,33 +15,33 @@ def is_admitted(text: str, kind: str) -> bool:
     return kind == "command" and text == "Admitted."
 
 
-def run_proving_agent(
+async def run_proving_agent(
     rc: RocqCursor, agent_cls: type[ProofAgent], output: Path
 ) -> None:
-    main_rc = rc.clone()
+    main_rc = await rc.clone()
     print("Running the proving agent.")
-    while main_rc.goto_first_match(is_admitted):
+    while await main_rc.goto_first_match(is_admitted):
         print()
-        goal = main_rc.current_goal()
+        goal = await main_rc.current_goal()
         assert goal is not None
-        print(f"Found admitted at index {main_rc.cursor_index()}.")
+        print(f"Found admitted at index {await main_rc.cursor_index()}.")
         for i, g in enumerate(goal.focused_goals):
             print(f"Goal {i}:{g.replace('\n', '\n  ')}")
         agent = agent_cls()
-        local_rc = main_rc.clone()
-        task_result = asyncio.run(agent.run(rc=local_rc))
+        local_rc = await main_rc.clone()
+        task_result = await agent.run(rc=local_rc)
         if task_result.success:
             print("Agent succeeded.")
-            local_rc.clear_suffix(count=1)
-            local_rc.insert_command("Qed.", blanks=None)
+            await local_rc.clear_suffix(count=1)
+            await local_rc.insert_command("Qed.", blanks=None)
             old_rc = main_rc
             main_rc = local_rc
-            old_rc.dispose()
+            await old_rc.dispose()
         else:
             print("Agent failed.")
-            local_rc.dispose()
-            main_rc.run_step()
-    main_rc.commit(str(output), include_suffix=True)
+            await local_rc.dispose()
+            await main_rc.run_step()
+    await main_rc.commit(str(output), include_suffix=True)
 
 
 def main_prover(agent_cls: type[ProofAgent]):
@@ -72,10 +72,18 @@ def main_prover(agent_cls: type[ProofAgent]):
     logging.basicConfig(level=logging.ERROR)
     try:
         rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
-        with RocqDocManager(
-            rocq_args, str(rocq_file.name), dune=True, chdir=str(rocq_file.parent)
-        ).sess(load_file=True) as rdm:
-            run_proving_agent(rdm.cursor(), agent_cls, output)
+
+        async def _run() -> None:
+            async with rc_sess(
+                str(rocq_file.name),
+                rocq_args=rocq_args,
+                chdir=str(rocq_file.parent),
+                dune=True,
+                load_file=True,
+            ) as rc:
+                await run_proving_agent(rc, agent_cls, output)
+
+        asyncio.run(_run())
     except DuneError as e:
         sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}")
     except Exception as e:

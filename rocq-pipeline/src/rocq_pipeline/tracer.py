@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import itertools
 import json
 import traceback
@@ -7,7 +8,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
 
-from rocq_doc_manager import RocqCursor, RocqDocManager
+from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import rocq_args_for
 
@@ -27,21 +28,40 @@ def trace_proof(
     progress_min: float = 0.0,
     progress_max: float = 1.0,
 ) -> list[dict[str, Any]]:
-    tactics = find_tasks.scan_proof(rdm.doc_suffix()).proof_tactics
-    tracer.start_proof(rdm)
+    return asyncio.run(
+        trace_proof_async(
+            tracer,
+            rdm,
+            progress,
+            progress_min=progress_min,
+            progress_max=progress_max,
+        )
+    )
+
+
+async def trace_proof_async(
+    tracer: Tracer[dict[str, Any]],
+    rdm: RocqCursor,
+    progress: util.ProgressCallback,
+    progress_min: float = 0.0,
+    progress_max: float = 1.0,
+) -> list[dict[str, Any]]:
+    tactics = find_tasks.scan_proof(await rdm.doc_suffix()).proof_tactics
+    await tracer.start_proof(rdm)
     trace = []
     step_size: float = (progress_max - progress_min) / len(tactics)
     for i, tactic in enumerate(tactics):
-        after = tracer.before_internal(rdm, tactic)
+        after = await tracer.before_internal(rdm, tactic)
         progress.status(status=tactic[:10])
-        assert not isinstance(rdm.run_command(tactic), rdm_api.Err)
+        assert not isinstance(await rdm.run_command(tactic), rdm_api.Err)
         progress.status(percent=progress_min + i * step_size)
         if after is not None:
-            result = after(rdm, tactic)
+            result = await after(rdm, tactic)
             if result is not None:
                 if "tactic" not in result:
                     result["tactic"] = tactic.strip(".").strip()
                 trace.append(result)
+    await tracer.end_proof(rdm)
     return trace
 
 
@@ -91,7 +111,7 @@ def run(
     if not output_dir.is_dir():
         print(f"No such output directory: {output_dir}")
 
-    def run_task(
+    async def run_task(
         proj_task: tuple[Tasks.Project, Tasks.Task], progress: util.ProgressCallback
     ) -> bool:
         project, task = proj_task
@@ -108,21 +128,23 @@ def run(
             )
 
             task_file: Path = project.path / task.file
-            with RocqDocManager(
-                rocq_args.extend_args(rocq_args_for(task_file), list(extra_paths)),
+            async with rc_sess(
                 str(task_file),
+                rocq_args=rocq_args.extend_args(
+                    rocq_args_for(task_file), list(extra_paths)
+                ),
                 dune=True,
-            ).sess(load_file=True) as rdm:
-                rc = rdm.cursor()
+                load_file=True,
+            ) as rc:
                 tracer.setup(rc)
                 progress.status(0.05, "🔃")
 
-                if not task.locator(rc):
+                if not await task.locator(rc):
                     print(f"Failed to find task: {task_id}")
                     return False
                 progress.status(0.1, "💭")
 
-                trace = trace_proof(tracer, rc, progress, 0.1, 0.95)
+                trace = await trace_proof_async(tracer, rc, progress, 0.1, 0.95)
                 progress.status(0.95, "💭")
 
             with open(output_file, "w") as output:

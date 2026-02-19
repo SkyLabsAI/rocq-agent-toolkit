@@ -9,7 +9,7 @@ a single, unified, generic approach.
 import functools
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from typing import Any
 
 from opentelemetry import metrics
@@ -22,7 +22,7 @@ from .extractors.base import AttributeExtractor, NoOpExtractor
 logger = logging.getLogger(__name__)
 
 
-def trace(
+def trace[**P, T](
     name: str | None = None,
     *,
     extractor: str | type[AttributeExtractor] | AttributeExtractor | None = None,
@@ -32,7 +32,7 @@ def trace(
     include_result: bool = False,
     record_exception: bool = True,
     **extractor_kwargs: Any,
-) -> Callable:
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """
     Universal tracing decorator for any operation.
 
@@ -94,9 +94,9 @@ def trace(
             return stripe.charge(amount, currency)
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Initialize extractor
             operation_extractor = _get_operation_extractor(
                 extractor, **extractor_kwargs
@@ -135,6 +135,118 @@ def trace(
 
                     # Execute the function
                     result = func(*args, **kwargs)
+
+                    # Record result if requested
+                    if include_result:
+                        _set_result_attributes(span, result)
+
+                    # Record success metrics
+                    duration = time.time() - start_time
+                    if metrics_enabled:
+                        _record_success_metrics(
+                            operation_extractor, func, args, kwargs, duration
+                        )
+
+                    # Mark span as successful
+                    span.set_status(Status(StatusCode.OK))
+                    return result
+
+                except Exception as e:
+                    # Record exception
+                    duration = time.time() - start_time
+
+                    if record_exception:
+                        span.record_exception(e)
+                        span.set_status(Status(StatusCode.ERROR, str(e)))
+
+                        # Add extractor-specific error attributes
+                        try:
+                            error_attrs = operation_extractor.extract_error_attributes(
+                                func, args, kwargs, e
+                            )
+                            _set_custom_attributes(span, error_attrs)
+                        except Exception as extractor_error:
+                            logger.warning(
+                                f"Failed to extract error attributes: {extractor_error}"
+                            )
+
+                    # Record error metrics
+                    if metrics_enabled:
+                        _record_error_metrics(
+                            operation_extractor, func, args, kwargs, duration, e
+                        )
+
+                    raise
+
+        return wrapper
+
+    return decorator
+
+
+def trace_async[**P, T](
+    name: str | None = None,
+    *,
+    extractor: str | type[AttributeExtractor] | AttributeExtractor | None = None,
+    attributes: dict[str, Any] | None = None,
+    metrics_enabled: bool = True,
+    include_args: bool = False,
+    include_result: bool = False,
+    record_exception: bool = True,
+    **extractor_kwargs: Any,
+) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Coroutine[None, None, T]]]:
+    """
+    Universal tracing decorator for `async def`s.
+
+    See the documentation of `trace` for more information.
+
+    Note: in the future we could stratify this further to:
+    - a) expose `trace_coroutine` with non-`None` yield/send types, implementing `trace_async` in terms of it
+    - b) expose `trace_awaitable` for plain callables that produce explicit `Task` / `Future` objects
+    """
+
+    def decorator(
+        func: Callable[P, Awaitable[T]],
+    ) -> Callable[P, Coroutine[None, None, T]]:
+        @functools.wraps(func)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            # Initialize extractor
+            operation_extractor = _get_operation_extractor(
+                extractor, **extractor_kwargs
+            )
+
+            # Generate span name
+            span_name = name
+            if not span_name:
+                try:
+                    span_name = operation_extractor.get_span_name(func, args, kwargs)
+                except Exception as e:
+                    logger.warning(f"Failed to generate span name: {e}")
+                    span_name = func.__name__
+
+            # Get tracer and start timing
+            tracer = otel_trace.get_tracer(__name__)
+            start_time = time.time()
+
+            with tracer.start_as_current_span(span_name) as span:
+                try:
+                    # Extract and set basic attributes
+                    _set_basic_attributes(span, func, args, kwargs, include_args)
+
+                    # Add custom attributes
+                    if attributes:
+                        _set_custom_attributes(span, attributes)
+
+                    # Use extractor for framework-specific attributes
+                    _set_extractor_attributes(
+                        span, operation_extractor, func, args, kwargs
+                    )
+
+                    # Record metrics start
+                    if metrics_enabled:
+                        _record_start_metrics(operation_extractor, func, args, kwargs)
+
+                    # Execute the function
+                    result = await func(*args, **kwargs)
 
                     # Record result if requested
                     if include_result:

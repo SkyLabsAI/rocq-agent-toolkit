@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from typing import Annotated, Any, TypeVar, override
 
 from provenance_toolkit import Provenance
 
 from .rollout import (
     ApproximatingRollout,
+    AsyncMapRollout,
     EmptyRollout,
     InterleaveRollout,
     MapRollout,
@@ -64,7 +72,7 @@ class Strategy[State, Action](Provenance.Full, ABC):
     """
 
     @abstractmethod
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -102,7 +110,8 @@ class SingletonStrategy[State, Action](Strategy[State, Action]):
         self._value = value
         self._logprob = logprob
 
-    def rollout(
+    @override
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -120,7 +129,8 @@ class IteratorStrategy[State, Action](Strategy[State, Action]):
     def __init__(self, i: Iterable[tuple[float, Action]]) -> None:
         self._collection = i
 
-    def rollout(
+    @override
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -157,7 +167,7 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
         self._children = children
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -165,7 +175,7 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
     ) -> Rollout[Action]:
         return InterleaveRollout(
             [
-                strat.rollout(state, max_rollout, context=context)
+                await strat.rollout(state, max_rollout, context=context)
                 for strat in self._children
             ]
         )
@@ -202,17 +212,21 @@ class StagedStrategy[State, Action](Strategy[State, Action]):
         self._prob = prob
         super().__init__()
 
-    def rollout(
+    @override
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        return StagedRollout(
-            self._strat1.rollout(state, max_rollout=max_rollout, context=context),
-            lambda: self._strat2.rollout(
+        async def fn():
+            return await self._strat2.rollout(
                 state, max_rollout=max_rollout, context=context
-            ),
+            )
+
+        return StagedRollout(
+            await self._strat1.rollout(state, max_rollout=max_rollout, context=context),
+            fn,
             self._prob,
         )
 
@@ -238,7 +252,7 @@ class FailStrategy[State, Action](Strategy[State, Action]):
     """A simple strategy that fails."""
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
@@ -254,12 +268,12 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
     """
 
     @abstractmethod
-    def check(
+    async def check(
         self, state: State, context: Strategy.Context | None = None
     ) -> With | None: ...
 
     @abstractmethod
-    def rollout_with(
+    async def rollout_with(
         self,
         val: With,
         rdm: State,
@@ -268,50 +282,95 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
     ) -> Rollout[Action]: ...
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[Action]:
-        val = self.check(state)
+        val = await self.check(state)
         if val is None:
-            return super().rollout(state, max_rollout, context)
-        return self.rollout_with(val, state, max_rollout, context)
+            return await super().rollout(state, max_rollout, context)
+        return await self.rollout_with(val, state, max_rollout, context)
 
 
-class MapStategy[T, T_act, U, U_act](Strategy[T, T_act]):
+class MapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
     """A wrapper of `Strategy` based on lenses.
 
     See the documentation for `WrapAction`.
     """
 
     _base: Annotated[Strategy[U, U_act], Provenance.Reflect.Field]
-    _fn_state: Annotated[Callable[[T], U], Provenance.Reflect.CallableField]
-    _fn: Annotated[Callable[[T, U, U_act], T_act], Provenance.Reflect.CallableField]
+    _into: Annotated[Callable[[T], U], Provenance.Reflect.CallableField]
+    _outof: Annotated[Callable[[T, U, U_act], T_act], Provenance.Reflect.CallableField]
 
     def __init__(
         self,
         base: Strategy[U, U_act],
-        fn_state: Callable[[T], U],
-        fn_action: Callable[[T, U, U_act], T_act],
+        *,
+        into: Callable[[T], U],
+        outof: Callable[[T, U, U_act], T_act],
     ) -> None:
         self._base = base
-        self._fn_state = fn_state
-        self._fn_action = fn_action
+        self._into = into
+        self._fn_action = outof
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: T,
         max_rollout: int | None = None,
         context: Strategy.Context | None = None,
     ) -> Rollout[T_act]:
-        u_state = self._fn_state(state)
-        fn = self._fn_action
+        u_state = self._into(state)
+
+        def fn(act: U_act) -> T_act:
+            return self._fn_action(state, u_state, act)
+
         return MapRollout(
-            self._base.rollout(u_state, max_rollout, context),
-            lambda act: fn(state, u_state, act),
+            await self._base.rollout(u_state, max_rollout, context),
+            fn,
+        )
+
+
+class AsyncMapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
+    """A wrapper of `Strategy` based on lenses.
+
+    See the documentation for `AsyncWrapAction`.
+    """
+
+    _base: Annotated[Strategy[U, U_act], Provenance.Reflect.Field]
+    _into: Annotated[Callable[[T], Awaitable[U]], Provenance.Reflect.CallableField]
+    _outof: Annotated[
+        Callable[[T, U, U_act], Awaitable[T_act]], Provenance.Reflect.CallableField
+    ]
+
+    def __init__(
+        self,
+        base: Strategy[U, U_act],
+        *,
+        into: Callable[[T], Awaitable[U]],
+        outof: Callable[[T, U, U_act], Awaitable[T_act]],
+    ) -> None:
+        self._base = base
+        self._into = into
+        self._fn_action = outof
+
+    @override
+    async def rollout(
+        self,
+        state: T,
+        max_rollout: int | None = None,
+        context: Strategy.Context | None = None,
+    ) -> Rollout[T_act]:
+        u_state = await self._into(state)
+
+        async def fn(act: U_act) -> T_act:
+            return await self._fn_action(state, u_state, act)
+
+        return AsyncMapRollout(
+            await self._base.rollout(u_state, max_rollout, context),
+            fn,
         )
 
 

@@ -1,8 +1,8 @@
 import re
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal, override
 
-from observability import get_logger
+from observability import get_logger, trace_async
 from observability.tracing.decorators import trace
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
@@ -83,7 +83,7 @@ class RocqCommandAction(Action[RocqCursor]):
 
     @override
     @trace("RocqCommandAction")
-    def interact(self, state: RocqCursor) -> RocqCursor:
+    async def interact(self, state: RocqCursor) -> RocqCursor:
         # TODO: the fact that cursors are not functional is quite annoying here.
         # It should be the caller that creates a new cursor, but in this case
         # we will basically always be returning our own cursor.
@@ -144,14 +144,14 @@ class RocqTacticAction(Action[RocqCursor]):
             self._tactic = f"{selector}: {tactic}"
 
     @override
-    @trace("RocqTacticAction")
-    def interact(self, state: RocqCursor) -> RocqCursor:
+    @trace_async("RocqTacticAction")
+    async def interact(self, state: RocqCursor) -> RocqCursor:
         # TODO: the fact that cursors are not functional is quite annoying here.
         # It should be the caller that creates a new cursor, but in this case
         # we will basically always be returning our own cursor.
         # If cursors were functional, we would just be returning the latest
         # cursor here.
-        response = state.insert_command(f"{self._tactic}.")
+        response = await state.insert_command(f"{self._tactic}.")
         if isinstance(response, rdm_api.Err):
             # Preserve the actual Rocq error message
             raise Action.Failed(
@@ -180,7 +180,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     """
 
     _rectifier: Annotated[
-        Callable[[RocqCursor, str, str], str | None] | None,
+        Callable[[RocqCursor, str, str], Awaitable[str | None]] | None,
         Provenance.Reflect.CallableField,
     ]
     _max_retries: Annotated[int, Provenance.Reflect.Field]
@@ -189,7 +189,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
     def __init__(
         self,
         command: str,
-        rectifier: Callable[[RocqCursor, str, str], str | None] | None,
+        rectifier: Callable[[RocqCursor, str, str], Awaitable[str | None]] | None,
         max_retries: int = 3,
         **kwargs,
     ) -> None:
@@ -216,7 +216,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
         return self._final_command
 
     @override
-    def interact(self, state: RocqCursor) -> RocqCursor:
+    async def interact(self, state: RocqCursor) -> RocqCursor:
         self._final_command = None
         command = self._initial_command
 
@@ -224,7 +224,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
         max_attempts = (self._max_retries + 1) if self._rectifier else 1
 
         for attempt in range(max_attempts):
-            response = state.insert_command(command)
+            response = await state.insert_command(command)
             if not isinstance(response, rdm_api.Err):
                 self._final_command = command
                 return state
@@ -241,7 +241,7 @@ class RocqRetryCommandAction(Action[RocqCursor]):
 
             # We know self._rectifier is not None because max_attempts > 1
             assert self._rectifier is not None
-            rectified = self._rectifier(state, command, response.message)
+            rectified = await self._rectifier(state, command, response.message)
 
             if rectified is None:
                 raise Action.Failed(

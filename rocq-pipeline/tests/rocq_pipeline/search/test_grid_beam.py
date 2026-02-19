@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import override
 
+import pytest
 from rocq_pipeline.search.action import Action
 from rocq_pipeline.search.rollout import IteratorRollout, Rollout
 from rocq_pipeline.search.search.beam import BeamSearch
@@ -40,7 +42,7 @@ class GridMoveAction(Action[GridState]):
         return self._name
 
     @override
-    def interact(self, state: GridState) -> GridState:
+    async def interact(self, state: GridState) -> GridState:
         return GridState(state.x + self._dx, state.y + self._dy)
 
     @override
@@ -68,7 +70,7 @@ class GridStrategy(Strategy[GridState, Action[GridState]]):
     """Strategy that proposes moves in all four cardinal directions."""
 
     @override
-    def rollout(
+    async def rollout(
         self,
         state: GridState,
         max_rollout: int | None = None,
@@ -103,7 +105,17 @@ class ManhattanGuidance(Guidance[GridState]):
         return float(distance)
 
 
-def test_grid_simple_reach() -> None:
+def is_solved_equals_target(
+    target: GridState,
+) -> Callable[[GridState], Awaitable[bool]]:
+    async def _is_solved(s: GridState) -> bool:
+        return s == target
+
+    return _is_solved
+
+
+@pytest.mark.asyncio
+async def test_grid_simple_reach() -> None:
     """Test that beam search can find a nearby target."""
     start = GridState(0, 0)
     target = GridState(2, 1)
@@ -114,7 +126,7 @@ def test_grid_simple_reach() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=3,
         explore_width=4,
         max_depth=10,
@@ -122,13 +134,14 @@ def test_grid_simple_reach() -> None:
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
 
-    solutions = search.search(start)
+    solutions = await search.search(start)
 
     assert len(solutions) > 0, "Should find at least one solution"
     assert target in solutions, f"Should find target {target}, got {solutions}"
 
 
-def test_grid_longer_path() -> None:
+@pytest.mark.asyncio
+async def test_grid_longer_path() -> None:
     """Test beam search with a longer path."""
     start = GridState(0, 0)
     target = GridState(3, 2)  # Reduced distance to 5 steps
@@ -138,7 +151,7 @@ def test_grid_longer_path() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=30,  # Large beam to ensure we find path
         explore_width=4,
         max_depth=5,
@@ -146,7 +159,7 @@ def test_grid_longer_path() -> None:
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
 
-    solutions = search.search(start)
+    solutions = await search.search(start)
 
     assert len(solutions) > 0, "Should find at least one solution"
     assert target in solutions, f"Should find target {target}"
@@ -156,7 +169,8 @@ def test_grid_longer_path() -> None:
     assert expected_distance == 5
 
 
-def test_grid_no_solution_within_depth() -> None:
+@pytest.mark.asyncio
+async def test_grid_no_solution_within_depth() -> None:
     """Test that search terminates when target is beyond max_depth."""
     start = GridState(0, 0)
     target = GridState(10, 10)  # 20 steps away
@@ -167,20 +181,21 @@ def test_grid_no_solution_within_depth() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=5,
         explore_width=4,
         max_depth=3,  # Too shallow to reach target
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
 
-    solutions = search.search(start)
+    solutions = await search.search(start)
 
     # Should not find solution due to depth limit
     assert target not in solutions
 
 
-def test_grid_without_guidance() -> None:
+@pytest.mark.asyncio
+async def test_grid_without_guidance() -> None:
     """Test beam search without guidance (uniform exploration)."""
     start = GridState(0, 0)
     target = GridState(1, 2)
@@ -191,7 +206,7 @@ def test_grid_without_guidance() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=None,  # Will use UniformGuidance
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=4,
         explore_width=4,
         max_depth=5,
@@ -199,13 +214,14 @@ def test_grid_without_guidance() -> None:
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
 
-    solutions = search.search(start)
+    solutions = await search.search(start)
 
     assert len(solutions) > 0, "Should eventually find solution without guidance"
     assert target in solutions
 
 
-def test_grid_multiple_solutions() -> None:
+@pytest.mark.asyncio
+async def test_grid_multiple_solutions() -> None:
     """Test finding a solution with limited beam."""
     start = GridState(0, 0)
     target = GridState(1, 1)
@@ -216,7 +232,7 @@ def test_grid_multiple_solutions() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=10,
         explore_width=4,
         max_depth=10,
@@ -224,7 +240,7 @@ def test_grid_multiple_solutions() -> None:
         state_key=lambda s: (s.x, s.y),  # Deduplicate by position
     )
 
-    solutions = search.search(start)
+    solutions = await search.search(start)
 
     assert len(solutions) > 0, "Should find at least one solution"
     # Solution should be the target state
