@@ -50,3 +50,20 @@ def validate_url(url: str) -> str:
     if all([result.scheme, result.netloc]):
         return url
     raise ValueError(f"Invalid URL: '{url}'")
+
+
+def split_args(argv: list[str] | None = None) -> tuple[list[str], list[str]]:
+    """Split arguments at the -- if it exists.
+
+    @param argv if null, this uses `sys.argv[1:]`
+    @returns (args, extra_args)
+    """
+    args = sys.argv[1:] if argv is None else argv
+    extra_args: list[str] = []
+    try:
+        idx = args.index("--")
+        extra_args = args[idx + 1 :]
+        args = args[:idx]
+    except ValueError:
+        pass
+    return (args, extra_args)

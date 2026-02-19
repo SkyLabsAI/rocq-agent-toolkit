@@ -9,7 +9,7 @@ from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.agent import AgentBuilder
 from rocq_pipeline.agent.proof.auto import AutoAgent
-from rocq_pipeline.args_util import valid_file
+from rocq_pipeline.args_util import split_args, valid_file
 
 
 def is_admitted(text: str, kind: str) -> bool:
@@ -49,20 +49,7 @@ async def run_proving_agent(
     await main_rc.commit(str(output), include_suffix=True)
 
 
-# TODO: upstream
-def split_args(argv: list[str] | None = None) -> tuple[list[str], list[str]]:
-    args = sys.argv[1:] if argv is None else argv
-    extra_args: list[str] = []
-    try:
-        idx = args.index("--")
-        extra_args = args[idx + 1 :]
-        args = args[:idx]
-    except ValueError:
-        pass
-    return (args, extra_args)
-
-
-def agent_main(agent_builder: AgentBuilder) -> bool:
+def agent_main(agent_builder: AgentBuilder) -> int:
     parser = ArgumentParser(
         description="Run a proof agent on the given Rocq source file."
     )
@@ -104,7 +91,7 @@ def agent_main(agent_builder: AgentBuilder) -> bool:
                 await run_proving_agent(rc, agent_builder, output)
 
         asyncio.run(_run())
-        return True
+        return 0
     except DuneError as e:
         sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}")
     except Exception as e:
@@ -112,4 +99,4 @@ def agent_main(agent_builder: AgentBuilder) -> bool:
 
 
 def auto_prover():
-    return 0 if agent_main(AgentBuilder.of_agent(AutoAgent)) else 1
+    return agent_main(AgentBuilder.of_agent(AutoAgent))

@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 import traceback
 import uuid
 from argparse import ArgumentParser, Namespace
@@ -32,6 +31,7 @@ from rocq_pipeline.agent import (
 )
 from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.args import load_tasks
+from rocq_pipeline.args_util import split_args
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.schema import task_output
 
@@ -443,14 +443,7 @@ def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bo
         if __name__ == '__main__':
             agent_main(agent_builder)
     """
-    if args is None:
-        args = sys.argv[1:]
-    try:
-        idx = args.index("--")
-        agent_args: list[str] = args[idx + 1 :]
-        args = args[:idx]
-    except ValueError:
-        agent_args = []
+    args, agent_args = split_args(args)
 
     arguments: Namespace = mk_parser(
         parent=None, with_agent=agent_builder is None
