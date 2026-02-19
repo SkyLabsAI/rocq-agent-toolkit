@@ -173,8 +173,8 @@ class WSCursor:
         self._id = id
 
     @classmethod
-    def create(cls, mux: WSMux, id: CursorId) -> RocqCursorProtocolAsync:
-        return cls(mux, id)  # type: ignore[return-value]
+    def create(cls, mux: WSMux, id: int) -> RocqCursorProtocolAsync:
+        return cls(mux, CursorId(cursor=id))  # type: ignore[return-value]
 
     async def clone(self, **kwargs) -> WSCursor:
         cursor = await self._rpc(CursorId, "clone", [], kwargs)
@@ -229,17 +229,10 @@ class CursorDispatcher(Dispatcher):
         (cursor, args) = self.extract_cursor(args)
         match method:
             case "clone":
-
-                async def fn(args, kwargs):
-                    new_cursor = await cursor.clone()
-                    self._fresh += 1
-                    new_id = CursorId(cursor=self._fresh)
-                    self._cursors[new_id] = new_cursor
-                    return new_id
+                new_cursor = await cursor.clone()
+                self._fresh += 1
+                new_id = CursorId(cursor=self._fresh)
+                self._cursors[new_id] = new_cursor
+                return new_id
             case _:
-
-                async def fn(args, kwargs):
-                    # TODO: insert await below when wrapped cursors are async
-                    return await getattr(cursor, method)(*args, **kwargs)
-
-        return await fn(args, kwargs)
+                return await getattr(cursor, method)(*args, **kwargs)
