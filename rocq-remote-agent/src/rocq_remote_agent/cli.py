@@ -1,6 +1,6 @@
 """CLI entrypoint for remote-proof-agent."""
 
-import rocq_pipeline.task_runner as RAT
+import rocq_pipeline.prover as RAT
 
 from rocq_remote_agent.builder import RemoteAgentBuilder
 
