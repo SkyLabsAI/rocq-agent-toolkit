@@ -59,7 +59,9 @@ def find_tasks(
     tagger: Callable[[ProofTask], set[str]] | None = None,
 ) -> list[Task]:
     """Find the tasks in the given file. Invoke the tagger argument to generate the tags."""
-    with RocqDocManager(args, str(path), dune=True).sess(load_file=True) as rdm:
+    with RocqDocManager(args, str(path.absolute()), chdir=str(pdir), dune=True).sess(
+        load_file=True
+    ) as rdm:
         rc: RocqCursor = rdm.cursor()
         tasks: list[Task] = []
         counts: dict[str, int] = defaultdict(int)
@@ -265,7 +267,7 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
     def run_it(path: Path, _: Any) -> list[Task]:
         try:
             file = Path(path)
-            args = rocq_args_for(file)
+            args = rocq_args_for(file, cwd=pdir)
             file_tasks: list[Task] = find_tasks(pdir, file, args, tagger=my_tagger)
         except DuneError as e:
             logger.error(f"Unable to get CLI arguments for file {path}: {e.stderr}")
