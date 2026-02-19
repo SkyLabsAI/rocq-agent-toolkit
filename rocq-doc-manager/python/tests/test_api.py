@@ -37,6 +37,7 @@ class Test_API(RDM_Tests):
             rdm_api.SuffixItem(kind="command", text="reflexivity."),
             rdm_api.SuffixItem(kind="blanks", text="\n"),
             rdm_api.SuffixItem(kind="command", text="Qed."),
+            rdm_api.SuffixItem(kind="blanks", text="\n"),
         ]
 
     async def test_Check_query_text(
@@ -122,6 +123,10 @@ class Test_API(RDM_Tests):
                 rdm_api.SuffixItem(
                     text="Qed.",
                     kind="command",
+                ),
+                rdm_api.SuffixItem(
+                    text="\n",
+                    kind="blanks",
                 ),
             ]
 

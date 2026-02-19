@@ -23,6 +23,8 @@
   > cursor_index [0]
   > run_step [0]
   > cursor_index [0]
+  > run_step [0]
+  > cursor_index [0]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -63,12 +65,14 @@
     }
   }
   { "id": 13, "jsonrpc": "2.0", "result": 5 }
+  { "id": 14, "jsonrpc": "2.0", "result": null }
+  { "id": 15, "jsonrpc": "2.0", "result": 6 }
   {
-    "id": 14,
+    "id": 16,
     "jsonrpc": "2.0",
     "error": {
       "code": -32602,
       "message": "Invalid parameters for method run_step: no step left to run."
     }
   }
-  { "id": 15, "jsonrpc": "2.0", "result": 5 }
+  { "id": 17, "jsonrpc": "2.0", "result": 6 }

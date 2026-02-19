@@ -14,6 +14,7 @@
   >   intro x.
   >   reflexivity.
   > Qed.
+  > 
   > EOF
 
   $ rocq_split -Q . test.dir test.v
@@ -64,6 +65,7 @@
         "ep": 185
       },
       { "kind": "blanks", "text": "\n", "bp": 185, "ep": 186 },
-      { "kind": "synpure:EndProof", "text": "Qed.", "bp": 186, "ep": 190 }
+      { "kind": "synpure:EndProof", "text": "Qed.", "bp": 186, "ep": 190 },
+      { "kind": "blanks", "text": "\n\n", "bp": 190, "ep": 192 }
     ]
   }

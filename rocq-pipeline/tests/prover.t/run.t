@@ -81,4 +81,4 @@
   
   Lemma forty_two_is_57 : forty_two = 57.
   Proof.
-  Admitted. (no-eol)
+  Admitted.

@@ -44,6 +44,7 @@
   > run_step [0]
   > run_step [0]
   > run_step [0]
+  > run_step [0]
   > non-existent [0]
   > commit [0,null,false,true]
   > compile [0]
@@ -140,7 +141,8 @@
       { "kind": "blanks", "text": "\n  " },
       { "kind": "command", "text": "reflexivity." },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Qed." }
+      { "kind": "command", "text": "Qed." },
+      { "kind": "blanks", "text": "\n" }
     ]
   }
   { "id": 14, "jsonrpc": "2.0", "result": null }
@@ -197,8 +199,9 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.test" ] }
     }
   }
+  { "id": 24, "jsonrpc": "2.0", "result": null }
   {
-    "id": 24,
+    "id": 25,
     "jsonrpc": "2.0",
     "error": {
       "code": -32602,
@@ -206,13 +209,13 @@
     }
   }
   {
-    "id": 25,
+    "id": 26,
     "jsonrpc": "2.0",
     "error": { "code": -32601, "message": "Method non-existent not found." }
   }
-  { "id": 26, "jsonrpc": "2.0", "result": null }
+  { "id": 27, "jsonrpc": "2.0", "result": null }
   {
-    "id": 27,
+    "id": 28,
     "jsonrpc": "2.0",
     "result": {
       "success": true,

@@ -14,9 +14,9 @@
   > advance_to [0,4]
   > advance_to [0,4]
   > doc_suffix [0]
-  > advance_to [0,9]
-  > doc_suffix [0]
   > advance_to [0,10]
+  > doc_suffix [0]
+  > advance_to [0,11]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -34,7 +34,8 @@
       { "kind": "blanks", "text": "\n" },
       { "kind": "command", "text": "Definition n6 : nat := 6." },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Definition n8 : nat := 8." }
+      { "kind": "command", "text": "Definition n8 : nat := 8." },
+      { "kind": "blanks", "text": "\n" }
     ]
   }
   { "id": 5, "jsonrpc": "2.0", "result": null }
