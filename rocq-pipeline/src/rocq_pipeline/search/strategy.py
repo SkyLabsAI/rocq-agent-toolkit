@@ -323,10 +323,13 @@ class MapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
         context: Strategy.Context | None = None,
     ) -> Rollout[T_act]:
         u_state = self._into(state)
-        fn = self._fn_action
+
+        def fn(act: U_act) -> T_act:
+            return self._fn_action(state, u_state, act)
+
         return MapRollout(
             await self._base.rollout(u_state, max_rollout, context),
-            lambda act: fn(state, u_state, act),
+            fn,
         )
 
 
@@ -361,10 +364,13 @@ class AsyncMapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
         context: Strategy.Context | None = None,
     ) -> Rollout[T_act]:
         u_state = await self._into(state)
-        fn = self._fn_action
+
+        async def fn(act: U_act) -> T_act:
+            return await self._fn_action(state, u_state, act)
+
         return AsyncMapRollout(
             await self._base.rollout(u_state, max_rollout, context),
-            lambda act: fn(state, u_state, act),
+            fn,
         )
 
 
