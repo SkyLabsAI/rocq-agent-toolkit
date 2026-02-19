@@ -7,7 +7,7 @@ from pathlib import Path
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_dune_util import DuneError, rocq_args_for
 
-from rocq_pipeline.agent import ProofAgent
+from rocq_pipeline.agent import AgentBuilder
 from rocq_pipeline.args_util import valid_file
 
 
@@ -16,7 +16,7 @@ def is_admitted(text: str, kind: str) -> bool:
 
 
 async def run_proving_agent(
-    rc: RocqCursor, agent_cls: type[ProofAgent], output: Path
+    rc: RocqCursor, agent_cls: AgentBuilder, output: Path
 ) -> None:
     main_rc = await rc.clone()
     print("Running the proving agent.")
@@ -24,12 +24,16 @@ async def run_proving_agent(
         print()
         goal = await main_rc.current_goal()
         assert goal is not None
-        print(f"Found admitted at index {await main_rc.cursor_index()}.")
+        print(f"Found admit at index {await main_rc.cursor_index()}.")
         for i, g in enumerate(goal.focused_goals):
             print(f"Goal {i}:{g.replace('\n', '\n  ')}")
-        agent = agent_cls()
-        local_rc = await main_rc.clone()
+        agent = agent_cls()  # Build the actual agent to run
+        local_rc = await main_rc.clone()  # should materialize this
         task_result = await agent.run(rc=local_rc)
+
+        # NOTE: the pattern of switching to the other cursor is not great
+        # here, we should really copy the contents into the document.
+        # Doing this will enable some parallelization if we want.
         if task_result.success:
             print("Agent succeeded.")
             await local_rc.clear_suffix(count=1)
@@ -44,7 +48,20 @@ async def run_proving_agent(
     await main_rc.commit(str(output), include_suffix=True)
 
 
-def main_prover(agent_cls: type[ProofAgent]):
+# TODO: upstream
+def split_args(argv: list[str] | None = None) -> tuple[list[str], list[str]]:
+    args = sys.argv[1:] if argv is None else argv
+    extra_args: list[str] = []
+    try:
+        idx = args.index("--")
+        extra_args = args[idx + 1 :]
+        args = args[:idx]
+    except ValueError:
+        pass
+    return (args, extra_args)
+
+
+def main_prover(agent_builder: AgentBuilder):
     parser = ArgumentParser(
         description="Run a proof agent on the given Rocq source file."
     )
@@ -61,7 +78,8 @@ def main_prover(agent_cls: type[ProofAgent]):
         type=valid_file(check_creatable=True, allowed_suffixes=[".v"]),
         help="output file (default is the input file)",
     )
-    args = parser.parse_args()
+    prover_args, agent_args = split_args()
+    args = parser.parse_args(prover_args)
     rocq_file = args.rocq_file
     if args.output is None:
         output = rocq_file.name
@@ -69,6 +87,7 @@ def main_prover(agent_cls: type[ProofAgent]):
         output = args.output
         if output.anchor == rocq_file.anchor:
             output = output.relative_to(rocq_file.parent, walk_up=True)
+    agent_builder.add_args(agent_args)
     logging.basicConfig(level=logging.ERROR)
     try:
         rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
@@ -81,7 +100,7 @@ def main_prover(agent_cls: type[ProofAgent]):
                 dune=True,
                 load_file=True,
             ) as rc:
-                await run_proving_agent(rc, agent_cls, output)
+                await run_proving_agent(rc, agent_builder, output)
 
         asyncio.run(_run())
     except DuneError as e:
