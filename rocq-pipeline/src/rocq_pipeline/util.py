@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable
-from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import count
 from types import TracebackType
 from typing import cast
@@ -140,22 +140,25 @@ def parallel_runner[T, U](
         final_result: list[U] = []
 
         with ThreadPoolExecutor(max_workers=jobs) as tpe:
-            for _, result in tpe.map(go, tasks):
+            # Submit all tasks and keep track of the future objects
+            futures = {tpe.submit(go, task): task for task in tasks}
+
+            # as_completed yields futures the moment they finish
+            for future in as_completed(futures):
+                _, result = future.result()
                 final_result.append(result)
+
                 if succeeded is None or succeeded(result):
-                    success = success + 1
+                    success += 1
                 else:
-                    failure = failure + 1
+                    failure += 1
+
                 if succeeded is None:
-                    pb.update(
-                        overall, advance=1, description=f"{success} / {total_tasks}"
-                    )
+                    desc = f"{success} / {total_tasks}"
                 else:
-                    pb.update(
-                        overall,
-                        advance=1,
-                        description=f"[green]{success}[/green] & [red]{failure}[/red] / {total_tasks}",
-                    )
+                    desc = f"[green]{success}[/green] & [red]{failure}[/red] / {total_tasks}"
+                pb.update(overall, advance=1, description=desc)
+
         return final_result
 
 
