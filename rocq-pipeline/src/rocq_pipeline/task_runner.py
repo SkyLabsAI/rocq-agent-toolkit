@@ -437,11 +437,10 @@ def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bo
 
     Clients that use this function should provide an entry point to their agent like:
 
-        def agent_builder(args: list[str]=[], prompt:str|None=None) -> Agent:
-            return MyAgent()
-
-        if __name__ == '__main__':
-            agent_main(agent_builder)
+    ```
+    if __name__ == '__main__':
+        agent_main(AgentBuilder.of_agent(MyAgent))
+    ```
     """
     args, agent_args = split_args(args)
 
