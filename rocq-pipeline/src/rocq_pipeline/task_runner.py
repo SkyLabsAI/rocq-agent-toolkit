@@ -402,8 +402,10 @@ def run_config(config: RunConfiguration) -> bool:
     # Touch the file early to make sure that it is createable
     Path(tasks_result_file).touch()
 
-    def is_success(result: task_output.TaskOutput | None) -> bool:
-        return result is not None and str(result.status.value.kind) == "Success"
+    def is_success(result: task_output.TaskOutput | BaseException | None) -> bool:
+        if result is None or isinstance(result, BaseException):
+            return False
+        return str(result.status.value.kind) == "Success"
 
     def succeeded(result: task_output.TaskOutput | None) -> bool:
         if result is None:
@@ -413,7 +415,7 @@ def run_config(config: RunConfiguration) -> bool:
             f.write("\n")
         return is_success(result)
 
-    results = util.parallel_runner(
+    results: list[task_output.TaskOutput | BaseException | None] = util.parallel_runner(
         run_it,
         [(f"{t[0].get_id()}#{t[1].get_id()}", t) for t in config.tasks],
         succeeded=succeeded,
