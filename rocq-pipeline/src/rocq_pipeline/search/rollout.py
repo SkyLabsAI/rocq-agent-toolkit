@@ -152,6 +152,21 @@ class IteratorRollout[T_co](Rollout[T_co]):
         raise StopAsyncIteration
 
 
+class AsyncIteratorRollout[T_co](Rollout[T_co]):
+    """Rolls out the values from the iterable.
+    The scores are expected to be in decreasing order.
+    """
+
+    def __init__(self, iterable: AsyncIterator[tuple[float, T_co]]) -> None:
+        self._values = iterable
+
+    @override
+    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+        async for logprob, act in self._values:
+            return Rollout.Approx(logprob=logprob, result=act)
+        raise StopAsyncIteration
+
+
 class MapRollout[T_co, U_co](Rollout[U_co]):
     """Change the values of a Rollout, but not their scores"""
 
