@@ -50,7 +50,7 @@ async def test_repetition_policy_skips_repeated_action() -> None:
     policy = RepetitionPolicy(
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
-    frontier = seeded_bfs([candidate])
+    frontier = await seeded_bfs([candidate])
     await run_search(
         strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy
     )
@@ -70,7 +70,7 @@ async def test_repetition_policy_uses_bounded_history() -> None:
     policy = RepetitionPolicy(
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
-    frontier = seeded_bfs([candidate])
+    frontier = await seeded_bfs([candidate])
     await run_search(
         strategy, frontier, beam_width=1, explore_width=1, repetition_policy=policy
     )

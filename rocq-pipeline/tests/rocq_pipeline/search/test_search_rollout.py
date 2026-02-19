@@ -45,20 +45,20 @@ class QueueFrontier[T](Frontier[T, BasicNode[T]]):
         return self._fresh
 
     @override
-    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
+    async def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
         return BasicNode(self._next(), val)
 
     @override
-    def repush(self, node: BasicNode[T]) -> None:
+    async def repush(self, node: BasicNode[T]) -> None:
         self.repush_count += 1
         self._queue.append(node)
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         self._queue = []
 
     @override
-    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
+    async def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if not self._queue:
             return []
         pulled = self._queue[:count]

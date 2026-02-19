@@ -143,7 +143,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
     ) -> FrontierT:
         worklist: FrontierT = frontier()
         with trace_context("search") as span:
-            root = worklist.push(Node(start, None), None)
+            root = await worklist.push(Node(start, None), None)
             span.set_attribute("root_id", root.ident)
             return await Search.continue_search(
                 strategy,
@@ -175,7 +175,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
 
         while True:
             # Sample the beam width from the frontier
-            candidates = worklist.take(count=beam_width)
+            candidates = await worklist.take(count=beam_width)
             if not candidates:
                 # Terminate if there are no candidates.
                 # This implies that the frontier is empty
@@ -212,7 +212,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                         next_state = await action.interact(fresh_state)
                         new_node = Node(next_state, candidate, action_key=action_key)
                         # Enqueue the child for future expansion.
-                        node = worklist.push(new_node, parent)
+                        node = await worklist.push(new_node, parent)
                         span.set_attribute("id", node.ident)
                     except Action.Failed:
                         await smanip.dispose(fresh_state)
@@ -230,7 +230,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
                     # be more.
                     if count == explore_width:
                         node.update_rollout(rollout)
-                        worklist.repush(parent)
+                        await worklist.repush(parent)
                         break
 
 

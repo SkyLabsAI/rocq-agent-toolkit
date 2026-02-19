@@ -28,21 +28,21 @@ class StaticFrontier[T](Frontier[T, BasicNode[T]]):
         return self._fresh
 
     @override
-    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
+    async def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
         node = BasicNode(self._next(), val)
         self.pushed.append(node)
         return node
 
     @override
-    def repush(self, node: BasicNode[T]) -> None:
+    async def repush(self, node: BasicNode[T]) -> None:
         return None
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         return None
 
     @override
-    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
+    async def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         self.take_calls.append(count)
         if result := self._take_returns.pop(0):
             return result

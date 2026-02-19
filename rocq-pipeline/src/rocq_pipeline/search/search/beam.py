@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ class BeamSearch[T]:
         self,
         strategy: Strategy[T, Action[T]],
         guidance: Guidance[T] | None = None,
-        is_solved: Callable[[T], bool] | None = None,
+        is_solved: Callable[[T], Awaitable[bool]] | None = None,
         beam_width: int = 5,
         explore_width: int = 10,
         max_depth: int | None = None,
@@ -66,7 +66,15 @@ class BeamSearch[T]:
         """
         self._strategy = strategy
         self._guidance = guidance or UniformGuidance()
-        self._is_solved = is_solved or (lambda _: False)
+
+        if is_solved is None:
+
+            async def _is_solved(t: T) -> bool:
+                return False
+
+            is_solved = _is_solved
+        self._is_solved = is_solved
+
         self._beam_width = beam_width
         self._explore_width = explore_width
         self._max_depth = max_depth
@@ -98,8 +106,8 @@ class BeamSearch[T]:
                     # Add small depth penalty to prefer shorter paths
                     return guidance_score + depth * 0.001
 
-                def is_solution_node(node: Node[T]) -> bool:
-                    return self._is_solved(node.state)
+                async def is_solution_node(node: Node[T]) -> bool:
+                    return await self._is_solved(node.state)
 
                 # Create frontier composition
                 # PQueue works on (Node[T], int) tuples because SingleDepth wraps them

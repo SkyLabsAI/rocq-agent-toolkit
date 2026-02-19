@@ -22,7 +22,7 @@ async def test_max_depth_blocks_deeper_nodes() -> None:
         depth_two.state: [(0.8, RecordingAction("d2", record.append))],
     }
     strategy = FixedStrategy(actions)
-    frontier = seeded_bfs([depth_one, depth_two])
+    frontier = await seeded_bfs([depth_one, depth_two])
     await run_search(strategy, frontier, beam_width=2, explore_width=2, max_depth=1)
 
     assert record == ["d1"]

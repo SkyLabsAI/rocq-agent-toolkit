@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import override
 
@@ -104,6 +105,15 @@ class ManhattanGuidance(Guidance[GridState]):
         return float(distance)
 
 
+def is_solved_equals_target(
+    target: GridState,
+) -> Callable[[GridState], Awaitable[bool]]:
+    async def _is_solved(s: GridState) -> bool:
+        return s == target
+
+    return _is_solved
+
+
 @pytest.mark.asyncio
 async def test_grid_simple_reach() -> None:
     """Test that beam search can find a nearby target."""
@@ -116,7 +126,7 @@ async def test_grid_simple_reach() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=3,
         explore_width=4,
         max_depth=10,
@@ -141,7 +151,7 @@ async def test_grid_longer_path() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=30,  # Large beam to ensure we find path
         explore_width=4,
         max_depth=5,
@@ -171,7 +181,7 @@ async def test_grid_no_solution_within_depth() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=5,
         explore_width=4,
         max_depth=3,  # Too shallow to reach target
@@ -196,7 +206,7 @@ async def test_grid_without_guidance() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=None,  # Will use UniformGuidance
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=4,
         explore_width=4,
         max_depth=5,
@@ -222,7 +232,7 @@ async def test_grid_multiple_solutions() -> None:
     search = BeamSearch(
         strategy=strategy,
         guidance=guidance,
-        is_solved=lambda s: s == target,
+        is_solved=is_solved_equals_target(target),
         beam_width=10,
         explore_width=4,
         max_depth=10,

@@ -56,7 +56,7 @@ async def test_copy_called_on_success() -> None:
         0: [(0.9, RecordingAction("ok", record.append, advance_by=1))]
     }
     strategy = FixedStrategy(actions)
-    frontier = seeded_bfs([candidate])
+    frontier = await seeded_bfs([candidate])
     await run_search(strategy, frontier, state_manip=manip)
 
     assert manip.copy_count == 1
@@ -73,7 +73,7 @@ async def test_dispose_called_on_failure() -> None:
         0: [(0.9, FailingAction("fail"))]
     }
     strategy = FixedStrategy(actions)
-    frontier = seeded_bfs([candidate])
+    frontier = await seeded_bfs([candidate])
     await run_search(strategy, frontier, state_manip=manip)
 
     assert manip.copy_count == 1
@@ -91,7 +91,7 @@ async def test_copy_not_called_on_dedup_skip() -> None:
         0: [(0.9, RecordingAction("dup", record.append))]
     }
     strategy = FixedStrategy(actions)
-    frontier = seeded_bfs([candidate])
+    frontier = await seeded_bfs([candidate])
     await run_search(strategy, frontier, state_manip=manip)
 
     assert manip.copy_count == 0
@@ -111,7 +111,7 @@ async def test_copy_not_called_on_repetition_skip() -> None:
     policy = RepetitionPolicy(
         max_consecutive=2, min_pattern_len=2, max_pattern_len=2, min_reps=2
     )
-    frontier = seeded_bfs([candidate])
+    frontier = await seeded_bfs([candidate])
     await run_search(strategy, frontier, repetition_policy=policy, state_manip=manip)
 
     assert manip.copy_count == 0
@@ -130,7 +130,7 @@ async def test_copy_not_called_on_max_depth_skip() -> None:
         candidate.state: [(0.9, RecordingAction("deep", record.append))]
     }
     strategy = FixedStrategy(actions)
-    frontier = seeded_bfs([candidate])
+    frontier = await seeded_bfs([candidate])
     await run_search(strategy, frontier, max_depth=1, state_manip=manip)
 
     assert manip.copy_count == 0

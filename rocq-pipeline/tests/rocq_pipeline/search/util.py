@@ -69,11 +69,11 @@ def make_chain(keys: list[str]) -> Node[int]:
     return parent
 
 
-def seeded_bfs[S](candidates: list[Node[S]]) -> BFS[Node[S]]:
+async def seeded_bfs[S](candidates: list[Node[S]]) -> BFS[Node[S]]:
     """Create a BFS frontier seeded with the provided search nodes."""
     frontier: BFS[Node[S]] = BFS()
     for candidate in candidates:
-        frontier.push(candidate, None)
+        await frontier.push(candidate, None)
     return frontier
 
 
@@ -111,19 +111,19 @@ class OneShotFrontier[T](Frontier[T, BasicNode[T]]):
         return self._fresh
 
     @override
-    def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
+    async def push(self, val: T, parent: BasicNode[T] | None) -> BasicNode[T]:
         return BasicNode(self._next(), val)
 
     @override
-    def repush(self, node: BasicNode[T]) -> None:
+    async def repush(self, node: BasicNode[T]) -> None:
         return None
 
     @override
-    def clear(self) -> None:
+    async def clear(self) -> None:
         return None
 
     @override
-    def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
+    async def take(self, count: int) -> list[tuple[T, BasicNode[T]]]:
         if self._taken:
             return []
         self._taken = True
