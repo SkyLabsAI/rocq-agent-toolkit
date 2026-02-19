@@ -211,6 +211,11 @@ let commands_data file cmds =
     add_command cmd loc (Buffer.contents buf)
   in
   List.iter handle_cmd cmds;
+  let _ =
+     match In_channel.input_all ic with
+     | ""   -> ()
+     | text -> add_blanks text !cur_offset (!cur_offset + String.length text)
+  in
   List.rev !rev_items
 
 let parse stream =

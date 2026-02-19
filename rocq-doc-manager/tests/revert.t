@@ -21,6 +21,7 @@
   > run_step [0]
   > run_step [0]
   > run_step [0]
+  > run_step [0]
   > revert_before [0,{erase:false,index:0}]
   > revert_before [0,{erase:false,index:0}]
   > EOF
@@ -38,7 +39,8 @@
       { "kind": "blanks", "text": "\n" },
       { "kind": "command", "text": "About nat." },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Check test." }
+      { "kind": "command", "text": "Check test." },
+      { "kind": "blanks", "text": "\n" }
     ]
   }
   {
@@ -100,7 +102,8 @@
     "jsonrpc": "2.0",
     "result": [
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Check test." }
+      { "kind": "command", "text": "Check test." },
+      { "kind": "blanks", "text": "\n" }
     ]
   }
   { "id": 11, "jsonrpc": "2.0", "result": null }
@@ -113,8 +116,9 @@
       ]
     }
   }
+  { "id": 13, "jsonrpc": "2.0", "result": null }
   {
-    "id": 13,
+    "id": 14,
     "jsonrpc": "2.0",
     "error": {
       "code": -32602,
@@ -122,7 +126,7 @@
     }
   }
   {
-    "id": 14,
+    "id": 15,
     "jsonrpc": "2.0",
     "error": {
       "code": -32602,
@@ -130,7 +134,7 @@
     }
   }
   {
-    "id": 15,
+    "id": 16,
     "jsonrpc": "2.0",
     "error": {
       "code": -32602,
