@@ -6,7 +6,6 @@ from typing import Any, override
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
 
 from . import rocq_doc_manager_api as rdm_api
-from .decorators import ensure_endswith_period
 from .rocq_doc_manager_api import RocqDocManagerAPIAsync as AsyncAPI
 
 logger = logging.getLogger(__name__)
@@ -110,7 +109,6 @@ class RDMRocqCursor(RocqCursor):
     async def insert_blanks(self, text: str) -> None:
         return await self._rdm.insert_blanks(self._cursor, text)
 
-    @ensure_endswith_period(argnames="text")
     async def _insert_command(
         self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
@@ -123,31 +121,26 @@ class RDMRocqCursor(RocqCursor):
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     @override
-    @ensure_endswith_period(argnames="text")
     async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return await self._rdm.query(self._cursor, text)
 
     @override
-    @ensure_endswith_period(argnames="text")
     async def query_json(
         self, text: str, *, index: int
     ) -> Any | rdm_api.Err[rdm_api.CommandError]:
         return await self._rdm.query_json(self._cursor, text, index=index)
 
     @override
-    @ensure_endswith_period(argnames="text")
     async def query_json_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[Any] | rdm_api.Err[None]:
         return await self._rdm.query_json_all(self._cursor, text, indices=indices)
 
     @override
-    @ensure_endswith_period(argnames="text")
     async def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
         return await self._rdm.query_text(self._cursor, text, index=index)
 
     @override
-    @ensure_endswith_period(argnames="text")
     async def query_text_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[str] | rdm_api.Err[None]:
