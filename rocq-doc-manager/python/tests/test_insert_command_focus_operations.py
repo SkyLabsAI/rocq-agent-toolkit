@@ -29,15 +29,14 @@ async def test_insert_focus_ops() -> None:
     p = Path(__file__).parent / "locator_test.v"
     async with rc_sess(str(p), load_file=True) as rc:
         await check(rc, "admit", 4)
-        # command_reply: rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]
         command_reply = await rc.insert_command("{")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
         command_reply = await rc.insert_command("-")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
         command_reply = await rc.insert_command("+")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
         command_reply = await rc.insert_command("*")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
 
 
 @pytest.mark.asyncio
@@ -46,12 +45,11 @@ async def test_run_focus_ops() -> None:
     rc: RocqCursor
     async with rc_sess(str(p), load_file=True) as rc:
         await check(rc, "admit", 4)
-        # command_reply: rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]
         command_reply = await rc.run_command("{")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
         command_reply = await rc.run_command("-")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
         command_reply = await rc.run_command("+")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
         command_reply = await rc.run_command("*")
-        assert not isinstance(command_reply, rdm_api.Err)
+        assert isinstance(command_reply, rdm_api.Err)
