@@ -219,16 +219,30 @@ async def run_task(
         try:
             task_file = task.file
             progress.status(0.01, "🔃")
+
+            task_mod_plugins = [
+                plugin
+                for modifier in task.modifiers
+                for plugin in rocq_deps_for(modifier)
+            ]
+            # We shouldn't need plugins on both `Agent` and `AgentBuilder`,
+            # but it really depends how flexible the plugin system is.
+            # `Agent` must be completely portable across environments, so
+            # if any amount of plugin logic is environment-dependent, then
+            # we need to put that logic in the `AgentBuilder`.
+            agent_plugins = [
+                plugin
+                for what in [build_agent, agent]
+                for plugin in rocq_deps_for(what)
+            ]
+            plugins = task_mod_plugins + agent_plugins
+
             try:
                 task_file_path = project.path / task_file
                 rocq_args = rocq_args_for(
                     task_file_path,
                     cwd=project.path,
-                    plugins=[
-                        plugin
-                        for modifier in task.modifiers
-                        for plugin in rocq_deps_for(modifier)
-                    ],
+                    plugins=plugins,
                 )
             except DuneError as e:
                 logger.error(
@@ -236,7 +250,7 @@ async def run_task(
                 )
                 rocq_args = []
 
-            # TODO: unify this with the the above
+            # TODO: unify this with the plugin setup above.
             rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())
 
             async with rc_sess(
