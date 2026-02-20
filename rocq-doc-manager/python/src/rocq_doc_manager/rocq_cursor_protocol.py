@@ -56,7 +56,11 @@ class RocqCursorProtocolAsync(Protocol):
 
     @ensure_endswith_period(argnames="text")
     async def insert_command(
-        self, text: str, blanks: str | None = "\n", safe: bool = True
+        self,
+        text: str,
+        blanks: str | None = "\n",
+        safe: bool = True,
+        ghost: bool = False,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         if safe:
             prefix = await self.doc_prefix()
@@ -74,7 +78,7 @@ class RocqCursorProtocolAsync(Protocol):
             assert isinstance(prefix, Sized)
 
         try:
-            result = await self._insert_command(text)
+            result = await self._insert_command(text, ghost=ghost)
             if isinstance(result, rdm_api.CommandData):
                 revert = False
                 if blanks is not None:
