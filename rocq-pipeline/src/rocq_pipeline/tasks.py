@@ -22,6 +22,8 @@ from pydantic.fields import Field
 from rocq_doc_manager.locator import Locator, LocatorParser
 
 from rocq_pipeline.schema.task_output import FullProofTask, TaskKind
+from rocq_pipeline.task_modifiers import task_mod
+from rocq_pipeline.task_modifiers.task_mod import TaskModifier
 
 
 class Project(BaseModel):
@@ -66,6 +68,11 @@ class Task(BaseModel):
         description="Additional information about the task **provided to the agent**.",
         exclude_if=lambda x: x is None,
     )
+    modifiers: list[TaskModifier] = Field(
+        default_factory=list,
+        description="Modifiers that should be run before the task is attempted.",
+        exclude_if=lambda x: not x,
+    )
     meta: dict[str, Any] | None = Field(
         default=None,
         description="Meta data about the task as a JSON dictionary, e.g. 'ground truth' proof script.",
@@ -105,6 +112,14 @@ class Task(BaseModel):
         if isinstance(value, set):
             return value
         return set(value)
+
+    @field_validator("modifiers", mode="before")
+    @classmethod
+    def parse_modifiers(cls, v: Any) -> list[TaskModifier]:
+        if not isinstance(v, list):
+            return v
+
+        return [task_mod.of_json(elem) for elem in v]
 
     @field_serializer("file")
     def serialize_path(self, path: Path):
