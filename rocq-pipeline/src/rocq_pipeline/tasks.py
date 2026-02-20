@@ -64,6 +64,7 @@ class Task(BaseModel):
         description="Additional information about the task **provided to the agent**.",
         exclude_if=lambda x: x is None,
     )
+    # TODO: it would be better to parse this eagerly.
     modifiers: list[str] = Field(
         default_factory=list,
         description="Modifiers that should be run before the task is attempted.",

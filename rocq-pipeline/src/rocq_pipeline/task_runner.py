@@ -100,6 +100,12 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
         default=1,
         help="The number of parallel workers.",
     )
+    parser.add_argument(
+        "--task-mod",
+        action="append",
+        default=[],
+        help="Additional task modifiers to add to all tasks. Can be passed multiple times.",
+    )
 
     # Add deployment mode flag
     parser.add_argument(
@@ -327,6 +333,25 @@ def parse_arguments(
         agent_builder = load_agent(arguments.agent)
 
     (tasks_name, tasks) = load_tasks(arguments)
+
+    if arguments.task_mod:
+        for m in arguments.task_mod:
+            try:
+                task_mod.of_string(m)
+            except ValueError as err:
+                raise ValueError(f"Failed to interpret task modifier '{m}'") from err
+        for _, task in tasks:
+            if task.modifiers:
+                for m in task.modifiers:
+                    try:
+                        task_mod.of_string(m)
+                    except ValueError as err:
+                        raise ValueError(
+                            f"Failed to interpret task modifier '{m}' in task {task.get_id()}"
+                        ) from err
+                task.modifiers.extend(arguments.task_mod)
+            else:
+                task.modifiers = arguments.task_mod
 
     # Get deployment environment
     env_name = getattr(arguments, "env", "none")
