@@ -128,6 +128,24 @@ let run state off text =
       | None         ->
           CErrors.user_err (Pp.str "End of file, no command found in input.")
     in
+    let _ =
+      match vernac.CAst.loc with None -> assert false | Some(loc) ->
+      (* Check for leading text. *)
+      let len_leading = loc.Loc.bp - off in
+      if len_leading <> 0 then begin
+        let s = String.sub text 0 len_leading in
+        let msg = Printf.sprintf "Leading text before command: %S." s in
+        CErrors.user_err (Pp.str msg)
+      end;
+      (* Check for trailing text. *)
+      let len_command = loc.Loc.ep - loc.Loc.bp in
+      let len_text = String.length text in
+      if len_command < len_text then begin
+        let s = String.sub text len_command (len_text - len_command) in
+        let msg = Printf.sprintf "Trailing text after command: %S." s in
+        CErrors.user_err (Pp.str msg)
+      end
+    in
     let env1 = Global.env () in
     let new_state = Vernac.process_expr ~state vernac in
     let env2 = Global.env () in
