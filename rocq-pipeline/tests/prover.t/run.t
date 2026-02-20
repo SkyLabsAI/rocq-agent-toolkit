@@ -1,8 +1,8 @@
-  $ export DUNE_SOURCEROOT="$TESTDIR/../../../../.."
-  $ [ -d "$DUNE_SOURCEROOT/_build" ] || echo "Failed to find Dune path"
-  $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
-  $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
-  $ export OCAMLPATH="$DUNE_SOURCEROOT/_build/install/default/lib"
+  $ export WORKSPACE="$TESTDIR/../../../../.."
+  $ [ -d "$WORKSPACE/_build" ] || echo "Failed to find Dune path"
+  $ export ROCQPATH="$WORKSPACE/_build/install/default/lib/coq/user-contrib"
+  $ export ROCQLIB="$WORKSPACE/_build/install/default/lib/coq"
+  $ export OCAMLPATH="$WORKSPACE/_build/install/default/lib"
   $ export DUNE_CACHE=disabled
 
   $ cp $TESTDIR/dune-project $TESTDIR/dune $TESTDIR/*.v .
