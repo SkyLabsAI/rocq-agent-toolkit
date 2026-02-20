@@ -5,7 +5,7 @@ from typing import Protocol, override
 
 from observability import get_logger
 from opentelemetry.instrumentation.grpc.filters import Callable
-from pydantic.dataclasses import dataclass
+from pydantic import BaseModel
 from pydantic.fields import Field
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager.rocq_doc_manager import rdm_api
@@ -40,8 +40,7 @@ def of_string(s: str) -> TaskModifier:
     raise ValueError(f"Failed to parse TaskModifier from '{s}'")
 
 
-@dataclass
-class InsertCommand(TaskModifier):
+class InsertCommand(TaskModifier, BaseModel):
     """Insert the given commands before the task runs."""
 
     commands: list[str] = Field(
@@ -50,20 +49,25 @@ class InsertCommand(TaskModifier):
     ghost: bool = Field(
         default=True,
         description="Whether the commands should be inserted as ghost commands",
+        exclude_if=lambda x: x,
     )
     attempt: bool = Field(
         default=False,
         description="If true, a command that fails will be skipped (and logged), otherwise the entire modification will fail.",
+        exclude_if=lambda x: not x,
     )
+
+    # TODO: add support for dependencies.
 
     _PTRN = re.compile(r"^insert-command(\?)?:\s*(.*)\.$")
 
     @staticmethod
     def parse(s: str) -> InsertCommand:
-        mtch = InsertCommand._PTRN.match(s)
-        if mtch:
-            return InsertCommand(commands=[mtch.group(2)], attempt=bool(mtch.group(1)))
-        raise ValueError(f"Failed to parse InsertCommand from '{s}'")
+        return InsertCommand.model_validate(s)
+        # mtch = InsertCommand._PTRN.match(s)
+        # if mtch:
+        #     return InsertCommand(commands=[mtch.group(2)], attempt=bool(mtch.group(1)))
+        # raise ValueError(f"Failed to parse InsertCommand from '{s}'")
 
     @override
     async def run(self, rc: RocqCursor) -> None:

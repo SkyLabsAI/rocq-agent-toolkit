@@ -22,6 +22,7 @@ from pydantic.fields import Field
 from rocq_doc_manager.locator import Locator, LocatorParser
 
 from rocq_pipeline.schema.task_output import FullProofTask, TaskKind
+from rocq_pipeline.task_modifiers.task_mod import TaskModifier
 
 
 class Project(BaseModel):
@@ -64,8 +65,7 @@ class Task(BaseModel):
         description="Additional information about the task **provided to the agent**.",
         exclude_if=lambda x: x is None,
     )
-    # TODO: it would be better to parse this eagerly.
-    modifiers: list[str] = Field(
+    modifiers: list[TaskModifier] = Field(
         default_factory=list,
         description="Modifiers that should be run before the task is attempted.",
         exclude_if=lambda x: not x,

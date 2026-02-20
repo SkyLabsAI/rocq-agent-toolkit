@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import rocq_dune_util
 from dotenv import load_dotenv
 from observability import (
     ObservabilityConfig,
@@ -35,6 +36,7 @@ from rocq_pipeline.args_util import split_args
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.task_modifiers import task_mod
+from rocq_pipeline.with_deps import rocq_deps_for
 
 logger = get_logger("task_runner")
 
@@ -100,6 +102,8 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
         default=1,
         help="The number of parallel workers.",
     )
+    # We will parse these afterwards since other command line parameters
+    # might (in the future) set up additional TaskModifiers
     parser.add_argument(
         "--task-mod",
         action="append",
@@ -217,15 +221,23 @@ async def run_task(
             progress.status(0.01, "🔃")
             try:
                 task_file_path = project.path / task_file
-                rocq_args = rocq_args_for(task_file_path, cwd=project.path)
+                rocq_args = rocq_args_for(
+                    task_file_path,
+                    cwd=project.path,
+                    plugins=[
+                        plugin
+                        for modifier in task.modifiers
+                        for plugin in rocq_deps_for(modifier)
+                    ],
+                )
             except DuneError as e:
                 logger.error(
                     f"Could not get arguments for file {task_file}, using no arguments.\n{e.stderr}"
                 )
                 rocq_args = []
 
+            # TODO: unify this with the the above
             rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())
-            mods = [task_mod.of_string(s) for s in task.modifiers]
 
             async with rc_sess(
                 task_file,
@@ -240,7 +252,7 @@ async def run_task(
                     span.set_status(Status(StatusCode.ERROR, msg))
                     raise ValueError("Locator failed to find position in file")
                 progress.status(0.1, "🔃")
-                for mod in mods:
+                for mod in task.modifiers:
                     await mod.run(rc)
                 progress.status(0.15, "💭")
                 task_result = await agent.run(TracingCursor.of_cursor(rc))
@@ -335,23 +347,12 @@ def parse_arguments(
     (tasks_name, tasks) = load_tasks(arguments)
 
     if arguments.task_mod:
-        for m in arguments.task_mod:
-            try:
-                task_mod.of_string(m)
-            except ValueError as err:
-                raise ValueError(f"Failed to interpret task modifier '{m}'") from err
+        task_mods = [task_mod.of_string(m) for m in arguments.task_mod]
         for _, task in tasks:
             if task.modifiers:
-                for m in task.modifiers:
-                    try:
-                        task_mod.of_string(m)
-                    except ValueError as err:
-                        raise ValueError(
-                            f"Failed to interpret task modifier '{m}' in task {task.get_id()}"
-                        ) from err
-                task.modifiers.extend(arguments.task_mod)
+                task.modifiers.extend(task_mods)
             else:
-                task.modifiers = arguments.task_mod
+                task.modifiers = task_mods
 
     # Get deployment environment
     env_name = getattr(arguments, "env", "none")
