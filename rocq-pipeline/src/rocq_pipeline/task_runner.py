@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import rocq_dune_util
 from dotenv import load_dotenv
 from observability import (
     ObservabilityConfig,
@@ -23,7 +22,6 @@ from rocq_dune_util import DuneError, rocq_args_for
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, util
-from rocq_pipeline import rocq_args as RocqArgs
 from rocq_pipeline.agent import (
     AgentBuilder,
     AutoAgent,
@@ -220,21 +218,13 @@ async def run_task(
             task_file = task.file
             progress.status(0.01, "🔃")
 
-            task_mod_plugins = [
-                plugin
-                for modifier in task.modifiers
-                for plugin in rocq_deps_for(modifier)
-            ]
+            task_mod_plugins = rocq_deps_for(task.modifiers)
             # We shouldn't need plugins on both `Agent` and `AgentBuilder`,
             # but it really depends how flexible the plugin system is.
             # `Agent` must be completely portable across environments, so
             # if any amount of plugin logic is environment-dependent, then
             # we need to put that logic in the `AgentBuilder`.
-            agent_plugins = [
-                plugin
-                for what in [build_agent, agent]
-                for plugin in rocq_deps_for(what)
-            ]
+            agent_plugins = rocq_deps_for([build_agent, agent])
             plugins = task_mod_plugins + agent_plugins
 
             try:
@@ -249,9 +239,6 @@ async def run_task(
                     f"Could not get arguments for file {task_file}, using no arguments.\n{e.stderr}"
                 )
                 rocq_args = []
-
-            # TODO: unify this with the plugin setup above.
-            rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())
 
             async with rc_sess(
                 task_file,
