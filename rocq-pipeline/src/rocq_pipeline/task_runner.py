@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 import traceback
 import uuid
 from argparse import ArgumentParser, Namespace
@@ -32,8 +31,8 @@ from rocq_pipeline.agent import (
 )
 from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.args import load_tasks
+from rocq_pipeline.args_util import split_args
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
-from rocq_pipeline.prover import main_prover
 from rocq_pipeline.schema import task_output
 
 logger = get_logger("task_runner")
@@ -438,20 +437,12 @@ def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bo
 
     Clients that use this function should provide an entry point to their agent like:
 
-        def agent_builder(args: list[str]=[], prompt:str|None=None) -> Agent:
-            return MyAgent()
-
-        if __name__ == '__main__':
-            agent_main(agent_builder)
+    ```
+    if __name__ == '__main__':
+        agent_main(AgentBuilder.of_agent(MyAgent))
+    ```
     """
-    if args is None:
-        args = sys.argv[1:]
-    try:
-        idx = args.index("--")
-        agent_args: list[str] = args[idx + 1 :]
-        args = args[:idx]
-    except ValueError:
-        agent_args = []
+    args, agent_args = split_args(args)
 
     arguments: Namespace = mk_parser(
         parent=None, with_agent=agent_builder is None
@@ -478,10 +469,6 @@ def run_ns(args: Namespace, extra_args: list[str] | None = None) -> bool:
 
 def auto_main() -> bool:
     return agent_main(AgentBuilder.of_agent(AutoAgent))
-
-
-def auto_prover():
-    return main_prover(AutoAgent)
 
 
 def tactic_main() -> bool:

@@ -1,9 +1,9 @@
-import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable
 from typing import Any
 
 from rocq_pipeline import find_tasks, service_cli, task_manip, task_runner, tracer
+from rocq_pipeline.args_util import split_args
 
 # TODO: cleanup these type annotations
 #
@@ -33,15 +33,7 @@ def main() -> None:
     for mk_parser, _ in _entrypoints.values():
         mk_parser(subparsers)
 
-    args = sys.argv[1:]
-    extra_args: list[str] = []
-
-    try:
-        idx = args.index("--")
-        extra_args = args[idx + 1 :]
-        args = args[:idx]
-    except ValueError:
-        pass
+    args, extra_args = split_args()
     arguments: Namespace = parser.parse_args(args)
 
     if arguments.command is None:
