@@ -10,9 +10,9 @@
   > query_text_all [0,{text:"Eval lazy in I.",indices:[]}]
   > query_text_all [0,{text:"Eval lazy in I.",indices:[0]}]
   > query_text_all [0,{text:"Eval lazy in I.",indices:[0,0]}]
-  > run_command [0,"Goal True."]
+  > insert_command [0,"Goal True.",true]
   > query_text_all [0,{text:"idtac \"hello,\"; idtac \"world!\".",indices:null}]
-  > run_command [0,"Abort."]
+  > insert_command [0,"Abort.",true]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt

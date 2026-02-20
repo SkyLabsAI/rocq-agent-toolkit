@@ -69,7 +69,7 @@ _methods = [
 @pytest.mark.asyncio
 async def test_insert_command(verbose: bool, method: str) -> None:
     async def call(rc: RocqCursor):
-        return await getattr(rc, method)("About nat.")
+        return await getattr(rc, method)("About nat.", ghost=False)
 
     await same(call, verbose)
 

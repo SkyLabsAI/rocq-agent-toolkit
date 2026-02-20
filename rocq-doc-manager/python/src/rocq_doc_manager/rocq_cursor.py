@@ -112,9 +112,9 @@ class RDMRocqCursor(RocqCursor):
 
     @ensure_endswith_period(argnames="text")
     async def _insert_command(
-        self, text: str
+        self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return await self._rdm.insert_command(self._cursor, text)
+        return await self._rdm.insert_command(self._cursor, text, ghost=ghost)
 
     @override
     async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
@@ -156,11 +156,6 @@ class RDMRocqCursor(RocqCursor):
     @override
     async def revert_before(self, erase: bool, index: int) -> None:
         return await self._rdm.revert_before(self._cursor, erase, index)
-
-    @override
-    @ensure_endswith_period(argnames="text")
-    async def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
-        return await self._rdm.run_command(self._cursor, text)
 
     @override
     async def run_step(

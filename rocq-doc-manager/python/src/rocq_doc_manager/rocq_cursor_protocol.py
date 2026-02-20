@@ -51,7 +51,7 @@ class RocqCursorProtocolAsync(Protocol):
     async def insert_blanks(self, text: str) -> None: ...
 
     async def _insert_command(
-        self, text: str
+        self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
 
     @ensure_endswith_period(argnames="text")
@@ -108,9 +108,11 @@ class RocqCursorProtocolAsync(Protocol):
         self, erase: bool, index: int
     ) -> None | rdm_api.Err[None]: ...
 
+    @ensure_endswith_period(argnames="text")
     async def run_command(
         self, text: str
-    ) -> rdm_api.CommandData | rdm_api.Err[None]: ...
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        return await self._insert_command(text, ghost=True)
 
     async def run_step(
         self,
@@ -440,7 +442,7 @@ class RocqCursorProtocolSync(Protocol):
     def insert_blanks_sync(self, text: str) -> None: ...
 
     def _insert_command_sync(
-        self, text: str
+        self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
 
     @ensure_endswith_period(argnames="text")
@@ -497,9 +499,11 @@ class RocqCursorProtocolSync(Protocol):
         self, erase: bool, index: int
     ) -> None | rdm_api.Err[None]: ...
 
+    @ensure_endswith_period(argnames="text")
     def run_command_sync(
         self, text: str
-    ) -> rdm_api.CommandData | rdm_api.Err[None]: ...
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        return self._insert_command_sync(text, ghost=True)
 
     def run_step_sync(
         self,
