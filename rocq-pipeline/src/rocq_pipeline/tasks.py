@@ -64,6 +64,11 @@ class Task(BaseModel):
         description="Additional information about the task **provided to the agent**.",
         exclude_if=lambda x: x is None,
     )
+    modifiers: list[str] = Field(
+        default_factory=list,
+        description="Modifiers that should be run before the task is attempted.",
+        exclude_if=lambda x: not x,
+    )
     meta: dict[str, Any] | None = Field(
         default=None,
         description="Meta data about the task as a JSON dictionary, e.g. 'ground truth' proof script.",

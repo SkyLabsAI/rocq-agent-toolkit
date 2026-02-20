@@ -34,6 +34,7 @@ from rocq_pipeline.args import load_tasks
 from rocq_pipeline.args_util import split_args
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.schema import task_output
+from rocq_pipeline.task_modifiers import task_mod
 
 logger = get_logger("task_runner")
 
@@ -218,6 +219,8 @@ async def run_task(
                 rocq_args = []
 
             rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())
+            mods = [task_mod.of_string(s) for s in task.modifiers]
+
             async with rc_sess(
                 task_file,
                 rocq_args=rocq_args,
@@ -230,7 +233,10 @@ async def run_task(
                     progress.log(msg)
                     span.set_status(Status(StatusCode.ERROR, msg))
                     raise ValueError("Locator failed to find position in file")
-                progress.status(0.1, "💭")
+                progress.status(0.1, "🔃")
+                for mod in mods:
+                    await mod.run(rc)
+                progress.status(0.15, "💭")
                 task_result = await agent.run(TracingCursor.of_cursor(rc))
         except Exception as e:
             progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
