@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-remote-proof-agent = "remote_agent_client.cli:main"
+rocq-remote-agent = "rocq_remote_agent.cli:main"
 
 [tool.uv.sources]
 rocq-doc-manager = { workspace = true }
