@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import re
-from typing import Protocol, override
+from typing import Any, Protocol, override, runtime_checkable
 
 from observability import get_logger
 from opentelemetry.instrumentation.grpc.filters import Callable
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 from pydantic.fields import Field
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager.rocq_doc_manager import rdm_api
@@ -13,6 +13,7 @@ from rocq_doc_manager.rocq_doc_manager import rdm_api
 logger = get_logger("task-manipulator")
 
 
+@runtime_checkable
 class TaskModifier(Protocol):
     """A TaskModifier allow modifying a task (or its environment) before it is
     attempted. Good examples of this might be to remove hints or perform perturbations
@@ -23,25 +24,29 @@ class TaskModifier(Protocol):
         ...
 
 
-_modifiers: list[Callable[[str], TaskModifier]] = []
+_json_modifiers: list[Callable[[Any], TaskModifier]] = []
 
 
-def register_modifier(parser: Callable[[str], TaskModifier]) -> None:
-    _modifiers.append(parser)
+def register_json_modifier(parser: Callable[[Any], TaskModifier]) -> None:
+    _json_modifiers.append(parser)
 
 
-def of_string(s: str) -> TaskModifier:
+def of_json(json: Any) -> TaskModifier:
+    """Parse a `TaskModifier` from a JSON object."""
     global _modifiers
-    for p in _modifiers:
+    for p in _json_modifiers:
         try:
-            return p(s)
+            return p(json)
         except ValueError:
             pass
-    raise ValueError(f"Failed to parse TaskModifier from '{s}'")
+    raise ValueError(f"Failed to parse TaskModifier from '{json}'")
 
 
-class InsertCommand(TaskModifier, BaseModel):
-    """Insert the given commands before the task runs."""
+class InsertCommandModel(BaseModel):
+    """The internal model of `InsertCommand`.
+
+    Since `TaskModifier` is a `Protocol`, `InsertCommand` can not be a `BaseModel`.
+    """
 
     commands: list[str] = Field(
         description="The commands to add before the task is run."
@@ -57,24 +62,29 @@ class InsertCommand(TaskModifier, BaseModel):
         exclude_if=lambda x: not x,
     )
 
-    # TODO: add support for dependencies.
 
-    _PTRN = re.compile(r"^insert-command(\?)?:\s*(.*)\.$")
+@dataclass
+class InsertCommand(TaskModifier):
+    """Insert the given commands before the task runs."""
+
+    model: InsertCommandModel
+
+    # TODO: add support for dependencies by implementing UsingRocqDeps
 
     @staticmethod
-    def parse(s: str) -> InsertCommand:
-        return InsertCommand.model_validate(s)
-        # mtch = InsertCommand._PTRN.match(s)
-        # if mtch:
-        #     return InsertCommand(commands=[mtch.group(2)], attempt=bool(mtch.group(1)))
-        # raise ValueError(f"Failed to parse InsertCommand from '{s}'")
+    def model_validate(v: Any) -> InsertCommand:
+        return InsertCommand(model=InsertCommandModel.model_validate(v))
 
     @override
     async def run(self, rc: RocqCursor) -> None:
-        for cmd in self.commands:
-            result = await rc.insert_command(cmd)
+        how = rc.run_command if self.model.ghost else rc.insert_command
+        for cmd in self.model.commands:
+            result = await how(cmd)
             if isinstance(result, rdm_api.Err):
-                if self.attempt:
+                if self.model.attempt:
                     logger.info(f"Failed to insert command: '{cmd}'")
                 else:
                     raise Exception(f"Failed ot insert command: '{cmd}'")
+
+
+register_json_modifier(InsertCommand.model_validate)

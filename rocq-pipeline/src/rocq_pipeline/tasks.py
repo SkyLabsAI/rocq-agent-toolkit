@@ -22,6 +22,7 @@ from pydantic.fields import Field
 from rocq_doc_manager.locator import Locator, LocatorParser
 
 from rocq_pipeline.schema.task_output import FullProofTask, TaskKind
+from rocq_pipeline.task_modifiers import task_mod
 from rocq_pipeline.task_modifiers.task_mod import TaskModifier
 
 
@@ -109,6 +110,14 @@ class Task(BaseModel):
         if isinstance(value, set):
             return value
         return set(value)
+
+    @field_validator("modifiers", mode="before")
+    @classmethod
+    def parse_modifiers(cls, v: Any) -> list[TaskModifier]:
+        if not isinstance(v, list):
+            return v
+
+        return [task_mod.of_json(elem) for elem in v]
 
     @field_serializer("file")
     def serialize_path(self, path: Path):

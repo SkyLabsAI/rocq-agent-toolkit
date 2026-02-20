@@ -348,7 +348,7 @@ def parse_arguments(
     (tasks_name, tasks) = load_tasks(arguments)
 
     if arguments.task_mod:
-        task_mods = [task_mod.of_string(m) for m in arguments.task_mod]
+        task_mods = [task_mod.of_json(m) for m in arguments.task_mod]
         for _, task in tasks:
             if task.modifiers:
                 task.modifiers.extend(task_mods)
