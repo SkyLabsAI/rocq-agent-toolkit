@@ -262,6 +262,7 @@ API Methods
 - Arguments (in order, or named):
   - `cursor`: the cursor to perform the operation on (as an integer).
   - `text`: text of the command to insert (as a string).
+  - `ghost`: whether this is a ghost command (as a boolean).
 - Response payload: an instance of the `CommandData` object.
 - Error payload: optional source code location for the error (as an instance of the `CommandError` object).
 - Failure mode: recoverable failure.
@@ -347,16 +348,6 @@ API Methods
   - `index`: index of the item before which the cursor should be revered (one-past-the-end index allowed) (as an integer).
 - Response payload: a `null` value.
 - Failure mode: never fails.
-
-### `run_command`
-
-- Description: process a command at the cursor without inserting it in the document.
-- Arguments (in order, or named):
-  - `cursor`: the cursor to perform the operation on (as an integer).
-  - `text`: text of the command to insert (as a string).
-- Response payload: an instance of the `CommandData` object.
-- Error payload: a `null` value.
-- Failure mode: recoverable failure.
 
 ### `run_step`
 

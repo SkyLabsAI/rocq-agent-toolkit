@@ -86,9 +86,9 @@ class Test_RDM_macros(RDM_Tests):
 
             assert not isinstance(await transient_rc.run_command("auto."), rdm_api.Err)
 
-            assert await transient_rc.run_command("idtac.") == rdm_api.Err(
-                message="No such goal.", data=None
-            )
+            res = await transient_rc.run_command("idtac.")
+            assert isinstance(res, rdm_api.Err)
+            assert res.message == "No such goal."
 
             current_goal_reply = await transient_rc.current_goal()
             assert not isinstance(current_goal_reply, rdm_api.Err)

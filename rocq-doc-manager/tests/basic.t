@@ -24,7 +24,7 @@
   > run_step [0]
   > run_step [0]
   > insert_blanks [0,"\n(* inserted comment *)\n"]
-  > insert_command [0,"Definition inserted := nat."]
+  > insert_command [0,"Definition inserted := nat.",false]
   > insert_blanks [0,"\n"]
   > run_step [0]
   > run_step [0]

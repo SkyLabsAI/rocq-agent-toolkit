@@ -327,25 +327,19 @@ let steps_error =
   API.declare_object api ~name:"StepsError"
     ~descr:"data returned by `run_steps`" ~encode ~decode fields
 
-let text_args =
-  A.add ~name:"text" ~descr:"text of the command to insert" S.string A.nil
-
 let _ =
+  let args =
+    A.add ~name:"text" ~descr:"text of the command to insert" S.string @@
+    A.add ~name:"ghost" ~descr:"whether this is a ghost command" S.bool @@
+    A.nil
+  in
   declare_full ~name:"insert_command"
-    ~descr:"insert and process a command at the cursor"
-    ~args:text_args ~ret:S.(obj command_data)
+    ~descr:"insert and process a command at the cursor" ~args
+    ~ret:S.(obj command_data)
     ~err:S.(obj command_error)
     ~err_descr:"optional source code location for the error"
-    @@ fun d (text, ()) ->
-  Document.insert_command d ~text
-
-let _ =
-  declare_full ~name:"run_command"
-    ~descr:"process a command at the cursor without inserting it in the \
-      document" ~args:text_args ~ret:S.(obj command_data) ~err:S.null
-    @@ fun d (text, ()) ->
-  let res = Document.insert_command ~ghost:true d ~text in
-  Result.map_error (fun (s, _) -> (s, ())) res
+    @@ fun d (text, (ghost, ())) ->
+  Document.insert_command d ~ghost ~text
 
 let _ =
   declare ~name:"cursor_index"

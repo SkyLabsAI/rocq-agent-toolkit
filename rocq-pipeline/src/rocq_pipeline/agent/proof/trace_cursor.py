@@ -115,17 +115,14 @@ class TracingCursor(RocqCursor):
 
     @override
     @_trace_log(
-        method="insert_command", after=True, inputs=lambda _, args: args["text"]
+        method="insert_command",
+        after=True,
+        inputs=lambda _, args: (args["text"], args["ghost"]),
     )
     async def _insert_command(
-        self, text: str
+        self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return await self._cursor._insert_command(text)
-
-    @override
-    @_trace_log(after=True, inputs=lambda _, args: args["text"])
-    async def run_command(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
-        return await self._cursor.run_command(text)
+        return await self._cursor._insert_command(text, ghost=ghost)
 
     @staticmethod
     async def _next_command(me: TracingCursor, args: dict[str, Any]) -> str | None:

@@ -18,7 +18,7 @@
   > insert_blanks [0,"\n(* inserted comment *)\n"]
   > query_text [0,"Check x1.",0]
   > query_text [1,"Check x1.",0]
-  > insert_command [0,"Definition inserted := nat."]
+  > insert_command [0,"Definition inserted := nat.",false]
   > query_text [0,"Check x1.",0]
   > query_text [1,"Check x1.",0]
   > insert_blanks [0,"\n"]

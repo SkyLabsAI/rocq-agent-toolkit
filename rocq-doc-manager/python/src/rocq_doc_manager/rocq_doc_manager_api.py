@@ -436,11 +436,12 @@ class RocqDocManagerAPI:
         self,
         cursor: int,
         text: str,
+        ghost: bool,
     ) -> CommandData | Err[CommandError]:
         """Insert and process a command at the cursor."""
         result = self._rpc.raw_request(
             "insert_command",
-            [cursor, text],
+            [cursor, text, ghost],
         )
         if isinstance(result, Err):
             data = CommandError.model_validate(result.data)
@@ -567,21 +568,6 @@ class RocqDocManagerAPI:
         )
         assert not isinstance(result, Err)
         return None
-
-    def run_command(
-        self,
-        cursor: int,
-        text: str,
-    ) -> CommandData | Err[None]:
-        """Process a command at the cursor without inserting it in the document."""
-        result = self._rpc.raw_request(
-            "run_command",
-            [cursor, text],
-        )
-        if isinstance(result, Err):
-            data = None
-            return Err(result.message, data)
-        return CommandData.model_validate(result.result)
 
     def run_step(
         self,
@@ -819,11 +805,12 @@ class RocqDocManagerAPIAsync:
         self,
         cursor: int,
         text: str,
+        ghost: bool,
     ) -> CommandData | Err[CommandError]:
         """Insert and process a command at the cursor."""
         result = await self._rpc.raw_request(
             "insert_command",
-            [cursor, text],
+            [cursor, text, ghost],
         )
         if isinstance(result, Err):
             data = CommandError.model_validate(result.data)
@@ -950,21 +937,6 @@ class RocqDocManagerAPIAsync:
         )
         assert not isinstance(result, Err)
         return None
-
-    async def run_command(
-        self,
-        cursor: int,
-        text: str,
-    ) -> CommandData | Err[None]:
-        """Process a command at the cursor without inserting it in the document."""
-        result = await self._rpc.raw_request(
-            "run_command",
-            [cursor, text],
-        )
-        if isinstance(result, Err):
-            data = None
-            return Err(result.message, data)
-        return CommandData.model_validate(result.result)
 
     async def run_step(
         self,
