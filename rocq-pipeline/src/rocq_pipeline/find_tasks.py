@@ -1,4 +1,3 @@
-import itertools
 import logging
 import re
 import sys
@@ -318,16 +317,24 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
     for file in project_files:
         logger.debug(f"Will ingest file {file}")
 
-    all_tasks: list[list[Task]] = parallel_runner(
+    results: list[list[Task] | BaseException] = parallel_runner(
         run_it, [(str(x), x) for x in project_files], None, jobs=jobs, progress=False
     )
-    flat_tasks = list(itertools.chain.from_iterable(all_tasks))
-    logger.info(f"Total number of tasks: {len(flat_tasks)}")
+    exceptions: list[BaseException] = []
+    tasks: list[Task] = []
+    for result in results:
+        if isinstance(result, BaseException):
+            exceptions.append(result)
+        else:
+            tasks.extend(result)
+    if exceptions:
+        logger.error(f"Exceptions:\n{'\n'.join([str(e) for e in exceptions])}")
+    logger.info(f"Total number of tasks: {len(tasks)}")
 
     unique_tasks: list[Task] = []
     seen_tasks: set[tuple[str, str]] = set()
 
-    for d in flat_tasks:
+    for d in tasks:
         t = (str(d.file), str(d.locator))
         if t not in seen_tasks:
             seen_tasks.add(t)
