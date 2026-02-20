@@ -110,7 +110,6 @@ class RocqCursorProtocolAsync(Protocol):
         self, erase: bool, index: int
     ) -> None | rdm_api.Err[None]: ...
 
-    @ensure_endswith_period(argnames="text")
     async def run_command(
         self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
@@ -500,7 +499,6 @@ class RocqCursorProtocolSync(Protocol):
         self, erase: bool, index: int
     ) -> None | rdm_api.Err[None]: ...
 
-    @ensure_endswith_period(argnames="text")
     def run_command_sync(
         self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
