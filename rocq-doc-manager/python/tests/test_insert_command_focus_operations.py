@@ -28,7 +28,7 @@ async def check(rc: RocqCursor, loc: str, expected: int, next: bool = False) -> 
 async def test_insert_focus_ops() -> None:
     p = Path(__file__).parent / "locator_test.v"
     async with rc_sess(str(p), load_file=True) as rc:
-        await check(rc, "Proof.", 3)
+        await check(rc, "admit", 4)
         # command_reply: rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]
         command_reply = await rc.insert_command("{")
         assert not isinstance(command_reply, rdm_api.Err)
@@ -45,7 +45,7 @@ async def test_run_focus_ops() -> None:
     p = Path(__file__).parent / "locator_test.v"
     rc: RocqCursor
     async with rc_sess(str(p), load_file=True) as rc:
-        await check(rc, "Proof.", 3)
+        await check(rc, "admit", 4)
         # command_reply: rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]
         command_reply = await rc.run_command("{")
         assert not isinstance(command_reply, rdm_api.Err)
