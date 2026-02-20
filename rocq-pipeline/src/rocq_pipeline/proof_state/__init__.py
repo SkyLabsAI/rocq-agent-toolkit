@@ -113,12 +113,13 @@ class ProofState:
         """Predicate indicating whether the focused goals are fully closed.
 
         Note: if proof=True, return False if any shelved/admitted remain."""
-        if len(self._focused_goals) != 0:
+        if len(self._focused_goals) != 0 or any(self._unfocused_goals):
             return False
 
         if proof:
+            # Note: unfocused_goals is a stack of remaining-goal counts
             return (
-                len(self._unfocused_goals) == 0
+                not any(self._unfocused_goals)
                 and self._shelved_cnt == 0
                 and self._admit_cnt == 0
             )
