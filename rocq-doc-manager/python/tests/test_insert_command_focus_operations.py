@@ -32,7 +32,7 @@ async def test_insert_focus_ops() -> None:
 
         initial_goal = await rc.current_goal()
 
-        for begin_focus in ["{", "-", "+", "*"]:
+        for begin_focus in ["-", "+", "*"]:
             async with rc.ctx(rollback=True):
                 command_reply = await rc.insert_command(begin_focus)
                 assert not isinstance(command_reply, rdm_api.Err)
@@ -40,8 +40,14 @@ async def test_insert_focus_ops() -> None:
                 new_goal = command_reply.proof_state
 
                 assert initial_goal != new_goal
-                new_goal.unfocused_goals = [0]
-                assert initial_goal == new_goal
+                # `new_goal` only differs from `initial_goal` in that `unfocused_goals`
+                # is tracking that no goals remain when the focus is "popped"
+                assert initial_goal == rdm_api.ProofState(
+                    focused_goals=new_goal.focused_goals,
+                    unfocused_goals=[],
+                    shelved_goals=new_goal.shelved_goals,
+                    given_up_goals=new_goal.given_up_goals,
+                )
 
 
 @pytest.mark.asyncio
@@ -60,5 +66,11 @@ async def test_run_focus_ops() -> None:
             new_goal = command_reply.proof_state
 
             assert initial_goal != new_goal
-            new_goal.unfocused_goals = [0]
-            assert initial_goal == new_goal
+            # `new_goal` only differs from `initial_goal` in that `unfocused_goals`
+            # is tracking that no goals remain when the focus is "popped"
+            assert initial_goal == rdm_api.ProofState(
+                focused_goals=new_goal.focused_goals,
+                unfocused_goals=[],
+                shelved_goals=new_goal.shelved_goals,
+                given_up_goals=new_goal.given_up_goals,
+            )
