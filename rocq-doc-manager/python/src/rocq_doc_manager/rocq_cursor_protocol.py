@@ -120,7 +120,7 @@ class RocqCursorProtocolAsync(Protocol):
 
     async def run_step(
         self,
-    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]: ...
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]: ...
 
     # ===== BEGIN: contextmanagers ============================================
     @asynccontextmanager

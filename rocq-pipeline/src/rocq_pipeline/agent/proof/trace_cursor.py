@@ -3,7 +3,8 @@ from __future__ import annotations
 import functools
 import hashlib
 import inspect
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
+from types import CoroutineType
 from typing import Any, override
 
 from observability import get_logger
@@ -35,7 +36,7 @@ async def _maybe_await[T](val: T | Awaitable[T]) -> T:
     return val
 
 
-def _trace_log(
+def _trace_log[**P, A, B, T](
     *,
     after: bool = False,
     method: str | None = None,
@@ -43,7 +44,7 @@ def _trace_log(
     inputs: Callable[[TracingCursor, dict[str, Any]], Any] | None = None,
     output: Callable[[Any], Any] | None = None,
     exception: Callable[[Any], Any] | None = None,
-):
+) -> Callable[[Callable[P, Coroutine[A, B, T]]], Callable[P, CoroutineType[A, B, T]]]:
     fn_input = (lambda _, args: args) if inputs is None else inputs
     fn_output = _default_fn if output is None else output
     fn_except = _default_fn if exception is None else exception
@@ -133,7 +134,7 @@ class TracingCursor(RocqCursor):
     @_trace_log(after=True, inputs=_next_command)
     async def run_step(
         self,
-    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError | None]:
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         return await self._cursor.run_step()
 
     @override

@@ -22,7 +22,6 @@ from rocq_dune_util import DuneError, rocq_args_for
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import loader, util
-from rocq_pipeline import rocq_args as RocqArgs
 from rocq_pipeline.agent import (
     AgentBuilder,
     AutoAgent,
@@ -34,6 +33,8 @@ from rocq_pipeline.args import load_tasks
 from rocq_pipeline.args_util import split_args
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.schema import task_output
+from rocq_pipeline.task_modifiers import task_mod
+from rocq_pipeline.with_deps import rocq_deps_for
 
 logger = get_logger("task_runner")
 
@@ -98,6 +99,14 @@ def mk_parser(parent: Any, with_agent: bool = True) -> Any:
         type=lambda N: max(1, int(N)),
         default=1,
         help="The number of parallel workers.",
+    )
+    # We will parse these afterwards since other command line parameters
+    # might (in the future) set up additional TaskModifiers
+    parser.add_argument(
+        "--task-mod",
+        action="append",
+        default=[],
+        help="Additional task modifiers to add to all tasks. Can be passed multiple times.",
     )
 
     # Add deployment mode flag
@@ -208,16 +217,29 @@ async def run_task(
         try:
             task_file = task.file
             progress.status(0.01, "🔃")
+
+            task_mod_plugins = rocq_deps_for(task.modifiers)
+            # We shouldn't need plugins on both `Agent` and `AgentBuilder`,
+            # but it really depends how flexible the plugin system is.
+            # `Agent` must be completely portable across environments, so
+            # if any amount of plugin logic is environment-dependent, then
+            # we need to put that logic in the `AgentBuilder`.
+            agent_plugins = rocq_deps_for([build_agent, agent])
+            plugins = task_mod_plugins + agent_plugins
+
             try:
                 task_file_path = project.path / task_file
-                rocq_args = rocq_args_for(task_file_path, cwd=project.path)
+                rocq_args = rocq_args_for(
+                    task_file_path,
+                    cwd=project.path,
+                    plugins=plugins,
+                )
             except DuneError as e:
                 logger.error(
                     f"Could not get arguments for file {task_file}, using no arguments.\n{e.stderr}"
                 )
                 rocq_args = []
 
-            rocq_args = RocqArgs.extend_args(rocq_args, build_agent.extra_rocq_args())
             async with rc_sess(
                 task_file,
                 rocq_args=rocq_args,
@@ -230,7 +252,10 @@ async def run_task(
                     progress.log(msg)
                     span.set_status(Status(StatusCode.ERROR, msg))
                     raise ValueError("Locator failed to find position in file")
-                progress.status(0.1, "💭")
+                progress.status(0.1, "🔃")
+                for mod in task.modifiers:
+                    await mod.run(rc)
+                progress.status(0.15, "💭")
                 task_result = await agent.run(TracingCursor.of_cursor(rc))
         except Exception as e:
             progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
@@ -321,6 +346,14 @@ def parse_arguments(
         agent_builder = load_agent(arguments.agent)
 
     (tasks_name, tasks) = load_tasks(arguments)
+
+    if arguments.task_mod:
+        task_mods = [task_mod.of_string(m) for m in arguments.task_mod]
+        for _, task in tasks:
+            if task.modifiers:
+                task.modifiers.extend(task_mods)
+            else:
+                task.modifiers = task_mods
 
     # Get deployment environment
     env_name = getattr(arguments, "env", "none")

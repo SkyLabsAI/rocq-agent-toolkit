@@ -22,6 +22,8 @@ from pydantic.fields import Field
 from rocq_doc_manager.locator import Locator, LocatorParser
 
 from rocq_pipeline.schema.task_output import FullProofTask, TaskKind
+from rocq_pipeline.task_modifiers import task_mod
+from rocq_pipeline.task_modifiers.task_mod import TaskModifier
 
 
 class Project(BaseModel):
@@ -57,12 +59,19 @@ class Task(BaseModel):
     )
     locator: Locator = Field(description="The location within the file.")
     tags: set[str] = Field(
-        description="The tags of the task. These are often used to convey information such as how complex a task is. These are easily searchable within the dashboard."
+        default_factory=set,
+        description="The tags of the task. These are often used to convey information such as how complex a task is. These are easily searchable within the dashboard.",
+        exclude_if=lambda x: not x,
     )
     prompt: str | None = Field(
         default=None,
         description="Additional information about the task **provided to the agent**.",
         exclude_if=lambda x: x is None,
+    )
+    modifiers: list[TaskModifier] = Field(
+        default_factory=list,
+        description="Modifiers that should be run before the task is attempted.",
+        exclude_if=lambda x: not x,
     )
     meta: dict[str, Any] | None = Field(
         default=None,
@@ -103,6 +112,14 @@ class Task(BaseModel):
         if isinstance(value, set):
             return value
         return set(value)
+
+    @field_validator("modifiers", mode="before")
+    @classmethod
+    def parse_modifiers(cls, v: Any) -> list[TaskModifier]:
+        if not isinstance(v, list):
+            return v
+
+        return [task_mod.of_json(elem) for elem in v]
 
     @field_serializer("file")
     def serialize_path(self, path: Path):
@@ -233,7 +250,7 @@ class TaskFile(BaseModel):
                     "a dict with 'bundles' key, or a dict with 'project' and 'tasks' (old format)."
                 )
         else:
-            raise ValueError(f"Expected list or dict, got {type(raw_data).__name__}")
+            raise ValueError(f"Expected dict, got {type(raw_data).__name__}")
 
         task_file = TaskFile.model_validate({"project_bundles": bundles_data})
         file_dir = Path(".") if file == "-" else file.parent
