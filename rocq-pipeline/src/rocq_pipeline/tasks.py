@@ -235,7 +235,7 @@ class TaskFile(BaseModel):
                     "a dict with 'bundles' key, or a dict with 'project' and 'tasks' (old format)."
                 )
         else:
-            raise ValueError(f"Expected list or dict, got {type(raw_data).__name__}")
+            raise ValueError(f"Expected dict, got {type(raw_data).__name__}")
 
         task_file = TaskFile.model_validate({"project_bundles": bundles_data})
         file_dir = Path(".") if file == "-" else file.parent
