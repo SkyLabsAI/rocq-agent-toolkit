@@ -57,7 +57,9 @@ class Task(BaseModel):
     )
     locator: Locator = Field(description="The location within the file.")
     tags: set[str] = Field(
-        description="The tags of the task. These are often used to convey information such as how complex a task is. These are easily searchable within the dashboard."
+        default_factory=set,
+        description="The tags of the task. These are often used to convey information such as how complex a task is. These are easily searchable within the dashboard.",
+        exclude_if=lambda x: not x,
     )
     prompt: str | None = Field(
         default=None,
