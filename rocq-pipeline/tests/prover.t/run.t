@@ -1,3 +1,10 @@
+Basic test for `auto-prover`.
+Here, unlike `run-release.t.disabled`, we assume that both Python and Rocq
+dependencies are only available in the workspace.
+The tests are otherwise the same.
+
+Set up environment to use dune build outputs:
+
   $ export DUNE_SOURCEROOT="$TESTDIR/../../../../.."
   $ [ -d "$DUNE_SOURCEROOT/_build" ] || echo "Failed to find Dune path"
   $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
@@ -5,7 +12,11 @@
   $ export OCAMLPATH="$DUNE_SOURCEROOT/_build/install/default/lib"
   $ export DUNE_CACHE=disabled
 
+Copy dune project from source tree to separate folder:
+
   $ cp $TESTDIR/dune-project $TESTDIR/dune $TESTDIR/*.v .
+
+Run `auto-prover` via `uv`;
 
   $ uv run auto-prover foo.v
   Running the proving agent.
@@ -39,6 +50,11 @@
     ============================
     forty_two = 57
   Agent failed.
+
+
+
+
+
 
   $ cat foo.v
   Require Import skylabs.prover.test.bar.
@@ -82,3 +98,9 @@
   Lemma forty_two_is_57 : forty_two = 57.
   Proof.
   Admitted.
+
+
+
+
+
+
