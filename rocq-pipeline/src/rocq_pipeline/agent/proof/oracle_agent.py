@@ -3,82 +3,35 @@ from typing import override
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
-from rocq_pipeline.agent.base import AgentBuilder
-from rocq_pipeline.agent.proof.strategy_agent import StrategyAgent
-from rocq_pipeline.search import rollout
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import ApproximatingRollout, Rollout
-from rocq_pipeline.search.strategy import Strategy
+from rocq_pipeline.agent.base import AgentBuilder, ProofAgent, TaskResult
 from rocq_pipeline.task_runner import agent_main
 
 
-class StepAction(Action[RocqCursor]):
-    """
-    This action uses `run_step` to evaluate the next command in the file.
-    """
-
-    def __init__(self, tac: str, ignore: int) -> None:
-        super().__init__()
-        self._key = tac
-        self._ignore = ignore
-
-    @override
-    def key(self) -> str:
-        return self._key
-
-    @override
-    async def interact(self, state: RocqCursor) -> RocqCursor:
-        for _ in range(0, self._ignore):
-            if isinstance(await state.run_step(), rdm_api.Err):
-                raise Action.Failed()
-        next = await state.doc_suffix()
-        assert next
-        assert next[0].text == self._key
-        assert next[0].kind == "command"
-        if isinstance(await state.run_step(), rdm_api.Err):
-            raise Action.Failed()
-        return state
-
-
-class OracleStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
-    """
-    This strategy 'cheats' by looking at the document suffix to propose the next tactic.
-    When the `doc_suffix` is hidden, this strategy will no longer work.
-    """
-
-    @override
-    async def rollout(
-        self,
-        state: RocqCursor,
-        max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action[RocqCursor]]:
-        for count, cmd in enumerate(await state.doc_suffix()):
-            if cmd.kind != "command":
-                continue
-            if cmd.text.startswith("Proof"):
-                continue
-            return ApproximatingRollout[Action[RocqCursor]](
-                iter(
-                    [
-                        Rollout.Approx[Action[RocqCursor]](
-                            logprob=0.0, result=StepAction(tac, count)
-                        )
-                        for tac in [cmd.text]
-                    ]
-                )
-            )
-        return rollout.empty_Rollout()
-
-
-class OracleAgent(StrategyAgent):
+class OracleAgent(ProofAgent):
     """
     This agent 'cheats' by looking at the rest of the document to get
     a proof.
     """
 
     def __init__(self) -> None:
-        super().__init__(OracleStrategy())
+        super().__init__(unset_ssr_idents=False, reset_default_goal_selector=False)
+
+    @override
+    async def run(self, rc: RocqCursor) -> TaskResult:
+        while await self.current_proof_state(rc):
+            result = await rc.run_step()
+            if isinstance(result, rdm_api.Err):
+                suffix = await rc.doc_suffix()
+                try:
+                    last = suffix.pop()
+                    return await self.give_up(
+                        rc, f"Failed to run command '{last.text}'"
+                    )
+                except IndexError:
+                    return await self.give_up(rc, "No commands left in the file")
+            # Otherwise we inserted blanks or a command that succeeded.
+
+        return await self.finished(rc)
 
 
 def main() -> bool:
