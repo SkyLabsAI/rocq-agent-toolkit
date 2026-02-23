@@ -110,21 +110,25 @@ class ProofState:
         }
 
     def closed(self, proof: bool = False) -> bool:
-        """Predicate indicating whether the focused goals are fully closed.
+        """Predicate indicating whether the focused goal(s) -- or entire proof -- are closed.
 
-        Note: if proof=True, return False if any shelved/admitted remain."""
-        if len(self._focused_goals) != 0 or any(self._unfocused_goals):
-            return False
-
-        if proof:
+        Arguments:
+            proof: bool; iff True, check whether the entire proof is closed (i.e. ready for `Qed`)
+        Returns: bool
+            - proof=False: True iff focused goals are closed; shelved/admitted/unfocused goals may remain
+            - proof=True: True iff focused goals /and/ shelved/admitted/unfocused goals are closed
+        """
+        focused_closed = (
+            len(self._focused_goals) == 0
+        )
+        unfocused_closed = (
             # Note: unfocused_goals is a stack of remaining-goal counts
-            return (
-                not any(self._unfocused_goals)
-                and self._shelved_cnt == 0
-                and self._admit_cnt == 0
-            )
-        else:
-            return True
+            not any(self._unfocused_goals)
+            and self._shelved_cnt == 0
+            and self._admit_cnt == 0
+        )
+
+        return focused_closed and (not proof or unfocused_closed)
 
     @property
     def goal_ty_upperbound(self) -> type[RocqGoal]:
