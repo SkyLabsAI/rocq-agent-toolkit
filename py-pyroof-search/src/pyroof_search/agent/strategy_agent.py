@@ -8,13 +8,13 @@ from observability import get_logger, trace_context
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-
 from rocq_pipeline.agent.base import ProofAgent
 from rocq_pipeline.agent.base.dataclasses import TaskResult
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema.task_output import FailureReason
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.strategy import Strategy
+
+from ..action import Action
+from ..strategy import Strategy
 
 logger = get_logger("rocq_agent")
 
@@ -142,39 +142,39 @@ class StrategyAgent(ProofAgent):
     @override
     async def finished(
         self,
-        rdm: RocqCursor,
+        rc: RocqCursor,
         message: str = "",
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        await self._extend_side_effects(rdm, side_effects)
+        await self._extend_side_effects(rc, side_effects)
         result = await super().finished(
-            rdm,
+            rc,
             message=message,
             side_effects=side_effects,
         )
-        self.conclude(rdm)
+        self.conclude(rc)
         return result
 
     @override
     async def give_up(
         self,
-        rdm: RocqCursor,
+        rc: RocqCursor,
         message: str = "",
         reason: FailureReason | rdm_api.Err[Any] | BaseException | None = None,
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         if side_effects is None:
             side_effects = {}
-        await self._extend_side_effects(rdm, side_effects)
+        await self._extend_side_effects(rc, side_effects)
         result = await super().give_up(
-            rdm,
+            rc,
             message=message,
             reason=reason,
             side_effects=side_effects,
         )
-        self.conclude(rdm)
+        self.conclude(rc)
         return result
 
     # NOTE:

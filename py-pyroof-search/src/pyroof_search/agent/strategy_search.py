@@ -5,13 +5,13 @@ from typing import Annotated, override
 
 from provenance_toolkit import Provenance
 from rocq_doc_manager import RocqCursor
-
 from rocq_pipeline.agent.base import TaskResult
 from rocq_pipeline.agent.base.classes import ProofAgent
 from rocq_pipeline.proof_state import ProofState
-from rocq_pipeline.search import Action
-from rocq_pipeline.search.rollout import Rollout
-from rocq_pipeline.search.strategy import Strategy
+
+from ..action import Action
+from ..rollout import Rollout
+from ..strategy import Strategy
 
 
 class SearchAgent(ProofAgent):

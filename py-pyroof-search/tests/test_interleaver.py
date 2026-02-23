@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rocq_pipeline.search.search.iter import Interleaver, RolloutInterleaver
+from pyroof_search.search.iter import Interleaver, RolloutInterleaver
 
 
 def is_empty[K, T](i: Interleaver[K, T]) -> None:

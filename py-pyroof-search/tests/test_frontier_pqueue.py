@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from rocq_pipeline.search.search.frontier import PQueue
+from pyroof_search.search.frontier import PQueue
 
 
 def _numeric_compare(a: int, b: int) -> int:

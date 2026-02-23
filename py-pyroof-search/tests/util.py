@@ -5,16 +5,16 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TypeVar, override
 
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import IteratorRollout, Rollout
-from rocq_pipeline.search.search.frontier import BFS, BasicNode, Frontier
-from rocq_pipeline.search.search.search import (
+from pyroof_search.action import Action
+from pyroof_search.rollout import IteratorRollout, Rollout
+from pyroof_search.search.frontier import BFS, BasicNode, Frontier
+from pyroof_search.search.search import (
     Node,
     RepetitionPolicy,
     Search,
     StateManipulator,
 )
-from rocq_pipeline.search.strategy import Strategy
+from pyroof_search.strategy import Strategy
 
 S = TypeVar("S")
 FNode = TypeVar("FNode")

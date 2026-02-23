@@ -41,5 +41,5 @@ class MockRocqCursor:
 @pytest.fixture(autouse=True)
 def patch_rocq_cursor():
     """Patch RocqCursor in the actions module for all tests in this directory."""
-    with patch("rocq_pipeline.search.rocq.actions.RocqCursor", MockRocqCursor):
+    with patch("pyroof_search.rocq.actions.RocqCursor", MockRocqCursor):
         yield

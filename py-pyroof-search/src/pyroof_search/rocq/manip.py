@@ -4,7 +4,7 @@ from typing import override
 
 from rocq_doc_manager import RocqCursor
 
-from ...search.search.search import StateManipulator
+from ..search.search import StateManipulator
 
 
 class RocqManipulator(StateManipulator[RocqCursor]):

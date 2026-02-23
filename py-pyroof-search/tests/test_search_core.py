@@ -6,10 +6,10 @@ from collections.abc import Callable
 from typing import override
 
 import pytest
-from rocq_pipeline.search import Action
-from rocq_pipeline.search.search.frontier import BasicNode, Frontier
-from rocq_pipeline.search.search.search import Node, Search
-from rocq_pipeline.search.strategy import FailStrategy, Strategy
+from pyroof_search import Action
+from pyroof_search.search.frontier import BasicNode, Frontier
+from pyroof_search.search.search import Node, Search
+from pyroof_search.strategy import FailStrategy, Strategy
 
 from .util import run_search
 

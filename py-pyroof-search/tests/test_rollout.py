@@ -2,7 +2,7 @@ from collections.abc import Generator
 from math import log
 
 import pytest
-from rocq_pipeline.search.rollout import (
+from pyroof_search.rollout import (
     ApproximatingRollout,
     InterleaveRollout,
     Rollout,

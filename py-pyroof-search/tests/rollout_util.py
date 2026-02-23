@@ -3,7 +3,7 @@
 #
 
 
-from rocq_pipeline.search.rollout import Rollout
+from pyroof_search.rollout import Rollout
 
 
 async def is_empty[T](r: Rollout[T]) -> None:

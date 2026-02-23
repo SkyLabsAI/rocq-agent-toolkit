@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from typing import override
 
 import pytest
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import IteratorRollout, Rollout
-from rocq_pipeline.search.search.beam import BeamSearch
-from rocq_pipeline.search.search.guidance import Guidance
-from rocq_pipeline.search.strategy import Strategy
+from pyroof_search.action import Action
+from pyroof_search.rollout import IteratorRollout, Rollout
+from pyroof_search.search.beam import BeamSearch
+from pyroof_search.search.guidance import Guidance
+from pyroof_search.strategy import Strategy
 
 
 @dataclass(frozen=True)

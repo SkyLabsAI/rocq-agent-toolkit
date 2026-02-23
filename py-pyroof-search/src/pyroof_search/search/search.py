@@ -5,10 +5,9 @@ from dataclasses import dataclass
 
 from observability import trace_context
 
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import Rollout
-from rocq_pipeline.search.strategy import Strategy
-
+from ..action import Action
+from ..rollout import Rollout
+from ..strategy import Strategy
 from .frontier import BasicNode, Frontier
 
 
@@ -114,7 +113,7 @@ class Node[CNode]:
 
 class StateManipulator[T]:
     """
-    State manipulators, these can be used to make states with
+    State manipulators can be used to make states with
     imperative semantics appear more functional.
     """
 

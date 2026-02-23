@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 
+import pyroof_search.search.frontier as frontier_module
 import pytest
-import rocq_pipeline.search.search.frontier as frontier_module
-from rocq_pipeline.search.search.frontier import BFS, Sampled
+from pyroof_search.search.frontier import BFS, Sampled
 
 
 def _env_int(name: str, default: int) -> int:

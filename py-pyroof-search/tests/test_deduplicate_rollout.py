@@ -1,5 +1,5 @@
 import pytest
-from rocq_pipeline.search.rollout import (
+from pyroof_search.rollout import (
     DeduplicateRollout,
     IteratorRollout,
     Rollout,

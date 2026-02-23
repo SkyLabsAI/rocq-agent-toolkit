@@ -11,8 +11,8 @@ These tests demonstrate the full flow of:
 from typing import cast
 
 import pytest
+from pyroof_search.rocq.actions import RocqRetryCommandAction, RocqTacticAction
 from rocq_doc_manager import RocqCursor
-from rocq_pipeline.search.rocq.actions import RocqRetryCommandAction, RocqTacticAction
 
 from .conftest import MockRocqCursor
 

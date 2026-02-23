@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.search.search import (
+from pyroof_search.action import Action
+from pyroof_search.search.search import (
     RepetitionPolicy,
     _has_action_repetition,
 )

@@ -5,9 +5,9 @@ from typing import cast
 from unittest.mock import AsyncMock
 
 import pytest
+from pyroof_search.action import Action
+from pyroof_search.rocq.actions import RocqRetryCommandAction, RocqTacticAction
 from rocq_doc_manager import RocqCursor
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rocq.actions import RocqRetryCommandAction, RocqTacticAction
 
 from .conftest import MockRocqCursor
 

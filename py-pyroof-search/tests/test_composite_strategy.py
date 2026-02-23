@@ -2,9 +2,9 @@ from typing import override
 
 # Import the function we want to test
 import pytest
-from rocq_pipeline.search.action import Action
-from rocq_pipeline.search.rollout import Rollout
-from rocq_pipeline.search.strategy import (
+from pyroof_search.action import Action
+from pyroof_search.rollout import Rollout
+from pyroof_search.strategy import (
     CompositeStrategy,
     FailStrategy,
     IteratorStrategy,

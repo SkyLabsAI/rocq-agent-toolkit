@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from rocq_pipeline.search.search.frontier import BFS, Deduplicate, DeduplicateWithKey
+from pyroof_search.search.frontier import BFS, Deduplicate, DeduplicateWithKey
 
 
 @pytest.mark.asyncio

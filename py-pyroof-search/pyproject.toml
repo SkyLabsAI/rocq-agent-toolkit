@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyroof-search"
+version = "0.1.0"
+description = "Library for proof search."
+authors = [
+    { name = "Gregory Malecha", email = "gregory@skylabs-ai.com" },
+    { name = "Jasper Haag", email = "jasper@skylabs-ai.com" },
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "rocq-doc-manager",
+    "observability",
+    "provenance-toolkit",
+    "rocq-pipeline", # this is needed for `Agent`.
+]
+
+[project.urls]
+Repository = "https://github.com/SkylabsAI/rocq-agent-toolkit"
+Issues = "https://github.com/SkylabsAI/rocq-agent-toolkit/issues"
+Changelog = "https://github.com/SkylabsAI/rocq-agent-toolkit/tree/main/changes"
+
+[project.scripts]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "pytest-asyncio>=1.3.0",
+    "black>=23.7.0,<24",
+    "isort>=5.12.0,<6",
+    "flake8>=6.0.0,<7",
+    "mypy>=1.18.2,<2",
+    "ruff>=0.14.4",
+    "taskipy>=1.14.1",
+    "cram>=0.7",
+]
+
+[tool.uv]
+
+[tool.uv.sources]
+observability = { workspace = true }
+provenance-toolkit = { workspace = true }
+rocq-doc-manager = { workspace = true }
+rocq-pipeline = { workspace = true }
+
+[tool.hatch.build.targets.sdist]
+include = ["src/pyroof_search"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/pyroof_search"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/pyroof_search" = "pyroof_search"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"pyroof_search" = ["py.typed"]
+
+[tool.taskipy.tasks]
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy ."
+test_ocaml_ci = "pytest"
+# cram_ocaml_ci = "cram tests/*.t"
+# TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
+precommit = "task lint_ci --fix; task reformat; task typecheck_ci"
+
+
