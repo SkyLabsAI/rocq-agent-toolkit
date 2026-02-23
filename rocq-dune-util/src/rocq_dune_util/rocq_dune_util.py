@@ -133,12 +133,17 @@ def _iter_path_args(
     args: list[str],
 ) -> Iterator[tuple[Literal["I"], str] | tuple[Literal["Q"], str, str]]:
     nb_args = len(args)
-    for i in range(nb_args):
+    # Follow https://stackoverflow.com/a/22296065/53974
+    args_iter = iter(range(nb_args))
+    for i in args_iter:
         opt = args[i]
         if opt == "-I" and i < nb_args - 1:
             yield ("I", args[i + 1])
+            next(args_iter)
         if (opt == "-Q" or opt == "-R") and i < nb_args - 2:
             yield ("Q", args[i + 1], args[i + 2])
+            next(args_iter)
+            next(args_iter)
 
 
 def _extra_args(args: list[str], extra_args: list[list[str]]) -> list[str]:
