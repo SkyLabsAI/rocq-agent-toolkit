@@ -12,12 +12,12 @@ from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from ..action import Action
-from ..rollout import ApproximatingRollout, EmptyRollout, Rollout, singleton
-from ..strategy import Strategy
+from ..rollout import ApproximatingProposals, EmptyProposals, Proposals, singleton
+from ..strategy import Proposer
 from .actions import RocqTacticAction, ensure_tactic
 
 
-class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
+class SafeTacticProposer(Proposer[RocqCursor, Action[RocqCursor]]):
     """A simple strategy that always returns a tactic."""
 
     _tactic: Annotated[str, Provenance.Reflect.Field]
@@ -38,14 +38,14 @@ class SafeTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         self,
         state: RocqCursor,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action[RocqCursor]]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action[RocqCursor]]:
         return singleton(
             RocqTacticAction(f"progress ({self._tactic})"), score=self._score
         )
 
 
-class CutAssertStrategy(Strategy):
+class CutAssertProposer(Proposer[RocqCursor, Action[RocqCursor]]):
     """A simple strategy that cuts a Rocq lemma.
     The success probability 0.1 is not necessarily appropriate."""
 
@@ -59,11 +59,11 @@ class CutAssertStrategy(Strategy):
         self,
         state: RocqCursor,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action[RocqCursor]]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action[RocqCursor]]:
         name: str | rdm_api.Err[None] = await state.fresh_ident(self._name)
         if isinstance(name, rdm_api.Err):
-            return EmptyRollout()
+            return EmptyProposals()
 
         # For now, it is important that we fail if this fact is already known,
         # otherwise we risk looping here
@@ -72,7 +72,7 @@ class CutAssertStrategy(Strategy):
         return singleton(RocqTacticAction(tac), score=math.log(self._logprob))
 
 
-class FirstTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
+class FirstTacticProposer(Proposer[RocqCursor, Action[RocqCursor]]):
     """A simple strategy that tries each of the given tactics with their given probabilities."""
 
     _tactics: Annotated[
@@ -94,11 +94,11 @@ class FirstTacticStrategy(Strategy[RocqCursor, Action[RocqCursor]]):
         self,
         state: RocqCursor,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action[RocqCursor]]:
-        return ApproximatingRollout(
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action[RocqCursor]]:
+        return ApproximatingProposals(
             (
-                Rollout.Approx(logprob=prob, result=result)
+                Proposals.Approx(logprob=prob, result=result)
                 for prob, result in self._tactics
             )
         )

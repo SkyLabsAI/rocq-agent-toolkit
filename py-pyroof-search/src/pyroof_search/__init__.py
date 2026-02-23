@@ -1,24 +1,25 @@
-from . import action, rocq, rollout, search, strategy
+from . import action, rocq, search, strategy
+from . import rollout as proposals
 
 # Shortnames for common action / strategy types
 from .action import Action
-from .rollout import Rollout
-from .strategy import CompositeStrategy, FailStrategy, GuardStrategy, Strategy
+from .rollout import Proposals
+from .strategy import CompositeProposer, FailProposer, GuardProposer, Proposer
 
 __all__ = [
     # re-export modules
     "action",
     "rocq",
-    "rollout",
+    "proposals",
     "search",
     "strategy",
     # action.py short names
     "Action",
     # rollout.py short names
-    "Rollout",
+    "Proposals",
     # strategy.py short names
-    "CompositeStrategy",
-    "FailStrategy",
-    "GuardStrategy",
-    "Strategy",
+    "CompositeProposer",
+    "FailProposer",
+    "GuardProposer",
+    "Proposer",
 ]

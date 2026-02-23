@@ -8,10 +8,10 @@ from typing import override
 
 import pytest
 from pyroof_search.action import Action
-from pyroof_search.rollout import IteratorRollout, Rollout
+from pyroof_search.rollout import Proposals, from_iterator
 from pyroof_search.search.beam import BeamSearch
 from pyroof_search.search.guidance import Guidance
-from pyroof_search.strategy import Strategy
+from pyroof_search.strategy import Proposer
 
 
 @dataclass(frozen=True)
@@ -66,7 +66,7 @@ class GridMoveAction(Action[GridState]):
         return hash((self._dx, self._dy, self._name))
 
 
-class GridStrategy(Strategy[GridState, Action[GridState]]):
+class GridStrategy(Proposer[GridState, Action[GridState]]):
     """Strategy that proposes moves in all four cardinal directions."""
 
     @override
@@ -74,8 +74,8 @@ class GridStrategy(Strategy[GridState, Action[GridState]]):
         self,
         state: GridState,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action[GridState]]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action[GridState]]:
         """Yield all four possible moves with equal probability."""
         moves = [
             (0.25, GridMoveAction(1, 0, "right")),
@@ -83,7 +83,7 @@ class GridStrategy(Strategy[GridState, Action[GridState]]):
             (0.25, GridMoveAction(0, 1, "up")),
             (0.25, GridMoveAction(0, -1, "down")),
         ]
-        return IteratorRollout(iter(moves))
+        return from_iterator(iter(moves))
 
 
 class ManhattanGuidance(Guidance[GridState]):

@@ -3,13 +3,13 @@ from typing import override
 # Import the function we want to test
 import pytest
 from pyroof_search.action import Action
-from pyroof_search.rollout import Rollout
+from pyroof_search.rollout import Proposals
 from pyroof_search.strategy import (
-    CompositeStrategy,
-    FailStrategy,
-    IteratorStrategy,
-    SingletonStrategy,
-    Strategy,
+    CompositeProposer,
+    FailProposer,
+    IteratorProposer,
+    Proposer,
+    SingletonProposer,
 )
 
 from .rollout_util import is_empty
@@ -26,7 +26,7 @@ class SimpleAction[T](Action[list[T]]):
         return state + [self._value]
 
 
-async def take_n[T](x: Rollout[T], n: int) -> list[tuple[float, T]]:
+async def take_n[T](x: Proposals[T], n: int) -> list[tuple[float, T]]:
     out: list[tuple[float, T]] = []
     for _ in range(n):
         proposal = await x.next()
@@ -36,7 +36,7 @@ async def take_n[T](x: Rollout[T], n: int) -> list[tuple[float, T]]:
     return out
 
 
-async def take_all[T](x: Rollout[T]) -> list[tuple[float, T]]:
+async def take_all[T](x: Proposals[T]) -> list[tuple[float, T]]:
     out: list[tuple[float, T]] = []
     while True:
         try:
@@ -48,29 +48,29 @@ async def take_all[T](x: Rollout[T]) -> list[tuple[float, T]]:
         out.append((proposal.logprob, proposal.result))
 
 
-type ActionStrategy = Strategy[list[int], Action[list[int]]]
+type ActionStrategy = Proposer[list[int], Action[list[int]]]
 
 
 async def test_empty() -> None:
-    strat: ActionStrategy = CompositeStrategy([])
+    strat: ActionStrategy = CompositeProposer([])
     actions = await strat.rollout([])
     await is_empty(actions)
 
 
 async def test_empty_empty() -> None:
-    strat: ActionStrategy = CompositeStrategy([FailStrategy()])
+    strat: ActionStrategy = CompositeProposer([FailProposer()])
     actions = await strat.rollout([])
     await is_empty(actions)
 
 
 async def test_empty_empty_empty() -> None:
-    strat: ActionStrategy = CompositeStrategy([FailStrategy(), FailStrategy()])
+    strat: ActionStrategy = CompositeProposer([FailProposer(), FailProposer()])
     actions = await strat.rollout([])
     await is_empty(actions)
 
 
 async def test_singleton() -> None:
-    strat: ActionStrategy = CompositeStrategy([SingletonStrategy(SimpleAction(0), 0.5)])
+    strat: ActionStrategy = CompositeProposer([SingletonProposer(SimpleAction(0), 0.5)])
     actions = await strat.rollout([])
 
     pairs = await take_all(actions)
@@ -80,10 +80,10 @@ async def test_singleton() -> None:
 
 
 async def test_multi() -> None:
-    strat: ActionStrategy = CompositeStrategy(
+    strat: ActionStrategy = CompositeProposer(
         [
-            SingletonStrategy(SimpleAction(0), 0.5),
-            SingletonStrategy(SimpleAction(1), 0.75),
+            SingletonProposer(SimpleAction(0), 0.5),
+            SingletonProposer(SimpleAction(1), 0.75),
         ],
     )
     actions = await strat.rollout([])
@@ -99,10 +99,10 @@ async def test_multi() -> None:
 
 async def test_multi2() -> None:
     ls: list[ActionStrategy] = [
-        IteratorStrategy(iter([(0.5, SimpleAction(0)), (0.25, SimpleAction(2))])),
-        SingletonStrategy(SimpleAction(1), 0.75),
+        IteratorProposer(iter([(0.5, SimpleAction(0)), (0.25, SimpleAction(2))])),
+        SingletonProposer(SimpleAction(1), 0.75),
     ]
-    strat = CompositeStrategy(ls)
+    strat = CompositeProposer(ls)
     actions = await strat.rollout([])
 
     pairs = await take_all(actions)
@@ -117,11 +117,11 @@ async def test_multi2() -> None:
 
 async def test_multi_same() -> None:
     ls: list[ActionStrategy] = [
-        SingletonStrategy(SimpleAction(1), 0.75),
-        SingletonStrategy(SimpleAction(2), 0.75),
-        SingletonStrategy(SimpleAction(3), 0.75),
+        SingletonProposer(SimpleAction(1), 0.75),
+        SingletonProposer(SimpleAction(2), 0.75),
+        SingletonProposer(SimpleAction(3), 0.75),
     ]
-    strat = CompositeStrategy(ls)
+    strat = CompositeProposer(ls)
     actions = await strat.rollout([])
 
     pairs = await take_all(actions)
@@ -187,8 +187,8 @@ VALUES = [
 async def test_many(
     lls: list[list[tuple[float, int]]], expected: list[tuple[float, int]]
 ) -> None:
-    strat: Strategy[list[int], Action[list[int]]] = CompositeStrategy(
-        [IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]) for x in lls]
+    strat: Proposer[list[int], Action[list[int]]] = CompositeProposer(
+        [IteratorProposer([(prob, SimpleAction(i)) for prob, i in x]) for x in lls]
     )
 
     result: list[tuple[float, int]] = []

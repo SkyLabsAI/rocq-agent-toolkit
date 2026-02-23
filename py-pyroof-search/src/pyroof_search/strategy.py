@@ -13,21 +13,20 @@ from typing import Annotated, Any, TypeVar, override
 
 from provenance_toolkit import Provenance
 
+from . import rollout as ProposalsL  # ProposalsLibrary
 from .rollout import (
-    ApproximatingRollout,
+    ApproximatingProposals,
     AsyncMapRollout,
-    EmptyRollout,
+    EmptyProposals,
     InterleaveRollout,
-    MapRollout,
-    Rollout,
+    Proposals,
     StagedRollout,
-    singleton,
 )
 
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Strategy[State, Action](Provenance.Full, ABC):
+class Proposer[State, Action](Provenance.Full, ABC):
     """Interface: producer of ranked _alternative_ `Action`s.
 
     A `Strategy` proposes `Action`s to take. The different proposals
@@ -76,8 +75,8 @@ class Strategy[State, Action](Provenance.Full, ABC):
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
         """Build `Rollout` of ranked _alternative_ `Action`s for `state`.
 
         Given `state` and optional `context`, generate a `Rollout` containing no more
@@ -98,7 +97,7 @@ class Strategy[State, Action](Provenance.Full, ABC):
         pass
 
 
-class SingletonStrategy[State, Action](Strategy[State, Action]):
+class SingletonProposer[State, Action](Proposer[State, Action]):
     """
     A strategy that always returns a single action
     """
@@ -115,12 +114,12 @@ class SingletonStrategy[State, Action](Strategy[State, Action]):
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
-        return singleton(self._value, score=self._logprob)
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
+        return ProposalsL.singleton(self._value, score=self._logprob)
 
 
-class IteratorStrategy[State, Action](Strategy[State, Action]):
+class IteratorProposer[State, Action](Proposer[State, Action]):
     _collection: Annotated[
         Iterable[tuple[float, Action]],
         Provenance.Reflect.Field,
@@ -134,20 +133,20 @@ class IteratorStrategy[State, Action](Strategy[State, Action]):
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
-        return ApproximatingRollout(
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
+        return ApproximatingProposals(
             (
-                Rollout.Approx(logprob=logprob, result=act)
+                Proposals.Approx(logprob=logprob, result=act)
                 for logprob, act in self._collection
             )
         )
 
 
-class CompositeStrategy[State, Action](Strategy[State, Action]):
-    """Combinator: fair interleaving of strategies.
+class CompositeProposer[State, Action](Proposer[State, Action]):
+    """Combinator: fair interleaving of Proposers.
 
-    Each strategy will be asked for its `next` action, and the results
+    Each Proposer will be asked for its `next` action, and the results
     will be interleaved according to their scores.
 
     For example, with two strategies that propose:
@@ -156,14 +155,14 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
     will result in
         - [(-0.25, act3), (-0.35, act4), (-0.5, act1), (-0.75, act2)]
 
-    The results  of an individual `Strategy` will not be re-ordered
+    The results  of an individual `Proposer` will not be re-ordered
     so the resulting list may be out-of-order if one of the passed
-    `Strategy`s yields results out of order.
+    `Proposer`s yields results out of order.
     """
 
-    _children: Annotated[Sequence[Strategy[State, Action]], Provenance.Reflect.Field]
+    _children: Annotated[Sequence[Proposer[State, Action]], Provenance.Reflect.Field]
 
-    def __init__(self, children: Sequence[Strategy[State, Action]]) -> None:
+    def __init__(self, children: Sequence[Proposer[State, Action]]) -> None:
         self._children = children
 
     @override
@@ -171,8 +170,8 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
         return InterleaveRollout(
             [
                 await strat.rollout(state, max_rollout, context=context)
@@ -181,11 +180,11 @@ class CompositeStrategy[State, Action](Strategy[State, Action]):
         )
 
 
-def composite[T, Act](*strats: Strategy[T, Act]) -> Strategy[T, Act]:
-    return CompositeStrategy(strats)
+def composite[T, Act](*strats: Proposer[T, Act]) -> Proposer[T, Act]:
+    return CompositeProposer(strats)
 
 
-class StagedStrategy[State, Action](Strategy[State, Action]):
+class StagedProposer[State, Action](Proposer[State, Action]):
     """Combinator: biased interleaving of two strategies, preferring the first.
 
     All results from `strat1` that are greater than or equal to `prob` will
@@ -193,14 +192,14 @@ class StagedStrategy[State, Action](Strategy[State, Action]):
     `strat1` and `strat2` will be interleaved as they are in `CompositeStrategy`.
     """
 
-    _strat1: Annotated[Strategy[State, Action], Provenance.Reflect.Field]
-    _strat2: Annotated[Strategy[State, Action], Provenance.Reflect.Field]
+    _strat1: Annotated[Proposer[State, Action], Provenance.Reflect.Field]
+    _strat2: Annotated[Proposer[State, Action], Provenance.Reflect.Field]
     _prob: Annotated[float | None, Provenance.Reflect.Field]
 
     def __init__(
         self,
-        strat1: Strategy[State, Action],
-        strat2: Strategy[State, Action],
+        strat1: Proposer[State, Action],
+        strat2: Proposer[State, Action],
         prob: float | None = None,
     ) -> None:
         """
@@ -217,8 +216,8 @@ class StagedStrategy[State, Action](Strategy[State, Action]):
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
         async def fn():
             return await self._strat2.rollout(
                 state, max_rollout=max_rollout, context=context
@@ -232,23 +231,23 @@ class StagedStrategy[State, Action](Strategy[State, Action]):
 
 
 def staged[State, Action](
-    strats: list[tuple[float | None, Strategy[State, Action]]],
-) -> Strategy[State, Action]:
+    strats: list[tuple[float | None, Proposer[State, Action]]],
+) -> Proposer[State, Action]:
     """
     Build an iterated StagedStrategy.
     If the element `(pr,strat)` exists in the list, then `strat` will start
     being considered once prior strategies yield a probability less than `pr`.
     """
     if not strats:
-        return FailStrategy()
+        return FailProposer()
     last_prob, current = strats[-1]
     for prob, s in reversed(strats[:-1]):
-        current = StagedStrategy(s, current, last_prob)
+        current = StagedProposer(s, current, last_prob)
         last_prob = prob
     return current
 
 
-class FailStrategy[State, Action](Strategy[State, Action]):
+class FailProposer[State, Action](Proposer[State, Action]):
     """A simple strategy that fails."""
 
     @override
@@ -256,12 +255,12 @@ class FailStrategy[State, Action](Strategy[State, Action]):
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
-        return EmptyRollout()
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
+        return EmptyProposals()
 
 
-class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
+class GuardProposer[State, With, Action](FailProposer[State, Action], ABC):
     """Guard the execution of a strategy.
     If [check] returns [None], then this strategy acts like the [FailStrategy] otherwise
     it does [rollout_with]
@@ -269,7 +268,7 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
 
     @abstractmethod
     async def check(
-        self, state: State, context: Strategy.Context | None = None
+        self, state: State, context: Proposer.Context | None = None
     ) -> With | None: ...
 
     @abstractmethod
@@ -278,35 +277,35 @@ class GuardStrategy[State, With, Action](FailStrategy[State, Action], ABC):
         val: With,
         rdm: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]: ...
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]: ...
 
     @override
     async def rollout(
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
         val = await self.check(state)
         if val is None:
             return await super().rollout(state, max_rollout, context)
         return await self.rollout_with(val, state, max_rollout, context)
 
 
-class MapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
-    """A wrapper of `Strategy` based on lenses.
+class MapProposer[T, T_act, U, U_act](Proposer[T, T_act]):
+    """A wrapper of `Proposer` based on lenses.
 
     See the documentation for `WrapAction`.
     """
 
-    _base: Annotated[Strategy[U, U_act], Provenance.Reflect.Field]
+    _base: Annotated[Proposer[U, U_act], Provenance.Reflect.Field]
     _into: Annotated[Callable[[T], U], Provenance.Reflect.CallableField]
     _outof: Annotated[Callable[[T, U, U_act], T_act], Provenance.Reflect.CallableField]
 
     def __init__(
         self,
-        base: Strategy[U, U_act],
+        base: Proposer[U, U_act],
         *,
         into: Callable[[T], U],
         outof: Callable[[T, U, U_act], T_act],
@@ -320,26 +319,26 @@ class MapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
         self,
         state: T,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[T_act]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[T_act]:
         u_state = self._into(state)
 
         def fn(act: U_act) -> T_act:
             return self._fn_action(state, u_state, act)
 
-        return MapRollout(
+        return ProposalsL.map(
             await self._base.rollout(u_state, max_rollout, context),
             fn,
         )
 
 
-class AsyncMapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
+class AsyncMapProposer[T, T_act, U, U_act](Proposer[T, T_act]):
     """A wrapper of `Strategy` based on lenses.
 
     See the documentation for `AsyncWrapAction`.
     """
 
-    _base: Annotated[Strategy[U, U_act], Provenance.Reflect.Field]
+    _base: Annotated[Proposer[U, U_act], Provenance.Reflect.Field]
     _into: Annotated[Callable[[T], Awaitable[U]], Provenance.Reflect.CallableField]
     _outof: Annotated[
         Callable[[T, U, U_act], Awaitable[T_act]], Provenance.Reflect.CallableField
@@ -347,7 +346,7 @@ class AsyncMapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
 
     def __init__(
         self,
-        base: Strategy[U, U_act],
+        base: Proposer[U, U_act],
         *,
         into: Callable[[T], Awaitable[U]],
         outof: Callable[[T, U, U_act], Awaitable[T_act]],
@@ -361,8 +360,8 @@ class AsyncMapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
         self,
         state: T,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[T_act]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[T_act]:
         u_state = await self._into(state)
 
         async def fn(act: U_act) -> T_act:
@@ -401,8 +400,8 @@ class AsyncMapStrategy[T, T_act, U, U_act](Strategy[T, T_act]):
 
 
 def repeat[State, Action](
-    strategy: Strategy[State, Action], repeat: int
-) -> Strategy[State, Action]:
+    proposer: Proposer[State, Action], repeat: int
+) -> Proposer[State, Action]:
     """
     Repeat a base strategy to get multiple candidates per node.
     So all the elements of the strategy are tried
@@ -417,11 +416,11 @@ def repeat[State, Action](
     in decreasing order if the underlying strategy returns
     multiple actions with different probabilities.
     """
-    return staged([(None, strategy)] * repeat)
+    return staged([(None, proposer)] * repeat)
 
 
 def self_interleave[State, Action](
-    strategy: Strategy[State, Action], repeat: int
-) -> Strategy[State, Action]:
+    proposer: Proposer[State, Action], repeat: int
+) -> Proposer[State, Action]:
     """Interleaves the strategy with itself repeat times"""
-    return CompositeStrategy([strategy] * repeat)
+    return CompositeProposer([proposer] * repeat)

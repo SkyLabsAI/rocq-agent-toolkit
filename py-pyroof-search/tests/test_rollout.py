@@ -3,9 +3,9 @@ from math import log
 
 import pytest
 from pyroof_search.rollout import (
-    ApproximatingRollout,
+    ApproximatingProposals,
     InterleaveRollout,
-    Rollout,
+    Proposals,
     singleton,
 )
 
@@ -14,7 +14,7 @@ from .rollout_util import approx, is_empty
 
 @pytest.mark.asyncio
 async def test_interleave_empty() -> None:
-    ch: list[Rollout[int]] = []
+    ch: list[Proposals[int]] = []
     ir = InterleaveRollout(ch)
 
     await is_empty(ir)
@@ -22,13 +22,13 @@ async def test_interleave_empty() -> None:
 
 @pytest.mark.asyncio
 async def test_interleave_delayed() -> None:
-    def tester() -> Generator[Rollout.Approx[int]]:
+    def tester() -> Generator[Proposals.Approx[int]]:
         yield approx(logprob=log(0.3), result=None)
         raise AssertionError("Should not force value")
 
-    ch: list[Rollout[int]] = [
+    ch: list[Proposals[int]] = [
         singleton(1, score=log(0.5)),
-        ApproximatingRollout(tester()),
+        ApproximatingProposals(tester()),
     ]
     ir = InterleaveRollout(ch)
 
@@ -45,7 +45,7 @@ async def test_interleave_delayed() -> None:
 
 @pytest.mark.asyncio
 async def test_interleave_1() -> None:
-    ch: list[Rollout[int]] = [
+    ch: list[Proposals[int]] = [
         singleton(1, score=log(0.1)),
     ]
     ir = InterleaveRollout(ch)
@@ -58,7 +58,7 @@ async def test_interleave_1() -> None:
 
 @pytest.mark.asyncio
 async def test_interleave_rollout() -> None:
-    ch: list[Rollout[int]] = [
+    ch: list[Proposals[int]] = [
         singleton(1, score=log(0.1)),
         singleton(2, score=log(0.2)),
     ]
@@ -79,7 +79,7 @@ async def test_interleave_rollout() -> None:
 async def test_singleton(value: int, score: float, probe: float) -> None:
     r = singleton(value, score=score)
     if score >= probe:
-        assert await r.next(probe) == Rollout.Approx(logprob=score, result=value)
+        assert await r.next(probe) == Proposals.Approx(logprob=score, result=value)
         await is_empty(r)
     else:
-        assert await r.next(probe) == Rollout.Approx(logprob=score, result=None)
+        assert await r.next(probe) == Proposals.Approx(logprob=score, result=None)

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from observability import trace_context
 
 from ..action import Action
-from ..rollout import Rollout
-from ..strategy import Strategy
+from ..rollout import Proposals
+from ..strategy import Proposer
 from .frontier import BasicNode, Frontier
 
 
@@ -67,7 +67,7 @@ class Node[CNode]:
     depth: int
     parent: Node[CNode] | None
     state: CNode
-    _rollout: Rollout[Action[CNode]] | None
+    _rollout: Proposals[Action[CNode]] | None
     _action_key: str | None
     _seen_action_keys: set[str]
 
@@ -82,14 +82,14 @@ class Node[CNode]:
         self._seen_action_keys = set()
 
     async def rollout(
-        self, strategy: Strategy[CNode, Action[CNode]], **kwargs
-    ) -> Rollout[Action[CNode]]:
+        self, strategy: Proposer[CNode, Action[CNode]], **kwargs
+    ) -> Proposals[Action[CNode]]:
         # Cache the rollout per node to avoid re-asking the strategy.
         if self._rollout is None:
             self._rollout = await strategy.rollout(self.state, **kwargs)
         return self._rollout
 
-    def update_rollout(self, rollout: Rollout[Action[CNode]]) -> None:
+    def update_rollout(self, rollout: Proposals[Action[CNode]]) -> None:
         self._rollout = rollout
 
     def remember_action(self, key: str) -> bool:
@@ -130,7 +130,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
     # This class seems to just help type checking a bit.
     @staticmethod
     async def search[FrontierT: Frontier[Node[CState], FNode]](
-        strategy: Strategy[CState, Action[CState]],
+        strategy: Proposer[CState, Action[CState]],
         start: CState,
         frontier: Callable[[], FrontierT],
         beam_width: int = 1,
@@ -156,7 +156,7 @@ class Search[CState, FNode: BasicNode]:  # this is `BasicNode[CState]`
 
     @staticmethod
     async def continue_search[FrontierT: Frontier[Node[CState], FNode]](
-        strategy: Strategy[CState, Action[CState]],
+        strategy: Proposer[CState, Action[CState]],
         worklist: FrontierT,
         beam_width: int = 1,
         explore_width: int = 1,

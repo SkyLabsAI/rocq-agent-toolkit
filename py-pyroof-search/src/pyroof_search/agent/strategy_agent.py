@@ -14,7 +14,7 @@ from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema.task_output import FailureReason
 
 from ..action import Action
-from ..strategy import Strategy
+from ..strategy import Proposer
 
 logger = get_logger("rocq_agent")
 
@@ -22,14 +22,14 @@ logger = get_logger("rocq_agent")
 class StrategyAgent(ProofAgent):
     """An agent that uses a Strategy to select tactics."""
 
-    _strategy: Annotated[Strategy, Provenance.Reflect.Field]
+    _strategy: Annotated[Proposer, Provenance.Reflect.Field]
     _max_depth: Annotated[int | None, Provenance.Reflect.Field]
     _max_breath: Annotated[int | None, Provenance.Reflect.Field]
     _fuel: Annotated[int | None, Provenance.Reflect.Field]
 
     def __init__(
         self,
-        strategy: Strategy,
+        strategy: Proposer,
         max_depth: int | None = None,
         max_breadth: int | None = None,
         fuel: int | None = None,
@@ -41,7 +41,7 @@ class StrategyAgent(ProofAgent):
         self._fuel = fuel
         self._initial_prove_cursor_index: int | None = None
 
-    async def prepare(self, rc: RocqCursor) -> Strategy.MutableContext:
+    async def prepare(self, rc: RocqCursor) -> Proposer.MutableContext:
         """Pre-hook for prove."""
         self._initial_prove_cursor_index = await rc.cursor_index()
         return {}
@@ -63,7 +63,7 @@ class StrategyAgent(ProofAgent):
         # Note: `prepare` uses `Strategy.MutableContext` so derivers can incrementalize
         # construction via super().prepare calls, but prove/rollout promises to leave
         # it unchanged.
-        strategy_ctx: Strategy.Context = MappingProxyType(await self.prepare(rc))
+        strategy_ctx: Proposer.Context = MappingProxyType(await self.prepare(rc))
 
         fresh_id: int = 0
 

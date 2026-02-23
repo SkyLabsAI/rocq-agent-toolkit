@@ -7,21 +7,38 @@ side-effect in the produced task result.
 import json
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import rocq_pipeline.task_runner
+from pyroof_search.agent.strategy_agent import StrategyAgent
+from pyroof_search.rocq.strategies import FirstTacticProposer
+from pyroof_search.strategy import Proposer
 from rocq_pipeline.agent import AgentBuilder
-from rocq_pipeline.agent.proof.strategy_agent import StrategyAgent
 from rocq_pipeline.schema import task_output
-from rocq_pipeline.search.rocq.strategies import FirstTacticStrategy
-from rocq_pipeline.search.strategy import Strategy
 
-from .util import make_task_str
+
+def make_task(
+    file_path: str,
+    locator: str,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
+    if tags is None:
+        tags = []
+    return {"file": file_path, "locator": locator, "tags": tags}
+
+
+def make_task_str(
+    file_path: str,
+    locator: str,
+    tags: list[str] | None = None,
+) -> str:
+    return json.dumps(make_task(file_path, locator, tags=tags))
 
 
 class StrategyAgentBuilder(AgentBuilder):
     """Builder for StrategyAgent with a fixed strategy."""
 
-    def __init__(self, strategy: Strategy) -> None:
+    def __init__(self, strategy: Proposer) -> None:
         super().__init__()
         self._strategy = strategy
 
@@ -33,7 +50,7 @@ def test_strategy_agent_doc_interaction() -> None:
     """Test that StrategyAgent captures doc_interaction in side_effects."""
     # Create a simple strategy that uses "auto." tactic
     # FirstTacticStrategy takes a list of (probability, tactic) pairs
-    strategy = FirstTacticStrategy([(1.0, "auto")])
+    strategy = FirstTacticProposer([(1.0, "auto")])
 
     # Create an AgentBuilder for StrategyAgent with the strategy
     agent_builder = StrategyAgentBuilder(strategy)

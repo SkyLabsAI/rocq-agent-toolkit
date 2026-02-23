@@ -12,7 +12,7 @@ T_co = TypeVar("T_co", covariant=True)
 U_co = TypeVar("U_co", covariant=True)
 
 
-class Rollout[T_co](ABC):
+class Proposals[T_co](ABC):
     """Iterator over ranked _alternative_ actions.
 
     Elements of `Rollout` are tuples of the form `(Pr_i, Act_i)` where `Pr_i`
@@ -54,7 +54,7 @@ class Rollout[T_co](ABC):
         result: U_co | None = field(kw_only=True, default=None)
 
     @abstractmethod
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[T_co]:
         """
         strat.next(min_logprob=0.5) could return either:
         - Rollout.Approx(logprob=0.45, result=None) -- No new elements with higher probability
@@ -71,7 +71,7 @@ class Rollout[T_co](ABC):
 
     async def __anext__(self) -> tuple[float, T_co]:
         result = await self.next()
-        assert isinstance(result, Rollout.Approx)
+        assert isinstance(result, Proposals.Approx)
         assert result.result is not None
         return (result.logprob, result.result)
 
@@ -79,48 +79,74 @@ class Rollout[T_co](ABC):
         return self
 
 
-class EmptyRollout[T_co](Rollout[T_co]):
+class EmptyProposals[T_co](Proposals[T_co]):
     @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[T_co]:
         raise StopAsyncIteration()
 
 
-def empty_Rollout[T]() -> Rollout[T]:
-    return EmptyRollout()
+def empty[T]() -> Proposals[T]:
+    return EmptyProposals()
 
 
-class ConsRollout[T_co](Rollout[T_co]):
-    def __init__(self, value: T_co, logprob: float, rest: Rollout[T_co]) -> None:
+class ConsProposals[T_co](Proposals[T_co]):
+    def __init__(self, value: T_co, logprob: float, rest: Proposals[T_co]) -> None:
         # assert logprob <= 0  # validation logic?
         self._value = value
         self._logprob = logprob
         self._done = False
         self._rest = rest
 
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[T_co]:
         if self._done:
             return await self._rest.next(min_logprob=min_logprob)
         if min_logprob > self._logprob:
-            return Rollout.Approx(logprob=self._logprob, result=None)
+            return Proposals.Approx(logprob=self._logprob, result=None)
         else:
             self._done = True
-            return Rollout.Approx(logprob=self._logprob, result=self._value)
+            return Proposals.Approx(logprob=self._logprob, result=self._value)
 
 
-def singleton[T_co](value: T_co, *, score: float) -> Rollout[T_co]:
-    return ConsRollout(value, logprob=score, rest=empty_Rollout())
+def singleton[T_co](value: T_co, *, score: float) -> Proposals[T_co]:
+    return ConsProposals(value, logprob=score, rest=empty())
 
 
-class ApproximatingRollout[T_co](Rollout[T_co]):
+class AsyncApproximatingProposals[T_co](Proposals[T_co]):
     """A rollout built from successive approximations"""
 
-    def __init__(self, iterator: Iterator[Rollout.Approx[T_co]]) -> None:
+    def __init__(self, iterator: AsyncIterator[Proposals.Approx[T_co]]) -> None:
         self._values = iterator
         self._last: float | None = None
 
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[T_co]:
         if self._last is not None and min_logprob > self._last:
-            return Rollout.Approx(logprob=self._last, result=None)
+            return Proposals.Approx(logprob=self._last, result=None)
+
+        async for result in self._values:
+            if result.result is None:
+                self._last = (
+                    result.logprob
+                    if self._last is None
+                    else min(self._last, result.logprob)
+                )
+                # recursive call, but we consumed one value out of the generator
+                return await self.next(min_logprob=min_logprob)
+            else:
+                self._last = result.logprob
+                return result
+        raise StopAsyncIteration
+
+
+class ApproximatingProposals[T_co](Proposals[T_co]):
+    """A rollout built from successive approximations"""
+
+    def __init__(self, iterator: Iterator[Proposals.Approx[T_co]]) -> None:
+        self._values = iterator
+        self._last: float | None = None
+
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[T_co]:
+        if self._last is not None and min_logprob > self._last:
+            return Proposals.Approx(logprob=self._last, result=None)
 
         for result in self._values:
             if result.result is None:
@@ -137,75 +163,62 @@ class ApproximatingRollout[T_co](Rollout[T_co]):
         raise StopAsyncIteration
 
 
-class IteratorRollout[T_co](Rollout[T_co]):
+def from_iterator[T_co](iterator: Iterator[tuple[float, T_co]]) -> Proposals[T_co]:
     """Rolls out the values from the iterable.
     The scores are expected to be in decreasing order.
     """
 
-    def __init__(self, iterable: Iterator[tuple[float, T_co]]) -> None:
-        self._values = iterable
+    async def fn():
+        for logprob, act in iterator:
+            yield Proposals.Approx(logprob=logprob, result=act)
 
-    @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
-        for logprob, act in self._values:
-            return Rollout.Approx(logprob=logprob, result=act)
-        raise StopAsyncIteration
+    return AsyncApproximatingProposals(fn())
 
 
-class AsyncIteratorRollout[T_co](Rollout[T_co]):
+def from_async_iterator[T_co](
+    iterator: AsyncIterator[tuple[float, T_co]],
+) -> Proposals[T_co]:
     """Rolls out the values from the iterable.
     The scores are expected to be in decreasing order.
     """
 
-    def __init__(self, iterable: AsyncIterator[tuple[float, T_co]]) -> None:
-        self._values = iterable
-
-    @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
-        async for logprob, act in self._values:
-            return Rollout.Approx(logprob=logprob, result=act)
-        raise StopAsyncIteration
+    return AsyncApproximatingProposals(
+        Proposals.Approx(logprob=logprob, result=act) async for logprob, act in iterator
+    )
 
 
-class MapRollout[T_co, U_co](Rollout[U_co]):
-    """Change the values of a Rollout, but not their scores"""
-
-    def __init__(self, base: Rollout[T_co], fn: Callable[[T_co], U_co]) -> None:
-        self._base = base
-        self._fn = fn
-
-    @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U_co]:
-        result = await self._base.next(min_logprob=min_logprob)
-        if result.result is None:
-            return Rollout.Approx(logprob=result.logprob, result=None)
-        else:
-            return Rollout.Approx(
-                logprob=result.logprob, result=self._fn(result.result)
-            )
-
-
-class AsyncMapRollout[T_co, U_co](Rollout[U_co]):
+class AsyncMapRollout[T_co, U_co](Proposals[U_co]):
     """Change the values of a Rollout, but not their scores"""
 
     def __init__(
-        self, base: Rollout[T_co], fn: Callable[[T_co], Awaitable[U_co]]
+        self, base: Proposals[T_co], fn: Callable[[T_co], Awaitable[U_co]]
     ) -> None:
         self._base = base
         self._fn = fn
 
     @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[U_co]:
         result = await self._base.next(min_logprob=min_logprob)
         if result.result is None:
-            return Rollout.Approx(logprob=result.logprob, result=None)
+            return Proposals.Approx(logprob=result.logprob, result=None)
         else:
-            return Rollout.Approx(
+            return Proposals.Approx(
                 logprob=result.logprob, result=await self._fn(result.result)
             )
 
 
-class InterleaveRollout[U_co](Rollout[U_co]):
+def map[T_co, U_co](
+    base: Proposals[T_co], fn: Callable[[T_co], U_co]
+) -> Proposals[U_co]:
+    """Change the values of a Rollout, but not their scores"""
+
+    async def fn_async(x: T_co) -> U_co:
+        return fn(x)
+
+    return AsyncMapRollout(base, fn_async)
+
+
+class InterleaveRollout[U_co](Proposals[U_co]):
     """Interleave the results from many rollouts in a fair way."""
 
     class Node[V]:
@@ -214,7 +227,7 @@ class InterleaveRollout[U_co](Rollout[U_co]):
             logprob: float,
             owner: int,
             action: V | None,
-            rest: Rollout[V],
+            rest: Proposals[V],
         ) -> None:
             self.logprob = logprob
             self.owner = owner
@@ -232,12 +245,12 @@ class InterleaveRollout[U_co](Rollout[U_co]):
                 return False
             return self.owner < other.owner
 
-    def __init__(self, children: list[Rollout[U_co]]) -> None:
+    def __init__(self, children: list[Proposals[U_co]]) -> None:
         self._queue: list[InterleaveRollout.Node[U_co]] = []
-        self._delayed_init: list[Rollout[U_co]] | None = children
+        self._delayed_init: list[Proposals[U_co]] | None = children
 
     async def _push_next(
-        self, i: int, rollout: Rollout[U_co], min_logprob=NEG_INF
+        self, i: int, rollout: Proposals[U_co], min_logprob=NEG_INF
     ) -> float:
         try:
             result = await rollout.next(min_logprob)
@@ -255,7 +268,7 @@ class InterleaveRollout[U_co](Rollout[U_co]):
         return result.logprob
 
     @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[U_co]:
         if self._delayed_init is not None:
             for i, rollout in enumerate(self._delayed_init):
                 # We pass 0.0 as the highest probability to allow `Strategy`s
@@ -330,36 +343,38 @@ class InterleaveRollout[U_co](Rollout[U_co]):
         if candidate:
             assert candidate.action is not None
             await self._push_next(candidate.owner, candidate.rest)
-            return Rollout.Approx(logprob=candidate.logprob, result=candidate.action)
+            return Proposals.Approx(logprob=candidate.logprob, result=candidate.action)
         else:
             if self._queue:
-                return Rollout.Approx(logprob=highest, result=None)
+                return Proposals.Approx(logprob=highest, result=None)
             raise StopAsyncIteration()
 
-    def stop(self) -> dict[int, Rollout[U_co]]:
-        def mk(logprob: float, act: U_co | None, rest: Rollout[U_co]) -> Rollout[U_co]:
+    def stop(self) -> dict[int, Proposals[U_co]]:
+        def mk(
+            logprob: float, act: U_co | None, rest: Proposals[U_co]
+        ) -> Proposals[U_co]:
             if act is None:
                 return rest
             else:
-                return ConsRollout(act, logprob, rest)
+                return ConsProposals(act, logprob, rest)
 
         result = {n.owner: mk(n.logprob, n.action, n.rest) for n in self._queue}
         self._queue = []
         return result
 
 
-class StagedRollout[T_co](Rollout[T_co]):
+class StagedRollout[T_co](Proposals[T_co]):
     """Interleave the results of two `Rollout`s by prioritizing the first up until some cutoff."""
 
     @dataclass(slots=True)
-    class YieldUntil[U](Rollout[U]):
-        active: Rollout[U]
-        waiting: Callable[[], Awaitable[Rollout[U]]]
+    class YieldUntil[U](Proposals[U]):
+        active: Proposals[U]
+        waiting: Callable[[], Awaitable[Proposals[U]]]
         cutoff: float | None
         parent: StagedRollout[U]
 
         @override
-        async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U]:
+        async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[U]:
             try:
                 result = await self.active.next(min_logprob=min_logprob)
             except StopAsyncIteration:
@@ -378,23 +393,26 @@ class StagedRollout[T_co](Rollout[T_co]):
             return await self.parent._state.next(min_logprob=min_logprob)
 
     @dataclass(slots=True)
-    class Merge[U](Rollout[U]):
+    class Merge[U](Proposals[U]):
         """In this state, I need to pull from `next_pull` and compare it to `last_pull` (which came from `other`)."""
 
-        next_pull: Rollout[U]
-        other: Rollout[U]
-        last_pull: Rollout.Approx[U]  # Came from other
+        next_pull: Proposals[U]
+        other: Proposals[U]
+        last_pull: Proposals.Approx[U]  # Came from other
         parent: StagedRollout[U]
 
         def _set(
-            self, next_pull: Rollout[U], other: Rollout[U], last_pull: Rollout.Approx[U]
+            self,
+            next_pull: Proposals[U],
+            other: Proposals[U],
+            last_pull: Proposals.Approx[U],
         ) -> None:
             self.next_pull = next_pull
             self.other = other
             self.last_pull = last_pull
 
         @override
-        async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[U]:
+        async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[U]:
             try:
                 result = await self.next_pull.next(min_logprob=min_logprob)
             except StopAsyncIteration:
@@ -439,43 +457,43 @@ class StagedRollout[T_co](Rollout[T_co]):
 
     def __init__(
         self,
-        r1: Rollout[T_co],
-        r2: Callable[[], Awaitable[Rollout[T_co]]],
+        r1: Proposals[T_co],
+        r2: Callable[[], Awaitable[Proposals[T_co]]],
         cutoff: float | None = None,
     ) -> None:
-        self._state: Rollout[T_co] = StagedRollout.YieldUntil(
+        self._state: Proposals[T_co] = StagedRollout.YieldUntil(
             active=r1, waiting=r2, cutoff=cutoff, parent=self
         )
 
     @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[T_co]:
         return await self._state.next(min_logprob=min_logprob)
 
 
-class Delay[Action](Rollout[Action]):
+class Delay[Action](Proposals[Action]):
     """A `Rollout` that delays until it is asked to get at least a given approximation depth."""
 
-    def __init__(self, wait: float, base: Callable[[], Rollout[Action]]) -> None:
+    def __init__(self, wait: float, base: Callable[[], Proposals[Action]]) -> None:
         self._wait: float | None = wait
-        self._base: Callable[[], Rollout[Action]] | Rollout[Action] = base
+        self._base: Callable[[], Proposals[Action]] | Proposals[Action] = base
 
     @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[Action]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[Action]:
         if self._wait is None:
-            assert isinstance(self._base, Rollout)
+            assert isinstance(self._base, Proposals)
             return await self._base.next(min_logprob=min_logprob)
         if min_logprob < self._wait:
             self._wait = None
-            assert not isinstance(self._base, Rollout)
+            assert not isinstance(self._base, Proposals)
             self._base = self._base()
             return await self._base.next(min_logprob=min_logprob)
-        return Rollout.Approx(logprob=self._wait, result=None)
+        return Proposals.Approx(logprob=self._wait, result=None)
 
 
-class DeduplicateRollout[T_co](Rollout[T_co]):
+class DeduplicateRollout[T_co](Proposals[T_co]):
     def __init__(
         self,
-        rollout: Rollout[T_co],
+        rollout: Proposals[T_co],
         *,
         compare: Callable[[T_co, T_co], bool] = lambda x, y: x is y,
     ) -> None:
@@ -491,7 +509,7 @@ class DeduplicateRollout[T_co](Rollout[T_co]):
         return True
 
     @override
-    async def next(self, min_logprob: float = NEG_INF) -> Rollout.Approx[T_co]:
+    async def next(self, min_logprob: float = NEG_INF) -> Proposals.Approx[T_co]:
         while True:
             proposal = await self._base.next(min_logprob=min_logprob)
             if proposal.result is None:

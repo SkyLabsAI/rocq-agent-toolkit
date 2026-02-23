@@ -1,10 +1,10 @@
 from typing import override
 
 import pytest
-from rocq_pipeline.search import Action
-from rocq_pipeline.search.rollout import IteratorRollout, Rollout
-from rocq_pipeline.search.search import beam
-from rocq_pipeline.search.strategy import Strategy
+from pyroof_search import Action
+from pyroof_search.rollout import Proposals, from_iterator
+from pyroof_search.search import beam
+from pyroof_search.strategy import Proposer
 
 
 class MoveAction(Action[int]):
@@ -15,15 +15,15 @@ class MoveAction(Action[int]):
         return state + self._delta
 
 
-class Around(Strategy[int, Action[int]]):
+class Around(Proposer[int, Action[int]]):
     @override
     async def rollout(
         self,
         state: int,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action[int]]:
-        return IteratorRollout(iter([(0.5, MoveAction(delta)) for delta in [1, -1]]))
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action[int]]:
+        return from_iterator(iter([(0.5, MoveAction(delta)) for delta in [1, -1]]))
 
 
 @pytest.mark.asyncio

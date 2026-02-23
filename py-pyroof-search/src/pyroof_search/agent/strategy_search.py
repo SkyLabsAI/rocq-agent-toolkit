@@ -10,8 +10,8 @@ from rocq_pipeline.agent.base.classes import ProofAgent
 from rocq_pipeline.proof_state import ProofState
 
 from ..action import Action
-from ..rollout import Rollout
-from ..strategy import Strategy
+from ..rollout import Proposals
+from ..strategy import Proposer
 
 
 class SearchAgent(ProofAgent):
@@ -19,10 +19,10 @@ class SearchAgent(ProofAgent):
     A simple search agent based on strategies.
     """
 
-    _strategy: Annotated[Strategy, Provenance.Reflect.Field]
+    _strategy: Annotated[Proposer, Provenance.Reflect.Field]
     _fuel: Annotated[int | None, Provenance.Reflect.Field]
 
-    def __init__(self, strategy: Strategy, fuel: int | None = 100) -> None:
+    def __init__(self, strategy: Proposer, fuel: int | None = 100) -> None:
         self._strategy = strategy
         self._fuel = fuel
 
@@ -32,7 +32,7 @@ class SearchAgent(ProofAgent):
         depth: int  # negative
         fresh: int  # just to break ties
         cursor: RocqCursor
-        rollout: Rollout[Action[RocqCursor]]
+        rollout: Proposals[Action[RocqCursor]]
 
     @override
     async def prove(self, rc: RocqCursor) -> TaskResult:

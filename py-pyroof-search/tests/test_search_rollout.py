@@ -8,14 +8,14 @@ import pytest
 from pyroof_search.action import Action
 from pyroof_search.search.frontier import BasicNode, Frontier
 from pyroof_search.search.search import Node
-from pyroof_search.strategy import MapStrategy
+from pyroof_search.strategy import MapProposer
 
 from .util import FixedStrategy, OneShotFrontier, RecordingAction, run_search
 
 pytestmark = pytest.mark.asyncio
 
 
-class CountingStrategy(MapStrategy[int, Action[int], int, Action[int]]):
+class CountingStrategy(MapProposer[int, Action[int], int, Action[int]]):
     """Strategy that returns fixed rollouts per state and counts calls."""
 
     def __init__(self, mapping: dict[int, list[tuple[float, Action[int]]]]) -> None:

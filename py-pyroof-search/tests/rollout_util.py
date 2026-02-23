@@ -3,10 +3,10 @@
 #
 
 
-from pyroof_search.rollout import Rollout
+from pyroof_search.rollout import Proposals
 
 
-async def is_empty[T](r: Rollout[T]) -> None:
+async def is_empty[T](r: Proposals[T]) -> None:
     """Assert that the Rollout is empty"""
     try:
         result = await r.next()
@@ -15,7 +15,7 @@ async def is_empty[T](r: Rollout[T]) -> None:
         pass
 
 
-def approx[T](logprob: float, result: T | None) -> Rollout.Approx[T]:
+def approx[T](logprob: float, result: T | None) -> Proposals.Approx[T]:
     """Construct a `Rollout.Approx` without needing to
     name the arguments"""
-    return Rollout.Approx(logprob=logprob, result=result)
+    return Proposals.Approx(logprob=logprob, result=result)

@@ -4,13 +4,13 @@ from typing import override
 import pytest
 from pyroof_search import strategy
 from pyroof_search.action import Action
-from pyroof_search.rollout import Rollout
+from pyroof_search.rollout import Proposals
 from pyroof_search.strategy import (
-    FailStrategy,
-    IteratorStrategy,
-    SingletonStrategy,
-    StagedStrategy,
-    Strategy,
+    FailProposer,
+    IteratorProposer,
+    Proposer,
+    SingletonProposer,
+    StagedProposer,
 )
 
 from .rollout_util import is_empty
@@ -26,8 +26,8 @@ class SimpleAction[T](Action[list[T]]):
 
 
 type ActionL[T] = Action[list[T]]
-type RolloutAL[T] = Rollout[ActionL[T]]
-type StrategyAL[T] = Strategy[list[T], ActionL[T]]
+type RolloutAL[T] = Proposals[ActionL[T]]
+type StrategyAL[T] = Proposer[list[T], ActionL[T]]
 
 
 async def take_n[T](x: RolloutAL[T], n: int) -> list[tuple[float, ActionL[T]]]:
@@ -54,7 +54,7 @@ async def take_all[T](x: RolloutAL[T]) -> list[tuple[float, ActionL[T]]]:
 
 @pytest.mark.asyncio
 async def test_empty() -> None:
-    strat: StrategyAL[int] = StagedStrategy(FailStrategy(), FailStrategy())
+    strat: StrategyAL[int] = StagedProposer(FailProposer(), FailProposer())
     actions = await strat.rollout([])
     await is_empty(actions)
 
@@ -67,8 +67,8 @@ async def next_eval(actions: RolloutAL[int], st: list[int]) -> tuple[float, list
 
 @pytest.mark.asyncio
 async def test_empty_1() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        FailStrategy(), SingletonStrategy(SimpleAction(0), 0.5)
+    strat: StrategyAL[int] = StagedProposer(
+        FailProposer(), SingletonProposer(SimpleAction(0), 0.5)
     )
     actions = await strat.rollout([])
     assert (0.5, [0]) == await next_eval(actions, [])
@@ -77,8 +77,8 @@ async def test_empty_1() -> None:
 
 @pytest.mark.asyncio
 async def test_empty_2() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        SingletonStrategy(SimpleAction(0), 0.5), FailStrategy()
+    strat: StrategyAL[int] = StagedProposer(
+        SingletonProposer(SimpleAction(0), 0.5), FailProposer()
     )
     actions = await strat.rollout([])
     assert (0.5, [0]) == await next_eval(actions, [])
@@ -87,9 +87,9 @@ async def test_empty_2() -> None:
 
 @pytest.mark.asyncio
 async def test_both_1() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        SingletonStrategy(SimpleAction(0), 0.5),
-        SingletonStrategy(SimpleAction(1), 0.75),
+    strat: StrategyAL[int] = StagedProposer(
+        SingletonProposer(SimpleAction(0), 0.5),
+        SingletonProposer(SimpleAction(1), 0.75),
     )
     actions = await strat.rollout([])
     assert (0.5, [0]) == await next_eval(actions, [])
@@ -99,9 +99,9 @@ async def test_both_1() -> None:
 
 @pytest.mark.asyncio
 async def test_both_2() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        SingletonStrategy(SimpleAction(0), 0.5),
-        SingletonStrategy(SimpleAction(1), 0.75),
+    strat: StrategyAL[int] = StagedProposer(
+        SingletonProposer(SimpleAction(0), 0.5),
+        SingletonProposer(SimpleAction(1), 0.75),
         prob=0.5,
     )
     actions = await strat.rollout([])
@@ -112,9 +112,9 @@ async def test_both_2() -> None:
 
 @pytest.mark.asyncio
 async def test_both_3() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        SingletonStrategy(SimpleAction(0), 0.5),
-        SingletonStrategy(SimpleAction(1), 0.75),
+    strat: StrategyAL[int] = StagedProposer(
+        SingletonProposer(SimpleAction(0), 0.5),
+        SingletonProposer(SimpleAction(1), 0.75),
         prob=0.8,
     )
     actions = await strat.rollout([])
@@ -125,9 +125,9 @@ async def test_both_3() -> None:
 
 @pytest.mark.asyncio
 async def test_both_4() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
-        SingletonStrategy(SimpleAction(2), 0.75),
+    strat: StrategyAL[int] = StagedProposer(
+        IteratorProposer([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
+        SingletonProposer(SimpleAction(2), 0.75),
         prob=0.2,
     )
     actions = await strat.rollout([])
@@ -137,21 +137,21 @@ async def test_both_4() -> None:
     await is_empty(actions)
 
 
-class NeverStrategy[T, A](Strategy[T, A]):
+class NeverStrategy[T, A](Proposer[T, A]):
     @override
     async def rollout(
         self,
         state: T,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[A]:
+        context: Proposer.Context | None = None,
+    ) -> Proposals[A]:
         raise AssertionError("Should not Run")
 
 
 @pytest.mark.asyncio
 async def test_delayed() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        SingletonStrategy(SimpleAction(0), 0.5),
+    strat: StrategyAL[int] = StagedProposer(
+        SingletonProposer(SimpleAction(0), 0.5),
         NeverStrategy(),
         prob=0.3,
     )
@@ -161,8 +161,8 @@ async def test_delayed() -> None:
 
 @pytest.mark.asyncio
 async def test_delayed_edge() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        SingletonStrategy(SimpleAction(0), 0.5),
+    strat: StrategyAL[int] = StagedProposer(
+        SingletonProposer(SimpleAction(0), 0.5),
         NeverStrategy(),
         prob=0.5,
     )
@@ -172,8 +172,8 @@ async def test_delayed_edge() -> None:
 
 @pytest.mark.asyncio
 async def test_delayed_edge2() -> None:
-    strat: StrategyAL[int] = StagedStrategy(
-        IteratorStrategy([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
+    strat: StrategyAL[int] = StagedProposer(
+        IteratorProposer([(0.5, SimpleAction(0)), (0.4, SimpleAction(1))]),
         NeverStrategy(),
         prob=0.2,
     )
@@ -244,7 +244,7 @@ async def test_many(
 ):
     strat: StrategyAL[int] = strategy.staged(
         [
-            (cutoff, IteratorStrategy([(prob, SimpleAction(i)) for prob, i in x]))
+            (cutoff, IteratorProposer([(prob, SimpleAction(i)) for prob, i in x]))
             for cutoff, x in lls
         ]
     )

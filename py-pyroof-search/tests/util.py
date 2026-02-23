@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import TypeVar, override
 
 from pyroof_search.action import Action
-from pyroof_search.rollout import IteratorRollout, Rollout
+from pyroof_search.rollout import Proposals, from_iterator
 from pyroof_search.search.frontier import BFS, BasicNode, Frontier
 from pyroof_search.search.search import (
     Node,
@@ -14,13 +14,13 @@ from pyroof_search.search.search import (
     Search,
     StateManipulator,
 )
-from pyroof_search.strategy import Strategy
+from pyroof_search.strategy import Proposer
 
 S = TypeVar("S")
 FNode = TypeVar("FNode")
 
 
-class FixedStrategy[State, Action](Strategy[State, Action]):
+class FixedStrategy[State, Action](Proposer[State, Action]):
     """Strategy that returns fixed rollouts per state."""
 
     def __init__(self, mapping: dict[State, list[tuple[float, Action]]]) -> None:
@@ -31,9 +31,9 @@ class FixedStrategy[State, Action](Strategy[State, Action]):
         self,
         state: State,
         max_rollout: int | None = None,
-        context: Strategy.Context | None = None,
-    ) -> Rollout[Action]:
-        return IteratorRollout(iter(self._mapping.get(state, [])))
+        context: Proposer.Context | None = None,
+    ) -> Proposals[Action]:
+        return from_iterator(iter(self._mapping.get(state, [])))
 
 
 class RecordingAction(Action[int]):
@@ -78,7 +78,7 @@ async def seeded_bfs[S](candidates: list[Node[S]]) -> BFS[Node[S]]:
 
 
 async def run_search[S, FNode](
-    strategy: Strategy[S, Action[S]],
+    strategy: Proposer[S, Action[S]],
     worklist: Frontier[Node[S], FNode],
     beam_width: int = 1,
     explore_width: int = 1,
