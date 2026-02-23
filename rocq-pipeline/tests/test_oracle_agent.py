@@ -13,7 +13,7 @@ def test_oracle_agent() -> None:
             AgentBuilder.of_agent(OracleAgent),
             [
                 "--task-json",
-                make_task_str("examples/theories/test_simple.v", "Lemma:is_true"),
+                make_task_str("examples/theories/test_simple.v", None, "Lemma:is_true"),
                 "--output-dir",
                 temp_dir,
             ],

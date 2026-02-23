@@ -111,11 +111,13 @@ def my_tagger(task: ProofTask) -> set[str]:
     tags: set[str] = set()
     numtactics = 0
     omitted: set[str] = set()
+    deprecated: set[str] = set()
 
     for sentence in task.proof_tactics:
         identified_tactics: dict[str, int]
         leftovers: list[str]
-        identified_tactics, leftovers = extract_tactics(sentence)
+        dep: list[str]
+        identified_tactics, leftovers, dep = extract_tactics(sentence)
 
         # increment numtactics by adding the identified_tactics according to their multiplicities
         numtactics = numtactics + sum(identified_tactics.values())
@@ -132,6 +134,7 @@ def my_tagger(task: ProofTask) -> set[str]:
 
         tags.update(tactics)
         omitted.update(set(leftovers))
+        deprecated.update(set(dep))
 
     tags.add(f"NumTactics={numtactics}")
 
@@ -139,6 +142,8 @@ def my_tagger(task: ProofTask) -> set[str]:
 
     if omitted:
         tags.add(f"UnmatchedTactics={sorted(omitted)}")
+    if deprecated:
+        tags.add(f"DeprecatedTactics={sorted(deprecated)}")
 
     return tags
 
@@ -325,10 +330,10 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
     logger.info(f"Total number of tasks: {len(flat_tasks)}")
 
     unique_tasks: list[Task] = []
-    seen_tasks: set[tuple[str, str]] = set()
+    seen_tasks: set[tuple[str, str, str]] = set()
 
     for d in flat_tasks:
-        t = (str(d.file), str(d.locator))
+        t = (str(d.file), str(d.name), str(d.locator))
         if t not in seen_tasks:
             seen_tasks.add(t)
             unique_tasks.append(d)

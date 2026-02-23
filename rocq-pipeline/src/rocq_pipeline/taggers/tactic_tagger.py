@@ -188,7 +188,7 @@ def filter_tactics(
     tactics: list[str],
     prefixes: list[str],
     tac_tagger: Callable[[str, str], str] | None = None,
-) -> tuple[dict[str, int], list[str]]:
+) -> tuple[dict[str, int], list[str], list[str]]:
     r"""Filters a list of tactics based on a given set of prefixes,
     and applying the optional tac_tagger to each match.
 
@@ -200,19 +200,21 @@ def filter_tactics(
                     the tactic string as arguments and emits a suitable tag.
                     If no tac_tagger is given, the resulting tag is just the prefix
 
-    Returns: A tuple containing: , both sorted and without duplicates:
+    Returns: A triple containing:
         1. identified_tactics: A dictionary mapping each identified
         tactic prfix (possibly modified by the tagger as desccribed)
         to its multiplicity (to permit meta tags such as
         num_tactics)
         2. leftovers: A list of unique processed tactics that did not
         match.
+        3. deprecated: A list of unique processed tactics that are considered deprecated
 
     """
 
     # Use multiset for identified tactics and set for the leftovers.
     identified_tactics_dict: dict[str, int] = {}
     leftovers_set: set[str] = set()
+    deprecated_set: set[str] = set()
 
     for tac in tactics:
         found_prefix = None
@@ -238,11 +240,12 @@ def filter_tactics(
             identified_tactics_dict[found_prefix] = (
                 identified_tactics_dict.get(found_prefix, 0) + 1
             )
+            if found_prefix in deprecated_prefixes:
+                deprecated_set.add(tac)
         else:
             leftovers_set.add(tac)
 
-    # Convert the leftover set to a sorted lists for the final output
-    return identified_tactics_dict, sorted(leftovers_set)
+    return identified_tactics_dict, sorted(leftovers_set), sorted(deprecated_set)
 
 
 rocq_prefixes = [
@@ -381,6 +384,9 @@ brick_prefixes = [
 
 allowed_prefixes = rocq_prefixes + iris_prefixes + brick_prefixes
 
+# Deprecated tactics are still allowed, but there's a tag collecting them
+deprecated_prefixes = ["verify_spec'"]
+
 
 def looptac_tagger(tac: str, prefix: str) -> str:
     r"""A tagger that annotatates 'wp_for', 'wp_while', 'wp_do', 'wp_do_while' with
@@ -410,18 +416,20 @@ def looptac_tagger(tac: str, prefix: str) -> str:
     return res
 
 
-def extract_tactics(s: str) -> tuple[dict[str, int], list[str]]:
+def extract_tactics(s: str) -> tuple[dict[str, int], list[str], list[str]]:
     """
     Flattens a string to a list of tactics and then filters for
-    'allowed_prefixes', ensuring no duplicates in the output.
+    'allowed_prefixes', 'leftovers' (i.e unrecognized tactics), and
+    'deprecated' tactics (still allowed), ensuring no duplicates in the output.
 
     Args:
         s: The input string containing tactics.
 
     Returns:
-        A tuple containing two lists, both sorted and without duplicates:
+        A tuple containing three lists, all sorted and without duplicates:
         1. identified_tactics: a dict of tactic prefixes found, with multiplicities.
         2. leftovers: A list of unique processed tactics that did not match.
+        3. deprecated: A list of unique processed tactics that are considered deprecated.
     """
 
     # Sort prefixes by length (longest first)
