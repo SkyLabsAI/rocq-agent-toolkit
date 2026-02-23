@@ -96,9 +96,6 @@ class AgentBuilder:
     def __call__(self, prompt: str | None = None) -> Agent:
         return self._agent()
 
-    def extra_rocq_args(self) -> list[str]:
-        return []
-
 
 # TODO: integrate proof tree and structured proof states so that
 # task_holes / task_doc_interaction can be defined in a more
