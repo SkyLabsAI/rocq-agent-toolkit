@@ -1,3 +1,7 @@
+"""
+Add structured logging (via observability) on top of the RocqCursor API.
+"""
+
 from __future__ import annotations
 
 import functools

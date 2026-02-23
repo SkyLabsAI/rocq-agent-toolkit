@@ -3,7 +3,6 @@ from .choice import ChoiceAgent
 from .markov import MarkovAgent
 from .one_shot import OneShotAgent, OneShotBuilder
 from .trace import TraceAgent
-from .trace_cursor import TracingCursor
 
 __all__: list[str] = [
     # auto.py
@@ -17,6 +16,4 @@ __all__: list[str] = [
     "OneShotBuilder",
     # trace.py
     "TraceAgent",
-    # trace_cursor.py
-    "TracingCursor",
 ]

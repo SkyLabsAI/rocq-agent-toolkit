@@ -6,7 +6,7 @@ import pytest
 from rocq_doc_manager import rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
-from rocq_pipeline.agent.proof import trace_cursor
+from rocq_pipeline.trace_cursor import TracingCursor
 
 
 @asynccontextmanager
@@ -16,7 +16,7 @@ async def build_both(
     async with rc_sess(
         Path(__file__).parent / "test.v", rocq_args=[], load_file=True
     ) as rc:
-        traced = trace_cursor.TracingCursor.of_cursor(await rc.clone(), verbose=verbose)
+        traced = TracingCursor.of_cursor(await rc.clone(), verbose=verbose)
         try:
             print(await rc.doc_prefix())
             print(await rc.doc_suffix())
