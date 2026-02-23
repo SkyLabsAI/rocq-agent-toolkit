@@ -118,9 +118,7 @@ class ProofState:
             - proof=False: True iff focused goals are closed; shelved/admitted/unfocused goals may remain
             - proof=True: True iff focused goals /and/ shelved/admitted/unfocused goals are closed
         """
-        focused_closed = (
-            len(self._focused_goals) == 0
-        )
+        focused_closed = len(self._focused_goals) == 0
         unfocused_closed = (
             # Note: unfocused_goals is a stack of remaining-goal counts
             not any(self._unfocused_goals)
