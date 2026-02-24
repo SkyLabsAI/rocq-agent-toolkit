@@ -21,7 +21,6 @@ from pydantic import (
 )
 from pydantic.fields import Field
 from rocq_doc_manager.locator import Locator, LocatorParser
-from rocq_dune_util import dune_build
 
 from rocq_pipeline.schema.task_output import FullProofTask, TaskKind
 from rocq_pipeline.task_modifiers import task_mod
@@ -142,25 +141,19 @@ class TaskBundle(BaseModel):
     project: Project = Field(description="The Project that the tasks belong to.")
     tasks: list[Task] = Field(description="The Tasks in the project.")
 
-    def dune_build(
-        self,
-        *,
-        cli: bool = False,
-        jobs: int | None = None,
-        quiet: bool = True,
-    ) -> None:
-        """Use dune to build the .v files needed by tasks in the project."""
-        targets: set[str] = set()
-        for task in self.tasks:
-            targets.add(str(self.project.path / task.file.with_suffix(".vo")))
-
-        dune_build(
-            targets=list(targets),
-            cwd=self.project.path,
-            cli=cli,
-            jobs=jobs,
-            quiet=quiet,
+    def build_deps(self) -> list[Path]:
+        """Enumerate the .vo dependencies for tasks in the project relative to cwd."""
+        root_path = self.project.path.resolve().relative_to(
+            Path(".").resolve(), walk_up=True
         )
+        targets: list[Path] = []
+
+        for task in self.tasks:
+            v_abspath = (root_path / task.file).resolve(strict=True)
+            v_relpath = v_abspath.relative_to(Path(".").resolve(), walk_up=True)
+            targets.append(v_relpath.with_suffix(".vo"))
+
+        return targets
 
     @field_serializer("tasks")
     def serialize_tasks(self, tasks: list[Task]):
@@ -210,20 +203,12 @@ class TaskFile(BaseModel):
         description="Bundles of projects and their associatd tasks"
     )
 
-    def dune_build(
-        self,
-        *,
-        cli: bool = False,
-        jobs: int | None,
-        quiet: bool = True,
-    ) -> None:
-        """Use dune to build all the .v files needed by all project_bundles."""
+    def build_deps(self) -> list[Path]:
+        """Enumerate the .vo dependencies for all project_bundles relative to cwd."""
+        targets: list[Path] = []
         for project_bundle in self.project_bundles:
-            project_bundle.dune_build(
-                cli=cli,
-                jobs=jobs,
-                quiet=quiet,
-            )
+            targets.extend(project_bundle.build_deps())
+        return targets
 
     @model_validator(mode="after")
     def merge_bundles(self) -> TaskFile:
@@ -347,44 +332,27 @@ class TaskFile(BaseModel):
         return TaskFile(project_bundles=task_bundles)
 
     @classmethod
-    def cli_build_mk_parser(cls, parent: Any | None = None) -> ArgumentParser:
-        """Used in ./cli.py to expose a 'build' subcommand of 'rat'."""
-        description = "Build .vo dependencies for a single task_file using dune."
-        help = "Supply a path to a single task file and build its .vo dependencies using dune."
+    def cli_build_deps_mk_parser(cls, parent: Any | None = None) -> ArgumentParser:
+        """Used in ./cli.py to expose a 'build-deps' subcommand of 'rat'."""
+        description = "Enumerate .vo build targets relative to cwd for a single task_file."
+        help = "Supply a path to a single task file and enumerate its .vo dependencies relative to cwd."
         if parent:
-            parser = parent.add_parser("build", description=description, help=help)
+            parser = parent.add_parser("build-deps", description=description, help=help)
         else:
             parser = ArgumentParser(description=description)
         parser.add_argument(
             "task_file", type=Path, help="The path to a single task file"
         )
-        parser.add_argument(
-            "--quiet",
-            default=False,
-            action="store_true",
-            help="hide the dune build output (`--no-print-directory --display=quiet`)",
-        )
-        parser.add_argument(
-            "-j",
-            "--jobs",
-            type=lambda N: max(int(N), 1),
-            metavar="N",
-            help="explicit parallelism, corresponding to `-j` flag for dune; when elided use dune configuration (https://dune.readthedocs.io/en/latest/reference/config/index.html)",
-        )
         return parser
 
     @classmethod
-    def cli_build_run_ns(
+    def cli_build_deps_run_ns(
         cls, arguments: Namespace, extra_args: list[str] | None = None
     ) -> None:
-        """Used in ./cli.py to expose a 'build' subcommand of 'rat'."""
+        """Used in ./cli.py to expose a 'build-deps' subcommand of 'rat'."""
         assert extra_args is None or len(extra_args) == 0
         taskfile = cls.from_file(arguments.task_file)
-        taskfile.dune_build(
-            cli=True,
-            jobs=arguments.jobs,
-            quiet=arguments.quiet,
-        )
+        print(" ".join([str(vo_path) for vo_path in taskfile.build_deps()]))
 
     def iter_tasks(self) -> Iterator[tuple[Project, Task]]:
         """Get all tasks from all bundles."""

@@ -15,7 +15,6 @@ readme = "README.md"
 dependencies = [
     "pyyaml>=6.0.3,<7",
     "jmespath>=1.0.1,<2",
-    "rocq-dune-util",
     "rocq-doc-manager",
     "observability",
     "provenance-toolkit",
@@ -65,7 +64,6 @@ dev = [
 observability = { workspace = true }
 provenance-toolkit = { workspace = true }
 rocq-doc-manager = { workspace = true }
-rocq-dune-util = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/rocq_pipeline"]
