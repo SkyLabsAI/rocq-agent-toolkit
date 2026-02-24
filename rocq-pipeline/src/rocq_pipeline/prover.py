@@ -37,14 +37,14 @@ async def run_proving_agent(
         # here, we should really copy the contents into the document.
         # Doing this will enable some parallelization if we want.
         if task_result.success:
-            print("Agent succeeded.")
+            print(f"Agent succeeded with {task_result.message}")
             await local_rc.clear_suffix(count=1)
             await local_rc.insert_command("Qed.", blanks=None)
             old_rc = main_rc
             main_rc = local_rc
             await old_rc.dispose()
         else:
-            print("Agent failed.")
+            print(f"Agent failed with {task_result.message}")
             await local_rc.dispose()
             await main_rc.run_step()
     await main_rc.commit(str(output), include_suffix=True)
