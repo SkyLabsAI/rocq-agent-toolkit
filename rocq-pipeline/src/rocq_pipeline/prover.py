@@ -21,8 +21,10 @@ async def run_proving_agent(
 ) -> None:
     main_rc = await rc.clone()
     print("Running the proving agent.")
+    print(f"Doc: {await main_rc.doc_prefix()}, {await main_rc.doc_suffix()}")
     while await main_rc.goto_first_match(is_admitted):
         print()
+        print(f"Doc: {await main_rc.doc_prefix()}, {await main_rc.doc_suffix()}")
         goal = await main_rc.current_goal()
         assert goal is not None
         print(f"Found admit at index {await main_rc.cursor_index()}.")
@@ -79,6 +81,7 @@ def agent_main(agent_builder: AgentBuilder) -> int:
     logging.basicConfig(level=logging.ERROR)
     try:
         rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
+        print(f"Running agent with Rocq arguments: {rocq_args}, agent args: {agent_args}, on file: {rocq_file}; agent_builder config: {agent_builder}")
 
         async def _run() -> None:
             async with rc_sess(
@@ -99,4 +102,5 @@ def agent_main(agent_builder: AgentBuilder) -> int:
 
 
 def auto_prover():
+    print("Running auto_prover()")
     return agent_main(AgentBuilder.of_agent(AutoAgent))
