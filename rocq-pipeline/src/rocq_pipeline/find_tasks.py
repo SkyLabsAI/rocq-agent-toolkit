@@ -47,26 +47,20 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
             continue
         txt: str = sentence.text
         if txt.startswith("Proof"):
-            try:
-                if _PROOF_START.match(txt):
-                    if tactics:
-                        logging.warning(
-                            f"tactics before `Proof` command: {tactics} / {txt}"
-                        )
-                    else:
-                        start = i + 1
+            if _PROOF_START.match(txt):
+                if tactics:
+                    logging.warning(
+                        f"tactics before `Proof` command: {tactics} / {txt}"
+                    )
                 else:
-                    # this is a closing proof
-                    mtch = _PROOF_TERM.match(txt)
-                    assert mtch, txt
-                    proof_term = mtch.group(1).strip()
-                    return ProofTask(start, start, "qed", [f"exact {proof_term}."])
-            except Exception as err:
-                logger.error(f"Error during proof identification of {txt}. {err}")
-                raise ValueError(
-                    f"Error during proof identification of {txt}. Error is {err}"
-                ) from err
-
+                    start = i + 1
+            elif mtch := _PROOF_TERM.match(txt):
+                proof_term = mtch.group(1).strip()
+                return ProofTask(start, start, "qed", [f"exact {proof_term}."])
+            else:
+                msg = f"Error during proof identification. '{txt}' is an unknown form of 'Proof'."
+                logger.error(msg)
+                raise ValueError(msg)
         elif txt.startswith("Qed") or txt.startswith("Defined"):
             return ProofTask(start, i, "qed", tactics)
         elif txt.startswith("Abort"):
