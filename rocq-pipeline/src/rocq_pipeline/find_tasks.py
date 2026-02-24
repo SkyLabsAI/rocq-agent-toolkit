@@ -32,6 +32,13 @@ class ProofTask:
     proof_tactics: list[str]
 
 
+# This matches `Proof.`, `Proof with ..`, and `Proof using ..`
+_PROOF_START = re.compile(r"Proof(\s+(using\s|with\s).*|\s*)?\.")
+
+# This detects whether there is an argument to
+_PROOF_TERM = re.compile(r"Proof\s+([^\s].*)\s*\.", flags=re.MULTILINE)
+
+
 def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
     tactics: list[str] = []
     start = 0
@@ -40,7 +47,21 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
             continue
         txt: str = sentence.text
         if txt.startswith("Proof"):
-            start = i + 1
+            if _PROOF_START.match(txt):
+                if tactics:
+                    logging.warning(
+                        f"tactics before `Proof` command: {tactics} / {txt}"
+                    )
+                else:
+                    start = i + 1
+            else:
+                # this is a closing proof
+                mtch = _PROOF_TERM.match(txt)
+                print(mtch)
+                assert mtch, txt
+                proof_term = mtch.group(1).strip()
+                return ProofTask(start, start, "qed", [f"exact {proof_term}."])
+
         elif txt.startswith("Qed") or txt.startswith("Defined"):
             return ProofTask(start, i, "qed", tactics)
         elif txt.startswith("Abort"):
