@@ -28,6 +28,7 @@ async def run_proving_agent(
         print(f"Found admit at index {await main_rc.cursor_index()}.")
         for i, g in enumerate(goal.focused_goals):
             print(f"Goal {i}:{g.replace('\n', '\n  ')}")
+        print("\n")
         agent = agent_cls()  # Build the actual agent to run
         local_rc = await main_rc.clone()  # should materialize this
         task_result = await agent.run(rc=local_rc)

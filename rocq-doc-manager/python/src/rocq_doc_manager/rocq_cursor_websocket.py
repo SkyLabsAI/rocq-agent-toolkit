@@ -227,6 +227,16 @@ class CursorDispatcher(Dispatcher):
         self, method: str, args: list[Any], kwargs: dict[str, Any]
     ) -> Any:
         (cursor, args) = self.extract_cursor(args)
+
+        # Print commands/tactics as they arrive over the websocket RPC boundary.
+        # Useful in remote-agent setups where the client otherwise waits for a
+        # final `control/run` response.
+        if method in {"insert_command", "_insert_command", "run_command"}:
+            text = args[0] if args else None
+            ghost = bool(kwargs.get("ghost", False))
+            if isinstance(text, str) and not ghost:
+                print(f"{text}", flush=True)
+
         match method:
             case "clone":
 
