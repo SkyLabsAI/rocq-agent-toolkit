@@ -52,24 +52,24 @@ async def same[T](fn: Callable[[RocqCursor], Awaitable[T]], verbose: bool) -> No
             assert result == traced_result
 
 
-_methods = [
-    "insert_command",
-    "query",
-    "query_text_all",
-    "query_json_all",
-]
+_methods_and_kwargs = {
+    "insert_command": {"ghost": False},
+    "query": {},
+    "query_text_all": {},
+    "query_json_all": {},
+}
 
 
 @pytest.mark.parametrize("verbose", [True, False], ids=[True, False])
 @pytest.mark.parametrize(
     "method",
-    _methods,
-    ids=_methods,
+    _methods_and_kwargs.keys(),
+    ids=_methods_and_kwargs.keys(),
 )
 @pytest.mark.asyncio
 async def test_insert_command(verbose: bool, method: str) -> None:
     async def call(rc: RocqCursor):
-        return await getattr(rc, method)("About nat.", ghost=False)
+        return await getattr(rc, method)("About nat.", **_methods_and_kwargs[method])
 
     await same(call, verbose)
 
