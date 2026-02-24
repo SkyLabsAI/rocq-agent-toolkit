@@ -18,6 +18,7 @@ Copy dune project from source tree to separate folder:
 
 Run `auto-prover` via `uv`;
 
+  $ dune b foo.vo
   $ uv run auto-prover foo.v
   Running the proving agent.
   
