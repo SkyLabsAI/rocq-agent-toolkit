@@ -215,7 +215,7 @@ async def run_task(
         )
 
         try:
-            task_file = task.file
+            task_file = project.path / task.file
             progress.status(0.01, "🔃")
 
             task_mod_plugins = rocq_deps_for(task.modifiers)
@@ -228,9 +228,8 @@ async def run_task(
             plugins = task_mod_plugins + agent_plugins
 
             try:
-                task_file_path = project.path / task_file
                 rocq_args = rocq_args_for(
-                    task_file_path,
+                    task_file,
                     cwd=project.path,
                     plugins=plugins,
                 )
@@ -243,7 +242,7 @@ async def run_task(
             async with rc_sess(
                 task_file,
                 rocq_args=rocq_args,
-                chdir=str(project.path),
+                cwd=str(project.path),
                 load_file=True,
             ) as rc:
                 progress.status(0.05, "🔃")

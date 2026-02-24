@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
+from pathlib import Path
 from typing import Self
 
 from jsonrpc_tp import AsyncJsonRPCTP, JsonRPCTP
@@ -42,17 +43,20 @@ def _rdm_command(
 class RocqDocManager(API):
     def __init__(
         self,
+        file_path: Path | str,
         rocq_args: list[str],
-        file_path: str,
-        chdir: str | None = None,
+        *,
+        cwd: str | None = None,
         dune: bool = False,
         dune_disable_global_lock: bool = True,
     ) -> None:
+        path = Path(file_path)
+        rpath = path if cwd is None else path.relative_to(cwd, walk_up=True)
         (env, command) = _rdm_command(
             dune=dune, dune_disable_global_lock=dune_disable_global_lock
         )
-        args = command + [file_path, "--"] + rocq_args
-        super().__init__(JsonRPCTP(args=args, cwd=chdir, env=env))
+        args = command + [str(rpath), "--"] + rocq_args
+        super().__init__(JsonRPCTP(args=args, cwd=cwd, env=env))
 
     # TODO: We can not implement this without a synchronous interface
     def cursor(self) -> RocqCursor:
@@ -86,7 +90,7 @@ class AsyncRocqDocManager(AsyncAPI):
         file_path: str,
         *,
         workers: int | None = None,
-        chdir: str | None = None,
+        cwd: str | None = None,
         dune: bool = False,
         dune_disable_global_lock: bool = True,
     ) -> AsyncRocqDocManager:
@@ -98,7 +102,7 @@ class AsyncRocqDocManager(AsyncAPI):
             + ["--workers", str(1 if workers is None else workers), file_path, "--"]
             + rocq_args
         )
-        rpc = AsyncJsonRPCTP(args=args, cwd=chdir, env=env)
+        rpc = AsyncJsonRPCTP(args=args, cwd=cwd, env=env)
         await rpc.start()
         return AsyncRocqDocManager(rpc)
 
