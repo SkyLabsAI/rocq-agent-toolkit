@@ -21,7 +21,9 @@ def test_remote_agent_init_requires_api_key() -> None:
         RemoteAgent(RemoteProofAgentConfig(inference={"provider": "openrouter"}))
 
 
-def test_run_builds_ws_url_and_headers_and_sends_control_run(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_builds_ws_url_and_headers_and_sends_control_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import rocq_remote_agent.agent as agent_mod
     from rocq_doc_manager import RocqCursor
     from rocq_remote_agent import RemoteAgent, RemoteProofAgentConfig
@@ -50,7 +52,9 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(monkeypatch: pytest
             return None
 
     class DummyMux:
-        def __init__(self, _conn: Any, *, dispatcher: Any, encoder: Any, decoder: Any) -> None:
+        def __init__(
+            self, _conn: Any, *, dispatcher: Any, encoder: Any, decoder: Any
+        ) -> None:
             captured["mux_dispatcher"] = dispatcher
             captured["mux_encoder"] = encoder
             captured["mux_decoder"] = decoder
@@ -61,16 +65,22 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(monkeypatch: pytest
         async def stop(self) -> None:
             captured["mux_stopped"] = True
 
-        async def send(self, method: str, args: list[Any], kwargs: dict[str, Any]) -> tuple[bool, str]:
+        async def send(
+            self, method: str, args: list[Any], kwargs: dict[str, Any]
+        ) -> tuple[bool, str]:
             captured["send_method"] = method
             captured["send_args"] = args
             captured["send_kwargs"] = kwargs
             return False, json.dumps({"summary": {"ok": True}})
 
-    monkeypatch.setattr(agent_mod.websockets, "connect", lambda url, **kw: DummyConnect(url, **kw))
+    monkeypatch.setattr(
+        agent_mod.websockets, "connect", lambda url, **kw: DummyConnect(url, **kw)
+    )
     monkeypatch.setattr(agent_mod, "DuplexMux", DummyMux)
 
-    async def _finished(_self: Any, _rc: Any, *, message: str, side_effects: Any = None, **_kw: Any) -> Any:
+    async def _finished(
+        _self: Any, _rc: Any, *, message: str, side_effects: Any = None, **_kw: Any
+    ) -> Any:
         return {"message": message, "side_effects": side_effects}
 
     monkeypatch.setattr(RemoteAgent, "finished", _finished, raising=True)
@@ -105,7 +115,9 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(monkeypatch: pytest
     assert out["side_effects"]["remote_summary"] == {"ok": True}
 
 
-def test_run_returns_give_up_on_remote_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_returns_give_up_on_remote_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import rocq_remote_agent.agent as agent_mod
     from rocq_doc_manager import RocqCursor
     from rocq_remote_agent import RemoteAgent, RemoteProofAgentConfig
@@ -128,7 +140,9 @@ def test_run_returns_give_up_on_remote_exception(monkeypatch: pytest.MonkeyPatch
             return None
 
     class DummyMux:
-        def __init__(self, _conn: Any, *, dispatcher: Any, encoder: Any, decoder: Any) -> None:
+        def __init__(
+            self, _conn: Any, *, dispatcher: Any, encoder: Any, decoder: Any
+        ) -> None:
             return None
 
         async def start(self) -> None:
@@ -137,10 +151,14 @@ def test_run_returns_give_up_on_remote_exception(monkeypatch: pytest.MonkeyPatch
         async def stop(self) -> None:
             return None
 
-        async def send(self, _method: str, _args: list[Any], _kwargs: dict[str, Any]) -> tuple[bool, str]:
+        async def send(
+            self, _method: str, _args: list[Any], _kwargs: dict[str, Any]
+        ) -> tuple[bool, str]:
             return True, "boom"
 
-    monkeypatch.setattr(agent_mod.websockets, "connect", lambda *_a, **_kw: DummyConnect())
+    monkeypatch.setattr(
+        agent_mod.websockets, "connect", lambda *_a, **_kw: DummyConnect()
+    )
     monkeypatch.setattr(agent_mod, "DuplexMux", DummyMux)
 
     async def _give_up(_self: Any, _rc: Any, *, message: str, **_kw: Any) -> Any:
@@ -156,4 +174,3 @@ def test_run_returns_give_up_on_remote_exception(monkeypatch: pytest.MonkeyPatch
     agent = RemoteAgent(cfg)
     out = cast(Any, asyncio.run(agent.run(cast(RocqCursor, object()))))
     assert "remote exception" in out["message"]
-
