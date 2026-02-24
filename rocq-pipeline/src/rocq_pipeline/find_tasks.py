@@ -63,7 +63,9 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
                     return ProofTask(start, start, "qed", [f"exact {proof_term}."])
             except Exception as err:
                 logger.error(f"Error during proof identification of {txt}. {err}")
-                raise ValueError(f"Error during proof identification of {txt}. Error is {err}")
+                raise ValueError(
+                    f"Error during proof identification of {txt}. Error is {err}"
+                ) from err
 
         elif txt.startswith("Qed") or txt.startswith("Defined"):
             return ProofTask(start, i, "qed", tactics)
