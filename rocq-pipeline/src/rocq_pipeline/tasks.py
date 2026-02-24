@@ -4,7 +4,6 @@ import copy
 import json
 import os
 import sys
-from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Literal
@@ -203,14 +202,18 @@ class TaskFile(BaseModel):
 
     @classmethod
     def from_tasks(cls, tasks: Iterator[tuple[Project, Task]]):
-        projs: defaultdict[Project, list[Task]] = defaultdict(list)
+        projs: dict[str, tuple[Project, list[Task]]] = {}
         for proj, task in tasks:
-            proj_tasks = projs.get(proj)
-            assert proj_tasks is not None
-            proj_tasks.append(task)
+            try:
+                cur_proj, proj_tasks = projs[proj.get_id()]
+                assert cur_proj == proj
+                proj_tasks.append(task)
+            except KeyError:
+                projs[proj.get_id()] = (proj, [task])
         return TaskFile(
             project_bundles=[
-                TaskBundle(project=proj, tasks=tasks) for proj, tasks in projs.items()
+                TaskBundle(project=proj, tasks=tasks)
+                for _, (proj, tasks) in projs.items()
             ]
         )
 
