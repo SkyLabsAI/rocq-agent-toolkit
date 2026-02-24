@@ -59,6 +59,9 @@ async def rc_sess(
     dune_disable_global_lock: bool = True,
     load_file: bool = True,
 ) -> AsyncIterator[RocqCursor]:
+    """
+    @param file_path should be relative to `chdir` if it exists, otherwise, relative to `.`
+    """
     async with rdm_sess(
         file_path,
         rocq_args=rocq_args,
