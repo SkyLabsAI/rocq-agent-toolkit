@@ -16,6 +16,8 @@ Proof.
 Admitted.
 *)
 
+Definition some_def := 0.
+
 Lemma forty_two_is_42 : forty_two = 42.
 Proof.
 Admitted.
