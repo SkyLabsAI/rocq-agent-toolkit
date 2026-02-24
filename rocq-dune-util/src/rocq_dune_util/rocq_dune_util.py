@@ -7,10 +7,19 @@ from typing import Literal
 
 
 class DuneError(Exception):
-    def __init__(self, message: str, *, stdout: str, stderr: str) -> None:
+    def __init__(
+        self, message: str, *, stdout: str, stderr: str, cwd: str | Path | None
+    ) -> None:
         super().__init__(message)
         self.stdout = stdout
         self.stderr = stderr
+        self.cwd: str | None = None if cwd is None else str(cwd)
+
+    def __str__(self) -> str:
+        result = f"DuneEror: {super().__str__()}"
+        if self.cwd:
+            result = f"{result} (cwd={self.cwd})"
+        return result
 
 
 def _run_dune(args: list[str], cwd: str | Path | None) -> str:
@@ -23,9 +32,9 @@ def _run_dune(args: list[str], cwd: str | Path | None) -> str:
     if res.returncode != 0:
         stderr = res.stderr.decode(encoding="utf-8")
         message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
-        if cwd is not None:
-            message = f"{message} (cwd={cwd})"
-        raise DuneError(message, stdout=stdout, stderr=stderr)
+        raise DuneError(
+            message, stdout=stdout, stderr=stderr, cwd=str(cwd) if cwd else None
+        )
     return stdout
 
 
