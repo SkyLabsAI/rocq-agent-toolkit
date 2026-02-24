@@ -57,7 +57,6 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
             else:
                 # this is a closing proof
                 mtch = _PROOF_TERM.match(txt)
-                print(mtch)
                 assert mtch, txt
                 proof_term = mtch.group(1).strip()
                 return ProofTask(start, start, "qed", [f"exact {proof_term}."])
