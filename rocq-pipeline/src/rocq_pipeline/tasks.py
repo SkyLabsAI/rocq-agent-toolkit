@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import sys
+from argparse import ArgumentParser, Namespace
 from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
@@ -140,6 +141,20 @@ class TaskBundle(BaseModel):
     project: Project = Field(description="The Project that the tasks belong to.")
     tasks: list[Task] = Field(description="The Tasks in the project.")
 
+    def build_deps(self) -> list[Path]:
+        """Enumerate the .vo dependencies for tasks in the project relative to cwd."""
+        root_path = self.project.path.resolve().relative_to(
+            Path(".").resolve(), walk_up=True
+        )
+        targets: list[Path] = []
+
+        for task in self.tasks:
+            v_abspath = (root_path / task.file).resolve(strict=True)
+            v_relpath = v_abspath.relative_to(Path(".").resolve(), walk_up=True)
+            targets.append(v_relpath.with_suffix(".vo"))
+
+        return targets
+
     @field_serializer("tasks")
     def serialize_tasks(self, tasks: list[Task]):
         return sorted(tasks, key=lambda t: (t.file, t.name, str(t.locator)))
@@ -187,6 +202,13 @@ class TaskFile(BaseModel):
     project_bundles: list[TaskBundle] = Field(
         description="Bundles of projects and their associatd tasks"
     )
+
+    def build_deps(self) -> list[Path]:
+        """Enumerate the .vo dependencies for all project_bundles relative to cwd."""
+        targets: list[Path] = []
+        for project_bundle in self.project_bundles:
+            targets.extend(project_bundle.build_deps())
+        return targets
 
     @model_validator(mode="after")
     def merge_bundles(self) -> TaskFile:
@@ -308,6 +330,31 @@ class TaskFile(BaseModel):
             TaskBundle(project=project, tasks=tasks) for project, tasks in bundles
         ]
         return TaskFile(project_bundles=task_bundles)
+
+    @classmethod
+    def cli_build_deps_mk_parser(cls, parent: Any | None = None) -> ArgumentParser:
+        """Used in ./cli.py to expose a 'build-deps' subcommand of 'rat'."""
+        description = (
+            "Enumerate .vo build targets relative to cwd for a single task_file."
+        )
+        help = "Supply a path to a single task file and enumerate its .vo dependencies relative to cwd."
+        if parent:
+            parser = parent.add_parser("build-deps", description=description, help=help)
+        else:
+            parser = ArgumentParser(description=description)
+        parser.add_argument(
+            "task_file", type=Path, help="The path to a single task file"
+        )
+        return parser
+
+    @classmethod
+    def cli_build_deps_run_ns(
+        cls, arguments: Namespace, extra_args: list[str] | None = None
+    ) -> None:
+        """Used in ./cli.py to expose a 'build-deps' subcommand of 'rat'."""
+        assert extra_args is None or len(extra_args) == 0
+        taskfile = cls.from_file(arguments.task_file)
+        print(" ".join([str(vo_path) for vo_path in taskfile.build_deps()]))
 
     def iter_tasks(self) -> Iterator[tuple[Project, Task]]:
         """Get all tasks from all bundles."""
