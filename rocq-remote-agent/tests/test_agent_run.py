@@ -23,6 +23,7 @@ def test_remote_agent_init_requires_api_key() -> None:
 
 def test_run_builds_ws_url_and_headers_and_sends_control_run(
     monkeypatch: pytest.MonkeyPatch,
+    dummy_ws: Any,
 ) -> None:
     import rocq_remote_agent.agent as agent_mod
     from rocq_doc_manager import RocqCursor
@@ -30,23 +31,13 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(
 
     captured: dict[str, Any] = {}
 
-    class DummyWS:
-        async def send(self, _message: str | bytes) -> None:  # pragma: no cover
-            return None
-
-        async def recv(self) -> str | bytes:  # pragma: no cover
-            return b""
-
-        async def close(self) -> None:  # pragma: no cover
-            return None
-
     class DummyConnect:
         def __init__(self, url: str, **kw: Any) -> None:
             captured["ws_url"] = url
             captured["connect_kwargs"] = kw
 
-        async def __aenter__(self) -> DummyWS:
-            return DummyWS()
+        async def __aenter__(self) -> Any:
+            return dummy_ws
 
         async def __aexit__(self, _exc_type: Any, _exc: Any, _tb: Any) -> None:
             return None
@@ -117,24 +108,15 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(
 
 def test_run_returns_give_up_on_remote_exception(
     monkeypatch: pytest.MonkeyPatch,
+    dummy_ws: Any,
 ) -> None:
     import rocq_remote_agent.agent as agent_mod
     from rocq_doc_manager import RocqCursor
     from rocq_remote_agent import RemoteAgent, RemoteProofAgentConfig
 
-    class DummyWS:
-        async def send(self, _message: str | bytes) -> None:  # pragma: no cover
-            return None
-
-        async def recv(self) -> str | bytes:  # pragma: no cover
-            return b""
-
-        async def close(self) -> None:  # pragma: no cover
-            return None
-
     class DummyConnect:
-        async def __aenter__(self) -> DummyWS:
-            return DummyWS()
+        async def __aenter__(self) -> Any:
+            return dummy_ws
 
         async def __aexit__(self, _exc_type: Any, _exc: Any, _tb: Any) -> None:
             return None
