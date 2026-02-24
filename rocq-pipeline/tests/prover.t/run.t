@@ -27,25 +27,25 @@ Run `auto-prover` via `uv`;
     True
   Agent succeeded.
   
-  Found admit at index 18.
+  Found admit at index 14.
   Goal 0:
     ============================
     True /\ True
   Agent succeeded.
   
-  Found admit at index 30.
+  Found admit at index 22.
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admit at index 42.
+  Found admit at index 30.
   Goal 0:
     ============================
     42 = forty_two
   Agent succeeded.
   
-  Found admit at index 54.
+  Found admit at index 38.
   Goal 0:
     ============================
     forty_two = 57
@@ -61,15 +61,11 @@ Run `auto-prover` via `uv`;
   
   Lemma True_is_True : True.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma True_and_True : True /\ True.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
@@ -83,15 +79,11 @@ Run `auto-prover` via `uv`;
   
   Lemma forty_two_is_42 : forty_two = 42.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_42_backwards : 42 = forty_two.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   

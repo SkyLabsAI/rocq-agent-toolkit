@@ -41,6 +41,9 @@ Copy dune project from source tree to separate folder:
   Proof.
   Admitted.
 
+Build with dune
+  $ dune build --display=quiet
+
 Run `auto-prover` via `uv`;
 
   $ uv run auto-prover test_with_qed.v
@@ -52,13 +55,13 @@ Run `auto-prover` via `uv`;
     True /\ True
   Agent succeeded.
   
-  Found admit at index 26.
+  Found admit at index 22.
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admit at index 46.
+  Found admit at index 38.
   Goal 0:
     ============================
     forty_two = 57
@@ -72,8 +75,6 @@ Run `auto-prover` via `uv`;
   
   Lemma True_and_True : True /\ True.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
@@ -87,8 +88,6 @@ Run `auto-prover` via `uv`;
   
   Lemma forty_two_is_42 : forty_two = 42.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
@@ -99,3 +98,5 @@ Run `auto-prover` via `uv`;
   Proof.
   Admitted.
 
+Build with dune
+  $ dune build --display=quiet
