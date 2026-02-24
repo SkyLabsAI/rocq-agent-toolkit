@@ -334,7 +334,9 @@ class TaskFile(BaseModel):
     @classmethod
     def cli_build_deps_mk_parser(cls, parent: Any | None = None) -> ArgumentParser:
         """Used in ./cli.py to expose a 'build-deps' subcommand of 'rat'."""
-        description = "Enumerate .vo build targets relative to cwd for a single task_file."
+        description = (
+            "Enumerate .vo build targets relative to cwd for a single task_file."
+        )
         help = "Supply a path to a single task file and enumerate its .vo dependencies relative to cwd."
         if parent:
             parser = parent.add_parser("build-deps", description=description, help=help)
