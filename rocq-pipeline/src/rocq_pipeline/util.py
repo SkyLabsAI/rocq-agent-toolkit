@@ -146,8 +146,8 @@ def parallel_runner[T, U](
             # Submit all tasks and keep track of the future objects, but
             # elide the mapping from `Future` to `T` since we don't use it.
             #
-            # Note: we want to return a list matching the order of `tasks`
-            # which is why we separately maintain `futures_order`
+            # We want to return a list matching the order of `tasks` so we use
+            # `futures_order` to maintain a mapping from `Future` to task-idx
             futures_order: dict[Future, int] = {}
             for i, task in enumerate(tasks):
                 future = tpe.submit(go, task)
