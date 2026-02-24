@@ -84,9 +84,9 @@ def agent_main(agent_builder: AgentBuilder) -> int:
     if args.output is None:
         output = rocq_file.name
     else:
-        output = args.output
+        output: Path = args.output
         if output.anchor == rocq_file.anchor:
-            output = output.relative_to(rocq_file.parent, walk_up=True)
+            output = output.resolve()
     agent_builder.add_args(agent_args)
     logging.basicConfig(level=logging.ERROR)
     try:
