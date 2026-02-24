@@ -1,86 +1,30 @@
 import os
 import shlex
 import subprocess
-import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Literal
 
 
 class DuneError(Exception):
-    def __init__(
-        self,
-        message: str,
-        *,
-        working_dir: str,
-        command: str,
-        stdout: str | None,
-        stderr: str | None,
-        verbose: bool = False,
-    ) -> None:
+    def __init__(self, message: str, *, stdout: str, stderr: str) -> None:
         super().__init__(message)
-        self.working_dir = working_dir
-        self.command = command
         self.stdout = stdout
         self.stderr = stderr
-        self.verbose: bool = verbose
-
-    def __str__(self) -> str:
-        msg_line = super().__str__()
-        cmd_line = f"COMMAND: [[[\n{self.working_dir}$ {self.command}\n]]]"
-
-        if self.verbose and self.stdout is not None:
-            stdout_no_trailing_newline = self.stdout.rstrip("\n")
-            stdout_lines = f"STDOUT: [[[\n{stdout_no_trailing_newline}\n]]]"
-        else:
-            stdout_lines = ""
-
-        if self.stderr is not None:
-            stderr_no_trailing_newline = self.stderr.rstrip("\n")
-            stderr_lines = f"STDERR: [[[\n{stderr_no_trailing_newline}\n]]]"
-        else:
-            stderr_lines = ""
-
-        return "\n".join(
-            x for x in [msg_line, cmd_line, stdout_lines, stderr_lines] if x
-        )
 
 
-def _run_dune(
-    args: list[str],
-    cwd: str | Path | None,
-    *,
-    verbose: bool = True,
-) -> str:
+def _run_dune(args: list[str], cwd: str | Path | None) -> str:
     res = subprocess.run(
         ["dune"] + args,
         capture_output=True,
         cwd=str(cwd) if cwd is not None else None,
     )
-    stdout: str = res.stdout.decode(encoding="utf-8")
+    stdout = res.stdout.decode(encoding="utf-8")
     if res.returncode != 0:
-        stderr: str = res.stderr.decode(encoding="utf-8")
-        raise DuneError(
-            message=f"Dune failed with returncode {res.returncode}",
-            working_dir=str(Path(".").resolve()) if cwd is None else str(cwd),
-            command=shlex.join(["dune"] + args),
-            stdout=stdout,
-            stderr=stderr,
-            verbose=verbose,
-        )
+        stderr = res.stderr.decode(encoding="utf-8")
+        message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
+        raise DuneError(message, stdout=stdout, stderr=stderr)
     return stdout
-
-
-def _run_dune_cli(
-    args: list[str],
-    cwd: str | Path | None,
-) -> int:
-    return subprocess.Popen(
-        ["dune"] + args,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        cwd=str(cwd) if cwd is not None else None,
-    ).wait()
 
 
 def dune_sourceroot(*, cwd: str | Path | None = None) -> Path:
@@ -139,14 +83,7 @@ def _relative_target(
     return (_canonical_rel_path(path, cwd), name)
 
 
-def dune_build(
-    targets: list[str],
-    *,
-    cwd: str | Path | None = None,
-    cli: bool = False,
-    jobs: int | None = None,
-    quiet: bool = True,
-) -> int:
+def dune_build(targets: list[str], *, cwd: str | Path | None = None) -> None:
     """
     Builds the given targets using dune. The targets, can either be files or
     aliases (starting with `@`), interpreted in the current working directory.
@@ -154,31 +91,17 @@ def dune_build(
 
     @param targets: the targets to build
     @param cwd: alternative current working directory (optional)
-    @param cli: whether the build should be done using subprocess.Popen with parent pipes (optional)
-    @param jobs: the number of parallel jobs, corresponding to the `-j` flag for dune (optional)
-    @param quiet: whether the build should be done with `--no-print-directory --display=quiet` (optional)
     @raises ValueError: in case of ill-formed target
     @raises DuneError: in case of build failure
     """
     if not targets:
-        return 0
+        return
 
     def make_target(target: str) -> str:
         return _build_target(_relative_target(_parse_target(target), cwd))
 
-    args = ["build"]
-    if jobs is not None:
-        args.append(f"-j{int(max(jobs, 1))}")
-    if quiet:
-        args.extend(["--no-print-directory", "--display=quiet"])
-    args.extend([make_target(t) for t in targets])
-
-    if cli:
-        return _run_dune_cli(args, cwd)
-    else:
-        _ = _run_dune(args, cwd, verbose=not quiet)
-        # Note: if a _run_dune does not raise a DuneError then the return code must be 0
-        return 0
+    args = ["build", "--no-print-directory", "--display=quiet"]
+    _ = _run_dune(args + [make_target(t) for t in targets], cwd)
 
 
 def dune_env_hack() -> dict[str, str]:
@@ -403,7 +326,7 @@ def rocq_args_for(
     # is not way to build its dependencies only in a call to `dune build`.
     if build and deps:
         targets = [str(file.with_suffix(".vo")) for file in deps]
-        _ = dune_build(targets, cwd=cwd)
+        dune_build(targets, cwd=cwd)
 
     # Getting command-line arguments for the file and the extra dependencies.
     rocq_args = _rocq_args(path, cwd, build)
