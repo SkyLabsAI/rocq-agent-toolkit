@@ -22,6 +22,20 @@ def test_simple(tactics: list[str], qed: bool) -> None:
         ]
     ) == ProofTask(1, len(tactics) + 1, "qed", tactics)
 
+# @pytest.mark.parametrize("tactics, qed", itertools.product(SOME_TACTICS, ALL_BOOL))
+#def test_SRth_ARth(tactics: list[str], qed: bool) -> None:
+def test_SRth_ARth() -> None:
+    assert scan_proof(
+        [
+            make_suffix("""Proof (mk_art 0 1 radd rmul SRsub SRopp req
+    (SRadd_0_l SRth) (SRadd_comm SRth) (SRadd_assoc SRth)
+    (SRmul_1_l SRth) (SRmul_0_l SRth)
+    (SRmul_comm SRth) (SRmul_assoc SRth) (SRdistr_l SRth)
+    SRopp_mul_l SRopp_add SRsub_def).""")
+        ]
+    ) == ProofTask(1, 1, "qed", [])
+         # ProofTask(1, len(tactics) + 1, "qed", tactics)
+
 
 @pytest.mark.parametrize(
     "tactics, qed",
