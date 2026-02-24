@@ -23,6 +23,8 @@ def _run_dune(args: list[str], cwd: str | Path | None) -> str:
     if res.returncode != 0:
         stderr = res.stderr.decode(encoding="utf-8")
         message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
+        if cwd is not None:
+            message = f"{message} (cwd={cwd})"
         raise DuneError(message, stdout=stdout, stderr=stderr)
     return stdout
 
