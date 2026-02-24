@@ -2,16 +2,6 @@ from pathlib import Path
 
 import pytest
 
-# # from rocq_doc_manager_api import CommandData, Err, CommandError
-# from rocq_doc_manager.rocq_doc_manager_api import (
-#     CommandData,
-#     CommandError,
-#     Err,
-#     RocqCursor,
-#     rc_sess,
-# )
-# from rocq_doc_manager import RocqCursor
-# from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.locator import (
