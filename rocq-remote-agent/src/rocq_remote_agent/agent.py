@@ -168,15 +168,15 @@ class RemoteAgent(Agent):
                     "message": f"Invalid JSON response: {payload}",
                 }
 
-            if obj["success"]:
+            if obj.get("success"):
                 return await self.finished(
                     rc,
                     message=obj.get("message", "Unknown error"),
-                    side_effects=obj.get("summary"),
+                    side_effects={"remote_summary": obj.get("summary")},
                 )
             else:
                 return await self.give_up(
                     rc,
                     message=obj.get("message", "Unknown error"),
-                    side_effects=obj.get("summary"),
+                    side_effects={"remote_summary": obj.get("summary")},
                 )

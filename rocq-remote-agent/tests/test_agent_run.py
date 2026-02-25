@@ -62,7 +62,13 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(
             captured["send_method"] = method
             captured["send_args"] = args
             captured["send_kwargs"] = kwargs
-            return False, json.dumps({"summary": {"ok": True}})
+            return False, json.dumps(
+                {
+                    "success": False,
+                    "summary": {"ok": True},
+                    "message": "Agent made partial progress.",
+                }
+            )
 
     monkeypatch.setattr(
         agent_mod.websockets, "connect", lambda url, **kw: DummyConnect(url, **kw)
@@ -86,7 +92,7 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(
     agent = RemoteAgent(cfg)
 
     rc = cast(RocqCursor, object())
-    out = cast(Any, asyncio.run(agent.run(rc)))
+    out = asyncio.run(agent.run(rc))
 
     # Non-local ws:// is forced to wss:// for safety.
     assert captured["ws_url"] == "wss://example.com:8001/v3/ws"
@@ -102,8 +108,9 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(
     assert run_req["agent_parameters"] == {"x": 1}
     assert run_req["protocol_version"] == agent_mod.PROTOCOL_VERSION
 
-    assert out["message"] == "remote agent finished"
-    assert out["side_effects"]["remote_summary"] == {"ok": True}
+    assert not out.success
+    assert out.message == "Agent made partial progress."
+    assert out.side_effects["remote_summary"] == {"ok": True}
 
 
 def test_run_returns_give_up_on_remote_exception(
