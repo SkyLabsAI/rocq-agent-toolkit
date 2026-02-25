@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import logging
 import sys
@@ -9,7 +10,7 @@ from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.agent import AgentBuilder
 from rocq_pipeline.agent.proof.auto import AutoAgent
-from rocq_pipeline.args_util import split_args, valid_file
+from rocq_pipeline.args_util import adapt_usage, split_args, valid_file
 
 
 def is_admitted(text: str, kind: str) -> bool:
@@ -51,7 +52,10 @@ async def run_proving_agent(
 
 def agent_main(agent_builder: AgentBuilder) -> int:
     parser = ArgumentParser(
-        description="Run a proof agent on the given Rocq source file."
+        description="""Run a proof agent on the given Rocq source file.
+        Extra configuration options can be passed to the agent after a '--'.
+        Pass '-h' or '--help' after the '--' to get agent options.""",
+        exit_on_error=False,
     )
     parser.add_argument(
         "rocq_file",
@@ -66,8 +70,16 @@ def agent_main(agent_builder: AgentBuilder) -> int:
         type=valid_file(check_creatable=True, allowed_suffixes=[".v"]),
         help="output file (default is the input file)",
     )
+    adapt_usage(parser, "agent")
+
     prover_args, agent_args = split_args()
-    args = parser.parse_args(prover_args)
+    try:
+        args = parser.parse_args(prover_args)
+    except argparse.ArgumentError:
+        parser.print_help()
+        print()
+        agent_builder.add_args(["--help"])
+        return 0
     rocq_file = args.rocq_file
     if args.output is None:
         output = rocq_file.name

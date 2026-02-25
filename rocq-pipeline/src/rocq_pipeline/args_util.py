@@ -1,6 +1,8 @@
 import os
 import sys
+from argparse import ArgumentParser
 from collections.abc import Callable
+from io import StringIO
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -67,3 +69,13 @@ def split_args(argv: list[str] | None = None) -> tuple[list[str], list[str]]:
     except ValueError:
         pass
     return (args, extra_args)
+
+
+def adapt_usage(parser: ArgumentParser, whom: str) -> None:
+    usage_stream = StringIO()
+    parser.print_usage(usage_stream)
+    # The format of the value is 'usage: ...\n'
+    # We capture the ... and append the suffix.
+    usage = usage_stream.getvalue().split(" ", maxsplit=1)[1].strip()
+
+    parser.usage = f"{usage} -- ...{whom} arguments..."
