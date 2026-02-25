@@ -34,6 +34,7 @@ dev = [
     "mypy>=1.18.2,<2",
     "ruff>=0.14.4",
     "taskipy>=1.14.1",
+    "cram>=0.7",
 ]
 
 
@@ -59,6 +60,7 @@ format_ci = "ruff format --check"
 reformat = "ruff format"
 typecheck_ci = "mypy ."
 test_python_ci = "pytest"
+cram_ocaml_ci = "cram tests/"
 # test_ocaml_ci = "pytest" -- no tests currently
 # TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
 precommit = "task lint_ci --fix; task reformat; task typecheck_ci"
