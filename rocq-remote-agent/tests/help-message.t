@@ -1,7 +1,7 @@
 Test of the help messages of the prover infrastructure.
 
   $ uv run rocq-remote-agent -h
-  usage: rocq-remote-agent [-h] [-o OUTPUT] ROCQ_FILE -- ...agent arguments...
+  usage: rocq-remote-agent [-h] [-o OUTPUT] [--no-partial] ROCQ_FILE -- ...agent arguments...
   
   Run a proof agent on the given Rocq source file. Extra configuration options
   can be passed to the agent after a '--'. Pass '-h' or '--help' after the '--'
@@ -13,8 +13,9 @@ Test of the help messages of the prover infrastructure.
   options:
     -h, --help           show this help message and exit
     -o, --output OUTPUT  output file (default is the input file)
+    --no-partial         discard partial proofs
   $ uv run rocq-remote-agent -- -h
-  usage: rocq-remote-agent [-h] [-o OUTPUT] ROCQ_FILE -- ...agent arguments...
+  usage: rocq-remote-agent [-h] [-o OUTPUT] [--no-partial] ROCQ_FILE -- ...agent arguments...
   
   Run a proof agent on the given Rocq source file. Extra configuration options
   can be passed to the agent after a '--'. Pass '-h' or '--help' after the '--'
@@ -26,6 +27,7 @@ Test of the help messages of the prover infrastructure.
   options:
     -h, --help           show this help message and exit
     -o, --output OUTPUT  output file (default is the input file)
+    --no-partial         discard partial proofs
   
   usage: ...agent arguments... [-h] [--server SERVER]
                                [--remote-agent REMOTE_AGENT]

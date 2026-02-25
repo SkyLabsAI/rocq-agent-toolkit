@@ -1,6 +1,7 @@
 Basic test for `auto-prover`.
 Here, unlike `run.t`, we assume that both Python and Rocq dependencies are
 already installed.
+This test is disabled by default, but CI for releases will enable it.
 
 The tests are otherwise the same, and `./regen-run-release.sh` can be used to
 keep them in sync.
@@ -12,7 +13,9 @@ Copy dune project from source tree to separate folder:
 Run installed `auto-prover`:
 
   $ auto-prover foo.v
-  Running the proving agent.
+  Gathering Rocq configuration...
+  Loading file...
+  Running the proving agent on 5 admitted proofs; partial proofs will be retained.
   
   Found admit at index 6.
   Goal 0:
@@ -20,29 +23,30 @@ Run installed `auto-prover`:
     True
   Agent succeeded.
   
-  Found admit at index 18.
+  Found admit at index 14.
   Goal 0:
     ============================
     True /\ True
   Agent succeeded.
   
-  Found admit at index 30.
+  Found admit at index 22.
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admit at index 42.
+  Found admit at index 30.
   Goal 0:
     ============================
     42 = forty_two
   Agent succeeded.
   
-  Found admit at index 54.
+  Found admit at index 38.
   Goal 0:
     ============================
     forty_two = 57
-  Agent failed.
+  Agent made partial progress:
+  AutoAgent: out of fuel after 1 tactic applications
 
 
 
@@ -54,15 +58,11 @@ Run installed `auto-prover`:
   
   Lemma True_is_True : True.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma True_and_True : True /\ True.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
@@ -76,20 +76,17 @@ Run installed `auto-prover`:
   
   Lemma forty_two_is_42 : forty_two = 42.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_42_backwards : 42 = forty_two.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_57 : forty_two = 57.
   Proof.
+  auto.
   Admitted.
 
 

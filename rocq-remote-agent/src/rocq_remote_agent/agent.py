@@ -162,10 +162,21 @@ class RemoteAgent(Agent):
             try:
                 obj = json.loads(cast(str, payload))
             except Exception:
-                obj = {"summary": None}
+                obj = {
+                    "success": False,
+                    "summary": None,
+                    "message": f"Invalid JSON response: {payload}",
+                }
 
-            return await self.finished(
-                rc,
-                message="remote agent finished",
-                side_effects={"remote_summary": obj.get("summary")},
-            )
+            if obj.get("success"):
+                return await self.finished(
+                    rc,
+                    message=obj.get("message", "Unknown error"),
+                    side_effects={"remote_summary": obj.get("summary")},
+                )
+            else:
+                return await self.give_up(
+                    rc,
+                    message=obj.get("message", "Unknown error"),
+                    side_effects={"remote_summary": obj.get("summary")},
+                )

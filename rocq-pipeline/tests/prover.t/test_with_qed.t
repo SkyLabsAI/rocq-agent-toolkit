@@ -42,12 +42,14 @@ Copy dune project from source tree to separate folder:
   Admitted.
 
 Build with dune
-  $ dune build --display=quiet
+  $ dune build --display=quiet test_with_qed.vo
 
 Run `auto-prover` via `uv`;
 
   $ uv run auto-prover test_with_qed.v
-  Running the proving agent.
+  Gathering Rocq configuration...
+  Loading file...
+  Running the proving agent on 3 admitted proofs; partial proofs will be retained.
   
   Found admit at index 14.
   Goal 0:
@@ -65,7 +67,8 @@ Run `auto-prover` via `uv`;
   Goal 0:
     ============================
     forty_two = 57
-  Agent failed.
+  Agent made partial progress:
+  AutoAgent: out of fuel after 1 tactic applications
 
   $ cat test_with_qed.v
   Require Import skylabs.prover.test.bar.
@@ -96,7 +99,8 @@ Run `auto-prover` via `uv`;
   
   Lemma forty_two_is_57 : forty_two = 57.
   Proof.
+  auto.
   Admitted.
 
 Build with dune
-  $ dune build --display=quiet
+  $ dune build --display=quiet test_with_qed.vo

@@ -16,12 +16,12 @@ Copy dune project from source tree to separate folder:
 
   $ cp $TESTDIR/dune-project $TESTDIR/dune $TESTDIR/*.v .
 
-Run `auto-prover` via `uv` while retaining partial progress;
+Run `auto-prover` via `uv` while discarding partial progress;
 
-  $ uv run auto-prover foo.v
+  $ uv run auto-prover foo.v --no-partial
   Gathering Rocq configuration...
   Loading file...
-  Running the proving agent on 5 admitted proofs; partial proofs will be retained.
+  Running the proving agent on 5 admitted proofs; partial proofs will be discarded.
   
   Found admit at index 6.
   Goal 0:
@@ -51,7 +51,7 @@ Run `auto-prover` via `uv` while retaining partial progress;
   Goal 0:
     ============================
     forty_two = 57
-  Agent made partial progress:
+  Agent failed:
   AutoAgent: out of fuel after 1 tactic applications
 
 
@@ -92,7 +92,6 @@ Run `auto-prover` via `uv` while retaining partial progress;
   
   Lemma forty_two_is_57 : forty_two = 57.
   Proof.
-  auto.
   Admitted.
 
 

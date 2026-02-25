@@ -74,7 +74,7 @@ class RemoteAgentBuilder(AgentBuilder):
                 "(overrides cached token)."
             ),
         )
-        parsed, _unknown = p.parse_known_args(args)
+        parsed = p.parse_args(args)
 
         params: dict[str, JsonValue] = {}
         for item in parsed.remote_param:

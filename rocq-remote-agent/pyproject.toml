@@ -63,4 +63,4 @@ test_python_ci = "pytest"
 cram_ocaml_ci = "cram tests/"
 # test_ocaml_ci = "pytest" -- no tests currently
 # TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
-precommit = "task lint_ci --fix; task reformat; task typecheck_ci"
+precommit = "task lint_ci --fix; task reformat; task typecheck_ci; task test_python_ci"

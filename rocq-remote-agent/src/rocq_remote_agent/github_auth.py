@@ -154,5 +154,6 @@ def interactive_github_login_device_flow(
         interval_s=info.interval,
         expires_in_s=info.expires_in,
     )
+    print("Authorized!")
     _write_cached_token(cache_path or _default_token_cache_path(), token)
     return token

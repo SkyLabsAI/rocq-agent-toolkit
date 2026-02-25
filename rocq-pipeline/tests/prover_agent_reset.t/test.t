@@ -41,7 +41,9 @@ Build with dune
 Run `auto-prover` via `uv`;
 
   $ uv run auto-prover test.v
-  Running the proving agent.
+  Gathering Rocq configuration...
+  Loading file...
+  Running the proving agent on 4 admitted proofs; partial proofs will be retained.
   
   Found admit at index 10.
   Goal 0:
