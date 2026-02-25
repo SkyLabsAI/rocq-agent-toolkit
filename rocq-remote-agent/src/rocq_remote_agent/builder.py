@@ -49,9 +49,11 @@ class RemoteAgentBuilder(AgentBuilder):
             "--remote-param",
             action="append",
             default=[],
-            help=("KEY=VALUE parameter passed to the server-side agent. "
-                  "Specify multiple times for multiple params (e.g., "
-                  "--remote-param max_llm_calls=25 --remote-param max_tool_calls=25)."),
+            help=(
+                "KEY=VALUE parameter passed to the server-side agent. "
+                "Specify multiple times for multiple params (e.g., "
+                "--remote-param max_llm_calls=25 --remote-param max_tool_calls=25)."
+            ),
         )
         p.add_argument(
             "--provider",
