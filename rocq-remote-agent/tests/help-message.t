@@ -37,15 +37,15 @@ Test of the help messages of the prover infrastructure.
   
   options:
     -h, --help            show this help message and exit
-    --server SERVER       Remote agent server base URL (creates session via
-                          /v1/session)
+    --server SERVER       Remote agent server base URL
     --remote-agent REMOTE_AGENT
-                          Server-side agent script name (e.g. react-code-proof-
-                          agent)
+                          Server-side agent script name
     --remote-param REMOTE_PARAM
-                          KEY=JSON parameter passed to server-side agent
-                          (repeatable)
-    --provider PROVIDER   LLM provider name (e.g. openrouter, openai).
+                          KEY=VALUE parameter passed to the server-side agent.
+                          Specify multiple times for multiple params (e.g.,
+                          --remote-param max_llm_calls=25 --remote-param
+                          max_tool_calls=25).
+    --provider PROVIDER   LLM provider name (e.g. openrouter).
     --api-key-env API_KEY_ENV
                           Name of the environment variable containing the API
                           Key. Defaults to 'OPENROUTER_API_KEY'.

@@ -37,25 +37,29 @@ class RemoteAgentBuilder(AgentBuilder):
             "--server",
             type=str,
             default=self._config.server,
-            help=("Remote agent server base URL (creates session via /v1/session)"),
+            help=("Remote agent server base URL"),
         )
         p.add_argument(
             "--remote-agent",
             type=str,
             default=self._config.remote_agent,
-            help="Server-side agent script name (e.g. react-code-proof-agent)",
+            help="Server-side agent script name",
         )
         p.add_argument(
             "--remote-param",
             action="append",
             default=[],
-            help=("KEY=JSON parameter passed to server-side agent (repeatable)"),
+            help=(
+                "KEY=VALUE parameter passed to the server-side agent. "
+                "Specify multiple times for multiple params (e.g., "
+                "--remote-param max_llm_calls=25 --remote-param max_tool_calls=25)."
+            ),
         )
         p.add_argument(
             "--provider",
             type=str,
             default="openrouter",
-            help="LLM provider name (e.g. openrouter, openai).",
+            help="LLM provider name (e.g. openrouter).",
         )
         p.add_argument(
             "--api-key-env",
