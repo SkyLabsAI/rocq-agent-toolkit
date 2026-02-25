@@ -32,7 +32,7 @@ class RemoteAgentBuilder(AgentBuilder):
         self._config = RemoteProofAgentConfig()
 
     def add_args(self, args: list[str]) -> None:
-        p = argparse.ArgumentParser("RemoteProofAgent")
+        p = argparse.ArgumentParser("...agent arguments...")
         p.add_argument(
             "--server",
             type=str,
