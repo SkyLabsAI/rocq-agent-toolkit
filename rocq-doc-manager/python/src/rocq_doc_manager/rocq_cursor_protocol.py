@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Literal, Protocol, Self
 
 from . import rocq_doc_manager_api as rdm_api
-from .decorators import ensure_endswith_period
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,6 @@ class RocqCursorProtocolAsync(Protocol):
         self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
 
-    @ensure_endswith_period(argnames="text")
     async def insert_command(
         self,
         text: str,
@@ -112,7 +110,6 @@ class RocqCursorProtocolAsync(Protocol):
         self, erase: bool, index: int
     ) -> None | rdm_api.Err[None]: ...
 
-    @ensure_endswith_period(argnames="text")
     async def run_command(
         self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
@@ -449,7 +446,6 @@ class RocqCursorProtocolSync(Protocol):
         self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
 
-    @ensure_endswith_period(argnames="text")
     def insert_command_sync(
         self, text: str, blanks: str | None = "\n", safe: bool = True
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
@@ -503,7 +499,6 @@ class RocqCursorProtocolSync(Protocol):
         self, erase: bool, index: int
     ) -> None | rdm_api.Err[None]: ...
 
-    @ensure_endswith_period(argnames="text")
     def run_command_sync(
         self, text: str
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
