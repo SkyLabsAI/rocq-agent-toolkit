@@ -806,19 +806,19 @@ class DelegateRocqCursor(RocqCursor):
     The underlying cursor is available as `self._cursor` which should be treated as `protected`,
     i.e. subclasses may access the field but users should not.
 
-    The `make` method should be overridden to build the appropriate cursor.
+    The `make_derived` method should be overridden to build the appropriate cursor.
     """
 
     def __init__(self, rc: RocqCursor) -> None:
         self._cursor = rc
 
-    def make(self, rc: RocqCursor) -> RocqCursor:
+    def make_derived(self, rc: RocqCursor) -> RocqCursor:
         """Make a value of this cursor type"""
         return self.__class__(rc)
 
     @override
     async def clone(self, *, materialize: bool = False) -> RocqCursor:
-        return self.make(await self._cursor.clone(materialize=materialize))
+        return self.make_derived(await self._cursor.clone(materialize=materialize))
 
     @override
     async def _insert_command(

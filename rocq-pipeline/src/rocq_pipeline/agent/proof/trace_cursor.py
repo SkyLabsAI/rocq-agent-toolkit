@@ -109,7 +109,7 @@ class TracingCursor(DelegateRocqCursor):
         self._verbose = verbose
 
     @override
-    def make(self, rc: RocqCursor) -> RocqCursor:
+    def make_derived(self, rc: RocqCursor) -> RocqCursor:
         return TracingCursor.of_cursor(rc, verbose=self._verbose)
 
     @override
