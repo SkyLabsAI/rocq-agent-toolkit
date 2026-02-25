@@ -464,6 +464,7 @@ def run_config(config: RunConfiguration) -> bool:
     return True
 
 
+@util.gracefully_interruptible_entrypoint()
 def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bool:
     """
     A simple entry point for an agent to be run as a stand-alone file.
