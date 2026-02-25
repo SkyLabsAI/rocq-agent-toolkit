@@ -34,7 +34,13 @@ async def trace_proof(
     for i, tactic in enumerate(tactics):
         after = await tracer.before_internal(rdm, tactic)
         progress.status(status=tactic[:10])
-        assert not isinstance(await rdm.run_command(tactic), rdm_api.Err)
+
+        run_command_result = await rdm.run_command(tactic)
+        if isinstance(run_command_result, rdm_api.Err):
+            raise ValueError(
+                f"Running tactic '{str(tactic)}' failed: {str(run_command_result)}"
+            )
+
         progress.status(percent=progress_min + i * step_size)
         if after is not None:
             result = await after(rdm, tactic)
