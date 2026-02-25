@@ -16,13 +16,13 @@ Copy dune project from source tree to separate folder:
 
   $ cp $TESTDIR/dune-project $TESTDIR/dune $TESTDIR/*.v .
 
-Check the contents of broken/baz.v before the `auto-prover` is used.
+Check the contents of broken.v before the `auto-prover` is used.
 
   $ cat broken.v
   (* Some comment *)
-  Definition foo : nat = 0.
-  Definition bar : nat = 1.
-  Definition baz : nat = -1.
+  Definition foo : nat := 0.
+  Definition bar : nat := 1.
+  Definition baz : nat := -1.
   
   Lemma obvious : foo <> bar. Proof. Admitted.
   
@@ -36,12 +36,17 @@ Run `auto-prover` via `uv` while retaining partial progress;
 
   $ uv run auto-prover broken.v
   Running the proving agent on 2 admitted proofs; partial proofs retained.
+  Command failure after processing 1 admitted proof:
+
+  Definition baz : nat := -1.
+
+  Error: Cannot interpret this number as a value of type nat
   
   $ cat broken.v
   (* Some comment *)
-  Definition foo : nat = 0.
-  Definition bar : nat = 1.
-  Definition baz : nat = -1.
+  Definition foo : nat := 0.
+  Definition bar : nat := 1.
+  Definition baz : nat := -1.
   
   Lemma obvious : foo <> bar. Proof. auto. Qed.
   
