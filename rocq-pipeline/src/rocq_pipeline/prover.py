@@ -185,9 +185,9 @@ async def run_delegated_prover_on_admitted_proof_task(
             msg = "Agent failed"
 
         if task_result.message:
-            print(f"{msg}: {task_result.message}")
+            print(f"{msg}:\n{task_result.message}")
         else:
-            print(msg)
+            print(f"{msg}.")
 
 
 async def try_replay(

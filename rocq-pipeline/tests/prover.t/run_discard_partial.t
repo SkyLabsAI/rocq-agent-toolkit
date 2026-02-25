@@ -16,10 +16,10 @@ Copy dune project from source tree to separate folder:
 
   $ cp $TESTDIR/dune-project $TESTDIR/dune $TESTDIR/*.v .
 
-Run `auto-prover` via `uv` while retaining partial progress;
+Run `auto-prover` via `uv` while discarding partial progress;
 
-  $ uv run auto-prover foo.v
-  Running the proving agent on 5 admitted proofs; partial proofs retained.
+  $ uv run auto-prover foo.v --no-partial
+  Running the proving agent on 5 admitted proofs; partial proofs discarded.
   
   Found admit at index 6.
   Goal 0:
@@ -27,29 +27,29 @@ Run `auto-prover` via `uv` while retaining partial progress;
     True
   Agent succeeded.
   
-  Found admit at index 14.
+  Found admit at index 18.
   Goal 0:
     ============================
     True /\ True
   Agent succeeded.
   
-  Found admit at index 22.
+  Found admit at index 30.
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admit at index 30.
+  Found admit at index 42.
   Goal 0:
     ============================
     42 = forty_two
   Agent succeeded.
   
-  Found admit at index 38.
+  Found admit at index 54.
   Goal 0:
     ============================
     forty_two = 57
-  Agent made partial progress:
+  Agent failed:
   AutoAgent: out of fuel after 1 tactic applications
 
 
@@ -62,11 +62,15 @@ Run `auto-prover` via `uv` while retaining partial progress;
   
   Lemma True_is_True : True.
   Proof.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma True_and_True : True /\ True.
   Proof.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
@@ -80,19 +84,20 @@ Run `auto-prover` via `uv` while retaining partial progress;
   
   Lemma forty_two_is_42 : forty_two = 42.
   Proof.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_42_backwards : 42 = forty_two.
   Proof.
+  #[local] Unset SsrIdents.
+  #[local] Set Default Goal Selector "1".
   auto.
   Qed.
   
   Lemma forty_two_is_57 : forty_two = 57.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
-  auto.
   Admitted.
 
 
