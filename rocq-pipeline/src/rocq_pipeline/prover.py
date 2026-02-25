@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import difflib
 import logging
 import sys
 from argparse import ArgumentParser
@@ -12,9 +13,6 @@ from rocq_dune_util import DuneError, rocq_args_for
 from rocq_pipeline.agent import AgentBuilder
 from rocq_pipeline.agent.proof.auto import AutoAgent
 from rocq_pipeline.args_util import adapt_usage, split_args, valid_file
-
-# QoL:
-# insert leading newline if proof doesn't start with one
 
 # TODOs:
 # 1) proof formatter
@@ -47,8 +45,11 @@ async def run_proving_agent(
         output: the Path where the result of the interaction should be committed
         no_partial (optional): whether or not the persist partial proof progress for each admitted proof task
     """
-    if not any(filter(await rc.doc_suffix(), lambda suffix_item: is_admitted(suffix_item.text))):
-        print("No Admitted proofs.")
+    if not filter(
+        lambda suffix_item: is_admitted(suffix_item.text, suffix_item.kind),
+        await rc.doc_suffix()
+    ):
+        print("No admitted proofs.")
         return
 
     print(
@@ -97,52 +98,49 @@ async def run_delegated_prover_on_admitted_proof_task(
         # Insert partial progress if the proof is completed, or upon client request
         if task_result.success or (not no_partial):
             extended_prefix = await local_rc.doc_prefix()
-            expected_overlapping_prefix = extended_prefix[:len(existing_prefix)]
+            expected_overlapping_prefix = extended_prefix[: len(existing_prefix)]
+
             if existing_prefix != expected_overlapping_prefix:
-                # TODO: pretty-print diff of prefix text
+                before = "".join([x.text for x in existing_prefix])
+                after = "".join([x.text for x in extended_prefix])
+                diff = difflib.unified_diff(a=before.split("\n"), b=after.split("\n"))
                 return await agent_invariant_violated(
                     "\n".join(
-                        [
-                            "Agent.prove invariant violated; prefix modified:",
-                            f"\t- expected prefix: {existing_prefix}",
-                            f"\t- actual prefix: {expected_overlapping_prefix}",
-                        ]
+                        ["Agent.prove invariant violated; prefix modified:"]
+                        + list(diff)
                     )
                 )
 
-            extension = extended_prefix[len(existing_prefix):]
+            extension = extended_prefix[len(existing_prefix) :]
 
             for prefix_item in extension:
                 # What happens if agents try inserting ghost commands? Either:
                 # - skip them
                 # - insert them as a comment
                 if prefix_item.kind == "blanks":
-                    insert_result = await rc.insert_blanks(text=prefix_item.text)
+                    await rc.insert_blanks(text=prefix_item.text)
                 else:
-                    insert_result = await rc.insert_command(text=prefix_item.text, blanks=None)
-
-                if isinstance(insert_result, rdm_api.Err):
-
-                    ####################################
-                    # TODO: comment block with remaining
-                    ####################################
-
-                    return await agent_invariant_violated(
-                        f"Agent.prove invariant violated; replaying proof script failed: {insert_result}"
+                    insert_result = await rc.insert_command(
+                        text=prefix_item.text, blanks=None
                     )
 
-            # TODO:
-            # 1) hoist this to a helper
-            # 2) write a few small test cases for the helper
+                    if isinstance(insert_result, rdm_api.Err):
+                        ####################################
+                        # TODO: comment block with remaining
+                        ####################################
 
+                        return await agent_invariant_violated(
+                            f"Agent.prove invariant violated; replaying proof script failed: {insert_result}"
+                        )
+
+            # TODO:
+            # 1) write a few small test cases for the helper
 
             # 1a) check if last non-blank command in prefix is a `Qed`
             #
             # Note: brittle because agents could insert "extra" commands after `Qed`
             command_extension = [
-                cmd
-                for cmd in extension[::-1]
-                if cmd.kind == "command"
+                cmd for cmd in extension[::-1] if cmd.kind == "command"
             ]
             if len(command_extension) != 0 and command_extension[0].text == "Qed.":
                 # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
@@ -150,7 +148,9 @@ async def run_delegated_prover_on_admitted_proof_task(
                 await rc.clear_suffix(count=1)
             else:
                 # 1b) else, try inserting Qed
-                try_qed_result = await rc.insert_command("Qed.")  # TODO: maybe use `blanks=None`
+                try_qed_result = await rc.insert_command(
+                    "Qed."
+                )  # TODO: maybe use `blanks=None`
                 if not isinstance(try_qed_result, rdm_api.Err):
                     # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
                     # MAYBE: clear until the next `Admitted`
@@ -158,14 +158,16 @@ async def run_delegated_prover_on_admitted_proof_task(
                 else:
                     # Step over `Admitted`
                     await rc.run_step()
-        else: # Step over `Admitted`
+        else:  # Step over `Admitted`
             await rc.run_step()
 
         # Print task_result and persistence
         if task_result.success:
             print(f"Agent succeeded: {task_result.message}")
         elif no_partial:
-            print(f"Agent made partial progress, but ultimately failed: {task_result.message}")
+            print(
+                f"Agent made partial progress, but ultimately failed: {task_result.message}"
+            )
         else:
             print(f"Agent failed: {task_result.message}")
 
@@ -217,9 +219,9 @@ def agent_main(agent_builder: AgentBuilder) -> int:
         return 0
     rocq_file = args.rocq_file
     if args.output is None:
-        output = rocq_file.name
+        output: Path = rocq_file.name
     else:
-        output: Path = args.output
+        output = args.output
         if output.anchor == rocq_file.anchor:
             output = output.resolve()
     agent_builder.add_args(agent_args)
