@@ -241,7 +241,7 @@ async def print_admitted_proof_task(local_rc: RocqCursor) -> None:
         print(f"Goal {i}:{g.replace('\n', '\n  ')}")
 
 
-def agent_main(agent_builder: AgentBuilder) -> int:
+def agent_main(agent_builder: AgentBuilder) -> bool:
     parser = ArgumentParser(
         description="""Run a proof agent on the given Rocq source file.
         Extra configuration options can be passed to the agent after a '--'.
@@ -275,7 +275,7 @@ def agent_main(agent_builder: AgentBuilder) -> int:
         parser.print_help()
         print()
         agent_builder.add_args(["--help"])
-        return 0
+        return True
     rocq_file = args.rocq_file
     if args.output is None:
         output: Path = rocq_file.name
@@ -306,7 +306,7 @@ def agent_main(agent_builder: AgentBuilder) -> int:
                 )
 
         asyncio.run(_run())
-        return 0
+        return True
     except DuneError as e:
         sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}")
     except Exception as e:

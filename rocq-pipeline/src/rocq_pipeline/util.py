@@ -1,11 +1,16 @@
 import asyncio
-from collections.abc import Awaitable, Callable
+import os
+import sys
+from collections.abc import Awaitable, Callable, Generator
 from concurrent.futures.thread import ThreadPoolExecutor
+from contextlib import contextmanager
 from itertools import count
 from types import TracebackType
 from typing import cast
 from warnings import deprecated
 
+from observability import get_logger
+from observability.logging import StructuredLogger
 from rich.progress import (
     BarColumn,
     Progress,
@@ -13,6 +18,76 @@ from rich.progress import (
     TaskProgressColumn,
     TextColumn,
 )
+
+
+def get_existing_logger_or_make(
+    *, name: str, local_only: bool = False
+) -> StructuredLogger:
+    if maybe_logger := locals().get("logger"):
+        if isinstance(maybe_logger, StructuredLogger):
+            return maybe_logger
+    elif not local_only and (maybe_logger := globals().get("logger")):
+        if isinstance(maybe_logger, StructuredLogger):
+            return maybe_logger
+
+    return get_logger(name)
+
+
+def env_DEBUG() -> bool:
+    env_DEBUG = os.environ.get("DEBUG", False)
+    return env_DEBUG and (
+        (isinstance(env_DEBUG, (bool, int)) and env_DEBUG)
+        or (isinstance(env_DEBUG, str) and env_DEBUG.lower().startswith("y"))
+    )
+
+
+def has_error_in_chain(exc: BaseException, target_type: type[BaseException]):
+    """Recursively checks if target_type is in the exception's history."""
+    if isinstance(exc, target_type):
+        return True
+
+    # Check explicit cause
+    if exc.__cause__ and has_error_in_chain(exc.__cause__, target_type):
+        return True
+
+    # Check implicit context (if not suppressed)
+    if not exc.__suppress_context__ and exc.__context__:
+        return has_error_in_chain(exc.__context__, target_type)
+
+    return False
+
+
+@contextmanager
+def gracefully_interruptible_entrypoint(
+    *, name: str | None = None, exitcode: int = 1
+) -> Generator[None]:
+    logger = get_existing_logger_or_make(name=name)
+
+    def _graceful_exit(e: BaseException, extra: str = "") -> None:
+        if env_DEBUG():
+            raise e
+        else:
+            msg = f"\n{e.__name__} caught"
+            if extra:
+                msg += f"({extra})"
+            msg += ". Performing cleanup..."
+
+            logger.info(msg)
+            sys.exit(exitcode)
+
+    try:
+        yield
+    except KeyboardInterrupt as e_keyboard_interrupt:
+        _graceful_exit(e_keyboard_interrupt)
+    except asyncio.CancelledError as e_async_cancelled:
+        _graceful_exit(
+            e_async_cancelled,
+            extra=(
+                "via KeyboardInterrupt"
+                if has_error_in_chain(e_async_cancelled, KeyboardInterrupt)
+                else ""
+            ),
+        )
 
 
 class MockProgress:
