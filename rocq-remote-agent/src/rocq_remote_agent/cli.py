@@ -7,7 +7,7 @@ from rocq_remote_agent.builder import RemoteAgentBuilder
 
 def main() -> int:
     """Main entrypoint for remote-proof-agent."""
-    return RAT.agent_main(RemoteAgentBuilder())
+    return 0 if RAT.agent_main(RemoteAgentBuilder()) else 1
 
 
 if __name__ == "__main__":
