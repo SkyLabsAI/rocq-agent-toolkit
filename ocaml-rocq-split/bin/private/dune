@@ -1,0 +1,5 @@
+(executable
+ (public_name rocq-split.private)
+ (package rocq-split)
+ (name main)
+ (libraries rocq-runtime.toplevel rocq_split_data))

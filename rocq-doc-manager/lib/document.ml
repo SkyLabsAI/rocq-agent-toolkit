@@ -166,20 +166,20 @@ let copy_contents : from:t -> t -> unit = fun ~from d ->
 let cursor_index : t -> int = fun d ->
   match d.rev_prefix with [] -> 0 | p :: _ -> p.index + 1
 
-let to_unprocessed : Rocq_split_api.sentence -> unprocessed_item = fun s ->
-  let text = s.Rocq_split_api.text in
-  match s.Rocq_split_api.kind with
-  | "blanks" -> {kind = `Blanks ; text}
-  | _        -> {kind = `Command; text}
+let to_unprocessed : Rocq_split.sentence -> unprocessed_item = fun s ->
+  let text = s.Rocq_split.text in
+  match s.Rocq_split.kind with
+  | `Blanks     -> {kind = `Blanks ; text}
+  | `Command(_) -> {kind = `Command; text}
 
 type loc = Rocq_loc.t option
 
 let load_file : t -> (unit, string * loc) result = fun d ->
   let {file; args; _} = get_backend d in
-  match Rocq_split_api.get ~args ~file with
-  | Error(err)    -> Error(Rocq_split_api.(err.message, err.loc))
-  | Ok(sentences) ->
-  let suffix = List.rev_map to_unprocessed sentences in
+  match Rocq_split.split_file ~file ~args with
+  | Error(s, err) -> Error(s, err.Rocq_split.error_loc)
+  | Ok(data)      ->
+  let suffix = List.rev_map to_unprocessed data.Rocq_split.sentences in
   d.suffix <- List.rev_append suffix d.suffix;
   Ok(())
 
