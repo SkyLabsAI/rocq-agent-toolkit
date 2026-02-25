@@ -1,0 +1,231 @@
+import argparse
+import itertools
+import json
+import traceback
+from collections.abc import Callable
+from pathlib import Path
+from types import ModuleType
+from typing import Any, cast
+
+from rocq_doc_manager import RocqCursor, rc_sess
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_dune_util import rocq_args_for
+
+import rocq_pipeline.tasks as Tasks
+from rocq_pipeline import find_tasks, loader, rocq_args, util
+from rocq_pipeline.args import load_tasks
+from rocq_pipeline.tracers import json_goal
+from rocq_pipeline.tracers.extractor import (
+    Tracer,
+)
+
+
+async def trace_proof(
+    tracer: Tracer[dict[str, Any]],
+    rdm: RocqCursor,
+    progress: util.ProgressCallback,
+    progress_min: float = 0.0,
+    progress_max: float = 1.0,
+) -> list[dict[str, Any]]:
+    prefix: list[rdm_api.PrefixItem] = (await rdm.doc_prefix())
+    if not prefix:
+        print("No prefix found.")
+        return []
+    last_prefix = prefix[-1].text
+    predecessor = prefix[-2].text if len(prefix) >= 2 else ""
+    if not last_prefix.strip():
+        print("Last prefix is whitespace.")
+        last_prefix = predecessor
+        predecessor = prefix[-4].text if len(prefix) >= 4 else ""
+    print(f"Last nonwhite prefix is: {last_prefix}")
+    print(f"Predecessor is: {predecessor}")
+    if last_prefix.startswith("Proof "):
+        print(f"last nonwhite prefix starts with Proof ', being: {last_prefix}")
+        tactics = [last_prefix]
+    else:
+        tactics = find_tasks.scan_proof(await rdm.doc_suffix()).proof_tactics
+    print(f"Tracing proof with the tactics {str(tactics)}.")
+    await tracer.start_proof(rdm)
+    trace = []
+    step_size: float = (progress_max - progress_min) / len(tactics)
+    for i, tactic in enumerate(tactics):
+        after = await tracer.before_internal(rdm, tactic)
+        progress.status(status=tactic[:10])
+
+        run_command_result = await rdm.run_command(tactic)
+        if isinstance(run_command_result, rdm_api.Err):
+            raise ValueError(
+                f"Running tactic '{str(tactic)}' failed: {str(run_command_result)}"
+            )
+
+        progress.status(percent=progress_min + i * step_size)
+        if after is not None:
+            result = await after(rdm, tactic)
+            if result is not None:
+                if "tactic" not in result:
+                    result["tactic"] = tactic.strip(".").strip()
+                trace.append(result)
+    await tracer.end_proof(rdm)
+    return trace
+
+
+def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
+    # Set up the argument parser
+    if parent:
+        parser = parent.add_parser("trace", help="Traces Rocq states")
+    else:
+        parser = argparse.ArgumentParser(description="Traces Rocq states.")
+
+    # Add the single required positional argument
+    parser.add_argument(
+        "--task-json", type=json.loads, help="The task descriptor, as JSON."
+    )
+    parser.add_argument(
+        "--task-file", type=Path, help="The task descriptor in a file, JSON or YAML"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("."),
+        help="The directory to output task results, as JSON.",
+    )
+    if with_tracer:
+        parser.add_argument(
+            "--tracer",
+            type=str,
+            help="The tracer to use. The argument is interpreted as follows: The forms [<path>/<module>.py:<func>] and [<package.path>.<module>:<func>] use [<module>.<func>()], whereas [<path>/<module>.py] and [<package.path>.<module>] use [<module>.build()].",
+        )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=lambda N: max(1, int(N)),
+        default=1,
+        help="The number of parallel workers.",
+    )
+    return parser
+
+
+def run(
+    tracer_builder: Callable[[], Tracer[Any]],
+    output_dir: Path,
+    tasks: list[tuple[Tasks.Project, Tasks.Task]],
+    jobs: int = 1,
+) -> None:
+    output_dir.mkdir(exist_ok=True)
+    if not output_dir.is_dir():
+        print(f"No such output directory: {output_dir}")
+
+    async def run_task(
+        proj_task: tuple[Tasks.Project, Tasks.Task], progress: util.ProgressCallback
+    ) -> bool:
+        project, task = proj_task
+        # TODO: find a better ID for tasks
+        task_id: str = task.get_id()
+        output_file: Path = (
+            output_dir / f"{task_id.replace('/', '_').replace('#', '_')}.json"
+        )
+
+        try:
+            tracer = tracer_builder()
+            extra_paths = itertools.chain.from_iterable(
+                (["-Q", str(v), k] for k, v in tracer.extra_paths().items())
+            )
+
+            task_file: Path = project.path / task.file
+            async with rc_sess(
+                str(task_file),
+                rocq_args=rocq_args.extend_args(
+                    rocq_args_for(task_file), list(extra_paths)
+                ),
+                dune=True,
+                load_file=True,
+            ) as rc:
+                tracer.setup(rc)
+                progress.status(0.05, "🔃")
+
+                if not await task.locator.go_to(rc):
+                    print(f"Failed to find task: {task_id}")
+                    return False
+                progress.status(0.1, "💭")
+
+                trace = await trace_proof(tracer, rc, progress, 0.1, 0.95)
+                progress.status(0.95, "💭")
+
+            with open(output_file, "w") as output:
+                json.dump(trace, output)
+            progress.status(1)
+
+            return True
+        except Exception as err:
+            print(traceback.format_exc())
+            print(f"Failed at task {task_id}.{err}")
+            return False
+
+    util.parallel_runner(
+        run_task,
+        [(f"{t[0].get_id()}#{t[1].get_id()}", t) for t in tasks],
+        lambda x: x,
+        jobs=jobs,
+    )
+
+
+def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -> bool:
+    assert extra_args is None or len(extra_args) == 0
+    _, tasks = load_tasks(arguments)
+
+    if arguments.tracer is None:
+
+        def tracer() -> Tracer[Any]:
+            return json_goal.build()
+    else:
+        if isinstance(arguments.tracer, str):
+            loaded = loader.load_from_str(arguments.tracer)
+            if isinstance(loaded, ModuleType):
+                tracer = loaded.build
+            else:
+                assert callable(loaded), (
+                    f"Object found at {arguments.tracer} is not callable. Its value is: {repr(loaded)}"
+                )
+                tracer = cast(Callable[[], Tracer[Any]], loaded)
+        else:
+            tracer = arguments.tracer
+
+        # if isinstance(tracer, TacticExtractorBuilder):
+        #     print("ok")
+        #     tracer = BeforeAndAfter(tracer)
+        # elif not isinstance(tracer, TacticExtractor):
+        #     # print(f"'{arguments.tracer}' is a '{tracer}' but expected a [TacticExtractor].")
+        #     return False
+
+    run(
+        tracer,
+        arguments.output_dir,
+        tasks,
+        jobs=arguments.jobs,
+    )
+    return True
+
+
+def tracer_main(tracer: Tracer[Any], args: list[str] | None = None) -> bool:
+    """
+    This function can be used to create a `main` entry point for a specific tracer.
+    Use it with something like:
+
+    ```python
+    my_tracer = ...
+    if __name__ == '__main__':
+        rocq_pipeline.tracer.tracer_main(my_tracer)
+    ```
+    """
+    arguments = mk_parser().parse_args(args)
+    arguments.tracer = tracer
+    return run_ns(arguments)
+
+
+def main() -> bool:
+    arguments = mk_parser().parse_args()
+    return run_ns(arguments)
+
+
+if __name__ == "__main__":
+    main()
