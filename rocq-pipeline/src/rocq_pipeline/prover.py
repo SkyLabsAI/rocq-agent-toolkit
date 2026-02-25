@@ -60,7 +60,7 @@ async def run_proving_agent(
     plural = "" if admitted_cnt == 1 else "s"
     partial_proof_handling = "retained" if partial else "discarded"
     print(
-        f"Running the proving agent on {admitted_cnt} admitted proof{plural}; partial proofs {partial_proof_handling}."
+        f"Running the proving agent on {admitted_cnt} admitted proof{plural}; partial proofs will be {partial_proof_handling}."
     )
 
     # Note: we could add `clone: bool = False` to `RocqCursorProtocolAsync.sess`
@@ -286,9 +286,11 @@ def agent_main(agent_builder: AgentBuilder) -> int:
     agent_builder.add_args(agent_args)
     logging.basicConfig(level=logging.ERROR)
     try:
+        print("Gathering Rocq configuration...")
         rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
 
         async def _run() -> None:
+            print("Loading file...")
             async with rc_sess(
                 str(rocq_file.name),
                 rocq_args=rocq_args,
