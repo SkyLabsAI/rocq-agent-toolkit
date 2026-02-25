@@ -1,0 +1,3 @@
+(rocq.theory
+ (name skylabs.prover.test)
+ (theories Stdlib Ltac2))

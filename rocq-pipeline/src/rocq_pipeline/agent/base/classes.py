@@ -134,18 +134,46 @@ class ProofAgent(Agent):
         if goal_reply is None:
             return await self.finished(rc, message="No goal to prove")
 
+        def contains_message[T](
+            result: rdm_api.CommandData | rdm_api.Err[T], needle: str
+        ) -> bool | rdm_api.Err[T]:
+            """Returns None if the command fails"""
+            if isinstance(result, rdm_api.CommandData):
+                return any(needle in msg.text for msg in result.feedback_messages)
+            else:
+                return result
+
         # The following command ensures that agents can refer to `_x_`-like
         # unstable identifiers that SSReflect generates.
         # Resulting proofs are less stable, but this is acceptable during
         # agent development.
         if self._unset_ssr_idents:
-            await rc.insert_command("#[local] Unset SsrIdents.")
+            test_result = contains_message(
+                await rc.query("Test SsrIdents."), "SsrIdents is on"
+            )
+            if test_result is True:
+                result = await rc.insert_command("#[local] Unset SsrIdents.")
+                if not isinstance(result, rdm_api.CommandData):
+                    logger.info(f"Failed to unset SsrIdents. Response {result}")
 
         # The following command undoes `Set Default Goal Selector "!".`,
         # and ensures we can run `tac` to apply it to the _first_ goal, as Rocq
         # does by default.
         if self._reset_default_goal_selector:
-            await rc.insert_command('#[local] Set Default Goal Selector "1".')
+            test_result = contains_message(
+                await rc.query("Test Default Goal Selector."),
+                'Current value of Default Goal Selector is "1"',
+            )
+            assert isinstance(test_result, bool)
+            # 'Default Goal Selector' is built-in so this will never fail
+            if not test_result:
+                result = await rc.insert_command(
+                    '#[local] Set Default Goal Selector "1".'
+                )
+                if isinstance(result, rdm_api.Err):
+                    logger.warning(
+                        f"Failed to reset default goal selector to 1. Response {result}"
+                    )
 
         # TODO: validate that no goals remain.
         return await self.prove(rc)
