@@ -1,31 +1,21 @@
-Require Import skylabs.prover.test.bar.
+Require Import Stdlib.Strings.String.
 
-Lemma True_is_True : True.
-Proof.
-Admitted.
+Open Scope string_scope.
+Inductive my_nat : Set :=
+| MyO
+| MyS (_ : my_nat).
 
-Lemma True_and_True : True /\ True.
-Proof.
-Admitted.
+(* Trap 1: Comment containing the target text *)
+(* TODO: If the induction gets too messy, just use Proof. Admitted. *)
 
-(*
-Lemma True_and_False : True /\ False.
-Proof.
-  split.
-  - admit.
-Admitted.
-*)
+(* Trap 2: String literal containing the target text *)
+Definition fallback_string := "Failed to solve; left as Proof. Admitted.".
 
-Definition some_def := 0.
+Fixpoint my_add (a b : my_nat) : my_nat :=
+  match a with
+  | MyO => b
+  | MyS a => my_add a (MyS b)
+  end.
 
-Lemma forty_two_is_42 : forty_two = 42.
-Proof.
-Admitted.
-
-Lemma forty_two_is_42_backwards : 42 = forty_two.
-Proof.
-Admitted.
-
-Lemma forty_two_is_57 : forty_two = 57.
-Proof.
-Admitted.
+Lemma zero_add : forall a, my_add MyO a = a.
+Proof. Admitted.

@@ -22,35 +22,11 @@ Run `auto-prover` via `uv`;
   $ uv run auto-prover foo.v
   Running the proving agent.
   
-  Found admit at index 6.
+  Found admit at index 14.
   Goal 0:
     ============================
-    True
+    forall a : my_nat, my_add MyO a = a
   Agent succeeded.
-  
-  Found admit at index 18.
-  Goal 0:
-    ============================
-    True /\ True
-  Agent succeeded.
-  
-  Found admit at index 32.
-  Goal 0:
-    ============================
-    forty_two = 42
-  Agent succeeded.
-  
-  Found admit at index 44.
-  Goal 0:
-    ============================
-    42 = forty_two
-  Agent succeeded.
-  
-  Found admit at index 56.
-  Goal 0:
-    ============================
-    forty_two = 57
-  Agent failed.
 
 
 
@@ -63,49 +39,30 @@ Run `auto-prover` via `uv`;
 
 
   $ cat foo.v
-  Require Import skylabs.prover.test.bar.
+  Require Import Stdlib.Strings.String.
   
-  Lemma True_is_True : True.
-  Proof.
-  #[local] Unset SsrIdents.
+  Open Scope string_scope.
+  Inductive my_nat : Set :=
+  | MyO
+  | MyS (_ : my_nat).
+  
+  (* Trap 1: Comment containing the target text *)
+  (* TODO: If the induction gets too messy, just use Proof. Admitted. *)
+  
+  (* Trap 2: String literal containing the target text *)
+  Definition fallback_string := "Failed to solve; left as Proof. Admitted.".
+  
+  Fixpoint my_add (a b : my_nat) : my_nat :=
+    match a with
+    | MyO => b
+    | MyS a => my_add a (MyS b)
+    end.
+  
+  Lemma zero_add : forall a, my_add MyO a = a.
+  Proof. #[local] Unset SsrIdents.
   #[local] Set Default Goal Selector "1".
   auto.
   Qed.
-  
-  Lemma True_and_True : True /\ True.
-  Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
-  auto.
-  Qed.
-  
-  (*
-  Lemma True_and_False : True /\ False.
-  Proof.
-    split.
-    - admit.
-  Admitted.
-  *)
-  
-  Definition some_def := 0.
-  
-  Lemma forty_two_is_42 : forty_two = 42.
-  Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
-  auto.
-  Qed.
-  
-  Lemma forty_two_is_42_backwards : 42 = forty_two.
-  Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
-  auto.
-  Qed.
-  
-  Lemma forty_two_is_57 : forty_two = 57.
-  Proof.
-  Admitted.
 
 
 
