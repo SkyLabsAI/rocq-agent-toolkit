@@ -90,7 +90,7 @@ class TaskResult:
         _metrics: task_output.Metrics | None = None,
     ) -> Self:
         """Create a TaskResult from an exception."""
-        if message is None:
+        if not message:
             message = repr(e)
         return cls.give_up(
             message=message,
