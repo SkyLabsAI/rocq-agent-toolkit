@@ -57,9 +57,7 @@ Run `auto-prover` via `uv` while retaining partial progress;
   Definition foo : nat := 0.
   Definition bar : nat := 1.
   
-  Lemma obvious : foo <> bar. Proof. #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
-  auto.
+  Lemma obvious : foo <> bar. Proof. auto.
   Qed.
   
   Definition baz : nat := -1.

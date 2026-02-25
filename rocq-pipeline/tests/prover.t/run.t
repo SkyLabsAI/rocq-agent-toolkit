@@ -92,8 +92,6 @@ Run `auto-prover` via `uv` while retaining partial progress;
   
   Lemma forty_two_is_57 : forty_two = 57.
   Proof.
-  #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
   auto.
   Admitted.
 
