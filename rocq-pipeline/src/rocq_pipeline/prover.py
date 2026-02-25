@@ -4,7 +4,7 @@ import difflib
 import logging
 import sys
 from argparse import ArgumentParser
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +15,8 @@ from rocq_dune_util import DuneError, rocq_args_for
 from rocq_pipeline.agent import AgentBuilder
 from rocq_pipeline.agent.proof.auto import AutoAgent
 from rocq_pipeline.args_util import adapt_usage, split_args, valid_file
+from rocq_pipeline.prover_ui.ui import build_ui
+from rocq_pipeline.status_cursor import WatchingCursor
 
 # TODOs:
 # 1) proof formatter
@@ -56,12 +58,23 @@ async def cursor_offset(rc: RocqCursor) -> FileOffset:
         col = len(lines[-1])
     return FileOffset(line=line, col=col, offset=offset)
 
+class StatusReporter:
+    def __init__(self, update: Callable[[str, str | None], None]) -> None:
+        self._update = update
+
+    def update(self, status: str, script: str | None = None) -> None:
+        self._update(status, script)
+
+    def status(self, status: str) -> None:
+        self.update(status)
+
 
 async def run_proving_agent(
     rc: RocqCursor,
     agent_cls: AgentBuilder,
     output: Path,
     *,
+    status: StatusReporter,
     partial: bool = False,
 ) -> None:
     """Run the proving agent, delegating admitted proof tasks to agent_cls.
@@ -93,9 +106,7 @@ async def run_proving_agent(
     # and transform `(await rc.clone()).sess()` into `await rc.sess(clone=True)`
     while await rc.goto_first_match(is_admitted):
         await run_delegated_prover_on_admitted_proof_task(
-            agent_cls,
-            rc,
-            partial=partial,
+            agent_cls, rc, partial=partial, status=status
         )
 
     remaining_suffix_items = await rc.doc_suffix()
@@ -132,6 +143,7 @@ async def run_delegated_prover_on_admitted_proof_task(
     agent_cls: AgentBuilder,
     rc: RocqCursor,
     *,
+    status: StatusReporter,
     partial: bool = False,
 ) -> None:
     """Use agent_cls to attempt the admitted proof task captured by the state of main_rc.
@@ -146,6 +158,12 @@ async def run_delegated_prover_on_admitted_proof_task(
     # maybe not necessary
     async with (await rc.clone(materialize=True)).sess() as local_rc:
         await local_rc.clear_suffix()
+        if status:
+            local_rc = await WatchingCursor.create(
+                local_rc,
+                proof_script=lambda script: status.update("Proving...", script),
+            )
+
         existing_prefix = await local_rc.doc_prefix()
         task_result = await agent_cls().run(rc=local_rc)
 
@@ -295,6 +313,11 @@ def agent_main(agent_builder: AgentBuilder) -> int:
         action="store_true",
         help="discard partial proofs",
     )
+    parser.add_argument(
+        "--progress",
+        action=argparse.BooleanOptionalAction,
+        help="show proof progress",
+    )
     adapt_usage(parser, "agent")
 
     prover_args, agent_args = split_args()
@@ -314,32 +337,37 @@ def agent_main(agent_builder: AgentBuilder) -> int:
             output = output.resolve()
     agent_builder.add_args(agent_args)
     logging.basicConfig(level=logging.ERROR)
-    try:
-        print("Gathering Rocq configuration...")
-        rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
+    with build_ui(kind="tui" if args.progress else "status") as status:
+        reporter = StatusReporter(status)
+        try:
+            reporter.status("Gathering Rocq configuration...")
+            rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
 
-        async def _run() -> None:
-            print("Loading file...")
-            async with rc_sess(
-                str(rocq_file.name),
-                rocq_args=rocq_args,
-                chdir=str(rocq_file.parent),
-                dune=True,
-                load_file=True,
-            ) as rc:
-                await run_proving_agent(
-                    rc,
-                    agent_builder,
-                    output,
-                    partial=not args.no_partial,
-                )
+            async def _run() -> None:
+                reporter.status("Loading file...")
+                async with rc_sess(
+                    str(rocq_file.name),
+                    rocq_args=rocq_args,
+                    chdir=str(rocq_file.parent),
+                    dune=True,
+                    load_file=True,
+                ) as rc:
+                    await run_proving_agent(
+                        rc,
+                        agent_builder,
+                        output,
+                        partial=not args.no_partial,
+                        status=reporter,
+                    )
 
-        asyncio.run(_run())
-        return 0
-    except DuneError as e:
-        sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}")
-    except Exception as e:
-        sys.exit(f"Error: failed with {e}.")
+            asyncio.run(_run())
+            return 0
+        except DuneError as e:
+            sys.exit(
+                f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}"
+            )
+        except Exception as e:
+            sys.exit(f"Error: failed with {e}.")
 
 
 def auto_prover():
