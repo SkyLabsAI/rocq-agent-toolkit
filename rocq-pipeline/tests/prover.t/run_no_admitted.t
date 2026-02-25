@@ -24,6 +24,8 @@ Check the contents of bar.v before the `auto-prover` is used.
 Run `auto-prover` via `uv` while retaining partial progress;
 
   $ uv run auto-prover bar.v
+  Gathering Rocq configuration...
+  Loading file...
   No admitted proofs.
 
 

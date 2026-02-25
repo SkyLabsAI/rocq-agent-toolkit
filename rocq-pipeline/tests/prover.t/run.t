@@ -19,7 +19,9 @@ Copy dune project from source tree to separate folder:
 Run `auto-prover` via `uv` while retaining partial progress;
 
   $ uv run auto-prover foo.v
-  Running the proving agent on 5 admitted proofs; partial proofs retained.
+  Gathering Rocq configuration...
+  Loading file...
+  Running the proving agent on 5 admitted proofs; partial proofs will be retained.
   
   Found admit at index 6.
   Goal 0:

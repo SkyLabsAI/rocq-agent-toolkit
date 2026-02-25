@@ -96,7 +96,7 @@ async def run_proving_agent(
                 proximal_cause = "."
 
             print(
-                f"Command failure after processing {processed_admitted_cnt} admitted proof{processed_plural}{proximal_cause}"
+                f"\nCommand failure after processing {processed_admitted_cnt} admitted proof{processed_plural}{proximal_cause}"
             )
 
     await rc.commit(str(output), include_suffix=True)
