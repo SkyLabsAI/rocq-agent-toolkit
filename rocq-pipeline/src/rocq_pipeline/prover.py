@@ -4,6 +4,7 @@ import difflib
 import logging
 import sys
 from argparse import ArgumentParser
+from collections.abc import Sequence
 from pathlib import Path
 
 from rocq_doc_manager import RocqCursor, rc_sess
@@ -45,10 +46,11 @@ async def run_proving_agent(
         output: the Path where the result of the interaction should be committed
         no_partial (optional): whether or not the persist partial proof progress for each admitted proof task
     """
-    if not filter(
-        lambda suffix_item: is_admitted(suffix_item.text, suffix_item.kind),
-        await rc.doc_suffix()
-    ):
+    if not [
+        suffix_item
+        for suffix_item in await rc.doc_suffix()
+        if is_admitted(suffix_item.text, suffix_item.kind)
+    ]:
         print("No admitted proofs.")
         return
 
@@ -93,7 +95,6 @@ async def run_delegated_prover_on_admitted_proof_task(
             print(message)
             # Step over `Admitted`
             await rc.run_step()
-            pass
 
         # Insert partial progress if the proof is completed, or upon client request
         if task_result.success or (not no_partial):
@@ -112,29 +113,10 @@ async def run_delegated_prover_on_admitted_proof_task(
                 )
 
             extension = extended_prefix[len(existing_prefix) :]
-
-            for prefix_item in extension:
-                # What happens if agents try inserting ghost commands? Either:
-                # - skip them
-                # - insert them as a comment
-                if prefix_item.kind == "blanks":
-                    await rc.insert_blanks(text=prefix_item.text)
-                else:
-                    insert_result = await rc.insert_command(
-                        text=prefix_item.text, blanks=None
-                    )
-
-                    if isinstance(insert_result, rdm_api.Err):
-                        ####################################
-                        # TODO: comment block with remaining
-                        ####################################
-
-                        return await agent_invariant_violated(
-                            f"Agent.prove invariant violated; replaying proof script failed: {insert_result}"
-                        )
-
-            # TODO:
-            # 1) write a few small test cases for the helper
+            if not await try_replay(rc, extension):
+                return await agent_invariant_violated(
+                    "Agent.prove invariant violated; replaying the proof script failed"
+                )
 
             # 1a) check if last non-blank command in prefix is a `Qed`
             #
@@ -144,16 +126,15 @@ async def run_delegated_prover_on_admitted_proof_task(
             ]
             if len(command_extension) != 0 and command_extension[0].text == "Qed.":
                 # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
-                # TODO: maybe check that the first item in the suffix is actually `Admitted`?
                 await rc.clear_suffix(count=1)
             else:
                 # 1b) else, try inserting Qed
                 try_qed_result = await rc.insert_command(
-                    "Qed."
-                )  # TODO: maybe use `blanks=None`
+                    "Qed.",
+                    blanks=None,
+                )
                 if not isinstance(try_qed_result, rdm_api.Err):
                     # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
-                    # MAYBE: clear until the next `Admitted`
                     await rc.clear_suffix(count=1)
                 else:
                     # Step over `Admitted`
@@ -163,13 +144,57 @@ async def run_delegated_prover_on_admitted_proof_task(
 
         # Print task_result and persistence
         if task_result.success:
-            print(f"Agent succeeded: {task_result.message}")
+            msg = "Agent succeeded"
         elif no_partial:
-            print(
-                f"Agent made partial progress, but ultimately failed: {task_result.message}"
-            )
+            msg = "Agent made partial progress but ultimately failed"
         else:
-            print(f"Agent failed: {task_result.message}")
+            msg = "Agent failed"
+
+        if task_result.message:
+            print(f"{msg}: {task_result.message}")
+        else:
+            print(msg)
+
+
+async def try_replay(
+    rc: RocqCursor,
+    interaction: Sequence[rdm_api.PrefixItem],
+    *,
+    include_ghost: bool = True,
+) -> bool:
+    """Try to replay the interaction in rc.
+
+    Arguments:
+        rc: RocqCursor that will try to replay the interaction
+        interaction: sequence of `rdm_api.PrefixItem`s
+        include_ghost (optional): whether or not to include ghost interactions as comments
+    Side Effect:
+        rc: replay as much of the interaction as possible:
+        - blanks: inserted as-is
+        - commands:
+          + ghost=False: inserted as-is, or as comments iff a previous insertion failed
+          + ghost=True: inserted as comments; ignored iff include_ghost=False
+    """
+    for i, prefix_item in enumerate(interaction):
+        if prefix_item.kind == "blanks":
+            await rc.insert_blanks(text=prefix_item.text)
+        elif prefix_item.kind == "ghost" and include_ghost:
+            await rc.insert_blanks(text=f"(* {prefix_item.text} *)")
+        elif prefix_item.kind == "command":
+            insert_result = await rc.insert_command(text=prefix_item.text, blanks=None)
+
+            if isinstance(insert_result, rdm_api.Err):
+                await rc.insert_blanks(
+                    text=(
+                        "(*"
+                        + prefix_item.text
+                        + "".join(x.text for x in interaction[i + 1 :])
+                        + "*)"
+                    )
+                )
+                return False
+
+    return True
 
 
 async def print_admitted_proof_task(local_rc: RocqCursor) -> None:
