@@ -8,7 +8,7 @@ type JsonValue = object
 @dataclass
 class RemoteProofAgentConfig:
     # Base HTTP URL for session creation, e.g. "https://host:port"
-    server: str = "http://localhost:8001"
+    server: str = "https://agents.skylabs-ai.com"
 
     # Server-side agent script name (e.g. "react-code-proof-agent")
     remote_agent: str = "react-code-proof-agent"
