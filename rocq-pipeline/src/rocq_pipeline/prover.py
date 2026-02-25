@@ -36,7 +36,7 @@ async def run_proving_agent(
     agent_cls: AgentBuilder,
     output: Path,
     *,
-    no_partial: bool = False,
+    partial: bool = False,
 ) -> None:
     """Run the proving agent, delegating admitted proof tasks to agent_cls.
 
@@ -44,7 +44,7 @@ async def run_proving_agent(
         rc: the RocqCursor to use
         agent_cls: the AgentBuilder used to construct an Agent instance for each admitted proof task
         output: the Path where the result of the interaction should be committed
-        no_partial (optional): whether or not the persist partial proof progress for each admitted proof task
+        partial (optional): whether or not the persist partial proof progress for each admitted proof task
     """
     if not [
         suffix_item
@@ -55,7 +55,7 @@ async def run_proving_agent(
         return
 
     print(
-        f"Running the proving agent; partial proofs {'discarded' if no_partial else 'retained'}."
+        f"Running the proving agent; partial proofs {'retained' if partial else 'discarded'}."
     )
 
     # Note: we could add `clone: bool = False` to `RocqCursorProtocolAsync.sess`
@@ -64,7 +64,7 @@ async def run_proving_agent(
         await run_delegated_prover_on_admitted_proof_task(
             agent_cls,
             rc,
-            no_partial=no_partial,
+            partial=partial,
         )
 
     await rc.commit(str(output), include_suffix=True)
@@ -74,14 +74,14 @@ async def run_delegated_prover_on_admitted_proof_task(
     agent_cls: AgentBuilder,
     rc: RocqCursor,
     *,
-    no_partial: bool = False,
+    partial: bool = False,
 ) -> None:
     """Use agent_cls to attempt the admitted proof task captured by the state of main_rc.
 
     Arguments:
         agent_cls: the AgentBuilder used to construct an Agent instance for the admitted proof task
         rc: the (shared) RocqCursor to use for the admitted proof task
-        no_partial (optional): whether or not the persist partial proof progress for the admitted proof task
+        partial (optional): whether or not the persist partial proof progress for the admitted proof task
     """
     await print_admitted_proof_task(rc)
 
@@ -97,7 +97,8 @@ async def run_delegated_prover_on_admitted_proof_task(
             await rc.run_step()
 
         # Insert partial progress if the proof is completed, or upon client request
-        if task_result.success or (not no_partial):
+        doc_modified = False
+        if task_result.success or partial:
             extended_prefix = await local_rc.doc_prefix()
             expected_overlapping_prefix = extended_prefix[: len(existing_prefix)]
 
@@ -124,6 +125,7 @@ async def run_delegated_prover_on_admitted_proof_task(
             command_extension = [
                 cmd for cmd in extension[::-1] if cmd.kind == "command"
             ]
+            doc_modified = len(command_extension) != 0
             if len(command_extension) != 0 and command_extension[0].text == "Qed.":
                 # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
                 await rc.clear_suffix(count=1)
@@ -145,8 +147,8 @@ async def run_delegated_prover_on_admitted_proof_task(
         # Print task_result and persistence
         if task_result.success:
             msg = "Agent succeeded"
-        elif no_partial:
-            msg = "Agent made partial progress but ultimately failed"
+        elif partial and doc_modified:
+            msg = "Agent made partial progress"
         else:
             msg = "Agent failed"
 
@@ -266,7 +268,7 @@ def agent_main(agent_builder: AgentBuilder) -> int:
                     rc,
                     agent_builder,
                     output,
-                    no_partial=args.no_partial,
+                    partial=not args.no_partial,
                 )
 
         asyncio.run(_run())
