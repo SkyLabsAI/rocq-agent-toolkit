@@ -1,0 +1,144 @@
+// To be Removed: This is sample schema of request and response of LLM
+{
+  "run_uid": "string",
+  "agent_name": "string",
+  "started_at_utc": "string",
+  "started_at_unix_ms": "number",
+  "tool_calls": [
+    {
+      "tool_name": "string",
+      "started_at_utc": "string",
+      "finished_at_utc": "string",
+      "started_at_unix_ms": "number",
+      "finished_at_unix_ms": "number",
+      "duration_ms": "number",
+      "args": [
+        {
+          "type": "string"
+        }
+      ],
+      "kwargs": {},
+      "result": [
+        "string"
+      ],
+      "error": "null"
+    }
+  ],
+  "llm_calls": [
+    {
+      "started_at_utc": "string",
+      "finished_at_utc": "string",
+      "started_at_unix_ms": "number",
+      "finished_at_unix_ms": "number",
+      "duration_ms": "number",
+      "request": {
+        "messages": [
+          {
+            "role": "string",
+            "content": "string"
+          }
+        ],
+        "model": "string",
+        "stream": "boolean",
+        "tool_choice": "string",
+        "tools": [
+          {
+            "type": "string",
+            "function": {
+              "name": "string",
+              "description": "string",
+              "parameters": {
+                "additionalProperties": "boolean",
+                "properties": {},
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "provider": {
+          "order": [
+            "string"
+          ],
+          "allow_fallbacks": "boolean"
+        }
+      },
+      "response": {
+        "id": "string",
+        "provider": "string",
+        "model": "string",
+        "object": "string",
+        "created": "number",
+        "choices": [
+          {
+            "logprobs": "null",
+            "finish_reason": "string",
+            "native_finish_reason": "string",
+            "index": "number",
+            "message": {
+              "role": "string",
+              "content": "string",
+              "refusal": "null",
+              "reasoning": "string",
+              "tool_calls": [
+                {
+                  "type": "string",
+                  "index": "number",
+                  "id": "string",
+                  "function": {
+                    "name": "string",
+                    "arguments": "string"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": "number",
+          "completion_tokens": "number",
+          "total_tokens": "number",
+          "cost": "number",
+          "is_byok": "boolean",
+          "prompt_tokens_details": {
+            "cached_tokens": "number"
+          },
+          "cost_details": {
+            "upstream_inference_cost": "number",
+            "upstream_inference_prompt_cost": "number",
+            "upstream_inference_completions_cost": "number"
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": "number",
+            "image_tokens": "number"
+          }
+        }
+      },
+      "parsed": {
+        "input_tokens": "number",
+        "output_tokens": "number",
+        "total_tokens": "number",
+        "cache_read_tokens": "number",
+        "reasoning_tokens": "number",
+        "cost": "number"
+      },
+      "error": "null"
+    }
+  ],
+  "finished_at_utc": "string",
+  "finished_at_unix_ms": "number",
+  "duration_ms": "number",
+  "summary": {
+    "tool_calls": "number",
+    "failed_tool_calls": "number",
+    "llm_calls": "number",
+    "failed_llm_calls": "number",
+    "llm_input_tokens": "number",
+    "llm_output_tokens": "number",
+    "llm_total_tokens": "number",
+    "llm_cache_read_tokens": "number",
+    "llm_cache_write_tokens": "number",
+    "llm_reasoning_tokens": "number",
+    "llm_cost": "number",
+    "agent_duration_ms": "number"
+  }
+}

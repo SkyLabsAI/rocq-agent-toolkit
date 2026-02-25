@@ -10,6 +10,12 @@ from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_pipeline.proof_state import ProofState, RocqGoal
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.schema.task_output import FailureReason
+from rocq_pipeline.telemetry import (
+    TelemetryPayload,
+    append_telemetry_jsonl,  # TODO: Remove this
+    current_telemetry_payload,
+    telemetry_run,
+)
 
 from .dataclasses import (
     TacticApplication,
@@ -44,10 +50,20 @@ class Agent(Provenance.Full):
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         """Create a TaskResult when the agent finishes successfully."""
+        # TODO:
+        # Decide Good place to add these information
+        # Stop creating separate file after testing.
+        # Correct the metrics etc as well.
+        merged_side_effects = dict(side_effects or {})
+        telemetry_payload = current_telemetry_payload()
+        if telemetry_payload is not None:
+            telemetry_path = append_telemetry_jsonl(telemetry_payload)
+            merged_side_effects["telemetry"] = telemetry_payload.to_json()
+            merged_side_effects["telemetry_jsonl_path"] = telemetry_path
         return TaskResult.finished(
             message=message,
-            side_effects=side_effects,
-            _metrics=self._task_metrics(),
+            side_effects=merged_side_effects,
+            _metrics=self._task_metrics(telemetry_payload),
         )
 
     async def give_up(
@@ -58,24 +74,66 @@ class Agent(Provenance.Full):
         side_effects: dict[str, Any] | None = None,
     ) -> TaskResult:
         """Create a TaskResult when the agent gives up."""
+        merged_side_effects = dict(side_effects or {})
+        telemetry_payload = current_telemetry_payload()
+        if telemetry_payload is not None:
+            telemetry_path = append_telemetry_jsonl(telemetry_payload)
+            merged_side_effects["telemetry"] = telemetry_payload.to_json()
+            merged_side_effects["telemetry_jsonl_path"] = telemetry_path
         if isinstance(reason, BaseException):
             return TaskResult.from_exception(
                 reason,
                 message=message,
-                side_effects=side_effects,
-                _metrics=self._task_metrics(),
+                side_effects=merged_side_effects,
+                _metrics=self._task_metrics(telemetry_payload),
             )
         return TaskResult.give_up(
             message=message,
             reason=reason,
-            side_effects=side_effects,
-            _metrics=self._task_metrics(),
+            side_effects=merged_side_effects,
+            _metrics=self._task_metrics(telemetry_payload),
         )
 
     # TODO: obviate this in favor of extensible use of opentelemetry
-    def _task_metrics(self) -> task_output.Metrics:
+    def _task_metrics(
+        self,
+        telemetry_payload: TelemetryPayload | None = None,
+    ) -> task_output.Metrics:
         """Task specific metrics from working on the task."""
-        return task_output.Metrics()
+        if not telemetry_payload:
+            return task_output.Metrics()
+
+        summary = telemetry_payload.summary
+
+        token_counts = task_output.TokenCounts(
+            input_tokens=summary.llm_input_tokens,
+            output_tokens=summary.llm_output_tokens,
+            total_tokens=summary.llm_total_tokens,
+        )
+
+        agent_duration_ms = summary.agent_duration_ms
+        resource_usage = task_output.ResourceUsage(
+            execution_time_sec=agent_duration_ms / 1000.0,
+            cpu_time_sec=0.0,
+            gpu_time_sec=0.0,
+        )
+
+        custom_metrics = {
+            "tool_calls": summary.tool_calls,
+            "failed_tool_calls": summary.failed_tool_calls,
+            "failed_llm_calls": summary.failed_llm_calls,
+            "llm_cache_read_tokens": summary.llm_cache_read_tokens,
+            "llm_cache_write_tokens": summary.llm_cache_write_tokens,
+            "llm_reasoning_tokens": summary.llm_reasoning_tokens,
+            "llm_cost": summary.llm_cost,
+        }
+
+        return task_output.Metrics(
+            llm_invocation_count=summary.llm_calls,
+            token_counts=token_counts,
+            resource_usage=resource_usage,
+            custom=custom_metrics,
+        )
 
 
 # TODO: incorporate AgentConfig
@@ -130,25 +188,35 @@ class ProofAgent(Agent):
     @override
     async def run(self, rc: RocqCursor) -> TaskResult:
         """Run the agent after ensuring there is a goal to prove."""
-        goal_reply = await rc.current_goal()
-        if goal_reply is None:
-            return await self.finished(rc, message="No goal to prove")
+        # TODO: get the current trace id and
+        # Add trace_id to the telemetry run
+        from opentelemetry import trace
 
-        # The following command ensures that agents can refer to `_x_`-like
-        # unstable identifiers that SSReflect generates.
-        # Resulting proofs are less stable, but this is acceptable during
-        # agent development.
-        if self._unset_ssr_idents:
-            await rc.insert_command("#[local] Unset SsrIdents.")
+        span_context = trace.get_current_span().get_span_context()
+        trace_id = (
+            format(span_context.trace_id, "032x") if span_context.is_valid else None
+        )
 
-        # The following command undoes `Set Default Goal Selector "!".`,
-        # and ensures we can run `tac` to apply it to the _first_ goal, as Rocq
-        # does by default.
-        if self._reset_default_goal_selector:
-            await rc.insert_command('#[local] Set Default Goal Selector "1".')
+        async with telemetry_run(agent_name=self.name(), trace_id=trace_id):
+            goal_reply = await rc.current_goal()
+            if goal_reply is None:
+                return await self.finished(rc, message="No goal to prove")
 
-        # TODO: validate that no goals remain.
-        return await self.prove(rc)
+            # The following command ensures that agents can refer to `_x_`-like
+            # unstable identifiers that SSReflect generates.
+            # Resulting proofs are less stable, but this is acceptable during
+            # agent development.
+            if self._unset_ssr_idents:
+                await rc.insert_command("#[local] Unset SsrIdents.")
+
+            # The following command undoes `Set Default Goal Selector "!".`,
+            # and ensures we can run `tac` to apply it to the _first_ goal, as Rocq
+            # does by default.
+            if self._reset_default_goal_selector:
+                await rc.insert_command('#[local] Set Default Goal Selector "1".')
+
+            # TODO: validate that no goals remain.
+            return await self.prove(rc)
 
     async def current_proof_state(
         self,
