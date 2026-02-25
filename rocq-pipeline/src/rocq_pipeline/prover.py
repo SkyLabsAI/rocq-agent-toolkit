@@ -46,16 +46,21 @@ async def run_proving_agent(
         output: the Path where the result of the interaction should be committed
         partial (optional): whether or not the persist partial proof progress for each admitted proof task
     """
-    if not [
+    suffix_items_admitted = [
         suffix_item
         for suffix_item in await rc.doc_suffix()
         if is_admitted(suffix_item.text, suffix_item.kind)
-    ]:
+    ]
+
+    if not suffix_items_admitted:
         print("No admitted proofs.")
         return
 
+    admitted_cnt = len(suffix_items_admitted)
+    plural = "" if admitted_cnt == 1 else "s"
+    partial_proof_handling = "retained" if partial else "discarded"
     print(
-        f"Running the proving agent; partial proofs {'retained' if partial else 'discarded'}."
+        f"Running the proving agent on {admitted_cnt} admitted proof{plural}; partial proofs {partial_proof_handling}."
     )
 
     # Note: we could add `clone: bool = False` to `RocqCursorProtocolAsync.sess`
@@ -66,6 +71,33 @@ async def run_proving_agent(
             rc,
             partial=partial,
         )
+
+    remaining_suffix_items = await rc.doc_suffix()
+    if remaining_suffix_items:
+        remaining_suffix_items_admitted = [
+            suffix_item
+            for suffix_item in remaining_suffix_items
+            if is_admitted(suffix_item.text, suffix_item.kind)
+        ]
+        processed_admitted_cnt = admitted_cnt - len(remaining_suffix_items_admitted)
+        if processed_admitted_cnt != admitted_cnt:
+            processed_plural = "" if processed_admitted_cnt == 1 else "s"
+            run_step_response = await rc.run_step()
+            if isinstance(run_step_response, rdm_api.Err):
+                proximal_cause = "\n".join(
+                    [
+                        ":\n",
+                        remaining_suffix_items[0].text,
+                        "",
+                        run_step_response.message,
+                    ]
+                )
+            else:
+                proximal_cause = "."
+
+            print(
+                f"Command failure after processing {processed_admitted_cnt} admitted proof{processed_plural}{proximal_cause}"
+            )
 
     await rc.commit(str(output), include_suffix=True)
 
