@@ -54,7 +54,13 @@ def mk_parser(parent: Any | None = None) -> Any:
         help="Add a task modifier to a task",
     )
     parser.add_argument(
-        "--rename",
+        "--add-tag",
+        action="append",
+        type=str,
+        help="Add a task modifier to a task",
+    )
+    parser.add_argument(
+        "--rename-task",
         type=str,
         help="Rename the task. (Use $N to refer to the original task name, $I to refer to the id)",
     )
@@ -91,7 +97,10 @@ def eval_options(
 
 
 def modify(
-    t: Task, add_mods: list[TaskModifier] | None = None, rename: str | None = None
+    t: Task,
+    add_mods: list[TaskModifier] | None = None,
+    rename: str | None = None,
+    add_tags: list[str] | None = None,
 ) -> Task:
     if add_mods:
         t.modifiers += add_mods
@@ -101,6 +110,8 @@ def modify(
         )
         if t.name == "":
             t.name = None
+    if add_tags:
+        t.tags |= set(add_tags)
     return t
 
 
@@ -114,6 +125,7 @@ def run(
     random_selection: bool = False,
     rename: str | None = None,
     add_mods: list[TaskModifier] | None = None,
+    add_tags: list[str] | None = None,
 ) -> TaskFile:
     """Filter the tasks in the TaskFile."""
 
@@ -132,7 +144,7 @@ def run(
     filtered_tasks: Iterator[tuple[Project, Task]] = (
         (
             proj,
-            modify(task, add_mods=add_mods, rename=rename),
+            modify(task, add_mods=add_mods, rename=rename, add_tags=add_tags),
         )
         for proj, task in tasks.iter_tasks()
         if keep(task)
@@ -179,7 +191,8 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         arguments.limit,
         arguments.random,
         add_mods=arguments.add_mod,
-        rename=arguments.rename,
+        rename=arguments.rename_task,
+        add_tags=arguments.add_tag,
     )
     result_count = len(list(result.iter_tasks()))
     original_count = len(list(tasks.iter_tasks()))
