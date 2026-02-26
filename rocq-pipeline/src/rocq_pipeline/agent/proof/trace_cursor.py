@@ -10,6 +10,7 @@ from typing import Any, override
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_doc_manager.rocq_cursor_protocol import DelegateRocqCursor
 
 logger = get_logger("RocqCursor")
 
@@ -93,7 +94,7 @@ def _trace_log[**P, A, B, T](
     return wrap
 
 
-class TracingCursor(RocqCursor):
+class TracingCursor(DelegateRocqCursor):
     """
     An implementation of the rdm_api.API that traces all document interactions recording
     a state_id.
@@ -104,15 +105,12 @@ class TracingCursor(RocqCursor):
         return TracingCursor(rc, verbose=verbose)
 
     def __init__(self, rc: RocqCursor, *, verbose: bool = True) -> None:
-        self._cursor = rc
+        super().__init__(rc)
         self._verbose = verbose
 
     @override
-    async def clone(self, *, materialize: bool = False) -> RocqCursor:
-        # We don't trace this because we don't care about the cursor, but
-        # we do care that the result is also traced in the same way
-        cloned = await self._cursor.clone(materialize=materialize)
-        return TracingCursor(cloned, verbose=self._verbose)
+    def make_derived(self, rc: RocqCursor) -> RocqCursor:
+        return TracingCursor.of_cursor(rc, verbose=self._verbose)
 
     @override
     @_trace_log(
@@ -214,26 +212,6 @@ class TracingCursor(RocqCursor):
         assert not isinstance(result, rdm_api.Err)
         return result.proof_state
 
-    async def doc_prefix(self) -> list[rdm_api.PrefixItem]:
-        return await self._cursor.doc_prefix()
-
-    async def doc_suffix(self) -> list[rdm_api.SuffixItem]:
-        return await self._cursor.doc_suffix()
-
-    async def clear_suffix(self, count: int | None = None) -> None:
-        return await self._cursor.clear_suffix(count)
-
-    async def commit(
-        self,
-        file: str | None,
-        *,
-        include_ghost: bool = False,
-        include_suffix: bool = True,
-    ) -> None | rdm_api.Err[None]:
-        return await self._cursor.commit(
-            file, include_ghost=include_ghost, include_suffix=include_suffix
-        )
-
     async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
         for cnt in range(count):
             result = await self.run_step()
@@ -243,24 +221,3 @@ class TracingCursor(RocqCursor):
                     data=rdm_api.StepsError(cmd_error=result.data, nb_processed=cnt),
                 )
         return None
-
-    async def compile(self) -> rdm_api.CompileResult:
-        return await self._cursor.compile()
-
-    async def materialize(self) -> None:
-        return await self._cursor.materialize()
-
-    async def cursor_index(self) -> int:
-        return await self._cursor.cursor_index()
-
-    async def dispose(self) -> None:
-        return await self._cursor.dispose()
-
-    async def has_suffix(self) -> bool:
-        return await self._cursor.has_suffix()
-
-    async def insert_blanks(self, text: str) -> None:
-        return await self._cursor.insert_blanks(text)
-
-    async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
-        return await self._cursor.load_file()

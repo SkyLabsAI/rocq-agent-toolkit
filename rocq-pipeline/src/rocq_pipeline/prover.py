@@ -15,6 +15,8 @@ from rocq_dune_util import DuneError, rocq_args_for
 from rocq_pipeline.agent import AgentBuilder
 from rocq_pipeline.agent.proof.auto import AutoAgent
 from rocq_pipeline.args_util import adapt_usage, split_args, valid_file
+from rocq_pipeline.prover_ui.ui import Controller, build_ui
+from rocq_pipeline.status_cursor import WatchingCursor
 
 # TODOs:
 # 1) proof formatter
@@ -62,6 +64,7 @@ async def run_proving_agent(
     agent_cls: AgentBuilder,
     output: Path,
     *,
+    status: Controller,
     partial: bool = False,
 ) -> None:
     """Run the proving agent, delegating admitted proof tasks to agent_cls.
@@ -79,13 +82,13 @@ async def run_proving_agent(
     ]
 
     if not suffix_items_admitted:
-        print("No admitted proofs.")
+        status.print("No admitted proofs.")
         return
 
     admitted_cnt = len(suffix_items_admitted)
     plural = "" if admitted_cnt == 1 else "s"
     partial_proof_handling = "retained" if partial else "discarded"
-    print(
+    status.print(
         f"Running the proving agent on {admitted_cnt} admitted proof{plural}; partial proofs will be {partial_proof_handling}."
     )
 
@@ -93,9 +96,7 @@ async def run_proving_agent(
     # and transform `(await rc.clone()).sess()` into `await rc.sess(clone=True)`
     while await rc.goto_first_match(is_admitted):
         await run_delegated_prover_on_admitted_proof_task(
-            agent_cls,
-            rc,
-            partial=partial,
+            agent_cls, rc, partial=partial, status=status
         )
 
     remaining_suffix_items = await rc.doc_suffix()
@@ -121,7 +122,7 @@ async def run_proving_agent(
             else:
                 proximal_cause = "."
 
-            print(
+            status.print(
                 f"\nCommand failure after processing {processed_admitted_cnt} admitted proof{processed_plural}{proximal_cause}"
             )
 
@@ -132,6 +133,7 @@ async def run_delegated_prover_on_admitted_proof_task(
     agent_cls: AgentBuilder,
     rc: RocqCursor,
     *,
+    status: Controller,
     partial: bool = False,
 ) -> None:
     """Use agent_cls to attempt the admitted proof task captured by the state of main_rc.
@@ -142,6 +144,7 @@ async def run_delegated_prover_on_admitted_proof_task(
         partial (optional): whether or not the persist partial proof progress for the admitted proof task
     """
     await print_admitted_proof_task(rc)
+    status.proof_visible(True)
 
     async def safe_to_step(rc: RocqCursor) -> bool:
         prefix = await rc.doc_prefix()
@@ -155,11 +158,30 @@ async def run_delegated_prover_on_admitted_proof_task(
     # maybe not necessary
     async with (await rc.clone(materialize=True)).sess() as local_rc:
         await local_rc.clear_suffix()
+        if status:
+
+            def print_status(text: str, result: bool | None):
+                nonlocal status
+                if result is None:
+                    icon = "🔃"
+                elif result:
+                    icon = "✅"
+                else:
+                    icon = "❌"
+                status.set_active(f"{icon} {text}")
+
+            local_rc = await WatchingCursor.create(
+                local_rc,
+                on_start_command=lambda text: print_status(text, None),
+                on_finish_command=lambda text, ok: print_status(text, ok),
+                proof_script=lambda script: status.set_proof_script(script),
+            )
+
         existing_prefix = await local_rc.doc_prefix()
         task_result = await agent_cls().run(rc=local_rc)
 
         async def agent_invariant_violated(message: str) -> None:
-            print(message)
+            status.print(message)
             # Step over `Admitted`
             await rc.run_step()
 
@@ -225,9 +247,10 @@ async def run_delegated_prover_on_admitted_proof_task(
             msg = "Agent failed"
 
         if task_result.message:
-            print(f"{msg}:\n{task_result.message}")
+            status.print(f"{msg}:\n{task_result.message}")
         else:
-            print(f"{msg}.")
+            status.print(f"{msg}.")
+        status.proof_visible(False)
 
 
 async def try_replay(
@@ -309,6 +332,11 @@ def agent_main(agent_builder: AgentBuilder) -> int:
         action="store_true",
         help="discard partial proofs",
     )
+    parser.add_argument(
+        "--progress",
+        action=argparse.BooleanOptionalAction,
+        help="show proof progress",
+    )
     adapt_usage(parser, "agent")
 
     prover_args, agent_args = split_args()
@@ -328,32 +356,36 @@ def agent_main(agent_builder: AgentBuilder) -> int:
             output = output.resolve()
     agent_builder.add_args(agent_args)
     logging.basicConfig(level=logging.ERROR)
-    try:
-        print("Gathering Rocq configuration...")
-        rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
+    with build_ui(kind="tui" if args.progress else "status") as controller:
+        try:
+            controller.print("Gathering Rocq configuration...")
+            rocq_args = rocq_args_for(rocq_file, cwd=rocq_file.parent, build=True)
 
-        async def _run() -> None:
-            print("Loading file...")
-            async with rc_sess(
-                str(rocq_file.name),
-                rocq_args=rocq_args,
-                chdir=str(rocq_file.parent),
-                dune=True,
-                load_file=True,
-            ) as rc:
-                await run_proving_agent(
-                    rc,
-                    agent_builder,
-                    output,
-                    partial=not args.no_partial,
-                )
+            async def _run() -> None:
+                controller.print("Loading file...")
+                async with rc_sess(
+                    str(rocq_file.name),
+                    rocq_args=rocq_args,
+                    chdir=str(rocq_file.parent),
+                    dune=True,
+                    load_file=True,
+                ) as rc:
+                    await run_proving_agent(
+                        rc,
+                        agent_builder,
+                        output,
+                        partial=not args.no_partial,
+                        status=controller,
+                    )
 
-        asyncio.run(_run())
-        return 0
-    except DuneError as e:
-        sys.exit(f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}")
-    except Exception as e:
-        sys.exit(f"Error: failed with {e}.")
+            asyncio.run(_run())
+            return 0
+        except DuneError as e:
+            sys.exit(
+                f"Error: could not find Rocq arguments for {rocq_file}.\n{e.stderr}"
+            )
+        except Exception as e:
+            sys.exit(f"Error: failed with {e}.")
 
 
 def auto_prover():
