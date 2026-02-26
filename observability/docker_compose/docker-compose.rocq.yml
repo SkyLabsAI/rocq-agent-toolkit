@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     ports:
       - "4327:4317"   # OTLP gRPC
-      # - "4328:4318"   # OTLP HTTP - Observability Package uses GRPC
+      - "4328:4318"   # OTLP HTTP - Observability Package uses GRPC
       # - "12365:12345" # Alloy UI - If required
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
