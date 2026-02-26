@@ -1,11 +1,12 @@
 import asyncio
 from collections.abc import Awaitable, Callable
-from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures import CancelledError, Future, ThreadPoolExecutor, as_completed
 from itertools import count
 from types import TracebackType
 from typing import cast
 from warnings import deprecated
 
+from observability import get_logger
 from rich.progress import (
     BarColumn,
     Progress,
@@ -13,6 +14,8 @@ from rich.progress import (
     TaskProgressColumn,
     TextColumn,
 )
+
+logger = get_logger(__name__)
 
 
 class MockProgress:
@@ -84,7 +87,7 @@ def parallel_runner[T, U](
     succeeded: Callable[[U], bool] | None = None,
     jobs: int = 1,
     progress: bool = True,
-) -> list[U]:
+) -> list[U | BaseException]:
     total_tasks = len(tasks)
     with (
         Progress(
@@ -128,26 +131,61 @@ def parallel_runner[T, U](
 
         success: int = 0
         failure: int = 0
-        final_result: list[U] = []
+        final_results: dict[int, U | BaseException] = {}
 
         with ThreadPoolExecutor(max_workers=jobs) as tpe:
-            for _, result in tpe.map(go, tasks):
-                final_result.append(result)
-                if succeeded is None or succeeded(result):
-                    success = success + 1
+            # Submit all tasks and keep track of the future objects, but
+            # elide the mapping from `Future` to `T` since we don't use it.
+            #
+            # We want to return a list matching the order of `tasks` so we use
+            # `futures_order` to maintain a mapping from `Future` to task-idx
+            futures_order: dict[Future, int] = {}
+            for i, task in enumerate(tasks):
+                future = tpe.submit(go, task)
+                futures_order[future] = i
+
+            # as_completed yields futures the moment they finish
+            for future in as_completed(futures_order.keys()):
+                future_cancelled_or_exception: bool = False
+                final_result: U | BaseException
+                try:
+                    if future.cancelled():
+                        future_cancelled_or_exception = True
+                        final_result = CancelledError()
+                    elif (final_exception := future.exception()) is not None:
+                        future_cancelled_or_exception = True
+                        final_result = final_exception
+                    else:
+                        _, final_result = future.result()
+                except CancelledError as e_cancelled:
+                    future_cancelled_or_exception = True
+                    final_result = e_cancelled
+                except Exception as e_unexpected:
+                    future_cancelled_or_exception = True
+                    final_result = e_unexpected
+                    logger.error(
+                        "Unexpected error during task processing", exc_info=e_unexpected
+                    )
+
+                final_results[futures_order[future]] = final_result
+
+                # Note: while `U` might derive from `BaseException`, `final_result` is guaranteed to have
+                # type `U` iff `future_cancelled_or_exception=False`
+                if succeeded is None or (
+                    not future_cancelled_or_exception
+                    and succeeded(cast(U, final_result))
+                ):
+                    success += 1
                 else:
-                    failure = failure + 1
+                    failure += 1
+
                 if succeeded is None:
-                    pb.update(
-                        overall, advance=1, description=f"{success} / {total_tasks}"
-                    )
+                    desc = f"{success} / {total_tasks}"
                 else:
-                    pb.update(
-                        overall,
-                        advance=1,
-                        description=f"[green]{success}[/green] & [red]{failure}[/red] / {total_tasks}",
-                    )
-        return final_result
+                    desc = f"[green]{success}[/green] & [red]{failure}[/red] / {total_tasks}"
+                pb.update(overall, advance=1, description=desc)
+
+        return [final_result for _, final_result in sorted(final_results.items())]
 
 
 def main() -> None:
