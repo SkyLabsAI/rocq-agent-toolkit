@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol, override, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from observability import get_logger
 from opentelemetry.instrumentation.grpc.filters import Callable
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
 from pydantic.fields import Field
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager.rocq_doc_manager import rdm_api
@@ -47,11 +46,8 @@ def of_json(json: Any) -> TaskModifier:
     raise ValueError(f"Failed to parse TaskModifier from '{json}'")
 
 
-class InsertCommandModel(BaseModel):
-    """The internal model of `InsertCommand`.
-
-    Since `TaskModifier` is a `Protocol`, `InsertCommand` can not be a `BaseModel`.
-    """
+class InsertCommand(BaseModel):  # TaskModifier
+    """Insert the given commands before the task runs."""
 
     commands: list[str] = Field(
         description="The commands to add before the task is run."
@@ -67,33 +63,20 @@ class InsertCommandModel(BaseModel):
         exclude_if=lambda x: not x,
     )
 
-
-@dataclass
-class InsertCommand(TaskModifier):
-    """Insert the given commands before the task runs."""
-
-    model: InsertCommandModel
-
     @staticmethod
     def make(
         commands: list[str], *, ghost: bool = True, attempt: bool = False
     ) -> InsertCommand:
-        return InsertCommand(
-            model=InsertCommandModel(commands=commands, ghost=ghost, attempt=attempt)
-        )
+        return InsertCommand(commands=commands, ghost=ghost, attempt=attempt)
 
     # TODO: add support for dependencies by implementing UsingRocqDeps
 
-    @staticmethod
-    def model_validate(v: Any) -> InsertCommand:
-        return InsertCommand(model=InsertCommandModel.model_validate(v))
-
-    @override
+    # @override # TaskModifier
     async def run(self, rc: RocqCursor) -> None:
-        for cmd in self.model.commands:
-            result = await rc.insert_command(cmd, ghost=self.model.ghost)
+        for cmd in self.commands:
+            result = await rc.insert_command(cmd, ghost=self.ghost)
             if isinstance(result, rdm_api.Err):
-                if self.model.attempt:
+                if self.attempt:
                     logger.info(f"Failed to insert command: '{cmd}'")
                 else:
                     raise Exception(f"Failed ot insert command: '{cmd}'")
