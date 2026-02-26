@@ -184,6 +184,53 @@ let _ =
     @@ fun d () ->
   Document.load_file d
 
+let sentence_kind =
+  let encode v =
+    match v with
+    | `Blanks  -> "blanks"
+    | `Command -> "command"
+  in
+  S.variant ~encode [`Blanks; `Command]
+
+let sentence =
+  let fields =
+    API.Fields.add ~name:"kind" ~descr:"sentence kind" sentence_kind @@
+    API.Fields.add ~name:"text" ~descr:"sentence text" S.string @@
+    API.Fields.nil
+  in
+  let open Document in
+  let encode (kind, (text, ())) : sentence = {kind; text} in
+  let decode ({kind; text} : sentence) = (kind, (text, ())) in
+  API.declare_object api ~name:"Sentence"
+    ~descr:"Rocq sentence (blanks or command)" ~encode ~decode fields
+
+let sentence_split_error =
+  let fields =
+    API.Fields.add ~name:"sentences" ~descr:"sentences parsed prior to the \
+      error" S.(list (obj sentence)) @@
+    API.Fields.add ~name:"rest" ~descr:"text that remains to be parsed after \
+      parsing the sentences of the `sentences` field" S.string @@
+    API.Fields.nil
+  in
+  let encode = Fun.id in
+  let decode = Fun.id in
+  API.declare_object api ~name:"SentenceSplitError"
+    ~descr:"Sentence-splitting error data" ~encode ~decode fields
+
+let _ =
+  let args =
+    A.add ~name:"text" ~descr:"text to split into sentences" S.string @@
+    A.nil
+  in
+  declare_full ~name:"split_sentences" ~descr:"splits the given text into \
+      a sequence of blank characters or commands" ~args
+    ~ret:S.(list (obj sentence)) ~err:S.(obj sentence_split_error)
+    @@ fun d (text, ()) ->
+  let (sentences, ret) = Document.split_sentences d ~text in
+  match ret with
+  | Ok(())         -> Ok(sentences)
+  | Error(s, rest) -> Error(s, (sentences, (rest, ())))
+
 let _ =
   let args =
     A.add ~name:"text" ~descr:"text of the blanks to insert" S.string @@
