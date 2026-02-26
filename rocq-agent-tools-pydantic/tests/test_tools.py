@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from hypothesis import given, settings as hypothesis_settings, strategies as st
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
+from hypothesis import given
+from hypothesis import settings as hypothesis_settings
+from hypothesis import strategies as st
 from pydantic_ai import RunContext
-
+from rocq_agent_tools_pydantic import tools
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-
-from rocq_agent_tools_pydantic import tools
 
 
 def _make_ctx[T](deps: T) -> RunContext[T]:
@@ -21,6 +21,8 @@ def _make_ctx[T](deps: T) -> RunContext[T]:
 
 # Simulating a backtrack tool-call after many insert tool-calls
 N_run_tactic_call = 5
+
+
 @given(N_revert=st.integers(min_value=1, max_value=N_run_tactic_call))
 @hypothesis_settings(deadline=None)
 @pytest.mark.asyncio
@@ -37,17 +39,20 @@ async def test_run_tactic_backtrack_one_noop(N_revert: int) -> None:
         *,
         inserted_commands: list[str] | None = None,
     ) -> None:
-        """"Assert: prefix+suffix matches expectation.
+        """ "Assert: prefix+suffix matches expectation.
 
         Notes:
         - all commands separated by newlines
         - inserted_commands added just before prefix
         """
-        expected_pf_script_str = "\n".join(
-            newline_separated_commands[:admitted_idx] +
-            (inserted_commands or [])+
-            newline_separated_commands[admitted_idx:]
-        ) + "\n"
+        expected_pf_script_str = (
+            "\n".join(
+                newline_separated_commands[:admitted_idx]
+                + (inserted_commands or [])
+                + newline_separated_commands[admitted_idx:]
+            )
+            + "\n"
+        )
         # NOTE: account for trailing newline that `setup_document_state`
         # implicitly inserts after `Admitted.`, by virtue of using `rc.insert_command`
 
@@ -56,18 +61,17 @@ async def test_run_tactic_backtrack_one_noop(N_revert: int) -> None:
         actual_pf_script_str = "".join(prefix_text + suffix_text)
         assert expected_pf_script_str == actual_pf_script_str
 
-
     async def setup_document_state(rc: RocqCursor) -> None:
         # 1) run the `Admitted.` proof
         for cmd in newline_separated_commands:
-            result = await rc.insert_command(text=cmd, blanks=None)
-            assert not isinstance(result, rdm_api.Err)
+            insert_command_result = await rc.insert_command(text=cmd, blanks=None)
+            assert not isinstance(insert_command_result, rdm_api.Err)
             await rc.insert_blanks(text="\n")
         await assert_expected_proof_script(rc)
 
         # 2) goto the beginning of the document
-        result = await rc.go_to(0)
-        assert not isinstance(result, rdm_api.Err)
+        go_to_result = await rc.go_to(0)
+        assert not isinstance(go_to_result, rdm_api.Err)
 
         # 3) navigate to the point just before the `Admitted.` command,
         #    but /after/ its preceding blank
@@ -121,7 +125,7 @@ async def test_run_tactic_backtrack_one_noop(N_revert: int) -> None:
         assert await tools.backtrack(ctx, N_revert)
         await assert_expected_proof_script(
             rc,
-            inserted_commands=[command]*(N_run_tactic_call - N_revert),
+            inserted_commands=[command] * (N_run_tactic_call - N_revert),
         )
         # 5) document matches expectation
         #    - after:

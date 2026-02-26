@@ -101,9 +101,9 @@ async def backtrack(ctx: RunContext[RocqProofStateDeps], count: int) -> bool:
     Returns:
         True if the revert succeeded, False otherwise
     """
-    if count <= 0:
-        return  True
-    elif count > len(ctx.deps.rocq_script):
+    if count == 0:
+        return True
+    elif 0 < count or count > len(ctx.deps.rocq_script):
         return False
 
     idx, _ = ctx.deps.rocq_script[-count]
