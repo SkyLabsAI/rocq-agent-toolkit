@@ -7,7 +7,7 @@ from typing import Self
 
 from jsonrpc_tp import AsyncJsonRPCTP, JsonRPCTP
 from jsonrpc_tp.jsonrpc_tp_async import AsyncProtocol
-from rocq_dune_util import dune_env_hack
+from rocq_dune_util import dune_env_hack, rocq_dune_util
 
 from . import rocq_doc_manager_api as rdm_api
 from .rocq_cursor import RDMRocqCursor
@@ -51,7 +51,7 @@ class RocqDocManager(API):
         dune_disable_global_lock: bool = True,
     ) -> None:
         path = Path(file_path)
-        rpath = path if cwd is None else path.relative_to(cwd, walk_up=True)
+        rpath = path if cwd is None else rocq_dune_util._canonical_rel_path(path, cwd)
         (env, command) = _rdm_command(
             dune=dune, dune_disable_global_lock=dune_disable_global_lock
         )
@@ -90,7 +90,7 @@ class AsyncRocqDocManager(AsyncAPI):
         file_path: str,
         *,
         workers: int | None = None,
-        cwd: str | None = None,
+        cwd: Path | str | None = None,
         dune: bool = False,
         dune_disable_global_lock: bool = True,
     ) -> AsyncRocqDocManager:

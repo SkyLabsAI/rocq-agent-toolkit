@@ -69,7 +69,7 @@ async def rc_sess(
     file_path: Path | str,
     *,
     rocq_args: list[str] | None = None,
-    cwd: str | None = None,
+    cwd: Path | str | None = None,
     dune: bool = False,
     dune_disable_global_lock: bool = True,
     load_file: bool = True,
