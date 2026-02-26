@@ -143,6 +143,15 @@ async def run_delegated_prover_on_admitted_proof_task(
     """
     await print_admitted_proof_task(rc)
 
+    async def safe_to_step(rc: RocqCursor) -> bool:
+        prefix = await rc.doc_prefix()
+        for item in reversed(prefix):
+            if item.kind == "blanks" and item.text:
+                return True
+            elif item.kind == "command":
+                return False
+        return True
+
     # maybe not necessary
     async with (await rc.clone(materialize=True)).sess() as local_rc:
         await local_rc.clear_suffix()
@@ -197,9 +206,14 @@ async def run_delegated_prover_on_admitted_proof_task(
                     # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
                     await rc.clear_suffix(count=1)
                 else:
+                    # There is no whitespace before this command
+                    if not await safe_to_step(rc):
+                        await rc.insert_blanks("\n")
                     # Step over `Admitted`
                     await rc.run_step()
         else:  # Step over `Admitted`
+            if not await safe_to_step(rc):
+                await rc.insert_blanks("\n")
             await rc.run_step()
 
         # Print task_result and persistence
