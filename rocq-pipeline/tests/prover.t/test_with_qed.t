@@ -51,19 +51,19 @@ Run `auto-prover` via `uv`;
   Loading file...
   Running the proving agent on 3 admitted proofs; partial proofs will be retained.
   
-  Found admit at index 14.
+  Found admit at line 8, column 0 (offset=133).
   Goal 0:
     ============================
     True /\ True
   Agent succeeded.
   
-  Found admit at index 22.
+  Found admit at line 21, column 0 (offset=274).
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admit at index 38.
+  Found admit at line 29, column 0 (offset=413).
   Goal 0:
     ============================
     forty_two = 57

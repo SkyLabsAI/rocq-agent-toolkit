@@ -40,7 +40,7 @@ Run `auto-prover` via `uv` while retaining partial progress;
   Loading file...
   Running the proving agent on 3 admitted proofs; partial proofs will be retained.
   
-  Found admit at index 9.
+  Found admit at line 6, column 35 (offset=109).
   Goal 0:
     ============================
     foo <> bar
