@@ -58,4 +58,5 @@ dev = [
     "ruff>=0.14.4",
     "taskipy>=1.14.1",
     "cram>=0.7",
+    "hypothesis>=6.148.7",
 ]
