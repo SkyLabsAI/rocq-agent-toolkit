@@ -17,31 +17,31 @@ Run installed `auto-prover`:
   Loading file...
   Running the proving agent on 5 admitted proofs; partial proofs will be retained.
   
-  Found admit at index 6.
+  Found admit at line 5, column 0 (offset=75).
   Goal 0:
     ============================
     True
   Agent succeeded.
   
-  Found admit at index 14.
+  Found admit at line 10, column 0 (offset=130).
   Goal 0:
     ============================
     True /\ True
   Agent succeeded.
   
-  Found admit at index 22.
+  Found admit at line 23, column 0 (offset=271).
   Goal 0:
     ============================
     forty_two = 42
   Agent succeeded.
   
-  Found admit at index 30.
+  Found admit at line 28, column 0 (offset=340).
   Goal 0:
     ============================
     42 = forty_two
   Agent succeeded.
   
-  Found admit at index 38.
+  Found admit at line 33, column 0 (offset=399).
   Goal 0:
     ============================
     forty_two = 57
