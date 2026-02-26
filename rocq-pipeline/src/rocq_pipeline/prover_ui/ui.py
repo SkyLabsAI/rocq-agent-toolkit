@@ -1,49 +1,99 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from contextlib import contextmanager
-from time import sleep
-from typing import Literal
+from typing import Literal, Protocol
 
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
 
 
-def generate_content(step):
-    """Creates the content to be placed inside the box."""
-    return f"Processing item [bold cyan]#{step}[/bold cyan]...\nProgress: {step * 10}%"
+class Controller(Protocol):
+    def print(self, msg: str) -> None: ...
+    def proof_visible(self, visible: bool) -> None: ...
+    def set_proof_script(self, script: str) -> None: ...
+    def set_active(self, tac: str) -> None: ...
+    def update(self) -> None: ...
+
+
+class QuietController(Controller):
+    def __init__(self, quiet: bool) -> None:
+        self._quiet = quiet
+
+    def print(self, msg: str) -> None:
+        if not self._quiet:
+            print(msg)
+
+    def proof_visible(self, visible: bool) -> None:
+        pass
+
+    def set_proof_script(self, script: str) -> None:
+        pass
+
+    def set_active(self, tac: str) -> None:
+        pass
+
+    def update(self) -> None:
+        pass
+
+
+class TUIController(Controller):
+    def __init__(self, live: Live) -> None:
+        self._visible = False
+        self._proof_script = ""
+        self._active = ""
+        self._live = live
+
+    def print(self, msg: str) -> None:
+        print(msg)
+
+    def proof_visible(self, visible: bool) -> None:
+        self._visible = visible
+        if not self._visible:
+            self._proof_script = ""
+            self._active = ""
+        self.update()
+
+    def set_proof_script(self, script: str) -> None:
+        self._proof_script = script
+        self.update()
+
+    def set_active(self, tac: str) -> None:
+        self._active = tac
+        self.update()
+
+    def update(self) -> None:
+        if not self._visible:
+            content = Group()
+        else:
+            entries = []
+            if self._proof_script:
+                entries.append(
+                    Panel(
+                        self._proof_script,
+                        title="Proof script",
+                        border_style="bright_blue",
+                    )
+                )
+            if self._active:
+                entries.append(
+                    Panel(self._active, title="Running...", border_style="bright_blue")
+                )
+            content = Group(*entries)
+
+        self._live.update(content)
 
 
 @contextmanager
 def build_ui(
     kind: Literal["quiet", "tui", "status"],
-) -> Iterator[Callable[[str, str | None], None]]:
+) -> Iterator[Controller]:
     if kind == "quiet":
-        yield lambda _msg, _script: None
+        yield QuietController(quiet=True)
     elif kind == "status":
-        last = None
-
-        def status_update(msg: str, script: str | None = None) -> None:
-            if msg != last:
-                print(msg)
-
-        yield status_update
+        yield QuietController(quiet=False)
     elif kind == "tui":
-        with Live(Panel(generate_content(0)), refresh_per_second=4) as live:
-
-            def tui_update(message: str, script: str | None) -> None:
-                # We recreate the Group to keep the message on top and the box below
-                if script:
-                    new_content = Group(
-                        message,
-                        Panel(script, title="Proof script", border_style="bright_blue"),
-                    )
-                else:
-                    new_content = Group(message)
-
-                live.update(new_content)
-                sleep(0.1)
-
-            yield tui_update
+        with Live(Group(), refresh_per_second=40) as live:
+            yield TUIController(live)
     else:
         raise AssertionError(
             "Invalid `kind` value to `build_ui`. Must be one of 'quiet', 'tui', or 'status'"
