@@ -21,7 +21,7 @@
     - qed
     - trivial
   $ rat filter --output with_mod1.yaml \
-  >   --add-mod '{"commands": ["MOD1."], "ghost": true}' \
+  >   --add-mod '{"insert_command":{"commands": ["MOD1."], "ghost": true}}' \
   >   tasks.yaml
   Returned 2 of 2 tasks.
 
@@ -41,8 +41,9 @@
       - qed
       - reflexivity
       modifiers:
-      - commands:
-        - MOD1.
+      - insert_command:
+          commands:
+          - MOD1.
     - file: theories/test_simple.v
       locator: Lemma:is_true
       tags:
@@ -51,11 +52,12 @@
       - qed
       - trivial
       modifiers:
-      - commands:
-        - MOD1.
+      - insert_command:
+          commands:
+          - MOD1.
 
   $ rat filter --output with_mod2.yaml \
-  >   --add-mod '{"commands": ["MOD2."], "ghost": true}' \
+  >   --add-mod '{"insert_command":{"commands": ["MOD2."], "ghost": true}}' \
   >   tasks.yaml
   Returned 2 of 2 tasks.
   $ cat with_mod2.yaml
@@ -74,8 +76,9 @@
       - qed
       - reflexivity
       modifiers:
-      - commands:
-        - MOD2.
+      - insert_command:
+          commands:
+          - MOD2.
     - file: theories/test_simple.v
       locator: Lemma:is_true
       tags:
@@ -84,11 +87,12 @@
       - qed
       - trivial
       modifiers:
-      - commands:
-        - MOD2.
+      - insert_command:
+          commands:
+          - MOD2.
 
   $ rat filter --output with_mod12.yaml \
-  >   --add-mod '{"commands": ["MOD2."], "ghost": true}' \
+  >   --add-mod '{"insert_command":{"commands": ["MOD2."], "ghost": true}}' \
   >   with_mod1.yaml
   Returned 2 of 2 tasks.
   $ cat with_mod12.yaml
@@ -107,10 +111,12 @@
       - qed
       - reflexivity
       modifiers:
-      - commands:
-        - MOD1.
-      - commands:
-        - MOD2.
+      - insert_command:
+          commands:
+          - MOD1.
+      - insert_command:
+          commands:
+          - MOD2.
     - file: theories/test_simple.v
       locator: Lemma:is_true
       tags:
@@ -119,7 +125,9 @@
       - qed
       - trivial
       modifiers:
-      - commands:
-        - MOD1.
-      - commands:
-        - MOD2.
+      - insert_command:
+          commands:
+          - MOD1.
+      - insert_command:
+          commands:
+          - MOD2.

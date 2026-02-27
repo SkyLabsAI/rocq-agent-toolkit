@@ -22,7 +22,7 @@
     - trivial
   $ rat filter --output with_mod1.yaml \
   >   --rename-task '$I-no-hints' \
-  >   --add-mod '{"commands": ["MOD1."], "ghost": true}' \
+  >   --add-mod '{"insert_command":{"commands": ["MOD1."], "ghost": true}}' \
   >   tasks.yaml
   Returned 2 of 2 tasks.
 
@@ -43,8 +43,9 @@
       - qed
       - reflexivity
       modifiers:
-      - commands:
-        - MOD1.
+      - insert_command:
+          commands:
+          - MOD1.
     - name: theories/test_simple.v#Lemma:is_true-no-hints
       file: theories/test_simple.v
       locator: Lemma:is_true
@@ -54,5 +55,6 @@
       - qed
       - trivial
       modifiers:
-      - commands:
-        - MOD1.
+      - insert_command:
+          commands:
+          - MOD1.
