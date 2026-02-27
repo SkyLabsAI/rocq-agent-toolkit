@@ -11,6 +11,7 @@ from .dispatcher import Dispatcher
 from .tunnel import Request, Response
 
 
+# TODO: how is this related to WSMux
 class DuplexMux:
     """Full-duplex micro RPC over a single WebSocket.
 
