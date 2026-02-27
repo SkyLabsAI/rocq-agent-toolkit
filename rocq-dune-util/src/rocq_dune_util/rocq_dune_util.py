@@ -1,9 +1,12 @@
 import os
 import shlex
 import subprocess
+from subprocess import Popen, PIPE
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Literal
+from typing import Literal, IO
+
+from concurrent.futures import ProcessPoolExecutor
 
 
 class DuneError(Exception):
@@ -28,19 +31,26 @@ def _run_dune(
     #         str(cwd) if cwd is not None else None,
     #     )
     # )
-    res = subprocess.run(
+    # res = subprocess.run(
+    with Popen(
         ["dune"] + args,
-        capture_output=True,
+        # capture_output=True,
+        stdout=PIPE,
+        stderr=PIPE,
         env=env,
         cwd=str(cwd) if cwd is not None else None,
-    )
-    stdout = res.stdout.decode(encoding="utf-8")
-    if res.returncode != 0:
-        stderr = res.stderr.decode(encoding="utf-8")
-        message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
-        raise DuneError(message, stdout=stdout, stderr=stderr)
-    # print(stdout)
-    return stdout
+    ) as proc:
+        assert proc, proc
+        assert proc.stdout, proc.stdout
+        assert proc.stderr, proc.stderr
+        stdout = proc.stdout.read().decode(encoding="utf-8")
+        res = proc.wait()
+        if res != 0:
+            stderr = proc.stderr.read().decode(encoding="utf-8")
+            message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
+            raise DuneError(message, stdout=stdout, stderr=stderr)
+        # print(stdout)
+        return stdout
 
 
 def dune_sourceroot(*, cwd: str | Path | None = None) -> Path:
@@ -98,7 +108,12 @@ def _relative_target(
     return (_canonical_rel_path(path, cwd), name)
 
 
-def dune_build(targets: list[str], *, cwd: str | Path | None = None) -> None:
+executor = ProcessPoolExecutor()
+
+
+def dune_build(
+    targets: list[str], *, rpc: bool = True, cwd: str | Path | None = None
+) -> None:
     """
     Builds the given targets using dune. The targets, can either be files or
     aliases (starting with `@`), interpreted in the current working directory.
@@ -115,8 +130,15 @@ def dune_build(targets: list[str], *, cwd: str | Path | None = None) -> None:
     def make_target(target: str) -> str:
         return _build_target(_relative_target(_parse_target(target), cwd))
 
-    args = ["build", "--no-print-directory", "--display=quiet"]
-    _ = _run_dune(args + [make_target(t) for t in targets], cwd)
+    if rpc:
+        args = ["rpc"]
+    else:
+        args = []
+    args = args + ["build", "--no-print-directory", "--display=quiet"]
+    fut = executor.submit(_run_dune, args + [make_target(t) for t in targets], cwd)
+    fut.result()
+    return
+    # _ = _run_dune(args + [make_target(t) for t in targets], cwd)
 
 
 def dune_env_hack() -> dict[str, str]:

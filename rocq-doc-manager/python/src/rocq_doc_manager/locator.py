@@ -3,10 +3,14 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Callable
-from typing import override
+from typing import override, abstract
+from typing import Any, Literal
 
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+
+from typing import Pattern
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,19 +20,31 @@ class Locator:
 
     Beyond __call__, implementers must override '__str__'."""
 
-    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
+    def __call__(
+        self, rc: RocqCursor, *, next: bool = False, step_over: bool = True
+    ) -> bool:
         """Move the cursor to the line identified by the Locator.
 
         If `next` is True, then the search occurs **forward** from the
         current position of the RocqCursor.
         """
-        return False
+        return rc.goto_first_match(
+            self.matches,
+            skip=self._index,
+            include_prefix=not next,
+            step_over_match=step_over,
+        )
 
     @override
     def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
             return str(self) == str(other)
         return False
+
+    @abstract
+    def matches(
+        self, text: str, kind: Literal["blanks", "command", "ghost"]
+    ) -> bool: ...
 
 
 class LocatorParser:
@@ -90,6 +106,8 @@ LocatorParser.register_parser(FirstAdmit.parse)
 
 
 class FirstLemma(Locator):
+    _mtch: Pattern | None = None
+
     def __str__(self) -> str:
         which = f"({self._index})" if self._index != 0 else ""
         if self._style is None:
@@ -102,23 +120,29 @@ class FirstLemma(Locator):
         self._style = style
         self._index = index
 
+    def pattern(self):
+        if not self._mtch:
+            if self._style is None:
+                prefix = "Lemma|Theorem"
+            else:
+                prefix = self._style
+
+            self._mtch = re.compile(f"(?:{prefix})\\s+({self._name})[^0-9a-zA-Z_']")
+        return self._mtch
+
+    def is_lemma(self, text: str, kind: str) -> bool:
+        mtch = self.pattern()
+        return kind == "command" and mtch.match(text) is not None
+
     @override
-    def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
-        if self._style is None:
-            prefix = "Lemma|Theorem"
-        else:
-            prefix = self._style
-
-        mtch = re.compile(f"({prefix})\\s+{self._name}[^0-9a-zA-Z_']")
-
-        def is_lemma(
-            text: str,
-            kind: str,
-        ) -> bool:
-            return kind == "command" and mtch.match(text) is not None
-
+    def __call__(
+        self, rc: RocqCursor, *, next: bool = False, step_over: bool = True
+    ) -> bool:
         if rc.goto_first_match(
-            is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
+            self.is_lemma,
+            step_over_match=step_over,
+            skip=self._index,
+            include_prefix=not next,
         ):
             for cmd in rc.doc_suffix():
                 if cmd.kind != "command" or (
