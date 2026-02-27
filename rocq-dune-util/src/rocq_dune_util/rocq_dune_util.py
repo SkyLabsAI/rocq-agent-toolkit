@@ -240,7 +240,9 @@ class DuneRocqPlugin:
         """
         args = ["query", "-qo", "-qe", self.findlib_pkg]
         res = subprocess.run(
-            ["opam", "exec", "--", "ocamlfind"] + args,
+            # Using "opam exec" is a bad idea for cram tests.
+            # ["opam", "exec", "--", "ocamlfind"] + args,
+            ["ocamlfind"] + args,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             cwd=str(source_root),
@@ -323,13 +325,20 @@ def rocq_args_for(
                 raise ValueError(f"Expected relative path, given {str(rel)}")
             deps.append(source_root / rel)
 
+    # Indicates whether we need to access extra installed deps.
+    needs_installed_plugin = False
+
     # Resolving the plugins.
     if plugins:
         if source_root is None:
             source_root = dune_sourceroot(cwd=cwd)
         for plugin in plugins:
-            for dep in plugin.resolve(source_root):
-                deps.append(source_root / dep)
+            plugin_deps = plugin.resolve(source_root)
+            if plugin_deps:
+                for dep in plugin_deps:
+                    deps.append(source_root / dep)
+            else:
+                needs_installed_plugin = True
 
     # Build the extra dependencies if needed. Note that the dependencies of
     # the main file are built separately, when calling `_rocq_args`, as there
@@ -343,5 +352,9 @@ def rocq_args_for(
     extra_args = [_rocq_args(dep, cwd, False) for dep in deps]
     if extra_args:
         rocq_args = rocq_args + _extra_args(rocq_args, extra_args)
+
+    # HACK: make sure to allow loading installed plugins.
+    if needs_installed_plugin:
+        rocq_args.remove("-boot")
 
     return rocq_args
