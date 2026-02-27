@@ -63,9 +63,16 @@ PTRN_GOAL_SELECTORS = re.compile(r"^([0-9,\s-]+|all)\w*:")
 
 def ensure_tactic(tactic: str) -> None:
     """Ensure that a string represents a tactic."""
-    assert tactic == tactic.strip()
-    assert not PTRN_GOAL_SELECTORS.match(tactic)  # ensure the absence of goal selectors
-    assert not is_command(tactic)
+
+    def err(msg: str) -> ValueError:
+        return ValueError(f"Invalid tactic '{tactic}': {msg}")
+
+    if tactic != tactic.strip():
+        raise err("whitespace is not allowed")
+    if PTRN_GOAL_SELECTORS.match(tactic):  # ensure the absence of goal selectors
+        raise err("goal selectors are not allowed")
+    if is_command(tactic):
+        raise err("is a command")
 
 
 class RocqCommandAction(Action[RocqCursor]):
