@@ -8,6 +8,7 @@ from types import CoroutineType
 from typing import Any, override
 
 from observability import get_logger
+from pydantic import BaseModel
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_protocol import DelegateRocqCursor
@@ -16,7 +17,15 @@ logger = get_logger("RocqCursor")
 
 
 def _default_fn(x: Any) -> Any:
-    if hasattr(x, "to_json"):
+    if x is None:
+        return {}
+    elif isinstance(x, BaseModel):
+        return x.model_dump()
+    elif isinstance(x, rdm_api.Err):
+        # This is a bit hacky, but the types in the interface do not
+        # present a uniform interface
+        return {"message": x.message, "data": _default_fn(x.data)}
+    elif hasattr(x, "to_json"):
         return x.to_json()
     elif isinstance(x, list):
         return [_default_fn(x) for x in x]
@@ -28,7 +37,7 @@ def _default_fn(x: Any) -> Any:
         return x
     elif isinstance(x, float):
         return x
-    return x
+    raise ValueError(f"Can not convert {type(x)} to JSON: {x}")
 
 
 async def _maybe_await[T](val: T | Awaitable[T]) -> T:
