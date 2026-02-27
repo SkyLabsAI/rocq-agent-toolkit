@@ -9,7 +9,7 @@ Usage
 -----
 
 ```sh
-$ rocq_split -Q dir test.dir dir/test.v
+$ rocq-split dir/test.v -- -Q dir test.dir
 {
   "file": "test.v",
   "dirpath": "test.dir.test",

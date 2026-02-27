@@ -50,6 +50,18 @@ API Objects
 - Field `line_nb`: start line number (as an integer).
 - Field `fname`: source file identification if not run as a toplevel (as either `null` or an instance of the `RocqSource` object).
 
+### `Sentence`
+
+- Description: Rocq sentence (blanks or command).
+- Field `text`: sentence text (as a string).
+- Field `kind`: sentence kind (as any of `"blanks"`, `"command"`).
+
+### `SentenceSplitError`
+
+- Description: Sentence-splitting error data.
+- Field `rest`: text that remains to be parsed after parsing the sentences of the `sentences` field (as a string).
+- Field `sentences`: sentences parsed prior to the error (as a list where each element is an instance of the `Sentence` object).
+
 ### `Quickfix`
 
 - Description: Quick fix hint.
@@ -366,4 +378,14 @@ API Methods
   - `count`: the number of unprocessed items to process (as an integer).
 - Response payload: a `null` value.
 - Error payload: error data for the command that was run (as an instance of the `StepsError` object).
+- Failure mode: recoverable failure.
+
+### `split_sentences`
+
+- Description: splits the given text into a sequence of blank characters or commands.
+- Arguments (in order, or named):
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text to split into sentences (as a string).
+- Response payload: a list where each element is an instance of the `Sentence` object.
+- Error payload: an instance of the `SentenceSplitError` object.
 - Failure mode: recoverable failure.
