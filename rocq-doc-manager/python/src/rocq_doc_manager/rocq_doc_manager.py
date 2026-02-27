@@ -46,7 +46,7 @@ class RocqDocManager(API):
         file_path: Path | str,
         rocq_args: list[str],
         *,
-        cwd: str | None = None,
+        cwd: Path | str | None = None,
         dune: bool = False,
         dune_disable_global_lock: bool = True,
     ) -> None:
@@ -87,19 +87,21 @@ class AsyncRocqDocManager(AsyncAPI):
     @staticmethod
     async def create(
         rocq_args: list[str],
-        file_path: str,
+        file_path: Path | str,
         *,
         workers: int | None = None,
         cwd: Path | str | None = None,
         dune: bool = False,
         dune_disable_global_lock: bool = True,
     ) -> AsyncRocqDocManager:
+        path = Path(file_path)
+        rpath = path if cwd is None else rocq_dune_util._canonical_rel_path(path, cwd)
         (env, command) = _rdm_command(
             dune=dune, dune_disable_global_lock=dune_disable_global_lock
         )
         args = (
             command
-            + ["--workers", str(1 if workers is None else workers), file_path, "--"]
+            + ["--workers", str(1 if workers is None else workers), str(rpath), "--"]
             + rocq_args
         )
         rpc = AsyncJsonRPCTP(args=args, cwd=cwd, env=env)

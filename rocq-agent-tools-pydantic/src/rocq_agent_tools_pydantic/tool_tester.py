@@ -52,7 +52,7 @@ async def amain(args: list[str]) -> None:
     messages = [parse_tool_call(arg) for arg in args]
 
     async with rc_sess(
-        str(file.name),
+        file,
         cwd=file.parent,
         dune=True,
         load_file=True,
