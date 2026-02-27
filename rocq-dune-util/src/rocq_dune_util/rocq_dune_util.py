@@ -7,10 +7,19 @@ from typing import Literal
 
 
 class DuneError(Exception):
-    def __init__(self, message: str, *, stdout: str, stderr: str) -> None:
+    def __init__(
+        self, message: str, *, stdout: str, stderr: str, cwd: str | Path | None
+    ) -> None:
         super().__init__(message)
         self.stdout = stdout
         self.stderr = stderr
+        self.cwd: str | None = None if cwd is None else str(cwd)
+
+    def __str__(self) -> str:
+        result = super().__str__()
+        if self.cwd:
+            result = f"{result} (cwd={self.cwd})"
+        return result
 
 
 def _run_dune(args: list[str], cwd: str | Path | None) -> str:
@@ -23,7 +32,7 @@ def _run_dune(args: list[str], cwd: str | Path | None) -> str:
     if res.returncode != 0:
         stderr = res.stderr.decode(encoding="utf-8")
         message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
-        raise DuneError(message, stdout=stdout, stderr=stderr)
+        raise DuneError(message, stdout=stdout, stderr=stderr, cwd=cwd)
     return stdout
 
 
@@ -275,7 +284,8 @@ def rocq_args_for(
     "Require"-ing the corresponding Rocq modules in the file, even if it does
     not depend on them explicitly.
 
-    @param file: the Rocq source file for which arguments are being produced
+    @param file: the Rocq source file for which arguments are being produced.
+        Path should be relative to the current working directory (NOT `cwd`).
     @param cwd: alternative current working directory (optional)
     @param build: should the dependencies of `file` and `extra_deps` be built?
     @param extra_deps: additional Rocq files to be made available

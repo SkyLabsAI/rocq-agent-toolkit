@@ -53,7 +53,7 @@ async def amain(args: list[str]) -> None:
 
     async with rc_sess(
         str(file.name),
-        chdir=str(file.parent),
+        cwd=file.parent,
         dune=True,
         load_file=True,
     ) as rc:

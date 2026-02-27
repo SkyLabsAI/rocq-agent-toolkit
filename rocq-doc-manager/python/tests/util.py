@@ -28,7 +28,7 @@ class RDM_Tests:
     ) -> AsyncRocqDocManager:
         return await rocq_doc_manager.create(
             path,
-            rocq_args,
+            rocq_args=rocq_args,
             dune=os.environ.get("RDM_USE_DUNE", "True") == "True",
         )
 
