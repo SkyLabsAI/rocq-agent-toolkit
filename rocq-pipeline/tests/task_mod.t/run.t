@@ -1,4 +1,5 @@
   $ export WORKSPACE="$TESTDIR/../../../../.."
+  $ export PATH="$WORKSPACE/_build/install/default/bin:$PATH"
   $ export ROCQPATH="$WORKSPACE/_build/install/default/lib/coq/user-contrib"
   $ export ROCQLIB="$WORKSPACE/_build/install/default/lib/coq"
   $ export OCAMLPATH="$WORKSPACE/_build/install/default/lib"

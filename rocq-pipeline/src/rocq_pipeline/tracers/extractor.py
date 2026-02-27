@@ -1,5 +1,4 @@
 from collections.abc import Awaitable, Callable, Generator
-from pathlib import Path
 from typing import Any, Literal, Protocol, TypedDict, cast
 
 from rocq_doc_manager import RocqCursor
@@ -12,8 +11,6 @@ class DocumentWatcher(Protocol):
     When used in a tracing context, it is important that any manipulations of
     the document do not affect the behavior of other parts of the file.
     """
-
-    def extra_paths(self) -> dict[str, Path]: ...
 
     def setup(self, rdm: RocqCursor) -> None:
         """
@@ -44,9 +41,6 @@ class DocumentWatcher(Protocol):
 
 
 class DefaultDocumentWatcher(DocumentWatcher):
-    def extra_paths(self) -> dict[str, Path]:
-        return {}
-
     def setup(self, rdm: RocqCursor) -> None:
         pass
 
@@ -92,9 +86,6 @@ class AllDocumentWatcher(DocumentWatcher):
 
     def __init__(self, watchers: dict[str, DocumentWatcher]):
         self._watchers: dict[str, DocumentWatcher] = watchers
-
-    def extra_paths(self) -> dict[str, Path]:
-        return merge_all(w.extra_paths() for w in self._watchers.values())
 
     def setup(self, rdm: RocqCursor) -> None:
         for _, w in self._watchers.items():

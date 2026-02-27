@@ -4,8 +4,10 @@ from typing import Any
 
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_dune_util import DuneRocqPlugin
 from rocq_pipeline.proof_state import ProofState
 from rocq_pipeline.proof_state.goal import RocqGoal
+from rocq_pipeline.with_deps import UsingRocqDeps
 
 from .extractor import (
     BracketedExtractor,
@@ -21,7 +23,11 @@ type results = list[str] | None
 type state = tuple[goals, results]
 
 
-class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]]):
+class JsonGoal(
+    DefaultDocumentWatcher,
+    BracketedExtractor[state, OutputDict[Any]],
+    UsingRocqDeps,
+):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
     _IRIS_PATH = "skylabs_ai.extractors.goal_to_json.iris.goal_util"
 
@@ -49,21 +55,17 @@ class JsonGoal(DefaultDocumentWatcher, BracketedExtractor[state, OutputDict[Any]
         assert not isinstance(result, rdm_api.Err)
         return not result.startswith("No object")
 
-    def extra_paths(self) -> dict[str, Path]:
-        user = self.find_user_contrib()
-
-        def ext(path: Path, ls: list[str]) -> Path:
-            for x in ls:
-                path = path / x
-            return path
-
-        PATHS = [
-            "skylabs_ai.extractors.goal_to_json",
-            "skylabs_ai.ltac2_json",
-            "skylabs_ai.ltac2_derive",
-            "skylabs.ltac2.extra",
+    def rocq_deps(self) -> list[DuneRocqPlugin]:
+        return [
+            DuneRocqPlugin(
+                opam_pkg="rocq-goal-to-json",
+                entry_points=["basic/theories/goal_util.v"],
+            ),
+            DuneRocqPlugin(
+                opam_pkg="rocq-goal-to-json_iris",
+                entry_points=["iris/theories/goal_util.v"],
+            ),
         ]
-        return {k: ext(user, k.split(".")) for k in PATHS}
 
     async def start_proof(self, rdm: RocqCursor) -> None:
         # Detect iris

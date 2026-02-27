@@ -5,11 +5,12 @@ The tests are otherwise the same.
 
 Set up environment to use dune build outputs:
 
-  $ export DUNE_SOURCEROOT="$TESTDIR/../../../../.."
-  $ [ -d "$DUNE_SOURCEROOT/_build" ] || echo "Failed to find Dune path"
-  $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
-  $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
-  $ export OCAMLPATH="$DUNE_SOURCEROOT/_build/install/default/lib"
+  $ export WORKSPACE="$TESTDIR/../../../../.."
+  $ [ -d "$WORKSPACE/_build" ] || echo "Failed to find Dune path"
+  $ export PATH="$WORKSPACE/_build/install/default/bin:$PATH"
+  $ export ROCQPATH="$WORKSPACE/_build/install/default/lib/coq/user-contrib"
+  $ export ROCQLIB="$WORKSPACE/_build/install/default/lib/coq"
+  $ export OCAMLPATH="$WORKSPACE/_build/install/default/lib"
   $ export DUNE_CACHE=disabled
 
 Copy dune project from source tree to separate folder:
