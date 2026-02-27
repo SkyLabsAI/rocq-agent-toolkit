@@ -365,6 +365,18 @@ class ToolCallEvent:
     result: JsonValue | None = None
     error: str | None = None
 
+    def to_json(self) -> dict[str, JsonValue]:
+        return {
+            "tool_name": self.tool_name,
+            "started_at_unix_ms": self.started_at_unix_ms,
+            "finished_at_unix_ms": self.finished_at_unix_ms,
+            "duration_ms": self.duration_ms,
+            "args": self.args,
+            "kwargs": self.kwargs,
+            "result": self.result,
+            "error": self.error,
+        }
+
 
 @dataclass(slots=True)
 class LLMCallEvent:
@@ -378,9 +390,21 @@ class LLMCallEvent:
     parsed: LLMParsedMetrics = field(default_factory=LLMParsedMetrics)
     error: str | None = None
 
+    def to_json(self) -> dict[str, JsonValue]:
+        return {
+            "started_at_unix_ms": self.started_at_unix_ms,
+            "finished_at_unix_ms": self.finished_at_unix_ms,
+            "duration_ms": self.duration_ms,
+            "request": self.request.to_json(),
+            "response": self.response.to_json(),
+            "parsed": self.parsed.to_json(),
+            "error": self.error,
+        }
+
 
 @dataclass(slots=True)
 class TelemetrySummary:
+    model: str | None = None
     tool_calls: int = 0
     failed_tool_calls: int = 0
     llm_calls: int = 0
@@ -396,6 +420,7 @@ class TelemetrySummary:
 
     def to_json(self) -> dict[str, JsonValue]:
         return {
+            "model": self.model,
             "tool_calls": self.tool_calls,
             "failed_tool_calls": self.failed_tool_calls,
             "llm_calls": self.llm_calls,
@@ -415,7 +440,7 @@ class TelemetrySummary:
 class TelemetryData:
     """Internal per-run telemetry state."""
 
-    run_uid: str
+    trace_id: str
     agent_name: str
     started_at_unix_ms: int
     tool_calls: list[ToolCallEvent] = field(default_factory=list)
@@ -425,14 +450,10 @@ class TelemetryData:
 
 
 @dataclass(slots=True)
-class TelemetryPayload:
+class TelemetryPayload(TelemetryData):
     """Serializable telemetry payload captured for one proof-agent run."""
 
-    run_uid: str
-    agent_name: str
-    started_at_unix_ms: int
-    tool_calls: list[ToolCallEvent] = field(default_factory=list)
-    llm_calls: list[LLMCallEvent] = field(default_factory=list)
+    model: str | None = None
     finished_at_unix_ms: int = 0
     duration_ms: int = 0
     summary: TelemetrySummary = field(default_factory=TelemetrySummary)
@@ -440,16 +461,6 @@ class TelemetryPayload:
     def to_json(self) -> dict[str, JsonValue]:
         payload = asdict(self)
         payload["summary"] = self.summary.to_json()
-        payload["llm_calls"] = [
-            {
-                "started_at_unix_ms": call.started_at_unix_ms,
-                "finished_at_unix_ms": call.finished_at_unix_ms,
-                "duration_ms": call.duration_ms,
-                "request": call.request.to_json(),
-                "response": call.response.to_json(),
-                "parsed": call.parsed.to_json(),
-                "error": call.error,
-            }
-            for call in self.llm_calls
-        ]
+        payload["tool_calls"] = [call.to_json() for call in self.tool_calls]
+        payload["llm_calls"] = [call.to_json() for call in self.llm_calls]
         return payload

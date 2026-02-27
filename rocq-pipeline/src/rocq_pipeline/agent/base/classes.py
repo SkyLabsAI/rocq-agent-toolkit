@@ -12,10 +12,10 @@ from rocq_pipeline.schema import task_output
 from rocq_pipeline.schema.task_output import FailureReason
 from rocq_pipeline.telemetry import (
     TelemetryPayload,
-    append_telemetry_jsonl,  # TODO: Remove this
     current_telemetry_payload,
     telemetry_run,
 )
+from opentelemetry import trace
 
 from .dataclasses import (
     TacticApplication,
@@ -57,9 +57,7 @@ class Agent(Provenance.Full):
         merged_side_effects = dict(side_effects or {})
         telemetry_payload = current_telemetry_payload()
         if telemetry_payload is not None:
-            telemetry_path = append_telemetry_jsonl(telemetry_payload)
             merged_side_effects["telemetry"] = telemetry_payload.to_json()
-            merged_side_effects["telemetry_jsonl_path"] = telemetry_path
         return TaskResult.finished(
             message=message,
             side_effects=merged_side_effects,
@@ -77,9 +75,7 @@ class Agent(Provenance.Full):
         merged_side_effects = dict(side_effects or {})
         telemetry_payload = current_telemetry_payload()
         if telemetry_payload is not None:
-            telemetry_path = append_telemetry_jsonl(telemetry_payload)
             merged_side_effects["telemetry"] = telemetry_payload.to_json()
-            merged_side_effects["telemetry_jsonl_path"] = telemetry_path
         if isinstance(reason, BaseException):
             return TaskResult.from_exception(
                 reason,
@@ -188,16 +184,13 @@ class ProofAgent(Agent):
     @override
     async def run(self, rc: RocqCursor) -> TaskResult:
         """Run the agent after ensuring there is a goal to prove."""
-        # TODO: get the current trace id and
-        # Add trace_id to the telemetry run
-        from opentelemetry import trace
 
         span_context = trace.get_current_span().get_span_context()
         trace_id = (
             format(span_context.trace_id, "032x") if span_context.is_valid else None
         )
 
-        async with telemetry_run(agent_name=self.name(), trace_id=trace_id):
+        async with telemetry_run(agent_name=self.name(), trace_id=trace_id, log_entries_on_the_go=True):
             goal_reply = await rc.current_goal()
             if goal_reply is None:
                 return await self.finished(rc, message="No goal to prove")

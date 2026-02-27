@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import gzip
 import json
-import os
 import uuid
 import zlib
 from collections.abc import AsyncIterator, Callable
@@ -11,7 +10,6 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from functools import wraps
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -38,6 +36,10 @@ _current_telemetry_run: ContextVar[TelemetryData | None] = ContextVar(
     "rocq_telemetry_run",
     default=None,
 )
+_current_live_event_logging: ContextVar[bool] = ContextVar(
+    "rocq_telemetry_live_event_logging",
+    default=False,
+)
 
 
 def _unix_now_ms() -> int:
@@ -52,18 +54,34 @@ def _duration_ms(start_ms: int, end_ms: int) -> int:
 async def telemetry_run(
     agent_name: str,
     trace_id: str | None = None,
+    log_entries_on_the_go: bool = False,
 ) -> AsyncIterator[TelemetryData]:
     """Create per-run telemetry context and cleanly reset it after run end."""
     run = TelemetryData(
-        run_uid=trace_id if trace_id else str(uuid.uuid4()),
+        trace_id=trace_id if trace_id else str(uuid.uuid4()),
         agent_name=agent_name,
         started_at_unix_ms=_unix_now_ms(),
     )
     token = _current_telemetry_run.set(run)
+    live_logging_token = _current_live_event_logging.set(log_entries_on_the_go)
     try:
         yield run
     finally:
+        _current_live_event_logging.reset(live_logging_token)
         _current_telemetry_run.reset(token)
+
+
+def _emit_live_event_log(
+    event_type: str, run: TelemetryData, event_payload: dict[str, Any]
+) -> None:
+    if not _current_live_event_logging.get():
+        return
+
+    logger.info(
+        event_type,
+        telemetry_trace_id=run.trace_id,
+        telemetry_payload=event_payload,
+    )
 
 
 def instrument_tool_call(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -92,20 +110,18 @@ def instrument_tool_call(fn: Callable[..., Any]) -> Callable[..., Any]:
                     else:
                         serialized_args.append(to_json_value(arg))
 
-                run.tool_calls.append(
-                    ToolCallEvent(
-                        tool_name=fn.__name__,
-                        started_at_unix_ms=started_at_unix_ms,
-                        finished_at_unix_ms=finished_at_unix_ms,
-                        duration_ms=_duration_ms(
-                            started_at_unix_ms, finished_at_unix_ms
-                        ),
-                        args=serialized_args,
-                        kwargs=to_json_object(dict(kwargs)),
-                        result=to_json_value(result),
-                        error=error,
-                    )
+                event = ToolCallEvent(
+                    tool_name=fn.__name__,
+                    started_at_unix_ms=started_at_unix_ms,
+                    finished_at_unix_ms=finished_at_unix_ms,
+                    duration_ms=_duration_ms(started_at_unix_ms, finished_at_unix_ms),
+                    args=serialized_args,
+                    kwargs=to_json_object(dict(kwargs)),
+                    result=to_json_value(result),
+                    error=error,
                 )
+                run.tool_calls.append(event)
+                _emit_live_event_log("ToolCallEvent", run, event.to_json())
 
     return wrapped
 
@@ -185,6 +201,7 @@ def record_llm_call_event(event: LLMCallEvent) -> None:
         return
 
     run.llm_calls.append(event)
+    _emit_live_event_log("LLMCallEvent", run, event.to_json())
 
 
 def _decode_response_body(body_bytes: bytes, content_encoding: str) -> bytes:
@@ -308,9 +325,21 @@ class OpenAITelemetryTransport(httpx.AsyncBaseTransport):
         return response
 
 
+def _infer_model_name(run: TelemetryData) -> str | None:
+    # for now we assume only one model was used.
+    # And just take the first one. If we see different models are being used, with in single agent,
+    # we can make this array later own.
+    for call in run.llm_calls:
+        if call.request.model:
+            return call.request.model
+    return None
+
+
 def _build_summary(run: TelemetryData) -> TelemetrySummary:
     parsed_usage = [call.parsed for call in run.llm_calls]
+    model = _infer_model_name(run)
     return TelemetrySummary(
+        model=model,
         tool_calls=len(run.tool_calls),
         failed_tool_calls=len([call for call in run.tool_calls if call.error]),
         llm_calls=len(run.llm_calls),
@@ -339,30 +368,15 @@ def current_telemetry_payload() -> TelemetryPayload | None:
     if run.duration_ms is None:
         run.duration_ms = _duration_ms(run.started_at_unix_ms, run.finished_at_unix_ms)
 
+    model = _infer_model_name(run)
     return TelemetryPayload(
-        run_uid=run.run_uid,
+        trace_id=run.trace_id,
         agent_name=run.agent_name,
         started_at_unix_ms=run.started_at_unix_ms,
+        model=model,
         tool_calls=list(run.tool_calls),
         llm_calls=list(run.llm_calls),
         finished_at_unix_ms=run.finished_at_unix_ms,
         duration_ms=run.duration_ms,
         summary=_build_summary(run),
     )
-
-
-# TODO: Remove this
-def append_telemetry_jsonl(payload: TelemetryPayload) -> str:
-    """Append telemetry payload to a JSONL file and return the file path."""
-    path_from_env = os.getenv("ROCQ_TELEMETRY_JSONL")
-    output_path = (
-        Path(path_from_env) if path_from_env else Path.cwd() / "rocq_telemetry.jsonl"
-    )
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("a", encoding="utf8") as file:
-        json.dump(payload.to_json(), file, ensure_ascii=True)
-        file.write("\n")
-
-    logger.info("Telemetry appended", path=str(output_path))
-    return str(output_path)
