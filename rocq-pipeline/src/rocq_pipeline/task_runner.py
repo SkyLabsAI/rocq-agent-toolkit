@@ -242,7 +242,7 @@ async def run_task(
             async with rc_sess(
                 task_file,
                 rocq_args=rocq_args,
-                cwd=str(project.path),
+                cwd=project.path,
                 load_file=True,
             ) as rc:
                 progress.status(0.05, "🔃")
