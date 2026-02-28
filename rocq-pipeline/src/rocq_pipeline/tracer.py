@@ -13,11 +13,19 @@ from rocq_dune_util import rocq_args_for
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, util
 from rocq_pipeline.args import load_tasks
+from rocq_pipeline.find_tasks import _PROOF_TERM
 from rocq_pipeline.tracers import json_goal
 from rocq_pipeline.tracers.extractor import (
     Tracer,
 )
 from rocq_pipeline.with_deps import rocq_deps_for
+
+
+def find_last_nonwhite_prefix(prefix: list[rdm_api.PrefixItem]) -> str | None:
+    for element in reversed(prefix):
+        if element.kind != "blanks" and element.text.strip():
+            return element.text
+    return None
 
 
 async def trace_proof(
@@ -27,7 +35,33 @@ async def trace_proof(
     progress_min: float = 0.0,
     progress_max: float = 1.0,
 ) -> list[dict[str, Any]]:
-    tactics = find_tasks.scan_proof(await rdm.doc_suffix()).proof_tactics
+    prefix: list[rdm_api.PrefixItem] = await rdm.doc_prefix()
+    if not prefix:
+        raise ValueError("Tracing failed: no prefix found.")
+    lp: str | None = find_last_nonwhite_prefix(prefix)
+    if lp is None:
+        raise ValueError("Tracing failed: no nonwhite prefix found.")
+    last_prefix = lp.strip()
+    if _PROOF_TERM.match(last_prefix):
+        tactics = [last_prefix]
+        index = await rdm.cursor_index()
+        done = False
+        while not done:
+            index = index - 1
+            prev = await rdm.go_to(index)
+            if isinstance(prev, rdm_api.Err):
+                raise ValueError(
+                    "Tracing failed: looking for predecessor of 'Proof ' in document prefix errored."
+                )
+            suf = await rdm.doc_suffix()
+            if suf is None or len(suf) == 0:
+                raise ValueError(
+                    "Tracing failed: no suffix found while looking for predecessor of 'Proof '."
+                )
+            if suf[0].text == last_prefix:
+                done = True
+    else:
+        tactics = find_tasks.scan_proof(await rdm.doc_suffix()).proof_tactics
     await tracer.start_proof(rdm)
     trace = []
     step_size: float = (progress_max - progress_min) / len(tactics)
