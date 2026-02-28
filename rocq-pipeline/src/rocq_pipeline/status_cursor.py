@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Awaitable, Callable
-from types import CoroutineType
+from collections.abc import Awaitable, Callable, Coroutine
 
 from rocq_doc_manager.rocq_cursor_protocol import DelegateRocqCursor, RocqCursor
 
@@ -58,9 +57,9 @@ class WatchingCursor(DelegateRocqCursor):
     @staticmethod
     def updating_loc[**P, T](
         func: Callable[P, Awaitable[T]],
-    ) -> Callable[P, CoroutineType[None, None, T]]:
+    ) -> Callable[P, Coroutine[None, None, T]]:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> T:
             self: WatchingCursor = args[0]
             result = await func(*args, **kwargs)
             prefix = await self.doc_prefix()

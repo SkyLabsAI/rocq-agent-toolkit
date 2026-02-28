@@ -180,7 +180,7 @@ class ProofAgent(Agent):
 
     async def current_proof_state(
         self,
-        rdm: RocqCursor,
+        rc: RocqCursor,
         goal_ty_upperbound: type[RocqGoal] | None = None,
     ) -> ProofState | rdm_api.Err[None]:
         """Structured view of the current proof state (via RDM.current_goal).
@@ -188,7 +188,7 @@ class ProofAgent(Agent):
         Note: self._goal_ty_upperbound can be overriden."""
         if goal_ty_upperbound is None:
             goal_ty_upperbound = self._goal_ty_upperbound
-        goal_reply = await rdm.current_goal()
+        goal_reply = await rc.current_goal()
         if goal_reply is None:
             return rdm_api.Err("No goal to prove", None)
         return ProofState(
@@ -198,13 +198,13 @@ class ProofAgent(Agent):
 
     async def run_tactic(
         self,
-        rdm: RocqCursor,
+        rc: RocqCursor,
         tac: str,
     ) -> TacticApplication:
         """Get the result of running tac using rdm, tracing the interaction."""
         tac_app = TacticApplication(tactic=tac)
 
-        pre_pf_state_reply = await self.current_proof_state(rdm)
+        pre_pf_state_reply = await self.current_proof_state(rc)
         if isinstance(pre_pf_state_reply, rdm_api.Err):
             tac_app.err = pre_pf_state_reply
             return tac_app
@@ -219,7 +219,7 @@ class ProofAgent(Agent):
             "Tactic Application",
             tactic_application_tactic=tac,
         )
-        tac_reply = await rdm.insert_command(tac)
+        tac_reply = await rc.insert_command(tac)
         if isinstance(tac_reply, rdm_api.Err):
             logger.info(
                 "Tactic Application Status",
@@ -234,7 +234,7 @@ class ProofAgent(Agent):
             status="Success",
         )
 
-        post_pf_state_reply = await self.current_proof_state(rdm)
+        post_pf_state_reply = await self.current_proof_state(rc)
         if isinstance(post_pf_state_reply, rdm_api.Err):
             tac_app.err = post_pf_state_reply
             return tac_app

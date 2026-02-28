@@ -28,12 +28,12 @@ from rocq_pipeline.agent import (
     OneShotBuilder,
     TaskResult,
 )
-from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.args import load_tasks
 from rocq_pipeline.args_util import split_args
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.task_modifiers import task_mod
+from rocq_pipeline.trace_cursor import TracingCursor
 from rocq_pipeline.with_deps import rocq_deps_for
 
 logger = get_logger("task_runner")
