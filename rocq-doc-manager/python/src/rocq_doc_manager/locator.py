@@ -124,10 +124,13 @@ class FirstLemma(Locator):
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
+        is_proof = False
         if await rc.goto_first_match(
             is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
         ):
             for cmd in await rc.doc_suffix():
+                if cmd.kind != "blanks":
+                    is_proof = False
                 if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
                 ):
@@ -135,10 +138,12 @@ class FirstLemma(Locator):
                     if isinstance(run_step_reply, rdm_api.Err):
                         logger.warning(f"RocqCursor.run_step failed: {run_step_reply}")
                         return False
+                    if cmd.text.startswith("Proof"):
+                        is_proof = True
                 else:
                     return True
-
-        return False
+            return is_proof
+        return is_proof
 
     @staticmethod
     def parse(s: str) -> FirstLemma:

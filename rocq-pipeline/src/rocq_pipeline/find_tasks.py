@@ -34,8 +34,9 @@ class ProofTask:
 # This matches `Proof.`, `Proof with ..`, and `Proof using ..`
 _PROOF_START = re.compile(r"Proof(\s+(using\s|with\s).*|\s*)?\.")
 
-# This detects whether there is an argument to 'Poof'
-_PROOF_TERM = re.compile(r"Proof\s+([^\s].*)\s*\.", flags=re.DOTALL)
+# This detects whether there is an argument to 'Proof'
+# _PROOF_TERM = re.compile(r"Proof\s+([^\s].*)\s*\.", flags=re.DOTALL)
+_PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)", flags=re.DOTALL)
 
 
 def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
