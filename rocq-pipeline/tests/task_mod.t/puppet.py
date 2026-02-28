@@ -29,7 +29,7 @@ class PuppetAgent(Agent):
         self._interactions = interactions
 
     @override
-    async def run(self, rc: RocqCursor) -> TaskResult:
+    async def run(self, rc: RocqCursor, **kwargs) -> TaskResult:
         for i in self._interactions:
             await i.run(rc)
         return TaskResult.give_up("completed interactions")

@@ -17,7 +17,9 @@ class OracleAgent(ProofAgent):
         super().__init__(unset_ssr_idents=False, reset_default_goal_selector=False)
 
     @override
-    async def run(self, rc: RocqCursor) -> TaskResult:
+    async def run(
+        self, rc: RocqCursor, *, task_prompt: str | None = None
+    ) -> TaskResult:
         while await self.current_proof_state(rc):
             result = await rc.run_step()
             if isinstance(result, rdm_api.Err):

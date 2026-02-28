@@ -64,7 +64,9 @@ class RemoteAgent(Agent):
         return RemoteProofAgentConfig
 
     @override
-    async def run(self, rc: RocqCursor) -> TaskResult:
+    async def run(
+        self, rc: RocqCursor, *, task_prompt: str | None = None
+    ) -> TaskResult:
         ws_headers = {}
         if self._config.inference:
             # Provider (e.g. "openrouter", "openai")
@@ -143,6 +145,7 @@ class RemoteAgent(Agent):
                 "agent_parameters": self._config.remote_parameters,
                 "budget": self._config.budget,
                 "meta": {"client_version": "remote_agent_client"},
+                "task_prompt": task_prompt,
             }
 
             try:

@@ -53,14 +53,16 @@ class TraceAgent(ProofAgent):
         self._history.append(tac_app)
 
     @override
-    async def prove(self, rdm: RocqCursor) -> TaskResult:
+    async def prove(
+        self, rc: RocqCursor, *, task_prompt: str | None = None
+    ) -> TaskResult:
         """Keep trying to prove via next tactic prediction."""
 
         while True:
-            pf_state_reply = await self.current_proof_state(rdm)
+            pf_state_reply = await self.current_proof_state(rc)
             if isinstance(pf_state_reply, rdm_api.Err):
                 return await self.give_up(
-                    rdm,
+                    rc,
                     message="{self.name()}: couldn't get current proof state",
                     reason=pf_state_reply,
                 )
@@ -69,19 +71,19 @@ class TraceAgent(ProofAgent):
 
             if self._max_fuel is not None and self._tac_app_cnt >= self._max_fuel:
                 return await self.give_up(
-                    rdm,
+                    rc,
                     message=f"{self.name()}: out of fuel after {self._tac_app_cnt} tactic applications",
                 )
             elif self._stop_on_failure and self.last_failed():
                 return await self.give_up(
-                    rdm,
+                    rc,
                     message=f"{self.name()}: last tactic application failed after {self._tac_app_cnt} tactic applications",
                 )
 
             # NOTE: overriders of `next` may emit additional logs
             # related to tactic prediction; we may want to create a (nested)
             # span here.
-            next_tac_or_result: str | TaskResult = await self.next_tac(rdm)
+            next_tac_or_result: str | TaskResult = await self.next_tac(rc)
             if isinstance(next_tac_or_result, TaskResult):
                 return next_tac_or_result
             assert isinstance(next_tac_or_result, str)
@@ -92,11 +94,11 @@ class TraceAgent(ProofAgent):
                 )
                 next_tac += "."
 
-            tac_app: TacticApplication = await self.run_tactic(rdm, next_tac)
+            tac_app: TacticApplication = await self.run_tactic(rc, next_tac)
             self.update_history(tac_app)
             self._tac_app_cnt += 1
 
-        return await self.finished(rdm)
+        return await self.finished(rc)
 
     # ==================================================================
     # TODO
