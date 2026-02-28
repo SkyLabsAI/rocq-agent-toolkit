@@ -27,7 +27,7 @@ async def trace_proof(
     progress_min: float = 0.0,
     progress_max: float = 1.0,
 ) -> list[dict[str, Any]]:
-    prefix: list[rdm_api.PrefixItem] = (await rdm.doc_prefix())
+    prefix: list[rdm_api.PrefixItem] = await rdm.doc_prefix()
     if not prefix:
         print("No prefix found.")
         return []
