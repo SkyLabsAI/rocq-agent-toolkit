@@ -1,6 +1,0 @@
-(library
- (name rocq_split_data)
- (public_name rocq-split.data)
- (wrapped false)
- (libraries
-  rocq-runtime.vernac rocq-loc))

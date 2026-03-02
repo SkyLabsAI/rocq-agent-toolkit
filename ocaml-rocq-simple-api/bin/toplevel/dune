@@ -1,0 +1,5 @@
+(executable
+ (public_name rocq-simple-api.toplevel)
+ (package rocq-simple-api)
+ (name main)
+ (libraries rocq_toplevel))

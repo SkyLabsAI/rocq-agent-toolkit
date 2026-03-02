@@ -1,5 +1,0 @@
-(executable
- (name main)
- (public_name rocq-split)
- (package rocq-split)
- (libraries rocq-split.api))
