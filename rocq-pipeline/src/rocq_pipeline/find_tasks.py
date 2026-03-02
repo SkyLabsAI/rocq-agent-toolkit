@@ -39,6 +39,7 @@ _PROOF_START = re.compile(r"Proof(\s+(using\s|with\s).*|\s*)?\.")
 # NEW_PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)", flags=re.DOTALL)
 _PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)\.\s*$", flags=re.DOTALL)
 
+
 def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
     tactics: list[str] = []
     start = 0
