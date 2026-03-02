@@ -35,6 +35,7 @@ async def trace_proof(
     progress_min: float = 0.0,
     progress_max: float = 1.0,
 ) -> list[dict[str, Any]]:
+    tactics: list[str]
     prefix: list[rdm_api.PrefixItem] = await rdm.doc_prefix()
     if not prefix:
         raise ValueError("Tracing failed: no prefix found.")
@@ -54,7 +55,7 @@ async def trace_proof(
                     "Tracing failed: looking for predecessor of 'Proof ' in document prefix errored."
                 )
             suf = await rdm.doc_suffix()
-            if suf is None or len(suf) == 0:
+            if len(suf) == 0:
                 raise ValueError(
                     "Tracing failed: no suffix found while looking for predecessor of 'Proof '."
                 )
@@ -63,8 +64,13 @@ async def trace_proof(
     else:
         tactics = find_tasks.scan_proof(await rdm.doc_suffix()).proof_tactics
     await tracer.start_proof(rdm)
-    trace = []
-    step_size: float = (progress_max - progress_min) / len(tactics)
+    trace: list[dict[str, Any]] = []
+
+    if len(tactics) == 0:
+        step_size = 0.0
+    else:
+        step_size = (progress_max - progress_min) / len(tactics)
+
     for i, tactic in enumerate(tactics):
         after = await tracer.before_internal(rdm, tactic)
         progress.status(status=tactic[:10])
