@@ -312,3 +312,30 @@ export const uploadTasksYamlMock = async (
     tasks_updated: tasksUpdated,
   };
 };
+
+/**
+ * Mock data for resolving task IDs from uploaded YAML.
+ */
+export const resolveTasksFromYamlMock = async (
+  datasetId: string
+): Promise<{
+  success: boolean;
+  message: string;
+  dataset_id: string;
+  requested_tasks: number;
+  matched_task_ids: number[];
+  matched_task_names: string[];
+  missing_task_names: string[];
+}> => {
+  await simulateDelay(500, 900);
+
+  return {
+    success: true,
+    message: `Resolved 0 task(s) from YAML for dataset '${datasetId}'. 0 task(s) were not found.`,
+    dataset_id: datasetId,
+    requested_tasks: 0,
+    matched_task_ids: [],
+    matched_task_names: [],
+    missing_task_names: [],
+  };
+};

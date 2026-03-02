@@ -51,6 +51,7 @@ from backend.dal import (
     list_agent_instances_from_db,
     list_agents_from_db,
     list_datasets_from_db,
+    resolve_task_ids_from_yaml,
     set_best_run_flag_for_run,
 )
 from backend.database import get_session, init_db
@@ -77,6 +78,7 @@ from backend.models import (
     TaskDatasetIngestionResponse,
     TaskDetailsResponse,
     TaskResult,
+    TaskYamlResolveResponse,
 )
 from backend.s3 import upload_bytes_to_s3
 from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
@@ -87,6 +89,16 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+def _format_task_refs(task_refs: list[str], *, limit: int = 20) -> str:
+    """Format task refs for ingestion messages with a sensible length cap."""
+    if not task_refs:
+        return "none"
+    if len(task_refs) <= limit:
+        return ", ".join(task_refs)
+    shown = ", ".join(task_refs[:limit])
+    return f"{shown}, ... (+{len(task_refs) - limit} more)"
 
 
 @asynccontextmanager
@@ -182,6 +194,9 @@ async def _perform_ingestion(
     except HTTPException:
         # Bubble up HTTPExceptions unchanged
         raise
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:  # pragma: no cover - defensive logging
         session.rollback()
         logger.error("Error ingesting task results: %s", e, exc_info=True)
@@ -190,9 +205,13 @@ async def _perform_ingestion(
             detail=f"Error ingesting task results: {str(e)}",
         ) from e
 
+    added_tasks = stats.get("added_tasks", [])
+    missing_tasks = stats.get("missing_tasks", [])
     message = (
-        f"Ingested {stats['tasks_ingested']} task results "
-        f"across {stats['runs_ingested']} runs."
+        f"Ingested {stats['tasks_ingested']} task results across "
+        f"{stats['runs_ingested']} runs. "
+        f"Added tasks: {_format_task_refs(added_tasks)}. "
+        f"Missing tasks (not found in DB): {_format_task_refs(missing_tasks)}."
     )
 
     return IngestionResponse(
@@ -200,6 +219,9 @@ async def _perform_ingestion(
         message=message,
         runs_ingested=stats["runs_ingested"],
         tasks_ingested=stats["tasks_ingested"],
+        tasks_missing=stats.get("tasks_missing", 0),
+        added_tasks=added_tasks,
+        missing_tasks=missing_tasks,
     )
 
 
@@ -340,7 +362,8 @@ async def ingest_task_yaml_file(
     message = (
         f"Ingested dataset '{stats['dataset_id']}' with "
         f"{stats['tasks_created']} new task(s), "
-        f"{stats['tasks_updated']} updated task(s)."
+        f"{stats['tasks_updated']} updated task(s), "
+        f"{stats.get('tasks_removed', 0)} removed task(s)."
     )
 
     return TaskDatasetIngestionResponse(
@@ -349,6 +372,57 @@ async def ingest_task_yaml_file(
         dataset_id=stats["dataset_id"],
         tasks_created=stats["tasks_created"],
         tasks_updated=stats["tasks_updated"],
+    )
+
+
+@app.post(
+    "/api/datasets/{dataset_id}/tasks/yaml/resolve",
+    response_model=TaskYamlResolveResponse,
+)
+async def resolve_task_yaml_for_dataset(
+    dataset_id: str,
+    file: UploadFile = File(
+        ...,
+        description="YAML file describing tasks to resolve in the given dataset",
+    ),
+    session: Session = Depends(get_session),
+) -> TaskYamlResolveResponse:
+    """
+    Resolve YAML tasks to DB task IDs for a dataset without mutating data.
+    """
+    raw_bytes = await file.read()
+    yaml_text = raw_bytes.decode("utf-8")
+
+    try:
+        resolved = resolve_task_ids_from_yaml(session, dataset_id, yaml_text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:  # pragma: no cover - defensive logging
+        logger.error(
+            "Error resolving YAML tasks for dataset '%s': %s",
+            dataset_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error resolving YAML tasks for dataset '{dataset_id}': {str(e)}",
+        ) from e
+
+    matched = len(resolved["matched_task_ids"])
+    missing = len(resolved["missing_task_names"])
+    message = (
+        f"Resolved {matched} task(s) from YAML for dataset '{dataset_id}'. "
+        f"{missing} task(s) were not found."
+    )
+    return TaskYamlResolveResponse(
+        success=True,
+        message=message,
+        dataset_id=resolved["dataset_id"],
+        requested_tasks=resolved["requested_tasks"],
+        matched_task_ids=resolved["matched_task_ids"],
+        matched_task_names=resolved["matched_task_names"],
+        missing_task_names=resolved["missing_task_names"],
     )
 
 

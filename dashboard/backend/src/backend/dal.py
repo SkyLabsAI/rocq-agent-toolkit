@@ -115,6 +115,12 @@ def get_or_create_dataset(
     return dataset
 
 
+def get_dataset_by_name(session: Session, name: str) -> Dataset | None:
+    """Fetch a Dataset by name without creating new rows."""
+    stmt = select(Dataset).where(Dataset.name == name)
+    return session.exec(stmt).first()
+
+
 def get_or_create_task(
     session: Session,
     task_name: str,
@@ -154,6 +160,16 @@ def get_or_create_task(
     return task
 
 
+def get_task_by_name(
+    session: Session,
+    task_name: str,
+    dataset: Dataset,
+) -> Task | None:
+    """Fetch a Task by (name, dataset_id) without creating new rows."""
+    stmt = select(Task).where(Task.name == task_name, Task.dataset_id == dataset.id)
+    return session.exec(stmt).first()
+
+
 def get_or_create_tag(session: Session, key: str, value: str) -> Tag:
     """Fetch a Tag by (key, value) or create it if missing."""
     stmt = select(Tag).where(Tag.key == key, Tag.value == value)
@@ -167,7 +183,7 @@ def get_or_create_tag(session: Session, key: str, value: str) -> Tag:
     return tag
 
 
-# Prefix used to identify task-level tags in the metadata
+# Prefix used to Distinguish task-level tags from the runs one in the metadata
 TASK_TAG_PREFIX = "TASK_"
 
 
@@ -270,10 +286,10 @@ def _sync_task_tags(
     session: Session, task: Task, desired_tags: set[str]
 ) -> tuple[int, int]:
     """
-    Sync task tags (key=value) to the desired set.
+    Replace task tag links so the task exactly matches the desired YAML tags.
 
-    Only tags where key == value are managed here, so tags from other sources
-    (e.g., TaskResult metadata with distinct key/value) are preserved.
+    YAML tags are represented as key=value pairs where both are equal to the tag
+    string. Any existing link not in this desired set is removed.
     """
     if task.id is None:
         return (0, 0)
@@ -284,11 +300,7 @@ def _sync_task_tags(
         .where(TaskTagLink.task_id == task.id)
     ).all()
 
-    managed_existing_ids: dict[str, int] = {
-        key: tag_id
-        for tag_id, key, value in existing_rows
-        if tag_id is not None and key == value
-    }
+    desired_pairs = {(tag, tag) for tag in desired_tags}
 
     tags_added = 0
     for tag_str in sorted(desired_tags):
@@ -306,8 +318,8 @@ def _sync_task_tags(
 
     to_remove_ids = [
         tag_id
-        for key, tag_id in managed_existing_ids.items()
-        if key not in desired_tags
+        for tag_id, key, value in existing_rows
+        if tag_id is not None and (key, value) not in desired_pairs
     ]
     tags_removed = 0
     if to_remove_ids:
@@ -354,11 +366,17 @@ def ingest_task_dataset_from_yaml(
         raise ValueError("YAML 'tasks' must be a list")
 
     dataset = get_or_create_dataset(session, name=str(dataset_name))
+    existing_tasks = list(
+        session.exec(select(Task).where(Task.dataset_id == dataset.id)).all()
+    )
+    existing_task_by_name = {task.name: task for task in existing_tasks}
 
     tasks_created = 0
     tasks_updated = 0
+    tasks_removed = 0
     tags_added = 0
     tags_removed = 0
+    desired_task_names: set[str] = set()
 
     for idx, task_entry in enumerate(tasks):
         if not isinstance(task_entry, dict):
@@ -370,11 +388,16 @@ def ingest_task_dataset_from_yaml(
             raise ValueError("Each task entry must include 'file' and 'locator' fields")
 
         task_name = f"{file_path}#{locator}"
-        task_kind = task_entry.get("kind")
+        if task_name in desired_task_names:
+            raise ValueError(f"Duplicate task entry '{task_name}' in YAML payload")
+        desired_task_names.add(task_name)
 
-        existing_task = session.exec(
-            select(Task).where(Task.name == task_name, Task.dataset_id == dataset.id)
-        ).first()
+        raw_task_kind = task_entry.get("kind")
+        task_kind = None if raw_task_kind is None else str(raw_task_kind)
+        raw_ground_truth = task_entry.get("ground_truth")
+        ground_truth_value = None if raw_ground_truth is None else str(raw_ground_truth)
+
+        existing_task = existing_task_by_name.get(task_name)
 
         created = False
         task_changed = False
@@ -383,50 +406,73 @@ def ingest_task_dataset_from_yaml(
                 name=task_name,
                 kind=task_kind,
                 dataset_id=dataset.id,
+                ground_truth=ground_truth_value,
             )
-            if "ground_truth" in task_entry:
-                raw_ground_truth = task_entry.get("ground_truth")
-                existing_task.ground_truth = (
-                    None if raw_ground_truth is None else str(raw_ground_truth)
-                )
             session.add(existing_task)
             session.flush()
             created = True
             tasks_created += 1
         else:
-            if task_kind is not None and existing_task.kind != task_kind:
+            if existing_task.kind != task_kind:
                 existing_task.kind = task_kind
                 task_changed = True
-            if "ground_truth" in task_entry:
-                raw_ground_truth = task_entry.get("ground_truth")
-                ground_truth_value = (
-                    None if raw_ground_truth is None else str(raw_ground_truth)
-                )
-                if existing_task.ground_truth != ground_truth_value:
-                    existing_task.ground_truth = ground_truth_value
-                    task_changed = True
-
-        if "tags" in task_entry:
-            raw_tags = task_entry.get("tags")
-            if raw_tags is None:
-                desired_tags: set[str] = set()
-            elif isinstance(raw_tags, list):
-                desired_tags = {
-                    str(tag).strip() for tag in raw_tags if str(tag).strip()
-                }
-            else:
-                raise ValueError(f"Task entry at index {idx} has invalid 'tags' type")
-
-            added_count, removed_count = _sync_task_tags(
-                session, existing_task, desired_tags
-            )
-            tags_added += added_count
-            tags_removed += removed_count
-            if (added_count or removed_count) and not created:
+            if existing_task.ground_truth != ground_truth_value:
+                existing_task.ground_truth = ground_truth_value
                 task_changed = True
+
+        raw_tags = task_entry.get("tags", [])
+        if raw_tags is None:
+            desired_tags: set[str] = set()
+        elif isinstance(raw_tags, list):
+            desired_tags = {str(tag).strip() for tag in raw_tags if str(tag).strip()}
+        else:
+            raise ValueError(f"Task entry at index {idx} has invalid 'tags' type")
+
+        added_count, removed_count = _sync_task_tags(
+            session, existing_task, desired_tags
+        )
+        tags_added += added_count
+        tags_removed += removed_count
+        if (added_count or removed_count) and not created:
+            task_changed = True
 
         if task_changed:
             tasks_updated += 1
+
+    # Remove tasks that are no longer present in YAML.
+    for task_name, task in existing_task_by_name.items():
+        if task_name in desired_task_names:
+            continue
+        if task.id is None:
+            continue
+
+        # Remove all task-tag links for tasks being removed from the dataset.
+        existing_links = list(
+            session.exec(
+                select(TaskTagLink).where(TaskTagLink.task_id == task.id)
+            ).all()
+        )
+        if existing_links:
+            session.exec(
+                delete(TaskTagLink).where(
+                    cast(ColumnElement[bool], TaskTagLink.task_id == task.id)
+                )
+            )
+            tags_removed += len(existing_links)
+
+        has_task_results = (
+            session.exec(
+                select(TaskResultDB.id).where(TaskResultDB.task_id == task.id)
+            ).first()
+            is not None
+        )
+        if has_task_results:
+            # Keep historical rows valid but unlink task from this dataset.
+            if task.dataset_id is not None:
+                task.dataset_id = None
+        else:
+            session.delete(task)
+        tasks_removed += 1
 
     session.flush()
 
@@ -434,8 +480,102 @@ def ingest_task_dataset_from_yaml(
         "dataset_id": str(dataset.name),
         "tasks_created": tasks_created,
         "tasks_updated": tasks_updated,
+        "tasks_removed": tasks_removed,
         "tags_added": tags_added,
         "tags_removed": tags_removed,
+    }
+
+
+def resolve_task_ids_from_yaml(
+    session: Session,
+    dataset_id: str,
+    yaml_content: str,
+) -> dict[str, Any]:
+    """
+    Resolve DB task IDs for tasks listed in a YAML payload within a dataset.
+
+    Task identity is derived from the YAML pair (`file`, `locator`) as
+    `"{file}#{locator}"`, matching task `name` in the database.
+    """
+    try:
+        payload = yaml.safe_load(yaml_content)
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML payload: {e}") from e
+
+    if not isinstance(payload, dict):
+        raise ValueError("YAML root must be a mapping")
+
+    project = payload.get("project")
+    if not isinstance(project, dict):
+        raise ValueError("Missing 'project' mapping in YAML payload")
+
+    yaml_dataset_name = project.get("name")
+    if yaml_dataset_name and str(yaml_dataset_name) != dataset_id:
+        raise ValueError(
+            f"YAML project.name '{yaml_dataset_name}' does not match dataset '{dataset_id}'"
+        )
+
+    tasks = payload.get("tasks", [])
+    if not isinstance(tasks, list):
+        raise ValueError("YAML 'tasks' must be a list")
+
+    dataset = get_dataset_by_name(session, dataset_id)
+    if dataset is None:
+        raise ValueError(f"Dataset '{dataset_id}' not found")
+
+    requested_task_names: list[str] = []
+    seen_task_names: set[str] = set()
+    for idx, task_entry in enumerate(tasks):
+        if not isinstance(task_entry, dict):
+            raise ValueError(f"Task entry at index {idx} must be a mapping")
+
+        file_path = task_entry.get("file")
+        locator = task_entry.get("locator")
+        if not file_path or not locator:
+            raise ValueError("Each task entry must include 'file' and 'locator' fields")
+
+        task_name = f"{file_path}#{locator}"
+        if task_name not in seen_task_names:
+            seen_task_names.add(task_name)
+            requested_task_names.append(task_name)
+
+    if not requested_task_names:
+        return {
+            "dataset_id": dataset_id,
+            "requested_tasks": 0,
+            "matched_task_ids": [],
+            "matched_task_names": [],
+            "missing_task_names": [],
+        }
+
+    task_name_col = cast(ColumnElement[str], Task.name)
+    task_rows = list(
+        session.exec(
+            select(Task).where(
+                cast(ColumnElement[bool], Task.dataset_id == dataset.id),
+                cast(ColumnElement[bool], task_name_col.in_(requested_task_names)),
+            )
+        ).all()
+    )
+    task_map = {task.name: task for task in task_rows}
+
+    matched_task_ids: list[int] = []
+    matched_task_names: list[str] = []
+    missing_task_names: list[str] = []
+    for task_name in requested_task_names:
+        matched_task = task_map.get(task_name)
+        if matched_task is None or matched_task.id is None:
+            missing_task_names.append(task_name)
+            continue
+        matched_task_ids.append(matched_task.id)
+        matched_task_names.append(matched_task.name)
+
+    return {
+        "dataset_id": dataset_id,
+        "requested_tasks": len(requested_task_names),
+        "matched_task_ids": matched_task_ids,
+        "matched_task_names": matched_task_names,
+        "missing_task_names": missing_task_names,
     }
 
 
@@ -444,17 +584,18 @@ async def ingest_task_results_for_run(
     run_id_str: str,
     task_results: Sequence[TaskResult],
     source_file_name: str | None = None,
-) -> Run:
+) -> dict[str, Any]:
     """
     Ingest a collection of TaskResult entries belonging to a single run.
 
     This function:
     - Extracts provenance from observability logs and stores in DB
-    - Ensures Dataset and Task entities exist
+    - Ensures Dataset exists
+    - Uses only pre-existing Task entities (does not create Task rows)
     - Creates or updates the Run row
-    - Replaces all RunResult rows for that run
+    - Replaces all TaskResultDB rows for that run
     - Aggregates metrics at the run level
-    - Attaches tags to the run via Tag and RunTagLink
+    - Attaches run-level tags to the run via Tag and RunTagLink
     - Recomputes the best run flag for the agent class
     """
     if not task_results:
@@ -572,7 +713,12 @@ async def ingest_task_results_for_run(
         )
 
     dataset_id = task_results[0].dataset_id or "default"
-    dataset = get_or_create_dataset(session, name=dataset_id)
+    dataset = get_dataset_by_name(session, name=dataset_id)
+    if dataset is None:
+        raise ValueError(
+            f"Dataset '{dataset_id}' does not exist. "
+            "Ingest dataset tasks first via /api/ingest/tasks/yaml."
+        )
 
     run = session.get(Run, run_uuid)
 
@@ -616,18 +762,31 @@ async def ingest_task_results_for_run(
     run_tag_pairs: set[tuple[str, str]] = set()
 
     # Insert TaskResultDB rows
+    added_tasks: list[str] = []
+    missing_tasks: list[str] = []
+
     for tr in task_results:
+        task_name = str(tr.task_id)
+        task_ref = f"{dataset_id}:{task_name}"
+
+        # Keep run-level tag ingestion logic.
+        if tr.metadata and tr.metadata.tags:
+            for key, value in tr.metadata.tags.items():
+                if not key.startswith(TASK_TAG_PREFIX):
+                    run_tag_pairs.add((key, str(value)))
+
+        # Use only existing tasks for task-results ingestion.
+        task = get_task_by_name(session, task_name=task_name, dataset=dataset)
+        if task is None:
+            missing_tasks.append(task_ref)
+            continue
+
         total_tasks += 1
+        added_tasks.append(task_ref)
         if tr.status == "Success":
             success_count += 1
         elif tr.status == "Failure":
             failure_count += 1
-
-        # Ensure dataset and task exist
-        # During ingestion, task_id is always a string (from JSONL)
-        task = get_or_create_task(
-            session, task_name=str(tr.task_id), kind=tr.task_kind, dataset=dataset
-        )
 
         ts_utc = _parse_timestamp_utc(tr.timestamp_utc)
 
@@ -657,18 +816,6 @@ async def ingest_task_results_for_run(
         )
         session.add(run_result)
 
-        # Process tags - separate TASK_ prefixed tags from run-level tags
-        if tr.metadata and tr.metadata.tags:
-            for key, value in tr.metadata.tags.items():
-                if key.startswith(TASK_TAG_PREFIX):
-                    # Task-level tag: strip prefix and link to task
-                    task_tag_key = key[len(TASK_TAG_PREFIX) :]
-                    tag = get_or_create_tag(session, key=task_tag_key, value=str(value))
-                    link_tag_to_task(session, task, tag)
-                else:
-                    # Run-level tag
-                    run_tag_pairs.add((key, str(value)))
-
     # Compute run-level aggregates
     run.total_tasks = total_tasks
     run.success_count = success_count
@@ -695,14 +842,19 @@ async def ingest_task_results_for_run(
         if existing_link is None:
             session.add(RunTagLink(run_id=run.id, tag_id=tag.id))
 
-    return run
+    return {
+        "run": run,
+        "tasks_ingested": total_tasks,
+        "added_tasks": added_tasks,
+        "missing_tasks": missing_tasks,
+    }
 
 
 async def ingest_task_results(
     session: Session,
     task_results: Iterable[TaskResult],
     source_file_name: str | None = None,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """
     Ingest an arbitrary collection of TaskResult entries which may span
     multiple runs and/or agent classes.
@@ -711,23 +863,34 @@ async def ingest_task_results(
     """
     # Group by run_id. Agent checksums are expected to be run-level invariants.
     grouped: dict[str, list[TaskResult]] = defaultdict(list)
-    total_tasks = 0
-
     for tr in task_results:
         grouped[tr.run_id].append(tr)
-        total_tasks += 1
 
     runs_ingested = 0
+    tasks_ingested = 0
+    added_tasks: list[str] = []
+    missing_tasks: list[str] = []
     for run_id, group in grouped.items():
-        await ingest_task_results_for_run(
+        run_stats = await ingest_task_results_for_run(
             session=session,
             run_id_str=run_id,
             task_results=group,
             source_file_name=source_file_name,
         )
         runs_ingested += 1
+        tasks_ingested += int(run_stats["tasks_ingested"])
+        added_tasks.extend(cast(list[str], run_stats["added_tasks"]))
+        missing_tasks.extend(cast(list[str], run_stats["missing_tasks"]))
 
-    return {"runs_ingested": runs_ingested, "tasks_ingested": total_tasks}
+    added_unique = sorted(set(added_tasks))
+    missing_unique = sorted(set(missing_tasks))
+    return {
+        "runs_ingested": runs_ingested,
+        "tasks_ingested": tasks_ingested,
+        "tasks_missing": len(missing_tasks),
+        "added_tasks": added_unique,
+        "missing_tasks": missing_unique,
+    }
 
 
 def _get_tags_for_run(session: Session, run_id: UUID) -> dict[str, str]:

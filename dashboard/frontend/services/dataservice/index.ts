@@ -23,6 +23,7 @@ import {
   getTaskDetailsByIdMock,
   getTaskDetailsMock,
   refreshDataMock,
+  resolveTasksFromYamlMock,
   uploadTasksYamlMock,
 } from '@/services/mockdata';
 import {
@@ -325,6 +326,39 @@ const uploadTasksYamlReal = async (
 export const uploadTasksYaml = USE_MOCK_DATA
   ? uploadTasksYamlMock
   : uploadTasksYamlReal;
+
+export interface ResolveTasksFromYamlResponse {
+  success: boolean;
+  message: string;
+  dataset_id: string;
+  requested_tasks: number;
+  matched_task_ids: number[];
+  matched_task_names: string[];
+  missing_task_names: string[];
+}
+
+const resolveTasksFromYamlReal = async (
+  datasetId: string,
+  file: File
+): Promise<ResolveTasksFromYamlResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await axios.post<ResolveTasksFromYamlResponse>(
+    `${config.DATA_API}/datasets/${encodeURIComponent(datasetId)}/tasks/yaml/resolve`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+};
+
+export const resolveTasksFromYaml = USE_MOCK_DATA
+  ? resolveTasksFromYamlMock
+  : resolveTasksFromYamlReal;
 
 // ========================================
 // DOWNLOAD TASKS YAML API

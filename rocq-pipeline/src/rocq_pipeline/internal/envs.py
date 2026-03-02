@@ -279,6 +279,7 @@ class DockerServiceManager:
             )
             return False
         services = self.check_services()
+        return True
         if all(services.values()):
             print("All services are already running")
             return True

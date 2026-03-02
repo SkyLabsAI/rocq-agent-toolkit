@@ -1,4 +1,11 @@
-from backend.db_models import AgentClassProvenance, AgentProvenance, Run, TaskResultDB
+from backend.db_models import (
+    AgentClassProvenance,
+    AgentProvenance,
+    Dataset,
+    Run,
+    Task,
+    TaskResultDB,
+)
 from sqlmodel import Session, select
 
 
@@ -33,6 +40,14 @@ def test_ingest_invalid_body_returns_422(client):
 def test_ingest_happy_path_persists_and_list_agents_and_runs(
     client, engine, make_task_result_payload
 ):
+    with Session(engine) as s:
+        dataset = Dataset(name="ds1")
+        s.add(dataset)
+        s.flush()
+        s.add(Task(name="t1", dataset_id=dataset.id))
+        s.add(Task(name="t2", dataset_id=dataset.id))
+        s.commit()
+
     run_id = "00000000-0000-0000-0000-000000000100"
     items = [
         make_task_result_payload(run_id=run_id, task_id="t1", status="Success"),
@@ -47,6 +62,7 @@ def test_ingest_happy_path_persists_and_list_agents_and_runs(
     assert body["success"] is True
     assert body["runs_ingested"] == 1
     assert body["tasks_ingested"] == 2
+    assert body["tasks_missing"] == 0
 
     agents = client.get("/api/agents/class")
     assert agents.status_code == 200

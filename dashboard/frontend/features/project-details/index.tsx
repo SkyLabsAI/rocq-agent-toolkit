@@ -14,7 +14,7 @@ import {
   downloadTasksYaml,
   getTaskSetResults,
   getTaskSets,
-  uploadTasksYaml,
+  resolveTasksFromYaml,
 } from '@/services/dataservice';
 import { type TaskSet, type TaskSetResults } from '@/types/types';
 
@@ -70,8 +70,8 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
   const [isCreatingDataset, setIsCreatingDataset] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isBulkSelectModalOpen, setIsBulkSelectModalOpen] = useState(false);
+  const [isBulkSelecting, setIsBulkSelecting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -502,35 +502,32 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
     }
   };
 
-  const handleFileUpload = async (file: File) => {
+  const handleBulkSelectFromYaml = async (file: File) => {
     try {
-      setIsUploading(true);
-      const response = await uploadTasksYaml(file);
+      setIsBulkSelecting(true);
+      const response = await resolveTasksFromYaml(tasksetId, file);
 
       if (response.success) {
+        setSelectedTasks(new Set(response.matched_task_ids));
+        const missingCount = response.missing_task_names.length;
         setToastType('success');
         setToastMessage(
-          `Successfully uploaded ${file.name}. ${response.tasks_created} tasks created, ${response.tasks_updated} tasks updated.`
+          `Selected ${response.matched_task_ids.length} task(s) from ${file.name}. ${missingCount} task(s) not found.`
         );
-        setIsUploadModalOpen(false);
-
-        // Reload the page after 2 seconds to show new tasks
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        setIsBulkSelectModalOpen(false);
       } else {
         setToastType('error');
-        setToastMessage(response.message || 'Upload failed');
+        setToastMessage(response.message || 'Bulk selection failed');
       }
     } catch (err) {
       setToastType('error');
       setToastMessage(
         err instanceof Error
-          ? `Upload failed: ${err.message}`
-          : 'Failed to upload file'
+          ? `Bulk selection failed: ${err.message}`
+          : 'Failed to process YAML file'
       );
     } finally {
-      setIsUploading(false);
+      setIsBulkSelecting(false);
     }
   };
 
@@ -692,10 +689,10 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
             </div>
             <div className='flex items-center gap-3'>
               <Button
-                onClick={() => setIsUploadModalOpen(true)}
+                onClick={() => setIsBulkSelectModalOpen(true)}
                 variant='default'
               >
-                Upload Tasks
+                Bulk Select Tags
               </Button>
               {selectedTasks.size > 0 && (
                 <>
@@ -1286,46 +1283,18 @@ const TaskSetDetailsPage: React.FC<TaskSetDetailsPageProps> = ({
         taskName={taskInfoModalState.taskName}
       />
 
-      {/* Upload Tasks Modal */}
-      <Modal
-        isOpen={isUploadModalOpen}
+      <FileUpload
+        isOpen={isBulkSelectModalOpen}
         onClose={() => {
-          if (!isUploading) {
-            setIsUploadModalOpen(false);
+          if (!isBulkSelecting) {
+            setIsBulkSelectModalOpen(false);
           }
         }}
-        title='Upload Tasks from YAML'
-        size='default'
-      >
-        <div className='flex flex-col gap-4'>
-          <div className='text-sm text-text-disabled'>
-            Upload a YAML file containing task definitions. The file will be
-            validated on the server.
-          </div>
-          <FileUpload
-            onFileSelect={handleFileUpload}
-            accept='.yaml,.yml'
-            disabled={isUploading}
-          />
-          {isUploading && (
-            <div className='flex items-center gap-2 text-sm text-text-disabled'>
-              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-default'></div>
-              <span>Uploading file...</span>
-            </div>
-          )}
-          <div className='flex gap-3 justify-end pt-2'>
-            <Button
-              variant='ghost'
-              onClick={() => {
-                setIsUploadModalOpen(false);
-              }}
-              disabled={isUploading}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onFileSelect={handleBulkSelectFromYaml}
+        accept='.yaml,.yml'
+        disabled={isBulkSelecting}
+        title='Bulk Select Tags from YAML'
+      />
 
       {/* Create Dataset Modal */}
       <Modal
