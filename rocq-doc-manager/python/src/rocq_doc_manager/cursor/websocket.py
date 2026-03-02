@@ -9,7 +9,7 @@ from typing import (
     override,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from rocq_doc_manager.microrpc.dispatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
@@ -180,9 +180,7 @@ class WSCursor:
         cursor = await self._rpc(CursorId, "clone", [], kwargs)
         return WSCursor(self._mux, cursor)
 
-    async def _rpc(
-        self, ty: type, method: str, args: list[Any], kwargs: dict[str, Any]
-    ):
+    async def _rpc(self, method: str, params: JsonValue | None):
         bundled_args: list[Any] = [self._id]
         bundled_args.extend(args)
         (is_exception, value_json) = await self._mux.send(method, bundled_args, kwargs)

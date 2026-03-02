@@ -1,59 +1,23 @@
 from __future__ import annotations
 
-import asyncio
-import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from functools import wraps
 from types import FunctionType
 from typing import (
     Any,
-    Literal,
     Protocol,
     get_protocol_members,
     get_type_hints,
     is_protocol,
-    overload,
 )
 
-import websockets
-
-from .deserialize import Decoder, EncoderProtocol
-from .dispatcher import Dispatcher
-
-
-@dataclass
-class Request:
-    id: int  # This is the JSON-RPC request ID
-    method: str
-    args: list[Any]
-    kwargs: dict[str, Any]
-
-
-@dataclass
-class Response:
-    id: int
-    is_exception: bool
-    payload: Any
-
-
-class PacketChannel(Protocol):
-    """A packet-based channel."""
-
-    @overload
-    async def send(self, message: bytes) -> None: ...
-    @overload
-    async def send(self, message: str) -> None: ...
-    async def recv(self, decode: Literal[False]) -> bytes: ...
-    async def close(self) -> None: ...
+from pydantic import JsonValue
 
 
 class _RPC(Protocol):
     """Internal protocol to document requirements on wrapped classes"""
 
-    async def _rpc(
-        self, ty: Any, method: str, args: list[Any], kwargs: dict[str, Any]
-    ): ...
+    async def _rpc(self, method: str, params: JsonValue | None): ...
 
 
 def _wrap_func(name, func):
@@ -66,6 +30,7 @@ def _wrap_func(name, func):
     return wrapped
 
 
+# TODO: this shoudl get moved closer to `ClassDispatcher`
 def proxy_protocol(
     protocol, passthru: list[str] | None = None
 ) -> Callable[[type[_RPC]], type]:
@@ -92,172 +57,172 @@ def proxy_protocol(
     return wrap
 
 
-# ===============================================================
-#  Server Code
-# ===============================================================
+# # ===============================================================
+# #  Server Code
+# # ===============================================================
 
 
-class WSServer:
-    """A WSServer provides a dispatch loop for an asynchronous server.
-    Clients will build a `Dispatcher` for the appropriate protocol and
-    then pass it to this object to serve the protocol.
-    """
+# class WSServer:
+#     """A WSServer provides a dispatch loop for an asynchronous server.
+#     Clients will build a `Dispatcher` for the appropriate protocol and
+#     then pass it to this object to serve the protocol.
+#     """
 
-    _conn: PacketChannel
-    _receiver: asyncio.Task[None]
-    _futures: dict[int, asyncio.Future] = {}
-    _dispatch: Dispatcher
+#     _conn: PacketChannel
+#     _receiver: asyncio.Task[None]
+#     _futures: dict[int, asyncio.Future] = {}
+#     _dispatch: Dispatcher
 
-    """We cannot use the generic type [T_inv] in the call to [decode.decode] in
-    [_recv] because the type variable is not instantiated at runtime."""
+#     """We cannot use the generic type [T_inv] in the call to [decode.decode] in
+#     [_recv] because the type variable is not instantiated at runtime."""
 
-    def __init__(
-        self,
-        conn: PacketChannel,
-        *,
-        dispatcher: Dispatcher,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
-    ):
-        self._encoder = encoder
-        self._decoder = decoder
-        self._conn = conn
-        self._dispatch = dispatcher
+#     def __init__(
+#         self,
+#         conn: PacketChannel,
+#         *,
+#         dispatcher: Dispatcher,
+#         encoder: EncoderProtocol,
+#         decoder: Decoder,
+#     ):
+#         self._encoder = encoder
+#         self._decoder = decoder
+#         self._conn = conn
+#         self._dispatch = dispatcher
 
-    async def serve(self):
-        self._receiver = asyncio.create_task(self._recv_loop())
-        await self._receiver
+#     async def serve(self):
+#         self._receiver = asyncio.create_task(self._recv_loop())
+#         await self._receiver
 
-    async def stop(self):
-        self._receiver.cancel()
-        try:
-            await self._receiver
-        except asyncio.CancelledError:
-            pass
+#     async def stop(self):
+#         self._receiver.cancel()
+#         try:
+#             await self._receiver
+#         except asyncio.CancelledError:
+#             pass
 
-    async def _handle_request(self, req: Request):
-        is_exception = False
-        try:
-            result = await self._dispatch.dispatch(req.method, req.args, req.kwargs)
-        except Exception as e:
-            # print(f"RPC call to {method}: failed with {repr(e)} : {type(e)}")
-            is_exception = True
-            result = e
-        try:
-            payload = self._encoder.encode(result)
-        except Exception as e:
-            print(f"encoding of response {result} failed with {e}")
-            raise
-        resp = Response(id=req.id, is_exception=is_exception, payload=payload)
-        await self._conn.send(self._encoder.encode(resp))
-        del self._futures[req.id]
+#     async def _handle_request(self, req: Request):
+#         is_exception = False
+#         try:
+#             result = await self._dispatch.dispatch(req.method, req.args, req.kwargs)
+#         except Exception as e:
+#             # print(f"RPC call to {method}: failed with {repr(e)} : {type(e)}")
+#             is_exception = True
+#             result = e
+#         try:
+#             payload = self._encoder.encode(result)
+#         except Exception as e:
+#             print(f"encoding of response {result} failed with {e}")
+#             raise
+#         resp = Response(id=req.id, is_exception=is_exception, payload=payload)
+#         await self._conn.send(self._encoder.encode(resp))
+#         del self._futures[req.id]
 
-    async def _recv_loop(self):
-        try:
-            while True:
-                req_bytes = await self._conn.recv(decode=False)
-                req_json = json.loads(req_bytes)
-                # print(f"req: {req_json}")
-                try:
-                    req = self._decoder.decode(req_json, Request)
-                except Exception as e:
-                    print(
-                        f"Decoding of request {req_json} failed with: {repr(e)} : {type(e)}"
-                    )
-                    raise e from e
-                future = asyncio.create_task(self._handle_request(req))
-                self._futures[req.id] = future
-        except websockets.ConnectionClosedOK:
-            pass
-        except websockets.ConnectionClosedError:
-            # TODO
-            pass
-
-
-# ===============================================================
-#  Client Code
-# ===============================================================
+#     async def _recv_loop(self):
+#         try:
+#             while True:
+#                 req_bytes = await self._conn.recv(decode=False)
+#                 req_json = json.loads(req_bytes)
+#                 # print(f"req: {req_json}")
+#                 try:
+#                     req = self._decoder.decode(req_json, Request)
+#                 except Exception as e:
+#                     print(
+#                         f"Decoding of request {req_json} failed with: {repr(e)} : {type(e)}"
+#                     )
+#                     raise e from e
+#                 future = asyncio.create_task(self._handle_request(req))
+#                 self._futures[req.id] = future
+#         except websockets.ConnectionClosedOK:
+#             pass
+#         except websockets.ConnectionClosedError:
+#             # TODO
+#             pass
 
 
-class WSMux:
-    """This an asynchronous wrapper around a `PacketConnection` and represents the client-side
-    of a connection.
+# # ===============================================================
+# #  Client Code
+# # ===============================================================
 
-    This class and `WSServer` dictate the wire-level protocol which is
-    the JSON representation of the `Request` and `Response` types defined
-    at the top of this file. This is parametric over the interpretation of
-    messages.
 
-    NOTE: This class, and `WSServer` are likely implemented in other places
-    as well, e.g. tinyrpc. We might want to switch to this library in the future.
-    """
+# class WSMux:
+#     """This an asynchronous wrapper around a `PacketConnection` and represents the client-side
+#     of a connection.
 
-    _conn: PacketChannel
-    _fresh: int = -1
-    _receiver: asyncio.Task[None]
-    _futures: dict[int, asyncio.Future[tuple[bool, Any]]] = {}
-    closed_ok_exc: type[Exception]
-    closed_err_exc: type[Exception]
+#     This class and `WSServer` dictate the wire-level protocol which is
+#     the JSON representation of the `Request` and `Response` types defined
+#     at the top of this file. This is parametric over the interpretation of
+#     messages.
 
-    def __init__(
-        self,
-        conn: PacketChannel,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
-        *,
-        closed_ok: type[Exception] = Exception,
-        closed_err: type[Exception] = Exception,
-    ):
-        self._encoder = encoder
-        self._decoder = decoder
-        self._conn = conn
-        self.closed_err_exc = closed_err
-        self.closed_ok_exc = closed_ok
+#     NOTE: This class, and `WSServer` are likely implemented in other places
+#     as well, e.g. tinyrpc. We might want to switch to this library in the future.
+#     """
 
-    async def start(self):
-        self._receiver = asyncio.create_task(self._recv())
+#     _conn: PacketChannel
+#     _fresh: int = -1
+#     _receiver: asyncio.Task[None]
+#     _futures: dict[int, asyncio.Future[tuple[bool, Any]]] = {}
+#     closed_ok_exc: type[Exception]
+#     closed_err_exc: type[Exception]
 
-    async def stop(self):
-        self._receiver.cancel()
-        try:
-            await self._receiver
-        except asyncio.CancelledError:
-            pass
+#     def __init__(
+#         self,
+#         conn: PacketChannel,
+#         encoder: EncoderProtocol,
+#         decoder: Decoder,
+#         *,
+#         closed_ok: type[Exception] = Exception,
+#         closed_err: type[Exception] = Exception,
+#     ):
+#         self._encoder = encoder
+#         self._decoder = decoder
+#         self._conn = conn
+#         self.closed_err_exc = closed_err
+#         self.closed_ok_exc = closed_ok
 
-    async def _recv(self) -> None:
-        try:
-            while True:
-                resp_bytes = await self._conn.recv(decode=False)
-                resp_json = json.loads(resp_bytes)
-                resp = self._decoder.decode(resp_json, Response)
-                match self._futures.pop(resp.id):
-                    case None:
-                        # TODO error handling?
-                        pass
-                    case future:
-                        future.set_result((resp.is_exception, resp.payload))
-        except websockets.ConnectionClosedOK:
-            pass
-        except websockets.ConnectionClosedError:
-            # TODO
-            pass
+#     async def start(self):
+#         self._receiver = asyncio.create_task(self._recv())
 
-    async def send(
-        self, method: str, args: list[Any], kwargs: dict[str, Any]
-    ) -> tuple[bool, Any]:
-        self._fresh += 1
-        id = self._fresh
-        req = Request(id=id, method=method, args=args, kwargs=kwargs)
-        loop = asyncio.get_running_loop()
-        future = loop.create_future()
-        self._futures[id] = future
-        try:
-            req_encoded = self._encoder.encode(req)
-            await self._conn.send(req_encoded)
-        except websockets.ConnectionClosedOK:
-            future.set_exception(self.closed_ok_exc())
-        except websockets.ConnectionClosedError:
-            future.set_exception(self.closed_err_exc())
-            # TODO
-            pass
-        return await future
+#     async def stop(self):
+#         self._receiver.cancel()
+#         try:
+#             await self._receiver
+#         except asyncio.CancelledError:
+#             pass
+
+#     async def _recv(self) -> None:
+#         try:
+#             while True:
+#                 resp_bytes = await self._conn.recv(decode=False)
+#                 resp_json = json.loads(resp_bytes)
+#                 resp = self._decoder.decode(resp_json, Response)
+#                 match self._futures.pop(resp.id):
+#                     case None:
+#                         # TODO error handling?
+#                         pass
+#                     case future:
+#                         future.set_result((resp.is_exception, resp.payload))
+#         except websockets.ConnectionClosedOK:
+#             pass
+#         except websockets.ConnectionClosedError:
+#             # TODO
+#             pass
+
+#     async def send(
+#         self, method: str, args: list[Any], kwargs: dict[str, Any]
+#     ) -> tuple[bool, Any]:
+#         self._fresh += 1
+#         id = self._fresh
+#         req = Request(id=id, method=method, args=args, kwargs=kwargs)
+#         loop = asyncio.get_running_loop()
+#         future = loop.create_future()
+#         self._futures[id] = future
+#         try:
+#             req_encoded = self._encoder.encode(req)
+#             await self._conn.send(req_encoded)
+#         except websockets.ConnectionClosedOK:
+#             future.set_exception(self.closed_ok_exc())
+#         except websockets.ConnectionClosedError:
+#             future.set_exception(self.closed_err_exc())
+#             # TODO
+#             pass
+#         return await future
