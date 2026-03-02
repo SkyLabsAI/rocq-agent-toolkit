@@ -89,6 +89,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _format_task_refs(task_refs: list[str], *, limit: int = 20) -> str:
+    """Format task refs for ingestion messages with a sensible length cap."""
+    if not task_refs:
+        return "none"
+    if len(task_refs) <= limit:
+        return ", ".join(task_refs)
+    shown = ", ".join(task_refs[:limit])
+    return f"{shown}, ... (+{len(task_refs) - limit} more)"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[Any]:
     """
@@ -182,6 +192,9 @@ async def _perform_ingestion(
     except HTTPException:
         # Bubble up HTTPExceptions unchanged
         raise
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:  # pragma: no cover - defensive logging
         session.rollback()
         logger.error("Error ingesting task results: %s", e, exc_info=True)
@@ -190,9 +203,13 @@ async def _perform_ingestion(
             detail=f"Error ingesting task results: {str(e)}",
         ) from e
 
+    added_tasks = stats.get("added_tasks", [])
+    missing_tasks = stats.get("missing_tasks", [])
     message = (
-        f"Ingested {stats['tasks_ingested']} task results "
-        f"across {stats['runs_ingested']} runs."
+        f"Ingested {stats['tasks_ingested']} task results across "
+        f"{stats['runs_ingested']} runs. "
+        f"Added tasks: {_format_task_refs(added_tasks)}. "
+        f"Missing tasks (not found in DB): {_format_task_refs(missing_tasks)}."
     )
 
     return IngestionResponse(
@@ -200,6 +217,9 @@ async def _perform_ingestion(
         message=message,
         runs_ingested=stats["runs_ingested"],
         tasks_ingested=stats["tasks_ingested"],
+        tasks_missing=stats.get("tasks_missing", 0),
+        added_tasks=added_tasks,
+        missing_tasks=missing_tasks,
     )
 
 
@@ -340,7 +360,8 @@ async def ingest_task_yaml_file(
     message = (
         f"Ingested dataset '{stats['dataset_id']}' with "
         f"{stats['tasks_created']} new task(s), "
-        f"{stats['tasks_updated']} updated task(s)."
+        f"{stats['tasks_updated']} updated task(s), "
+        f"{stats.get('tasks_removed', 0)} removed task(s)."
     )
 
     return TaskDatasetIngestionResponse(

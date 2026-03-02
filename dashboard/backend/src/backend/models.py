@@ -295,6 +295,9 @@ class IngestionResponse(BaseModel):
     message: str
     runs_ingested: int
     tasks_ingested: int
+    tasks_missing: int = 0
+    added_tasks: list[str] = Field(default_factory=list)
+    missing_tasks: list[str] = Field(default_factory=list)
 
 
 class TaskDatasetIngestionResponse(BaseModel):
