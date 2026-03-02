@@ -1,5 +1,0 @@
-(library
- (name rocq_toplevel)
- (public_name rocq-toplevel-api.api)
- (wrapped false)
- (libraries rocq_toplevel_data))

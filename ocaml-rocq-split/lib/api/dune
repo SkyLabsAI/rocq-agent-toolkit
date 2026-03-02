@@ -1,5 +1,0 @@
-(library
- (name rocq_split)
- (public_name rocq-split.api)
- (wrapped false)
- (libraries rocq-split.data))

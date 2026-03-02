@@ -1,17 +1,19 @@
 (lang dune 3.21)
-(name rocq-doc-manager)
+(name rocq-simple-api)
 (generate_opam_files true)
 
 (source (github SkylabsAI/skylabs-fm))
 (authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
 (maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
-(license  LGPL-2.1-only)
+(license  LGPL-2.1-onl)
 
 (package
- (name rocq-doc-manager)
- (synopsis "Tool for programatically editing Rocq source files")
+ (name rocq-simple-api)
+ (synopsis "Collection of process-isolated Rocq APIs")
  (depends
-  jsonrpc-tp
-  rocq-simple-api))
+  rocq-core
+  rocq-loc
+  yojson
+  ppx_deriving_yojson))
 
 (subst disabled)
