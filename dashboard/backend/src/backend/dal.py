@@ -477,6 +477,99 @@ def ingest_task_dataset_from_yaml(
     }
 
 
+def resolve_task_ids_from_yaml(
+    session: Session,
+    dataset_id: str,
+    yaml_content: str,
+) -> dict[str, Any]:
+    """
+    Resolve DB task IDs for tasks listed in a YAML payload within a dataset.
+
+    Task identity is derived from the YAML pair (`file`, `locator`) as
+    `"{file}#{locator}"`, matching task `name` in the database.
+    """
+    try:
+        payload = yaml.safe_load(yaml_content)
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML payload: {e}") from e
+
+    if not isinstance(payload, dict):
+        raise ValueError("YAML root must be a mapping")
+
+    project = payload.get("project")
+    if not isinstance(project, dict):
+        raise ValueError("Missing 'project' mapping in YAML payload")
+
+    yaml_dataset_name = project.get("name")
+    if yaml_dataset_name and str(yaml_dataset_name) != dataset_id:
+        raise ValueError(
+            f"YAML project.name '{yaml_dataset_name}' does not match dataset '{dataset_id}'"
+        )
+
+    tasks = payload.get("tasks", [])
+    if not isinstance(tasks, list):
+        raise ValueError("YAML 'tasks' must be a list")
+
+    dataset = get_dataset_by_name(session, dataset_id)
+    if dataset is None:
+        raise ValueError(f"Dataset '{dataset_id}' not found")
+
+    requested_task_names: list[str] = []
+    seen_task_names: set[str] = set()
+    for idx, task_entry in enumerate(tasks):
+        if not isinstance(task_entry, dict):
+            raise ValueError(f"Task entry at index {idx} must be a mapping")
+
+        file_path = task_entry.get("file")
+        locator = task_entry.get("locator")
+        if not file_path or not locator:
+            raise ValueError("Each task entry must include 'file' and 'locator' fields")
+
+        task_name = f"{file_path}#{locator}"
+        if task_name not in seen_task_names:
+            seen_task_names.add(task_name)
+            requested_task_names.append(task_name)
+
+    if not requested_task_names:
+        return {
+            "dataset_id": dataset_id,
+            "requested_tasks": 0,
+            "matched_task_ids": [],
+            "matched_task_names": [],
+            "missing_task_names": [],
+        }
+
+    task_name_col = cast(ColumnElement[str], Task.name)
+    task_rows = list(
+        session.exec(
+            select(Task).where(
+                cast(ColumnElement[bool], Task.dataset_id == dataset.id),
+                cast(ColumnElement[bool], task_name_col.in_(requested_task_names)),
+            )
+        ).all()
+    )
+    task_map = {task.name: task for task in task_rows}
+
+    matched_task_ids: list[int] = []
+    matched_task_names: list[str] = []
+    missing_task_names: list[str] = []
+    for task_name in requested_task_names:
+        matched_task = task_map.get(task_name)
+        if matched_task is None or matched_task.id is None:
+            missing_task_names.append(task_name)
+            continue
+        matched_task_ids.append(matched_task.id)
+        matched_task_names.append(matched_task.name)
+
+    return {
+        "dataset_id": dataset_id,
+        "requested_tasks": len(requested_task_names),
+        "matched_task_ids": matched_task_ids,
+        "matched_task_names": matched_task_names,
+        "missing_task_names": missing_task_names,
+    }
+
+
 async def ingest_task_results_for_run(
     session: Session,
     run_id_str: str,

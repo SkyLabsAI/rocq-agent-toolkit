@@ -310,6 +310,18 @@ class TaskDatasetIngestionResponse(BaseModel):
     tasks_updated: int
 
 
+class TaskYamlResolveResponse(BaseModel):
+    """Response for resolving task IDs from a YAML task file."""
+
+    success: bool
+    message: str
+    dataset_id: str
+    requested_tasks: int
+    matched_task_ids: list[int] = Field(default_factory=list)
+    matched_task_names: list[str] = Field(default_factory=list)
+    missing_task_names: list[str] = Field(default_factory=list)
+
+
 class DatasetInfo(BaseModel):
     """Summary information about a dataset."""
 

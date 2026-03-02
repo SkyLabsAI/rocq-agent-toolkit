@@ -36,6 +36,7 @@ export {
   getProjectDatasetsMock,
   getProjectResultsMock,
   getProjectsMock,
+  resolveTasksFromYamlMock,
   uploadTasksYamlMock,
 } from './projects';
 

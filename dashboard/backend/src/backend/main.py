@@ -51,6 +51,7 @@ from backend.dal import (
     list_agent_instances_from_db,
     list_agents_from_db,
     list_datasets_from_db,
+    resolve_task_ids_from_yaml,
     set_best_run_flag_for_run,
 )
 from backend.database import get_session, init_db
@@ -77,6 +78,7 @@ from backend.models import (
     TaskDatasetIngestionResponse,
     TaskDetailsResponse,
     TaskResult,
+    TaskYamlResolveResponse,
 )
 from backend.s3 import upload_bytes_to_s3
 from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
@@ -370,6 +372,57 @@ async def ingest_task_yaml_file(
         dataset_id=stats["dataset_id"],
         tasks_created=stats["tasks_created"],
         tasks_updated=stats["tasks_updated"],
+    )
+
+
+@app.post(
+    "/api/datasets/{dataset_id}/tasks/yaml/resolve",
+    response_model=TaskYamlResolveResponse,
+)
+async def resolve_task_yaml_for_dataset(
+    dataset_id: str,
+    file: UploadFile = File(
+        ...,
+        description="YAML file describing tasks to resolve in the given dataset",
+    ),
+    session: Session = Depends(get_session),
+) -> TaskYamlResolveResponse:
+    """
+    Resolve YAML tasks to DB task IDs for a dataset without mutating data.
+    """
+    raw_bytes = await file.read()
+    yaml_text = raw_bytes.decode("utf-8")
+
+    try:
+        resolved = resolve_task_ids_from_yaml(session, dataset_id, yaml_text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:  # pragma: no cover - defensive logging
+        logger.error(
+            "Error resolving YAML tasks for dataset '%s': %s",
+            dataset_id,
+            e,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error resolving YAML tasks for dataset '{dataset_id}': {str(e)}",
+        ) from e
+
+    matched = len(resolved["matched_task_ids"])
+    missing = len(resolved["missing_task_names"])
+    message = (
+        f"Resolved {matched} task(s) from YAML for dataset '{dataset_id}'. "
+        f"{missing} task(s) were not found."
+    )
+    return TaskYamlResolveResponse(
+        success=True,
+        message=message,
+        dataset_id=resolved["dataset_id"],
+        requested_tasks=resolved["requested_tasks"],
+        matched_task_ids=resolved["matched_task_ids"],
+        matched_task_names=resolved["matched_task_names"],
+        missing_task_names=resolved["missing_task_names"],
     )
 
 
