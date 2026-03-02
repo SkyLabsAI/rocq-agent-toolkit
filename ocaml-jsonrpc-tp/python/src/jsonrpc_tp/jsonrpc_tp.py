@@ -2,6 +2,7 @@ import json
 import subprocess
 import tempfile
 from collections.abc import Callable
+from pathlib import Path
 from typing import IO, Any, Protocol
 
 from .jsonrpc_tp_types import Err, Error, Resp
@@ -36,7 +37,10 @@ class JsonRPCTP(SyncProtocol):
     """JSON-RPC interface relied on by the jsonrpc-tp OCaml package."""
 
     def __init__(
-        self, args: list[str], cwd: str | None = None, env: dict[str, str] | None = None
+        self,
+        args: list[str],
+        cwd: Path | str | None = None,
+        env: dict[str, str] | None = None,
     ) -> None:
         self._process: subprocess.Popen | None = None
         self._counter: int = -1

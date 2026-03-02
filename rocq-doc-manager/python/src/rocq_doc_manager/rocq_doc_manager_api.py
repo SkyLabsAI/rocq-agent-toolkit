@@ -21,6 +21,8 @@ __all__ = [
     "GlobrefsDiff",
     "FeedbackMessage",
     "Quickfix",
+    "SentenceSplitError",
+    "Sentence",
     "RocqLoc",
     "RocqSource",
 ]
@@ -69,6 +71,33 @@ class RocqLoc(BaseModel):
         kw_only=True,
         default=None,
         description="source file identification if not run as a toplevel",
+    )
+
+
+class Sentence(BaseModel):
+    """Rocq sentence (blanks or command)."""
+
+    text: str = Field(
+        kw_only=True,
+        description="sentence text",
+    )
+    kind: Literal["blanks", "command"] = Field(
+        kw_only=True,
+        description="sentence kind",
+    )
+
+
+class SentenceSplitError(BaseModel):
+    """Sentence-splitting error data."""
+
+    rest: str = Field(
+        kw_only=True,
+        description="text that remains to be parsed after parsing the sentences of the `sentences` field",
+    )
+    sentences: list[Sentence] = Field(
+        kw_only=True,
+        default_factory=list,
+        description="sentences parsed prior to the error",
     )
 
 
@@ -598,6 +627,21 @@ class RocqDocManagerAPI:
             return Err(result.message, data)
         return None
 
+    def split_sentences(
+        self,
+        cursor: int,
+        text: str,
+    ) -> list[Sentence] | Err[SentenceSplitError]:
+        """Splits the given text into a sequence of blank characters or commands."""
+        result = self._rpc.raw_request(
+            "split_sentences",
+            [cursor, text],
+        )
+        if isinstance(result, Err):
+            data = SentenceSplitError.model_validate(result.data)
+            return Err(result.message, data)
+        return [Sentence.model_validate(v1) for v1 in result.result]
+
 
 class RocqDocManagerAPIAsync:
     """Main API class."""
@@ -966,3 +1010,18 @@ class RocqDocManagerAPIAsync:
             data = StepsError.model_validate(result.data)
             return Err(result.message, data)
         return None
+
+    async def split_sentences(
+        self,
+        cursor: int,
+        text: str,
+    ) -> list[Sentence] | Err[SentenceSplitError]:
+        """Splits the given text into a sequence of blank characters or commands."""
+        result = await self._rpc.raw_request(
+            "split_sentences",
+            [cursor, text],
+        )
+        if isinstance(result, Err):
+            data = SentenceSplitError.model_validate(result.data)
+            return Err(result.message, data)
+        return [Sentence.model_validate(v1) for v1 in result.result]

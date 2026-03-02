@@ -366,7 +366,7 @@ def agent_main(agent_builder: AgentBuilder) -> int:
                 async with rc_sess(
                     str(rocq_file.name),
                     rocq_args=rocq_args,
-                    chdir=str(rocq_file.parent),
+                    cwd=str(rocq_file.parent),
                     dune=True,
                     load_file=True,
                 ) as rc:

@@ -166,20 +166,20 @@ let copy_contents : from:t -> t -> unit = fun ~from d ->
 let cursor_index : t -> int = fun d ->
   match d.rev_prefix with [] -> 0 | p :: _ -> p.index + 1
 
-let to_unprocessed : Rocq_split_api.sentence -> unprocessed_item = fun s ->
-  let text = s.Rocq_split_api.text in
-  match s.Rocq_split_api.kind with
-  | "blanks" -> {kind = `Blanks ; text}
-  | _        -> {kind = `Command; text}
+let to_unprocessed : Rocq_split.sentence -> unprocessed_item = fun s ->
+  let text = s.Rocq_split.text in
+  match s.Rocq_split.kind with
+  | `Blanks     -> {kind = `Blanks ; text}
+  | `Command(_) -> {kind = `Command; text}
 
 type loc = Rocq_loc.t option
 
 let load_file : t -> (unit, string * loc) result = fun d ->
   let {file; args; _} = get_backend d in
-  match Rocq_split_api.get ~args ~file with
-  | Error(err)    -> Error(Rocq_split_api.(err.message, err.loc))
-  | Ok(sentences) ->
-  let suffix = List.rev_map to_unprocessed sentences in
+  match Rocq_split.split_file ~file ~args with
+  | Error(s, err) -> Error(s, err.Rocq_split.error_loc)
+  | Ok(data)      ->
+  let suffix = List.rev_map to_unprocessed data.Rocq_split.sentences in
   d.suffix <- List.rev_append suffix d.suffix;
   Ok(())
 
@@ -333,6 +333,51 @@ let contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string =
   if include_suffix then List.iter add_unprocessed d.suffix;
   Buffer.contents b
 
+type sentence = {
+  kind : [`Blanks | `Command];
+  text : string;
+}
+
+let split_sentences : t -> text:string ->
+    sentence list * (unit, string * string) result = fun d ~text ->
+  let {file; args; _} = get_backend d in
+  let full_text = contents ~include_suffix:false d ^ text in
+  let res = Rocq_split.split_string ~file ~args full_text in
+  let sentences =
+    match res with
+    | Ok(data)       -> data.Rocq_split.sentences
+    | Error(_, data) -> data.Rocq_split.parsed_sentences
+  in
+  let cursor_off = d.cursor_off in
+  let rec to_sentences len rev_acc sentences =
+    let open Rocq_split in
+    match sentences with
+    | []                                    ->
+        (len, List.rev rev_acc)
+    | s :: sentences when s.ep < cursor_off ->
+        to_sentences len rev_acc sentences
+    | s :: sentences when s.bp < cursor_off ->
+        assert (s.kind = `Blanks);
+        let diff = cursor_off - s.bp in
+        let added_len = String.length s.text - diff in
+        let text = String.sub s.text diff added_len in
+        let len = len + added_len in
+        let rev_acc = {kind = `Blanks; text} :: rev_acc in
+        to_sentences len rev_acc sentences
+    | s :: sentences                        ->
+        let len = len + String.length s.text in
+        let kind = match s.kind with `Blanks -> `Blanks | _ -> `Command in
+        let rev_acc = {kind; text = s.text} :: rev_acc in
+        to_sentences len rev_acc sentences
+  in
+  let (len, sentences) = to_sentences 0 [] sentences in
+  let res =
+    match res with
+    | Ok(_)       -> Ok(())
+    | Error(s, _) -> Error(s, String.sub text len (String.length text - len))
+  in
+  (sentences, res)
+
 let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
     -> (unit, string) result =
     fun ?file ?(include_ghost=false) ?(include_suffix=true) d ->
@@ -344,7 +389,7 @@ let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
       if p.kind <> `Ghost || include_ghost then
         Out_channel.output_string oc p.text
     in
-    let output_unprocessed u =
+    let output_unprocessed (u : unprocessed_item) =
       if u.kind <> `Ghost || include_ghost then
         Out_channel.output_string oc u.text
     in

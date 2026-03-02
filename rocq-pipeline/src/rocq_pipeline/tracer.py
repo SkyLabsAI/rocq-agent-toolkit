@@ -1,5 +1,4 @@
 import argparse
-import itertools
 import json
 import traceback
 from collections.abc import Callable
@@ -12,12 +11,13 @@ from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import rocq_args_for
 
 import rocq_pipeline.tasks as Tasks
-from rocq_pipeline import find_tasks, loader, rocq_args, util
+from rocq_pipeline import find_tasks, loader, util
 from rocq_pipeline.args import load_tasks
 from rocq_pipeline.tracers import json_goal
 from rocq_pipeline.tracers.extractor import (
     Tracer,
 )
+from rocq_pipeline.with_deps import rocq_deps_for
 
 
 async def trace_proof(
@@ -110,16 +110,12 @@ def run(
 
         try:
             tracer = tracer_builder()
-            extra_paths = itertools.chain.from_iterable(
-                (["-Q", str(v), k] for k, v in tracer.extra_paths().items())
-            )
 
             task_file: Path = project.path / task.file
+            rocq_args = rocq_args_for(task_file, plugins=rocq_deps_for(tracer))
             async with rc_sess(
                 str(task_file),
-                rocq_args=rocq_args.extend_args(
-                    rocq_args_for(task_file), list(extra_paths)
-                ),
+                rocq_args=rocq_args,
                 dune=True,
                 load_file=True,
             ) as rc:

@@ -81,6 +81,14 @@ val file : t -> string
     cannot be fully parsed, an error is returned. *)
 val load_file : t -> (unit, string * Rocq_loc.t option) result
 
+type sentence = {
+  kind : [`Blanks | `Command];
+  text : string;
+}
+
+val split_sentences : t -> text:string
+  -> sentence list * (unit, string * string) result
+
 (** Data returned by the top-level when running a command. *)
 type command_data = Rocq_toplevel.run_data
 

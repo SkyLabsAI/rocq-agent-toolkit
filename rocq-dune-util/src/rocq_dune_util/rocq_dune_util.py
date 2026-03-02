@@ -7,10 +7,19 @@ from typing import Literal
 
 
 class DuneError(Exception):
-    def __init__(self, message: str, *, stdout: str, stderr: str) -> None:
+    def __init__(
+        self, message: str, *, stdout: str, stderr: str, cwd: str | Path | None
+    ) -> None:
         super().__init__(message)
         self.stdout = stdout
         self.stderr = stderr
+        self.cwd: str | None = None if cwd is None else str(cwd)
+
+    def __str__(self) -> str:
+        result = super().__str__()
+        if self.cwd:
+            result = f"{result} (cwd={self.cwd})"
+        return result
 
 
 def _run_dune(args: list[str], cwd: str | Path | None) -> str:
@@ -23,7 +32,7 @@ def _run_dune(args: list[str], cwd: str | Path | None) -> str:
     if res.returncode != 0:
         stderr = res.stderr.decode(encoding="utf-8")
         message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
-        raise DuneError(message, stdout=stdout, stderr=stderr)
+        raise DuneError(message, stdout=stdout, stderr=stderr, cwd=cwd)
     return stdout
 
 
@@ -231,7 +240,9 @@ class DuneRocqPlugin:
         """
         args = ["query", "-qo", "-qe", self.findlib_pkg]
         res = subprocess.run(
-            ["opam", "exec", "--", "ocamlfind"] + args,
+            # Using "opam exec" is a bad idea for cram tests.
+            # ["opam", "exec", "--", "ocamlfind"] + args,
+            ["ocamlfind"] + args,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             cwd=str(source_root),
@@ -275,7 +286,8 @@ def rocq_args_for(
     "Require"-ing the corresponding Rocq modules in the file, even if it does
     not depend on them explicitly.
 
-    @param file: the Rocq source file for which arguments are being produced
+    @param file: the Rocq source file for which arguments are being produced.
+        Path should be relative to the current working directory (NOT `cwd`).
     @param cwd: alternative current working directory (optional)
     @param build: should the dependencies of `file` and `extra_deps` be built?
     @param extra_deps: additional Rocq files to be made available
@@ -313,13 +325,20 @@ def rocq_args_for(
                 raise ValueError(f"Expected relative path, given {str(rel)}")
             deps.append(source_root / rel)
 
+    # Indicates whether we need to access extra installed deps.
+    needs_installed_plugin = False
+
     # Resolving the plugins.
     if plugins:
         if source_root is None:
             source_root = dune_sourceroot(cwd=cwd)
         for plugin in plugins:
-            for dep in plugin.resolve(source_root):
-                deps.append(source_root / dep)
+            plugin_deps = plugin.resolve(source_root)
+            if plugin_deps:
+                for dep in plugin_deps:
+                    deps.append(source_root / dep)
+            else:
+                needs_installed_plugin = True
 
     # Build the extra dependencies if needed. Note that the dependencies of
     # the main file are built separately, when calling `_rocq_args`, as there
@@ -333,5 +352,9 @@ def rocq_args_for(
     extra_args = [_rocq_args(dep, cwd, False) for dep in deps]
     if extra_args:
         rocq_args = rocq_args + _extra_args(rocq_args, extra_args)
+
+    # HACK: make sure to allow loading installed plugins.
+    if needs_installed_plugin:
+        rocq_args.remove("-boot")
 
     return rocq_args

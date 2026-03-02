@@ -5,6 +5,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from rocq_pipeline.task_modifiers import task_mod
+from rocq_pipeline.task_modifiers.task_mod import TaskModifier
 from rocq_pipeline.tasks import Project, Task, TaskFile
 
 
@@ -45,6 +47,23 @@ def mk_parser(parent: Any | None = None) -> Any:
         action="store_true",
         help="Used in conjunction with --limit to select random tasks",
     )
+    parser.add_argument(
+        "--add-mod",
+        action="append",
+        type=task_mod.of_string,
+        help="Add a task modifier to a task",
+    )
+    parser.add_argument(
+        "--add-tag",
+        action="append",
+        type=str,
+        help="Add a task modifier to a task",
+    )
+    parser.add_argument(
+        "--rename-task",
+        type=str,
+        help="Rename the task. (Use $N to refer to the original task name, $I to refer to the id)",
+    )
 
     parser.add_argument("task_file", type=Path, help="The path to the task file")
 
@@ -77,6 +96,25 @@ def eval_options(
     return keep and not remove
 
 
+def modify(
+    t: Task,
+    add_mods: list[TaskModifier] | None = None,
+    rename: str | None = None,
+    add_tags: list[str] | None = None,
+) -> Task:
+    if add_mods:
+        t.modifiers += add_mods
+    if rename is not None:
+        t.name = rename.replace("$N", t.name if t.name else t.get_id()).replace(
+            "$I", t.get_id()
+        )
+        if t.name == "":
+            t.name = None
+    if add_tags:
+        t.tags |= set(add_tags)
+    return t
+
+
 def run(
     output: Path,
     tasks: TaskFile,
@@ -85,6 +123,9 @@ def run(
     only_tags: str | None = None,
     limit: int | None = None,
     random_selection: bool = False,
+    rename: str | None = None,
+    add_mods: list[TaskModifier] | None = None,
+    add_tags: list[str] | None = None,
 ) -> TaskFile:
     """Filter the tasks in the TaskFile."""
 
@@ -101,7 +142,12 @@ def run(
         return eval_options(task.get_tags(), with_tags_l, without_tags_l, only_tags)
 
     filtered_tasks: Iterator[tuple[Project, Task]] = (
-        (proj, task) for proj, task in tasks.iter_tasks() if keep(task)
+        (
+            proj,
+            modify(task, add_mods=add_mods, rename=rename, add_tags=add_tags),
+        )
+        for proj, task in tasks.iter_tasks()
+        if keep(task)
     )
 
     # # Filter tasks within each bundle to preserve project associations
@@ -144,6 +190,9 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         arguments.only_tags,
         arguments.limit,
         arguments.random,
+        add_mods=arguments.add_mod,
+        rename=arguments.rename_task,
+        add_tags=arguments.add_tag,
     )
     result_count = len(list(result.iter_tasks()))
     original_count = len(list(tasks.iter_tasks()))

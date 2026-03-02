@@ -28,12 +28,12 @@ from rocq_pipeline.agent import (
     OneShotBuilder,
     TaskResult,
 )
-from rocq_pipeline.agent.proof.trace_cursor import TracingCursor
 from rocq_pipeline.args import load_tasks
 from rocq_pipeline.args_util import split_args
 from rocq_pipeline.env_manager import Environment, EnvironmentRegistry
 from rocq_pipeline.schema import task_output
 from rocq_pipeline.task_modifiers import task_mod
+from rocq_pipeline.trace_cursor import TracingCursor
 from rocq_pipeline.with_deps import rocq_deps_for
 
 logger = get_logger("task_runner")
@@ -215,7 +215,7 @@ async def run_task(
         )
 
         try:
-            task_file = task.file
+            task_file = project.path / task.file
             progress.status(0.01, "🔃")
 
             task_mod_plugins = rocq_deps_for(task.modifiers)
@@ -228,9 +228,8 @@ async def run_task(
             plugins = task_mod_plugins + agent_plugins
 
             try:
-                task_file_path = project.path / task_file
                 rocq_args = rocq_args_for(
-                    task_file_path,
+                    task_file,
                     cwd=project.path,
                     plugins=plugins,
                 )
@@ -243,7 +242,7 @@ async def run_task(
             async with rc_sess(
                 task_file,
                 rocq_args=rocq_args,
-                chdir=str(project.path),
+                cwd=project.path,
                 load_file=True,
             ) as rc:
                 progress.status(0.05, "🔃")

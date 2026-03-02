@@ -2,6 +2,7 @@ from __future__ import annotations  # noqa:I001
 
 import asyncio
 import json
+from pathlib import Path
 from typing import (
     Any,
     Protocol,
@@ -42,14 +43,14 @@ class AsyncJsonRPCTP(AsyncProtocol):
     def __init__(
         self,
         args: list[str],
-        cwd: str | None = None,
+        cwd: Path | str | None = None,
         env: dict[str, str] | None = None,
         handle_notification: Callable[[str, dict[str, Any]], Awaitable[None]]
         | None = None,
     ) -> None:
         self._counter: int = -1
         self._args: list[str] = args
-        self._cwd: str | None = cwd
+        self._cwd: str | None = str(cwd) if cwd is not None else None
         self._env: dict[str, str] | None = env
         self._notification_handler: (
             Callable[[str, dict[str, Any]], Awaitable[None]] | None

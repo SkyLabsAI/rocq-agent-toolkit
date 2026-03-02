@@ -17,7 +17,7 @@
   > 
   > EOF
 
-  $ rocq_split -Q . test.dir test.v
+  $ rocq-split test.v -- -Q . test.dir
   {
     "file": "test.v",
     "dirpath": "test.dir.test",
