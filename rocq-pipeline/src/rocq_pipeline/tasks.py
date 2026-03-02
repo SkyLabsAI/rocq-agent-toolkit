@@ -4,7 +4,7 @@ import copy
 import json
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Set
 from pathlib import Path
 from typing import Any, Literal
 
@@ -139,6 +139,10 @@ class TaskBundle(BaseModel):
     project: Project = Field(description="The Project that the tasks belong to.")
     tasks: list[Task] = Field(description="The Tasks in the project.")
 
+    def build_deps(self) -> Set[Path]:
+        """Enumerate the set of .vo dependencies for tasks in the project."""
+        return {self.project.path / task.file.with_suffix(".vo") for task in self.tasks}
+
     @field_serializer("tasks")
     def serialize_tasks(self, tasks: list[Task]):
         return sorted(tasks, key=lambda t: (t.file, t.name, str(t.locator)))
@@ -186,6 +190,14 @@ class TaskFile(BaseModel):
     project_bundles: list[TaskBundle] = Field(
         description="Bundles of projects and their associatd tasks"
     )
+
+    def build_deps(self) -> Set[Path]:
+        """Enumerate the .vo dependencies for all project_bundles."""
+        targets: set[Path] = set()
+        for project_bundle in self.project_bundles:
+            targets |= project_bundle.build_deps()
+
+        return targets
 
     @model_validator(mode="after")
     def merge_bundles(self) -> TaskFile:
