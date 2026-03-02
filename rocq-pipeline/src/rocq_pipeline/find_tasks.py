@@ -138,7 +138,7 @@ def my_tagger(task: ProofTask) -> set[str]:
         identified_tactics, leftovers = extract_tactics(sentence)
 
         # increment numtactics by adding the identified_tactics according to their multiplicities
-        numtactics = numtactics + sum(identified_tactics.values())
+        numtactics = numtactics + sum(identified_tactics.values()) + len(leftovers)
 
         # add the identified tactics to tags, ignoring entries with non-positive multiplicities
         has_nonpositives = any(value < 1 for value in identified_tactics.values())
