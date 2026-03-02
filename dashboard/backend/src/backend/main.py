@@ -79,7 +79,12 @@ from backend.models import (
     TaskResult,
 )
 from backend.s3 import upload_bytes_to_s3
-from backend.utils import fetch_observability_logs, get_labels_grouped_by_log
+from backend.utils import (
+    build_loki_permalink,
+    build_tempo_permalink,
+    fetch_observability_logs,
+    get_labels_grouped_by_log,
+)
 from backend.visualizer_data import router as visualizer_data_router
 
 # Configure logging
@@ -1063,6 +1068,16 @@ async def get_task_result(
                 status_code=404,
                 detail=f"Task result not found for run_id='{run_id}' and task_id={task_id}",
             )
+
+        estimated_time = get_estimated_time_for_task_from_db(session, run_id, task_id)
+        result.tempo_permalink = build_tempo_permalink(
+            trace_id=result.trace_id,
+            estimated_time=estimated_time,
+        )
+        result.loki_permalink = build_loki_permalink(
+            trace_id=result.trace_id,
+            estimated_time=estimated_time,
+        )
 
         return result
     except HTTPException:

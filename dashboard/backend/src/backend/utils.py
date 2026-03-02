@@ -2,9 +2,11 @@
 Utility functions for the backend.
 """
 
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import HTTPException
@@ -50,6 +52,100 @@ EXCLUDED_LABELS = {
     "otelServiceName",
     "hostname",
 }
+
+
+def _format_grafana_range(estimated_time: datetime | None) -> dict[str, str]:
+    """
+    Build a Grafana Explore time range.
+
+    If an estimated task time is available, use a symmetric window around it.
+    Otherwise, default to a relative lookback range.
+    """
+    if estimated_time is None:
+        return {"from": "now-24h", "to": "now"}
+
+    ts = estimated_time
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=UTC)
+    else:
+        ts = ts.astimezone(UTC)
+
+    delta = timedelta(hours=settings.log_query_time_delta_hours)
+    start_ms = int((ts - delta).timestamp() * 1000)
+    end_ms = int((ts + delta).timestamp() * 1000)
+    return {"from": str(start_ms), "to": str(end_ms)}
+
+
+def build_tempo_permalink(
+    trace_id: str | None,
+    estimated_time: datetime | None = None,
+) -> str | None:
+    """
+    Build a Grafana Explore permalink for Tempo for a specific trace ID.
+    """
+    if not trace_id:
+        return None
+
+    query_payload = {
+        "refId": "A",
+        "datasource": {"type": "tempo", "uid": settings.grafana_tempo_datasource_uid},
+        "queryType": "traceql",
+        "limit": 20,
+        "tableType": "traces",
+        "metricsQueryType": "range",
+        "query": trace_id,
+    }
+    panes = {
+        "tempo": {
+            "datasource": settings.grafana_tempo_datasource_uid,
+            "queries": [query_payload],
+            "range": _format_grafana_range(estimated_time),
+        }
+    }
+    params = urlencode(
+        {
+            "schemaVersion": 1,
+            "panes": json.dumps(panes, separators=(",", ":"), ensure_ascii=False),
+            "orgId": settings.grafana_org_id,
+        }
+    )
+    return f"{settings.grafana_url.rstrip('/')}/explore?{params}"
+
+
+def build_loki_permalink(
+    trace_id: str | None,
+    estimated_time: datetime | None = None,
+) -> str | None:
+    """
+    Build a Grafana Explore permalink for Loki logs filtered by trace ID.
+    """
+    if not trace_id:
+        return None
+
+    expr = f'{{service_name="{settings.grafana_loki_service_name}"}} |= `{trace_id}`'
+    query_payload = {
+        "refId": "A",
+        "expr": expr,
+        "queryType": "range",
+        "datasource": {"type": "loki", "uid": settings.grafana_loki_datasource_uid},
+        "editorMode": "builder",
+        "direction": "backward",
+    }
+    panes = {
+        "loki": {
+            "datasource": settings.grafana_loki_datasource_uid,
+            "queries": [query_payload],
+            "range": _format_grafana_range(estimated_time),
+        }
+    }
+    params = urlencode(
+        {
+            "schemaVersion": 1,
+            "panes": json.dumps(panes, separators=(",", ":"), ensure_ascii=False),
+            "orgId": settings.grafana_org_id,
+        }
+    )
+    return f"{settings.grafana_url.rstrip('/')}/explore?{params}"
 
 
 def filter_log_labels(labels: dict[str, Any]) -> dict[str, Any]:

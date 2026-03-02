@@ -48,6 +48,7 @@ services:
     environment:
       - OBSERVABILITY_URL=${OBSERVABILITY_URL:-http://loki:3100} # internal loki port
       - TEMPO_URL=${TEMPO_URL:-http://tempo:3200}
+      - GRAFANA_URL=${GRAFANA_URL:-http://grafana:3000}
       # Database configuration
       # Use the psycopg v3 driver and the internal PostgreSQL port (5432)
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-rat_user}:${POSTGRES_PASSWORD:-rat_password}@database:5432/${POSTGRES_DB:-rat_db}

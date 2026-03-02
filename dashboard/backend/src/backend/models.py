@@ -60,6 +60,8 @@ class TaskResult(BaseModel):
     trace_id: str | None = (
         None  # None for backward compatibility with older ingestions.
     )
+    tempo_permalink: str | None = None
+    loki_permalink: str | None = None
     dataset_id: str | None = (
         None  # Can be None for backward compatibility with older ingestions.
     )
