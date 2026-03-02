@@ -32,7 +32,7 @@ def test_SRth_ARth() -> None:
     (SRadd_0_l SRth) (SRadd_comm SRth) (SRadd_assoc SRth)
     (SRmul_1_l SRth) (SRmul_0_l SRth)
     (SRmul_comm SRth) (SRmul_assoc SRth) (SRdistr_l SRth)
-    SRopp_mul_l SRopp_add SRsub_def)""")
+    SRopp_mul_l SRopp_add SRsub_def).""")
         ]
     ) == ProofTask(
         0,
