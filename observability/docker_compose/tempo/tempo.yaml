@@ -2,6 +2,9 @@ server:
   http_listen_port: 3200
 
 distributor:
+  # Default is 2048 bytes per attribute value in Tempo.
+  # 0 disables truncation and keeps full `gen_ai.input.messages` payloads.
+  max_attribute_bytes: 0
   receivers:
     otlp:
       protocols:

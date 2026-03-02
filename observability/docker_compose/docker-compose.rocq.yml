@@ -32,7 +32,7 @@ services:
 
   # Tempo - Distributed tracing backend
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.9.0
     container_name: rocq-tempo-local
     restart: unless-stopped
     ports:
