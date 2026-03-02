@@ -123,6 +123,11 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
     setLogsError(null);
   };
 
+  const openExternalLink = (url?: string) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   if (loading) {
     return (
       <div className='flex items-center justify-center min-h-screen bg-elevation-surface'>
@@ -386,6 +391,25 @@ const TaskDetailsPageContent: React.FC<TaskDetailsPageContentProps> = ({
             </Button>
             <Button variant='outline' onClick={handleBack} className='flex-1'>
               Back to Run Details
+            </Button>
+          </div>
+
+          <div className='flex gap-4'>
+            <Button
+              variant='outline'
+              onClick={() => openExternalLink(task.tempo_permalink)}
+              disabled={!task.tempo_permalink}
+              className='flex-1'
+            >
+              Tempo Trace
+            </Button>
+            <Button
+              variant='outline'
+              onClick={() => openExternalLink(task.loki_permalink)}
+              disabled={!task.loki_permalink}
+              className='flex-1'
+            >
+              Loki Logs
             </Button>
           </div>
         </div>

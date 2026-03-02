@@ -141,6 +141,10 @@ export interface TaskOutput {
   task_name: string;
   /** Unique trace identifier for corresponding opentelemetry output. */
   trace_id?: string;
+  /** Grafana Explore permalink to Tempo trace view. */
+  tempo_permalink?: string;
+  /** Grafana Explore permalink to Loki logs view. */
+  loki_permalink?: string;
   /** Timestamp when task began (ISO 8601). */
   timestamp_utc: string;
   /** Unique name of the agent that attempted the task. */
