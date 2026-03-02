@@ -19,6 +19,13 @@ def _to_task_result(payload: dict) -> TaskResult:
 async def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(
     db_session: Session, make_task_result_payload
 ):
+    dataset = Dataset(name="ds1")
+    db_session.add(dataset)
+    db_session.flush()
+    db_session.add(Task(name="t1", dataset_id=dataset.id))
+    db_session.add(Task(name="t2", dataset_id=dataset.id))
+    db_session.flush()
+
     run_id = "00000000-0000-0000-0000-000000000010"
 
     payloads = [
@@ -54,7 +61,11 @@ async def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(
     )
     db_session.commit()
 
-    assert stats == {"runs_ingested": 1, "tasks_ingested": 2}
+    assert stats["runs_ingested"] == 1
+    assert stats["tasks_ingested"] == 2
+    assert stats["tasks_missing"] == 0
+    assert stats["added_tasks"] == ["ds1:t1", "ds1:t2"]
+    assert stats["missing_tasks"] == []
 
     # Check that agent provenance was created (fallback uses checksum as name)
     agent_instance = db_session.exec(
@@ -113,6 +124,14 @@ async def test_ingest_creates_agent_dataset_run_tasks_results_and_tags(
 async def test_reingest_replaces_task_results_for_same_run(
     db_session: Session, make_task_result_payload
 ):
+    dataset = Dataset(name="ds1")
+    db_session.add(dataset)
+    db_session.flush()
+    db_session.add(Task(name="t1", dataset_id=dataset.id))
+    db_session.add(Task(name="t2", dataset_id=dataset.id))
+    db_session.add(Task(name="t3", dataset_id=dataset.id))
+    db_session.flush()
+
     run_id = "00000000-0000-0000-0000-000000000020"
 
     first = [

@@ -428,7 +428,9 @@ def ingest_task_dataset_from_yaml(
         else:
             raise ValueError(f"Task entry at index {idx} has invalid 'tags' type")
 
-        added_count, removed_count = _sync_task_tags(session, existing_task, desired_tags)
+        added_count, removed_count = _sync_task_tags(
+            session, existing_task, desired_tags
+        )
         tags_added += added_count
         tags_removed += removed_count
         if (added_count or removed_count) and not created:
@@ -446,15 +448,22 @@ def ingest_task_dataset_from_yaml(
 
         # Remove all task-tag links for tasks being removed from the dataset.
         existing_links = list(
-            session.exec(select(TaskTagLink).where(TaskTagLink.task_id == task.id)).all()
+            session.exec(
+                select(TaskTagLink).where(TaskTagLink.task_id == task.id)
+            ).all()
         )
         if existing_links:
-            session.exec(delete(TaskTagLink).where(TaskTagLink.task_id == task.id))
+            session.exec(
+                delete(TaskTagLink).where(
+                    cast(ColumnElement[bool], TaskTagLink.task_id == task.id)
+                )
+            )
             tags_removed += len(existing_links)
 
         has_task_results = (
-            session.exec(select(TaskResultDB.id).where(TaskResultDB.task_id == task.id))
-            .first()
+            session.exec(
+                select(TaskResultDB.id).where(TaskResultDB.task_id == task.id)
+            ).first()
             is not None
         )
         if has_task_results:
