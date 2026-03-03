@@ -119,6 +119,16 @@ class RocqCursorProtocolAsync(Protocol):
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]: ...
 
+    async def run_steps(
+        self,
+        count: int,
+    ) -> None | rdm_api.Err[rdm_api.CommandError]:
+        for _ in range(count):
+            r = self.run_step()
+            if isinstance(r, rdm_api.Err):
+                return r
+        return None
+
     # ===== BEGIN: contextmanagers ============================================
     @asynccontextmanager
     async def ctx(self, rollback: bool = True) -> AsyncIterator[Self]:
