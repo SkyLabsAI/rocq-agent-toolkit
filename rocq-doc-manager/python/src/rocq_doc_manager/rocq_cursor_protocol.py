@@ -871,6 +871,10 @@ class DelegateRocqCursor(RocqCursor):
         return await self._cursor.run_step()
 
     @override
+    async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
+        return await self._cursor.run_steps(count)
+
+    @override
     async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return await self._cursor.query(text)
 

@@ -164,4 +164,6 @@ class RDMRocqCursor(RocqCursor):
 
     # @override
     # async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
+    #     # This is a more efficient implementation but it prevents us from using
+    #     # the underlying infrastructure
     #     return await self._rdm.run_steps(self._cursor, count)
