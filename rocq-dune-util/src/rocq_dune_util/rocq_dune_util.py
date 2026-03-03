@@ -97,7 +97,9 @@ def _relative_target(
     return (_canonical_rel_path(path, cwd), name)
 
 
-def dune_build(targets: list[str], *, cwd: str | Path | None = None) -> None:
+def dune_build(
+    targets: list[str], *, cwd: str | Path | None = None, rpc: bool = False
+) -> None:
     """
     Builds the given targets using dune. The targets, can either be files or
     aliases (starting with `@`), interpreted in the current working directory.
@@ -114,6 +116,9 @@ def dune_build(targets: list[str], *, cwd: str | Path | None = None) -> None:
     def make_target(target: str) -> str:
         return _build_target(_relative_target(_parse_target(target), cwd))
 
+    args = []
+    if rpc:
+        args += ["rpc"]
     args = ["build", "--no-print-directory", "--display=quiet"]
     _ = _run_dune(args + [make_target(t) for t in targets], cwd)
 
