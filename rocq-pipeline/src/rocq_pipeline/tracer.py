@@ -23,7 +23,7 @@ from rocq_pipeline.with_deps import rocq_deps_for
 
 def find_last_nonwhite_prefix(prefix: list[rdm_api.PrefixItem]) -> str | None:
     for element in reversed(prefix):
-        if element.kind != "blanks" and element.text.strip():
+        if element.kind != "blanks":
             return element.text
     return None
 
