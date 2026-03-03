@@ -10,20 +10,19 @@ from typing import (
 )
 
 from pydantic import BaseModel
-
 from rocq_doc_manager.microrpc.dispatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
-from rocq_doc_manager.rocq_cursor_protocol import (
-    RocqCursor,
-    RocqCursorProtocolAsync,
-)
 
-from . import rocq_doc_manager_api as rdm_api
-from .microrpc.deserialize import (
+from .. import rocq_doc_manager_api as rdm_api
+from ..microrpc.deserialize import (
     Decoder,
     EncoderProtocol,
     TypeMismatch,
     UnguidedDecoder,
+)
+from .protocol import (
+    RocqCursor,
+    RocqCursorProtocolAsync,
 )
 
 

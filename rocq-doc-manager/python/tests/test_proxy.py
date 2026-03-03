@@ -4,9 +4,8 @@ from typing import Any
 import pytest
 import pytest_asyncio
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.microrpc.tunnel import WSMux, WSServer
-from rocq_doc_manager.rocq_cursor_protocol import RocqCursorProtocolAsync
-from rocq_doc_manager.rocq_cursor_websocket import (
+from rocq_doc_manager.cursor.protocol import RocqCursorProtocolAsync
+from rocq_doc_manager.cursor.websocket import (
     ClosedError,
     ClosedOK,
     CursorDispatcher,
@@ -15,6 +14,7 @@ from rocq_doc_manager.rocq_cursor_websocket import (
     decoder,
     encoder,
 )
+from rocq_doc_manager.microrpc.tunnel import WSMux, WSServer
 from websockets import connect, serve
 
 from .util import RDM_Tests

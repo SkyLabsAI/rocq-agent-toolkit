@@ -3,10 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any, override
 
-from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
-
-from . import rocq_doc_manager_api as rdm_api
-from .rocq_doc_manager_api import RocqDocManagerAPIAsync as AsyncAPI
+from .. import rocq_doc_manager_api as rdm_api
+from ..rocq_doc_manager_api import RocqDocManagerAPIAsync as AsyncAPI
+from .protocol import RocqCursor
 
 logger = logging.getLogger(__name__)
 

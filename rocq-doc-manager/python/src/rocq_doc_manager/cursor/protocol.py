@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator, Callable, Iterator, Sized
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Literal, Protocol, Self, override
 
-from . import rocq_doc_manager_api as rdm_api
+from .. import rocq_doc_manager_api as rdm_api
 
 logger = logging.getLogger(__name__)
 
