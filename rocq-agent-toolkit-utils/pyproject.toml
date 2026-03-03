@@ -45,7 +45,7 @@ include = ["src/rocq_agent_toolkit_utils"]
 include = ["src/rocq_agent_toolkit_utils"]
 
 [tool.hatch.build.targets.wheel.sources]
-"src/rat_utils" = "rocq_agent_toolkit_utils"
+"src/rocq_agent_toolkit_utils" = "rocq_agent_toolkit_utils"
 
 [tool.setuptools.packages.find]
 where = ["src"]
