@@ -1,6 +1,8 @@
 ## Shared Python Utils for `rocq-agent-toolkit`
 
-The `rocq-agent-toolkit-utils` package collects shared utilities used by different Python packages in the `rocq-agent-toolkit` repository.
+**Note:** we may want to rely more on external libraries e.g. [pydash](https://github.com/dgilland/pydash).
+
+Centralize shared utilities and re-exports used by different Python packages in the `rocq-agent-toolkit` repository.
 
 Suggested use:
 ```python
