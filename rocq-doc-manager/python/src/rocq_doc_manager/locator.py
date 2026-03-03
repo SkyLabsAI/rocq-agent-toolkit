@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 import re
+from abc import abstractmethod
 from collections.abc import Callable
-from typing import override
+from typing import Literal, Pattern, override
 from warnings import deprecated
 
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+# from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +22,30 @@ class Locator:
     async def __call__(self, rc: RocqCursor, *, next: bool = False) -> bool:
         return await self.go_to(rc, next=next)
 
-    async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
+    async def go_to(
+        self, rc: RocqCursor, *, next: bool = False, step_over: bool = True
+    ) -> bool:
         """Move the cursor to the line identified by the Locator.
 
         If `next` is True, then the search occurs **forward** from the
         current position of the RocqCursor.
         """
-        return False
+        return await rc.goto_first_match(
+            self.matches,
+            include_prefix=not next,
+            step_over_match=step_over,
+        )
 
     @override
     def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
             return str(self) == str(other)
         return False
+
+    @abstractmethod
+    def matches(
+        self, text: str, kind: Literal["blanks", "command", "ghost"]
+    ) -> bool: ...
 
 
 class LocatorParser:
@@ -65,16 +77,19 @@ class FirstAdmit(Locator):
         return f"admit({self._index})"
 
     @override
-    async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
-        def is_admit(
-            text: str,
-            kind: str,
-        ) -> bool:
-            return kind == "command" and text.startswith("admit")
+    def matches(
+        self,
+        text: str,
+        kind: str,
+    ) -> bool:
+        return kind == "command" and text.startswith("admit")
 
-        return await rc.goto_first_match(
-            is_admit, skip=self._index, include_prefix=not next
-        )
+    #     @override
+    # async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
+
+    #     return await rc.goto_first_match(
+    #         is_admit, skip=self._index, include_prefix=not next
+    #     )
 
     PTRN_PARSE = re.compile(r"admit(\([0-9]+\))?")
 
@@ -97,6 +112,8 @@ LocatorParser.register_parser(FirstAdmit.parse)
 
 
 class FirstLemma(Locator):
+    _mtch: Pattern | None = None
+
     def __str__(self) -> str:
         which = f"({self._index})" if self._index != 0 else ""
         if self._style is None:
@@ -109,36 +126,43 @@ class FirstLemma(Locator):
         self._style = style
         self._index = index
 
+    def pattern(self):
+        if not self._mtch:
+            if self._style is None:
+                prefix = "Lemma|Theorem"
+            else:
+                prefix = self._style
+
+            self._mtch = re.compile(f"(?:{prefix})\\s+({self._name})[^0-9a-zA-Z_']")
+        return self._mtch
+
     @override
-    async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
-        if self._style is None:
-            prefix = "Lemma|Theorem"
-        else:
-            prefix = self._style
+    def matches(self, text: str, kind: str) -> bool:
+        mtch = self.pattern()
+        return kind == "command" and mtch.match(text) is not None
 
-        mtch = re.compile(f"({prefix})\\s+{self._name}[^0-9a-zA-Z_']")
+    # @override
+    # async def go_to(
+    #     self, rc: RocqCursor, *, next: bool = False, step_over: bool = True
+    # ) -> bool:
+    #     if rc.goto_first_match(
+    #         self.match,
+    #         step_over_match=step_over,
+    #         skip=self._index,
+    #         include_prefix=not next,
+    #     ):
+    #         for cmd in await rc.doc_suffix():
+    #             if cmd.kind != "command" or (
+    #                 cmd.kind == "command" and cmd.text.startswith("Proof")
+    #             ):
+    #                 run_step_reply = await rc.run_step()
+    #                 if isinstance(run_step_reply, rdm_api.Err):
+    #                     logger.warning(f"RocqCursor.run_step failed: {run_step_reply}")
+    #                     return False
+    #             else:
+    #                 return True
 
-        def is_lemma(
-            text: str,
-            kind: str,
-        ) -> bool:
-            return kind == "command" and mtch.match(text) is not None
-
-        if await rc.goto_first_match(
-            is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
-        ):
-            for cmd in await rc.doc_suffix():
-                if cmd.kind != "command" or (
-                    cmd.kind == "command" and cmd.text.startswith("Proof")
-                ):
-                    run_step_reply = await rc.run_step()
-                    if isinstance(run_step_reply, rdm_api.Err):
-                        logger.warning(f"RocqCursor.run_step failed: {run_step_reply}")
-                        return False
-                else:
-                    return True
-
-        return False
+    #     return False
 
     @staticmethod
     def parse(s: str) -> FirstLemma:
@@ -190,14 +214,17 @@ class CommentMarkerLocator(Locator):
         return f"{CommentMarkerLocator.PREFIX}{self._marker}"
 
     @override
-    async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
-        def is_marker_comment(
-            text: str,
-            kind: str,
-        ) -> bool:
-            return kind == "blanks" and self._marker in text
+    def matches(
+        self,
+        text: str,
+        kind: str,
+    ) -> bool:
+        return kind == "blanks" and self._marker in text
 
-        return await rc.goto_first_match(is_marker_comment, include_prefix=not next)
+    # @override
+    # async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
+
+    #     return await rc.goto_first_match(is_marker_comment, include_prefix=not next)
 
     @staticmethod
     def parse(s: str) -> CommentMarkerLocator:
