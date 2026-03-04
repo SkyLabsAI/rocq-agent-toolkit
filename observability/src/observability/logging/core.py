@@ -26,7 +26,7 @@ try:
 except ImportError:
     OTEL_AVAILABLE = False
 
-import rocq_agent_toolkit_utils as rat_utils
+import rocq_agent_toolkit_utils.json as json
 
 
 class StructuredLogger:
@@ -148,7 +148,7 @@ class StructuredLogger:
 
         # Use a best effort serializer utility & a dummy log entry in case of failure
         try:
-            log_json = rat_utils.json.dumps(log_entry)
+            log_json = json.dumps(log_entry)
         except Exception as e:
             # avoid crashing if logging fails -- but try hard to log something
             msg = "Log serialization failed"
@@ -171,7 +171,7 @@ class StructuredLogger:
                 except Exception:
                     pass
             finally:
-                log_json = rat_utils.json.dumps(
+                log_json = json.dumps(
                     {
                         "timestamp": time.time(),
                         "level": "CRITICAL",
