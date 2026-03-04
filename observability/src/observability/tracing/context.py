@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from opentelemetry import metrics, trace
 from opentelemetry.trace import Span, Status, StatusCode
 
@@ -176,7 +177,10 @@ def add_span_event(name: str, attributes: dict[str, Any] | None = None) -> None:
     """
     span = get_current_span()
     if span and span.is_recording():
-        span.add_event(name, attributes or {})
+        span.add_event(
+            name,
+            {k: json.dumps(v) for k, v in (attributes or {}).items()},
+        )
 
 
 def set_span_attribute(key: str, value: Any) -> None:
@@ -201,11 +205,7 @@ def set_span_attribute(key: str, value: Any) -> None:
     """
     span = get_current_span()
     if span and span.is_recording():
-        # Convert value to string and limit length
-        str_value = str(value)
-        if len(str_value) > 1000:
-            str_value = str_value[:1000] + "..."
-        span.set_attribute(key, str_value)
+        span.set_attribute(key, json.dumps(value))
 
 
 @contextmanager
@@ -256,11 +256,7 @@ def _set_custom_attributes(span: Span, attributes: dict[str, Any]) -> None:
     """Set custom attributes on the span."""
     for key, value in attributes.items():
         if value is not None:
-            # Convert to string and limit length
-            str_value = str(value)
-            if len(str_value) > 1000:
-                str_value = str_value[:1000] + "..."
-            span.set_attribute(key, str_value)
+            span.set_attribute(key, json.dumps(value))
 
 
 def _record_context_start_metrics(

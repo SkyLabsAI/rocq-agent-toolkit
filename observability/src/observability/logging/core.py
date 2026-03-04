@@ -178,7 +178,7 @@ class StructuredLogger:
                         "message": msg,
                         "logger": self.name,
                         "error": e,
-                    }
+                    },
                 )
 
         # Pass caller info to handler via extra to avoid double stack walk

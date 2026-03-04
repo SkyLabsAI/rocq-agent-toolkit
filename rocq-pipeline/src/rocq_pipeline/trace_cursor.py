@@ -11,8 +11,7 @@ from collections.abc import Awaitable, Callable, Coroutine
 from types import CoroutineType
 from typing import Any, override
 
-import rocq_agent_toolkit_utils.json as json
-from observability import get_logger
+from observability import get_logger, set_span_attribute, trace_context
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_protocol import DelegateRocqCursor
@@ -26,22 +25,20 @@ async def _maybe_await[T](val: T | Awaitable[T]) -> T:
     return val
 
 
+# TODO(telemetry): remove uses of structured logging when we atomically swap to a
+# fully span-based approach
 def _trace_log[**P, A, B, T](
     *,
     after: bool = False,
     method: str | None = None,
     cmd: Callable[[dict[str, Any]], str] | None = None,
     inputs: Callable[[TracingCursor, dict[str, Any]], Any] | None = None,
-    output: Callable[[Any], Any] | None = None,
-    exception: Callable[[Any], Any] | None = None,
 ) -> Callable[[Callable[P, Coroutine[A, B, T]]], Callable[P, CoroutineType[A, B, T]]]:
     fn_input = (lambda _, args: args) if inputs is None else inputs
-    fn_output = json.dumps if output is None else output
-    fn_except = json.dumps if exception is None else exception
 
     def wrap(func: Callable):
         sig = inspect.signature(func)
-        meth = method or func.__name__
+        meth = f"RocqCursor.{method or func.__name__}"
 
         @functools.wraps(func)
         async def wrapper(self: TracingCursor, *args, **kwargs):
@@ -54,32 +51,49 @@ def _trace_log[**P, A, B, T](
             # supply [self] to fn_input
             args_dict.pop("self", None)
 
-            # it is important that we get the location before we run the function
-            before_loc = await self.location_info()
-            log_args: dict[str, Any] = {"before": before_loc}
+            log_args: dict[str, Any] = {}
             log_args["args"] = await _maybe_await(fn_input(self, args_dict))
             if cmd:
-                log_args["action"] = await _maybe_await(cmd(args_dict))
-            try:
-                result = await _maybe_await(func(self, *args, **kwargs))
-                log_args["result"] = fn_output(result)
+                log_args["action"], await _maybe_await(cmd(args_dict))
+
+            with trace_context(meth, attributes=log_args):
+
+                def _dynamic_telemetry[V](k: str, v: V) -> V:
+                    set_span_attribute(f"{meth}.{k}", v)
+                    log_args[k] = v
+                    return v
+
+                def _dynamic_telemetry_exception(e: Exception) -> None:
+                    # Note: opentelemetry handles managing the exception upon raise
+                    log_args["exception"] = e
+                    logger.error(meth, **log_args)
+
+                # it is important that we get the location before we run the function
+                before_loc = _dynamic_telemetry("before", await self.location_info())
+
+                try:
+                    result = _dynamic_telemetry(
+                        "result",
+                        await _maybe_await(func(self, *args, **kwargs)),
+                    )
+                except Exception as err:
+                    _dynamic_telemetry_exception(err)
+                    raise
+
                 if result is not None:
-                    log_args["result_type"] = str(type(result))
-                    log_args["error"] = isinstance(result, rdm_api.Err)
+                    _dynamic_telemetry("error", isinstance(result, rdm_api.Err))
+                    _dynamic_telemetry("result_type", str(type(result)))
+                    _dynamic_telemetry("result", result)
+
                 if after:
-                    after_loc = await self.location_info()
-                    log_args["after"] = after_loc
+                    after_loc = _dynamic_telemetry("after", await self.location_info())
                     before_idx = before_loc.get("index")
                     after_idx = after_loc.get("index")
                     if isinstance(before_idx, int) and isinstance(after_idx, int):
-                        delta = after_idx - before_idx
-                        log_args["delta"] = delta
+                        _dynamic_telemetry("delta", after_idx - before_idx)
+
                 logger.info(f"RocqCursor.{meth}", **log_args)
                 return result
-            except Exception as err:
-                log_args["exception"] = fn_except(err)
-                logger.info(f"RocqCursor.{meth}", **log_args)
-                raise
 
         return wrapper
 
@@ -108,7 +122,6 @@ class TracingCursor(DelegateRocqCursor):
     @_trace_log(
         method="insert_command",
         after=True,
-        inputs=lambda _, args: (args["text"], args["ghost"]),
     )
     async def _insert_command(
         self, text: str, *, ghost: bool = False
@@ -116,9 +129,9 @@ class TracingCursor(DelegateRocqCursor):
         return await self._cursor._insert_command(text, ghost=ghost)
 
     @staticmethod
-    async def _next_command(me: TracingCursor, args: dict[str, Any]) -> str | None:
+    async def _next_command(me: TracingCursor, args: dict[str, Any]) -> dict[str, Any]:
         suffix = [item.text for item in await me.doc_suffix() if item.kind == "command"]
-        return suffix[0] if suffix else None
+        return {"next_command": suffix[0] if suffix else None}
 
     @override
     @_trace_log(after=True, inputs=_next_command)
