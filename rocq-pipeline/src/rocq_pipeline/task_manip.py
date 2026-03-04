@@ -96,8 +96,7 @@ def eval_options(
     without_tags: list[re.Pattern[str]],
     only_tags: str | None = None,
 ) -> bool:
-    ts: set[str] = set(tags)
-    if only_tags and not ts.issubset({x.strip() for x in only_tags.split(",")}):
+    if only_tags and not tags.issubset({x.strip() for x in only_tags.split(",")}):
         return False
 
     def check_tags(regex: re.Pattern[str], default: bool = True) -> bool:
@@ -133,8 +132,8 @@ def modify(
 def run(
     output: Path,
     tasks: TaskFile,
-    with_tags: set[re.Pattern[str]] | None = None,
-    without_tags: set[re.Pattern[str]] | None = None,
+    with_tags: list[re.Pattern[str]],
+    without_tags: list[re.Pattern[str]],
     only_tags: str | None = None,
     limit: int | None = None,
     random_selection: bool = False,
@@ -144,11 +143,9 @@ def run(
 ) -> TaskFile:
     """Filter the tasks in the TaskFile."""
 
-    def norm(ts: set[re.Pattern[str]] | None) -> list[re.Pattern[str]]:
-        if ts is None:
-            return []
-        else:
-            return [tag for tag in ts if tag != ""]
+    def norm(ts: list[re.Pattern[str]]) -> list[re.Pattern[str]]:
+        # TODO patterns can't be empty strings, filter them before
+        return [tag for tag in ts if tag != ""]
 
     with_tags_l = norm(with_tags)
     without_tags_l = norm(without_tags)
