@@ -12,6 +12,7 @@ authors = [
 requires-python = ">=3.13"
 readme = "README.md"
 dependencies = [
+    "rocq-agent-toolkit-utils",
     "semver>=3.0.4",
 ]
 
@@ -35,6 +36,9 @@ dev = [
 ]
 
 [tool.uv]
+
+[tool.uv.sources]
+rocq-agent-toolkit-utils = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/provenance_toolkit"]

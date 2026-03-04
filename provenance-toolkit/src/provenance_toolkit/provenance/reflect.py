@@ -9,7 +9,6 @@ cf. __init__.py for more details."""
 from __future__ import annotations
 
 import inspect
-import json
 import logging
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
@@ -21,6 +20,8 @@ from typing import (
     get_type_hints,
     override,
 )
+
+import rocq_agent_toolkit_utils.json as json
 
 from ..proto import (
     ProvenanceT,
