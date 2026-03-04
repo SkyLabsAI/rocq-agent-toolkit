@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
+import rocq_agent_toolkit_utils.json as json
 
 
 @dataclass(frozen=True)

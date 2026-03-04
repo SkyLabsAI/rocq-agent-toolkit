@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Any, cast
 
 import pytest
+import rocq_agent_toolkit_utils.json as json
 
 
 def test_remote_agent_init_requires_inference() -> None:
