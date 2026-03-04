@@ -11,27 +11,19 @@ import rocq_agent_toolkit_utils as rat_utils
 def test_info_simple_types() -> None:
     for v in [42, 3.14, True, "foobar", None]:
         assert rat_utils.objects.info(v, leading_separator=None) == (
-            v if isinstance(v, str) else pprint.pformat(v)
+            "\n".join(
+                [v if isinstance(v, str) else pprint.pformat(v), f"type={type(v)}"],
+            )
         )
 
 
 def test_info_list_of_simple_types() -> None:
-    assert (
-        rat_utils.objects.info(
-            [42, 3.14, True, "foobar", None],
-            leading_separator=None,
-        )
-        == "[42, 3.14, True, 'foobar', None]"
-    )
-
-
-def test_info_lines_vverbose_override_verbose(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.DEBUG):
-        rat_utils.objects.info_lines(42, vverbose=True)
-    assert len(caplog.records) == 1
-    assert re.search(
-        "vverbose forces verbose=True",
-        caplog.text,
+    data = [42, 3.14, True, "foobar", None]
+    assert rat_utils.objects.info(data, leading_separator=None) == "\n".join(
+        [
+            str(data),
+            f"type={type(data)}",
+        ],
     )
 
 
@@ -77,19 +69,7 @@ def test_info_lines_dataclass(
         lines = rat_utils.objects.info_lines(
             foo,
         )
-        assert len(lines) == 1
-        assert re.search(
-            rf"Foo\(num={num}, flag={flag}\)",
-            lines[0],
-        )
-    assert not caplog.records
-
-    with caplog.at_level(logging.DEBUG):
-        lines = rat_utils.objects.info_lines(
-            foo,
-            verbose=True,
-        )
-        assert len(lines) == 3
+        assert len(lines) == 2
         assert re.search(
             rf"Foo\(num={num}, flag={flag}\)",
             lines[0],
@@ -98,16 +78,12 @@ def test_info_lines_dataclass(
             rf"type=<class '{__name__}.{Foo.__qualname__}'",
             lines[1],
         )
-        assert re.search(
-            rf"repr={Foo.__qualname__}\(num={num}, flag={flag}\)",
-            lines[2],
-        )
     assert not caplog.records
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.DEBUG):
         lines = rat_utils.objects.info_lines(
             foo,
-            vverbose=True,
+            verbose=True,
         )
         assert len(lines) == 5
         assert re.search(
@@ -144,11 +120,14 @@ def test_info_dict_of_dataclasses() -> None:
     for i, k in enumerate(keys, start=42):
         d[k] = Foo(num=i, flag=(i % 2 == 0))
 
-    assert rat_utils.objects.info_lines(d, verbose=True) == [
+    expected_prefix = [
         pprint.pformat(d),
         "type=<class 'dict'>",
         "repr=" + repr(d),
     ]
+    info_lines = rat_utils.objects.info_lines(d, verbose=True)
+    assert len(info_lines) == 5
+    assert expected_prefix == info_lines[: len(expected_prefix)]
 
 
 def test_info_multiple_dataclasses() -> None:
@@ -161,7 +140,7 @@ def test_info_multiple_dataclasses() -> None:
     d_info_singleton = rat_utils.objects.info(
         d,
         leading_separator=None,
-        vverbose=True,
+        verbose=True,
     )
     d_info_item = "\n".join(f"- {line}" for line in d_info_singleton.split("\n"))
 
@@ -169,5 +148,5 @@ def test_info_multiple_dataclasses() -> None:
         assert rat_utils.objects.info(
             *([d] * i),
             leading_separator=None,
-            vverbose=True,
+            verbose=True,
         ) == "\n\n".join([d_info_item] * i)
