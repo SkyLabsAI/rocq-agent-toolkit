@@ -37,8 +37,6 @@ dev = [
     "taskipy>=1.14.1",
 ]
 
-[tool.uv]
-
 [tool.hatch.build.targets.sdist]
 include = ["src/rocq_agent_toolkit_utils"]
 
