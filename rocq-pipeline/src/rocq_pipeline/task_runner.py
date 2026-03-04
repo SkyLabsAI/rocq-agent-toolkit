@@ -189,7 +189,7 @@ async def run_task(
             logger.warning(f"Invalid SpanContext for task {task_id} from run {run_id}")
 
         task_result: TaskResult | None = None
-        agent = build_agent(task.prompt)
+        agent = build_agent()
 
         agent_class_checksum = agent.cls_checksum()
         agent_instance_checksum = agent.checksum()
@@ -255,7 +255,9 @@ async def run_task(
                 for mod in task.modifiers:
                     await mod.run(rc)
                 progress.status(0.15, "💭")
-                task_result = await agent.run(TracingCursor.of_cursor(rc))
+                task_result = await agent.run(
+                    TracingCursor.of_cursor(rc), task_prompt=task.prompt
+                )
         except Exception as e:
             progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
             task_result = TaskResult.from_exception(e)

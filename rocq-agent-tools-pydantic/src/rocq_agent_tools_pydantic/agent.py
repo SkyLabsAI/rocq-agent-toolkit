@@ -32,7 +32,7 @@ class ToolAgent(ProofAgent):
             retries=2,
         )
 
-    async def prove(self, rc: RocqCursor) -> TaskResult:
+    async def prove(self, rc: RocqCursor, **kwargs) -> TaskResult:
         deps = RocqProofStateDeps(rc)
         goal = await rc.current_goal()
         if goal is None:

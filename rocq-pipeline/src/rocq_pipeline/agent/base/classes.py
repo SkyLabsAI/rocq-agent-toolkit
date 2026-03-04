@@ -22,10 +22,16 @@ logger = get_logger("rocq_agent")
 class Agent(Provenance.Full):
     """Abstract base class for Rocq Agent Toolkit agents."""
 
-    async def run(self, rc: RocqCursor) -> TaskResult:
-        """Entrypoint; use rdm to attempt a task and report the result. The
-        rdm cursor is updated to reflect the changes to the proof, even in
-        case of failure (partial progress is kept)."""
+    async def run(
+        self, rc: RocqCursor, *, task_prompt: str | None = None
+    ) -> TaskResult:
+        """Entrypoint; use rc to attempt a task and report the result. The
+        rc cursor is updated to reflect the changes to the proof, even in
+        case of failure (partial progress is kept).
+
+        @param rc The RocqCursor reflecting the task
+        @param task_prompt Any extra information to give to the agent.
+        """
         return await self.give_up(rc, message="Not implemented")
 
     @classmethod
@@ -93,7 +99,7 @@ class AgentBuilder:
         """Parse agent-specific args in preparation for building the agent."""
         pass
 
-    def __call__(self, prompt: str | None = None) -> Agent:
+    def __call__(self) -> Agent:
         return self._agent()
 
 
@@ -119,7 +125,9 @@ class ProofAgent(Agent):
         self._unset_ssr_idents = unset_ssr_idents
         self._reset_default_goal_selector = reset_default_goal_selector
 
-    async def prove(self, rc: RocqCursor) -> TaskResult:
+    async def prove(
+        self, rc: RocqCursor, *, task_prompt: str | None = None
+    ) -> TaskResult:
         """Prove the current goal using the restricted proof session.
 
         This method is called by run() after setting up a RocqProofSession.
@@ -128,7 +136,9 @@ class ProofAgent(Agent):
         return await self.give_up(rc, message="Not implemented")
 
     @override
-    async def run(self, rc: RocqCursor) -> TaskResult:
+    async def run(
+        self, rc: RocqCursor, *, task_prompt: str | None = None
+    ) -> TaskResult:
         """Run the agent after ensuring there is a goal to prove."""
         goal_reply = await rc.current_goal()
         if goal_reply is None:
@@ -176,7 +186,7 @@ class ProofAgent(Agent):
                     )
 
         # TODO: validate that no goals remain.
-        return await self.prove(rc)
+        return await self.prove(rc, task_prompt=task_prompt)
 
     async def current_proof_state(
         self,

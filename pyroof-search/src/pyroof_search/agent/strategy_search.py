@@ -35,7 +35,9 @@ class SearchAgent(ProofAgent):
         rollout: Proposals[Action[RocqCursor]]
 
     @override
-    async def prove(self, rc: RocqCursor) -> TaskResult:
+    async def prove(
+        self, rc: RocqCursor, *, task_prompt: str | None = None
+    ) -> TaskResult:
         next_id: int = 0
 
         def fresh() -> int:
