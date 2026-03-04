@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 import websockets
 
 from .deserialize import Decoder, EncoderProtocol
