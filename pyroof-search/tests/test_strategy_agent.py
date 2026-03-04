@@ -4,11 +4,11 @@ This test verifies that StrategyAgent properly captures the "doc_interaction"
 side-effect in the produced task result.
 """
 
-import json
 import tempfile
 from pathlib import Path
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 import rocq_pipeline.task_runner
 from pyroof_search.agent.strategy_agent import StrategyAgent
 from pyroof_search.rocq.strategies import FirstTacticProposer

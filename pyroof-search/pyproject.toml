@@ -17,6 +17,7 @@ dependencies = [
     "observability",
     "provenance-toolkit",
     "rocq-pipeline", # this is needed for `Agent`.
+    "rocq-agent-toolkit-utils",
 ]
 
 [project.urls]
@@ -46,6 +47,7 @@ observability = { workspace = true }
 provenance-toolkit = { workspace = true }
 rocq-doc-manager = { workspace = true }
 rocq-pipeline = { workspace = true }
+rocq-agent-toolkit-utils = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/pyroof_search"]
