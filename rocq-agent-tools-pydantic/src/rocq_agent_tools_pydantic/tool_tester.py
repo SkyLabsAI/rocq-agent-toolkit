@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from pydantic_ai.agent import Agent
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models import Model
@@ -14,7 +15,6 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.run import AgentRunResult
 from rocq_doc_manager import rc_sess
 from rocq_doc_manager.locator import LocatorParser
-from rocq_pipeline.tasks import json
 
 from rocq_agent_tools_pydantic.tools import RocqProofStateDeps, rocq_cursor_toolset
 
