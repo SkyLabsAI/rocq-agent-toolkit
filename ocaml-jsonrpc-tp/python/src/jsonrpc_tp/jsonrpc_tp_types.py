@@ -27,11 +27,13 @@ class Err[T_co]:
     def data(self) -> T_co:
         return self._data
 
-    def to_json(self) -> dict[str, Any]:
-        return {
-            "message": self.message,
-            "data": json.dumps(self.data, structured=True),
-        }
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "message": self.message,
+                "data": self.data,
+            }
+        )
 
     def __bool__(self) -> bool:
         return False
@@ -66,10 +68,8 @@ class Resp[T_co]:
     def result(self) -> T_co:
         return self._result
 
-    def to_json(self) -> dict[str, Any]:
-        return {
-            "result": json.dumps(self.result, structured=True),
-        }
+    def to_json(self) -> str:
+        return json.dumps({"result": self.result})
 
     def __bool__(self) -> bool:
         return True
