@@ -7,16 +7,16 @@ from urllib.parse import urlparse
 import websockets
 from observability import get_logger
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager.microrpc.duplex import DuplexMux
-from rocq_doc_manager.rocq_cursor_websocket import (
+from rocq_doc_manager.cursor.websocket import (
     CursorDispatcher,
 )
-from rocq_doc_manager.rocq_cursor_websocket import (
+from rocq_doc_manager.cursor.websocket import (
     decoder as rdm_decoder,
 )
-from rocq_doc_manager.rocq_cursor_websocket import (
+from rocq_doc_manager.cursor.websocket import (
     encoder as rdm_encoder,
 )
+from rocq_doc_manager.microrpc.duplex import DuplexMux
 from rocq_pipeline.agent.base import Agent, TaskResult
 from websockets.exceptions import ConnectionClosed
 
