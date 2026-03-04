@@ -364,7 +364,7 @@ def agent_main(agent_builder: AgentBuilder) -> int:
             async def _run() -> None:
                 controller.print("Loading file...")
                 async with rc_sess(
-                    str(rocq_file.name),
+                    str(rocq_file),
                     rocq_args=rocq_args,
                     cwd=str(rocq_file.parent),
                     dune=True,
