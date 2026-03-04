@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 # Import the function we want to test
@@ -31,7 +33,9 @@ def test_eval_options(
     """
     (tags, with_tags, without_tags) = input
     # Call the function with the input string
-    actual_output = task_manip.eval_options(set(tags), with_tags, without_tags)
+    actual_output = task_manip.eval_options(
+        set(tags), list(map(re.compile, with_tags)), list(map(re.compile, without_tags))
+    )
 
     # Assert that the actual result matches the expected result
     assert actual_output == expected_output, (

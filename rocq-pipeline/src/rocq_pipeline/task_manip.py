@@ -1,6 +1,7 @@
 import argparse
 import itertools
 import random
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,10 @@ from typing import Any
 from rocq_pipeline.task_modifiers import task_mod
 from rocq_pipeline.task_modifiers.task_mod import TaskModifier
 from rocq_pipeline.tasks import Project, Task, TaskFile
+
+
+def escape_compile(s: str) -> re.Pattern[str]:
+    return re.compile(re.escape(s))
 
 
 def mk_parser(parent: Any | None = None) -> Any:
@@ -24,11 +29,30 @@ def mk_parser(parent: Any | None = None) -> Any:
         help="The file to write the result to (.json or .yaml).",
     )
     parser.add_argument(
-        "--with-tag", type=str, nargs="*", help="Keeps tasks with the given tag"
+        "--with-tag",
+        type=escape_compile,
+        default=[],
+        nargs="*",
+        help="Keeps tasks with the given tag",
+    )
+    parser.add_argument(
+        "--with-tag-re",
+        type=re.compile,
+        default=[],
+        nargs="*",
+        help="Keeps tasks with the given tag",
     )
     parser.add_argument(
         "--without-tag",
-        type=str,
+        type=escape_compile,
+        default=[],
+        nargs="*",
+        help="Keeps tasks that do not have the given tag",
+    )
+    parser.add_argument(
+        "--without-tag-re",
+        type=re.compile,
+        default=[],
         nargs="*",
         help="Keeps tasks that do not have the given tag",
     )
@@ -72,27 +96,21 @@ def mk_parser(parent: Any | None = None) -> Any:
 
 def eval_options(
     tags: set[str],
-    with_tags: list[str],
-    without_tags: list[str],
+    with_tags: list[re.Pattern[str]],
+    without_tags: list[re.Pattern[str]],
     only_tags: str | None = None,
 ) -> bool:
-    ts: set[str] = set(tags)
-    if only_tags and not ts.issubset({x.strip() for x in only_tags.split(",")}):
+    if only_tags and not tags.issubset({x.strip() for x in only_tags.split(",")}):
         return False
 
-    def check_tag(tag: str, default: bool = True) -> bool:
-        tag = tag.strip()
-        if tag == "":
-            return default
-        for ctag in tag.split("|"):
-            if ctag.strip() in tags:
+    def check_tags(regex: re.Pattern[str], default: bool = True) -> bool:
+        for t in tags:
+            if regex.fullmatch(t):
                 return True
         return False
 
-    keep = with_tags is None or all(check_tag(tag, default=True) for tag in with_tags)
-    remove = without_tags is not None and any(
-        check_tag(tag, default=False) for tag in without_tags
-    )
+    keep = all(check_tags(tag, default=True) for tag in with_tags)
+    remove = any(check_tags(tag, default=False) for tag in without_tags)
     return keep and not remove
 
 
@@ -118,8 +136,8 @@ def modify(
 def run(
     output: Path,
     tasks: TaskFile,
-    with_tags: set[str] | None = None,
-    without_tags: set[str] | None = None,
+    with_tags: list[re.Pattern[str]],
+    without_tags: list[re.Pattern[str]],
     only_tags: str | None = None,
     limit: int | None = None,
     random_selection: bool = False,
@@ -129,11 +147,9 @@ def run(
 ) -> TaskFile:
     """Filter the tasks in the TaskFile."""
 
-    def norm(ts: set[str] | None) -> list[str]:
-        if ts is None:
-            return []
-        else:
-            return [tag for tag in ts if tag != ""]
+    def norm(ts: list[re.Pattern[str]]) -> list[re.Pattern[str]]:
+        # TODO patterns can't be empty strings, filter them before
+        return [tag for tag in ts if tag != ""]
 
     with_tags_l = norm(with_tags)
     without_tags_l = norm(without_tags)
@@ -185,8 +201,8 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     result = run(
         arguments.output,
         tasks,
-        arguments.with_tag,
-        arguments.without_tag,
+        arguments.with_tag + arguments.with_tag_re,
+        arguments.without_tag + arguments.without_tag_re,
         arguments.only_tags,
         arguments.limit,
         arguments.random,
