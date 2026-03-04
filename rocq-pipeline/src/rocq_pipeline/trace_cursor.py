@@ -15,7 +15,9 @@ from observability import get_logger
 from pydantic import BaseModel
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_cursor_protocol import DelegateRocqCursor
+from rocq_doc_manager.rocq_cursor_protocol import (
+    DelegateRocqCursor,
+)
 
 logger = get_logger("RocqCursor")
 
@@ -226,6 +228,8 @@ class TracingCursor(DelegateRocqCursor):
         return result.proof_state
 
     async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
+        # This uses the implementation from `RocqCursor` so that it gets
+        # tracing
         for cnt in range(count):
             result = await self.run_step()
             if isinstance(result, rdm_api.Err):

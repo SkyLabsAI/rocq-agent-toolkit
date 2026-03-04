@@ -140,6 +140,19 @@ class RocqCursorProtocolAsync(Protocol):
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]: ...
 
+    async def run_steps(
+        self,
+        count: int,
+    ) -> None | rdm_api.Err[rdm_api.StepsError]:
+        for cnt in range(count):
+            r = self.run_step()
+            if isinstance(r, rdm_api.Err):
+                return rdm_api.Err(
+                    message=r.message,
+                    data=rdm_api.StepsError(cmd_error=r.data, nb_processed=cnt),
+                )
+        return None
+
     # ===== BEGIN: contextmanagers ============================================
     @asynccontextmanager
     async def ctx(self, rollback: bool = True) -> AsyncIterator[Self]:
@@ -856,6 +869,10 @@ class DelegateRocqCursor(RocqCursor):
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         return await self._cursor.run_step()
+
+    @override
+    async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
+        return await self._cursor.run_steps(count)
 
     @override
     async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
