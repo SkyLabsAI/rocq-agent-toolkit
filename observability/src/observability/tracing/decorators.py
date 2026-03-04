@@ -12,6 +12,7 @@ import time
 from collections.abc import Awaitable, Callable, Coroutine
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from opentelemetry import metrics
 from opentelemetry import trace as otel_trace
 from opentelemetry.trace import Status, StatusCode
@@ -332,11 +333,7 @@ def _set_custom_attributes(span: Any, attributes: dict[str, Any]) -> None:
     """Set custom attributes on the span."""
     for key, value in attributes.items():
         if value is not None:
-            # Convert to string and limit length
-            str_value = str(value)
-            if len(str_value) > 1000:
-                str_value = str_value[:1000] + "..."
-            span.set_attribute(key, str_value)
+            span.set_attribute(key, json.dumps(value))
 
 
 def _set_extractor_attributes(
@@ -364,9 +361,7 @@ def _set_result_attributes(span: Any, result: Any) -> None:
 
     # Add result value (be very careful with this)
     if result is not None:
-        result_str = str(result)
-        if len(result_str) <= 200:  # Only include small results
-            span.set_attribute("function.result.value", result_str)
+        span.set_attribute("function.result.value", json.dumps(result))
 
 
 def _record_start_metrics(
