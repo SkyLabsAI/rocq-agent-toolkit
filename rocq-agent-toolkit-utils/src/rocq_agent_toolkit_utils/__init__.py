@@ -1,5 +1,6 @@
-from . import objects
+from . import json, objects
 
 __all__ = [
+    "json",
     "objects",
 ]
