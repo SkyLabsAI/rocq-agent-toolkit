@@ -7,6 +7,7 @@ import rocq_agent_toolkit_utils.json as json
 """
 
 import json as libjson
+import logging
 from json import (
     JSONDecodeError,
     JSONDecoder,
@@ -23,15 +24,25 @@ from pydantic import BaseModel
 
 import rocq_agent_toolkit_utils as rat_utils
 
+logger = logging.getLogger(__name__)
+
 
 @overload
-def dumps(x: Any, *, structured: Literal[True], **kwargs) -> Any:
+def dumps(
+    x: Any,
+    *,
+    compact: bool = False,
+    structured: Literal[True],
+    **kwargs,
+) -> Any:
     """Wrapper for json.dumps: handle (nested) objects in a best-effort way.
 
     Arguments:
         x: object to try serializing as JSON string
         args: passthrough positional arguments for json.dumps
-        structured=True: return structured data instead of a string
+        compact (optional): whether or not to use compact JSON string separators
+            Note: explicit "separators" kwarg is prioritized
+        structured=False: return a JSON string
         kwargs: passthrough keyword arguments for json.dumps
     Returns:
         best effort serialization result
@@ -42,12 +53,20 @@ def dumps(x: Any, *, structured: Literal[True], **kwargs) -> Any:
 
 
 @overload
-def dumps(x: Any, *, structured: bool | Literal[False] = False, **kwargs) -> str:
+def dumps(
+    x: Any,
+    *,
+    compact: bool = False,
+    structured: bool | Literal[False] = False,
+    **kwargs,
+) -> str:
     """Wrapper for json.dumps: handle (nested) objects in a best-effort way.
 
     Arguments:
         x: object to try serializing as JSON string
         args: passthrough positional arguments for json.dumps
+        compact (optional): whether or not to use compact JSON string separators
+            Note: explicit "separators" kwarg is prioritized
         structured=True: return structured data instead of a string
         kwargs: passthrough keyword arguments for json.dumps
     Returns:
@@ -61,6 +80,7 @@ def dumps(x: Any, *, structured: bool | Literal[False] = False, **kwargs) -> str
 def dumps(
     x: Any,
     *,
+    compact: bool = False,
     structured: bool = False,
     **kwargs,
 ) -> str | Any:
@@ -68,6 +88,8 @@ def dumps(
 
     Arguments:
         x: object to try serializing as JSON string (or data iff structured=True)
+        compact (optional): whether or not to use compact JSON string separators
+            Note: explicit "separators" kwarg is prioritized
         structured (optional): return structured data instead of a string
         kwargs: passthrough keyword arguments for json.dumps
     Returns:
@@ -75,6 +97,16 @@ def dumps(
     Raises:
         TypeError if best effort serialization fails
     """
+    if compact:
+        compact_separators = (",", ";")
+
+        if not (explicit_separators := kwargs.get("separators", None)):
+            kwargs["separators"] = compact_separators
+        elif explicit_separators != compact_separators:
+            logger.debug(
+                f"Ignoring compact in favor of explicit separators: {explicit_separators}"
+            )
+
     try:
         data: Any
 
@@ -82,9 +114,15 @@ def dumps(
             data = x.model_dump() if structured else x.model_dump_json()
         elif hasattr(x, "to_json") and callable(x.to_json):
             data = x.to_json()
+        elif isinstance(x, type):
+            data = x.__qualname__
         else:  # isinstance(x, (int, float, bool, str, type(None))), custom types, etc...
             data = libjson.dumps(
-                x, default=lambda y: dumps(y, structured=False, **kwargs), **kwargs
+                x,
+                default=lambda y: dumps(
+                    y, compact=compact, structured=structured, **kwargs
+                ),
+                **kwargs,
             )
 
         return data if structured else str(data)
