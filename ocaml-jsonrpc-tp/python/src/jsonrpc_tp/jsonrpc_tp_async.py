@@ -10,6 +10,8 @@ from typing import (
 from collections.abc import Awaitable
 from collections.abc import Callable
 
+import rocq_agent_toolkit_utils as rat_utils
+
 from .jsonrpc_tp_types import Err, Error, Resp
 
 
@@ -97,7 +99,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
         params: list[Any],
     ) -> None:
         self._check_running()
-        notification = json.dumps(
+        notification = rat_utils.json.dumps(
             {"jsonrpc": "2.0", "method": method, "params": params}
         ).encode()
         await self._send_queue.put(notification)
@@ -112,7 +114,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
         self._counter = self._counter + 1
         fresh_id = self._counter
         # Preparing and sending the request.
-        request = json.dumps(
+        request = rat_utils.json.dumps(
             {"jsonrpc": "2.0", "method": method, "params": params, "id": fresh_id}
         ).encode()
         # creating the future, and registering it for the receiver loop.
