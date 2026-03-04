@@ -118,7 +118,7 @@ class JsonRPCTP(SyncProtocol):
                 match code:
                     # Request failed (taken from the LSP protocol)
                     case -32803:
-                        return Err(message, error.get("data"))
+                        return Err(message=message, data=error.get("data"))
                     # Method not found | Invalid params
                     case -32601 | -32602:
                         raise Exception(message)
@@ -127,7 +127,7 @@ class JsonRPCTP(SyncProtocol):
                         raise Error(f"Unexpected error code {code} ({message})")
             elif "result" in response:
                 # Normal response for the request.
-                return Resp(response.get("result"))
+                return Resp(result=response.get("result"))
             else:
                 # Notification.
                 assert "method" in response
