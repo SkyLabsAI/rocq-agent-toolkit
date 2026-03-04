@@ -118,6 +118,12 @@ class RDMRocqCursor(RocqCursor):
     async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
         return await self._rdm.load_file(self._cursor)
 
+    @override
+    async def split_sentences(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
+        return await self._rdm.split_sentences(self._cursor, text)
+
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     @override

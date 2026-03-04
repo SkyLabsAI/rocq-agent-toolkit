@@ -90,6 +90,27 @@ class RocqCursorProtocolAsync(Protocol):
         self,
     ) -> None | rdm_api.Err[rdm_api.RocqLoc | None]: ...
 
+    async def split_sentences(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]: ...
+
+    async def insert_sentences(
+        self, sentences: list[rdm_api.Sentence]
+    ) -> tuple[
+        list[rdm_api.CommandData],
+        None | tuple[rdm_api.Err[rdm_api.CommandError], list[rdm_api.Sentence]],
+    ]:
+        data: list[rdm_api.CommandData] = []
+        for i, sentence in enumerate(sentences):
+            if sentence.kind == "blanks":
+                await self.insert_blanks(sentence.text)
+                continue
+            result = await self._insert_command(sentence.text)
+            if isinstance(result, rdm_api.Err):
+                return (data, (result, sentences[i:]))
+            data.append(result)
+        return (data, None)
+
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
     async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]: ...
@@ -478,6 +499,10 @@ class RocqCursorProtocolSync(Protocol):
     def load_file_sync(
         self,
     ) -> None | rdm_api.Err[rdm_api.RocqLoc | None]: ...
+
+    def split_sentences_sync(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]: ...
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
@@ -926,3 +951,9 @@ class DelegateRocqCursor(RocqCursor):
     @override
     async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
         return await self._cursor.load_file()
+
+    @override
+    async def split_sentences(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
+        return await self._cursor.split_sentences(text)

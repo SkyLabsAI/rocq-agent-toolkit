@@ -40,6 +40,22 @@ class Test_API(RDM_Tests):
             rdm_api.SuffixItem(kind="blanks", text="\n"),
         ]
 
+    async def test_split_sentences(self, transient_rdm: AsyncRocqDocManager) -> None:
+        rc = transient_rdm.cursor()
+        sentences = await rc.split_sentences(
+            "(* xxx *) Definition x := true. Check nat. Definition foo := x.\n"
+        )
+        assert isinstance(sentences, list)
+        assert len(sentences) == 7
+        (data, result) = await rc.insert_sentences(sentences)
+        assert result is None
+        assert len(data) == 3
+        sentences = await rc.split_sentences("Check nat. Check Nat. Definition foo :=")
+        assert not isinstance(sentences, list)
+        (data, result) = await rc.insert_sentences(sentences.data.sentences)
+        assert result is not None
+        assert len(data) == 1
+
     async def test_Check_query_text(
         self,
         transient_rdm: AsyncRocqDocManager,
