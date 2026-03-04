@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Literal, Protocol, overload
+from typing import Literal, Protocol, overload, override
 
 from pydantic import JsonValue
 
@@ -20,8 +20,20 @@ class PacketChannel(Protocol):
     async def close(self) -> None: ...
 
 
+class RPCClient(Protocol):
+    async def send(
+        self, method: str, params: JsonValue | None = None
+    ) -> tuple[bool, JsonValue]:
+        """
+        Returns (success, result):
+            success -- if the value is an exception
+            result -- the result, should be interpreted based on success
+        """
+        ...
+
+
 # TODO: how is this related to WSMux
-class DuplexMux:
+class DuplexMux(RPCClient):
     """Full-duplex micro RPC over a single WebSocket.
 
     - Outbound calls use `send(method, args, kwargs)` and await a Response.
@@ -64,6 +76,7 @@ class DuplexMux:
                 fut.set_exception(ConnectionError("connection closed"))
         self._pending.clear()
 
+    @override
     async def send(
         self,
         method: str,
@@ -102,21 +115,19 @@ class DuplexMux:
     async def _handle_request(
         self, id: int | str | None, method: str, params: JsonValue | None
     ) -> None:
-        is_error = False
+        is_success = False
         try:
-            is_error, result = await self._dispatcher.dispatch(method, params)
+            is_success, result = await self._dispatcher.dispatch(method, params)
         except Exception as e:
             self.handle_error(e)
             return
-            # is_error = True
-            # result = cast(JsonValue, e)  # TODO: this is invalid
 
         response: dict[str, JsonValue] = {
             "jsonrpc": "2.0",
         }
         if id is not None:
             response["id"] = id
-        if is_error:
+        if is_success:
             response["error"] = result
         else:
             response["result"] = result

@@ -12,7 +12,12 @@ from typing import (
 from pydantic import BaseModel, JsonValue
 
 from rocq_doc_manager.microrpc.dispatcher import Dispatcher
-from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
+from rocq_doc_manager.microrpc.duplex import RPCClient
+from rocq_doc_manager.microrpc.tunnel import proxy_protocol
+from rocq_doc_manager.rocq_cursor_protocol import (
+    RocqCursor,
+    RocqCursorProtocolAsync,
+)
 
 from .. import rocq_doc_manager_api as rdm_api
 from ..microrpc.deserialize import (
@@ -160,30 +165,35 @@ class ClosedError(rdm_api.Error):
     passthru=["ctx", "aborted_goal_ctx", "Section", "goto_first_match"],
 )
 class WSCursor:
-    """A cursor that proxies method calls through WSMux.
+    """A cursor that proxies method calls through an RPCClient.
 
     NOTE: We cannot convince mypy that WSCursor implements
     RocqCursorProtocolAsync because we are not listing the methods explicitly."""
 
-    _mux: WSMux  # shared between cloned cursors
+    _mux: RPCClient  # shared between cloned cursors
     _id: CursorId  # unique to a single cursor
 
-    def __init__(self, mux: WSMux, id: CursorId):
+    def __init__(self, mux: RPCClient, id: CursorId):
         self._mux = mux
         self._id = id
 
     @classmethod
-    def create(cls, mux: WSMux, id: int) -> RocqCursorProtocolAsync:
+    def create(cls, mux: RPCClient, id: int) -> RocqCursorProtocolAsync:
         return cls(mux, CursorId(cursor=id))  # type: ignore[return-value]
 
     async def clone(self, **kwargs) -> WSCursor:
-        cursor = await self._rpc(CursorId, "clone", [], kwargs)
+        cursor = await self._rpc("clone", kwargs)
         return WSCursor(self._mux, cursor)
 
-    async def _rpc(self, method: str, params: JsonValue | None):
-        bundled_args: list[Any] = [self._id]
-        bundled_args.extend(args)
-        (is_exception, value_json) = await self._mux.send(method, bundled_args, kwargs)
+    async def _rpc(
+        self, method: str, params: dict[str, JsonValue] | None
+    ) -> tuple[bool, JsonValue]:
+        if params is None:
+            rpc_args = {}
+        else:
+            rpc_args = params.copy()
+        rpc_args["<object>"] = self._id.cursor
+        return await self._mux.send(method, rpc_args)
         if not is_exception:
             value = decoder.decode(json.loads(value_json), ty)
         else:
@@ -210,21 +220,26 @@ class CursorDispatcher(Dispatcher):
         }
         self._fresh = max(cursors.keys())
 
-    def extract_cursor(self, args: list[Any]) -> tuple[RocqCursor, list[Any]]:
-        cursor_idx = args.pop(0)
-        cursor = decoder.decode(cursor_idx, CursorId)
-        # if not isinstance(cursor_idx, int):
-        #     raise ValueError(f"Invalid cursor, expected integer, got '{cursor_idx}'")
-        # cursor = CursorId(cursor=cursor_idx)
-        if cursor not in self._cursors:
-            raise ValueError(f"Unbound cursor. {cursor}")
-        return (self._cursors[cursor], args)
+    def extract_cursor(self, params: JsonValue) -> tuple[RocqCursor, JsonValue]:
+        if isinstance(params, dict):
+            idx = params.pop("!cursor")
+            if idx is None:
+                raise KeyError(f"Missing '<object>' parameter: {params}")
+            if isinstance(idx, int):
+                cursor = self._cursors.get(CursorId(cursor=idx))
+                if cursor:
+                    return (cursor, params)
+                else:
+                    raise ValueError(f"Unknown <object>={idx}: {params}")
+            else:
+                raise ValueError(
+                    f"Invalid '<object>' parameter, expected int: {params}"
+                )
+        raise ValueError(f"Invalid message type, expected dict: {params}")
 
     @override
-    async def dispatch(
-        self, method: str, args: list[Any], kwargs: dict[str, Any]
-    ) -> Any:
-        (cursor, args) = self.extract_cursor(args)
+    async def dispatch(self, method: str, params: JsonValue) -> Any:
+        (cursor, args) = self.extract_cursor(params)
         match method:
             case "clone":
                 new_cursor = await cursor.clone()
