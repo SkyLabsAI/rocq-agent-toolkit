@@ -29,7 +29,7 @@ def _wrap_func(name, func):
     return wrapped
 
 
-# TODO: this shoudl get moved closer to `ClassDispatcher`
+# TODO: this should get moved closer to `ClassDispatcher`
 def proxy_protocol(
     protocol, passthru: list[str] | None = None
 ) -> Callable[[type[_RPC]], type]:
