@@ -31,24 +31,28 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--with-tag",
         type=escape_compile,
+        default=[],
         nargs="*",
         help="Keeps tasks with the given tag",
     )
     parser.add_argument(
         "--with-tag-re",
         type=re.compile,
+        default=[],
         nargs="*",
         help="Keeps tasks with the given tag",
     )
     parser.add_argument(
         "--without-tag",
         type=escape_compile,
+        default=[],
         nargs="*",
         help="Keeps tasks that do not have the given tag",
     )
     parser.add_argument(
         "--without-tag-re",
         type=re.compile,
+        default=[],
         nargs="*",
         help="Keeps tasks that do not have the given tag",
     )
@@ -197,8 +201,8 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     result = run(
         arguments.output,
         tasks,
-        arguments.with_tag,
-        arguments.without_tag,
+        arguments.with_tag + arguments.with_tag_re,
+        arguments.without_tag + arguments.without_tag_re,
         arguments.only_tags,
         arguments.limit,
         arguments.random,
