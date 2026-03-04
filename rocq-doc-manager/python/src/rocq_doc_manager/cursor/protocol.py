@@ -419,7 +419,7 @@ class RocqCursorProtocolAsync(Protocol):
             f'Eval lazy in ltac:(let nm := fresh "{ident}" in idtac nm).', index=0
         )
         if isinstance(result, rdm_api.Err):
-            return rdm_api.Err("Not in proof mode", None)
+            return rdm_api.Err(message="Not in proof mode", data=None)
         return result
 
     # ===== END: macros =======================================================
@@ -814,7 +814,7 @@ class RocqCursorProtocolSync(Protocol):
             f'Eval lazy in ltac:(let nm := fresh "{ident}" in idtac nm).', index=0
         )
         if isinstance(result, rdm_api.Err):
-            return rdm_api.Err("Not in proof mode", None)
+            return rdm_api.Err(message="Not in proof mode", data=None)
         return result
 
     # ===== END: macros =======================================================
