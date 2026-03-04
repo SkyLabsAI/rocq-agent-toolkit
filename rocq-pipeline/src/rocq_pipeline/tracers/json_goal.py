@@ -1,7 +1,7 @@
-import json
 from pathlib import Path
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import DuneRocqPlugin
