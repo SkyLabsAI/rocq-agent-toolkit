@@ -8,11 +8,11 @@ Stable API surface for the dashboard visualizer UI under:
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
