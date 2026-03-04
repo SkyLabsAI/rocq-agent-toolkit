@@ -2,13 +2,13 @@
 Utility functions for the backend.
 """
 
-import json
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+import rocq_agent_toolkit_utils.json as json
 from fastapi import HTTPException
 
 from backend.config import settings

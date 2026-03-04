@@ -2,9 +2,9 @@
 Pydantic models for API request/response validation.
 """
 
-import json
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # Wrtie now defining the Schema Directly
