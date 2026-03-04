@@ -1,5 +1,7 @@
 import argparse
+import functools
 import itertools
+import operator
 import random
 import re
 from collections.abc import Iterator
@@ -31,6 +33,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--with-tag",
         type=escape_compile,
+        action="append",
         default=[],
         nargs="*",
         help="Keeps tasks with the given tag",
@@ -38,6 +41,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--with-tag-re",
         type=re.compile,
+        action="append",
         default=[],
         nargs="*",
         help="Keeps tasks with the given tag",
@@ -45,6 +49,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--without-tag",
         type=escape_compile,
+        action="append",
         default=[],
         nargs="*",
         help="Keeps tasks that do not have the given tag",
@@ -52,6 +57,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--without-tag-re",
         type=re.compile,
+        action="append",
         default=[],
         nargs="*",
         help="Keeps tasks that do not have the given tag",
@@ -191,11 +197,14 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     assert extra_args is None or len(extra_args) == 0
     tasks = TaskFile.from_file(arguments.task_file)
 
+    def flatten[A](xs: list[list[A]]) -> list[A]:
+        return functools.reduce(operator.iconcat, xs, [])
+
     result = run(
         arguments.output,
         tasks,
-        arguments.with_tag + arguments.with_tag_re,
-        arguments.without_tag + arguments.without_tag_re,
+        flatten(arguments.with_tag) + flatten(arguments.with_tag_re),
+        flatten(arguments.without_tag) + flatten(arguments.without_tag_re),
         arguments.only_tags,
         arguments.limit,
         arguments.random,
