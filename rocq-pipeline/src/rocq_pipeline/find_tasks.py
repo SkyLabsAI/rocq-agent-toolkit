@@ -130,7 +130,8 @@ async def find_tasks(
 
 def my_tagger(task: ProofTask) -> set[str]:
     tags: set[str] = set()
-    numtactics = 0
+    numtactics = 0  # count does not include leftovers
+    numalltactics = 0  # count includes leftovers
     omitted: set[str] = set()
 
     for sentence in task.proof_tactics:
@@ -139,7 +140,12 @@ def my_tagger(task: ProofTask) -> set[str]:
         identified_tactics, leftovers = extract_tactics(sentence)
 
         # increment numtactics by adding the identified_tactics according to their multiplicities
-        numtactics = numtactics + sum(identified_tactics.values()) + len(leftovers)
+        numtactics = numtactics + sum(identified_tactics.values())
+
+        # increment numalltactics by adding the identified_tactics according to their multiplicities, and counting the leftovers as well
+        numalltactics = (
+            numalltactics + sum(identified_tactics.values()) + len(leftovers)
+        )
 
         # add the identified tactics to tags, ignoring entries with non-positive multiplicities
         has_nonpositives = any(value < 1 for value in identified_tactics.values())
@@ -155,6 +161,7 @@ def my_tagger(task: ProofTask) -> set[str]:
         omitted.update(set(leftovers))
 
     tags.add(f"NumTactics={numtactics}")
+    tags.add(f"NumAllTactics={numalltactics}")
 
     tags.add(task.final)
 
