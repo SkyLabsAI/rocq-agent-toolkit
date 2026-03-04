@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from typing import cast
 
+import rocq_agent_toolkit_utils.json as json
 from rocq_pipeline.agent.base import Agent, AgentBuilder
 
 from .agent import RemoteAgent
