@@ -40,7 +40,7 @@ def test_info_class_missing_str(caplog: pytest.LogCaptureFixture) -> None:
         def __init__(self, data: int) -> None:
             self._data = data
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.DEBUG):
         info = rat_utils.objects.info(
             Foo(42),
             leading_separator=None,
