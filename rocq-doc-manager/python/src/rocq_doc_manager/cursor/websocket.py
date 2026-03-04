@@ -10,6 +10,7 @@ from typing import (
 )
 
 from pydantic import BaseModel
+
 from rocq_doc_manager.microrpc.dispatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
 

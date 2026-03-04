@@ -1,5 +1,6 @@
+from .delegate import DelegateRocqCursor
 from .doc_cursor import RDMRocqCursor
-from .protocol import DelegateRocqCursor, RocqCursor
+from .protocol import RocqCursor
 from .websocket import WSCursor, WSMux
 
 __all__ = [
