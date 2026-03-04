@@ -1,6 +1,5 @@
-import re
 from collections.abc import Callable
-from typing import Any
+from contextlib import nullcontext as does_not_raise
 
 import pytest
 import rocq_agent_toolkit_utils.json as json
@@ -19,27 +18,25 @@ class Nested(BaseModel):
 def _test_roundtrip[T](
     data: T,
     *,
-    deserialize_str: Callable[[str], T],
-    deserialize_structured: Callable[[Any], T],
+    deserialize: Callable[[str], T],
     **kwargs,
 ) -> None:
-    assert data == deserialize_str(json.dumps(data, **kwargs))
-    assert data == deserialize_structured(json.dumps(data, structured=True, **kwargs))
+    json_str = json.dumps(data, **kwargs)
+    assert json_str != json.dumps(json_str, **kwargs)
+    assert data == deserialize(json_str)
 
 
 def test_BaseModel_roundtrip() -> None:
     _test_roundtrip(
         Foo(num=42, flag=True),
-        deserialize_str=Foo.model_validate_json,
-        deserialize_structured=Foo.model_validate,
+        deserialize=Foo.model_validate_json,
     )
 
 
 def test_Nested_roundtrip() -> None:
     _test_roundtrip(
         Nested(foo=Foo(num=42, flag=True)),
-        deserialize_str=Nested.model_validate_json,
-        deserialize_structured=Nested.model_validate,
+        deserialize=Nested.model_validate_json,
     )
 
 
@@ -57,16 +54,25 @@ def test_dict_roundtrip() -> None:
             },
             "range": list(range(10)),
         },
-        deserialize_str=json.loads,
-        deserialize_structured=json.loads,
+        deserialize=json.loads,
         sort_keys=True,
     )
 
 
-def test_dumps_serialization_error():
-    with pytest.raises(TypeError) as excinfo:
-        json.dumps(test_dumps_serialization_error)
-    assert re.search(
-        "Serialization failure",
-        str(excinfo.value),
-    )
+@pytest.mark.parametrize(
+    "test_ctx, o",
+    [
+        (does_not_raise(), 42),
+        (does_not_raise(), Foo(num=42, flag=True)),
+        (does_not_raise(), Nested(foo=Foo(num=314, flag=False))),
+        (pytest.raises(TypeError), lambda _: False),
+        (pytest.raises(TypeError), int),
+        (pytest.raises(TypeError), Exception),
+        (pytest.raises(TypeError), Exception()),
+        (pytest.raises(TypeError), Foo),
+        (pytest.raises(TypeError), Nested),
+    ],
+)
+def test_dumps_raises(test_ctx, o):
+    with test_ctx:
+        json.dumps(o)
