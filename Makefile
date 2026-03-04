@@ -20,4 +20,4 @@ clean:
 
 update:
 	cp ../../pyproject.toml pyproject.toml.disabled
-	echo 'Edit pyproject.toml.disabled and "filtermap" `tool.uv.workspace.members` to paths under `fmdeps/rocq-agent-toolkit`"
+	echo 'Edit pyproject.toml.disabled and "filtermap" `tool.uv.workspace.members` to paths under `fmdeps/rocq-agent-toolkit`'
