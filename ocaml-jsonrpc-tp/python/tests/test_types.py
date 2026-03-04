@@ -1,7 +1,10 @@
 import re
 from collections.abc import Callable, Sequence
+from contextlib import nullcontext as does_not_raise
+from typing import Any
 
 import pytest
+import rocq_agent_toolkit_utils.json as json
 from jsonrpc_tp import Err, Resp
 
 # Note: tests are tightly coupled to the underlying implementation
@@ -68,6 +71,49 @@ class TestErrResp(ReplyFixtures):
                 )
             )
         )
+
+    @pytest.mark.parametrize(
+        "data, data_serializable",
+        [
+            (None, True),
+            (42, True),
+            ({"foo": "bar"}, True),
+            (int, False),
+            (lambda _: False, False),
+        ],
+    )
+    def test_to_json_Err_serializable[T](
+        self,
+        mk_Err: ReplyFixtures._mk_Err[T],
+        data: Any,
+        data_serializable: bool,
+    ) -> None:
+        with does_not_raise() if data_serializable else pytest.raises(TypeError):
+            assert json.loads(mk_Err("", data).to_json()) == {
+                "message": "",
+                "data": data,
+            }
+
+    @pytest.mark.parametrize(
+        "data, data_serializable",
+        [
+            (None, True),
+            (42, True),
+            ({"foo": "bar"}, True),
+            (int, False),
+            (lambda _: False, False),
+        ],
+    )
+    def test_to_json_Resp_serializable[T](
+        self,
+        mk_Resp: ReplyFixtures._mk_Resp[T],
+        data: Any,
+        data_serializable: bool,
+    ) -> None:
+        with does_not_raise() if data_serializable else pytest.raises(TypeError):
+            assert json.loads(mk_Resp(data).to_json()) == {
+                "result": data,
+            }
 
     def test_bool_Err(self, Err_None: Err[None]) -> None:
         assert not bool(Err_None)

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
+
+import rocq_agent_toolkit_utils.json as json
 
 from backend.models import GraphData, GraphEdge, GraphNode, LogEntry
 

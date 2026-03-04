@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
 from typing import Any, cast, override
 from urllib.parse import urlparse
 
+import rocq_agent_toolkit_utils.json as json
 import websockets
 from observability import get_logger
 from rocq_doc_manager import RocqCursor

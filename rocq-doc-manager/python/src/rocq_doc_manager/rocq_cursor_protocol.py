@@ -289,7 +289,7 @@ class RocqCursorProtocolAsync(Protocol):
                 run_step_reply = await self.run_step()
                 if isinstance(run_step_reply, rdm_api.Err):
                     logger.warning(
-                        "Failed to step over the match: {run_step_repl}",
+                        f"Failed to step over the match: {run_step_reply}",
                     )
                     return False
             return True
@@ -684,7 +684,7 @@ class RocqCursorProtocolSync(Protocol):
                 run_step_reply = self.run_step_sync()
                 if isinstance(run_step_reply, rdm_api.Err):
                     logger.warning(
-                        "Failed to step over the match: {run_step_repl}",
+                        f"Failed to step over the match: {run_step_reply}",
                     )
                     return False
             return True

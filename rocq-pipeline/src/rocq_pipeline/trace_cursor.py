@@ -11,8 +11,8 @@ from collections.abc import Awaitable, Callable, Coroutine
 from types import CoroutineType
 from typing import Any, override
 
+import rocq_agent_toolkit_utils.json as json
 from observability import get_logger
-from pydantic import BaseModel
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.rocq_cursor_protocol import (
@@ -20,30 +20,6 @@ from rocq_doc_manager.rocq_cursor_protocol import (
 )
 
 logger = get_logger("RocqCursor")
-
-
-def _default_fn(x: Any) -> Any:
-    if x is None:
-        return {}
-    elif isinstance(x, BaseModel):
-        return x.model_dump()
-    elif isinstance(x, rdm_api.Err):
-        # This is a bit hacky, but the types in the interface do not
-        # present a uniform interface
-        return {"message": x.message, "data": _default_fn(x.data)}
-    elif hasattr(x, "to_json"):
-        return x.to_json()
-    elif isinstance(x, list):
-        return [_default_fn(x) for x in x]
-    elif isinstance(x, dict):
-        return {str(k): _default_fn(v) for k, v in x.items()}
-    elif isinstance(x, str):
-        return x
-    elif isinstance(x, int):
-        return x
-    elif isinstance(x, float):
-        return x
-    raise ValueError(f"Can not convert {type(x)} to JSON: {x}")
 
 
 async def _maybe_await[T](val: T | Awaitable[T]) -> T:
@@ -62,8 +38,8 @@ def _trace_log[**P, A, B, T](
     exception: Callable[[Any], Any] | None = None,
 ) -> Callable[[Callable[P, Coroutine[A, B, T]]], Callable[P, CoroutineType[A, B, T]]]:
     fn_input = (lambda _, args: args) if inputs is None else inputs
-    fn_output = _default_fn if output is None else output
-    fn_except = _default_fn if exception is None else exception
+    fn_output = json.dumps if output is None else output
+    fn_except = json.dumps if exception is None else exception
 
     def wrap(func: Callable):
         sig = inspect.signature(func)
@@ -76,6 +52,9 @@ def _trace_log[**P, A, B, T](
             bound_args.apply_defaults()
             # Convert to dict
             args_dict = dict(bound_args.arguments)
+            # NOTE: important to pop [self] since it can't be serialized; we separately
+            # supply [self] to fn_input
+            args_dict.pop("self", None)
 
             # it is important that we get the location before we run the function
             before_loc = await self.location_info()
@@ -151,31 +130,31 @@ class TracingCursor(DelegateRocqCursor):
         return await self._cursor.run_step()
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log()
     async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return await self._cursor.query(text)
 
     @override
-    @_trace_log(inputs=lambda _, args: args)
+    @_trace_log()
     async def query_json(
         self, text: str, *, index: int
     ) -> Any | rdm_api.Err[rdm_api.CommandError]:
         return await self._cursor.query_json(text, index=index)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log()
     async def query_json_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[Any] | rdm_api.Err[None]:
         return await self._cursor.query_json_all(text, indices=indices)
 
     @override
-    @_trace_log(inputs=lambda _, args: args)
+    @_trace_log()
     async def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
         return await self._cursor.query_text(text, index=index)
 
     @override
-    @_trace_log(inputs=lambda _, args: args["text"])
+    @_trace_log()
     async def query_text_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[str] | rdm_api.Err[None]:
@@ -183,12 +162,12 @@ class TracingCursor(DelegateRocqCursor):
 
     # NAVIGATION
     @override
-    @_trace_log(inputs=lambda _, args: args, after=True)
+    @_trace_log(after=True)
     async def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]:
         return await self._cursor.revert_before(erase, index)
 
     @override
-    @_trace_log(inputs=lambda _, args: args, after=True)
+    @_trace_log(after=True)
     async def advance_to(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
@@ -196,7 +175,7 @@ class TracingCursor(DelegateRocqCursor):
         return await self._cursor.advance_to(index=index)
 
     @override
-    @_trace_log(inputs=lambda _, args: args, after=True)
+    @_trace_log(after=True)
     async def go_to(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]:

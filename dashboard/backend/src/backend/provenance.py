@@ -9,6 +9,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from sqlmodel import Session, select
 
 from backend.db_models import AgentClassProvenance, AgentProvenance
@@ -56,8 +57,6 @@ async def extract_provenance_from_logs_async(
 
         # Extract provenance entries from logs
         # The logs are structured as JSON, so we need to parse the log line
-        import json
-
         for log in logs:
             if not log.line:
                 continue
@@ -169,8 +168,6 @@ def ingest_agent_class_provenance(
             raise ValueError(error_msg)
 
         # Check if provenance differs (compare as JSON strings for simplicity)
-        import json
-
         existing_prov_json = json.dumps(existing.cls_provenance, sort_keys=True)
         new_prov_json = json.dumps(cls_provenance, sort_keys=True)
         if existing_prov_json != new_prov_json:
@@ -242,8 +239,6 @@ def ingest_agent_provenance(
             raise ValueError(error_msg)
 
         # Check if provenance differs
-        import json
-
         existing_prov_json = json.dumps(existing.provenance, sort_keys=True)
         new_prov_json = json.dumps(provenance, sort_keys=True)
         if existing_prov_json != new_prov_json:

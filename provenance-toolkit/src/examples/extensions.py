@@ -1,7 +1,7 @@
-import json
 from collections.abc import MutableMapping
 from typing import Any, override
 
+import rocq_agent_toolkit_utils.json as json
 from provenance_toolkit import Provenance
 
 

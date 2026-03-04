@@ -13,8 +13,10 @@ members = [
     "rocq-doc-manager/python",
     "observability",
     "dashboard/backend",
-    "rocq-dune-util",
     "rocq-remote-agent",
+    "rocq-dune-util",
+    "pyroof-search",
+    "rocq-agent-toolkit-utils",
 ]
 
 [tool.ruff]
