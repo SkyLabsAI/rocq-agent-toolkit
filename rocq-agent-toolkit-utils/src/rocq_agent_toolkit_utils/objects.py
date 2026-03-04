@@ -173,7 +173,7 @@ def _include_info_as(
     elif k == "value":
         if include_value:
             if not pprint.isreadable(v):
-                logger.warning(f"Missing __str__ for {type(v).__qualname__}")
+                logger.debug(f"Missing __str__ for {type(v).__qualname__}")
             return ""
         else:
             return None
