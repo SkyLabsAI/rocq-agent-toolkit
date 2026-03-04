@@ -12,11 +12,17 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCall
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.run import AgentRunResult
+from pydantic_ai.toolsets import FunctionToolset
+from pydantic_ai.toolsets.abstract import AbstractToolset
 from rocq_doc_manager import rc_sess
 from rocq_doc_manager.locator import LocatorParser
 from rocq_pipeline.tasks import json
 
-from rocq_agent_tools_pydantic.tools import RocqProofStateDeps, rocq_cursor_toolset
+from rocq_agent_tools_pydantic.tools import RocqProofStateDeps, all_tools
+
+full_toolset: AbstractToolset[RocqProofStateDeps] = FunctionToolset(
+    all_tools, sequential=True
+)
 
 
 def build_model(calls: list[tuple[str, Any]]) -> Model:
@@ -63,7 +69,7 @@ async def amain(args: list[str]) -> None:
             build_model(messages),
             system_prompt="Tool call testing",
             deps_type=RocqProofStateDeps,
-            toolsets=[rocq_cursor_toolset],
+            toolsets=[full_toolset],
         )
         result: AgentRunResult = await agent.run(deps=deps)
 

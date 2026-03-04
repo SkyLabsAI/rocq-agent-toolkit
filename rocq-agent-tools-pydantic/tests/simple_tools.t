@@ -22,6 +22,12 @@
 
   $ uv run tool-tester theories/test1.v Lemma:test \
   > '"current_goals"' \
+  > '["insert_tactics", {"text": "(* comment *) idtac. try reflexivity.\n"}]' \
+  > '"proof_script"' \
+  > '["insert_tactics", {"text": "idtac. broken text"}]' \
+  > '"proof_script"' \
+  > '["insert_tactics", {"text": " simply broken."}]' \
+  > '"proof_script"' \
   > '["run_tactic", {"tactic": "split."}]' \
   > '"proof_script"' \
   > '["run_tactic", {"tactic": "trivial."}]' \
@@ -34,18 +40,30 @@
   > '"proof_script"'
   current_goals({})
   = ['\n============================\nTrue /\\ True']
+  insert_tactics({'text': '(* comment *) idtac. try reflexivity.\n'})
+  = error=None result=(2, None, ['\n============================\nTrue /\\ True'])
+  proof_script({})
+  = ['idtac.', 'try reflexivity.']
+  insert_tactics({'text': 'idtac. broken text'})
+  = error='Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command]).' result=(1, ' broken text', ['\n============================\nTrue /\\ True'])
+  proof_script({})
+  = ['idtac.', 'try reflexivity.', 'idtac.']
+  insert_tactics({'text': ' simply broken.'})
+  = error='The reference simply was not found in the current environment.' result=(0, 'simply broken.', None)
+  proof_script({})
+  = ['idtac.', 'try reflexivity.', 'idtac.']
   run_tactic({'tactic': 'split.'})
   = error=None result=['\n============================\nTrue', '\n============================\nTrue']
   proof_script({})
-  = ['split.']
+  = ['idtac.', 'try reflexivity.', 'idtac.', 'split.']
   run_tactic({'tactic': 'trivial.'})
   = error=None result=['\n============================\nTrue']
   proof_script({})
-  = ['split.', 'trivial.']
+  = ['idtac.', 'try reflexivity.', 'idtac.', 'split.', 'trivial.']
   backtrack({'count': 1})
   = True
   proof_script({})
-  = ['split.']
+  = ['idtac.', 'try reflexivity.', 'idtac.', 'split.']
   current_goals({})
   = ['\n============================\nTrue', '\n============================\nTrue']
   run_tactic({'tactic': 'trivial.'})
@@ -53,4 +71,4 @@
   run_tactic({'tactic': 'trivial.'})
   = error=None result=[]
   proof_script({})
-  = ['split.', 'trivial.', 'trivial.']
+  = ['idtac.', 'try reflexivity.', 'idtac.', 'split.', 'trivial.', 'trivial.']

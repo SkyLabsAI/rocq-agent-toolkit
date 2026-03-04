@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from pydantic import BaseModel, Field
 from pydantic_ai.tools import RunContext
 from pydantic_ai.toolsets import FunctionToolset
@@ -64,6 +66,52 @@ async def run_tactic(
             return RocqResult(error=None, result=[])
 
 
+async def insert_tactics(
+    ctx: RunContext[RocqProofStateDeps], text: str
+) -> RocqResult[tuple[int, str | None, list[str] | None]]:
+    """Inserts the given chunk of Rocq text (containing an arbitrary number of
+    commands) into the proof. If an error occurs, all commands that could be
+    run successfully are kept, and the remaining unprocessed text is returned
+    together with the number of commands that were successfully processed.
+
+    Args:
+        text: The chunk of Rocq code to insert
+
+    Return:
+        The result field will contain a tuple giving:
+        - the number of commands that were successfully run
+        - any potential left-over text that could not be processed
+        - the goals after the last successfully run command (if any)
+    """
+    sentences_or_err = await ctx.deps.rocq_cursor.split_sentences(text)
+    error: str | None = None
+    rest: str | None = None
+    count = 0
+    if isinstance(sentences_or_err, list):
+        sentences = sentences_or_err
+    else:
+        sentences = sentences_or_err.data.sentences
+        error = sentences_or_err.message
+        rest = sentences_or_err.data.rest
+
+    last_goals: list[str] | None = None
+    for i, sentence in enumerate(sentences):
+        if sentence.kind == "blanks":
+            await ctx.deps.rocq_cursor.insert_blanks(sentence.text)
+        else:
+            result = await run_tactic(ctx, sentence.text)
+            if result.error is None:
+                last_goals = result.result
+                count += 1
+            else:
+                rest = "".join([s.text for s in sentences[i:]]) + (
+                    "" if rest is None else rest
+                )
+                return RocqResult(error=result.error, result=(count, rest, last_goals))
+
+    return RocqResult(error=error, result=(count, rest, last_goals))
+
+
 async def run_query(
     ctx: RunContext[RocqProofStateDeps], command: str
 ) -> RocqResult[list[str]]:
@@ -127,3 +175,13 @@ async def qed(ctx: RunContext[RocqProofStateDeps]) -> bool:
 rocq_cursor_toolset: AbstractToolset[RocqProofStateDeps] = FunctionToolset(
     [current_goals, run_tactic, proof_script, backtrack, qed], sequential=True
 )
+
+all_tools: list[Callable] = [
+    current_goals,
+    run_tactic,
+    insert_tactics,
+    run_query,
+    proof_script,
+    backtrack,
+    qed,
+]
