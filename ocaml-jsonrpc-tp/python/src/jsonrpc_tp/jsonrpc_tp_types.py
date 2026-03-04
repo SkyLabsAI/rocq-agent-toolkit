@@ -1,6 +1,6 @@
 from typing import Any, TypeVar, override
 
-import rocq_agent_toolkit_utils as rat_utils
+import rocq_agent_toolkit_utils.json as json
 
 # Note: this file uses custom implementations of Reply/Err/Resp because dataclass
 # doesn't play nicely with covariant data, cf. github.com/python/mypy/issues/17623
@@ -30,7 +30,7 @@ class Err[T_co]:
     def to_json(self) -> dict[str, Any]:
         return {
             "message": self.message,
-            "data": rat_utils.json.dumps(self.data, structured=True),
+            "data": json.dumps(self.data, structured=True),
         }
 
     def __bool__(self) -> bool:
@@ -68,7 +68,7 @@ class Resp[T_co]:
 
     def to_json(self) -> dict[str, Any]:
         return {
-            "result": rat_utils.json.dumps(self.result, structured=True),
+            "result": json.dumps(self.result, structured=True),
         }
 
     def __bool__(self) -> bool:
