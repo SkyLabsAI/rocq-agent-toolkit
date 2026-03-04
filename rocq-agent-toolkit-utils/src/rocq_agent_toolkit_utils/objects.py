@@ -69,7 +69,6 @@ def info(
     include_value: bool = True,
     leading_separator: str | None = "\n",
     verbose: bool = False,
-    vverbose: bool = False,
     **kwargs,
 ) -> str:
     """Use newlines to join the requested object metadata produced by [info_lines]
@@ -78,9 +77,7 @@ def info(
         o: object to produce formatted information for
         include_value: whether or not to include the value of o
         leading_separator: optional separator to include at the beginning
-        verbose: whether or not to include verbose data (repr)
-            Note: forced to True when vverbose=True
-        vverbose: whether or not to include very verbose data (dec/hex id)
+        verbose: whether or not to include verbose data (repr, dec_id, hex_id)
         kwargs: passthrough keyword arguments for pprint.pformat
     Returns:
         string of requested (prettified) object metadata for each o in os
@@ -95,7 +92,6 @@ def info(
             o,
             include_value=include_value,
             verbose=verbose,
-            vverbose=vverbose,
             **kwargs,
         )
         for o in all_os
@@ -112,7 +108,6 @@ def info_lines(
     *,
     include_value: bool = True,
     verbose: bool = False,
-    vverbose: bool = False,
     **kwargs,
 ) -> Sequence[str]:
     """Use pprint.pformat to produce an Sequence of requested object metadata for o.
@@ -120,18 +115,11 @@ def info_lines(
     Arguments:
         o: object to produce formatted information for
         include_value: whether or not to include the value of o
-        verbose: whether or not to include verbose data (repr)
-            Note: forced to True when vverbose=True
-        vverbose: whether or not to include very verbose data (dec/hex id)
+        verbose: whether or not to include verbose data (repr, dec_id, hex_id)
         kwargs: passthrough keyword arguments for pprint.pformat
     Returns:
         Sequence of requested (prettified) object metadata
     """
-    if vverbose:
-        if not verbose:
-            logger.debug("vverbose forces verbose=True")
-            verbose = True
-
     lines: list[str] = []
     # Note: TypedDict guarantees (cf. above [assert]) that keys/values/items are iterated in order
     for k, v in metadata(o).items():
@@ -141,7 +129,6 @@ def info_lines(
                 v,
                 include_value=include_value,
                 verbose=verbose,
-                vverbose=vverbose,
             )
         ) is not None:
             v_pretty = v if isinstance(v, str) else pprint.pformat(v, **kwargs)
@@ -159,15 +146,11 @@ def _include_info_as(
     *,
     include_value: bool = True,
     verbose: bool = False,
-    vverbose: bool = False,
 ) -> str | None:
     """Helper predicate for [info]: the name to use when including [k], or None if it should be excluded.
 
     cf. [info] docstring for details regarding flags.
     """
-    if vverbose:
-        assert verbose, "verbose should be True when vverbose is"
-
     if k == "str_":  # Note: "value" will be pretty-printed using __str__
         return None
     elif k == "value":
@@ -177,14 +160,11 @@ def _include_info_as(
             return ""
         else:
             return None
-    elif k in {"type_", "repr_"}:
+    elif k == "type_":
+        return k.rstrip("_")
+    elif k in {"repr_", "dec_id", "hex_id"}:
         if verbose:
             return k.rstrip("_")
-        else:
-            return None
-    elif k in {"dec_id", "hex_id"}:
-        if vverbose:
-            return k
         else:
             return None
     else:
