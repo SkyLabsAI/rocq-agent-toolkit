@@ -22,6 +22,7 @@ dependencies = [
     "structlog>=24.4.0,<25",
     "rich>=13.8.0",
     "click>=8.1.7,<9",
+    "rocq-agent-toolkit-utils",
 ]
 
 [dependency-groups]
@@ -34,6 +35,9 @@ dev = [
     "coverage>=7.3.0,<8",
     "taskipy>=1.14.1",
 ]
+
+[tool.uv.sources]
+rocq-agent-toolkit-utils = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/observability"]

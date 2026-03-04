@@ -1,9 +1,9 @@
-import json
 import logging
 import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
+import rocq_agent_toolkit_utils.json as json
 from observability.logging.core import (
     _event_schemas,
     _get_hostname,
