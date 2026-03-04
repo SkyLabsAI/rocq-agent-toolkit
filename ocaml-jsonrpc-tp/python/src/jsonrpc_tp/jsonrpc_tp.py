@@ -1,11 +1,10 @@
-import json
 import subprocess
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import IO, Any, Protocol
 
-import rocq_agent_toolkit_utils as rat_utils
+import rocq_agent_toolkit_utils.json as json
 
 from .jsonrpc_tp_types import Err, Error, Resp
 
@@ -89,7 +88,7 @@ class JsonRPCTP(SyncProtocol):
         params: list[Any],
     ) -> None:
         self._check_running()
-        notification = rat_utils.json.dumps(
+        notification = json.dumps(
             {"jsonrpc": "2.0", "method": method, "params": params}
         ).encode()
         self._send(notification)
@@ -105,7 +104,7 @@ class JsonRPCTP(SyncProtocol):
         self._counter = self._counter + 1
         fresh_id = self._counter
         # Preparing and sending the request.
-        req = rat_utils.json.dumps(
+        req = json.dumps(
             {"jsonrpc": "2.0", "method": method, "params": params, "id": fresh_id}
         ).encode()
         self._send(req)
