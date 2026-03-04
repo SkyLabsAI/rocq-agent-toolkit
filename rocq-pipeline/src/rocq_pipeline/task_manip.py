@@ -45,7 +45,7 @@ def mk_parser(parent: Any | None = None) -> Any:
         action="append",
         default=[],
         nargs="*",
-        help="Keeps tasks with the given tag",
+        help="Keeps tasks where a tag matches the given regex",
     )
     parser.add_argument(
         "--without-tag",
@@ -62,7 +62,7 @@ def mk_parser(parent: Any | None = None) -> Any:
         action="append",
         default=[],
         nargs="*",
-        help="Keeps tasks that do not have the given tag",
+        help="Keeps tasks where no tag matches the given regex",
     )
     parser.add_argument(
         "--only-tags",
