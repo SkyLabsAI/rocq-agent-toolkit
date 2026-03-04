@@ -11,37 +11,13 @@ from collections.abc import Awaitable, Callable, Coroutine
 from types import CoroutineType
 from typing import Any, override
 
+import rocq_agent_toolkit_utils.json as json
 from observability import get_logger
-from pydantic import BaseModel
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.cursor import DelegateRocqCursor
 
 logger = get_logger("RocqCursor")
-
-
-def _default_fn(x: Any) -> Any:
-    if x is None:
-        return {}
-    elif isinstance(x, BaseModel):
-        return x.model_dump()
-    elif isinstance(x, rdm_api.Err):
-        # This is a bit hacky, but the types in the interface do not
-        # present a uniform interface
-        return {"message": x.message, "data": _default_fn(x.data)}
-    elif hasattr(x, "to_json"):
-        return x.to_json()
-    elif isinstance(x, list):
-        return [_default_fn(x) for x in x]
-    elif isinstance(x, dict):
-        return {str(k): _default_fn(v) for k, v in x.items()}
-    elif isinstance(x, str):
-        return x
-    elif isinstance(x, int):
-        return x
-    elif isinstance(x, float):
-        return x
-    raise ValueError(f"Can not convert {type(x)} to JSON: {x}")
 
 
 async def _maybe_await[T](val: T | Awaitable[T]) -> T:
@@ -60,8 +36,8 @@ def _trace_log[**P, A, B, T](
     exception: Callable[[Any], Any] | None = None,
 ) -> Callable[[Callable[P, Coroutine[A, B, T]]], Callable[P, CoroutineType[A, B, T]]]:
     fn_input = (lambda _, args: args) if inputs is None else inputs
-    fn_output = _default_fn if output is None else output
-    fn_except = _default_fn if exception is None else exception
+    fn_output = json.dumps if output is None else output
+    fn_except = json.dumps if exception is None else exception
 
     def wrap(func: Callable):
         sig = inspect.signature(func)

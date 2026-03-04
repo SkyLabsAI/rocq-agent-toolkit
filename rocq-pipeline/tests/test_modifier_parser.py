@@ -1,5 +1,4 @@
-import json
-
+import rocq_agent_toolkit_utils.json as json
 from rocq_pipeline.task_modifiers import InsertCommand
 from rocq_pipeline.task_modifiers.task_mod import of_string
 
