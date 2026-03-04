@@ -1,24 +1,28 @@
 import itertools
 import logging
 import pprint
-import pytest
 import re
-
 from dataclasses import dataclass
 
+import pytest
 import rocq_agent_toolkit_utils as rat_utils
 
 
 def test_info_simple_types() -> None:
     for v in [42, 3.14, True, "foobar", None]:
-        assert rat_utils.objects.info(v, leading_separator=None) == (v if isinstance(v, str) else pprint.pformat(v))
+        assert rat_utils.objects.info(v, leading_separator=None) == (
+            v if isinstance(v, str) else pprint.pformat(v)
+        )
 
 
 def test_info_list_of_simple_types() -> None:
-    assert rat_utils.objects.info(
-        [42, 3.14, True, "foobar", None],
-        leading_separator=None,
-    ) == "[42, 3.14, True, 'foobar', None]"
+    assert (
+        rat_utils.objects.info(
+            [42, 3.14, True, "foobar", None],
+            leading_separator=None,
+        )
+        == "[42, 3.14, True, 'foobar', None]"
+    )
 
 
 def test_info_lines_vverbose_override_verbose(caplog: pytest.LogCaptureFixture) -> None:
@@ -42,12 +46,12 @@ def test_info_class_missing_str(caplog: pytest.LogCaptureFixture) -> None:
             leading_separator=None,
         )
         assert re.search(
-            fr"<{__name__}.{Foo.__qualname__} object at",
+            rf"<{__name__}.{Foo.__qualname__} object at",
             info,
         )
     assert len(caplog.records) == 1
     assert re.search(
-        fr"Missing __str__ for {Foo.__qualname__}",
+        rf"Missing __str__ for {Foo.__qualname__}",
         caplog.text,
     )
 
@@ -57,8 +61,11 @@ def test_info_class_missing_str(caplog: pytest.LogCaptureFixture) -> None:
     itertools.product(
         [42, 2.71828, 3.14],
         [True, False],
-    ))
-def test_info_lines_dataclass(caplog: pytest.LogCaptureFixture, num: int, flag: bool) -> None:
+    ),
+)
+def test_info_lines_dataclass(
+    caplog: pytest.LogCaptureFixture, num: int, flag: bool
+) -> None:
     @dataclass
     class Foo:
         num: int
@@ -72,7 +79,7 @@ def test_info_lines_dataclass(caplog: pytest.LogCaptureFixture, num: int, flag: 
         )
         assert len(lines) == 1
         assert re.search(
-            fr"Foo\(num={num}, flag={flag}\)",
+            rf"Foo\(num={num}, flag={flag}\)",
             lines[0],
         )
     assert not caplog.records
@@ -84,15 +91,15 @@ def test_info_lines_dataclass(caplog: pytest.LogCaptureFixture, num: int, flag: 
         )
         assert len(lines) == 3
         assert re.search(
-            fr"Foo\(num={num}, flag={flag}\)",
+            rf"Foo\(num={num}, flag={flag}\)",
             lines[0],
         )
         assert re.search(
-            fr"type=<class '{__name__}.{Foo.__qualname__}'",
+            rf"type=<class '{__name__}.{Foo.__qualname__}'",
             lines[1],
         )
         assert re.search(
-            fr"repr={Foo.__qualname__}\(num={num}, flag={flag}\)",
+            rf"repr={Foo.__qualname__}\(num={num}, flag={flag}\)",
             lines[2],
         )
     assert not caplog.records
@@ -104,15 +111,15 @@ def test_info_lines_dataclass(caplog: pytest.LogCaptureFixture, num: int, flag: 
         )
         assert len(lines) == 5
         assert re.search(
-            fr"Foo\(num={num}, flag={flag}\)",
+            rf"Foo\(num={num}, flag={flag}\)",
             lines[0],
         )
         assert re.search(
-            fr"type=<class '{__name__}.{Foo.__qualname__}'",
+            rf"type=<class '{__name__}.{Foo.__qualname__}'",
             lines[1],
         )
         assert re.search(
-            fr"repr={Foo.__qualname__}\(num={num}, flag={flag}\)",
+            rf"repr={Foo.__qualname__}\(num={num}, flag={flag}\)",
             lines[2],
         )
 
@@ -156,13 +163,11 @@ def test_info_multiple_dataclasses() -> None:
         leading_separator=None,
         vverbose=True,
     )
-    d_info_item = "\n".join(
-        f"- {line}" for line in d_info_singleton.split("\n")
-    )
+    d_info_item = "\n".join(f"- {line}" for line in d_info_singleton.split("\n"))
 
     for i in range(2, 100):
         assert rat_utils.objects.info(
             *([d] * i),
             leading_separator=None,
             vverbose=True,
-        ) == "\n\n".join([d_info_item]*i)
+        ) == "\n\n".join([d_info_item] * i)
