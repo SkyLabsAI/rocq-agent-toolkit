@@ -15,55 +15,49 @@ raise ValueError(
 import difflib
 import logging
 import pprint
-
 from collections.abc import Sequence
 from typing import Any, TypedDict
 
 logger = logging.getLogger(__name__)
 
 
-# Note: using functional definition since some keys match python builtins (e.g. "type")
-ObjMetadata = TypedDict(
-    "ObjMetadata",
-    {
-        "value": Any,
-        "type": type,
-        "str": str,
-        "repr": str,
-        "dec_id": int,
-        "hex_id": int,
-    }
-)
+class ObjMetadata(TypedDict):
+    value: Any
+    type_: type
+    str_: str
+    repr_: str
+    dec_id: int
+    hex_id: str
+
+
 __expected_ObjMetadata_key_order = [
     "value",
-    "type",
-    "str",
-    "repr",
+    "type_",
+    "str_",
+    "repr_",
     "dec_id",
     "hex_id",
 ]
 __actual_ObjMetadata_key_order = list(ObjMetadata.__annotations__.keys())
-assert __actual_ObjMetadata_key_order == __expected_ObjMetadata_key_order, (
-    "\n".join(
-        [
-            "ObjMetadata keys don't match expected order:",
-            "\n".join(
-                difflib.ndiff(
-                    __expected_ObjMetadata_key_order,
-                    __actual_ObjMetadata_key_order,
-                )
-            ),
-        ]
-    )
+assert __actual_ObjMetadata_key_order == __expected_ObjMetadata_key_order, "\n".join(
+    [
+        "ObjMetadata keys don't match expected order:",
+        "\n".join(
+            difflib.ndiff(
+                __expected_ObjMetadata_key_order,
+                __actual_ObjMetadata_key_order,
+            )
+        ),
+    ]
 )
 
 
 def metadata(o: object) -> ObjMetadata:
     return {
         "value": o,
-        "type": type(o),
-        "str": str(o),
-        "repr": repr(o),
+        "type_": type(o),
+        "str_": str(o),
+        "repr_": repr(o),
         "dec_id": id(o),
         "hex_id": hex(id(o)),
     }
@@ -103,11 +97,13 @@ def info(
             verbose=verbose,
             vverbose=vverbose,
             **kwargs,
-        ) for o in all_os
+        )
+        for o in all_os
     ]
 
     return (leading_separator if leading_separator else "") + "\n\n".join(
-        "\n".join(map(lambda line: f"{'- ' if len(all_os) != 1 else ''}{line}", lines)) for lines in llines
+        "\n".join(f"{'- ' if len(all_os) != 1 else ''}{line}" for line in lines)
+        for lines in llines
     )
 
 
@@ -139,17 +135,19 @@ def info_lines(
     lines: list[str] = []
     # Note: TypedDict guarantees (cf. above [assert]) that keys/values/items are iterated in order
     for k, v in metadata(o).items():
-        if (k_renamed := _include_info_as(
+        if (
+            k_renamed := _include_info_as(
                 k,
                 v,
                 include_value=include_value,
                 verbose=verbose,
                 vverbose=vverbose,
-        )) is not None:
+            )
+        ) is not None:
             v_pretty = v if isinstance(v, str) else pprint.pformat(v, **kwargs)
             lines.append(f"{k_renamed}{'=' if k_renamed else ''}{v_pretty}")
-    assert len(lines) != 0, (
-        "No included info:\n" + pprint.pformat(o, indent=1, **kwargs)
+    assert len(lines) != 0, "No included info:\n" + pprint.pformat(
+        o, indent=1, **kwargs
     )
 
     return lines
@@ -170,23 +168,18 @@ def _include_info_as(
     if vverbose:
         assert verbose, "verbose should be True when vverbose is"
 
-    if k == "value":
+    if k == "str_":  # Note: "value" will be pretty-printed using __str__
+        return None
+    elif k == "value":
         if include_value:
             if not pprint.isreadable(v):
                 logger.warning(f"Missing __str__ for {type(v).__qualname__}")
             return ""
         else:
             return None
-    elif k == "type":
+    elif k in {"type_", "repr_"}:
         if verbose:
-            return k
-        else:
-            return None
-    elif k == "str":  # Note: "value" will be pretty-printed using __str__
-        return None
-    elif k == "repr":
-        if verbose:
-            return k
+            return k.rstrip("_")
         else:
             return None
     elif k in {"dec_id", "hex_id"}:
@@ -195,4 +188,6 @@ def _include_info_as(
         else:
             return None
     else:
-        raise ValueError(f"{k} is not an ObjMetadata key: {ObjMetadata.keys()}")
+        raise ValueError(
+            f"{k} is not an ObjMetadata key: {ObjMetadata.__annotations__.keys()}"
+        )
