@@ -1,16 +1,22 @@
-"""Collection of utilities for working with JSON (de)serialization.
+"""Re-expose the builtin `json` module with a more robust/opinionated default for dumps.
 
-This module is meant to be used in a qualified way:
+This module is meant to be used instead of the builtin json module:
 ```python
-import rocq_agent_toolkit_utils as rat_utils
-
-...
-
-rat_utils.json.dumps(...)
+import rocq_agent_toolkit_utils.json as json
 ```
 """
 
 import json as libjson
+from json import (
+    JSONDecodeError,
+    JSONDecoder,
+    JSONEncoder,
+    dump,
+    # Note: we provide a more robust implementation of dumps
+    # dumps
+    load,
+    loads,
+)
 from typing import Any, Literal, overload
 
 from pydantic import BaseModel
@@ -86,3 +92,17 @@ def dumps(
         raise TypeError(
             f"Serialization failure:{rat_utils.objects.info(x, verbose=True)}"
         ) from e
+
+
+__all__ = [
+    "JSONDecodeError",
+    "JSONDecoder",
+    "JSONEncoder",
+    "dump",
+    "dumps",
+    "load",
+    "loads",
+]
+assert set(__all__) == set(libjson.__all__), (
+    f"{__name__} should provide the same symbols as the builtin json module"
+)
