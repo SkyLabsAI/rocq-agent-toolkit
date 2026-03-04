@@ -102,7 +102,7 @@ def eval_options(
 
     def check_tags(regex: re.Pattern[str], default: bool = True) -> bool:
         for t in tags:
-            if regex.search(t):
+            if regex.fullmatch(t):
                 return True
         return False
 
