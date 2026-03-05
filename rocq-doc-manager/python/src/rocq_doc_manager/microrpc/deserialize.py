@@ -95,7 +95,7 @@ class Encoder(json.JSONEncoder, EncoderAPI):
             return {
                 "_ty": type(o).__qualname__,
                 "args": list(map(super().encode, o.args)),
-                "notes": list(getattr(o, "__notes__", [])),
+                "notes": e_notes,
             }
         elif isinstance(o, BaseModel):
             return o.model_dump()
