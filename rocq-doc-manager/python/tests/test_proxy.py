@@ -11,9 +11,8 @@ from rocq_doc_manager.cursor.websocket import (
     CursorDispatcher,
     CursorId,
     WSCursor,
-    decoder,
-    encoder,
 )
+from rocq_doc_manager.microrpc.deserialize import decoder, encoder
 from rocq_doc_manager.microrpc.tunnel import WSMux, WSServer
 from websockets import connect, serve
 

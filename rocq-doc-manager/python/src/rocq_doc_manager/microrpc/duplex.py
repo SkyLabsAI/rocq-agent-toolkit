@@ -6,7 +6,7 @@ from typing import Any
 
 import websockets
 
-from .deserialize import Decoder, EncoderProtocol
+from .deserialize import DecoderAPI, EncoderAPI
 from .dispatcher import Dispatcher
 from .tunnel import Request, Response
 
@@ -25,8 +25,8 @@ class DuplexMux:
         conn: Any,
         *,
         dispatcher: Dispatcher,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
+        encoder: EncoderAPI,
+        decoder: DecoderAPI,
     ) -> None:
         self._conn = conn
         self._dispatcher = dispatcher
