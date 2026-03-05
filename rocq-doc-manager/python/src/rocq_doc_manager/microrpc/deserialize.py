@@ -25,17 +25,17 @@ from __future__ import annotations
 
 import builtins
 import dataclasses
-import importlib
 import json
 import pprint
 import traceback
 import types
 import typing
 from collections.abc import Callable, Sequence
-from types import ModuleType
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
+
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 # TODO: Maybe we could simply derive this entire file using pydantic serialization?
 
@@ -77,6 +77,33 @@ def assert_typevar(
 ) -> typing.TypeVar:
     assert isinstance(p, typing.TypeVar)
     return p
+
+
+class EncoderAPI(Protocol):
+    def encode(self, o: Any) -> Any:
+        pass
+
+
+class Encoder(json.JSONEncoder, EncoderAPI):
+    def default(self, o: Any):
+        if isinstance(o, Exception):
+            return {
+                "_ty": type(o).__qualname__,
+                "args": list(map(super().encode, o.args)),
+                "traceback": traceback.format_tb(o.__traceback__),
+            }
+        elif isinstance(o, BaseModel):
+            return o.model_dump()
+        elif dataclasses.is_dataclass(type(o)):
+            result = dataclasses.asdict(o)
+            assert "_ty" not in result
+            result["_ty"] = type(o).__qualname__
+            return result
+        else:
+            return super().default(o)
+
+
+encoder = Encoder()
 
 
 class DecoderAPI(Protocol):
@@ -261,31 +288,35 @@ decoder = Decoder()
 
 
 def decode_exception(decode, payload, ty, params, env) -> Exception:
+    KNOWN_CUSTOM_EXCEPTION_TYPES: dict[str, type[Exception]] = {
+        rdm_api.Error.__qualname__: rdm_api.Error,
+    }
+
     assert params == []
     match payload:
         case {"_ty": specific_exc_ty, "args": args, "traceback": traceback}:
             assert isinstance(specific_exc_ty, str)
-            assert not specific_exc_ty.startswith("."), (
-                "relative module imports not supported"
-            )
+            e: Exception | None = None
+            e_notes: list[str] = [traceback]
 
-            mod: ModuleType | dict[str, Any]
-            if "." in specific_exc_ty:
-                # Note: explicitly allow errors to propagate to callers
-                mod_name, cls_name = specific_exc_ty.rsplit(".")
-                mod = importlib.import_module(mod_name)
-            else:
-                mod = globals()
+            # 1. Try custom exceptions first, annotating in case of failure
+            if specific_exc_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
+                try:
+                    e = KNOWN_CUSTOM_EXCEPTION_TYPES[specific_exc_ty](*args)
+                except Exception:
+                    e_notes.append(traceback.format_exc())
 
-            maybe_cls = getattr(mod, cls_name)
-            if not (isinstance(maybe_cls, type) and issubclass(maybe_cls, Exception)):
-                raise TypeMismatch(
-                    expected=ty, actual=maybe_cls, infer_expectation=False
-                )
-            cls: type[Exception] = maybe_cls
+            # 2. Gracefully fall back to a plain Exception, annotating if the fall back
+            #    was caused by a failure to use a more specific exception type.
+            if e is None:
+                if specific_exc_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
+                    e_notes.append(f"Fallback to Exception from {specific_exc_ty}")
+                e = Exception(*args)
 
-            e = cls(*args)
-            e.__traceback__ = traceback
+            # 3. Setup traceback/notes & return the error object
+            e.with_traceback(traceback)
+            for note in e_notes:
+                e.add_note(note)
             return e
         case _:
             raise TypeMismatch(
@@ -343,30 +374,3 @@ def ug_decode_exception(payload: Any) -> Exception:
 
 
 unguided_decoder.add_decoder("Exception", ug_decode_exception)
-
-
-class EncoderAPI(Protocol):
-    def encode(self, o: Any) -> Any:
-        pass
-
-
-class Encoder(json.JSONEncoder, EncoderAPI):
-    def default(self, o: Any):
-        if isinstance(o, Exception):
-            return {
-                "_ty": type(o).__qualname__,
-                "args": list(map(super().encode, o.args)),
-                "traceback": traceback.format_tb(o.__traceback__),
-            }
-        elif isinstance(o, BaseModel):
-            return o.model_dump()
-        elif dataclasses.is_dataclass(type(o)):
-            result = dataclasses.asdict(o)
-            assert "_ty" not in result
-            result["_ty"] = type(o).__qualname__
-            return result
-        else:
-            return super().default(o)
-
-
-encoder = Encoder()
