@@ -661,7 +661,7 @@ let output_python_api oc api =
         | Rslt(i) ->
           line "        if isinstance(result, Err):";
           line "            data = %s" (Schema.python_val "result.data" i.err);
-          line "            return Err(result.message, data)"
+          line "            return Err(message=result.message, data=data)"
       in
       line "        return %s" (Schema.python_val "result.result" m.ret)
     in
