@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from functools import wraps
 from types import FunctionType
 from typing import (
@@ -17,21 +16,30 @@ from typing import (
 )
 
 import websockets
+from pydantic import BaseModel, ConfigDict
 
 from .deserialize import Decoder, EncoderProtocol
 from .dispatcher import Dispatcher
 
 
-@dataclass
-class Request:
+class Request(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
     id: int  # This is the JSON-RPC request ID
     method: str
     args: list[Any]
     kwargs: dict[str, Any]
 
 
-@dataclass
-class Response:
+class Response(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
     id: int
     is_exception: bool
     payload: Any

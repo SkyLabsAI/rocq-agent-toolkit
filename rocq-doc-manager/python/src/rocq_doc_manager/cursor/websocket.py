@@ -3,13 +3,12 @@ from __future__ import annotations
 import dataclasses
 import json
 import traceback
-from dataclasses import dataclass
 from typing import (
     Any,
     override,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from rocq_doc_manager.microrpc.dispatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
@@ -27,10 +26,14 @@ from .protocol import (
 )
 
 
-@dataclass(kw_only=True, frozen=True)
-class CursorId:
+class CursorId(BaseModel):
     """Fresh ids used in the websocket RPC. Not to be confused with the integer
     that represents cursors in the JsonRPC API"""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
 
     cursor: int
 
