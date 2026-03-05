@@ -578,10 +578,10 @@ let output_python_api oc api =
   line "from __future__ import annotations";
   line "";
   line "# ruff: noqa: C416 -- unnecessary list comprehension";
-  line "from typing import Any, Literal";
+  line "from typing import Any, Literal, final";
   line "";
   line "from jsonrpc_tp import AsyncProtocol, Err, Error, Resp, SyncProtocol";
-  line "from pydantic import BaseModel, Field";
+  line "from pydantic import BaseModel, ConfigDict, Field";
   line "";
   let exports =
     [api.name; "Err"; "Error"; "Resp"] @
@@ -590,10 +590,18 @@ let output_python_api oc api =
   line "__all__ = [";
   List.iter (line "    %S,") exports;
   line "]";
+  let output_object_config configs =
+    line "    model_config = ConfigDict(";
+    List.iter (fun (k, v) -> line "        %s = %s," k v) configs;
+    line "    )";
+    line ""
+  in
   let output_object (A(O(o))) =
     line "";
     line "";
+    line "@final";
     line "class %s(BaseModel):" o.key.name;
+    output_object_config [("extra", "\"forbid\""); ("frozen", "True")];
     Option.iter (line "    \"\"\"%a.\"\"\"\n" pp_capitalized) o.descr;
     let rec output_fields : type a. a Fields.t -> unit = fun fields ->
       match fields with Nil -> () | Cns(f) ->
