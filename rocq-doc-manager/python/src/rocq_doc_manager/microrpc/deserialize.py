@@ -87,10 +87,15 @@ class EncoderAPI(Protocol):
 class Encoder(json.JSONEncoder, EncoderAPI):
     def default(self, o: Any):
         if isinstance(o, Exception):
+            # Note: we can't easily (de)serialize Traceback objects so we instead
+            # add the formatted traceback as a note.
+            e_notes: list[str] = getattr(o, "__notes__", [])
+            e_notes.extend(traceback.format_tb(o.__traceback__))
+
             return {
                 "_ty": type(o).__qualname__,
                 "args": list(map(super().encode, o.args)),
-                "traceback": traceback.format_tb(o.__traceback__),
+                "notes": list(getattr(o, "__notes__", [])),
             }
         elif isinstance(o, BaseModel):
             return o.model_dump()
@@ -294,27 +299,53 @@ def decode_exception(decode, payload, ty, params, env) -> Exception:
 
     assert params == []
     match payload:
-        case {"_ty": specific_exc_ty, "args": args, "traceback": traceback}:
-            assert isinstance(specific_exc_ty, str)
+        case {
+            "_ty": e_ty,
+            "args": e_args,
+            "notes": e_notes,
+        }:
+
+            def _early_Exception(msg: str) -> Exception:
+                e = Exception(msg)
+                e.add_note(f"e_ty: {repr(e_ty)}")
+                e.add_note(f"e_args: {repr(e_args)}")
+                e.add_note(f"e_notes: {repr(e_notes)}")
+                return e
+
+            # 0. sanity-check serialized data
+            for guard_thunk, msg in [
+                (lambda: isinstance(e_ty, str), "e_ty is not a string"),
+                (lambda: isinstance(e_args, Sequence), "e_args is not a Sequence"),
+                (lambda: isinstance(e_notes, Sequence), "e_notes is not a Sequence"),
+                (
+                    lambda: all(isinstance(note, str) for note in e_notes),
+                    "e_notes is not a Sequence[str]",
+                ),
+            ]:
+                if not guard_thunk():
+                    return _early_Exception(msg)
+
             e: Exception | None = None
-            e_notes: list[str] = [traceback]
 
             # 1. Try custom exceptions first, annotating in case of failure
-            if specific_exc_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
+            if e_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
                 try:
-                    e = KNOWN_CUSTOM_EXCEPTION_TYPES[specific_exc_ty](*args)
+                    e = KNOWN_CUSTOM_EXCEPTION_TYPES[e_ty](*e_args)
                 except Exception:
                     e_notes.append(traceback.format_exc())
 
             # 2. Gracefully fall back to a plain Exception, annotating if the fall back
             #    was caused by a failure to use a more specific exception type.
             if e is None:
-                if specific_exc_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
-                    e_notes.append(f"Fallback to Exception from {specific_exc_ty}")
-                e = Exception(*args)
+                if e_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
+                    # Note: we must have raised an error in (1) after trying to use the more specific type
+                    e_notes.append(f"Fallback to Exception from {e_ty}")
+                e = Exception(*e_args)
 
-            # 3. Setup traceback/notes & return the error object
-            e.with_traceback(traceback)
+            # 3. Setup notes & return the error object
+            #
+            # Note: original traceback is stored in notes
+            assert e is not None
             for note in e_notes:
                 e.add_note(note)
             return e
