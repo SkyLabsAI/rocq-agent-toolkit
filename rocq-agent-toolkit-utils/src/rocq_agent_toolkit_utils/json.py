@@ -67,7 +67,7 @@ class OverridableBestEffortEncoder(JSONEncoder):
                 e_default_override.add_note(f"{qualnm}.default")
                 ordered_override_exceptions.append(e_default_override)
 
-        # 2. As a last restort use self._best_effort & properly chain exceptions
+        # 2. As a last resort use self._best_effort & properly chain exceptions
         if not ordered_override_exceptions:
             return self._best_effort(o)
         else:
