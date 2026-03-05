@@ -19,6 +19,8 @@ import websockets
 from pydantic import BaseModel, ConfigDict
 
 from .deserialize import DecoderAPI, EncoderAPI
+from .deserialize import decoder as default_decoder
+from .deserialize import encoder as default_encoder
 from .dispatcher import Dispatcher
 
 
@@ -120,12 +122,13 @@ class WSServer:
     def __init__(
         self,
         conn: WSConnection,
+        *,
         dispatcher: Dispatcher,
-        encoder: EncoderAPI,
-        decoder: DecoderAPI,
+        encoder: EncoderAPI | None = None,
+        decoder: DecoderAPI | None = None,
     ):
-        self._encoder = encoder
-        self._decoder = decoder
+        self._encoder = encoder if encoder is not None else default_encoder
+        self._decoder = decoder if decoder is not None else default_decoder
         self._conn = conn
         self._dispatch = dispatcher
 
@@ -209,14 +212,14 @@ class WSMux:
     def __init__(
         self,
         conn: WSConnection,
-        encoder: EncoderAPI,
-        decoder: DecoderAPI,
         *,
+        encoder: EncoderAPI | None = None,
+        decoder: DecoderAPI | None = None,
         closed_ok: type[Exception] = Exception,
         closed_err: type[Exception] = Exception,
     ):
-        self._encoder = encoder
-        self._decoder = decoder
+        self._encoder = encoder if encoder is not None else default_encoder
+        self._decoder = decoder if decoder is not None else default_decoder
         self._conn = conn
         self.closed_err_exc = closed_err
         self.closed_ok_exc = closed_ok
