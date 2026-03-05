@@ -44,7 +44,12 @@ def test_run_builds_ws_url_and_headers_and_sends_control_run(
 
     class DummyMux:
         def __init__(
-            self, _conn: Any, *, dispatcher: Any, encoder: Any, decoder: Any
+            self,
+            _conn: Any,
+            *,
+            dispatcher: Any,
+            encoder: Any | None = None,
+            decoder: Any | None = None,
         ) -> None:
             captured["mux_dispatcher"] = dispatcher
             captured["mux_encoder"] = encoder
@@ -130,7 +135,12 @@ def test_run_returns_give_up_on_remote_exception(
 
     class DummyMux:
         def __init__(
-            self, _conn: Any, *, dispatcher: Any, encoder: Any, decoder: Any
+            self,
+            _conn: Any,
+            *,
+            dispatcher: Any,
+            encoder: Any | None = None,
+            decoder: Any | None = None,
         ) -> None:
             return None
 
