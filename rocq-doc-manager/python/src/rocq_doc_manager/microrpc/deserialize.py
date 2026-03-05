@@ -294,7 +294,10 @@ decoder = Decoder()
 
 def decode_exception(decode, payload, ty, params, env) -> Exception:
     KNOWN_CUSTOM_EXCEPTION_TYPES: dict[str, type[Exception]] = {
-        rdm_api.Error.__qualname__: rdm_api.Error,
+        e_ty.__qualname__: e_ty
+        for e_ty in [
+            rdm_api.Error,
+        ]
     }
 
     assert params == []
