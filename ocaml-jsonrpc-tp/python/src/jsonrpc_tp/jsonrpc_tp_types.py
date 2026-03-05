@@ -1,17 +1,20 @@
-from typing import override
+from typing import final, override
 
 from pydantic import BaseModel
 
 
-class Err[T_err](BaseModel):
+@final
+class Err[T_err](BaseModel, frozen=True):
     message: str
     data: T_err
 
 
-class Resp[T_resp](BaseModel):
+@final
+class Resp[T_resp](BaseModel, frozen=True):
     result: T_resp
 
 
+# Note: we could also mark this final
 class Error(Exception):
     """Exception raised in case of protocol error."""
 
