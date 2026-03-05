@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from collections.abc import Awaitable, Callable, Coroutine
 
-from rocq_doc_manager.rocq_cursor_protocol import DelegateRocqCursor, RocqCursor
+from rocq_doc_manager.cursor import DelegateRocqCursor, RocqCursor
 
 from rocq_pipeline.agent.proof.trace import rdm_api
 

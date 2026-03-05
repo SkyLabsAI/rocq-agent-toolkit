@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from rocq_doc_manager import rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_cursor_protocol import RocqCursor
+from rocq_doc_manager.cursor.protocol import RocqCursor
 from rocq_pipeline.trace_cursor import TracingCursor
 
 

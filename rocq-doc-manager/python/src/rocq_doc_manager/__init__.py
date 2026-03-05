@@ -8,8 +8,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from .rocq_cursor import RDMRocqCursor
-from .rocq_cursor_protocol import RocqCursor
+from .cursor.doc_cursor import RDMRocqCursor
+from .cursor.protocol import RocqCursor
 from .rocq_doc_manager import AsyncRocqDocManager, RocqDocManager
 
 

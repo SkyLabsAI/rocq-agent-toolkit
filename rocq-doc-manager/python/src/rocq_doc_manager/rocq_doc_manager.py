@@ -10,8 +10,8 @@ from jsonrpc_tp.jsonrpc_tp_async import AsyncProtocol
 from rocq_dune_util import dune_env_hack, rocq_dune_util
 
 from . import rocq_doc_manager_api as rdm_api
-from .rocq_cursor import RDMRocqCursor
-from .rocq_cursor_protocol import RocqCursor
+from .cursor.doc_cursor import RDMRocqCursor
+from .cursor.protocol import RocqCursor
 from .rocq_doc_manager_api import RocqDocManagerAPI as API
 from .rocq_doc_manager_api import RocqDocManagerAPIAsync as AsyncAPI
 

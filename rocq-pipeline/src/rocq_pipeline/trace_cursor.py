@@ -15,9 +15,7 @@ from observability import get_logger
 from pydantic import BaseModel
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_cursor_protocol import (
-    DelegateRocqCursor,
-)
+from rocq_doc_manager.cursor import DelegateRocqCursor
 
 logger = get_logger("RocqCursor")
 

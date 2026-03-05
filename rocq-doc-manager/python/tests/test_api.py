@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from rocq_doc_manager import AsyncRocqDocManager, RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_cursor import RDMRocqCursor
+from rocq_doc_manager.cursor.doc_cursor import RDMRocqCursor
 
 from .util import RDM_Tests
 
