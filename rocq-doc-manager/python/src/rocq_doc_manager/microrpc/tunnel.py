@@ -18,7 +18,7 @@ from typing import (
 import websockets
 from pydantic import BaseModel, ConfigDict
 
-from .deserialize import Decoder, EncoderProtocol
+from .deserialize import DecoderAPI, EncoderAPI
 from .dispatcher import Dispatcher
 
 
@@ -121,8 +121,8 @@ class WSServer:
         self,
         conn: WSConnection,
         dispatcher: Dispatcher,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
+        encoder: EncoderAPI,
+        decoder: DecoderAPI,
     ):
         self._encoder = encoder
         self._decoder = decoder
@@ -209,8 +209,8 @@ class WSMux:
     def __init__(
         self,
         conn: WSConnection,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
+        encoder: EncoderAPI,
+        decoder: DecoderAPI,
         *,
         closed_ok: type[Exception] = Exception,
         closed_err: type[Exception] = Exception,
