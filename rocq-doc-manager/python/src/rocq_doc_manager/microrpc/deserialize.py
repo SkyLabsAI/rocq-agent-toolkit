@@ -33,7 +33,7 @@ import typing
 from collections.abc import Callable, Sequence
 from typing import Any, Protocol
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, JsonValue, ValidationError
 
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
@@ -80,17 +80,23 @@ def assert_typevar(
 
 
 class EncoderAPI(Protocol):
-    def encode(self, o: Any) -> Any:
+    def encode(self, o: Any) -> str:
         pass
 
 
 class Encoder(json.JSONEncoder, EncoderAPI):
-    def default(self, o: Any):
+    def __init__(self, *args, include_tracebacks: bool = False, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._include_tracebacks = include_tracebacks
+
+    def default(self, o: Any) -> JsonValue:
         if isinstance(o, Exception):
-            # Note: we can't easily (de)serialize Traceback objects so we instead
-            # add the formatted traceback as a note.
-            e_notes: list[str] = getattr(o, "__notes__", [])
-            e_notes.extend(traceback.format_tb(o.__traceback__))
+            e_notes: list[JsonValue] = getattr(o, "__notes__", [])
+
+            if self._include_tracebacks:
+                # Note: we can't easily (de)serialize Traceback objects so we instead
+                # add the formatted traceback as a note.
+                e_notes.extend(traceback.format_tb(o.__traceback__))
 
             return {
                 "_ty": type(o).__qualname__,
@@ -109,6 +115,7 @@ class Encoder(json.JSONEncoder, EncoderAPI):
 
 
 encoder = Encoder()
+logging_encoder = Encoder(include_tracebacks=True)
 
 
 class DecoderAPI(Protocol):
@@ -289,10 +296,7 @@ class Decoder(DecoderAPI):
     #         raise
 
 
-decoder = Decoder()
-
-
-def decode_exception(decode, payload, ty, params, env) -> Exception:
+def logging_decode_exception(decode, payload, ty, params, env) -> Exception:
     KNOWN_CUSTOM_EXCEPTION_TYPES: dict[str, type[Exception]] = {
         e_ty.__qualname__: e_ty
         for e_ty in [
@@ -361,11 +365,9 @@ def decode_exception(decode, payload, ty, params, env) -> Exception:
             )
 
 
-decoder.add_decoders(
-    {
-        Exception: decode_exception,
-    }
-)
+decoder = Decoder()
+logging_decoder = Decoder()
+logging_decoder.add_decoder(Exception, logging_decode_exception)
 
 
 class UnguidedDecoder:
@@ -391,10 +393,7 @@ class UnguidedDecoder:
             self.add_decoder(ty, fn)
 
 
-unguided_decoder = UnguidedDecoder()
-
-
-def ug_decode_exception(payload: Any) -> Exception:
+def ug_logging_decode_exception(payload: Any) -> Exception:
     match payload:
         case {"args": args}:
             return Exception(*args)
@@ -407,4 +406,6 @@ def ug_decode_exception(payload: Any) -> Exception:
             )
 
 
-unguided_decoder.add_decoder("Exception", ug_decode_exception)
+unguided_decoder = UnguidedDecoder()
+unguided_logging_decoder = UnguidedDecoder()
+unguided_decoder.add_decoder(Exception, ug_logging_decode_exception)
