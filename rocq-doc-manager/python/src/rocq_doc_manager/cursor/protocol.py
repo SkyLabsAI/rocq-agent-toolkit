@@ -145,7 +145,7 @@ class RocqCursorProtocolAsync(Protocol):
         count: int,
     ) -> None | rdm_api.Err[rdm_api.StepsError]:
         for cnt in range(count):
-            r = self.run_step()
+            r = await self.run_step()
             if isinstance(r, rdm_api.Err):
                 return rdm_api.Err(
                     message=r.message,
