@@ -14,7 +14,6 @@ class Resp[T_resp](BaseModel, frozen=True):
     result: T_resp
 
 
-# Note: explicitly /not/ final because clients may want derived exception types
 class Error(Exception):
     """Exception raised in case of protocol error."""
 
