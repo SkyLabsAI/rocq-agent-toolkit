@@ -6,7 +6,10 @@ from .deserialize import (
     UnguidedDecoder,
     decoder,
     encoder,
+    logging_decoder,
+    logging_encoder,
     unguided_decoder,
+    unguided_logging_decoder,
 )
 from .dispatcher import Dispatcher, NamespaceDispatcher
 from .duplex import DuplexMux
@@ -24,6 +27,9 @@ __all__ = [
     "WSServer",
     "DuplexMux",
     "decoder",
+    "logging_decoder",
     "encoder",
+    "logging_encoder",
     "unguided_decoder",
+    "unguided_logging_decoder",
 ]
