@@ -34,8 +34,10 @@ class ProofTask:
 # This matches `Proof.`, `Proof with ..`, and `Proof using ..`
 _PROOF_START = re.compile(r"Proof(\s+(using\s|with\s).*|\s*)?\.")
 
-# This detects whether there is an argument to 'Poof'
-_PROOF_TERM = re.compile(r"Proof\s+([^\s].*)\s*\.", flags=re.DOTALL)
+# This detects whether there is an argument to 'Proof'
+# OLD _PROOF_TERM = re.compile(r"Proof\s+([^\s].*)\s*\.", flags=re.DOTALL)
+# NEW_PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)", flags=re.DOTALL)
+_PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)\.\s*$", flags=re.DOTALL)
 
 
 def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
@@ -128,7 +130,8 @@ async def find_tasks(
 
 def my_tagger(task: ProofTask) -> set[str]:
     tags: set[str] = set()
-    numtactics = 0
+    numtactics = 0  # count does not include leftovers
+    numalltactics = 0  # count includes leftovers
     omitted: set[str] = set()
 
     for sentence in task.proof_tactics:
@@ -138,6 +141,11 @@ def my_tagger(task: ProofTask) -> set[str]:
 
         # increment numtactics by adding the identified_tactics according to their multiplicities
         numtactics = numtactics + sum(identified_tactics.values())
+
+        # increment numalltactics by adding the identified_tactics according to their multiplicities, and counting the leftovers as well
+        numalltactics = (
+            numalltactics + sum(identified_tactics.values()) + len(leftovers)
+        )
 
         # add the identified tactics to tags, ignoring entries with non-positive multiplicities
         has_nonpositives = any(value < 1 for value in identified_tactics.values())
@@ -153,6 +161,7 @@ def my_tagger(task: ProofTask) -> set[str]:
         omitted.update(set(leftovers))
 
     tags.add(f"NumTactics={numtactics}")
+    tags.add(f"NumAllTactics={numalltactics}")
 
     tags.add(task.final)
 
