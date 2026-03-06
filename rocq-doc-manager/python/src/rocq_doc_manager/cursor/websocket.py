@@ -1,143 +1,34 @@
 from __future__ import annotations
 
-import dataclasses
 import json
-import traceback
-from dataclasses import dataclass
 from typing import (
     Any,
     override,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from rocq_doc_manager.microrpc.dispatcher import Dispatcher
 from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
 
 from .. import rocq_doc_manager_api as rdm_api
-from ..microrpc.deserialize import (
-    Decoder,
-    EncoderProtocol,
-    TypeMismatch,
-    UnguidedDecoder,
-)
+from ..microrpc.deserialize import decoder, unguided_decoder
 from .protocol import (
     RocqCursor,
     RocqCursorProtocolAsync,
 )
 
 
-@dataclass(kw_only=True, frozen=True)
-class CursorId:
+class CursorId(BaseModel):
     """Fresh ids used in the websocket RPC. Not to be confused with the integer
     that represents cursors in the JsonRPC API"""
 
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
     cursor: int
-
-
-class Encoder(json.JSONEncoder, EncoderProtocol):
-    def default(self, o: Any):
-        if isinstance(o, rdm_api.Error):
-            return {
-                "_ty": "rdm_api.Error",
-                "args": list(map(super().encode, o.args)),
-                "traceback": traceback.format_tb(o.__traceback__),
-            }
-        if isinstance(o, Exception):  # less specific than [rdm_api.Error]
-            return {
-                "_ty": "Exception",
-                "args": list(map(super().encode, o.args)),
-                "traceback": traceback.format_tb(o.__traceback__),
-            }
-        elif isinstance(o, rdm_api.Err):
-            return {"_ty": "rdm_api.Err", "message": o.message, "data": o.data}
-        elif isinstance(o, rdm_api.Resp):
-            return {"_ty": "rdm_api.Resp", "result": o.result}
-        elif isinstance(o, BaseModel):
-            return o.model_dump()
-        elif dataclasses.is_dataclass(type(o)):
-            result = {k.name: getattr(o, k.name) for k in dataclasses.fields(o)}
-            assert "_ty" not in result
-            result["_ty"] = o.__class__.__name__
-            return result
-        else:
-            return super().default(o)
-
-
-encoder = Encoder()
-
-
-decoder = Decoder()
-
-
-def decode_err(decode, payload, ty, params, env) -> rdm_api.Err:
-    assert len(params) == 1
-    data_ty = params[0]
-    match payload:
-        case {"_ty": "rdm_api.Err", "message": message, "data": data}:
-            if not isinstance(message, str):
-                raise TypeMismatch()
-            data = decode(data, data_ty, [], env)
-            return rdm_api.Err(message=message, data=data)
-        case _:
-            raise TypeMismatch()
-
-
-def decode_resp(decode, payload, ty, params, env) -> rdm_api.Resp:
-    assert len(params) == 1
-    result_ty = params[0]
-    match payload:
-        case {"_ty": "rdm_api.Resp", "result": result}:
-            result = decode(result, result_ty, [], env)
-            return rdm_api.Resp(result=result)
-        case _:
-            raise TypeMismatch()
-
-
-def decode_error(decode, payload, ty, params, env) -> rdm_api.Error:
-    assert params == []
-    match payload:
-        case {"_ty": "rdm_api.Error", "args": args, "traceback": traceback}:
-            e = rdm_api.Error(*args)
-            e.__traceback__ = traceback
-            return e
-        case _:
-            raise TypeMismatch()
-
-
-def decode_exception(decode, payload, ty, params, env) -> Exception:
-    assert params == []
-    match payload:
-        case {"_ty": "Exception", "args": args, "traceback": traceback}:
-            e = Exception(*args)
-            e.__traceback__ = traceback
-            return e
-        case _:
-            raise TypeMismatch()
-
-
-decoder.add_decoders(
-    {
-        rdm_api.Err: decode_err,
-        rdm_api.Resp: decode_resp,
-        rdm_api.Error: decode_error,
-        Exception: decode_exception,
-    }
-)
-
-
-unguided_decoder = UnguidedDecoder()
-
-
-def ug_decode_exception(payload: Any) -> Exception:
-    match payload:
-        case {"args": args}:
-            return Exception(*args)
-        case _:
-            raise TypeMismatch()
-
-
-unguided_decoder.add_decoder("Exception", ug_decode_exception)
 
 
 class ClosedOK(rdm_api.Error):

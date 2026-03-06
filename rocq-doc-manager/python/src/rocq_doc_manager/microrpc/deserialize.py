@@ -14,24 +14,62 @@ contains the class' name (which does not need to be unique).
 Types that need custom deserialization logic can register decoding functions in
 `decoders`.
 
+cf. ../cursor/websocket.py for an example use of the encoder/decoder
 """
+
+#####################################################
+### TODO: move this to a centralized utils module ###
+#####################################################
 
 from __future__ import annotations
 
 import builtins
 import dataclasses
+import json
+import pprint
+import traceback
 import types
 import typing
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, JsonValue, ValidationError
+
+from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 # TODO: Maybe we could simply derive this entire file using pydantic serialization?
 
 
-class TypeMismatch(Exception):
-    pass
+def TypeMismatch(
+    *,
+    expected: type,
+    actual: type | Any,
+    infer_expectation: bool = True,
+    notes: str | Sequence[str] | None = None,
+) -> TypeError:
+    e: TypeError
+
+    if infer_expectation:
+        if isinstance(actual, type):
+            e = TypeError(
+                f"expected type {expected.__qualname__} but got: {actual.__qualname__}"
+            )
+        else:
+            e = TypeError(
+                f"expected value of type {expected.__qualname__} but got: {repr(actual)}"
+            )
+    else:
+        e = TypeError(
+            f"expected type {expected.__qualname__} does not match: {repr(actual)}"
+        )
+
+    if notes is not None:
+        if isinstance(notes, str):
+            notes = [notes]
+        for note in notes:
+            e.add_note(note)
+
+    return e
 
 
 def assert_typevar(
@@ -39,6 +77,45 @@ def assert_typevar(
 ) -> typing.TypeVar:
     assert isinstance(p, typing.TypeVar)
     return p
+
+
+class EncoderAPI(Protocol):
+    def encode(self, o: Any) -> str:
+        pass
+
+
+class Encoder(json.JSONEncoder, EncoderAPI):
+    def __init__(self, *args, include_tracebacks: bool = False, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._include_tracebacks = include_tracebacks
+
+    def default(self, o: Any) -> JsonValue:
+        if isinstance(o, Exception):
+            e_notes: list[JsonValue] = getattr(o, "__notes__", [])
+
+            if self._include_tracebacks:
+                # Note: we can't easily (de)serialize Traceback objects so we instead
+                # add the formatted traceback as a note.
+                e_notes.extend(traceback.format_tb(o.__traceback__))
+
+            return {
+                "_ty": type(o).__qualname__,
+                "args": list(map(super().encode, o.args)),
+                "notes": e_notes,
+            }
+        elif isinstance(o, BaseModel):
+            return o.model_dump()
+        elif dataclasses.is_dataclass(type(o)):
+            result = dataclasses.asdict(o)
+            assert "_ty" not in result
+            result["_ty"] = type(o).__qualname__
+            return result
+        else:
+            return super().default(o)
+
+
+encoder = Encoder()
+logging_encoder = Encoder(include_tracebacks=True)
 
 
 class DecoderAPI(Protocol):
@@ -69,7 +146,7 @@ class DecoderAPI(Protocol):
 
     def decode_rec(self, value: Val, ty: Ty, params: Params, env: Env) -> Any:
         """Does the actual decoding work and can be used in registered decoders to
-        perform recursive decoding of subterms. May raise TypeMismatch"""
+        perform recursive decoding of subterms. May raise TypeError"""
         ...
 
     def decode(self, value: Val, ty: Ty) -> Any:
@@ -90,6 +167,9 @@ class Decoder(DecoderAPI):
         params: DecoderAPI.Params,
         env: DecoderAPI.Env,
     ) -> Any:
+        def _TypeMismatch(*, notes: str | Sequence[str] | None = None) -> TypeError:
+            return TypeMismatch(expected=ty, actual=value, notes=notes)
+
         if ty in self.decoders:
             # print(f"decoder found for {ty}")
             return self.decoders[ty](self.decode_rec, value, ty, params[:], env)
@@ -125,27 +205,28 @@ class Decoder(DecoderAPI):
                 # print("-> NoneType")
                 assert params == []
                 if value is not None:
-                    raise TypeMismatch()
+                    raise _TypeMismatch()
                 return value
             case builtins.str | builtins.bool | builtins.int | builtins.float:
                 assert params == []
                 if not isinstance(value, ty):
-                    raise TypeMismatch()
+                    raise _TypeMismatch()
                 return value
             case _ if isinstance(ty, type) and issubclass(ty, BaseModel):
                 # print("-> BaseModel")
                 try:
                     return ty.model_validate(value, strict=True, extra="forbid")
                 except ValidationError as e:
-                    raise TypeMismatch(e.errors()) from e
+                    notes = [pprint.pformat(error) for error in e.errors()]
+                    raise _TypeMismatch(notes=notes) from e
             case _ if dataclasses.is_dataclass(ty):
                 # print("-> DataClassJsonMixin")
                 if not isinstance(value, dict):
-                    raise TypeMismatch()
+                    raise _TypeMismatch()
                 name = value.get("_ty", None)
                 assert isinstance(ty, type)  # to silence type errors about [ty]
                 if not name == ty.__name__:
-                    raise TypeMismatch()
+                    raise _TypeMismatch()
                 del value["_ty"]
                 params_expected = list(map(assert_typevar, ty.__type_params__))
                 assert len(params_expected) == len(params)
@@ -171,13 +252,13 @@ class Decoder(DecoderAPI):
                 # print("-> List")
                 assert len(params) == 1
                 if not isinstance(value, list):
-                    raise TypeMismatch()
+                    raise _TypeMismatch()
                 return [self.decode_rec(val, params[0], [], env) for val in value]
             case builtins.dict:
                 assert len(params) == 2
                 (key_ty, val_ty) = params
                 if not isinstance(value, dict):
-                    raise TypeMismatch()
+                    raise _TypeMismatch()
                 return {
                     self.decode_rec(k, key_ty, [], env): self.decode_rec(
                         v, val_ty, [], env
@@ -191,12 +272,12 @@ class Decoder(DecoderAPI):
                     try:
                         # print(f"trying {o}")
                         return self.decode_rec(value, o, [], env)
-                    except TypeMismatch:
+                    except TypeError:
                         # print(f"failed {o}")
                         continue
-                raise TypeMismatch()
+                raise _TypeMismatch()
             case _:
-                raise TypeMismatch()
+                raise _TypeMismatch()
 
     # Uncomment code below for debug output
 
@@ -210,9 +291,83 @@ class Decoder(DecoderAPI):
     #         result = self.decode_rec_orig(value, ty, params, env)
     #         print(f"result: {repr(result)}")
     #         return result
-    #     except TypeMismatch as e:
+    #     except TypeError as e:
     #         print("type error!")
-    #         raise e from e
+    #         raise
+
+
+def logging_decode_exception(decode, payload, ty, params, env) -> Exception:
+    KNOWN_CUSTOM_EXCEPTION_TYPES: dict[str, type[Exception]] = {
+        e_ty.__qualname__: e_ty
+        for e_ty in [
+            rdm_api.Error,
+        ]
+    }
+
+    assert params == []
+    match payload:
+        case {
+            "_ty": e_ty,
+            "args": e_args,
+            "notes": e_notes,
+        }:
+
+            def _early_Exception(msg: str) -> Exception:
+                e = Exception(msg)
+                e.add_note(f"e_ty: {repr(e_ty)}")
+                e.add_note(f"e_args: {repr(e_args)}")
+                e.add_note(f"e_notes: {repr(e_notes)}")
+                return e
+
+            # 0. sanity-check serialized data
+            for guard_thunk, msg in [
+                (lambda: isinstance(e_ty, str), "e_ty is not a string"),
+                (lambda: isinstance(e_args, Sequence), "e_args is not a Sequence"),
+                (lambda: isinstance(e_notes, Sequence), "e_notes is not a Sequence"),
+                (
+                    lambda: all(isinstance(note, str) for note in e_notes),
+                    "e_notes is not a Sequence[str]",
+                ),
+            ]:
+                if not guard_thunk():
+                    return _early_Exception(msg)
+
+            e: Exception | None = None
+
+            # 1. Try custom exceptions first, annotating in case of failure
+            if e_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
+                try:
+                    e = KNOWN_CUSTOM_EXCEPTION_TYPES[e_ty](*e_args)
+                except Exception:
+                    e_notes.append(traceback.format_exc())
+
+            # 2. Gracefully fall back to a plain Exception, annotating if the fall back
+            #    was caused by a failure to use a more specific exception type.
+            if e is None:
+                if e_ty in KNOWN_CUSTOM_EXCEPTION_TYPES:
+                    # Note: we must have raised an error in (1) after trying to use the more specific type
+                    e_notes.append(f"Fallback to Exception from {e_ty}")
+                e = Exception(*e_args)
+
+            # 3. Setup notes & return the error object
+            #
+            # Note: original traceback is stored in notes
+            assert e is not None
+            for note in e_notes:
+                e.add_note(note)
+            return e
+        case _:
+            raise TypeMismatch(
+                expected=ty,
+                actual=payload,
+                infer_expectation=False,
+                notes="decode_exception from raw payload",
+            )
+
+
+decoder = Decoder()
+logging_decoder = Decoder()
+logging_decoder.add_decoder(Exception, logging_decode_exception)
 
 
 class UnguidedDecoder:
@@ -238,6 +393,19 @@ class UnguidedDecoder:
             self.add_decoder(ty, fn)
 
 
-class EncoderProtocol(Protocol):
-    def encode(self, o: Any) -> Any:
-        pass
+def ug_logging_decode_exception(payload: Any) -> Exception:
+    match payload:
+        case {"args": args}:
+            return Exception(*args)
+        case _:
+            raise TypeMismatch(
+                expected=Exception,
+                actual=payload,
+                infer_expectation=False,
+                notes="ug_decode_exception from raw payload",
+            )
+
+
+unguided_decoder = UnguidedDecoder()
+unguided_logging_decoder = UnguidedDecoder()
+unguided_decoder.add_decoder(Exception, ug_logging_decode_exception)

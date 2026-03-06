@@ -10,12 +10,6 @@ from rocq_doc_manager import RocqCursor
 from rocq_doc_manager.cursor.websocket import (
     CursorDispatcher,
 )
-from rocq_doc_manager.cursor.websocket import (
-    decoder as rdm_decoder,
-)
-from rocq_doc_manager.cursor.websocket import (
-    encoder as rdm_encoder,
-)
 from rocq_doc_manager.microrpc.duplex import DuplexMux
 from rocq_pipeline.agent.base import Agent, TaskResult
 from websockets.exceptions import ConnectionClosed
@@ -134,8 +128,6 @@ class RemoteAgent(Agent):
             mux = DuplexMux(
                 _WebsocketsConn(ws),
                 dispatcher=cursor_dispatcher,
-                encoder=rdm_encoder,
-                decoder=rdm_decoder,
             )
             await mux.start()
 

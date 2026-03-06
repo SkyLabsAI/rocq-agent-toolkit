@@ -11,8 +11,6 @@ from rocq_doc_manager.cursor.websocket import (
     CursorDispatcher,
     CursorId,
     WSCursor,
-    decoder,
-    encoder,
 )
 from rocq_doc_manager.microrpc.tunnel import WSMux, WSServer
 from websockets import connect, serve
@@ -33,18 +31,14 @@ class Test_API(RDM_Tests):
         async def handle(conn):
             server = WSServer(
                 conn,
-                CursorDispatcher({0: rc}),
-                encoder,
-                decoder,
+                dispatcher=CursorDispatcher({0: rc}),
             )
             await server.serve()
 
         async with serve(handle, host="127.0.0.1", port=None) as server:
             (host, port) = list(server.sockets)[0].getsockname()
             async with connect(f"ws://{host}:{port}") as client:
-                mux = WSMux(
-                    client, encoder, decoder, closed_ok=ClosedOK, closed_err=ClosedError
-                )
+                mux = WSMux(client, closed_ok=ClosedOK, closed_err=ClosedError)
                 await mux.start()
                 try:
                     yield WSCursor.create(mux, id)

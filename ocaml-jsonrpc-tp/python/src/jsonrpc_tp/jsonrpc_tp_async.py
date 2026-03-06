@@ -173,7 +173,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
             match code:
                 # Request failed (taken from the LSP protocol)
                 case -32803:
-                    future.set_result(Err(message, data))
+                    future.set_result(Err(message=message, data=data))
                 # Method not found | Invalid params
                 case -32601 | -32602:
                     future.set_exception(Exception(message))
@@ -185,7 +185,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
         elif "result" in response:
             # Normal response for the request.
             result = response.get("result")
-            future.set_result(Resp(result))
+            future.set_result(Resp(result=result))
 
     async def _handle_notification(self, notification: Any) -> None:
         # Notification.

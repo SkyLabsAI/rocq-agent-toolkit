@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from functools import wraps
 from types import FunctionType
 from typing import (
@@ -17,21 +16,32 @@ from typing import (
 )
 
 import websockets
+from pydantic import BaseModel, ConfigDict
 
-from .deserialize import Decoder, EncoderProtocol
+from .deserialize import DecoderAPI, EncoderAPI
+from .deserialize import decoder as default_decoder
+from .deserialize import encoder as default_encoder
 from .dispatcher import Dispatcher
 
 
-@dataclass
-class Request:
+class Request(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
     id: int  # This is the JSON-RPC request ID
     method: str
     args: list[Any]
     kwargs: dict[str, Any]
 
 
-@dataclass
-class Response:
+class Response(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
     id: int
     is_exception: bool
     payload: Any
@@ -112,12 +122,13 @@ class WSServer:
     def __init__(
         self,
         conn: WSConnection,
+        *,
         dispatcher: Dispatcher,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
+        encoder: EncoderAPI | None = None,
+        decoder: DecoderAPI | None = None,
     ):
-        self._encoder = encoder
-        self._decoder = decoder
+        self._encoder = encoder if encoder is not None else default_encoder
+        self._decoder = decoder if decoder is not None else default_decoder
         self._conn = conn
         self._dispatch = dispatcher
 
@@ -201,14 +212,14 @@ class WSMux:
     def __init__(
         self,
         conn: WSConnection,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
         *,
+        encoder: EncoderAPI | None = None,
+        decoder: DecoderAPI | None = None,
         closed_ok: type[Exception] = Exception,
         closed_err: type[Exception] = Exception,
     ):
-        self._encoder = encoder
-        self._decoder = decoder
+        self._encoder = encoder if encoder is not None else default_encoder
+        self._decoder = decoder if decoder is not None else default_decoder
         self._conn = conn
         self.closed_err_exc = closed_err
         self.closed_ok_exc = closed_ok
