@@ -1,6 +1,6 @@
 import tempfile
 
-import rocq_pipeline.task_runner
+import rocq_pipeline.task_runner as RAT
 from rocq_pipeline.agent import AgentBuilder, AutoAgent, ProofAgent
 
 from .util import make_repeated_tasks_str, make_task_str
@@ -8,7 +8,7 @@ from .util import make_repeated_tasks_str, make_task_str
 
 def test_auto() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        result = rocq_pipeline.task_runner.agent_main(
+        retcode = RAT.agent_main(
             AgentBuilder.of_agent(AutoAgent),
             [
                 "--task-json",
@@ -17,12 +17,12 @@ def test_auto() -> None:
                 temp_dir,
             ],
         )
-    assert result
+    assert not retcode
 
 
 def test_failure() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        result = rocq_pipeline.task_runner.agent_main(
+        retcode = RAT.agent_main(
             AgentBuilder.of_agent(ProofAgent),
             [
                 "--task-json",
@@ -31,13 +31,13 @@ def test_failure() -> None:
                 temp_dir,
             ],
         )
-    assert result
+    assert not retcode
 
 
 def test_parallel_tasks() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         num_tasks = 5
-        result = rocq_pipeline.task_runner.agent_main(
+        retcode = RAT.agent_main(
             AgentBuilder.of_agent(AutoAgent),
             [
                 "--task-json",
@@ -51,4 +51,4 @@ def test_parallel_tasks() -> None:
                 f"-j{num_tasks}",
             ],
         )
-    assert result
+    assert not retcode
