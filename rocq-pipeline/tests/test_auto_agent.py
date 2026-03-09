@@ -51,4 +51,4 @@ def test_parallel_tasks() -> None:
                 f"-j{num_tasks}",
             ],
         )
-    assert retcode
+    assert not retcode
