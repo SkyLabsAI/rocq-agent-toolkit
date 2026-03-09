@@ -147,15 +147,8 @@ def run(
 ) -> TaskFile:
     """Filter the tasks in the TaskFile."""
 
-    def norm(ts: list[re.Pattern[str]]) -> list[re.Pattern[str]]:
-        # TODO patterns can't be empty strings, filter them before
-        return [tag for tag in ts if tag != ""]
-
-    with_tags_l = norm(with_tags)
-    without_tags_l = norm(without_tags)
-
     def keep(task: Task) -> bool:
-        return eval_options(task.get_tags(), with_tags_l, without_tags_l, only_tags)
+        return eval_options(task.get_tags(), with_tags, without_tags, only_tags)
 
     filtered_tasks: Iterator[tuple[Project, Task]] = (
         (
