@@ -467,7 +467,7 @@ def run_config(config: RunConfiguration) -> bool:
     return True
 
 
-def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bool:
+def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> int:
     """
     A simple entry point for an agent to be run as a stand-alone file.
 
@@ -492,20 +492,20 @@ def agent_main(agent_builder: AgentBuilder, args: list[str] | None = None) -> bo
         return False
     if agent_args:
         config.agent_builder.add_args(agent_args)
-    return run_config(config)
+    return 0 if run_config(config) else 1
 
 
-def run_ns(args: Namespace, extra_args: list[str] | None = None) -> bool:
+def run_ns(args: Namespace, extra_args: list[str] | None = None) -> int:
     """Assumes that agent is set"""
     config = parse_arguments(args, None)
     if extra_args:
         config.agent_builder.add_args(extra_args)
-    return run_config(config)
+    return 0 if run_config(config) else 1
 
 
-def auto_main() -> bool:
+def auto_main() -> int:
     return agent_main(AgentBuilder.of_agent(AutoAgent))
 
 
-def tactic_main() -> bool:
+def tactic_main() -> int:
     return agent_main(OneShotBuilder())

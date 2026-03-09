@@ -36,5 +36,5 @@ class OracleAgent(ProofAgent):
         return await self.finished(rc)
 
 
-def main() -> bool:
+def main() -> int:
     return agent_main(AgentBuilder.of_agent(OracleAgent))

@@ -388,5 +388,5 @@ def agent_main(agent_builder: AgentBuilder) -> int:
             sys.exit(f"Error: failed with {e}.")
 
 
-def auto_prover():
+def auto_prover() -> int:
     return agent_main(AgentBuilder.of_agent(AutoAgent))
