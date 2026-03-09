@@ -106,5 +106,5 @@ class ToolAgentBuilder(AgentBuilder):
 builder = ToolAgentBuilder()
 
 
-def rat_main() -> bool:
+def rat_main() -> int:
     return RAT.agent_main(builder)

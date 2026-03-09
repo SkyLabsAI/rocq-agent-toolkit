@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import rocq_pipeline.task_runner
+import rocq_pipeline.task_runner as RAT
 from pyroof_search.agent.strategy_agent import StrategyAgent
 from pyroof_search.rocq.strategies import FirstTacticProposer
 from pyroof_search.strategy import Proposer
@@ -60,7 +60,7 @@ def test_strategy_agent_doc_interaction() -> None:
 
         # Run the agent on the test.v file with the test_true lemma
         # The file path is relative to the rocq-pipeline directory
-        result = rocq_pipeline.task_runner.agent_main(
+        retcode = RAT.agent_main(
             agent_builder,
             [
                 "--task-json",
@@ -71,7 +71,7 @@ def test_strategy_agent_doc_interaction() -> None:
         )
 
         # Verify the run succeeded
-        assert result, "agent_main should return True"
+        assert not retcode, "agent_main should return 0"
 
         # Find the output JSONL file
         result_files = list(output_dir.glob("*_results_*.jsonl"))
