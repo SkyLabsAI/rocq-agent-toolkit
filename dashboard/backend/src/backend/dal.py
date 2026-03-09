@@ -334,24 +334,55 @@ def _sync_task_tags(
     return (tags_added, tags_removed)
 
 
-def ingest_task_dataset_from_yaml(
-    session: Session,
-    yaml_content: str,
-) -> dict[str, Any]:
+def _extract_project_task_bundles(payload: Any) -> list[tuple[str, list[dict[str, Any]]]]:
     """
-    Ingest dataset/task definitions from a YAML payload.
-
-    The YAML is expected to contain:
-      - project.name: dataset identifier
-      - tasks: list of task entries with file, locator, optional ground_truth, tags
+    Parse task YAML payload supporting both schema variants:
+    - legacy single-project: {project: {...}, tasks: [...]}
+    - bundled multi-project: {project_bundles: [{project: {...}, tasks: [...]}]}
     """
-    try:
-        payload = yaml.safe_load(yaml_content)
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML payload: {e}") from e
-
     if not isinstance(payload, dict):
         raise ValueError("YAML root must be a mapping")
+
+    if "project_bundles" in payload:
+        raw_bundles = payload.get("project_bundles")
+        if not isinstance(raw_bundles, list):
+            raise ValueError("YAML 'project_bundles' must be a list")
+        if not raw_bundles:
+            raise ValueError("YAML 'project_bundles' must not be empty")
+
+        bundles_by_dataset: dict[str, list[dict[str, Any]]] = {}
+        dataset_order: list[str] = []
+        for bundle_idx, bundle_entry in enumerate(raw_bundles):
+            if not isinstance(bundle_entry, dict):
+                raise ValueError(
+                    f"Project bundle at index {bundle_idx} must be a mapping"
+                )
+
+            project = bundle_entry.get("project")
+            if not isinstance(project, dict):
+                raise ValueError(
+                    f"Missing 'project' mapping in bundle at index {bundle_idx}"
+                )
+
+            dataset_name = project.get("name")
+            if not dataset_name:
+                raise ValueError(
+                    f"Missing 'project.name' in bundle at index {bundle_idx}"
+                )
+            dataset_name_str = str(dataset_name)
+
+            tasks = bundle_entry.get("tasks", [])
+            if not isinstance(tasks, list):
+                raise ValueError(
+                    f"Bundle at index {bundle_idx} has invalid 'tasks' (expected list)"
+                )
+
+            if dataset_name_str not in bundles_by_dataset:
+                bundles_by_dataset[dataset_name_str] = []
+                dataset_order.append(dataset_name_str)
+            bundles_by_dataset[dataset_name_str].extend(tasks)
+
+        return [(name, bundles_by_dataset[name]) for name in dataset_order]
 
     project = payload.get("project")
     if not isinstance(project, dict):
@@ -365,7 +396,16 @@ def ingest_task_dataset_from_yaml(
     if not isinstance(tasks, list):
         raise ValueError("YAML 'tasks' must be a list")
 
-    dataset = get_or_create_dataset(session, name=str(dataset_name))
+    return [(str(dataset_name), tasks)]
+
+
+def _ingest_single_dataset_tasks_from_yaml(
+    session: Session,
+    dataset_name: str,
+    tasks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Ingest one dataset worth of tasks."""
+    dataset = get_or_create_dataset(session, name=dataset_name)
     existing_tasks = list(
         session.exec(select(Task).where(Task.dataset_id == dataset.id)).all()
     )
@@ -428,9 +468,7 @@ def ingest_task_dataset_from_yaml(
         else:
             raise ValueError(f"Task entry at index {idx} has invalid 'tags' type")
 
-        added_count, removed_count = _sync_task_tags(
-            session, existing_task, desired_tags
-        )
+        added_count, removed_count = _sync_task_tags(session, existing_task, desired_tags)
         tags_added += added_count
         tags_removed += removed_count
         if (added_count or removed_count) and not created:
@@ -448,9 +486,7 @@ def ingest_task_dataset_from_yaml(
 
         # Remove all task-tag links for tasks being removed from the dataset.
         existing_links = list(
-            session.exec(
-                select(TaskTagLink).where(TaskTagLink.task_id == task.id)
-            ).all()
+            session.exec(select(TaskTagLink).where(TaskTagLink.task_id == task.id)).all()
         )
         if existing_links:
             session.exec(
@@ -461,9 +497,7 @@ def ingest_task_dataset_from_yaml(
             tags_removed += len(existing_links)
 
         has_task_results = (
-            session.exec(
-                select(TaskResultDB.id).where(TaskResultDB.task_id == task.id)
-            ).first()
+            session.exec(select(TaskResultDB.id).where(TaskResultDB.task_id == task.id)).first()
             is not None
         )
         if has_task_results:
@@ -486,6 +520,48 @@ def ingest_task_dataset_from_yaml(
     }
 
 
+def ingest_task_dataset_from_yaml(
+    session: Session,
+    yaml_content: str,
+) -> dict[str, Any]:
+    """
+    Ingest dataset/task definitions from a YAML payload.
+
+    The YAML can contain either:
+      - legacy single-project shape:
+          project.name + tasks
+      - bundled multi-project shape:
+          project_bundles: [{project.name, tasks}, ...]
+    """
+    try:
+        payload = yaml.safe_load(yaml_content)
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML payload: {e}") from e
+
+    bundles = _extract_project_task_bundles(payload)
+
+    totals = {
+        "tasks_created": 0,
+        "tasks_updated": 0,
+        "tasks_removed": 0,
+        "tags_added": 0,
+        "tags_removed": 0,
+    }
+    dataset_ids: list[str] = []
+    for dataset_name, tasks in bundles:
+        stats = _ingest_single_dataset_tasks_from_yaml(session, dataset_name, tasks)
+        dataset_ids.append(stats["dataset_id"])
+        for key in totals:
+            totals[key] += int(stats[key])
+
+    dataset_id = dataset_ids[0] if len(dataset_ids) == 1 else "multiple"
+    return {
+        "dataset_id": dataset_id,
+        "dataset_ids": dataset_ids,
+        **totals,
+    }
+
+
 def resolve_task_ids_from_yaml(
     session: Session,
     dataset_id: str,
@@ -502,22 +578,22 @@ def resolve_task_ids_from_yaml(
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML payload: {e}") from e
 
-    if not isinstance(payload, dict):
-        raise ValueError("YAML root must be a mapping")
-
-    project = payload.get("project")
-    if not isinstance(project, dict):
-        raise ValueError("Missing 'project' mapping in YAML payload")
-
-    yaml_dataset_name = project.get("name")
-    if yaml_dataset_name and str(yaml_dataset_name) != dataset_id:
-        raise ValueError(
-            f"YAML project.name '{yaml_dataset_name}' does not match dataset '{dataset_id}'"
-        )
-
-    tasks = payload.get("tasks", [])
-    if not isinstance(tasks, list):
-        raise ValueError("YAML 'tasks' must be a list")
+    bundles = _extract_project_task_bundles(payload)
+    if len(bundles) == 1:
+        yaml_dataset_name, tasks = bundles[0]
+        if yaml_dataset_name and yaml_dataset_name != dataset_id:
+            raise ValueError(
+                f"YAML project.name '{yaml_dataset_name}' does not match dataset '{dataset_id}'"
+            )
+    else:
+        tasks = []
+        for bundle_dataset_name, bundle_tasks in bundles:
+            if bundle_dataset_name == dataset_id:
+                tasks.extend(bundle_tasks)
+        if not tasks:
+            raise ValueError(
+                f"YAML contains {len(bundles)} project bundles, none matching dataset '{dataset_id}'"
+            )
 
     dataset = get_dataset_by_name(session, dataset_id)
     if dataset is None:
