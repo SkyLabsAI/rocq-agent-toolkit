@@ -334,7 +334,9 @@ def _sync_task_tags(
     return (tags_added, tags_removed)
 
 
-def _extract_project_task_bundles(payload: Any) -> list[tuple[str, list[dict[str, Any]]]]:
+def _extract_project_task_bundles(
+    payload: Any,
+) -> list[tuple[str, list[dict[str, Any]]]]:
     """
     Parse task YAML payload supporting both schema variants:
     - legacy single-project: {project: {...}, tasks: [...]}
@@ -468,7 +470,9 @@ def _ingest_single_dataset_tasks_from_yaml(
         else:
             raise ValueError(f"Task entry at index {idx} has invalid 'tags' type")
 
-        added_count, removed_count = _sync_task_tags(session, existing_task, desired_tags)
+        added_count, removed_count = _sync_task_tags(
+            session, existing_task, desired_tags
+        )
         tags_added += added_count
         tags_removed += removed_count
         if (added_count or removed_count) and not created:
@@ -486,7 +490,9 @@ def _ingest_single_dataset_tasks_from_yaml(
 
         # Remove all task-tag links for tasks being removed from the dataset.
         existing_links = list(
-            session.exec(select(TaskTagLink).where(TaskTagLink.task_id == task.id)).all()
+            session.exec(
+                select(TaskTagLink).where(TaskTagLink.task_id == task.id)
+            ).all()
         )
         if existing_links:
             session.exec(
@@ -497,7 +503,9 @@ def _ingest_single_dataset_tasks_from_yaml(
             tags_removed += len(existing_links)
 
         has_task_results = (
-            session.exec(select(TaskResultDB.id).where(TaskResultDB.task_id == task.id)).first()
+            session.exec(
+                select(TaskResultDB.id).where(TaskResultDB.task_id == task.id)
+            ).first()
             is not None
         )
         if has_task_results:
