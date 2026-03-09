@@ -33,6 +33,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--with-tag",
         type=escape_compile,
+        dest="with_tag_re",
         action="append",
         default=[],
         nargs="*",
@@ -49,6 +50,7 @@ def mk_parser(parent: Any | None = None) -> Any:
     parser.add_argument(
         "--without-tag",
         type=escape_compile,
+        dest="without_tag_re",
         action="append",
         default=[],
         nargs="*",
@@ -203,8 +205,8 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     result = run(
         arguments.output,
         tasks,
-        flatten(arguments.with_tag) + flatten(arguments.with_tag_re),
-        flatten(arguments.without_tag) + flatten(arguments.without_tag_re),
+        flatten(arguments.with_tag_re),
+        flatten(arguments.without_tag_re),
         arguments.only_tags,
         arguments.limit,
         arguments.random,
