@@ -177,11 +177,6 @@ class Test_API(RDM_Tests):
                 rdm_api.Err,
             )
             await rc_cls.commit(rc, None, include_suffix=True)
-            compile_result = await rc_cls.compile(rc)
-            if should_succeed:
-                assert compile_result.error is None
-            else:
-                assert compile_result.error is not None
 
     # def test_insert_commands_without_intervening_blanks_fails(
     #     self,

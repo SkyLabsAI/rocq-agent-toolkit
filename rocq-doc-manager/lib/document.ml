@@ -399,29 +399,6 @@ let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
   with Sys_error(s) ->
     Error(Format.sprintf "System error: %s." s)
 
-let compile : t -> (unit, string) result * string * string = fun d ->
-  let {file; args; _} = get_backend d in
-  let args = "c" :: args @ [file] in
-  let stdout = file ^ ".stdout" in
-  let stderr = file ^ ".stderr" in
-  let cmd = Filename.quote_command "rocq" ~stdout ~stderr args in
-  let ret =
-    match Unix.system cmd with
-    | Unix.WEXITED(0)   -> Ok(())
-    | Unix.WEXITED(i)   -> Error(Format.sprintf "Exited with code %i." i)
-    | Unix.WSIGNALED(i) -> Error(Format.sprintf "Killed with signal %i." i)
-    | Unix.WSTOPPED(i)  -> Error(Format.sprintf "Stopped by signal %i." i)
-    | exception Unix.Unix_error(e,_,_) ->
-        Error(Format.sprintf "Unix error: %s." (Unix.error_message e))
-  in
-  let collect file =
-    try
-      let contents = In_channel.with_open_text file In_channel.input_all in
-      Sys.remove file; contents
-    with Sys_error(s) -> Format.sprintf "<FAILED TO READ FILE %S: %s>" file s
-  in
-  (ret, collect stdout, collect stderr)
-
 let query : t -> text:string -> (command_data, string) result = fun d ~text ->
   with_rollback d @@ fun _ ->
   Result.map_error fst (insert_command ~ghost:true d ~text)

@@ -111,10 +111,6 @@ class DelegateRocqCursor(RocqCursor):
         )
 
     @override
-    async def compile(self) -> rdm_api.CompileResult:
-        return await self._cursor.compile()
-
-    @override
     async def materialize(self) -> None:
         return await self._cursor.materialize()
 

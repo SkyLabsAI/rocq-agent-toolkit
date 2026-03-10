@@ -124,14 +124,6 @@ API Objects
 - Field `text`: a string.
 - Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
 
-### `CompileResult`
-
-- Description: result of the `compile` method.
-- Field `error`: non-null if success is false (as either `null` or a string).
-- Field `stderr`: a string.
-- Field `stdout`: a string.
-- Field `success`: a boolean.
-
 API Methods
 ------------
 
@@ -173,14 +165,6 @@ API Methods
 - Response payload: a `null` value.
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
-
-### `compile`
-
-- Description: compile the current contents of the file with `rocq compile`.
-- Arguments (in order, or named):
-  - `cursor`: the cursor to perform the operation on (as an integer).
-- Response payload: an instance of the `CompileResult` object.
-- Failure mode: never fails.
 
 ### `contents`
 

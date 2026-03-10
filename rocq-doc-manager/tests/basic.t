@@ -47,7 +47,6 @@
   > run_step [0]
   > non-existent [0]
   > commit [0,null,false,true]
-  > compile [0]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -214,15 +213,6 @@
     "error": { "code": -32601, "message": "Method non-existent not found." }
   }
   { "id": 27, "jsonrpc": "2.0", "result": null }
-  {
-    "id": 28,
-    "jsonrpc": "2.0",
-    "result": {
-      "success": true,
-      "stdout": "nil : forall {A : Type}, list A\n\nnil is template universe polymorphic\nArguments nil {A}%_type_scope\nExpands to: Constructor Corelib.Init.Datatypes.nil\nDeclared in library Corelib.Init.Datatypes, line 319, characters 3-6\n12 < 42 <= 100\n     : Prop\n",
-      "stderr": ""
-    }
-  }
 
   $ cat test.v
   Require Import Stdlib.ZArith.BinInt.
