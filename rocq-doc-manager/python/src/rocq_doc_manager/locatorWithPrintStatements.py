@@ -130,11 +130,15 @@ class FirstLemma(Locator):
             is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
         ):
             suffixes = await rc.doc_suffix()
-            print(f"  Found first match. There are {str(len(suffixes))}, the first one being '{suffixes[0].text}'. And is_proof = {str(is_proof)}.")
+            print(
+                f"  Found first match. There are {str(len(suffixes))}, the first one being '{suffixes[0].text}'. And is_proof = {str(is_proof)}."
+            )
             for cmd in suffixes:
-                print(f"  Visiting suffix '{cmd.text}'. Here, is_proof = {str(is_proof)}.")
+                print(
+                    f"  Visiting suffix '{cmd.text}'. Here, is_proof = {str(is_proof)}."
+                )
                 if cmd.kind != "blanks":
-                    print(f"    Not blanck")
+                    print("    Not blanck")
                     is_proof = False
                 if cmd.kind != "command" or (
                     cmd.kind == "command" and cmd.text.startswith("Proof")
@@ -146,10 +150,10 @@ class FirstLemma(Locator):
                         return False
                     print(f"    Step succeeded. is_proof = {str(is_proof)}.")
                     if cmd.text.startswith("Proof"):
-                        print(f"    Setting is_proof.")
+                        print("    Setting is_proof.")
                         is_proof = True
                 else:
-                    print(f"    Returning True.")
+                    print("    Returning True.")
                     return True
             print(f"    Returning inner isproof: {str(is_proof)}.")
             return is_proof
