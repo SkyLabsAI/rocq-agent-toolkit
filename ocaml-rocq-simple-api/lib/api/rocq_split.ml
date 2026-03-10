@@ -11,8 +11,8 @@ let run_raw : config -> res = fun config ->
 
 type res = (split_data, string * split_error) result
 
-let get_sentences : config -> command list -> Rocq_loc.t option ->
-    sentence list = fun config cmds loc ->
+let get_sentences : config -> command list -> Loc.t option -> sentence list =
+    fun config cmds loc ->
   let with_stream f =
     match config.contents with
     | None           ->

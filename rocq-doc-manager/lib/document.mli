@@ -79,7 +79,7 @@ val file : t -> string
 (** [load_file d] reads the Rocq source file corresponding to [d], and appends
     its contents to the document suffix of [d]. If the file does not exist, or
     cannot be fully parsed, an error is returned. *)
-val load_file : t -> (unit, string * Rocq_loc.t option) result
+val load_file : t -> (unit, string * Loc.t option) result
 
 type sentence = {
   kind : [`Blanks | `Command];

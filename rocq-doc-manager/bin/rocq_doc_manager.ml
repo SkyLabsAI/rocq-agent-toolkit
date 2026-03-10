@@ -156,18 +156,18 @@ let rocq_loc =
     let (line_nb_last, (bol_pos_last, (bp, (ep, ())))) = arg in
     let fname =
       match fname with
-      | None                        -> Rocq_loc.ToplevelInput
-      | Some((dirpath, (file, ()))) -> Rocq_loc.InFile({dirpath; file})
+      | None                        -> Loc.ToplevelInput
+      | Some((dirpath, (file, ()))) -> Loc.InFile({dirpath; file})
     in
-    Rocq_loc.{fname; line_nb; bol_pos; line_nb_last; bol_pos_last; bp; ep}
+    Loc.{fname; line_nb; bol_pos; line_nb_last; bol_pos_last; bp; ep}
   in
   let decode loc =
-    let Rocq_loc.{fname; line_nb; bol_pos; _} = loc in
-    let Rocq_loc.{line_nb_last; bol_pos_last; bp; ep; _} = loc in
+    let Loc.{fname; line_nb; bol_pos; _} = loc in
+    let Loc.{line_nb_last; bol_pos_last; bp; ep; _} = loc in
     let fname =
       match fname with
-      | Rocq_loc.ToplevelInput           -> None
-      | Rocq_loc.InFile({dirpath; file}) -> Some((dirpath, (file, ())))
+      | Loc.ToplevelInput           -> None
+      | Loc.InFile({dirpath; file}) -> Some((dirpath, (file, ())))
     in
     let ret = (line_nb_last, (bol_pos_last, (bp, (ep, ())))) in
     (fname, (line_nb, (bol_pos, ret)))

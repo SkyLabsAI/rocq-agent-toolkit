@@ -172,7 +172,7 @@ let to_unprocessed : Rocq_split.sentence -> unprocessed_item = fun s ->
   | `Blanks     -> {kind = `Blanks ; text}
   | `Command(_) -> {kind = `Command; text}
 
-type loc = Rocq_loc.t option
+type loc = Loc.t option
 
 let load_file : t -> (unit, string * loc) result = fun d ->
   let {file; args; _} = get_backend d in

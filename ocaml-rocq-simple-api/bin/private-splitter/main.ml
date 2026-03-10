@@ -32,7 +32,7 @@ let translate_entry e =
 
 let sentence_split : config:Rocq_split_data.config ->
     add_command:(command -> unit) ->
-    (Names.DirPath.t, string * Rocq_loc.t option) result =
+    (Names.DirPath.t, string * Loc.t option) result =
   fun ~config:{file; args; contents} ~add_command ->
   Flags.quiet := true;
   System.trust_file_cache := true;

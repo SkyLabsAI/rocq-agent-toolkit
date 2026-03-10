@@ -61,13 +61,13 @@ val back_to : toplevel -> sid:StateID.t -> (unit, string) result
 (** {2 Running a Rocq command} *)
 
 type quickfix = {
-  loc : Rocq_loc.t;
+  loc : Loc.t;
   text : string;
 }
 
 type feedback_message = {
   level : Feedback.level;
-  loc : Rocq_loc.t option;
+  loc : Loc.t option;
   quickfix : quickfix list;
   text : string;
 }
@@ -93,7 +93,7 @@ type run_data = {
 }
 
 type run_error = {
-  error_loc : Rocq_loc.t option;
+  error_loc : Loc.t option;
   feedback_messages : feedback_message list;
 }
 
