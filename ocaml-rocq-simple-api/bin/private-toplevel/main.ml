@@ -1,4 +1,4 @@
-open Rocq_toplevel_data
+open Rocq_simple_api_internal.Rocq_toplevel_data
 
 type state = Vernac.State.t
 

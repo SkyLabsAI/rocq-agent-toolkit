@@ -2,4 +2,4 @@
  (name rocq_toplevel)
  (public_name rocq-simple-api.api)
  (wrapped false)
- (libraries rocq_toplevel_data))
+ (libraries rocq_simple_api_internal))

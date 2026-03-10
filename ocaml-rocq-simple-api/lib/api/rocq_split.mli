@@ -43,7 +43,7 @@ type split_data = {
 type split_error = {
   parsed_sentences : sentence list;
   (** Successfully parsed sentences before the error. *)
-  error_loc : Rocq_loc.t option;
+  error_loc : Loc.t option;
   (** Location for the error, if any. *)
 }
 

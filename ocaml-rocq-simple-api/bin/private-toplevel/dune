@@ -2,4 +2,4 @@
  (public_name rocq-simple-api.private.toplevel)
  (package rocq-simple-api)
  (name main)
- (libraries rocq-runtime.toplevel rocq_toplevel_data))
+ (libraries rocq-runtime.toplevel rocq_simple_api_internal))

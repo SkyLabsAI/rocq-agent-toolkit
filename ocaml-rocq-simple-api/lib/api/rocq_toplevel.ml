@@ -1,4 +1,4 @@
-include Rocq_toplevel_data
+include Rocq_simple_api_internal.Rocq_toplevel_data
 
 type toplevel = {
   uid : int;
