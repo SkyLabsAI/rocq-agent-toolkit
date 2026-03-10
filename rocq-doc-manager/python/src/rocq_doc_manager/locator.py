@@ -97,6 +97,17 @@ LocatorParser.register_parser(FirstAdmit.parse)
 
 
 class FirstLemma(Locator):
+    """Finds the lemma or theorem with the given name.
+    The cursor is placed at the **beginning of the proof script for the lemma**.
+
+    The proof starts either:
+    - immediately *before* the `Proof (term).` command -- this is very uncommon.
+    - immediately after the `Proof` command
+    - immediately before the first non-blank interaction.
+    """
+
+    _PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)\.\s*$", flags=re.DOTALL)
+
     def __str__(self) -> str:
         which = f"({self._index})" if self._index != 0 else ""
         if self._style is None:
@@ -124,26 +135,37 @@ class FirstLemma(Locator):
         ) -> bool:
             return kind == "command" and mtch.match(text) is not None
 
-        is_proof = False
         if await rc.goto_first_match(
             is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
         ):
+            # Scan for the `Proof` command following the description of the class.
             for cmd in await rc.doc_suffix():
-                if cmd.kind != "blanks":
-                    is_proof = False
-                if cmd.kind != "command" or (
-                    cmd.kind == "command" and cmd.text.startswith("Proof")
-                ):
+                if cmd.kind == "blanks":
+                    await rc.run_step()
+                    continue
+
+                if cmd.text.startswith("Proof"):
+                    # This is a non-closing form of `Proof`, e.g. `Proof with` or `Proof using`.
+                    # We step over it.
+                    index_before_proof = await rc.cursor_index()
                     run_step_reply = await rc.run_step()
                     if isinstance(run_step_reply, rdm_api.Err):
                         logger.warning(f"RocqCursor.run_step failed: {run_step_reply}")
-                        return False
-                    if cmd.text.startswith("Proof"):
-                        is_proof = True
-                else:
+                        # Even if the step failed, we still found the match.
+                    if (await rc.current_goal()) is None:
+                        # print("Proof closed goal! Reverting")
+                        # If evaluating the `Proof` closed the goal, then we need
+                        # to backtrack.
+                        await rc.revert_before(erase=False, index=index_before_proof)
                     return True
-            return is_proof
-        return is_proof
+                else:
+                    # This is an interaction that is not a `Proof` command, so we assume that
+                    # it is the start of the proof script and we do not step over it.
+                    # print("Proof without `Proof` command")
+                    return True
+            return True
+
+        return False
 
     @staticmethod
     def parse(s: str) -> FirstLemma:
