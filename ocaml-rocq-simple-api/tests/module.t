@@ -19,43 +19,50 @@
   {
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module foo started" }
-    ]
+    ],
+    "synterp_ast": "synterp:DefineModule"
   }
   [0] 2 > run 0 "Definition a := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.a" ] },
-    "feedback_messages": [ { "level": "info", "text": "a is defined" } ]
+    "feedback_messages": [ { "level": "info", "text": "a is defined" } ],
+    "synterp_ast": "synpure:Definition"
   }
   [0] 3 > run 0 "Module bar."
   {
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module bar started" }
-    ]
+    ],
+    "synterp_ast": "synterp:DefineModule"
   }
   [0] 4 > run 0 "Definition b := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.bar.b" ] },
-    "feedback_messages": [ { "level": "info", "text": "b is defined" } ]
+    "feedback_messages": [ { "level": "info", "text": "b is defined" } ],
+    "synterp_ast": "synpure:Definition"
   }
   [0] 5 > run 0 "End bar."
   {
     "feedback_messages": [
       { "level": "info", "text": "Module bar is defined" }
-    ]
+    ],
+    "synterp_ast": "synterp:EndSegment"
   }
   [0] 6 > run 0 "Section junk."
-  {}
+  { "synterp_ast": "synterp:BeginSection" }
   [0] 7 > run 0 "Definition c := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.c" ] },
-    "feedback_messages": [ { "level": "info", "text": "c is defined" } ]
+    "feedback_messages": [ { "level": "info", "text": "c is defined" } ],
+    "synterp_ast": "synpure:Definition"
   }
   [0] 8 > run 0 "End junk."
-  {}
+  { "synterp_ast": "synterp:EndSegment" }
   [0] 9 > run 0 "End foo."
   {
     "feedback_messages": [
       { "level": "info", "text": "Module foo is defined" }
-    ]
+    ],
+    "synterp_ast": "synterp:EndSegment"
   }
   [0] 10 > [EOF]

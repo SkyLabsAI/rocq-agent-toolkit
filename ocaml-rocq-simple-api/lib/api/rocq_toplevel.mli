@@ -89,6 +89,7 @@ type proof_state = {
 type run_data = {
   globrefs_diff : globrefs_diff;
   feedback_messages : feedback_message list;
+  synterp_ast : Rocq_vernac_entry.command;
   proof_state : proof_state option;
 }
 

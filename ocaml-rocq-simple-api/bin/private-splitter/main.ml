@@ -1,4 +1,4 @@
-module Rocq_split_data = Rocq_simple_api_internal.Rocq_split_data
+open Rocq_simple_api_internal
 
 let dirpath_of_file file =
   let log_dir =
@@ -14,23 +14,6 @@ let parse stream =
   let mode = Some (Synterp.get_default_proof_mode ()) in
   let cmd = Procq.Entry.parse (Pvernac.main_entry mode) stream in
   Option.map (Synterp.synterp_control ~intern:Vernacinterp.fs_intern) cmd
-
-let translate_entry e =
-  let open Rocq_split_data in
-  match e with
-  | Synterp.EVernacNoop -> EVernacNoop
-  | Synterp.EVernacNotation(_) -> EVernacNotation
-  | Synterp.EVernacBeginSection(i) -> EVernacBeginSection(i)
-  | Synterp.EVernacEndSegment(i) -> EVernacEndSegment(i)
-  | Synterp.EVernacRequire(_) -> EVernacRequire
-  | Synterp.EVernacImport(_) -> EVernacImport
-  | Synterp.EVernacDeclareModule(e,i,_,_) -> EVernacDeclareModule(e,i)
-  | Synterp.EVernacDefineModule(e,i,_,_,_,_) -> EVernacDefineModule(e,i)
-  | Synterp.EVernacDeclareModuleType(i,_,_,_,_) -> EVernacDeclareModuleType(i)
-  | Synterp.EVernacInclude(_) -> EVernacInclude
-  | Synterp.EVernacSetOption(_) -> EVernacSetOption
-  | Synterp.EVernacLoad(_) -> EVernacLoad
-  | Synterp.EVernacExtend(_) -> EVernacExtend
 
 let sentence_split : config:Rocq_split_data.config ->
     add_command:(command -> unit) ->
@@ -65,15 +48,10 @@ let sentence_split : config:Rocq_split_data.config ->
   let stream = Procq.Parsable.make ~loc stream in
   let rec loop () =
     match parse stream with
-    | None                -> ()
-    | Some(CAst.{loc; v}) ->
-    let v =
-      let open Vernacexpr in
-      match v.expr with
-      | VernacSynPure(e) -> VernacSynPure(e)
-      | VernacSynterp(e) -> VernacSynterp(translate_entry e)
-    in
-    add_command (CAst.make ?loc v); loop ()
+    | None    -> ()
+    | Some(c) ->
+    add_command (Rocq_vernac_entry.of_vernac_control_entry c);
+    loop ()
   in
   loop ();
   Ok(dirpath)

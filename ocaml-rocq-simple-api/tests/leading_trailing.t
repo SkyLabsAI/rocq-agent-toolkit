@@ -39,6 +39,7 @@
   {}
   [0] 1 > run 0 "Goal 0 = 0."
   {
+    "synterp_ast": "synpure:Definition",
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
@@ -49,6 +50,7 @@
   {}
   [0] 2 > run 0 "Proof."
   {
+    "synterp_ast": "synpure:Proof",
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
@@ -67,23 +69,32 @@
   {}
   [0] 3 > run 0 "-"
   {
+    "synterp_ast": "synpure:Bullet",
     "proof_state": {
       "unfocused_goals": [ 0 ],
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   [0] 4 > run 0 "reflexivity."
-  { "proof_state": { "unfocused_goals": [ 0 ] } }
+  {
+    "synterp_ast": "synterp:Extend",
+    "proof_state": { "unfocused_goals": [ 0 ] }
+  }
   [0] 5 > run 0 "Qed."
-  { "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm" ] } }
+  {
+    "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm" ] },
+    "synterp_ast": "synpure:EndProof"
+  }
   [0] 6 > run 0 "Goal 0 = 0."
   {
+    "synterp_ast": "synpure:Definition",
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   [0] 7 > run 0 "Proof."
   {
+    "synterp_ast": "synpure:Proof",
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
@@ -103,7 +114,7 @@
     }
   }
   [0] 8 > run 0 "1: reflexivity."
-  { "proof_state": {} }
+  { "synterp_ast": "synterp:Extend", "proof_state": {} }
   [0] 9 > run 0 "1:{ "
   Error: while processing the command.
   Trailing text after command: " ".
@@ -204,7 +215,10 @@
     ]
   }
   [0] 9 > run 0 "Qed."
-  { "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm0" ] } }
+  {
+    "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm0" ] },
+    "synterp_ast": "synpure:EndProof"
+  }
   [0] 13 > run 0 "  Locate nat."
   Error: while processing the command.
   Leading text before command: "  ".

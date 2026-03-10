@@ -12,20 +12,25 @@
 
   $ cat commands.txt | rocq-simple-api.toplevel
   [0] 1 > run 0 "Section test."
-  {}
+  { "synterp_ast": "synterp:BeginSection" }
   [0] 2 > run 0 "Context (n : nat)."
-  { "feedback_messages": [ { "level": "info", "text": "n is declared" } ] }
+  {
+    "feedback_messages": [ { "level": "info", "text": "n is declared" } ],
+    "synterp_ast": "synpure:Context"
+  }
   [0] 3 > run 0 "Definition get := n."
   {
     "globrefs_diff": { "added_constants": [ "Top.get" ] },
-    "feedback_messages": [ { "level": "info", "text": "get is defined" } ]
+    "feedback_messages": [ { "level": "info", "text": "get is defined" } ],
+    "synterp_ast": "synpure:Definition"
   }
   [0] 4 > run 0 "End test."
-  {}
+  { "synterp_ast": "synterp:EndSegment" }
   [0] 5 > run 0 "Check get."
   {
     "feedback_messages": [
       { "level": "notice", "text": "get\n     : nat -> nat" }
-    ]
+    ],
+    "synterp_ast": "synpure:CheckMayEval"
   }
   [0] 6 > [EOF]

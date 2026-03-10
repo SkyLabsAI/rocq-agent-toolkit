@@ -335,10 +335,9 @@ let command_data =
     API.Fields.nil
   in
   let open Rocq_toplevel in
-  let encode (globrefs_diff, (feedback_messages, (proof_state, ()))) =
-    {globrefs_diff; feedback_messages; proof_state}
-  in
-  let decode {globrefs_diff; feedback_messages; proof_state} =
+  let encode _ = assert false in
+  let decode {globrefs_diff; feedback_messages; synterp_ast; proof_state} =
+    ignore synterp_ast; (* TODO *)
     (globrefs_diff, (feedback_messages, (proof_state, ())))
   in
   API.declare_object api ~name:"CommandData"

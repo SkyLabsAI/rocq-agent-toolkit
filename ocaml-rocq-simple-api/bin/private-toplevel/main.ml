@@ -1,4 +1,5 @@
-open Rocq_simple_api_internal.Rocq_toplevel_data
+open Rocq_simple_api_internal
+open Rocq_toplevel_data
 
 type state = Vernac.State.t
 
@@ -174,7 +175,8 @@ let run state off text =
         Some({given_up_goals; shelved_goals; unfocused_goals; focused_goals})
       in
       let feedback_messages = Feed.collect feedback_filter in
-      {globrefs_diff; feedback_messages; proof_state}
+      let synterp_ast = Rocq_vernac_entry.of_vernac_control vernac in
+      {globrefs_diff; feedback_messages; synterp_ast; proof_state}
     in
     (new_state, Ok(data))
   with e ->
