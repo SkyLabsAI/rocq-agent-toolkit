@@ -59,6 +59,7 @@ async def amain(args: list[str]) -> None:
 
     async with rc_sess(
         file,
+        rocq_args="dune",
         cwd=file.parent,
         dune=True,
         load_file=True,

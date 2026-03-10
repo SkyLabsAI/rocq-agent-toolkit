@@ -81,6 +81,12 @@ async def rc_sess(
 
     @param file_path will be interpreted as relative to the current working directory
       regardless of the value of `cwd`.
+    @param rocq_args the arguments to the rocq.
+      - list[str] is the list of command line arguments
+      - None should not be used (except as the default)
+      - "dune" will look for a dune project and ask dune for the arguments, failing
+        if no dune project exists.
+      - "auto" will attempt dune and fall back to [] *if there is no dune project*.
     """
     the_args: list[str] | None
     if isinstance(rocq_args, str):
