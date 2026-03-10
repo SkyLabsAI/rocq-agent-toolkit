@@ -209,14 +209,6 @@ val contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string
 val commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool
   -> t -> (unit, string) result
 
-(** [compile d] attempts to run the Rocq compiler on the file corresponding to
-    the document [d], ignoring any uncommitted changes. The return value holds
-    a triple [(res, stdout, stderr)], where [res] indicates the success of the
-    operation, with a short error message describing the status with which the
-    compilation process terminated. The output of the process is also given in
-    [stdout] and [stderr]. *)
-val compile : t -> (unit, string) result * string * string
-
 (** [query d ~text] runs the command [text] at the cursor in document [d]. The
     cursor is not moved, and the command is not recorded in the document. Note
     also that the Rocq state is rolled back, to undo any potential side-effect

@@ -11,7 +11,6 @@ __all__ = [
     "Err",
     "Error",
     "Resp",
-    "CompileResult",
     "SuffixItem",
     "PrefixItem",
     "StepsError",
@@ -239,26 +238,6 @@ class SuffixItem(BaseModel):
     )
 
 
-class CompileResult(BaseModel):
-    """Result of the `compile` method."""
-
-    error: str | None = Field(
-        kw_only=True,
-        default=None,
-        description="non-null if success is false",
-    )
-    stderr: str = Field(
-        kw_only=True,
-    )
-    stdout: str = Field(
-        kw_only=True,
-    )
-    success: bool = Field(
-        kw_only=True,
-        default=False,
-    )
-
-
 class RocqDocManagerAPI:
     """Main API class."""
 
@@ -321,18 +300,6 @@ class RocqDocManagerAPI:
             data = None
             return Err(result.message, data)
         return None
-
-    def compile(
-        self,
-        cursor: int,
-    ) -> CompileResult:
-        """Compile the current contents of the file with `rocq compile`."""
-        result = self._rpc.raw_request(
-            "compile",
-            [cursor],
-        )
-        assert not isinstance(result, Err)
-        return CompileResult.model_validate(result.result)
 
     def contents(
         self,
@@ -705,18 +672,6 @@ class RocqDocManagerAPIAsync:
             data = None
             return Err(result.message, data)
         return None
-
-    async def compile(
-        self,
-        cursor: int,
-    ) -> CompileResult:
-        """Compile the current contents of the file with `rocq compile`."""
-        result = await self._rpc.raw_request(
-            "compile",
-            [cursor],
-        )
-        assert not isinstance(result, Err)
-        return CompileResult.model_validate(result.result)
 
     async def contents(
         self,

@@ -537,39 +537,6 @@ let _ =
   let res = Document.commit ?file ~include_ghost ~include_suffix d in
   Result.map_error (fun s -> (s, ())) res
 
-let compile_result =
-  let fields =
-    API.Fields.add ~name:"success" S.bool @@
-    API.Fields.add ~name:"stdout" S.string @@
-    API.Fields.add ~name:"stderr" S.string @@
-    API.Fields.add ~name:"error" ~descr:"non-null if success is false"
-      S.(nullable string) @@
-    API.Fields.nil
-  in
-  let encode (success, (stdout, (stderr, (error, ())))) =
-    let ret =
-      match (success, error) with
-      | (true , None   ) -> Ok(())
-      | (true , Some(_)) -> assert false
-      | (false, Some(e)) -> Error(e)
-      | (false, None   ) -> assert false
-    in
-    (ret, stdout, stderr)
-  in
-  let decode (ret, stdout, stderr) =
-    match ret with
-    | Ok(())       -> (true , (stdout, (stderr, (None, ()))))
-    | Error(error) -> (false, (stdout, (stderr, (Some(error), ()))))
-  in
-  API.declare_object api ~name:"CompileResult"
-    ~descr:"result of the `compile` method" ~encode ~decode fields
-
-let _ =
-  declare ~name:"compile" ~descr:"compile the current contents of \
-    the file with `rocq compile`" ~args:A.nil
-    ~ret:S.(obj compile_result) @@ fun d () ->
-  Document.compile d
-
 let _ =
   let args = A.add ~name:"text" ~descr:"text of the query" S.string A.nil in
   declare_full ~name:"query" ~descr:"runs the given query at \

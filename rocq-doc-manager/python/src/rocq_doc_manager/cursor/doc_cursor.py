@@ -74,10 +74,6 @@ class RDMRocqCursor(RocqCursor):
         )
 
     @override
-    async def compile(self) -> rdm_api.CompileResult:
-        return await self._rdm.compile(self._cursor)
-
-    @override
     async def cursor_index(self) -> int:
         return await self._rdm.cursor_index(self._cursor)
 
