@@ -1,3 +1,5 @@
+module Rocq_split_data = Rocq_simple_api_internal.Rocq_split_data
+
 let dirpath_of_file file =
   let log_dir =
     try Loadpath.logical (Loadpath.find_load_path (Filename.dirname file))

@@ -12,7 +12,6 @@
  (synopsis "Collection of process-isolated Rocq APIs")
  (depends
   rocq-core
-  rocq-loc
   yojson
   ppx_deriving_yojson))
 

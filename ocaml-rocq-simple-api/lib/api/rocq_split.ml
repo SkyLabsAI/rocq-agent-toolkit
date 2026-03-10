@@ -1,4 +1,4 @@
-include Rocq_split_data
+include Rocq_simple_api_internal.Rocq_split_data
 
 let run_raw : config -> res = fun config ->
   let prog = "rocq-simple-api.private.splitter" in
