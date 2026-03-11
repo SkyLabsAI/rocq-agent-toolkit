@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from observability import get_logger
 from opentelemetry.instrumentation.grpc.filters import Callable
 from pydantic import BaseModel

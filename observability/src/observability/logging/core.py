@@ -6,7 +6,6 @@ OpenTelemetry integration for trace correlation.
 """
 
 import inspect
-import json
 import logging
 import os
 import socket
@@ -26,6 +25,8 @@ try:
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
+
+import rocq_agent_toolkit_utils.json as json
 
 
 class StructuredLogger:
@@ -145,27 +146,38 @@ class StructuredLogger:
         # Safe serialization (avoid crashes on non-JSON-serializable objects)
         # ------------------------------------------------------------------
 
+        # Use a best effort serializer utility & a dummy log entry in case of failure
         try:
             log_json = json.dumps(log_entry)
-        except (TypeError, OverflowError) as e:
-            # Log serialization error once without raising (no exc_info to avoid loops)
-            self.logger.error(
-                f"Failed to serialize log entry: {e}. Retrying with safe fallback.",
-                exc_info=False,
-            )
+        except Exception as e:
+            # avoid crashing if logging fails -- but try hard to log something
+            msg = "Log serialization failed"
 
             try:
-                # Fallback: convert problematic objects to strings
-                log_json = json.dumps(log_entry, default=str)
-            except Exception as final_e:
-                # Final fallback: minimal JSON payload to ensure log emission
+                self.logger.error(
+                    f"{msg}: {str(e)}",
+                    exc_info=False,
+                )
+            except Exception as e_logger:
+                try:
+                    self.logger.critical(
+                        "LOG BACKEND FAILURE",
+                        exc_info=False,
+                    )
+                    self.logger.critical(
+                        str(e_logger),
+                        exc_info=False,
+                    )
+                except Exception:
+                    pass
+            finally:
                 log_json = json.dumps(
                     {
                         "timestamp": time.time(),
                         "level": "CRITICAL",
-                        "message": "Log serialization failed completely",
+                        "message": msg,
                         "logger": self.name,
-                        "error": str(final_e),
+                        "error": e,
                     }
                 )
 

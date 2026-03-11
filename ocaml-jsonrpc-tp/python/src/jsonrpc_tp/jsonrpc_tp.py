@@ -1,9 +1,10 @@
-import json
 import subprocess
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import IO, Any, Protocol
+
+import rocq_agent_toolkit_utils.json as json
 
 from .jsonrpc_tp_types import Err, Error, Resp
 

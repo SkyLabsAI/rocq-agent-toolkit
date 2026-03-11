@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 import traceback
 from dataclasses import dataclass
 from typing import (
@@ -9,6 +8,7 @@ from typing import (
     override,
 )
 
+import rocq_agent_toolkit_utils.json as json
 from pydantic import BaseModel
 
 from rocq_doc_manager.microrpc.dispatcher import Dispatcher

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import wraps
@@ -16,6 +15,7 @@ from typing import (
     overload,
 )
 
+import rocq_agent_toolkit_utils.json as json
 import websockets
 
 from .deserialize import Decoder, EncoderProtocol

@@ -1,7 +1,6 @@
 from __future__ import annotations  # noqa:I001
 
 import asyncio
-import json
 from pathlib import Path
 from typing import (
     Any,
@@ -9,6 +8,8 @@ from typing import (
 )
 from collections.abc import Awaitable
 from collections.abc import Callable
+
+import rocq_agent_toolkit_utils.json as json
 
 from .jsonrpc_tp_types import Err, Error, Resp
 

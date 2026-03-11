@@ -1,11 +1,11 @@
 import argparse
-import json
 import traceback
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
 
+import rocq_agent_toolkit_utils.json as json
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import rocq_args_for

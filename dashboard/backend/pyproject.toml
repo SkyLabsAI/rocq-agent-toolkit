@@ -19,11 +19,15 @@ dependencies = [
     "asyncpg>=0.30.0",
     "boto3>=1.34.0",
     "types-pyyaml>=6.0.12.20250915",
+    "rocq-agent-toolkit-utils",
 ]
 
 
 [project.scripts]
 start-dev = "backend.main:start"
+
+[tool.uv.sources]
+rocq-agent-toolkit-utils = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/backend"]
@@ -61,5 +65,5 @@ lint_ci = "ruff check"
 format_ci = "ruff format --check"
 reformat = "ruff format"
 typecheck_ci = "mypy ."
-test_ci = "pytest"
-precommit = "task lint_ci --fix; task reformat; task typecheck_ci"
+test_ci = "pytest tests/"
+precommit = "task lint_ci --fix; task reformat; task typecheck_ci; task test_ci"

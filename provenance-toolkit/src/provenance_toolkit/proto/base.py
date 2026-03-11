@@ -5,10 +5,11 @@ cf. __init__.py for more details."""
 from __future__ import annotations
 
 import hashlib
-import json
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, Protocol, final, runtime_checkable
+
+import rocq_agent_toolkit_utils.json as json
 
 
 @runtime_checkable

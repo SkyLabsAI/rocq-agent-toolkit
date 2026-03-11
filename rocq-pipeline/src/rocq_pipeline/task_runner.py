@@ -1,4 +1,3 @@
-import json
 import os
 import traceback
 import uuid
@@ -8,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import rocq_agent_toolkit_utils.json as json
 from dotenv import load_dotenv
 from observability import (
     ObservabilityConfig,

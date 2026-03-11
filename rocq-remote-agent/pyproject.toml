@@ -13,6 +13,7 @@ dependencies = [
     "observability",
     "httpx>=0.28.1",
     "websockets>=14.3",
+    "rocq-agent-toolkit-utils",
 ]
 
 [project.scripts]
@@ -23,6 +24,7 @@ rocq-doc-manager = { workspace = true }
 rocq-pipeline = { workspace = true }
 brick-agents = { workspace = true }
 observability = { workspace = true }
+rocq-agent-toolkit-utils = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.9.5,<0.10.0"]

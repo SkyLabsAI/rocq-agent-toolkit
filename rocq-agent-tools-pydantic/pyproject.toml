@@ -12,13 +12,31 @@ dependencies = [
     "pydantic-ai>=1.5.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=0.24.0",
+    "rocq-agent-toolkit-utils",
     "rocq-doc-manager",
     "rocq-pipeline", # << Should not be strictly necessary
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "pytest-asyncio>=0.24.0",
+    "black>=23.7.0,<24",
+    "isort>=5.12.0,<6",
+    "flake8>=6.0.0,<7",
+    "mypy>=1.18.2,<2",
+#    "types-pyyaml>=6.0.12.20250915,<7",
+#    "types-jmespath>=1.0.2.20250809,<2",
+    "ruff>=0.14.4",
+    "taskipy>=1.14.1",
+    "cram>=0.7",
+    "hypothesis>=6.148.7",
 ]
 
 [tool.uv.sources]
 rocq-doc-manager = { workspace = true }
 rocq-pipeline = { workspace = true }
+rocq-agent-toolkit-utils = { workspace = true }
 
 [project.scripts]
 tool-tester = "rocq_agent_tools_pydantic.tool_tester:main"
@@ -45,19 +63,3 @@ test_ocaml_ci = "pytest"
 cram_ocaml_ci = "cram tests/*.t"
 # TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
 precommit = "task lint_ci --fix; task reformat; task typecheck_ci; task test_ocaml_ci; task cram_ocaml_ci"
-
-[dependency-groups]
-dev = [
-    "pytest>=8.4.2,<9",
-    "pytest-asyncio>=0.24.0",
-    "black>=23.7.0,<24",
-    "isort>=5.12.0,<6",
-    "flake8>=6.0.0,<7",
-    "mypy>=1.18.2,<2",
-#    "types-pyyaml>=6.0.12.20250915,<7",
-#    "types-jmespath>=1.0.2.20250809,<2",
-    "ruff>=0.14.4",
-    "taskipy>=1.14.1",
-    "cram>=0.7",
-    "hypothesis>=6.148.7",
-]
