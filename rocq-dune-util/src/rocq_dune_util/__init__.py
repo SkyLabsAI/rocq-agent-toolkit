@@ -13,6 +13,7 @@ from .rocq_dune_util import (
     dune_build,
     dune_env_hack,
     dune_sourceroot,
+    in_dune_project,
     rocq_args_for,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "dune_build",
     "dune_env_hack",
     "dune_sourceroot",
+    "in_dune_project",
     "rocq_args_for",
 ]

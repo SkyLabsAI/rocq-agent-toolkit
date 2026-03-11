@@ -55,6 +55,14 @@ def dune_sourceroot(*, cwd: str | Path | None = None) -> Path:
     raise AssertionError("Unreachable code: no DUNE_SOURCEROOT variable")
 
 
+def in_dune_project(*, cwd: str | Path | None = None) -> bool:
+    try:
+        dune_sourceroot(cwd=cwd)
+        return True
+    except DuneError:
+        return False
+
+
 def _parse_target(target: str) -> tuple[Path, str] | Path:
     if isinstance(target, Path):
         return Path(target)
