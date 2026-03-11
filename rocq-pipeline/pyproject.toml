@@ -136,13 +136,16 @@ cmd = "true"
 help = "codegen -> style -> typecheck -> test_ocaml"
 [tool.taskipy.tasks.pre_check_style]
 cmd = "task codegen"
-help = "pre-task hook: codegen must succeed before task check_style can run"
+help = "codegen must succeed before task check_style can run"
 [tool.taskipy.tasks.pre_style]
 cmd = "task codegen"
-help = "pre-task hook: codegen must succeed before task style can run"
+help = "codegen must succeed before task style can run"
 [tool.taskipy.tasks.pre_typecheck]
 cmd = "task check_style"
-help = "pre-task hook: check_style must succeed before task typecheck can run"
+help = "check_style must succeed before task typecheck can run"
+[tool.taskipy.tasks.pre_test_ocaml]
+cmd = "task typecheck"
+help = "typecheck must succeed before task test_ocaml can run"
 
 ## Main Tasks w/out Pre-Hooks
 [tool.taskipy.tasks.__RAW_ENTRYPOINTS__]
@@ -164,8 +167,8 @@ help = "run typecheckers"
 cmd = "task pytest_ocaml; task cram_ocaml"
 help = "run tests (note: toolchain must be installed)"
 
-## Task Details
-[tool.taskipy.tasks.__DETAILS__]
+## Tasks
+[tool.taskipy.tasks.__TASKS__]
 cmd = "true"
 help = "constituent tasks used by entrypoints"
 ### Check Style
@@ -194,9 +197,6 @@ help = "run pytest (note: toolchain must be installed)"
 [tool.taskipy.tasks.cram_ocaml]
 cmd = "cram {cram_targets}"
 help = "run cram (note: toolchain must be installed)"
-[tool.taskipy.tasks.pre_test_ocaml]
-cmd = "task typecheck"
-help = "pre-task hook: typecheck must succeed before task "
 
 ## CI
 [tool.taskipy.tasks.__CI__]
