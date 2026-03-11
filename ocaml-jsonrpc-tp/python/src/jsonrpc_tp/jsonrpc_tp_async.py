@@ -214,7 +214,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
                 if "error" in packet or "result" in packet:
                     await self._handle_response(packet)
                 elif isinstance(packet, list):
-                    async for response in packet:
+                    for response in packet:
                         await self._handle_response(response)
                 else:
                     await self._handle_notification(packet)
