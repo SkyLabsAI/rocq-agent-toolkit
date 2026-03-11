@@ -20,7 +20,7 @@ from json import (
     load,
     loads,
 )
-from typing import Any, override
+from typing import Any, TypeGuard, override
 
 from pydantic import BaseModel, JsonValue
 
@@ -29,56 +29,73 @@ import rocq_agent_toolkit_utils as rat_utils
 logger = logging.getLogger(__name__)
 
 
+def obj_jsonable(o: Any) -> TypeGuard[JsonValue]:
+    """Predicate: test whether [o] is an object that can be serialized to a JSON string.
+
+    cf. pydantic.JsonValue
+    """
+    if o is None or isinstance(o, (bool, int, float, str)):
+        return True
+    elif isinstance(o, list) and all(obj_jsonable(elem) for elem in o):
+        return True
+    elif isinstance(o, dict) and all(
+        isinstance(k, str) and obj_jsonable(v) for k, v in o.items()
+    ):
+        return True
+    else:
+        return False
+
+
 class OverridableBestEffortEncoder(JSONEncoder):
-    def __init__(
-        self,
-        cls_encoder_override: type[JSONEncoder] | None = None,
-        default_override: Callable[[Any], JsonValue] | None = None,
-        **kwargs,
-    ) -> None:
+    def __init__(self, **kwargs) -> None:
         """Build a best effort JSONEncoder.
 
-        Arguments:
-            cls_encoder_override (optional override): type of a JSONEncoder that should be preferrentially tried
-                Note: custom implementation of dumps passes its cls kwarg here
-            default_override (optional override): default callable that should be preferrentially tried
-                Note: custom implementation of dumps passes its default kwarg here
-        """
-        super().__init__(**kwargs)
+        Note: "default" kwarg is intercepted and tried preferrentially.
 
-        self._ordered_overrides: list[tuple[str, Callable[[Any], JsonValue]]] = []
-        self._mk_ordered_overrides(
-            encoder_override=None
-            if cls_encoder_override is None
-            else cls_encoder_override(**kwargs),
-            default_override=default_override,
-        )
+        Arguments:
+            kwargs: JSONEncoder kwargs
+        """
+        self._default_override: Callable[..., object] | None = None
+        super().__init__(**self._intercept_overrides(**kwargs))
 
     @override
     def default(self, o: Any) -> JsonValue:
-        # 1. Try overrides in order & commit to the first one that succeeds
-        #
-        # Note: record exceptions and re-raise as an ExceptionGroup if _best_effort later fails
-        ordered_override_exceptions: list[Exception] = []
-        for qualnm, default_override in self._ordered_overrides:
+        # 1. If present, prefer self._default_override
+        e_default: Exception | None = None
+        if self._default_override:
             try:
-                return default_override(o)
-            except Exception as e_default_override:
-                e_default_override.add_note(f"{qualnm}.default")
-                ordered_override_exceptions.append(e_default_override)
+                result = self._default_override(o)
+                assert obj_jsonable(result), " ".join(
+                    [
+                        "'default(o)' should produce a JsonValue:",
+                        rat_utils.objects.info(
+                            self._default_override, o, result, verbose=True
+                        ),
+                    ]
+                )
+                return result
+            except Exception as _e_default:
+                e_default = _e_default
+                logger.debug(
+                    " ".join(
+                        [
+                            "'default' override failed to process o:",
+                            rat_utils.objects.info(
+                                self._default_override, o, verbose=True
+                            ),
+                        ]
+                    ),
+                    exc_info=True,
+                )
 
-        # 2. As a last resort use self._best_effort & properly chain exceptions
-        if not ordered_override_exceptions:
+        # 2. Otherwise, use self._best_effort & properly chain exceptions
+        try:
             return self._best_effort(o)
-        else:
-            e_overrides = ExceptionGroup(
-                "User overrides of JSONDecoder.default",
-                ordered_override_exceptions,
-            )
-            try:
-                return self._best_effort(o)
-            except Exception as e:
-                raise e from e_overrides
+        except Exception as e:
+            if e_default:
+                raise e from e_default
+            else:
+                raise e
 
     def _best_effort(self, o: Any) -> JsonValue:
         """Core logic for the custom, best effort implementation of JSONDecoder.default."""
@@ -98,33 +115,28 @@ class OverridableBestEffortEncoder(JSONEncoder):
         else:  # isinstance(x, (int, float, bool, str, type(None))), custom types, etc...
             return super().default(o)
 
-    def _mk_ordered_overrides(
-        self,
-        *,
-        encoder_override: JSONEncoder | None,
-        default_override: Callable[[Any], JsonValue] | None,
-    ) -> None:
-        """Initialize self._ordered_overrides."""
-        assert hasattr(self, "_ordered_overrides")
-        assert isinstance(self._ordered_overrides, list)
-
-        if encoder_override is not None:
-            encoder_override_qualnm = type(encoder_override).__qualname__
-            self._ordered_overrides.append(
-                (encoder_override_qualnm, encoder_override.default)
-            )
+    def _intercept_overrides(self, **kwargs: Any) -> dict[str, Any]:
+        """Intercept 'cls'+'default' kwargs for JSONEncoder"""
+        default_override = kwargs.pop("default", None)
 
         if default_override is not None:
-            default_override_qualnm = getattr(
-                default_override, "__qualname__", repr(default_override)
+            assert callable(default_override), " ".join(
+                [
+                    "'default' isn't callable:",
+                    rat_utils.objects.info(default_override, verbose=True),
+                ]
             )
-            self._ordered_overrides.append((default_override_qualnm, default_override))
+            # Note: we could use [inspect] to type-check [default_override]
+
+            self._default_override = default_override
+
+        return kwargs
 
 
 def dumps(o: Any, **kwargs) -> str:
     """Smart wrapper for json.dumps: handle (nested) objects in a best-effort way.
 
-    Note: cls/default kwargs will be intercepted and handled explicitly by OverridableBestEffortEncoder.
+    Note: unless "cls" is supplied in kwargs, OverridableBestEffortEncoder will be used.
 
     Arguments:
         o: object to try serializing as JSON string
@@ -134,8 +146,10 @@ def dumps(o: Any, **kwargs) -> str:
     Raises:
         TypeError if best effort serialization fails
     """
+    cls = kwargs.pop("cls", OverridableBestEffortEncoder)
+
     try:
-        return libjson.dumps(o, cls=OverridableBestEffortEncoder, **kwargs)
+        return libjson.dumps(o, cls=cls, **kwargs)
     except Exception as e:
         e.add_note(rat_utils.objects.info(o, verbose=True))
         raise e
