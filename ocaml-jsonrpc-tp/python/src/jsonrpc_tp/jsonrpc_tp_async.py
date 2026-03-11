@@ -212,11 +212,13 @@ class AsyncJsonRPCTP(AsyncProtocol):
             while True:
                 packet = await self._recv()
 
-                if "error" in packet or "result" in packet:
-                    await self._handle_response(packet)
-                elif isinstance(packet, list):
+                if isinstance(packet, list):
                     for response in packet:
                         await self._handle_response(response)
+                elif isinstance(packet, dict) and (
+                    "error" in packet or "result" in packet
+                ):
+                    await self._handle_response(packet)
                 else:
                     await self._handle_notification(packet)
         except asyncio.CancelledError:
