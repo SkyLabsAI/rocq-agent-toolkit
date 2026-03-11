@@ -28,6 +28,19 @@ module Schema : sig
   (** [variant] is a schema specifying an alternative of literal values. *)
   val variant : ?default:'a -> encode:('a -> string) -> 'a list -> 'a t
 
+  (** Member of a tagged union. *)
+  type _ tagged
+
+  (** [tagged ~tag ~inject ~extract s] defines the interpretation of the given
+      [tag], using schema [s]. The [inject] function indicates how the payload
+      of the tag is to be encoded in the union type. TODO extract *)
+  val tagged : tag:string -> inject:('a -> 'b) -> extract:('b -> 'a option)
+    -> 'a t -> 'b tagged
+
+  (** [tagged_union ts] is a schema specifying a tagged union, with strings as
+      tags. *)
+  val tagged_union : 'a tagged list -> 'a t
+
   (** [nullable s] is a schema that specifies either the same kind of value as
       [s], or a "null" value. The interpretation is [None] in the latter case,
       and [Some(_)] otherwise. *)
