@@ -19,6 +19,7 @@ module Schema = struct
     | TUnion : 'a tagged list -> 'a t
     | Nullable : 'a t -> 'a option t
     | List : 'a t -> 'a list t
+    | Dict : 'a t -> (string * 'a) list t
     | Obj : 'a api_obj -> 'a t
 
   and _ tagged = T : {
@@ -42,6 +43,7 @@ module Schema = struct
     TUnion(ts)
   let nullable s = Nullable(s)
   let list s = List(s)
+  let dict s = Dict(s)
   let obj o = Obj(o)
 
   let descr_variant : 'a variant_spec -> string = fun s ->
@@ -65,6 +67,7 @@ module Schema = struct
     | TUnion ts -> "a tuple that is either: " ^ descr_tagged_union ts
     | Nullable s -> "either `null` or " ^ descr s
     | List s -> "a list where each element is " ^ descr s
+    | Dict s -> "a dictionary where each value is " ^ descr s
     | Obj o -> "an instance of the `" ^ o.name ^ "` object"
 
   let python_type : type a. a t -> string =
@@ -84,6 +87,7 @@ module Schema = struct
           String.concat " | " (List.map tagged_type ts)
       | Nullable s -> python_type s ^ " | None"
       | List s -> "list[" ^ python_type s ^ "]"
+      | Dict s -> "dict[str, " ^ (python_type s) ^ "]"
       | Obj o -> Printf.sprintf "%s" o.name
     in
     python_type
@@ -109,6 +113,11 @@ module Schema = struct
       | List s ->
           let fresh = fresh () in
           Printf.sprintf "[%s for %s in %s]" (python_val fresh s) fresh var
+      | Dict s ->
+          let fresh_k = fresh () in
+          let fresh_v = fresh () in
+          Printf.sprintf "{str(%s): %s for %s, %s in %s]"
+            fresh_k (python_val fresh_v s) fresh_k fresh_v var
       | Obj o -> Printf.sprintf "%s.model_validate(%s)" o.name var
     in
     python_val var s
@@ -144,6 +153,7 @@ module Schema = struct
         Option.iter default v.default
     | Nullable(_) -> line "default=None"
     | List(_)     -> line "default_factory=list"
+    | Dict(_)     -> line "default_factory=dict"
     | Obj(o)      ->
         let default _ = line "default_factory=lambda: %s()" o.name in
         Option.iter default o.default
@@ -318,6 +328,8 @@ let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
   | (Nullable(_), None   ) -> `Null
   | (Nullable(s), Some(v)) -> to_json api s v
   | (List(s)    , _      ) -> `List(List.map (to_json api s) v)
+  | (Dict(s)    , vs     ) ->
+      `Assoc(List.map (fun (k, v) -> (k, to_json api s v)) vs)
   | (Obj(o)     , _      ) ->
   let O(o) = get_obj api o in
   let rec make : type a. a Fields.t -> a -> (string * json) list = fun fs v ->
@@ -416,6 +428,9 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
     | (List(s)    , `List(vs) ) ->
         List.mapi (fun i v -> of_json (ListItem(i) :: ctxt) s v) vs
     | (List(_)    , _         ) -> error ctxt "expected list value"
+    | (Dict(s)    , `Assoc(fs)) ->
+        List.mapi (fun i (k, v) -> (k, of_json (ListItem(i) :: ctxt) s v)) fs
+    | (Dict(_)    , _         ) -> error ctxt "expected dictionary value"
     | (Obj(o)     , `Assoc(fs)) ->
         of_json_obj ctxt o fs
     | (Obj(_)     , _         ) -> error ctxt "expected object value"

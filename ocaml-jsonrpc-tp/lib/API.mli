@@ -16,6 +16,10 @@ module Schema : sig
   (** [any] is a schema specifying an arbitrary JSON value. *)
   val any : json t
 
+  (** [dict s] is a schema specifying a string-indexed dictionary whose values
+      are follow schema [s] (and keys are strings). *)
+  val dict : 'a t -> (string * 'a) list t
+
   (** [int] is a schema specifying an integer value. *)
   val int : int t
 
