@@ -42,6 +42,7 @@ auto-prover = "rocq_pipeline.prover:auto_prover"
 tactic-agent = "rocq_pipeline.task_runner:tactic_main"
 oracle-agent = "rocq_pipeline.agent.proof.oracle_agent:main"
 progress = "rocq_pipeline.util:main"
+_span_protocol_export = "rocq_pipeline.span_protocol.export:main"
 
 [dependency-groups]
 dev = [
@@ -80,12 +81,126 @@ where = ["src"]
 [tool.setuptools.package-data]
 "rocq_pipeline" = ["py.typed"]
 
-[tool.taskipy.tasks]
-lint_ci = "ruff check"
-format_ci = "ruff format --check"
-reformat = "ruff format"
-typecheck_ci = "mypy ."
-test_ocaml_ci = "pytest"
-cram_ocaml_ci = "cram tests/*.t"
+### Taskipy
+##
+## The following "task groups" are exposed:
+## - codegen: tasks that generate code needed by later stages
+## - check_style: tasks that check style rules but don't make changes
+## - style: tasks that check style rules and attempt to fix mistakes
+## - typecheck: tasks that run typechecking
+## - test: tasks that run executable tests
+## - precommit: uniform target for local dev workflows
+## - ci: uniform target for CI integrations
+##
+## Notes:
+## - _XXX tasks are the same as XXX tasks, but without pre-task hooks
+## - pre_XXX tasks must succeed for XXX to run
+## - XXX must succeed for post_XXX to run
+
+[tool.taskipy.settings]
+# run all tasks from the directory containing pyproject.toml
+cwd = "."
+# allow all tasks to use taskipy variables
+use_vars = true
+[tool.taskipy.variables]
+typecheck_targets = "."
+pytest_targets = "tests/"
+cram_targets = "tests/*.t"
+
+## Main Tasks w/Pre-Hooks
+[tool.taskipy.tasks.__ENTRYPOINTS__]
+cmd = "true"
+help = "top level tasks to run, with pre-hooks & stop-on-failure"
+[tool.taskipy.tasks.precommit]
+cmd = "task test_ocaml"
+help = "run before pushing a commit"
+[tool.taskipy.tasks.codegen]
+cmd = "true"
+help = "run code generation"
+[tool.taskipy.tasks.check_style]
+cmd = "task _check_style"
+help = "check style compliance"
+[tool.taskipy.tasks.style]
+cmd = "task _style"
+help = "try to fix style violations"
+[tool.taskipy.tasks.typecheck]
+cmd = "task _typecheck"
+help = "run typecheckers"
+[tool.taskipy.tasks.test_ocaml]
+cmd = "task _test_ocaml"
+help = "run tests (note: toolchain must be installed)"
+
+## Pre-Hooks
+[tool.taskipy.tasks.__ENTRYPOINT_HOOKS__]
+cmd = "true"
+help = "codegen -> style -> typecheck -> test_ocaml"
+[tool.taskipy.tasks.pre_check_style]
+cmd = "task codegen"
+help = "pre-task hook: codegen must succeed before task check_style can run"
+[tool.taskipy.tasks.pre_style]
+cmd = "task codegen"
+help = "pre-task hook: codegen must succeed before task style can run"
+[tool.taskipy.tasks.pre_typecheck]
+cmd = "task check_style"
+help = "pre-task hook: check_style must succeed before task typecheck can run"
+
+## Main Tasks w/out Pre-Hooks
+[tool.taskipy.tasks.__RAW_ENTRYPOINTS__]
+cmd = "true"
+help = "top level tasks to run, without pre-hooks & proceed-on-failure"
+[tool.taskipy.tasks._precommit]
+cmd = "task codegen; task _style; task _typecheck; task _test_ocaml"
+help = "run before pushing a commit"
+[tool.taskipy.tasks._check_style]
+cmd = "task check_format; task check_lint"
+help = "check style compliance"
+[tool.taskipy.tasks._style]
+cmd = "task format && task lint"
+help = "try to fix style violations"
+[tool.taskipy.tasks._typecheck]
+cmd = "task mypy"
+help = "run typecheckers"
+[tool.taskipy.tasks._test_ocaml]
+cmd = "task pytest_ocaml; task cram_ocaml"
+help = "run tests (note: toolchain must be installed)"
+
+## Task Details
+[tool.taskipy.tasks.__DETAILS__]
+cmd = "true"
+help = "constituent tasks used by entrypoints"
+### Check Style
+[tool.taskipy.tasks.check_format]
+cmd = "ruff format --check"
+help = "check format compliance"
+[tool.taskipy.tasks.check_lint]
+cmd = "ruff check"
+help = "check lint compliance"
+### Style
+[tool.taskipy.tasks.reformat]
+cmd = "ruff format"
+help = "try to fix formatting violations"
+[tool.taskipy.tasks.lint]
+cmd = "ruff check --fix"
+help = "try to fix linting violations"
+### Typechecking
+[tool.taskipy.tasks.mypy]
+cmd = "mypy {typecheck_targets}"
+help = "run mypy"
+### Testing
 # TODO: setup tests that can run using `dune exec`, akin to what rocq-doc-manager does
-precommit = "task lint_ci --fix; task reformat; task typecheck_ci"
+[tool.taskipy.tasks.pytest_ocaml]
+cmd = "pytest {pytest_targets}"
+help = "run pytest (note: toolchain must be installed)"
+[tool.taskipy.tasks.cram_ocaml]
+cmd = "cram {cram_targets}"
+help = "run cram (note: toolchain must be installed)"
+[tool.taskipy.tasks.pre_test_ocaml]
+cmd = "task typecheck"
+help = "pre-task hook: typecheck must succeed before task "
+
+## CI
+[tool.taskipy.tasks.__CI__]
+cmd = "true"
+help = "efficient sequencing of tasks for use in CI jobs"
+[tool.taskipy.tasks]
+ci = "task codegen && task _check_style && task _typecheck && task _test_ocaml"
