@@ -26,7 +26,150 @@
   $ uv run rat trace --tracer rocq_pipeline.tracers.json_goal --task-file tasks.yaml
   
 
-  $ LC_ALL=C ls *.json | xargs -n 1 python3 -m json.tool
+  $ LC_ALL=C ls *.json | sort
+  LocatorBug.v_Lemma:locatorL1.json
+  LocatorBug.v_Lemma:locatorL2.json
+  LocatorBug.v_Lemma:locatorL3.json
+  LocatorBug.v_Lemma:locatorL4.json
+  LocatorBugWithFinalComment.v_Lemma:locatorL1.json
+  LocatorBugWithFinalComment.v_Lemma:locatorL2.json
+  LocatorBugWithFinalComment.v_Lemma:locatorL3.json
+  LocatorBugWithFinalComment.v_Lemma:locatorL4.json
+  TracerBug.v_Lemma:L1.json
+  TracerBug.v_Lemma:L2.json
+  goals.v_Lemma:task1.json
+
+  $ LC_ALL=C ls *.json | sort | xargs -n 1 python3 -m json.tool
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "True"
+              }
+          ],
+          "after": [],
+          "tactic": "exact I"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [
+                      {
+                          "name": "P",
+                          "type": "Prop"
+                      }
+                  ],
+                  "goal": "(P -> P)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (fun (H : P) => H)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 <= 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "trivial"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 = 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (eq_refl _)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "True"
+              }
+          ],
+          "after": [],
+          "tactic": "exact I"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [
+                      {
+                          "name": "P",
+                          "type": "Prop"
+                      }
+                  ],
+                  "goal": "(P -> P)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (fun (H : P) => H)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 <= 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "trivial"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 = 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (eq_refl _)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "True"
+              }
+          ],
+          "after": [],
+          "tactic": "exact I"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 = 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (eq_refl _)"
+      }
+  ]
   [
       {
           "before": [
