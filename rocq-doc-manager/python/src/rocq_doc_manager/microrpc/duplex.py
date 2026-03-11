@@ -20,6 +20,45 @@ class PacketChannel(Protocol):
     async def close(self) -> None: ...
 
 
+class FromStream(PacketChannel):
+    """Build a PacketChannel from streams."""
+
+    def __init__(
+        self, input: asyncio.StreamReader, output: asyncio.StreamWriter
+    ) -> None:
+        self._input = input
+        self._output = output
+
+    async def send(self, message: bytes | str) -> None:
+        message_bytes: bytes
+        if isinstance(message, str):
+            message_bytes = message.encode()
+        else:
+            message_bytes = message
+        prefix = "Content-Length: "
+        self._output.write(f"{prefix}{len(message_bytes) + 1}\r\n\r\n".encode())
+        self._output.write(message_bytes)
+        self._output.write(b"\n")
+        await self._output.drain()
+
+    async def recv(self, decode: Literal[False]) -> bytes:
+        # Read the first line
+        raw_header: bytes = await self._input.readuntil()
+        header: str = raw_header.decode()
+        # Read the second line (should be blank)
+        _ = await self._input.readuntil()
+        prefix = "Content-Length: "
+        if not header.startswith(prefix):
+            raise ValueError(f"Invalid message header: '{header}'")
+        try:
+            nb_bytes = int(header[len(prefix) : -2])
+        except Exception as e:
+            raise ValueError(f"Failed to parse header: {header}", e) from e
+        assert self._input is not None
+        response = await self._input.readexactly(nb_bytes)
+        return response
+
+
 class RPCClient(Protocol):
     async def send(
         self, method: str, params: JsonValue | None = None
@@ -143,7 +182,7 @@ class DuplexMux(RPCClient):
                     self.handle_error(err)
                     continue
 
-                if "jsonrpc" not in msg_json or msg_json["jsonrpc"] != "2.0":
+                if msg_json.get("jsonrpc") != "2.0":
                     self.handle_error(
                         KeyError(f"Missing 'jsonrpc' field in {msg_json}")
                     )
