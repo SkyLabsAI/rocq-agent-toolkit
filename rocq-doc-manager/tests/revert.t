@@ -35,11 +35,26 @@
     "id": 2,
     "jsonrpc": "2.0",
     "result": [
-      { "kind": "command", "text": "Definition test := nat." },
+      {
+        "kind": "command",
+        "text": "Definition test := nat.",
+        "data": {
+          "kind": "synpure:Definition",
+          "attrs": { "id": "test", "kind": "Definition" }
+        }
+      },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "About nat." },
+      {
+        "kind": "command",
+        "text": "About nat.",
+        "data": { "kind": "synpure:Print", "attrs": {} }
+      },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Check test." },
+      {
+        "kind": "command",
+        "text": "Check test.",
+        "data": { "kind": "synpure:CheckMayEval", "attrs": {} }
+      },
       { "kind": "blanks", "text": "\n" }
     ]
   }
@@ -48,7 +63,11 @@
     "jsonrpc": "2.0",
     "result": {
       "globrefs_diff": { "added_constants": [ "test.dir.test.test" ] },
-      "feedback_messages": [ { "level": "info", "text": "test is defined" } ]
+      "feedback_messages": [ { "level": "info", "text": "test is defined" } ],
+      "synterp_ast": {
+        "kind": "synpure:Definition",
+        "attrs": { "id": "test", "kind": "Definition" }
+      }
     }
   }
   { "id": 4, "jsonrpc": "2.0", "result": null }
@@ -61,7 +80,8 @@
           "level": "notice",
           "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
         }
-      ]
+      ],
+      "synterp_ast": { "kind": "synpure:Print", "attrs": {} }
     }
   }
   {
@@ -92,9 +112,22 @@
     "id": 9,
     "jsonrpc": "2.0",
     "result": [
-      { "kind": "command", "offset": 0, "text": "Definition test := nat." },
+      {
+        "kind": "command",
+        "offset": 0,
+        "text": "Definition test := nat.",
+        "data": {
+          "kind": "synpure:Definition",
+          "attrs": { "id": "test", "kind": "Definition" }
+        }
+      },
       { "kind": "blanks", "offset": 23, "text": "\n" },
-      { "kind": "command", "offset": 24, "text": "About nat." }
+      {
+        "kind": "command",
+        "offset": 24,
+        "text": "About nat.",
+        "data": { "kind": "synpure:Print", "attrs": {} }
+      }
     ]
   }
   {
@@ -102,7 +135,11 @@
     "jsonrpc": "2.0",
     "result": [
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Check test." },
+      {
+        "kind": "command",
+        "text": "Check test.",
+        "data": { "kind": "synpure:CheckMayEval", "attrs": {} }
+      },
       { "kind": "blanks", "text": "\n" }
     ]
   }
@@ -113,7 +150,8 @@
     "result": {
       "feedback_messages": [
         { "level": "notice", "text": "test\n     : Set" }
-      ]
+      ],
+      "synterp_ast": { "kind": "synpure:CheckMayEval", "attrs": {} }
     }
   }
   { "id": 13, "jsonrpc": "2.0", "result": null }

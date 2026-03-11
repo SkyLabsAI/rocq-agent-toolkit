@@ -50,9 +50,16 @@ API Objects
 - Field `line_nb`: start line number (as an integer).
 - Field `fname`: source file identification if not run as a toplevel (as either `null` or an instance of the `RocqSource` object).
 
+### `VernacData`
+
+- Description: limited Rocq AST information for a command.
+- Field `attrs`: Attributes (as a dictionary where each value is a JSON value).
+- Field `kind`: command kind (as a string).
+
 ### `Sentence`
 
 - Description: Rocq sentence (blanks or command).
+- Field `data`: command data (as either `null` or an instance of the `VernacData` object).
 - Field `text`: sentence text (as a string).
 - Field `kind`: sentence kind (as any of `"blanks"`, `"command"`).
 
@@ -95,6 +102,7 @@ API Objects
 ### `CommandData`
 
 - Description: data gathered while running a Rocq command.
+- Field `synterp_ast`: limited Rocq AST data (as an instance of the `VernacData` object).
 - Field `proof_state`: either `null` or an instance of the `ProofState` object.
 - Field `feedback_messages`: a list where each element is an instance of the `FeedbackMessage` object.
 - Field `globrefs_diff`: an instance of the `GlobrefsDiff` object.
@@ -114,6 +122,7 @@ API Objects
 ### `PrefixItem`
 
 - Description: document prefix item, appearing before the cursor.
+- Field `data`: command data (as either `null` or an instance of the `VernacData` object).
 - Field `text`: a string.
 - Field `offset`: an integer.
 - Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
@@ -121,6 +130,7 @@ API Objects
 ### `SuffixItem`
 
 - Description: document suffix item, appearing after the cursor.
+- Field `data`: command data (as either `null` or an instance of the `VernacData` object).
 - Field `text`: a string.
 - Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
 

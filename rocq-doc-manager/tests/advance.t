@@ -30,11 +30,32 @@
     "id": 4,
     "jsonrpc": "2.0",
     "result": [
-      { "kind": "command", "text": "Definition n4 : nat := 4." },
+      {
+        "kind": "command",
+        "text": "Definition n4 : nat := 4.",
+        "data": {
+          "kind": "synpure:Definition",
+          "attrs": { "id": "n4", "kind": "Definition" }
+        }
+      },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Definition n6 : nat := 6." },
+      {
+        "kind": "command",
+        "text": "Definition n6 : nat := 6.",
+        "data": {
+          "kind": "synpure:Definition",
+          "attrs": { "id": "n6", "kind": "Definition" }
+        }
+      },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Definition n8 : nat := 8." },
+      {
+        "kind": "command",
+        "text": "Definition n8 : nat := 8.",
+        "data": {
+          "kind": "synpure:Definition",
+          "attrs": { "id": "n8", "kind": "Definition" }
+        }
+      },
       { "kind": "blanks", "text": "\n" }
     ]
   }

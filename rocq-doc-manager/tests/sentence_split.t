@@ -35,6 +35,10 @@
         "focused_goals": [
           "\nX : Type\nx : X\n============================\nx = x"
         ]
+      },
+      "synterp_ast": {
+        "kind": "synpure:StartTheoremProof",
+        "attrs": { "ids": [ "refl" ], "kind": "Theorem" }
       }
     }
   }
@@ -49,7 +53,8 @@
         "focused_goals": [
           "\nX : Type\nx : X\n============================\nx = x"
         ]
-      }
+      },
+      "synterp_ast": { "kind": "synpure:Proof", "attrs": {} }
     }
   }
   { "id": 5, "jsonrpc": "2.0", "result": null }
@@ -60,9 +65,17 @@
       "data": {
         "sentences": [
           { "kind": "blanks", "text": "(* xxx *)" },
-          { "kind": "command", "text": "reflexivity." },
+          {
+            "kind": "command",
+            "text": "reflexivity.",
+            "data": { "kind": "synterp:Extend", "attrs": {} }
+          },
           { "kind": "blanks", "text": " " },
-          { "kind": "command", "text": "About nat." }
+          {
+            "kind": "command",
+            "text": "About nat.",
+            "data": { "kind": "synpure:Print", "attrs": {} }
+          }
         ],
         "rest": " (* junk"
       },
@@ -75,9 +88,17 @@
     "jsonrpc": "2.0",
     "result": [
       { "kind": "blanks", "text": "(* xxx *)" },
-      { "kind": "command", "text": "reflexivity." },
+      {
+        "kind": "command",
+        "text": "reflexivity.",
+        "data": { "kind": "synterp:Extend", "attrs": {} }
+      },
       { "kind": "blanks", "text": " " },
-      { "kind": "command", "text": "About nat." },
+      {
+        "kind": "command",
+        "text": "About nat.",
+        "data": { "kind": "synpure:Print", "attrs": {} }
+      },
       { "kind": "blanks", "text": " (* junk *)" }
     ]
   }
@@ -88,9 +109,17 @@
       "data": {
         "sentences": [
           { "kind": "blanks", "text": "(* xxx *)" },
-          { "kind": "command", "text": "reflexivity." },
+          {
+            "kind": "command",
+            "text": "reflexivity.",
+            "data": { "kind": "synterp:Extend", "attrs": {} }
+          },
           { "kind": "blanks", "text": " " },
-          { "kind": "command", "text": "About nat." }
+          {
+            "kind": "command",
+            "text": "About nat.",
+            "data": { "kind": "synpure:Print", "attrs": {} }
+          }
         ],
         "rest": " (* junk *) more_junk"
       },

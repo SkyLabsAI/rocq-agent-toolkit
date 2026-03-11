@@ -22,6 +22,7 @@ __all__ = [
     "Quickfix",
     "SentenceSplitError",
     "Sentence",
+    "VernacData",
     "RocqLoc",
     "RocqSource",
 ]
@@ -73,9 +74,28 @@ class RocqLoc(BaseModel):
     )
 
 
+class VernacData(BaseModel):
+    """Limited Rocq AST information for a command."""
+
+    attrs: dict[str, Any] = Field(
+        kw_only=True,
+        default_factory=dict,
+        description="Attributes",
+    )
+    kind: str = Field(
+        kw_only=True,
+        description="command kind",
+    )
+
+
 class Sentence(BaseModel):
     """Rocq sentence (blanks or command)."""
 
+    data: VernacData | None = Field(
+        kw_only=True,
+        default=None,
+        description="command data",
+    )
     text: str = Field(
         kw_only=True,
         description="sentence text",
@@ -173,6 +193,10 @@ class ProofState(BaseModel):
 class CommandData(BaseModel):
     """Data gathered while running a Rocq command."""
 
+    synterp_ast: VernacData = Field(
+        kw_only=True,
+        description="limited Rocq AST data",
+    )
     proof_state: ProofState | None = Field(
         kw_only=True,
         default=None,
@@ -216,6 +240,11 @@ class StepsError(BaseModel):
 class PrefixItem(BaseModel):
     """Document prefix item, appearing before the cursor."""
 
+    data: VernacData | None = Field(
+        kw_only=True,
+        default=None,
+        description="command data",
+    )
     text: str = Field(
         kw_only=True,
     )
@@ -230,6 +259,11 @@ class PrefixItem(BaseModel):
 class SuffixItem(BaseModel):
     """Document suffix item, appearing after the cursor."""
 
+    data: VernacData | None = Field(
+        kw_only=True,
+        default=None,
+        description="command data",
+    )
     text: str = Field(
         kw_only=True,
     )
