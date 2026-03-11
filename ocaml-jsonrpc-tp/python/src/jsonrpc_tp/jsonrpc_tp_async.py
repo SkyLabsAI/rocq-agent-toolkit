@@ -195,17 +195,18 @@ class AsyncJsonRPCTP(AsyncProtocol):
         assert isinstance(method, str)
         params = notification.get("params", {})
         assert isinstance(params, dict)
-        if self._notification_handler:
+        self_notification = self._notification_handler
+        if self_notification:
 
-            async def handler():
+            async def handler() -> None:
                 try:
-                    await self._notification_handler(method, params)
+                    await self_notification(method, params)
                 except Exception:
                     pass
 
             await self._handlers.put(asyncio.create_task(handler()))
 
-    async def _receiver_loop(self):
+    async def _receiver_loop(self) -> None:
         """Task 2: Reads from network, dispatches to waiting futures."""
         try:
             while True:
