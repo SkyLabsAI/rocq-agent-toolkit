@@ -57,7 +57,7 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
                     start = i + 1
             elif mtch := _PROOF_TERM.match(txt):
                 proof_term = mtch.group(1).strip()
-                return ProofTask(start, start, "qed", [f"exact {proof_term}."])
+                return ProofTask(start, start, "qed", [f"Proof {proof_term}."])
             else:
                 msg = f"Error during proof identification. '{txt}' is an unknown form of 'Proof'."
                 logger.error(msg)
