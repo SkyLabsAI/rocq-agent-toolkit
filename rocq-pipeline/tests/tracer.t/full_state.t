@@ -26,7 +26,138 @@
   $ uv run rat trace --tracer rocq_pipeline.tracers.json_goal:build_full_state --task-file tasks.yaml
   
 
-  $ LC_ALL=C ls *.json | xargs -n 1 python3 -m json.tool
+
+  $ LC_ALL=C ls *.json | sort | xargs -n 1 python3 -m json.tool
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "True"
+              }
+          ],
+          "after": [],
+          "tactic": "exact I"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [
+                      {
+                          "name": "P",
+                          "type": "Prop"
+                      }
+                  ],
+                  "goal": "(P -> P)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (fun (H : P) => H)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 <= 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "trivial"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 = 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (eq_refl _)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "True"
+              }
+          ],
+          "after": [],
+          "tactic": "exact I"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [
+                      {
+                          "name": "P",
+                          "type": "Prop"
+                      }
+                  ],
+                  "goal": "(P -> P)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (fun (H : P) => H)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 <= 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "trivial"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 = 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (eq_refl _)"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "True"
+              }
+          ],
+          "after": [],
+          "tactic": "exact I"
+      }
+  ]
+  [
+      {
+          "before": [
+              {
+                  "hyps": [],
+                  "goal": "(5 = 5)"
+              }
+          ],
+          "after": [],
+          "tactic": "exact (eq_refl _)"
+      }
+  ]
   [
       {
           "before": [
