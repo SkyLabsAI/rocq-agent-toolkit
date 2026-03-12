@@ -35,6 +35,11 @@
         "focused_goals": [
           "\nX : Type\nx : X\n============================\nx = x"
         ]
+      },
+      "synterp_ast": {
+        "kind": "StartTheoremProof",
+        "pure": true,
+        "attrs": { "ids": [ "refl" ], "kind": "Theorem" }
       }
     }
   }
@@ -49,7 +54,8 @@
         "focused_goals": [
           "\nX : Type\nx : X\n============================\nx = x"
         ]
-      }
+      },
+      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} }
     }
   }
   { "id": 5, "jsonrpc": "2.0", "result": null }
@@ -60,9 +66,17 @@
       "data": {
         "sentences": [
           { "kind": "blanks", "text": "(* xxx *)" },
-          { "kind": "command", "text": "reflexivity." },
+          {
+            "kind": "command",
+            "text": "reflexivity.",
+            "data": { "kind": "Extend", "attrs": {} }
+          },
           { "kind": "blanks", "text": " " },
-          { "kind": "command", "text": "About nat." }
+          {
+            "kind": "command",
+            "text": "About nat.",
+            "data": { "kind": "Print", "pure": true, "attrs": {} }
+          }
         ],
         "rest": " (* junk"
       },
@@ -75,9 +89,17 @@
     "jsonrpc": "2.0",
     "result": [
       { "kind": "blanks", "text": "(* xxx *)" },
-      { "kind": "command", "text": "reflexivity." },
+      {
+        "kind": "command",
+        "text": "reflexivity.",
+        "data": { "kind": "Extend", "attrs": {} }
+      },
       { "kind": "blanks", "text": " " },
-      { "kind": "command", "text": "About nat." },
+      {
+        "kind": "command",
+        "text": "About nat.",
+        "data": { "kind": "Print", "pure": true, "attrs": {} }
+      },
       { "kind": "blanks", "text": " (* junk *)" }
     ]
   }
@@ -88,9 +110,17 @@
       "data": {
         "sentences": [
           { "kind": "blanks", "text": "(* xxx *)" },
-          { "kind": "command", "text": "reflexivity." },
+          {
+            "kind": "command",
+            "text": "reflexivity.",
+            "data": { "kind": "Extend", "attrs": {} }
+          },
           { "kind": "blanks", "text": " " },
-          { "kind": "command", "text": "About nat." }
+          {
+            "kind": "command",
+            "text": "About nat.",
+            "data": { "kind": "Print", "pure": true, "attrs": {} }
+          }
         ],
         "rest": " (* junk *) more_junk"
       },

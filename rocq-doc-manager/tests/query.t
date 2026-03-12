@@ -75,6 +75,11 @@
         "given_up_goals": 0,
         "shelved_goals": 0,
         "focused_goals": [ "\n============================\nTrue" ]
+      },
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "_", "kind": "Definition" }
       }
     }
   }
@@ -86,4 +91,8 @@
       "message": "Invalid parameters for method query_text_all: Ill-typed argument 'text': expected string value."
     }
   }
-  { "id": 9, "jsonrpc": "2.0", "result": {} }
+  {
+    "id": 9,
+    "jsonrpc": "2.0",
+    "result": { "synterp_ast": { "kind": "Abort", "pure": true, "attrs": {} } }
+  }

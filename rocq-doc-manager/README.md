@@ -50,9 +50,17 @@ API Objects
 - Field `line_nb`: start line number (as an integer).
 - Field `fname`: source file identification if not run as a toplevel (as either `null` or an instance of the `RocqSource` object).
 
+### `VernacData`
+
+- Description: limited Rocq AST information for a command.
+- Field `attrs`: Attributes (as a dictionary where each value is a JSON value).
+- Field `pure`: indicates if the command is definitely pure for the syntax interpretation phase (as a boolean).
+- Field `kind`: command kind (as any of `"Noop"`, `"Notation"`, `"BeginSection"`, `"EndSegment"`, `"Require"`, `"Import"`, `"DeclareModule"`, `"DefineModule"`, `"DeclareModuleType"`, `"Include"`, `"SetOption"`, `"Load"`, `"Extend"`, `"OpenCloseScope"`, `"DeclareScope"`, `"Delimiters"`, `"BindScope"`, `"EnableNotation"`, `"Definition"`, `"StartTheoremProof"`, `"EndProof"`, `"ExactProof"`, `"Assumption"`, `"Symbol"`, `"Inductive"`, `"Fixpoint"`, `"CoFixpoint"`, `"Scheme"`, `"SchemeEquality"`, `"CombinedScheme"`, `"Universe"`, `"Sort"`, `"Constraint"`, `"AddRewRule"`, `"Canonical"`, `"Coercion"`, `"IdentityCoercion"`, `"NameSectionHypSet"`, `"Instance"`, `"DeclareInstance"`, `"Context"`, `"ExistingInstance"`, `"ExistingClass"`, `"ResetName"`, `"ResetInitial"`, `"Back"`, `"CreateHintDb"`, `"RemoveHints"`, `"Hints"`, `"SyntacticDefinition"`, `"Arguments"`, `"Reserve"`, `"Generalizable"`, `"SetOpacity"`, `"SetStrategy"`, `"MemOption"`, `"PrintOption"`, `"CheckMayEval"`, `"GlobalCheck"`, `"DeclareReduction"`, `"Print"`, `"Search"`, `"Locate"`, `"Register"`, `"Primitive"`, `"Comments"`, `"Attributes"`, `"Abort"`, `"AbortAll"`, `"Restart"`, `"Undo"`, `"UndoTo"`, `"Focus"`, `"Unfocus"`, `"Unfocused"`, `"Bullet"`, `"Subproof"`, `"EndSubproof"`, `"Show"`, `"CheckGuard"`, `"ValidateProof"`, `"Proof"`, `"AddOption"`, `"RemoveOption"`).
+
 ### `Sentence`
 
 - Description: Rocq sentence (blanks or command).
+- Field `data`: command data (as either `null` or an instance of the `VernacData` object).
 - Field `text`: sentence text (as a string).
 - Field `kind`: sentence kind (as any of `"blanks"`, `"command"`).
 
@@ -95,6 +103,7 @@ API Objects
 ### `CommandData`
 
 - Description: data gathered while running a Rocq command.
+- Field `synterp_ast`: limited Rocq AST data (as an instance of the `VernacData` object).
 - Field `proof_state`: either `null` or an instance of the `ProofState` object.
 - Field `feedback_messages`: a list where each element is an instance of the `FeedbackMessage` object.
 - Field `globrefs_diff`: an instance of the `GlobrefsDiff` object.
@@ -114,6 +123,7 @@ API Objects
 ### `PrefixItem`
 
 - Description: document prefix item, appearing before the cursor.
+- Field `data`: command data (as either `null` or an instance of the `VernacData` object).
 - Field `text`: a string.
 - Field `offset`: an integer.
 - Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
@@ -121,6 +131,7 @@ API Objects
 ### `SuffixItem`
 
 - Description: document suffix item, appearing after the cursor.
+- Field `data`: command data (as either `null` or an instance of the `VernacData` object).
 - Field `text`: a string.
 - Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
 

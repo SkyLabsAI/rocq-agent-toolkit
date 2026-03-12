@@ -184,6 +184,95 @@ let _ =
     @@ fun d () ->
   Document.load_file d
 
+let vernac_entry_tag =
+  S.variant ~encode:Fun.id (Array.to_list Rocq_vernac_entry.command_tags)
+
+let vernac_data =
+  let fields =
+    API.Fields.add ~name:"kind" ~descr:"command kind" vernac_entry_tag @@
+    API.Fields.add ~name:"pure" ~descr:"indicates if the command is \
+      definitely pure for the syntax interpretation phase" S.bool @@
+    API.Fields.add ~name:"attrs" ~descr:"Attributes" S.(dict any) @@
+    API.Fields.nil
+  in
+  let encode _ = assert false in
+  let decode v =
+    let kind = Rocq_vernac_entry.command_tag v in
+    let pure = Rocq_vernac_entry.command_is_pure v in
+    let attrs =
+      match v.CAst.v with
+      | Vernacexpr.VernacSynterp(e) ->
+          begin
+            let open Rocq_vernac_entry in
+            match e with
+            | EVernacBeginSection(id)
+            | EVernacEndSegment(id)
+            | EVernacDeclareModule(id)
+            | EVernacDefineModule(id)
+            | EVernacDeclareModuleType(id) ->
+                [("id", `String(Names.Id.to_string id.CAst.v))]
+            | _ -> []
+          end
+      | Vernacexpr.VernacSynPure(e) ->
+          begin
+            let open Vernacexpr in
+            match e with
+            | VernacDefinition((_,kind), (id, _),_) ->
+                let id = Pp.string_of_ppcmds (Names.Name.print id.CAst.v) in
+                let kind =
+                  let open Decls in
+                  match kind with
+                  | Definition -> "Definition"
+                  | Coercion -> "Coercion"
+                  | SubClass -> "SubClass"
+                  | CanonicalStructure -> "CanonicalStructure"
+                  | Example -> "Example"
+                  | Fixpoint -> "Fixpoint"
+                  | CoFixpoint -> "CoFixpoint"
+                  | Scheme -> "Scheme"
+                  | StructureComponent -> "StructureComponent"
+                  | IdentityCoercion -> "IdentityCoercion"
+                  | Instance -> "Instance"
+                  | Method -> "Method"
+                  | Let -> "Let"
+                  | LetContext -> "LetContext"
+                in
+                [("id", `String(id)); ("kind", `String(kind))]
+            | VernacStartTheoremProof(kind, proof_exprs) ->
+                let ids =
+                  let to_id ((id, _), _) =
+                    `String(Names.Id.to_string id.CAst.v)
+                  in
+                  List.map to_id proof_exprs
+                in
+                let kind =
+                  let open Decls in
+                  match kind with
+                  | Theorem -> "Theorem"
+                  | Lemma -> "Lemma"
+                  | Fact -> "Fact"
+                  | Remark -> "Remark"
+                  | Property -> "Property"
+                  | Proposition -> "Proposition"
+                  | Corollary -> "Corollary"
+                in
+                [("ids", `List(ids)); ("kind", `String(kind))]
+            | VernacEndProof(proof_end) ->
+                let kind =
+                  match proof_end with
+                  | Admitted -> "Admitted"
+                  | Proved(Opaque, _) -> "Qed"
+                  | Proved(Transparent, _) -> "Defined"
+                in
+                [("kind", `String(kind))]
+            | _ -> []
+          end
+    in
+    (kind, (pure, (attrs, ())))
+  in
+  API.declare_object api ~name:"VernacData" ~descr:"limited Rocq AST \
+    information for a command" ~encode ~decode fields
+
 let sentence_kind =
   let encode v =
     match v with
@@ -196,11 +285,20 @@ let sentence =
   let fields =
     API.Fields.add ~name:"kind" ~descr:"sentence kind" sentence_kind @@
     API.Fields.add ~name:"text" ~descr:"sentence text" S.string @@
+    API.Fields.add ~name:"data" ~descr:"command data"
+      S.(nullable (obj vernac_data)) @@
     API.Fields.nil
   in
   let open Document in
-  let encode (kind, (text, ())) : sentence = {kind; text} in
-  let decode ({kind; text} : sentence) = (kind, (text, ())) in
+  let encode _ = assert false in
+  let decode ({kind; text} : sentence) =
+    let (kind, data) =
+      match kind with
+      | `Blanks     -> (`Blanks , None   )
+      | `Command(d) -> (`Command, Some(d))
+    in
+    (kind, (text, (data, ())))
+  in
   API.declare_object api ~name:"Sentence"
     ~descr:"Rocq sentence (blanks or command)" ~encode ~decode fields
 
@@ -332,14 +430,14 @@ let command_data =
     API.Fields.add ~name:"feedback_messages"
       S.(list (obj feedback_message)) @@
     API.Fields.add ~name:"proof_state" S.(nullable (obj proof_state)) @@
+    API.Fields.add ~name:"synterp_ast" ~descr:"limited Rocq AST data"
+      S.(obj vernac_data) @@
     API.Fields.nil
   in
   let open Rocq_toplevel in
-  let encode (globrefs_diff, (feedback_messages, (proof_state, ()))) =
-    {globrefs_diff; feedback_messages; proof_state}
-  in
-  let decode {globrefs_diff; feedback_messages; proof_state} =
-    (globrefs_diff, (feedback_messages, (proof_state, ())))
+  let encode _ = assert false in
+  let decode {globrefs_diff; feedback_messages; synterp_ast; proof_state} =
+    (globrefs_diff, (feedback_messages, (proof_state, (synterp_ast, ()))))
   in
   API.declare_object api ~name:"CommandData"
     ~descr:"data gathered while running a Rocq command" ~encode ~decode fields
@@ -470,40 +568,57 @@ let item_kind =
   in
   S.variant ~encode [`Blanks; `Command; `Ghost]
 
+let split_item_kind : Document.item_kind ->
+    [`Blanks | `Command | `Ghost] * Document.vernac_data option = fun kind ->
+  match kind with
+  | `Blanks     -> (`Blanks , None   )
+  | `Command(d) -> (`Command, Some(d))
+  | `Ghost(d)   -> (`Ghost  , Some(d))
+
 let prefix_item =
   let fields =
     API.Fields.add ~name:"kind" item_kind @@
     API.Fields.add ~name:"offset" S.int @@
     API.Fields.add ~name:"text" S.string @@
+    API.Fields.add ~name:"data" ~descr:"command data"
+      S.(nullable (obj vernac_data)) @@
     API.Fields.nil
   in
-  API.declare_object api ~name:"PrefixItem"
-    ~descr:"document prefix item, appearing before the cursor"
-    ~encode:Fun.id ~decode:Fun.id fields
+  let encode _ = assert false in
+  let decode ({index = _; kind; off; text} : Document.processed_item) =
+    let (kind, data) = split_item_kind kind in
+    (kind, (off, (text, (data, ()))))
+  in
+  API.declare_object api ~name:"PrefixItem" ~descr:"document prefix item, \
+    appearing before the cursor" ~encode ~decode fields
 
 let _ =
   declare ~name:"doc_prefix" ~descr:"gives the list of all \
       processed commands, appearing before the cursor" ~args:A.nil
     ~ret:S.(list (obj prefix_item)) @@ fun d () ->
-  let make (p : Document.processed_item) = (p.kind, (p.off, (p.text, ()))) in
-  List.rev_map make (Document.rev_prefix d)
+  List.rev (Document.rev_prefix d)
 
 let suffix_item =
   let fields =
     API.Fields.add ~name:"kind" item_kind @@
     API.Fields.add ~name:"text" S.string @@
+    API.Fields.add ~name:"data" ~descr:"command data"
+      S.(nullable (obj vernac_data)) @@
     API.Fields.nil
   in
-  API.declare_object api ~name:"SuffixItem"
-    ~descr:"document suffix item, appearing after the cursor"
-    ~encode:Fun.id ~decode:Fun.id fields
+  let encode _ = assert false in
+  let decode ({kind; text} : Document.unprocessed_item) =
+    let (kind, data) = split_item_kind kind in
+    (kind, (text, (data, ())))
+  in
+  API.declare_object api ~name:"SuffixItem" ~descr:"document suffix item, \
+    appearing after the cursor" ~encode ~decode fields
 
 let _ =
-  declare ~name:"doc_suffix" ~descr:"gives the list of all \
-      unprocessed commands, appearing after the cursor" ~args:A.nil
+  declare ~name:"doc_suffix" ~descr:"gives the list of all unprocessed \
+    commands, appearing after the cursor" ~args:A.nil
     ~ret:S.(list (obj suffix_item)) @@ fun d () ->
-  let make (u : Document.unprocessed_item) = (u.kind, (u.text, ())) in
-  List.map make (Document.suffix d)
+  Document.suffix d
 
 let _ =
   declare ~name:"has_suffix" ~descr:"indicates whether the \

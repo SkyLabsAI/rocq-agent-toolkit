@@ -38,7 +38,12 @@
     "jsonrpc": "2.0",
     "result": {
       "globrefs_diff": { "added_constants": [ "test.dir.test.x1" ] },
-      "feedback_messages": [ { "level": "info", "text": "x1 is defined" } ]
+      "feedback_messages": [ { "level": "info", "text": "x1 is defined" } ],
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "x1", "kind": "Definition" }
+      }
     }
   }
   { "id": 5, "jsonrpc": "2.0", "result": "x1\n     : Set" }
@@ -67,7 +72,12 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.inserted" ] },
       "feedback_messages": [
         { "level": "info", "text": "inserted is defined" }
-      ]
+      ],
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "inserted", "kind": "Definition" }
+      }
     }
   }
   { "id": 11, "jsonrpc": "2.0", "result": "x1\n     : Set" }

@@ -25,7 +25,12 @@
         "bp": 0,
         "ep": 34
       },
-      { "kind": "synpure:Print", "text": "About nat.", "bp": 34, "ep": 44 }
+      {
+        "kind": { "tag": "Print", "pure": true },
+        "text": "About nat.",
+        "bp": 34,
+        "ep": 44
+      }
     ]
   }
   [1]

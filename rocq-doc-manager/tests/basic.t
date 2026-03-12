@@ -54,7 +54,11 @@
   $ cat commands.txt | rocq-doc-manager test.v -- -Q . test.dir | jsonrpc-tp.tp_unwrap
   { "method": "ready_seq", "jsonrpc": "2.0" }
   { "id": 1, "jsonrpc": "2.0", "result": null }
-  { "id": 2, "jsonrpc": "2.0", "result": {} }
+  {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "result": { "synterp_ast": { "kind": "Require", "attrs": {} } }
+  }
   { "id": 3, "jsonrpc": "2.0", "result": null }
   { "id": 4, "jsonrpc": "2.0", "result": null }
   {
@@ -64,7 +68,12 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.inserted" ] },
       "feedback_messages": [
         { "level": "info", "text": "inserted is defined" }
-      ]
+      ],
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "inserted", "kind": "Definition" }
+      }
     }
   }
   { "id": 6, "jsonrpc": "2.0", "result": null }
@@ -77,7 +86,8 @@
           "level": "notice",
           "text": "nil : forall {A : Type}, list A\n\nnil is template universe polymorphic\nArguments nil {A}%_type_scope\nExpands to: Constructor Corelib.Init.Datatypes.nil\nDeclared in library Corelib.Init.Datatypes, line 319, characters 3-6"
         }
-      ]
+      ],
+      "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} }
     }
   }
   { "id": 8, "jsonrpc": "2.0", "result": null }
@@ -86,7 +96,12 @@
     "jsonrpc": "2.0",
     "result": {
       "globrefs_diff": { "added_constants": [ "test.dir.test.junk" ] },
-      "feedback_messages": [ { "level": "info", "text": "junk is defined" } ]
+      "feedback_messages": [ { "level": "info", "text": "junk is defined" } ],
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "junk", "kind": "Definition" }
+      }
     }
   }
   { "id": 10, "jsonrpc": "2.0", "result": null }
@@ -96,7 +111,8 @@
     "result": {
       "feedback_messages": [
         { "level": "notice", "text": "12 < 42 <= 100\n     : Prop" }
-      ]
+      ],
+      "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} }
     }
   }
   {
@@ -106,25 +122,46 @@
       {
         "kind": "command",
         "offset": 0,
-        "text": "Require Import Stdlib.ZArith.BinInt."
+        "text": "Require Import Stdlib.ZArith.BinInt.",
+        "data": { "kind": "Require", "attrs": {} }
       },
       { "kind": "blanks", "offset": 36, "text": "\n\n" },
       { "kind": "blanks", "offset": 38, "text": "\n(* inserted comment *)\n" },
       {
         "kind": "command",
         "offset": 62,
-        "text": "Definition inserted := nat."
+        "text": "Definition inserted := nat.",
+        "data": {
+          "kind": "Definition",
+          "pure": true,
+          "attrs": { "id": "inserted", "kind": "Definition" }
+        }
       },
       { "kind": "blanks", "offset": 89, "text": "\n" },
-      { "kind": "command", "offset": 90, "text": "About nil." },
+      {
+        "kind": "command",
+        "offset": 90,
+        "text": "About nil.",
+        "data": { "kind": "Print", "pure": true, "attrs": {} }
+      },
       { "kind": "blanks", "offset": 100, "text": "\n    " },
       {
         "kind": "command",
         "offset": 105,
-        "text": "Definition junk :=\n\n\nnat."
+        "text": "Definition junk :=\n\n\nnat.",
+        "data": {
+          "kind": "Definition",
+          "pure": true,
+          "attrs": { "id": "junk", "kind": "Definition" }
+        }
       },
       { "kind": "blanks", "offset": 130, "text": "\n" },
-      { "kind": "command", "offset": 131, "text": "Check 12 < 42 <= 100." }
+      {
+        "kind": "command",
+        "offset": 131,
+        "text": "Check 12 < 42 <= 100.",
+        "data": { "kind": "CheckMayEval", "pure": true, "attrs": {} }
+      }
     ]
   }
   {
@@ -132,15 +169,43 @@
     "jsonrpc": "2.0",
     "result": [
       { "kind": "blanks", "text": "\n\n\n" },
-      { "kind": "command", "text": "Theorem test : forall x : nat, x = x." },
+      {
+        "kind": "command",
+        "text": "Theorem test : forall x : nat, x = x.",
+        "data": {
+          "kind": "StartTheoremProof",
+          "pure": true,
+          "attrs": { "ids": [ "test" ], "kind": "Theorem" }
+        }
+      },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Proof." },
+      {
+        "kind": "command",
+        "text": "Proof.",
+        "data": { "kind": "Proof", "pure": true, "attrs": {} }
+      },
       { "kind": "blanks", "text": "\n  " },
-      { "kind": "command", "text": "intro x." },
+      {
+        "kind": "command",
+        "text": "intro x.",
+        "data": { "kind": "Extend", "attrs": {} }
+      },
       { "kind": "blanks", "text": "\n  " },
-      { "kind": "command", "text": "reflexivity." },
+      {
+        "kind": "command",
+        "text": "reflexivity.",
+        "data": { "kind": "Extend", "attrs": {} }
+      },
       { "kind": "blanks", "text": "\n" },
-      { "kind": "command", "text": "Qed." },
+      {
+        "kind": "command",
+        "text": "Qed.",
+        "data": {
+          "kind": "EndProof",
+          "pure": true,
+          "attrs": { "kind": "Qed" }
+        }
+      },
       { "kind": "blanks", "text": "\n" }
     ]
   }
@@ -155,6 +220,11 @@
         "focused_goals": [
           "\n============================\nforall x : nat, x = x"
         ]
+      },
+      "synterp_ast": {
+        "kind": "StartTheoremProof",
+        "pure": true,
+        "attrs": { "ids": [ "test" ], "kind": "Theorem" }
       }
     }
   }
@@ -169,7 +239,8 @@
         "focused_goals": [
           "\n============================\nforall x : nat, x = x"
         ]
-      }
+      },
+      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} }
     }
   }
   { "id": 18, "jsonrpc": "2.0", "result": null }
@@ -181,21 +252,30 @@
         "given_up_goals": 0,
         "shelved_goals": 0,
         "focused_goals": [ "\nx : nat\n============================\nx = x" ]
-      }
+      },
+      "synterp_ast": { "kind": "Extend", "attrs": {} }
     }
   }
   { "id": 20, "jsonrpc": "2.0", "result": null }
   {
     "id": 21,
     "jsonrpc": "2.0",
-    "result": { "proof_state": { "given_up_goals": 0, "shelved_goals": 0 } }
+    "result": {
+      "proof_state": { "given_up_goals": 0, "shelved_goals": 0 },
+      "synterp_ast": { "kind": "Extend", "attrs": {} }
+    }
   }
   { "id": 22, "jsonrpc": "2.0", "result": null }
   {
     "id": 23,
     "jsonrpc": "2.0",
     "result": {
-      "globrefs_diff": { "added_constants": [ "test.dir.test.test" ] }
+      "globrefs_diff": { "added_constants": [ "test.dir.test.test" ] },
+      "synterp_ast": {
+        "kind": "EndProof",
+        "pure": true,
+        "attrs": { "kind": "Qed" }
+      }
     }
   }
   { "id": 24, "jsonrpc": "2.0", "result": null }

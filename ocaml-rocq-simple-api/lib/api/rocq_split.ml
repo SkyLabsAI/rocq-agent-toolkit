@@ -1,5 +1,7 @@
 include Rocq_simple_api_internal.Rocq_split_data
 
+type command = Rocq_vernac_entry.command
+
 let run_raw : config -> res = fun config ->
   let prog = "rocq-simple-api.private.splitter" in
   let (ic, oc) = Unix.open_process_args prog [|prog|] in

@@ -16,9 +16,21 @@ module Schema = struct
     | Bool : bool t
     | String : string t
     | Variant : 'a variant_spec -> 'a t
+    | TUnion : 'a tagged list -> 'a t
     | Nullable : 'a t -> 'a option t
     | List : 'a t -> 'a list t
+    | Dict : 'a t -> (string * 'a) list t
     | Obj : 'a api_obj -> 'a t
+
+  and _ tagged = T : {
+    tag : string;
+    inject : ('a -> 'b);
+    extract : ('b -> 'a option);
+    schema : 'a t;
+  } -> 'b tagged
+
+  let tagged ~tag ~inject ~extract s =
+    T({tag; inject; extract; schema = s})
 
   let null = Null
   let any = Any
@@ -26,8 +38,12 @@ module Schema = struct
   let bool = Bool
   let string = String
   let variant ?default ~encode values = Variant({values; default; encode})
+  let tagged_union ts =
+    if ts = [] then invalid_arg "Schema.tagged_union";
+    TUnion(ts)
   let nullable s = Nullable(s)
   let list s = List(s)
+  let dict s = Dict(s)
   let obj o = Obj(o)
 
   let descr_variant : 'a variant_spec -> string = fun s ->
@@ -35,6 +51,12 @@ module Schema = struct
     String.concat ", " (List.map to_string s.values)
 
   let rec descr : type a. a t -> string = fun s ->
+    let descr_tagged_union ts =
+      let descr_tagged (T(t)) =
+        Printf.sprintf "(%S, v) where v is %s" t.tag (descr t.schema)
+      in
+      String.concat ", " (List.map descr_tagged ts)
+    in
     match s with
     | Null -> "a `null` value"
     | Any -> "a JSON value"
@@ -42,13 +64,11 @@ module Schema = struct
     | Bool -> "a boolean"
     | String -> "a string"
     | Variant s -> "any of " ^ descr_variant s
+    | TUnion ts -> "a tuple that is either: " ^ descr_tagged_union ts
     | Nullable s -> "either `null` or " ^ descr s
     | List s -> "a list where each element is " ^ descr s
+    | Dict s -> "a dictionary where each value is " ^ descr s
     | Obj o -> "an instance of the `" ^ o.name ^ "` object"
-
-  let python_type_variant : 'a variant_spec -> string = fun s ->
-    let to_string v = Printf.sprintf "%S" (s.encode v) in
-    "Literal[" ^ String.concat ", " (List.map to_string s.values) ^ "]"
 
   let python_type : type a. a t -> string =
     let rec python_type : type a. a t -> string = function
@@ -57,9 +77,17 @@ module Schema = struct
       | Int -> "int"
       | Bool -> "bool"
       | String -> "str"
-      | Variant s -> python_type_variant s
+      | Variant s ->
+          let to_string v = Printf.sprintf "%S" (s.encode v) in
+          "Literal[" ^ String.concat ", " (List.map to_string s.values) ^ "]"
+      | TUnion ts ->
+          let tagged_type (T({tag; schema; _})) =
+            Printf.sprintf "tuple[Literal[%S], %s]" tag (python_type schema)
+          in
+          String.concat " | " (List.map tagged_type ts)
       | Nullable s -> python_type s ^ " | None"
       | List s -> "list[" ^ python_type s ^ "]"
+      | Dict s -> "dict[str, " ^ (python_type s) ^ "]"
       | Obj o -> Printf.sprintf "%s" o.name
     in
     python_type
@@ -74,11 +102,22 @@ module Schema = struct
       | Bool -> Printf.sprintf "bool(%s)" var
       | String -> Printf.sprintf "str(%s)" var
       | Variant _ -> Printf.sprintf "str(%s)" var
+      | TUnion [] -> assert false
+      | TUnion (T(t) :: []) ->
+          Printf.sprintf "(%S, %s)" t.tag (python_val var t.schema)
+      | TUnion (T(t) :: ts) ->
+          Printf.sprintf "(%S, %s) if %s[0] == %S else %s" t.tag
+            (python_val var t.schema) var t.tag (python_val var (TUnion(ts)))
       | Nullable s ->
           Printf.sprintf "None if %s is None else %s" var (python_val var s)
       | List s ->
           let fresh = fresh () in
           Printf.sprintf "[%s for %s in %s]" (python_val fresh s) fresh var
+      | Dict s ->
+          let fresh_k = fresh () in
+          let fresh_v = fresh () in
+          Printf.sprintf "{str(%s): %s for %s, %s in %s]"
+            fresh_k (python_val fresh_v s) fresh_k fresh_v var
       | Obj o -> Printf.sprintf "%s.model_validate(%s)" o.name var
     in
     python_val var s
@@ -114,6 +153,7 @@ module Schema = struct
         Option.iter default v.default
     | Nullable(_) -> line "default=None"
     | List(_)     -> line "default_factory=list"
+    | Dict(_)     -> line "default_factory=dict"
     | Obj(o)      ->
         let default _ = line "default_factory=lambda: %s()" o.name in
         Option.iter default o.default
@@ -269,6 +309,14 @@ let declare_emittable_notification api ~name ?descr ~args =
   fun v -> N(en, v)
 
 let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
+  let rec tagged_union_to_json ts v =
+    match ts with
+    | []                -> assert false
+    | Schema.T(s) :: ts ->
+    match s.extract v with
+    | None    -> tagged_union_to_json ts v
+    | Some(v) -> `List([`String(s.tag); to_json api s.schema v])
+  in
   match (s, v) with
   | (Null       , ()     ) -> `Null
   | (Any        , _      ) -> v
@@ -276,9 +324,12 @@ let rec to_json : type a. _ api -> a Schema.t -> a -> json = fun api s v ->
   | (Bool       , _      ) -> `Bool(v)
   | (String     , _      ) -> `String(v)
   | (Variant(s) , v      ) -> `String(s.encode v)
+  | (TUnion(ts) , v      ) -> tagged_union_to_json ts v
   | (Nullable(_), None   ) -> `Null
   | (Nullable(s), Some(v)) -> to_json api s v
   | (List(s)    , _      ) -> `List(List.map (to_json api s) v)
+  | (Dict(s)    , vs     ) ->
+      `Assoc(List.map (fun (k, v) -> (k, to_json api s v)) vs)
   | (Obj(o)     , _      ) ->
   let O(o) = get_obj api o in
   let rec make : type a. a Fields.t -> a -> (string * json) list = fun fs v ->
@@ -351,12 +402,35 @@ let of_json : type a. _ api -> a Schema.t -> json -> (a, string) Result.t =
           | Some(v) -> v
         end
     | (Variant(_) , _         ) -> error ctxt "expected string value"
+    | (TUnion(ts) , `List(vs) ) ->
+        let (tag, v) =
+          match vs with
+          | [tag; v] -> (tag, v)
+          | _        -> error ctxt "expected list with two elements"
+        in
+        let tag =
+          match tag with
+          | `String(tag) -> tag
+          | _            -> error (ListItem(0) :: ctxt) "expected string tag"
+        in
+        begin
+          let matches_tag (Schema.T({tag = item_tag; _})) = tag = item_tag in
+          match List.find_opt matches_tag ts with
+          | None    -> error (ListItem(0) :: ctxt) "unknown tag"
+          | Some(t) ->
+          let Schema.T({inject; schema = s; _}) = t in
+          inject (of_json (ListItem(1) :: ctxt) s v)
+        end
+    | (TUnion(_)  , _         ) -> error ctxt "expected tagged union member"
     | (Nullable(_), `Null     ) -> None
     | (Nullable(s), _         ) ->
         Some(of_json (NullableItem :: ctxt) s json)
     | (List(s)    , `List(vs) ) ->
         List.mapi (fun i v -> of_json (ListItem(i) :: ctxt) s v) vs
     | (List(_)    , _         ) -> error ctxt "expected list value"
+    | (Dict(s)    , `Assoc(fs)) ->
+        List.mapi (fun i (k, v) -> (k, of_json (ListItem(i) :: ctxt) s v)) fs
+    | (Dict(_)    , _         ) -> error ctxt "expected dictionary value"
     | (Obj(o)     , `Assoc(fs)) ->
         of_json_obj ctxt o fs
     | (Obj(_)     , _         ) -> error ctxt "expected object value"

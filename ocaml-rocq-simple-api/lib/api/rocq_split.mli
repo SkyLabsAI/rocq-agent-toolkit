@@ -1,23 +1,7 @@
 (** Rocq sentence-splitting *)
 
-(** Stripped-down version of [Synterp.synterp_entry]. *)
-type entry =
-  | EVernacNoop
-  | EVernacNotation
-  | EVernacBeginSection of Names.lident
-  | EVernacEndSegment of Names.lident
-  | EVernacRequire
-  | EVernacImport
-  | EVernacDeclareModule of Lib.export * Names.lident
-  | EVernacDefineModule of Lib.export * Names.lident
-  | EVernacDeclareModuleType of Names.lident
-  | EVernacInclude
-  | EVernacSetOption
-  | EVernacLoad
-  | EVernacExtend
-
-(** AST of a Rocq vernacular command (slightly simplified). *)
-type command = entry Vernacexpr.vernac_expr_gen CAst.t
+(** AST of a Rocq vernacular command. *)
+type command = Rocq_vernac_entry.command
 
 (** Rocq sentence (vernacular command, or sequence of blank caracters). *)
 type sentence = {

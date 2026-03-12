@@ -22,6 +22,7 @@ __all__ = [
     "Quickfix",
     "SentenceSplitError",
     "Sentence",
+    "VernacData",
     "RocqLoc",
     "RocqSource",
 ]
@@ -73,9 +74,33 @@ class RocqLoc(BaseModel):
     )
 
 
+class VernacData(BaseModel):
+    """Limited Rocq AST information for a command."""
+
+    attrs: dict[str, Any] = Field(
+        kw_only=True,
+        default_factory=dict,
+        description="Attributes",
+    )
+    pure: bool = Field(
+        kw_only=True,
+        default=False,
+        description="indicates if the command is definitely pure for the syntax interpretation phase",
+    )
+    kind: Literal["Noop", "Notation", "BeginSection", "EndSegment", "Require", "Import", "DeclareModule", "DefineModule", "DeclareModuleType", "Include", "SetOption", "Load", "Extend", "OpenCloseScope", "DeclareScope", "Delimiters", "BindScope", "EnableNotation", "Definition", "StartTheoremProof", "EndProof", "ExactProof", "Assumption", "Symbol", "Inductive", "Fixpoint", "CoFixpoint", "Scheme", "SchemeEquality", "CombinedScheme", "Universe", "Sort", "Constraint", "AddRewRule", "Canonical", "Coercion", "IdentityCoercion", "NameSectionHypSet", "Instance", "DeclareInstance", "Context", "ExistingInstance", "ExistingClass", "ResetName", "ResetInitial", "Back", "CreateHintDb", "RemoveHints", "Hints", "SyntacticDefinition", "Arguments", "Reserve", "Generalizable", "SetOpacity", "SetStrategy", "MemOption", "PrintOption", "CheckMayEval", "GlobalCheck", "DeclareReduction", "Print", "Search", "Locate", "Register", "Primitive", "Comments", "Attributes", "Abort", "AbortAll", "Restart", "Undo", "UndoTo", "Focus", "Unfocus", "Unfocused", "Bullet", "Subproof", "EndSubproof", "Show", "CheckGuard", "ValidateProof", "Proof", "AddOption", "RemoveOption"] = Field(
+        kw_only=True,
+        description="command kind",
+    )
+
+
 class Sentence(BaseModel):
     """Rocq sentence (blanks or command)."""
 
+    data: VernacData | None = Field(
+        kw_only=True,
+        default=None,
+        description="command data",
+    )
     text: str = Field(
         kw_only=True,
         description="sentence text",
@@ -173,6 +198,10 @@ class ProofState(BaseModel):
 class CommandData(BaseModel):
     """Data gathered while running a Rocq command."""
 
+    synterp_ast: VernacData = Field(
+        kw_only=True,
+        description="limited Rocq AST data",
+    )
     proof_state: ProofState | None = Field(
         kw_only=True,
         default=None,
@@ -216,6 +245,11 @@ class StepsError(BaseModel):
 class PrefixItem(BaseModel):
     """Document prefix item, appearing before the cursor."""
 
+    data: VernacData | None = Field(
+        kw_only=True,
+        default=None,
+        description="command data",
+    )
     text: str = Field(
         kw_only=True,
     )
@@ -230,6 +264,11 @@ class PrefixItem(BaseModel):
 class SuffixItem(BaseModel):
     """Document suffix item, appearing after the cursor."""
 
+    data: VernacData | None = Field(
+        kw_only=True,
+        default=None,
+        description="command data",
+    )
     text: str = Field(
         kw_only=True,
     )

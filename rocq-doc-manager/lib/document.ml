@@ -1,7 +1,15 @@
 type sid = Rocq_toplevel.StateID.t
 
-type item_kind = [`Blanks | `Command | `Ghost]
+type vernac_data = Rocq_vernac_entry.command
+
+let vernac_data_to_yojson =
+  Rocq_vernac_entry.command_to_yojson
+
+type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]
 [@@deriving to_yojson]
+
+let is_ghost : item_kind -> bool = fun kind ->
+  match kind with `Ghost(_) -> true | _ -> false
 
 type processed_item = {
   index : int;
@@ -144,9 +152,9 @@ let with_synced_backend : t -> (backend -> 'a) -> 'a = fun d f ->
       | Error(_,_) -> assert false
     in
     match processed.kind with
-    | `Blanks  -> sid_before
-    | `Command -> run processed.off processed.text
-    | `Ghost   -> run 0 processed.text
+    | `Blanks     -> sid_before
+    | `Command(_) -> run processed.off processed.text
+    | `Ghost(_)   -> run 0 processed.text
   in
   ignore (List.fold_left replay sid prefix); f backend
 
@@ -169,8 +177,8 @@ let cursor_index : t -> int = fun d ->
 let to_unprocessed : Rocq_split.sentence -> unprocessed_item = fun s ->
   let text = s.Rocq_split.text in
   match s.Rocq_split.kind with
-  | `Blanks     -> {kind = `Blanks ; text}
-  | `Command(_) -> {kind = `Command; text}
+  | `Blanks     -> {kind = `Blanks    ; text}
+  | `Command(c) -> {kind = `Command(c); text}
 
 type loc = Loc.t option
 
@@ -209,8 +217,8 @@ let insert_command : ?ghost:bool -> t -> text:string ->
   let off = if ghost then 0 else d.cursor_off in
   let sid_before = Rocq_toplevel.StateID.current backend.top in
   let res = Rocq_toplevel.run backend.top ~off ~text in
-  match res with Error(_,_) -> res | Ok(_) ->
-  let kind = if ghost then `Ghost else `Command in
+  match res with Error(_,_) -> res | Ok({synterp_ast=v; _}) ->
+  let kind = if ghost then `Ghost(v) else `Command(v) in
   let processed = {index = cursor_index d; kind; off; text} in
   d.rev_prefix <- processed :: d.rev_prefix;
   if not ghost then d.cursor_off <- d.cursor_off + String.length text;
@@ -275,11 +283,9 @@ let run_step : t -> (command_data option, command_error) result = fun d ->
       d.suffix <- suffix;
       insert_blanks d ~text; Ok(None)
   | {kind           ; text} :: suffix ->
-      begin
-        match insert_command ~ghost:(kind = `Ghost) d ~text with
-        | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
-        | Error(s,d) -> Error(s, d)
-      end
+      match insert_command ~ghost:(is_ghost kind) d ~text with
+      | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
+      | Error(s,d) -> Error(s, d)
 
 let run_steps : t -> count:int -> (unit, int * command_error) result =
     fun d ~count ->
@@ -324,17 +330,17 @@ let contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string =
   let _ = get_backend d in
   let b = Buffer.create 73 in
   let add_processed (p : processed_item) =
-    if p.kind <> `Ghost || include_ghost then Buffer.add_string b p.text
+    if not (is_ghost p.kind) || include_ghost then Buffer.add_string b p.text
   in
   let add_unprocessed u =
-    if u.kind <> `Ghost || include_ghost then Buffer.add_string b u.text
+    if not (is_ghost u.kind) || include_ghost then Buffer.add_string b u.text
   in
   List.iter add_processed (List.rev d.rev_prefix);
   if include_suffix then List.iter add_unprocessed d.suffix;
   Buffer.contents b
 
 type sentence = {
-  kind : [`Blanks | `Command];
+  kind : [`Blanks | `Command of vernac_data];
   text : string;
 }
 
@@ -366,8 +372,7 @@ let split_sentences : t -> text:string ->
         to_sentences len rev_acc sentences
     | s :: sentences                        ->
         let len = len + String.length s.text in
-        let kind = match s.kind with `Blanks -> `Blanks | _ -> `Command in
-        let rev_acc = {kind; text = s.text} :: rev_acc in
+        let rev_acc = {kind = s.kind; text = s.text} :: rev_acc in
         to_sentences len rev_acc sentences
   in
   let (len, sentences) = to_sentences 0 [] sentences in
@@ -386,11 +391,11 @@ let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
   try
     Out_channel.with_open_text file @@ fun oc ->
     let output_processed (p : processed_item) =
-      if p.kind <> `Ghost || include_ghost then
+      if not (is_ghost p.kind) || include_ghost then
         Out_channel.output_string oc p.text
     in
     let output_unprocessed (u : unprocessed_item) =
-      if u.kind <> `Ghost || include_ghost then
+      if not (is_ghost u.kind) || include_ghost then
         Out_channel.output_string oc u.text
     in
     List.iter output_processed (List.rev d.rev_prefix);

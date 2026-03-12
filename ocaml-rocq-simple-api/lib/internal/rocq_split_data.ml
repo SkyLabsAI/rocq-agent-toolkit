@@ -1,19 +1,4 @@
-type entry =
-  | EVernacNoop
-  | EVernacNotation
-  | EVernacBeginSection of Names.lident
-  | EVernacEndSegment of Names.lident
-  | EVernacRequire
-  | EVernacImport
-  | EVernacDeclareModule of Lib.export * Names.lident
-  | EVernacDefineModule of Lib.export * Names.lident
-  | EVernacDeclareModuleType of Names.lident
-  | EVernacInclude
-  | EVernacSetOption
-  | EVernacLoad
-  | EVernacExtend
-
-type command = entry Vernacexpr.vernac_expr_gen CAst.t
+type command = Rocq_vernac_entry.command
 
 type sentence = {
   kind : [`Command of command | `Blanks];

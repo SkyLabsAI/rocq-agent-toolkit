@@ -81,11 +81,19 @@ val file : t -> string
     cannot be fully parsed, an error is returned. *)
 val load_file : t -> (unit, string * Loc.t option) result
 
+(** Partial AST data attached to a Rocq vernacular command. *)
+type vernac_data = Rocq_vernac_entry.command
+
+(** Rocq sentence, as returned by the sentence-splitter. *)
 type sentence = {
-  kind : [`Blanks | `Command];
+  kind : [`Blanks | `Command of vernac_data];
   text : string;
 }
 
+(** [split_sentences d ~text] attempts to decompose the given Rocq [text] into
+    a list of sentences (blank characters, or vernacular command). The list of
+    the successfully parsed sentences is returned along with the result, which
+    in case of error gives an error message and the leftover text. *)
 val split_sentences : t -> text:string
   -> sentence list * (unit, string * string) result
 
@@ -165,11 +173,14 @@ val advance_to : t -> index:int -> (unit, command_error) result
     index of the last item in the document's suffix. *)
 val go_to : t -> index:int -> (unit, command_error) result
 
+(** Document item kind: blank characters, command, or ghost command. *)
+type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]
+
 (** Representation of a processed item (in the document's prefix). *)
 type processed_item = {
   index : int;
   (** Index in the document, as passed to, e.g., [advance_to]. *)
-  kind : [`Blanks | `Command | `Ghost];
+  kind : item_kind;
   (** Item kind. *)
   off : int;
   (** Byte offset of the item in the document. *)
@@ -179,7 +190,7 @@ type processed_item = {
 
 (** Representation of an unprocessed item (in the document's suffix). *)
 type unprocessed_item = {
-  kind : [`Blanks | `Command | `Ghost];
+  kind : item_kind;
   (** Item kind. *)
   text : string;
   (** Text of the item. *)

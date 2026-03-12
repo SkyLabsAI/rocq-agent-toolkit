@@ -39,7 +39,12 @@
     "jsonrpc": "2.0",
     "result": {
       "globrefs_diff": { "added_constants": [ "test.dir.test.test1" ] },
-      "feedback_messages": [ { "level": "info", "text": "test1 is defined" } ]
+      "feedback_messages": [ { "level": "info", "text": "test1 is defined" } ],
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "test1", "kind": "Definition" }
+      }
     }
   }
   { "id": 5, "jsonrpc": "2.0", "result": 1 }
@@ -50,7 +55,12 @@
     "jsonrpc": "2.0",
     "result": {
       "globrefs_diff": { "added_constants": [ "test.dir.test.test2" ] },
-      "feedback_messages": [ { "level": "info", "text": "test2 is defined" } ]
+      "feedback_messages": [ { "level": "info", "text": "test2 is defined" } ],
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "test2", "kind": "Definition" }
+      }
     }
   }
   { "id": 9, "jsonrpc": "2.0", "result": 3 }
@@ -61,7 +71,12 @@
     "jsonrpc": "2.0",
     "result": {
       "globrefs_diff": { "added_constants": [ "test.dir.test.test3" ] },
-      "feedback_messages": [ { "level": "info", "text": "test3 is defined" } ]
+      "feedback_messages": [ { "level": "info", "text": "test3 is defined" } ],
+      "synterp_ast": {
+        "kind": "Definition",
+        "pure": true,
+        "attrs": { "id": "test3", "kind": "Definition" }
+      }
     }
   }
   { "id": 13, "jsonrpc": "2.0", "result": 5 }
