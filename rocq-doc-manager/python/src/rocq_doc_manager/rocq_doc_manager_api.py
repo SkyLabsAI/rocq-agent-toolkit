@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 # ruff: noqa: C416 -- unnecessary list comprehension
-from typing import Any, Literal
+from typing import Any, Literal, final
 
 from jsonrpc_tp import AsyncProtocol, Err, Error, Resp, SyncProtocol
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
     "RocqDocManagerAPI",
@@ -27,7 +27,13 @@ __all__ = [
 ]
 
 
+@final
 class RocqSource(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Rocq source file information."""
 
     file: str = Field(
@@ -39,7 +45,13 @@ class RocqSource(BaseModel):
     )
 
 
+@final
 class RocqLoc(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Rocq source code location."""
 
     ep: int = Field(
@@ -73,7 +85,13 @@ class RocqLoc(BaseModel):
     )
 
 
+@final
 class Sentence(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Rocq sentence (blanks or command)."""
 
     text: str = Field(
@@ -86,7 +104,13 @@ class Sentence(BaseModel):
     )
 
 
+@final
 class SentenceSplitError(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Sentence-splitting error data."""
 
     rest: str = Field(
@@ -100,7 +124,13 @@ class SentenceSplitError(BaseModel):
     )
 
 
+@final
 class Quickfix(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Quick fix hint."""
 
     text: str = Field(
@@ -111,7 +141,13 @@ class Quickfix(BaseModel):
     )
 
 
+@final
 class FeedbackMessage(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Rocq feedback message."""
 
     text: str = Field(
@@ -130,7 +166,13 @@ class FeedbackMessage(BaseModel):
     )
 
 
+@final
 class GlobrefsDiff(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Environment modification performed by a Rocq command."""
 
     removed_inductives: list[str] = Field(
@@ -151,7 +193,13 @@ class GlobrefsDiff(BaseModel):
     )
 
 
+@final
 class ProofState(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Summary of a Rocq proof state, including the text of focused goals."""
 
     focused_goals: list[str] = Field(
@@ -170,7 +218,13 @@ class ProofState(BaseModel):
     )
 
 
+@final
 class CommandData(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Data gathered while running a Rocq command."""
 
     proof_state: ProofState | None = Field(
@@ -187,7 +241,13 @@ class CommandData(BaseModel):
     )
 
 
+@final
 class CommandError(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Data returned on Rocq command errors."""
 
     feedback_messages: list[FeedbackMessage] = Field(
@@ -201,7 +261,13 @@ class CommandError(BaseModel):
     )
 
 
+@final
 class StepsError(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Data returned by `run_steps`."""
 
     cmd_error: CommandError = Field(
@@ -213,7 +279,13 @@ class StepsError(BaseModel):
     )
 
 
+@final
 class PrefixItem(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Document prefix item, appearing before the cursor."""
 
     text: str = Field(
@@ -227,7 +299,13 @@ class PrefixItem(BaseModel):
     )
 
 
+@final
 class SuffixItem(BaseModel):
+    model_config = ConfigDict(
+        extra = "forbid",
+        frozen = True,
+    )
+
     """Document suffix item, appearing after the cursor."""
 
     text: str = Field(
@@ -256,7 +334,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None if result.data is None else CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     def clear_suffix(
@@ -298,7 +376,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     def contents(
@@ -400,7 +478,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None if result.data is None else CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     def has_suffix(
@@ -441,7 +519,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return CommandData.model_validate(result.result)
 
     def load_file(
@@ -455,7 +533,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None if result.data is None else RocqLoc.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     def materialize(
@@ -469,7 +547,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     def query(
@@ -484,7 +562,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return CommandData.model_validate(result.result)
 
     def query_json(
@@ -500,7 +578,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return result.result
 
     def query_json_all(
@@ -516,7 +594,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return [v1 for v1 in result.result]
 
     def query_text(
@@ -532,7 +610,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return str(result.result)
 
     def query_text_all(
@@ -548,7 +626,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return [str(v1) for v1 in result.result]
 
     def revert_before(
@@ -576,7 +654,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None if result.result is None else CommandData.model_validate(result.result)
 
     def run_steps(
@@ -591,7 +669,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = StepsError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     def split_sentences(
@@ -606,7 +684,7 @@ class RocqDocManagerAPI:
         )
         if isinstance(result, Err):
             data = SentenceSplitError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return [Sentence.model_validate(v1) for v1 in result.result]
 
 
@@ -628,7 +706,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None if result.data is None else CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     async def clear_suffix(
@@ -670,7 +748,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     async def contents(
@@ -772,7 +850,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None if result.data is None else CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     async def has_suffix(
@@ -813,7 +891,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return CommandData.model_validate(result.result)
 
     async def load_file(
@@ -827,7 +905,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None if result.data is None else RocqLoc.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     async def materialize(
@@ -841,7 +919,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     async def query(
@@ -856,7 +934,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return CommandData.model_validate(result.result)
 
     async def query_json(
@@ -872,7 +950,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return result.result
 
     async def query_json_all(
@@ -888,7 +966,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return [v1 for v1 in result.result]
 
     async def query_text(
@@ -904,7 +982,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return str(result.result)
 
     async def query_text_all(
@@ -920,7 +998,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = None
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return [str(v1) for v1 in result.result]
 
     async def revert_before(
@@ -948,7 +1026,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = CommandError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None if result.result is None else CommandData.model_validate(result.result)
 
     async def run_steps(
@@ -963,7 +1041,7 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = StepsError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return None
 
     async def split_sentences(
@@ -978,5 +1056,5 @@ class RocqDocManagerAPIAsync:
         )
         if isinstance(result, Err):
             data = SentenceSplitError.model_validate(result.data)
-            return Err(result.message, data)
+            return Err(message=result.message, data=data)
         return [Sentence.model_validate(v1) for v1 in result.result]

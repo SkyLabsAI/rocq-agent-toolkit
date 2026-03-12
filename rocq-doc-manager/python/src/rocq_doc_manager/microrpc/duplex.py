@@ -6,7 +6,9 @@ from typing import Any
 
 import websockets
 
-from .deserialize import Decoder, EncoderProtocol
+from .deserialize import DecoderAPI, EncoderAPI
+from .deserialize import decoder as default_decoder
+from .deserialize import encoder as default_encoder
 from .dispatcher import Dispatcher
 from .tunnel import Request, Response
 
@@ -25,13 +27,13 @@ class DuplexMux:
         conn: Any,
         *,
         dispatcher: Dispatcher,
-        encoder: EncoderProtocol,
-        decoder: Decoder,
+        encoder: EncoderAPI | None = None,
+        decoder: DecoderAPI | None = None,
     ) -> None:
         self._conn = conn
         self._dispatcher = dispatcher
-        self._encoder = encoder
-        self._decoder = decoder
+        self._encoder = encoder if encoder is not None else default_encoder
+        self._decoder = decoder if decoder is not None else default_decoder
 
         self._fresh: int = -1
         self._pending: dict[int, asyncio.Future[tuple[bool, Any]]] = {}

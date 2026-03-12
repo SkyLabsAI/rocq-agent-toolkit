@@ -10,6 +10,9 @@ authors = [{ name = "Rodolphe Lepigre", email = "rodolphe.lepigre@skyabs-ai.com"
 requires-python = ">=3.13"
 readme = "README.md"
 license = "GPL-2.0-or-later" # Revisit this license
+dependencies = [
+    "pydantic>=2.12.5",
+]
 
 [project.urls]
 Repository = "https://github.com/SkylabsAI/skylabs-fm"

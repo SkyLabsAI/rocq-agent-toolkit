@@ -200,7 +200,7 @@ class ProofAgent(Agent):
             goal_ty_upperbound = self._goal_ty_upperbound
         goal_reply = await rc.current_goal()
         if goal_reply is None:
-            return rdm_api.Err("No goal to prove", None)
+            return rdm_api.Err(message="No goal to prove", data=None)
         return ProofState(
             goal_reply,
             goal_ty_upperbound=goal_ty_upperbound,
