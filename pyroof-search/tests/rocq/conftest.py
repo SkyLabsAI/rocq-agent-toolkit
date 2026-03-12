@@ -27,7 +27,7 @@ class MockRocqCursor:
                 message=self._fail_commands[text],
                 data=rdm_api.CommandError(),
             )
-        return rdm_api.CommandData(synterp_ast=rdm_api.VernacData(kind="dummy"))
+        return rdm_api.CommandData(synterp_ast=rdm_api.VernacData(kind="Noop"))
 
     def set_failure(self, command: str, error: str) -> None:
         """Configure a command to fail with given error."""

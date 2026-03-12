@@ -55,7 +55,7 @@ API Objects
 - Description: limited Rocq AST information for a command.
 - Field `attrs`: Attributes (as a dictionary where each value is a JSON value).
 - Field `pure`: indicates if the command is definitely pure for the syntax interpretation phase (as a boolean).
-- Field `kind`: command kind (as a string).
+- Field `kind`: command kind (as any of `"Noop"`, `"Notation"`, `"BeginSection"`, `"EndSegment"`, `"Require"`, `"Import"`, `"DeclareModule"`, `"DefineModule"`, `"DeclareModuleType"`, `"Include"`, `"SetOption"`, `"Load"`, `"Extend"`, `"OpenCloseScope"`, `"DeclareScope"`, `"Delimiters"`, `"BindScope"`, `"EnableNotation"`, `"Definition"`, `"StartTheoremProof"`, `"EndProof"`, `"ExactProof"`, `"Assumption"`, `"Symbol"`, `"Inductive"`, `"Fixpoint"`, `"CoFixpoint"`, `"Scheme"`, `"SchemeEquality"`, `"CombinedScheme"`, `"Universe"`, `"Sort"`, `"Constraint"`, `"AddRewRule"`, `"Canonical"`, `"Coercion"`, `"IdentityCoercion"`, `"NameSectionHypSet"`, `"Instance"`, `"DeclareInstance"`, `"Context"`, `"ExistingInstance"`, `"ExistingClass"`, `"ResetName"`, `"ResetInitial"`, `"Back"`, `"CreateHintDb"`, `"RemoveHints"`, `"Hints"`, `"SyntacticDefinition"`, `"Arguments"`, `"Reserve"`, `"Generalizable"`, `"SetOpacity"`, `"SetStrategy"`, `"MemOption"`, `"PrintOption"`, `"CheckMayEval"`, `"GlobalCheck"`, `"DeclareReduction"`, `"Print"`, `"Search"`, `"Locate"`, `"Register"`, `"Primitive"`, `"Comments"`, `"Attributes"`, `"Abort"`, `"AbortAll"`, `"Restart"`, `"Undo"`, `"UndoTo"`, `"Focus"`, `"Unfocus"`, `"Unfocused"`, `"Bullet"`, `"Subproof"`, `"EndSubproof"`, `"Show"`, `"CheckGuard"`, `"ValidateProof"`, `"Proof"`, `"AddOption"`, `"RemoveOption"`).
 
 ### `Sentence`
 

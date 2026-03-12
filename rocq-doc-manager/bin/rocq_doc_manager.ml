@@ -184,9 +184,12 @@ let _ =
     @@ fun d () ->
   Document.load_file d
 
+let vernac_entry_tag =
+  S.variant ~encode:Fun.id (Array.to_list Rocq_vernac_entry.command_tags)
+
 let vernac_data =
   let fields =
-    API.Fields.add ~name:"kind" ~descr:"command kind" S.string @@
+    API.Fields.add ~name:"kind" ~descr:"command kind" vernac_entry_tag @@
     API.Fields.add ~name:"pure" ~descr:"indicates if the command is \
       definitely pure for the syntax interpretation phase" S.bool @@
     API.Fields.add ~name:"attrs" ~descr:"Attributes" S.(dict any) @@

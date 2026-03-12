@@ -47,7 +47,7 @@
   > EOF
 
   $ rat run --agent $TESTDIR/puppet.py:puppet_builder --task-file tasks_without_mod.yaml -- 'About foo.'
-  synterp_ast=VernacData(attrs={}, kind='synpure:Print') proof_state=ProofState(focused_goals=['\n============================\nTrue'], unfocused_goals=[], shelved_goals=0, given_up_goals=0) feedback_messages=[FeedbackMessage(text='foo : nat\n\nfoo is not universe polymorphic\nfoo is transparent\nExpands to: Constant test.foo\nDeclared in toplevel input, characters 11-14', quickfix=[], loc=None, level='notice')] globrefs_diff=GlobrefsDiff(removed_inductives=[], added_inductives=[], removed_constants=[], added_constants=[])
+  synterp_ast=VernacData(attrs={}, pure=True, kind='Print') proof_state=ProofState(focused_goals=['\n============================\nTrue'], unfocused_goals=[], shelved_goals=0, given_up_goals=0) feedback_messages=[FeedbackMessage(text='foo : nat\n\nfoo is not universe polymorphic\nfoo is transparent\nExpands to: Constant test.foo\nDeclared in toplevel input, characters 11-14', quickfix=[], loc=None, level='notice')] globrefs_diff=GlobrefsDiff(removed_inductives=[], added_inductives=[], removed_constants=[], added_constants=[])
   dummy#dummy#test.v#Lemma:lem1: PuppetAgent gave up with message: completed 
   interactions
   
@@ -56,7 +56,7 @@
 
 
   $ rat run --agent $TESTDIR/puppet.py:puppet_builder --task-file tasks_with_mod.yaml -- 'About foo.'
-  synterp_ast=VernacData(attrs={}, kind='synpure:Print') proof_state=ProofState(focused_goals=['\n============================\nTrue'], unfocused_goals=[], shelved_goals=0, given_up_goals=0) feedback_messages=[FeedbackMessage(text='foo : nat\n\nfoo is not universe polymorphic\nfoo is opaque but may be made transparent\nExpands to: Constant test.foo\nDeclared in toplevel input, characters 11-14', quickfix=[], loc=None, level='notice')] globrefs_diff=GlobrefsDiff(removed_inductives=[], added_inductives=[], removed_constants=[], added_constants=[])
+  synterp_ast=VernacData(attrs={}, pure=True, kind='Print') proof_state=ProofState(focused_goals=['\n============================\nTrue'], unfocused_goals=[], shelved_goals=0, given_up_goals=0) feedback_messages=[FeedbackMessage(text='foo : nat\n\nfoo is not universe polymorphic\nfoo is opaque but may be made transparent\nExpands to: Constant test.foo\nDeclared in toplevel input, characters 11-14', quickfix=[], loc=None, level='notice')] globrefs_diff=GlobrefsDiff(removed_inductives=[], added_inductives=[], removed_constants=[], added_constants=[])
   dummy#dummy#test.v#Lemma:lem1: PuppetAgent gave up with message: completed 
   interactions
   
@@ -66,7 +66,7 @@
 
   $ rat run --agent $TESTDIR/puppet.py:puppet_builder --task-file tasks_without_mod.yaml \
   >    --task-mod '{"insert_command": {"commands": ["Opaque foo."], "ghost": true}}' -- 'About foo.'
-  synterp_ast=VernacData(attrs={}, kind='synpure:Print') proof_state=ProofState(focused_goals=['\n============================\nTrue'], unfocused_goals=[], shelved_goals=0, given_up_goals=0) feedback_messages=[FeedbackMessage(text='foo : nat\n\nfoo is not universe polymorphic\nfoo is opaque but may be made transparent\nExpands to: Constant test.foo\nDeclared in toplevel input, characters 11-14', quickfix=[], loc=None, level='notice')] globrefs_diff=GlobrefsDiff(removed_inductives=[], added_inductives=[], removed_constants=[], added_constants=[])
+  synterp_ast=VernacData(attrs={}, pure=True, kind='Print') proof_state=ProofState(focused_goals=['\n============================\nTrue'], unfocused_goals=[], shelved_goals=0, given_up_goals=0) feedback_messages=[FeedbackMessage(text='foo : nat\n\nfoo is not universe polymorphic\nfoo is opaque but may be made transparent\nExpands to: Constant test.foo\nDeclared in toplevel input, characters 11-14', quickfix=[], loc=None, level='notice')] globrefs_diff=GlobrefsDiff(removed_inductives=[], added_inductives=[], removed_constants=[], added_constants=[])
   dummy#dummy#test.v#Lemma:lem1: PuppetAgent gave up with message: completed 
   interactions
   
