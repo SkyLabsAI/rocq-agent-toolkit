@@ -76,8 +76,8 @@ def _maybe_json(value: Any) -> Any:
         return value
 
 
-def _extract_proof_Script(edges: list[GraphEdge]) -> str:
-    proof_script = ""
+def _extract_tactic_lists(edges: list[GraphEdge]) -> str:
+    tactic_lists = ""
     insert_ptrn = re.compile(r"^insert_command\((.*)\)$", re.DOTALL)
     revert_ptrn = re.compile(r"^revert_before\((.*)\)$", re.DOTALL)
     for edge in edges:
@@ -86,18 +86,45 @@ def _extract_proof_Script(edges: list[GraphEdge]) -> str:
         if insert_match:
             tactic = insert_match.group(1)
             if status:
-                proof_script += f"(* {tactic} *) (* Failed *)\n"
+                tactic_lists += f"(* {tactic} *) (* Failed *)\n"
             else:
-                proof_script += f"{tactic}\n"
+                tactic_lists += f"{tactic}\n"
             continue
 
         # `revert_before` is not a Rocq command; include it as a comment for traceability.
         revert_match = revert_ptrn.match(edge.label)
         if revert_match:
             delta = revert_match.group(1)
-            proof_script += f"(* revert_before({delta}) *)\n"
+            tactic_lists += f"(* revert_before({delta}) *)\n"
 
-    return proof_script
+    return tactic_lists
+
+
+def _extract_proof_script(edges: list[GraphEdge]) -> str:
+    insert_ptrn = re.compile(r"^insert_command\((.*)\)$", re.DOTALL)
+    revert_ptrn = re.compile(r"^revert_before\((.*)\)$", re.DOTALL)
+    # Stack of successful commands paired with the node reached after applying them.
+    active_tactics: list[tuple[str, str]] = []
+
+    for edge in sorted(edges, key=lambda item: item.index):
+        insert_match = insert_ptrn.match(edge.label)
+        if insert_match:
+            if edge.information.get("error", False):
+                continue
+            active_tactics.append((edge.target, insert_match.group(1)))
+            continue
+
+        if not revert_ptrn.match(edge.label):
+            continue
+
+        revert_target = edge.target
+        while active_tactics and active_tactics[-1][0] != revert_target:
+            active_tactics.pop()
+
+    if not active_tactics:
+        return ""
+
+    return "".join(f"{tactic}\n" for _, tactic in active_tactics)
 
 
 def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
@@ -113,13 +140,13 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
             graph.extract_graph_info(log, ["cpp_spec", "cpp_code", "task_status"])
             continue
 
-        before_id = log.labels.get("before_id", None)
+        before_id = log.labels.get("before.id") or log.labels.get("before_id")
         if not before_id:
             continue
 
         cmd = match.group(1)
         before = graph.add_or_create(before_id)
-        after_id = log.labels.get("after_id", None)
+        after_id = log.labels.get("after.id") or log.labels.get("after_id")
         if after_id:
             after = graph.add_or_create(after_id)
             info: dict[str, Any] = {}
@@ -139,20 +166,40 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
                 # so that only proof state information is added to the node
                 graph.add_information(after, info)
 
-            args = log.labels.get("args", None)
-            # For revert_before, prefer the computed delta (if present) for a simple label.
-            if cmd == "revert_before":
+            raw_args = _maybe_json(log.labels.get("args", None))
+            if raw_args is None and log.line:
+                try:
+                    raw_args = json.loads(log.line).get("args", None)
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+
+            if cmd == "insert_command":
+                if isinstance(raw_args, list) and raw_args:
+                    args: Any = raw_args[0]
+                else:
+                    args = raw_args
+            # For revert_before: new format has no top-level delta (use args["index"]);
+            # old format had a top-level delta field.
+            elif cmd == "revert_before":
                 delta = log.labels.get("delta", None)
                 if delta is not None:
                     args = delta
-            label = f"{cmd}({args})" if args else f"{cmd}()"
+                elif isinstance(raw_args, dict) and "index" in raw_args:
+                    args = raw_args["index"]
+                else:
+                    args = raw_args
+            else:
+                args = raw_args
+            label = f"{cmd}({args})" if args is not None else f"{cmd}()"
             graph.add_edge(before, after, label=label, information=info)
 
-    # Finding the Task Status By seeing the result and proof state
-    last_node = list(graph.nodes.values())[-1]
-    result = last_node.information.get("result", None)
-
-    proof_script = _extract_proof_Script(graph.edges)
-    graph.update_graph_information({"proofScript": proof_script})
+    tactic_lists = _extract_tactic_lists(graph.edges)
+    proof_script = _extract_proof_script(graph.edges)
+    graph.update_graph_information(
+        {
+            "tactic_lists": tactic_lists,
+            "proofScript": proof_script,
+        }
+    )
 
     return graph

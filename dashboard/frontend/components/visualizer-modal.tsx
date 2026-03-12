@@ -1320,6 +1320,8 @@ const TacticGraphVisualization = ({
       cpp_spec: typeof info.cpp_spec === 'string' ? info.cpp_spec : undefined,
       proofScript:
         typeof info.proofScript === 'string' ? info.proofScript : undefined,
+      tactic_lists:
+        typeof info.tactic_lists === 'string' ? info.tactic_lists : undefined,
       task_status: info.task_status,
       taskStatus: info.taskStatus,
       raw: info,
@@ -1590,6 +1592,21 @@ const TacticGraphVisualization = ({
                       <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
                         <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
                           {graphInfo.proofScript}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                  {graphInfo.tactic_lists && (
+                    <div>
+                      <div className='flex items-center justify-between mb-2'>
+                        <div className='text-xs text-text-disabled'>
+                          Tactic Lists
+                        </div>
+                        <CopyButton text={graphInfo.tactic_lists} />
+                      </div>
+                      <div className='bg-elevation-surface-raised border border-elevation-surface-overlay rounded p-3 max-h-64 overflow-auto'>
+                        <pre className='text-xs font-mono text-text whitespace-pre-wrap'>
+                          {graphInfo.tactic_lists}
                         </pre>
                       </div>
                     </div>
