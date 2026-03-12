@@ -19,14 +19,11 @@
   >   Stdlib Ltac2))
   > EOF
   $ cp $TESTDIR/* .
-  cp: -r not specified; omitting directory '/home/lennart/sky2/workspace/fmdeps/rocq-agent-toolkit/rocq-pipeline/tests/tracer.t/deterministic_name'
-  [1]
 
 
   $ uv run rat ingest --output tasks.yaml *.v
   WARNING: The project does not seem to use git for versioning.
   $ uv run rat trace --tracer rocq_pipeline.tracers.string_goal --task-file tasks.yaml
-  
 
 
   $ LC_ALL=C ls *.json | sort
