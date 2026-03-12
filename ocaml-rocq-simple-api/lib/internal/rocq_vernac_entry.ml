@@ -1,3 +1,4 @@
+(* Stripped-down, serializable version of [Synterp.vernac_control_entry]. *)
 type entry =
   | EVernacNoop
   | EVernacNotation
@@ -26,6 +27,7 @@ let of_vernac_control_gen_r : ('b -> entry) ->
   in
   CAst.make ?loc v
 
+(* NOTE: There is a bit of a mismatch in constructors. *)
 let of_vernac_control : Vernacexpr.vernac_control -> command =
   let translate_entry e =
     let open Vernacexpr in
@@ -178,8 +180,36 @@ let synpure_descr : Vernacexpr.synpure_vernac_expr -> string = fun e ->
 let command_tag c =
   let open Vernacexpr in
   match c.CAst.v with
-  | VernacSynterp(e) -> "synterp:" ^ synterp_descr e
-  | VernacSynPure(e) -> "synpure:" ^ synpure_descr e
+  | VernacSynterp(e) -> synterp_descr e
+  | VernacSynPure(e) -> synpure_descr e
+
+let command_tags = [|
+  "Noop"; "Notation"; "BeginSection"; "EndSegment"; "Require"; "Import";
+  "DeclareModule"; "DefineModule"; "DeclareModuleType"; "Include";
+  "SetOption"; "Load"; "Extend"; "OpenCloseScope"; "DeclareScope";
+  "Delimiters"; "BindScope"; "EnableNotation"; "Definition";
+  "StartTheoremProof"; "EndProof"; "ExactProof"; "Assumption"; "Symbol";
+  "Inductive"; "Fixpoint"; "CoFixpoint"; "Scheme"; "SchemeEquality";
+  "CombinedScheme"; "Universe"; "Sort"; "Constraint"; "AddRewRule";
+  "Canonical"; "Coercion"; "IdentityCoercion"; "NameSectionHypSet";
+  "Instance"; "DeclareInstance"; "Context"; "ExistingInstance";
+  "ExistingClass"; "ResetName"; "ResetInitial"; "Back"; "CreateHintDb";
+  "RemoveHints"; "Hints"; "SyntacticDefinition"; "Arguments"; "Reserve";
+  "Generalizable"; "SetOpacity"; "SetStrategy"; "MemOption"; "PrintOption";
+  "CheckMayEval"; "GlobalCheck"; "DeclareReduction"; "Print"; "Search";
+  "Locate"; "Register"; "Primitive"; "Comments"; "Attributes"; "Abort";
+  "AbortAll"; "Restart"; "Undo"; "UndoTo"; "Focus"; "Unfocus"; "Unfocused";
+  "Bullet"; "Subproof"; "EndSubproof"; "Show"; "CheckGuard"; "ValidateProof";
+  "Proof"; "AddOption"; "RemoveOption"
+|]
+
+let command_is_pure c =
+  let open Vernacexpr in
+  match c.CAst.v with
+  | VernacSynterp(_) -> false
+  | VernacSynPure(_) -> true
 
 let command_to_yojson c =
-  `String(command_tag c)
+  let tag = command_tag c in
+  let pure = command_is_pure c in
+  `Assoc([("tag", `String(tag)); ("pure", `Bool(pure))])

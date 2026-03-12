@@ -39,7 +39,7 @@
   {}
   [0] 1 > run 0 "Goal 0 = 0."
   {
-    "synterp_ast": "synpure:Definition",
+    "synterp_ast": { "tag": "Definition", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
@@ -50,7 +50,7 @@
   {}
   [0] 2 > run 0 "Proof."
   {
-    "synterp_ast": "synpure:Proof",
+    "synterp_ast": { "tag": "Proof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
@@ -69,7 +69,7 @@
   {}
   [0] 3 > run 0 "-"
   {
-    "synterp_ast": "synpure:Bullet",
+    "synterp_ast": { "tag": "Bullet", "pure": true },
     "proof_state": {
       "unfocused_goals": [ 0 ],
       "focused_goals": [ "\n============================\n0 = 0" ]
@@ -77,24 +77,24 @@
   }
   [0] 4 > run 0 "reflexivity."
   {
-    "synterp_ast": "synterp:Extend",
+    "synterp_ast": { "tag": "Extend", "pure": false },
     "proof_state": { "unfocused_goals": [ 0 ] }
   }
   [0] 5 > run 0 "Qed."
   {
     "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm" ] },
-    "synterp_ast": "synpure:EndProof"
+    "synterp_ast": { "tag": "EndProof", "pure": true }
   }
   [0] 6 > run 0 "Goal 0 = 0."
   {
-    "synterp_ast": "synpure:Definition",
+    "synterp_ast": { "tag": "Definition", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   [0] 7 > run 0 "Proof."
   {
-    "synterp_ast": "synpure:Proof",
+    "synterp_ast": { "tag": "Proof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
@@ -114,7 +114,7 @@
     }
   }
   [0] 8 > run 0 "1: reflexivity."
-  { "synterp_ast": "synterp:Extend", "proof_state": {} }
+  { "synterp_ast": { "tag": "Extend", "pure": false }, "proof_state": {} }
   [0] 9 > run 0 "1:{ "
   Error: while processing the command.
   Trailing text after command: " ".
@@ -217,7 +217,7 @@
   [0] 9 > run 0 "Qed."
   {
     "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm0" ] },
-    "synterp_ast": "synpure:EndProof"
+    "synterp_ast": { "tag": "EndProof", "pure": true }
   }
   [0] 13 > run 0 "  Locate nat."
   Error: while processing the command.

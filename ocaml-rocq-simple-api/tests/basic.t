@@ -33,10 +33,10 @@
       { "level": "info", "text": "n_rec is defined" },
       { "level": "info", "text": "n_sind is defined" }
     ],
-    "synterp_ast": "synpure:Inductive"
+    "synterp_ast": { "tag": "Inductive", "pure": true }
   }
   [0] 2 > run 0 "Require Import Stdlib.ZArith.BinInt."
-  { "synterp_ast": "synterp:Require" }
+  { "synterp_ast": { "tag": "Require", "pure": false } }
   [0] 3 > run 0 "Require Import Stdlib.ZArith.BinIntt"
   Error: while processing the command.
   Syntax error: '.' expected after [gallina_ext] (in [vernac_aux]).
@@ -82,24 +82,24 @@
   }
   [0] 3 > run 0 "Lemma test : 0 = 0."
   {
-    "synterp_ast": "synpure:StartTheoremProof",
+    "synterp_ast": { "tag": "StartTheoremProof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   [0] 5 > run 0 "Proof."
   {
-    "synterp_ast": "synpure:Proof",
+    "synterp_ast": { "tag": "Proof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   [0] 6 > run 0 "reflexivity."
-  { "synterp_ast": "synterp:Extend", "proof_state": {} }
+  { "synterp_ast": { "tag": "Extend", "pure": false }, "proof_state": {} }
   [0] 7 > run 0 "Qed."
   {
     "globrefs_diff": { "added_constants": [ "Top.test" ] },
-    "synterp_ast": "synpure:EndProof"
+    "synterp_ast": { "tag": "EndProof", "pure": true }
   }
   [0] 8 > run 37 "About test."
   {
@@ -109,7 +109,7 @@
         "text": "test : 0 = 0\n\ntest is not universe polymorphic\ntest is opaque\nExpands to: Constant Top.test\nDeclared in toplevel input, characters 6-10"
       }
     ],
-    "synterp_ast": "synpure:Print"
+    "synterp_ast": { "tag": "Print", "pure": true }
   }
   [0] 9 > back_to 3
   [0] 3 > back_to 8
@@ -120,6 +120,6 @@
     "feedback_messages": [
       { "level": "notice", "text": "test not a defined object." }
     ],
-    "synterp_ast": "synpure:Print"
+    "synterp_ast": { "tag": "Print", "pure": true }
   }
   [0] 10 > [EOF]
