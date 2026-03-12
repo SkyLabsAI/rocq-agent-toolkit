@@ -77,7 +77,8 @@
         "focused_goals": [ "\n============================\nTrue" ]
       },
       "synterp_ast": {
-        "kind": "synpure:Definition",
+        "kind": "Definition",
+        "pure": true,
         "attrs": { "id": "_", "kind": "Definition" }
       }
     }
@@ -93,5 +94,5 @@
   {
     "id": 9,
     "jsonrpc": "2.0",
-    "result": { "synterp_ast": { "kind": "synpure:Abort", "attrs": {} } }
+    "result": { "synterp_ast": { "kind": "Abort", "pure": true, "attrs": {} } }
   }

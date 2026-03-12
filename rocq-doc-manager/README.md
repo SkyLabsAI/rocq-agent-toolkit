@@ -54,6 +54,7 @@ API Objects
 
 - Description: limited Rocq AST information for a command.
 - Field `attrs`: Attributes (as a dictionary where each value is a JSON value).
+- Field `pure`: indicates if the command is definitely pure for the syntax interpretation phase (as a boolean).
 - Field `kind`: command kind (as a string).
 
 ### `Sentence`

@@ -40,7 +40,8 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.x1" ] },
       "feedback_messages": [ { "level": "info", "text": "x1 is defined" } ],
       "synterp_ast": {
-        "kind": "synpure:Definition",
+        "kind": "Definition",
+        "pure": true,
         "attrs": { "id": "x1", "kind": "Definition" }
       }
     }
@@ -73,7 +74,8 @@
         { "level": "info", "text": "inserted is defined" }
       ],
       "synterp_ast": {
-        "kind": "synpure:Definition",
+        "kind": "Definition",
+        "pure": true,
         "attrs": { "id": "inserted", "kind": "Definition" }
       }
     }

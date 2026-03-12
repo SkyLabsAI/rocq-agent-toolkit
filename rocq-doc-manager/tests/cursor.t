@@ -41,7 +41,8 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.test1" ] },
       "feedback_messages": [ { "level": "info", "text": "test1 is defined" } ],
       "synterp_ast": {
-        "kind": "synpure:Definition",
+        "kind": "Definition",
+        "pure": true,
         "attrs": { "id": "test1", "kind": "Definition" }
       }
     }
@@ -56,7 +57,8 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.test2" ] },
       "feedback_messages": [ { "level": "info", "text": "test2 is defined" } ],
       "synterp_ast": {
-        "kind": "synpure:Definition",
+        "kind": "Definition",
+        "pure": true,
         "attrs": { "id": "test2", "kind": "Definition" }
       }
     }
@@ -71,7 +73,8 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.test3" ] },
       "feedback_messages": [ { "level": "info", "text": "test3 is defined" } ],
       "synterp_ast": {
-        "kind": "synpure:Definition",
+        "kind": "Definition",
+        "pure": true,
         "attrs": { "id": "test3", "kind": "Definition" }
       }
     }

@@ -187,12 +187,15 @@ let _ =
 let vernac_data =
   let fields =
     API.Fields.add ~name:"kind" ~descr:"command kind" S.string @@
+    API.Fields.add ~name:"pure" ~descr:"indicates if the command is \
+      definitely pure for the syntax interpretation phase" S.bool @@
     API.Fields.add ~name:"attrs" ~descr:"Attributes" S.(dict any) @@
     API.Fields.nil
   in
   let encode _ = assert false in
   let decode v =
     let kind = Rocq_vernac_entry.command_tag v in
+    let pure = Rocq_vernac_entry.command_is_pure v in
     let attrs =
       match v.CAst.v with
       | Vernacexpr.VernacSynterp(e) ->
@@ -262,7 +265,7 @@ let vernac_data =
             | _ -> []
           end
     in
-    (kind, (attrs, ()))
+    (kind, (pure, (attrs, ())))
   in
   API.declare_object api ~name:"VernacData" ~descr:"limited Rocq AST \
     information for a command" ~encode ~decode fields

@@ -82,6 +82,11 @@ class VernacData(BaseModel):
         default_factory=dict,
         description="Attributes",
     )
+    pure: bool = Field(
+        kw_only=True,
+        default=False,
+        description="indicates if the command is definitely pure for the syntax interpretation phase",
+    )
     kind: str = Field(
         kw_only=True,
         description="command kind",

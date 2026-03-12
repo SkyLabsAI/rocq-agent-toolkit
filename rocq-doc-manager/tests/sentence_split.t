@@ -37,7 +37,8 @@
         ]
       },
       "synterp_ast": {
-        "kind": "synpure:StartTheoremProof",
+        "kind": "StartTheoremProof",
+        "pure": true,
         "attrs": { "ids": [ "refl" ], "kind": "Theorem" }
       }
     }
@@ -54,7 +55,7 @@
           "\nX : Type\nx : X\n============================\nx = x"
         ]
       },
-      "synterp_ast": { "kind": "synpure:Proof", "attrs": {} }
+      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} }
     }
   }
   { "id": 5, "jsonrpc": "2.0", "result": null }
@@ -68,13 +69,13 @@
           {
             "kind": "command",
             "text": "reflexivity.",
-            "data": { "kind": "synterp:Extend", "attrs": {} }
+            "data": { "kind": "Extend", "attrs": {} }
           },
           { "kind": "blanks", "text": " " },
           {
             "kind": "command",
             "text": "About nat.",
-            "data": { "kind": "synpure:Print", "attrs": {} }
+            "data": { "kind": "Print", "pure": true, "attrs": {} }
           }
         ],
         "rest": " (* junk"
@@ -91,13 +92,13 @@
       {
         "kind": "command",
         "text": "reflexivity.",
-        "data": { "kind": "synterp:Extend", "attrs": {} }
+        "data": { "kind": "Extend", "attrs": {} }
       },
       { "kind": "blanks", "text": " " },
       {
         "kind": "command",
         "text": "About nat.",
-        "data": { "kind": "synpure:Print", "attrs": {} }
+        "data": { "kind": "Print", "pure": true, "attrs": {} }
       },
       { "kind": "blanks", "text": " (* junk *)" }
     ]
@@ -112,13 +113,13 @@
           {
             "kind": "command",
             "text": "reflexivity.",
-            "data": { "kind": "synterp:Extend", "attrs": {} }
+            "data": { "kind": "Extend", "attrs": {} }
           },
           { "kind": "blanks", "text": " " },
           {
             "kind": "command",
             "text": "About nat.",
-            "data": { "kind": "synpure:Print", "attrs": {} }
+            "data": { "kind": "Print", "pure": true, "attrs": {} }
           }
         ],
         "rest": " (* junk *) more_junk"

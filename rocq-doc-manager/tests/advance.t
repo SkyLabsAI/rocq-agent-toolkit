@@ -34,7 +34,8 @@
         "kind": "command",
         "text": "Definition n4 : nat := 4.",
         "data": {
-          "kind": "synpure:Definition",
+          "kind": "Definition",
+          "pure": true,
           "attrs": { "id": "n4", "kind": "Definition" }
         }
       },
@@ -43,7 +44,8 @@
         "kind": "command",
         "text": "Definition n6 : nat := 6.",
         "data": {
-          "kind": "synpure:Definition",
+          "kind": "Definition",
+          "pure": true,
           "attrs": { "id": "n6", "kind": "Definition" }
         }
       },
@@ -52,7 +54,8 @@
         "kind": "command",
         "text": "Definition n8 : nat := 8.",
         "data": {
-          "kind": "synpure:Definition",
+          "kind": "Definition",
+          "pure": true,
           "attrs": { "id": "n8", "kind": "Definition" }
         }
       },

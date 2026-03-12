@@ -39,7 +39,8 @@
         "kind": "command",
         "text": "Definition test := nat.",
         "data": {
-          "kind": "synpure:Definition",
+          "kind": "Definition",
+          "pure": true,
           "attrs": { "id": "test", "kind": "Definition" }
         }
       },
@@ -47,13 +48,13 @@
       {
         "kind": "command",
         "text": "About nat.",
-        "data": { "kind": "synpure:Print", "attrs": {} }
+        "data": { "kind": "Print", "pure": true, "attrs": {} }
       },
       { "kind": "blanks", "text": "\n" },
       {
         "kind": "command",
         "text": "Check test.",
-        "data": { "kind": "synpure:CheckMayEval", "attrs": {} }
+        "data": { "kind": "CheckMayEval", "pure": true, "attrs": {} }
       },
       { "kind": "blanks", "text": "\n" }
     ]
@@ -65,7 +66,8 @@
       "globrefs_diff": { "added_constants": [ "test.dir.test.test" ] },
       "feedback_messages": [ { "level": "info", "text": "test is defined" } ],
       "synterp_ast": {
-        "kind": "synpure:Definition",
+        "kind": "Definition",
+        "pure": true,
         "attrs": { "id": "test", "kind": "Definition" }
       }
     }
@@ -81,7 +83,7 @@
           "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
         }
       ],
-      "synterp_ast": { "kind": "synpure:Print", "attrs": {} }
+      "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} }
     }
   }
   {
@@ -117,7 +119,8 @@
         "offset": 0,
         "text": "Definition test := nat.",
         "data": {
-          "kind": "synpure:Definition",
+          "kind": "Definition",
+          "pure": true,
           "attrs": { "id": "test", "kind": "Definition" }
         }
       },
@@ -126,7 +129,7 @@
         "kind": "command",
         "offset": 24,
         "text": "About nat.",
-        "data": { "kind": "synpure:Print", "attrs": {} }
+        "data": { "kind": "Print", "pure": true, "attrs": {} }
       }
     ]
   }
@@ -138,7 +141,7 @@
       {
         "kind": "command",
         "text": "Check test.",
-        "data": { "kind": "synpure:CheckMayEval", "attrs": {} }
+        "data": { "kind": "CheckMayEval", "pure": true, "attrs": {} }
       },
       { "kind": "blanks", "text": "\n" }
     ]
@@ -151,7 +154,7 @@
       "feedback_messages": [
         { "level": "notice", "text": "test\n     : Set" }
       ],
-      "synterp_ast": { "kind": "synpure:CheckMayEval", "attrs": {} }
+      "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} }
     }
   }
   { "id": 13, "jsonrpc": "2.0", "result": null }
