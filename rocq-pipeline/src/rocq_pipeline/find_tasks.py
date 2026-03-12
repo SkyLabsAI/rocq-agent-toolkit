@@ -36,7 +36,6 @@ _PROOF_START = re.compile(r"Proof(\s+(using\s|with\s).*|\s*)?\.")
 
 # This detects whether there is an argument to 'Proof'
 # OLD _PROOF_TERM = re.compile(r"Proof\s+([^\s].*)\s*\.", flags=re.DOTALL)
-# NEW_PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)", flags=re.DOTALL)
 _PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)\.\s*$", flags=re.DOTALL)
 
 
