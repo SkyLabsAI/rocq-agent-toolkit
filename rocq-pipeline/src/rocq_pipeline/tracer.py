@@ -14,10 +14,15 @@ import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, util
 from rocq_pipeline.args import load_tasks
 from rocq_pipeline.tracers import json_goal
-from rocq_pipeline.tracers.extractor import (
-    Tracer,
-)
+from rocq_pipeline.tracers.extractor import Tracer
 from rocq_pipeline.with_deps import rocq_deps_for
+
+
+def find_last_nonwhite_prefix(prefix: list[rdm_api.PrefixItem]) -> str | None:
+    for element in reversed(prefix):
+        if element.kind != "blanks":
+            return element.text
+    return None
 
 
 async def trace_proof(
@@ -29,8 +34,13 @@ async def trace_proof(
 ) -> list[dict[str, Any]]:
     tactics = find_tasks.scan_proof(await rdm.doc_suffix()).proof_tactics
     await tracer.start_proof(rdm)
-    trace = []
-    step_size: float = (progress_max - progress_min) / len(tactics)
+    trace: list[dict[str, Any]] = []
+
+    if len(tactics) == 0:
+        step_size = 0.0
+    else:
+        step_size = (progress_max - progress_min) / len(tactics)
+
     for i, tactic in enumerate(tactics):
         after = await tracer.before_internal(rdm, tactic)
         progress.status(status=tactic[:10])
