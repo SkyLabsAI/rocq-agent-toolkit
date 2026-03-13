@@ -135,6 +135,23 @@ def _extract_result(log: LogEntry) -> Any:
     return extracted or None
 
 
+def _sync_history(history: list[str], node_id: str) -> None:
+    if not history or history[-1] != node_id:
+        history.append(node_id)
+
+
+def _backtrack_steps(history: list[str], target_id: str) -> int | None:
+    steps = 0
+    while history and history[-1] != target_id:
+        history.pop()
+        steps += 1
+
+    if history and history[-1] == target_id:
+        return steps
+
+    return None
+
+
 def _extract_tactic_lists(edges: list[GraphEdge]) -> str:
     tactic_lists = ""
     insert_ptrn = re.compile(r"^insert_command\((.*)\)$", re.DOTALL)
@@ -189,6 +206,7 @@ def _extract_proof_script(edges: list[GraphEdge]) -> str:
 def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
     ptrn = re.compile(r"^RocqCursor\.(.+)$")
     graph = Graph()
+    history: list[str] = []
 
     for log in logs:
         message = log.labels.get("message", "NoMessage")
@@ -208,6 +226,7 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
         after_id = log.labels.get("after.id") or log.labels.get("after_id")
         if after_id:
             after = graph.add_or_create(after_id)
+            _sync_history(history, before.id)
             info: dict[str, Any] = {}
             result = _extract_result(log)
             if result is not None:
@@ -221,11 +240,8 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
                 graph.add_information(after, info)
 
             raw_args = _maybe_json(log.labels.get("args", None))
-            if raw_args is None and log.line:
-                try:
-                    raw_args = json.loads(log.line).get("args", None)
-                except (json.JSONDecodeError, AttributeError):
-                    pass
+            if raw_args is None:
+                raw_args = _line_json(log).get("args", None)
             if raw_args is None and cmd == "revert_before":
                 line_data = _line_json(log)
                 index = line_data.get("args.index", log.labels.get("args_index", None))
@@ -242,12 +258,10 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
                     args: Any = raw_args[0]
                 else:
                     args = raw_args
-            # For revert_before: new format has no top-level delta (use args["index"]);
-            # old format had a top-level delta field.
             elif cmd == "revert_before":
-                delta = log.labels.get("delta", None)
-                if delta is not None:
-                    args = delta
+                backtrack_steps = _backtrack_steps(history, after.id)
+                if backtrack_steps is not None:
+                    args = backtrack_steps
                 elif isinstance(raw_args, dict) and "index" in raw_args:
                     args = raw_args["index"]
                 else:
@@ -256,6 +270,11 @@ def build_rocq_cursor_graph(logs: list[LogEntry]) -> Graph:
                 args = raw_args
             label = f"{cmd}({args})" if args is not None else f"{cmd}()"
             graph.add_edge(before, after, label=label, information=info)
+
+            if cmd == "revert_before" and not history:
+                history.append(after.id)
+            elif cmd != "revert_before" and not error and after.id != before.id:
+                history.append(after.id)
 
     tactic_lists = _extract_tactic_lists(graph.edges)
     proof_script = _extract_proof_script(graph.edges)
