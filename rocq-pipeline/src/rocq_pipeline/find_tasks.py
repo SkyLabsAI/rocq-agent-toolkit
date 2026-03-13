@@ -156,8 +156,8 @@ def my_tagger(task: ProofTask) -> set[str]:
 
     tags.add(task.final)
 
-    if omitted:
-        tags.add(f"UnmatchedTactics={sorted(omitted)}")
+    for o in omitted:
+        tags.add(f"UnmatchedTactic:{o}")
 
     return tags
 
