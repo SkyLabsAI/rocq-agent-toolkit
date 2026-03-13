@@ -18,6 +18,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from .extractors import get_extractor
 from .extractors.base import AttributeExtractor, NoOpExtractor
+from .otel_attributes import set_otel_attrs_on_span
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ def trace[**P, T](
 
                     # Add custom attributes
                     if attributes:
-                        _set_custom_attributes(span, attributes)
+                        set_otel_attrs_on_span(span, attributes)
 
                     # Use extractor for framework-specific attributes
                     _set_extractor_attributes(
@@ -164,7 +165,7 @@ def trace[**P, T](
                             error_attrs = operation_extractor.extract_error_attributes(
                                 func, args, kwargs, e
                             )
-                            _set_custom_attributes(span, error_attrs)
+                            set_otel_attrs_on_span(span, error_attrs)
                         except Exception as extractor_error:
                             logger.warning(
                                 f"Failed to extract error attributes: {extractor_error}"
@@ -234,7 +235,7 @@ def trace_async[**P, T](
 
                     # Add custom attributes
                     if attributes:
-                        _set_custom_attributes(span, attributes)
+                        set_otel_attrs_on_span(span, attributes)
 
                     # Use extractor for framework-specific attributes
                     _set_extractor_attributes(
@@ -276,7 +277,7 @@ def trace_async[**P, T](
                             error_attrs = operation_extractor.extract_error_attributes(
                                 func, args, kwargs, e
                             )
-                            _set_custom_attributes(span, error_attrs)
+                            set_otel_attrs_on_span(span, error_attrs)
                         except Exception as extractor_error:
                             logger.warning(
                                 f"Failed to extract error attributes: {extractor_error}"
@@ -328,24 +329,13 @@ def _set_basic_attributes(
                 span.set_attribute("function.args.names", ",".join(arg_names))
 
 
-def _set_custom_attributes(span: Any, attributes: dict[str, Any]) -> None:
-    """Set custom attributes on the span."""
-    for key, value in attributes.items():
-        if value is not None:
-            # Convert to string and limit length
-            str_value = str(value)
-            if len(str_value) > 1000:
-                str_value = str_value[:1000] + "..."
-            span.set_attribute(key, str_value)
-
-
 def _set_extractor_attributes(
     span: Any, extractor: AttributeExtractor, func: Callable, args: tuple, kwargs: dict
 ) -> None:
     """Extract and set attributes using the operation extractor."""
     try:
         extracted_attrs = extractor.extract_attributes(func, args, kwargs)
-        _set_custom_attributes(span, extracted_attrs)
+        set_otel_attrs_on_span(span, extracted_attrs)
     except Exception as e:
         logger.warning(f"Failed to extract attributes: {e}")
         # Continue operation even if attribute extraction fails
