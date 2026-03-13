@@ -7,6 +7,9 @@ manager.
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
+
+from rocq_dune_util import DuneError, in_dune_project, rocq_args_for
 
 from .cursor.doc_cursor import RDMRocqCursor
 from .cursor.protocol import RocqCursor
@@ -68,7 +71,7 @@ async def rdm_sess(
 async def rc_sess(
     file_path: Path | str,
     *,
-    rocq_args: list[str] | None = None,
+    rocq_args: Literal["dune", "auto"] | list[str] | None = None,
     cwd: Path | str | None = None,
     dune: bool = False,
     dune_disable_global_lock: bool = True,
@@ -78,10 +81,33 @@ async def rc_sess(
 
     @param file_path will be interpreted as relative to the current working directory
       regardless of the value of `cwd`.
+    @param rocq_args the arguments to the rocq.
+      - list[str] is the list of command line arguments
+      - None should not be used (except as the default)
+      - "dune" will look for a dune project and ask dune for the arguments, failing
+        if no dune project exists.
+      - "auto" will attempt dune and fall back to [] *if there is no dune project*.
     """
+    the_args: list[str] | None
+    if isinstance(rocq_args, str):
+        assert rocq_args in ["dune", "auto"]
+        # The special case for when we want to get the default arguments
+        # from dune
+        try:
+            the_args = rocq_args_for(file_path)
+        except DuneError:
+            # If a source root is detected, then raise
+            # `err`. Otherwise use `[]`
+            if rocq_args == "auto" and not in_dune_project(cwd=Path(file_path).parent):
+                the_args = []
+            else:
+                raise
+    else:
+        the_args = rocq_args
+
     async with rdm_sess(
         file_path,
-        rocq_args=rocq_args,
+        rocq_args=the_args,
         cwd=cwd,
         dune=dune,
         dune_disable_global_lock=dune_disable_global_lock,
