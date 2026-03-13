@@ -2,9 +2,11 @@ from __future__ import annotations  # noqa:I001
 
 import asyncio
 import json
+import tempfile
 from pathlib import Path
 from typing import (
     Any,
+    NoReturn,
     Protocol,
 )
 from collections.abc import Awaitable
@@ -52,6 +54,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
         self._args: list[str] = args
         self._cwd: str | None = str(cwd) if cwd is not None else None
         self._env: dict[str, str] | None = env
+        self._stderr = tempfile.TemporaryFile(mode="w+t")
         self._notification_handler: (
             Callable[[str, dict[str, Any]], Awaitable[None]] | None
         ) = handle_notification
@@ -59,7 +62,8 @@ class AsyncJsonRPCTP(AsyncProtocol):
         self._handlers: asyncio.Queue[asyncio.Task] = asyncio.Queue()
         self._send_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._pending_requests: dict[int, asyncio.Future[Resp[Any] | Err[Any]]] = {}
-        self._running: bool = True
+        self._started: bool = False
+        self._running: bool = False
 
     async def start(self) -> None:
         try:
@@ -68,12 +72,18 @@ class AsyncJsonRPCTP(AsyncProtocol):
                 *self._args[1:],
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+                stderr=self._stderr,
                 cwd=self._cwd,
                 env=self._env,
             )
         except Exception as e:
             raise Error(f"Failed to start process: {e}") from e
+
+        # Gather the pipes.
+        assert self._process.stdin is not None
+        self._stdin: asyncio.streams.StreamWriter = self._process.stdin
+        assert self._process.stdout is not None
+        self._stdout: asyncio.streams.StreamReader = self._process.stdout
 
         # Check the "ready_seq" notification
         try:
@@ -85,11 +95,13 @@ class AsyncJsonRPCTP(AsyncProtocol):
                 raise Error(f'Got "{method}" notification instead of "ready"')
         except Exception as e:
             self._process.kill()
-            raise Error(f"Failed to start JSON-RPC service: {e}") from e
+            self._error_with_stderr(f"Failed to start JSON-RPC service\n{e}", e)
 
         self._sender_task = asyncio.create_task(self._sender_loop())
         self._receiver_task = asyncio.create_task(self._receiver_loop())
         self._handlers_task = asyncio.create_task(self._handlers_loop())
+        self._started = True
+        self._running = True
 
     async def raw_notification(
         self,
@@ -132,8 +144,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
         await self._send_queue.join()
         await self._sender_task
         # Close the outgoing pipe.
-        assert self._process.stdin is not None
-        self._process.stdin.close()
+        self._stdin.close()
         # Wait for the process.
         await self._process.wait()
         await self._receiver_task
@@ -142,8 +153,36 @@ class AsyncJsonRPCTP(AsyncProtocol):
         await self._handlers.join()
         await self._handlers_task
 
+    def _cleanup(self) -> None:
+        if not self._running:
+            return
+        self._running = False
+        # Killing the process
+        self._process.kill()
+        # Cancelling the tasks.
+        self._sender_task.cancel()
+        self._receiver_task.cancel()
+        self._handlers_task.cancel()
+        # Shutting down the queues
+        self._send_queue.shutdown(immediate=True)
+        self._handlers.shutdown(immediate=True)
+        # Answering the pending requests with an exception
+        while self._pending_requests:
+            req_id, future = self._pending_requests.popitem()
+            future.set_exception(
+                Error(f"Cannot complete request {req_id} (server shutdown)")
+            )
+
+    def _error_with_stderr(self, msg: str, e: Exception | None = None) -> NoReturn:
+        self._stderr.seek(0)
+        stderr_data = self._stderr.read()
+        stderr = None if not stderr_data else stderr_data
+        raise Error(msg, stderr=stderr) from e
+
     def _check_running(self) -> None:
-        if not self._running or not hasattr(self, "_process"):
+        if not self._started:
+            raise Error("Process has not started.")
+        if not self._running:
             raise Error("Process has been stopped or is stopping.")
 
     async def _sender_loop(self) -> None:
@@ -151,14 +190,15 @@ class AsyncJsonRPCTP(AsyncProtocol):
         try:
             while True:
                 packet = await self._send_queue.get()
-                await self._send(packet)
+                await self._send_packet(packet)
                 self._send_queue.task_done()
         except asyncio.CancelledError:
             pass
         except asyncio.QueueShutDown:
             pass
         except Exception as e:
-            raise Exception(f"Sender error: {e}") from e
+            self._cleanup()
+            self._error_with_stderr(f"Unexpected sender error: {e}", e)
 
     async def _handle_response(self, response: Any) -> None:
         req_id = response.get("id")
@@ -224,7 +264,8 @@ class AsyncJsonRPCTP(AsyncProtocol):
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            raise Exception(f"Receiver error: {e}") from e
+            self._cleanup()
+            self._error_with_stderr(f"Unexpected receiver error: {e}", e)
 
     async def _handlers_loop(self) -> None:
         """Reads from the (notification) handler queue, and wait for tasks."""
@@ -238,39 +279,73 @@ class AsyncJsonRPCTP(AsyncProtocol):
         except asyncio.QueueShutDown:
             pass
         except Exception as e:
-            raise Exception(f"Notification handler loop error: {e}") from e
+            self._cleanup()
+            self._error_with_stderr(f"Unexpected handler loop error: {e}", e)
 
-    async def _send(self, req: bytes) -> None:
-        assert self._process.stdin is not None
-        prefix = "Content-Length: "
-        self._process.stdin.write(f"{prefix}{len(req) + 1}\r\n\r\n".encode())
-        self._process.stdin.write(req)
-        self._process.stdin.write(b"\n")
-        await self._process.stdin.drain()
+    _prefix = "Content-Length: "
+
+    async def _send_packet(self, packet: bytes) -> None:
+        self._stdin.write(f"{self._prefix}{len(packet) + 1}\r\n\r\n".encode())
+        self._stdin.write(packet)
+        self._stdin.write(b"\n")
+        try:
+            await self._stdin.drain()
+        except BrokenPipeError as e:
+            self._cleanup()
+            self._error_with_stderr("Cannot send packet (broken pipe)", e)
+
+    async def _recv_packet(self) -> bytes:
+        header_line_read = False
+        try:
+            # Input the header, and following empty line
+            raw_header: bytes = await self._stdout.readuntil()
+            header_line_read = True
+            # Parsing the header
+            header: str = raw_header.decode()
+            if not header.startswith(self._prefix) or not header.endswith("\r\n"):
+                self._cleanup()
+                self._error_with_stderr(f"Invalid packet header: '{header}'")
+            try:
+                nb_bytes = int(header[len(self._prefix) : -2])
+            except ValueError as e:
+                self._cleanup()
+                self._error_with_stderr(f"Failed to parse header: '{header}'", e)
+            # Reading and checking the "\r\n" separator
+            crlf = await self._stdout.readexactly(2)
+            if crlf != b"\r\n":
+                self._cleanup()
+                self._error_with_stderr("Invalid separator: '{crlf}'")
+            # Reading and returning the packet
+            packet = await self._stdout.readexactly(nb_bytes)
+            return packet
+        except asyncio.IncompleteReadError as e:
+            # Special case used for shutdown
+            if (
+                not header_line_read
+                and self._started
+                and not self._running
+                and e.partial == b""
+            ):
+                raise asyncio.CancelledError() from e
+            self._cleanup()
+            self._error_with_stderr("Could not read a full packet", e)
+        except asyncio.LimitOverrunError as e:
+            self._cleanup()
+            self._error_with_stderr("Ill-formed header (way too long)", e)
+        except BrokenPipeError as e:
+            self._cleanup()
+            self._error_with_stderr("Cannot receive packet (broken pipe)", e)
+        except UnicodeDecodeError as e:
+            self._cleanup()
+            self._error_with_stderr(f"Invalid unicode in header: {e.reason}", e)
 
     async def _recv(self) -> Any:
-        assert self._process.stdout is not None
-        prefix = "Content-Length: "
+        packet = await self._recv_packet()
         try:
-            raw_header: bytes = await self._process.stdout.readuntil()
-        except asyncio.IncompleteReadError as e:
-            if not self._running and e.partial == b"":
-                raise asyncio.CancelledError() from e
-            raise
-        header: str = raw_header.decode()
-        _ = await self._process.stdout.readuntil()
-        if not header.startswith(prefix):
-            self._process.kill()
-            raise Error(f"Invalid message header: '{header}'")
-        try:
-            nb_bytes = int(header[len(prefix) : -2])
-        except Exception as e:
-            self._process.kill()
-            raise Error(f"Failed to parse header: {header}", e) from e
-        assert self._process.stdout is not None
-        response: bytes = await self._process.stdout.readexactly(nb_bytes)
-        decoded = response.decode()
-        try:
-            return json.loads(decoded)
-        except json.JSONDecodeError as err:
-            raise Error(f"Invalid JSON in response: {err.msg}.\n{decoded}.") from err
+            return json.loads(packet.decode())
+        except UnicodeDecodeError as e:
+            self._cleanup()
+            self._error_with_stderr(f"Invalid unicode in packet: {e.reason}", e)
+        except json.JSONDecodeError as e:
+            self._cleanup()
+            self._error_with_stderr(f"Invalid JSON in packet: {e.msg}.", e)

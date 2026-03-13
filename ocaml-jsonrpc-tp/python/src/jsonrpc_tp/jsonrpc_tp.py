@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
-from typing import IO, Any, Protocol
+from typing import IO, Any, NoReturn, Protocol
 
 from .jsonrpc_tp_types import Err, Error, Resp
 
@@ -145,11 +145,11 @@ class JsonRPCTP(SyncProtocol):
         self._process.wait()
         self._process = None
 
-    def _error_with_stderr(self, msg: str, e: Exception | None = None) -> None:
+    def _error_with_stderr(self, msg: str, e: Exception | None = None) -> NoReturn:
         self._stderr.seek(0)
         stderr_data = self._stderr.read()
         stderr = None if not stderr_data else stderr_data
-        raise Error(msg, stderr=stderr)
+        raise Error(msg, stderr=stderr) from e
 
     def _check_running(self) -> None:
         if self._process is None:
