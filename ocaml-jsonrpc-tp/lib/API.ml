@@ -502,6 +502,10 @@ let handle_request : type s. s api -> s -> Service.request_handler =
     in
     Service.Response.(error ~code:InvalidParams msg)
   in
+  let uncaught_exception e =
+    let msg = "Uncaught exception: " ^ Printexc.to_string e in
+    Service.Response.(error ~code:InternalError msg)
+  in
   let notify (N({name; args; _}, v)) =
     notify ~name ~params:(make_params api args v)
   in
@@ -516,16 +520,19 @@ let handle_request : type s. s api -> s -> Service.request_handler =
   match spec.impl with
   | Pure(impl) ->
       begin
-        match impl.impl notify s params with
-        | exception Invalid_argument(msg) -> invalid_params ~msg name
-        | ret                             ->
-        let json = to_json api spec.ret ret in
-        Service.Response.ok json
+        try
+          let ret = impl.impl notify s params in
+          let json = to_json api spec.ret ret in
+          Service.Response.ok json
+        with
+        | Invalid_argument(msg) -> invalid_params ~msg name
+        | e                     -> uncaught_exception e
       end
   | Rslt(impl) ->
       begin
         match impl.impl notify s params with
         | exception Invalid_argument(msg) -> invalid_params ~msg name
+        | exception e                     -> uncaught_exception e
         | Ok(ret)             ->
             let json = to_json api spec.ret ret in
             Service.Response.ok json
