@@ -75,6 +75,17 @@ from .tracing.extractors import (
 
 # Specialized extractors
 from .tracing.extractors.custom import BusinessOperationExtractor, MLOperationExtractor
+from .tracing.otel_attributes import (
+    OtelAttrPrimitive,
+    OtelAttrValue,
+    as_otel_attr_value,
+    as_otel_attrs,
+    from_otel_attrs,
+    is_OtelAttrPrimtive,
+    model_as_otel_attrs,
+    model_from_otel_attrs,
+    set_otel_attrs_on_span,
+)
 from .tracing.setup import setup_observability
 
 __version__ = "2.0.0"
@@ -113,6 +124,16 @@ __all__ = [
     "trace_langchain",
     # gRPC interceptors are now handled by the official library
     "aio_server_interceptor",
+    # OTel attribute (de)serialization
+    "OtelAttrPrimitive",
+    "OtelAttrValue",
+    "is_OtelAttrPrimtive",
+    "as_otel_attr_value",
+    "as_otel_attrs",
+    "from_otel_attrs",
+    "model_as_otel_attrs",
+    "model_from_otel_attrs",
+    "set_otel_attrs_on_span",
     # OTel Passthrough
     "propagate",
     # Context propagation (threads / executors)
