@@ -11,10 +11,17 @@ from collections.abc import Awaitable, Callable, Coroutine
 from types import CoroutineType
 from typing import Any, override
 
-from observability import get_logger, set_span_attribute, trace_context
+from observability import (
+    get_logger,
+    model_as_otel_attrs,
+    set_otel_attrs_on_span,
+    trace_context,
+)
 from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.rocq_cursor_protocol import DelegateRocqCursor
+from rocq_doc_manager.cursor import DelegateRocqCursor
+
+from .attrs import LocationInfo, TraceCursorSpanAttrs
 
 logger = get_logger("RocqCursor")
 
@@ -25,9 +32,7 @@ async def _maybe_await[T](val: T | Awaitable[T]) -> T:
     return val
 
 
-# TODO(telemetry): remove uses of structured logging when we atomically swap to a
-# fully span-based approach
-def _trace_log[**P, A, B, T](
+def _trace[**P, A, B, T](
     *,
     after: bool = False,
     method: str | None = None,
@@ -42,58 +47,37 @@ def _trace_log[**P, A, B, T](
 
         @functools.wraps(func)
         async def wrapper(self: TracingCursor, *args, **kwargs):
-            # Bind arguments to the function signature
             bound_args = sig.bind(self, *args, **kwargs)
             bound_args.apply_defaults()
-            # Convert to dict
             args_dict = dict(bound_args.arguments)
-            # NOTE: important to pop [self] since it can't be serialized; we separately
-            # supply [self] to fn_input
             args_dict.pop("self", None)
 
-            log_args: dict[str, Any] = {}
-            log_args["args"] = await _maybe_await(fn_input(self, args_dict))
+            attrs = TraceCursorSpanAttrs.model_construct(
+                args=await _maybe_await(fn_input(self, args_dict))
+            )
             if cmd:
-                log_args["action"], await _maybe_await(cmd(args_dict))
+                attrs.action = await _maybe_await(cmd(args_dict))
 
-            with trace_context(meth, attributes=log_args):
-
-                def _dynamic_telemetry[V](k: str, v: V) -> V:
-                    set_span_attribute(f"{meth}.{k}", v)
-                    log_args[k] = v
-                    return v
-
-                def _dynamic_telemetry_exception(e: Exception) -> None:
-                    # Note: opentelemetry handles managing the exception upon raise
-                    log_args["exception"] = e
-                    logger.error(meth, **log_args)
-
-                # it is important that we get the location before we run the function
-                before_loc = _dynamic_telemetry("before", await self.location_info())
-
+            with trace_context(meth) as span:
                 try:
-                    result = _dynamic_telemetry(
-                        "result",
-                        await _maybe_await(func(self, *args, **kwargs)),
+                    attrs.before = LocationInfo(**await self.location_info())
+
+                    result = await func(self, *args, **kwargs)
+
+                    if result is not None:
+                        attrs.error = isinstance(result, rdm_api.Err)
+                        attrs.result_type = str(type(result))
+                        attrs.result = result
+
+                    if after:
+                        attrs.after = LocationInfo(**await self.location_info())
+
+                    return result
+                finally:
+                    logger.info(meth, **attrs.model_dump(exclude_none=True))
+                    set_otel_attrs_on_span(
+                        span, model_as_otel_attrs(attrs, prefix=meth)
                     )
-                except Exception as err:
-                    _dynamic_telemetry_exception(err)
-                    raise
-
-                if result is not None:
-                    _dynamic_telemetry("error", isinstance(result, rdm_api.Err))
-                    _dynamic_telemetry("result_type", str(type(result)))
-                    _dynamic_telemetry("result", result)
-
-                if after:
-                    after_loc = _dynamic_telemetry("after", await self.location_info())
-                    before_idx = before_loc.get("index")
-                    after_idx = after_loc.get("index")
-                    if isinstance(before_idx, int) and isinstance(after_idx, int):
-                        _dynamic_telemetry("delta", after_idx - before_idx)
-
-                logger.info(f"RocqCursor.{meth}", **log_args)
-                return result
 
         return wrapper
 
@@ -119,7 +103,7 @@ class TracingCursor(DelegateRocqCursor):
         return TracingCursor.of_cursor(rc, verbose=self._verbose)
 
     @override
-    @_trace_log(
+    @_trace(
         method="insert_command",
         after=True,
     )
@@ -134,38 +118,38 @@ class TracingCursor(DelegateRocqCursor):
         return {"next_command": suffix[0] if suffix else None}
 
     @override
-    @_trace_log(after=True, inputs=_next_command)
+    @_trace(after=True, inputs=_next_command)
     async def run_step(
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         return await self._cursor.run_step()
 
     @override
-    @_trace_log()
+    @_trace()
     async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
         return await self._cursor.query(text)
 
     @override
-    @_trace_log()
+    @_trace()
     async def query_json(
         self, text: str, *, index: int
     ) -> Any | rdm_api.Err[rdm_api.CommandError]:
         return await self._cursor.query_json(text, index=index)
 
     @override
-    @_trace_log()
+    @_trace()
     async def query_json_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[Any] | rdm_api.Err[None]:
         return await self._cursor.query_json_all(text, indices=indices)
 
     @override
-    @_trace_log()
+    @_trace()
     async def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
         return await self._cursor.query_text(text, index=index)
 
     @override
-    @_trace_log()
+    @_trace()
     async def query_text_all(
         self, text: str, *, indices: list[int] | None = None
     ) -> list[str] | rdm_api.Err[None]:
@@ -173,12 +157,12 @@ class TracingCursor(DelegateRocqCursor):
 
     # NAVIGATION
     @override
-    @_trace_log(after=True)
+    @_trace(after=True)
     async def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]:
         return await self._cursor.revert_before(erase, index)
 
     @override
-    @_trace_log(after=True)
+    @_trace(after=True)
     async def advance_to(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
@@ -186,7 +170,7 @@ class TracingCursor(DelegateRocqCursor):
         return await self._cursor.advance_to(index=index)
 
     @override
-    @_trace_log(after=True)
+    @_trace(after=True)
     async def go_to(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
@@ -210,7 +194,7 @@ class TracingCursor(DelegateRocqCursor):
     async def _untraced_current_goal(self) -> rdm_api.ProofState | None:
         # Avoid cycle leading to unbounded recursion & stack overflow:
         #                         TracingCursor.query
-        # -[via _trace_log]->     TracingCursor.location_info
+        # -[via _trace]->         TracingCursor.location_info
         # ------------------>     TracingCursor.current_goal ~= RocqCursor.current_goal
         # -[via self.query]->     TracingCursor.query
         result = await self._cursor.query("About nat.")

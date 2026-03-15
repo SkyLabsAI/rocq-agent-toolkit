@@ -1,0 +1,112 @@
+{
+  "$defs": {
+    "LocationInfo": {
+      "description": "Cursor location snapshot: content-hash id and optional proof goal.",
+      "properties": {
+        "goal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Goal"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "LocationInfo",
+      "type": "object"
+    }
+  },
+  "description": "Span attributes emitted by ``TracingCursor`` methods.\n\n``extra=\"ignore\"`` ensures forwards compatibility: consumers running an\nolder schema version silently drop unknown fields added in newer versions.",
+  "properties": {
+    "action": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Action"
+    },
+    "after": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocationInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "args": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Args"
+    },
+    "before": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocationInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    },
+    "result": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result"
+    },
+    "result_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result Type"
+    }
+  },
+  "title": "TraceCursorSpanAttrs",
+  "type": "object"
+}

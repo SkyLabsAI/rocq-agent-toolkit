@@ -38,6 +38,8 @@ async def same[T](fn: Callable[[RocqCursor], Awaitable[T]], verbose: bool) -> No
             traced_result = await fn(traced)
         except Exception as e:
             traced_result = e
+        print(repr(result))
+        print(repr(traced_result))
         assert type(result) is type(traced_result)
         if isinstance(result, Exception):
             assert isinstance(traced_result, Exception)

@@ -42,6 +42,7 @@ auto-prover = "rocq_pipeline.prover:auto_prover"
 tactic-agent = "rocq_pipeline.task_runner:tactic_main"
 oracle-agent = "rocq_pipeline.agent.proof.oracle_agent:main"
 progress = "rocq_pipeline.util:main"
+persist-trace-cursor-schema = "rocq_pipeline.trace_cursor.attrs:main"
 
 [dependency-groups]
 dev = [
@@ -56,6 +57,8 @@ dev = [
     "ruff>=0.14.4",
     "taskipy>=1.14.1",
     "cram>=0.7",
+    "hypothesis>=6.131.0",
+    "hypothesis-jsonschema>=0.23.1",
 ]
 
 [tool.uv]
