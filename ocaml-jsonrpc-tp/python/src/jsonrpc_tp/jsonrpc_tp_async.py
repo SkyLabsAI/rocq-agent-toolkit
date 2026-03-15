@@ -217,6 +217,11 @@ class AsyncJsonRPCTP(AsyncProtocol):
                 # Method not found | Invalid params
                 case -32601 | -32602:
                     future.set_exception(Exception(message))
+                # Internal error
+                case -32603:
+                    future.set_exception(Exception(message))
+                    self._cleanup()
+                    self._error_with_stderr(f"Internal server error: {message}")
                 # Anything else is unexpected.
                 case _:
                     future.set_exception(
@@ -247,7 +252,7 @@ class AsyncJsonRPCTP(AsyncProtocol):
             await self._handlers.put(asyncio.create_task(handler()))
 
     async def _receiver_loop(self) -> None:
-        """Task 2: Reads from network, dispatches to waiting futures."""
+        """Handles incoming packets."""
         try:
             while True:
                 packet = await self._recv()
