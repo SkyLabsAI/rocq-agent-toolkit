@@ -358,21 +358,24 @@ let split_sentences : t -> text:string ->
   let rec to_sentences len rev_acc sentences =
     let open Rocq_split in
     match sentences with
-    | []                                    ->
+    | []                                     ->
         (len, List.rev rev_acc)
-    | s :: sentences when s.ep < cursor_off ->
+    | s :: sentences when s.ep <= cursor_off ->
+        (* Sentence entirely before the cursor, skip. *)
         to_sentences len rev_acc sentences
-    | s :: sentences when s.bp < cursor_off ->
+    | s :: sentences when cursor_off <= s.bp ->
+        (* Sentence entirely after the cursor, take. *)
+        let len = len + String.length s.text in
+        let rev_acc = {kind = s.kind; text = s.text} :: rev_acc in
+        to_sentences len rev_acc sentences
+    | s :: sentences                         ->
+        (* Sentence containing the cursor, must be blanks, split it. *)
         assert (s.kind = `Blanks);
         let diff = cursor_off - s.bp in
         let added_len = String.length s.text - diff in
         let text = String.sub s.text diff added_len in
         let len = len + added_len in
         let rev_acc = {kind = `Blanks; text} :: rev_acc in
-        to_sentences len rev_acc sentences
-    | s :: sentences                        ->
-        let len = len + String.length s.text in
-        let rev_acc = {kind = s.kind; text = s.text} :: rev_acc in
         to_sentences len rev_acc sentences
   in
   let (len, sentences) = to_sentences 0 [] sentences in

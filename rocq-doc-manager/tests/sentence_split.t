@@ -18,6 +18,10 @@
   > split_sentences [0,"(* xxx *)reflexivity. About nat. (* junk"]
   > split_sentences [0,"(* xxx *)reflexivity. About nat. (* junk *)"]
   > split_sentences [0,"(* xxx *)reflexivity. About nat. (* junk *) more_junk"]
+  > insert_blanks [0,"  (* comment *)"]
+  > split_sentences [0," reflexivity. About nat."]
+  > insert_blanks [0," "]
+  > split_sentences [0," reflexivity. About nat."]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -127,4 +131,42 @@
       "code": -32803,
       "message": "Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command])."
     }
+  }
+  { "id": 9, "jsonrpc": "2.0", "result": null }
+  {
+    "id": 10,
+    "jsonrpc": "2.0",
+    "result": [
+      { "kind": "blanks", "text": " " },
+      {
+        "kind": "command",
+        "text": "reflexivity.",
+        "data": { "kind": "Extend", "attrs": {} }
+      },
+      { "kind": "blanks", "text": " " },
+      {
+        "kind": "command",
+        "text": "About nat.",
+        "data": { "kind": "Print", "pure": true, "attrs": {} }
+      }
+    ]
+  }
+  { "id": 11, "jsonrpc": "2.0", "result": null }
+  {
+    "id": 12,
+    "jsonrpc": "2.0",
+    "result": [
+      { "kind": "blanks", "text": " " },
+      {
+        "kind": "command",
+        "text": "reflexivity.",
+        "data": { "kind": "Extend", "attrs": {} }
+      },
+      { "kind": "blanks", "text": " " },
+      {
+        "kind": "command",
+        "text": "About nat.",
+        "data": { "kind": "Print", "pure": true, "attrs": {} }
+      }
+    ]
   }
