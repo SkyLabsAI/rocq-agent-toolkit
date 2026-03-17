@@ -165,7 +165,7 @@ assert _trace_targets(
 )
 
 
-def _trace[**P, A, B, T](
+def _trace_method[**P, A, B, T](
     *,
     method: str | None = None,
     effect: (
@@ -208,7 +208,13 @@ def _trace[**P, A, B, T](
             args_dict = dict(bound_args.arguments)
             args_dict.pop("self", None)
 
-            attrs = TraceCursorSpanAttrs.model_construct(args=args_dict)
+            attrs = TraceCursorSpanAttrs.model_construct(
+                args={
+                    k: v
+                    for k, v in args_dict.items()
+                    if not isinstance(v, TracingCursor)
+                }
+            )
             need_after_id: bool = False
 
             if effect is not None:
@@ -236,7 +242,8 @@ def _trace[**P, A, B, T](
                     if result is not None:
                         attrs.error = isinstance(result, rdm_api.Err)
                         attrs.result_type = str(type(result))
-                        attrs.result = result
+                        if not isinstance(result, TracingCursor):
+                            attrs.result = result
 
                     if (not attrs.error or partial_effect) and need_after_id:
                         attrs.after = LocationInfo(
@@ -255,6 +262,36 @@ def _trace[**P, A, B, T](
     return wrap
 
 
+def _trace_cls(
+    *,
+    extra_skip: set[str] | None = None,
+    extra_trace_kwargs: dict[str, dict[str, Any]] | None = None,
+) -> Callable[[type[DelegateRocqCursor]], type[DelegateRocqCursor]]:
+    """Decorator: auto-instrument a DelegateRocqCursor deriver."""
+
+    def wrap(cls: type[DelegateRocqCursor]) -> type[DelegateRocqCursor]:
+        skip = deepcopy(_TRACING_CURSOR_DEFAULT_SKIP)
+        skip |= set() if extra_skip is None else extra_skip
+
+        trace_kwargs = deepcopy(_TRACING_CURSOR_DEFAULT_TRACE_KWARGS)
+        trace_kwargs.update({} if extra_trace_kwargs is None else extra_trace_kwargs)
+
+        for fn_nm, fn_trace_kwargs in _trace_targets(
+            cls=cls, skip=skip, trace_kwargs=trace_kwargs
+        ).items():
+            assert hasattr(cls, fn_nm), "ensured by _trace_targets"
+            fn = getattr(cls, fn_nm)
+            assert callable(fn), "ensured by _trace_targets"
+            assert isinstance(fn, FunctionType), "ensured by _trace_targets"
+
+            setattr(cls, fn_nm, override(_trace_method(**fn_trace_kwargs)(fn)))
+
+        return cls
+
+    return wrap
+
+
+@_trace_cls()
 class TracingCursor(DelegateRocqCursor):
     """
     An implementation of the rdm_api.API that traces all document interactions recording
@@ -300,30 +337,3 @@ class TracingCursor(DelegateRocqCursor):
         result = await self._cursor.query("About nat.")
         assert not isinstance(result, rdm_api.Err)
         return result.proof_state
-
-    @classmethod
-    def __init_subclass__(
-        cls,
-        *,
-        extra_skip: set[str] | None = None,
-        extra_trace_kwargs: dict[str, dict[str, Any]] | None = None,
-        **kwargs,
-    ) -> None:
-        """Derivers can customize tracing for RocqCursor methods."""
-        super().__init_subclass__(**kwargs)
-
-        skip = deepcopy(_TRACING_CURSOR_DEFAULT_SKIP)
-        skip |= set() if extra_skip is None else extra_skip
-
-        trace_kwargs = deepcopy(_TRACING_CURSOR_DEFAULT_TRACE_KWARGS)
-        trace_kwargs.update({} if extra_trace_kwargs is None else extra_trace_kwargs)
-
-        for fn_nm, fn_trace_kwargs in _trace_targets(
-            cls=cls, skip=skip, trace_kwargs=trace_kwargs
-        ).items():
-            assert hasattr(cls, fn_nm), "ensured by _trace_targets"
-            fn = getattr(cls, fn_nm)
-            assert callable(fn), "ensured by _trace_targets"
-            assert isinstance(fn, FunctionType), "ensured by _trace_targets"
-
-            setattr(cls, fn_nm, override(_trace(**fn_trace_kwargs)(fn)))
