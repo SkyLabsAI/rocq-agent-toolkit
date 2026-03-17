@@ -75,7 +75,7 @@ def persist_schema(schemas_dir: Path | None = None) -> None:
     ``SCHEMA_VERSION`` before persisting a breaking change.
     """
     if schemas_dir is None:
-        schemas_dir = Path("tests/schemas")
+        schemas_dir = Path("src/rocq_pipeline/trace_cursor/.schemas")
 
     target = schemas_dir / SCHEMA_FILENAME
     current = (

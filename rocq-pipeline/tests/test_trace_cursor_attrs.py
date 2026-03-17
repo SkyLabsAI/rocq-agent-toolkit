@@ -17,7 +17,7 @@ from rocq_pipeline.trace_cursor import (
     TraceCursorSpanAttrs,
 )
 
-SCHEMAS_DIR = Path(__file__).parent / "schemas"
+SCHEMAS_DIR = Path(__file__).parent.parent / "src/rocq_pipeline/trace_cursor/.schemas"
 
 # ---------------------------------------------------------------------------
 # Strategies

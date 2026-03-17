@@ -41,6 +41,23 @@
       "default": null,
       "title": "Action"
     },
+    "action_kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "blanks",
+            "command",
+            "ghost"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Action Kind"
+    },
     "after": {
       "anyOf": [
         {
