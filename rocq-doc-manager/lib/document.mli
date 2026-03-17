@@ -164,10 +164,14 @@ val run_step : t -> (command_data option, command_error) result
     unprocessed items. If the document suffix does not hold enough items, then
     [Invalid_argument] is raised immediately (without processing any item). If
     an error occurs while processing a command, then the function returns with
-    a value [Error(n, data)], where [n < count] indicates how many unprocessed
-    items have been processed successfully prior to the the failure. Note that
-    these items remain processed after the error is returned. *)
-val run_steps : t -> count:int -> (unit, int * command_error) result
+    a value [Error(s, (n, eo))], where [s] is an error message, [n < count] is
+    the number of items that were successfully processed prior to the failure,
+    and [eo] holds error data if the error resulted from a command error. Note
+    that successfully processed items are kept even in case of failure. If the
+    insertion of an item would interferes with a previous (non-ghost) command,
+    [Error(s, (n, None))] is given, with [s] an appropriate error message. *)
+val run_steps : t -> count:int
+  -> (unit, string * (int * command_error option)) result
 
 (** [advance_to d ~index] advances the cursor of document [d] to place it just
     before the item with the given [index]. If [index] is invalid, which means
@@ -175,15 +179,16 @@ val run_steps : t -> count:int -> (unit, int * command_error) result
     last item), or that it points to an already processed item, then exception
     [Invalid_argument] is raised. In case of error while processing a command,
     the cursor is left at the reached position, and [Error] is given similarly
-    to what [insert_command] or [run_step] do. *)
-val advance_to : t -> index:int -> (unit, command_error) result
+    to [run_steps]. *)
+val advance_to : t -> index:int
+  -> (unit, string * command_error option) result
 
 (** [go_to d ~index] is the same as [advance_to d ~index], but it additionally
     allows to revert to an earlier index like [revert_before d ~index]. In any
     case, no item is erased from the document. If the [index] is invalid, then
     [Invalid_argument] is raised. Valid indices range from [0] to one past the
     index of the last item in the document's suffix. *)
-val go_to : t -> index:int -> (unit, command_error) result
+val go_to : t -> index:int -> (unit, string * command_error option) result
 
 (** Document item kind: blank characters, command, or ghost command. *)
 type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]

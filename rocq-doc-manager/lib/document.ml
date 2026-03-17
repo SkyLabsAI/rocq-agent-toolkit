@@ -327,30 +327,37 @@ let run_step : t -> (command_data option, command_error) result = fun d ->
       | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
       | Error(s,d) -> Error(s, d)
 
-let run_steps : t -> count:int -> (unit, int * command_error) result =
-    fun d ~count ->
+let run_steps : t -> count:int ->
+    (unit, string * (int * command_error option)) result = fun d ~count ->
   let _ = get_backend d in
   if count < 0 then invalid_arg "negative count";
   if List.length d.suffix < count then invalid_arg "invalid count";
   (* NOTE: we could avoid locking the backend at each step here. *)
   let rec loop nb_processed =
     if nb_processed = count then Ok(()) else
-    match run_step d with
-    | Ok(_)    -> loop (nb_processed + 1)
-    | Error(e) -> Error(nb_processed, e)
+    try
+      match run_step d with
+      | Ok(_)    -> loop (nb_processed + 1)
+      | Error(e) ->
+          let message = Printf.sprintf "Error after %i steps" nb_processed in
+          Error(message, (nb_processed, Some(e)))
+    with Invalid_argument(s) ->
+      Error(s, (nb_processed, None))
   in
   loop 0
 
-let advance_to : t -> index:int -> (unit, command_error) result =
-    fun d ~index ->
+let advance_to : t -> index:int ->
+    (unit, string * command_error option) result = fun d ~index ->
   let _ = get_backend d in
   let cur = cursor_index d in
   let len_suffix = List.length d.suffix in
   let one_past = cur + len_suffix in
   if index < cur || one_past < index then invalid_arg "index out of bounds";
-  Result.map_error snd (run_steps d ~count:(index - cur))
+  let ignore_count (msg, (_, err)) = (msg, err) in
+  Result.map_error ignore_count (run_steps d ~count:(index - cur))
 
-let go_to : t -> index:int -> (unit, command_error) result = fun d ~index ->
+let go_to : t -> index:int -> (unit, string * command_error option) result =
+    fun d ~index ->
   let _ = get_backend d in
   let cur = cursor_index d in
   match index < cur with

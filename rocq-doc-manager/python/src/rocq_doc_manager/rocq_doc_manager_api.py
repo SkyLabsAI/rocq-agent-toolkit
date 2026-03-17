@@ -233,8 +233,9 @@ class CommandError(BaseModel):
 class StepsError(BaseModel):
     """Data returned by `run_steps`."""
 
-    cmd_error: CommandError = Field(
+    cmd_error: CommandError | None = Field(
         kw_only=True,
+        default=None,
     )
     nb_processed: int = Field(
         kw_only=True,

@@ -117,7 +117,7 @@ API Objects
 ### `StepsError`
 
 - Description: data returned by `run_steps`.
-- Field `cmd_error`: an instance of the `CommandError` object.
+- Field `cmd_error`: either `null` or an instance of the `CommandError` object.
 - Field `nb_processed`: number of unprocessed items that were processed successfully (as an integer).
 
 ### `PrefixItem`
