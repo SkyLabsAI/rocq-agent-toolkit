@@ -194,6 +194,15 @@ let load_file : t -> (unit, string * loc) result = fun d ->
 type command_data = Rocq_toplevel.run_data
 type command_error = string * Rocq_toplevel.run_error
 
+let rec whitespace_needed : processed_item list -> bool = fun rev_prefix ->
+  match rev_prefix with
+  | []                 -> false
+  | item :: rev_prefix ->
+  match item.kind with
+  | `Blanks     -> false
+  | `Ghost(_)   -> whitespace_needed rev_prefix
+  | `Command(_) -> String.ends_with ~suffix:"." item.text
+
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
   let backend = get_backend d in
   let processed =
@@ -347,6 +356,17 @@ type sentence = {
 let split_sentences : t -> text:string ->
     sentence list * (unit, string * string) result = fun d ~text ->
   let {file; args; _} = get_backend d in
+  match text with "" -> ([], Ok(())) | _ ->
+  let _ =
+    let open Rocq_blanks in
+    match skip_blanks text ~offset:0 with
+    | {leading_whitespaces = true; _} -> ()
+    | {unclosed_comments = []; _}     ->
+        if whitespace_needed d.rev_prefix then
+          invalid_arg "leading blanks required at this point in the document"
+    | _                               ->
+        invalid_arg "unclosed initial comment"
+  in
   let full_text = contents ~include_suffix:false d ^ text in
   let res = Rocq_split.split_string ~file ~args full_text in
   let sentences =

@@ -213,8 +213,7 @@
     "id": 16,
     "jsonrpc": "2.0",
     "error": {
-      "data": { "rest": "reflexivity." },
-      "code": -32803,
-      "message": "Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command])."
+      "code": -32602,
+      "message": "Invalid parameters for method split_sentences: leading blanks required at this point in the document."
     }
   }
