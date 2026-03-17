@@ -83,11 +83,11 @@ let get_sentences : config -> command list -> Loc.t option -> sentence list =
         add_blanks text !cur_offset (!cur_offset + String.length text)
     | Some(_)             ->
         (* Parse failure, still add all valid blanks. *)
-        let status = Rocq_blanks.skip_blanks text ~offset:0 in
-        match status.valid_until with
+        let blanks = Rocq_blanks.parse text ~offset:0 in
+        match blanks.valid_until with
         | 0 -> ()
         | _ ->
-        let text = String.sub text 0 status.valid_until in
+        let text = String.sub text 0 blanks.valid_until in
         add_blanks text !cur_offset (!cur_offset + String.length text)
   in
   List.rev !rev_items

@@ -211,18 +211,18 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
       invalid_arg "blanks must be non-empty";
     (* Check blanks validity. *)
     let open Rocq_blanks in
-    let status = skip_blanks text ~offset:0 in
-    if status.valid_until <> String.length text then begin
+    let blanks = Rocq_blanks.parse text ~offset:0 in
+    if blanks.valid_until <> String.length text then begin
       let message =
         let make fmt = Printf.sprintf ("invalid blanks (" ^^ fmt ^^ ")") in
-        match status.unclosed_string with
+        match blanks.unclosed_string with
         | Some(i) -> make "unclosed string litteral started at index %i" i
         | None    ->
-        match status.unclosed_comments with
+        match blanks.unclosed_comments with
         | i :: _  -> make "unclosed comment started at index %i" i
         | []      ->
         let trailing =
-          let index = status.stopped_at in
+          let index = blanks.stopped_at in
           String.sub text index (String.length text - index)
         in
         make "ends in non-blank-only text %S" trailing
@@ -230,7 +230,7 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
       invalid_arg message
     end;
     (* Check if leading whitespace is required. *)
-    if not status.leading_whitespaces && whitespace_needed d.rev_prefix then
+    if not blanks.leading_whitespaces && whitespace_needed d.rev_prefix then
       invalid_arg "leading whitespace required at this point in the document"
   in
   let processed =
@@ -405,7 +405,7 @@ let split_sentences : t -> text:string ->
   match text with "" -> ([], Ok(())) | _ ->
   let _ =
     let open Rocq_blanks in
-    match skip_blanks text ~offset:0 with
+    match Rocq_blanks.parse text ~offset:0 with
     | {leading_whitespaces = true; _} -> ()
     | {unclosed_comments = []; _}     ->
         if whitespace_needed d.rev_prefix then

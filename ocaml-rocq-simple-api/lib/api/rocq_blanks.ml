@@ -1,4 +1,4 @@
-type status = {
+type t = {
   valid_until : int;
   stopped_at : int;
   leading_whitespaces : bool;
@@ -6,7 +6,7 @@ type status = {
   unclosed_string : int option;
 }
 
-let skip_blanks : string -> offset:int -> status = fun text ~offset ->
+let parse : string -> offset:int -> t = fun text ~offset ->
   let len = String.length text in
   let rec skip state stack i =
     if i >= len then (state, stack, i) else
@@ -58,6 +58,3 @@ let skip_blanks : string -> offset:int -> status = fun text ~offset ->
   in
   { valid_until; stopped_at; leading_whitespaces;
     unclosed_comments; unclosed_string }
-
-let is_blanks : string -> bool = fun text ->
-  (skip_blanks text ~offset:0).valid_until = String.length text
