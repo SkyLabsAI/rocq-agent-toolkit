@@ -34,7 +34,10 @@ _trace_attrs_st = st.builds(
     args=st.text(max_size=100)
     | st.integers()
     | st.dictionaries(
-        st.text(alphabet=st.characters(exclude_characters=["."]), max_size=20),
+        st.text(
+            alphabet=st.characters(codec="latin-1", exclude_characters=["."]),
+            max_size=20,
+        ),
         st.text(max_size=50),
         max_size=5,
     ),
