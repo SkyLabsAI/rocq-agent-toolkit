@@ -108,7 +108,10 @@ type command_data = Rocq_toplevel.run_data
 type command_error = string * Rocq_toplevel.run_error
 
 (** [insert_blanks d ~text] inserts the sequence of blank characters [text] at
-    the cursor in document [d], and advances the cursor past them. *)
+    the cursor in document [d], and advances the cursor past them. When [text]
+    is ill-formed (e.g., empty or containing unclosed comments), or interferes
+    with the previous (non-ghost) command's text, exception [Invalid_argument]
+    is raised. *)
 val insert_blanks : t -> text:string -> unit
 
 (** [insert_command ?ghost d ~text] processes the given Rocq command [text] at
@@ -116,7 +119,12 @@ val insert_blanks : t -> text:string -> unit
     an error occurs while processing the command, then the document is left in
     the same state, and an error message is returned together with information
     about the error. The [ghost] boolean, [false] by default, indicates if the
-    inserted command is meant to be "hidden" (see [commit]). *)
+    inserted command is meant to be "hidden" (see [commit]). When a command is
+    not "hidden", then its text is expected not to interfere with the previous
+    item in the document prefix (if any). This would typically happen when the
+    previous non-ghost item is a dot-terminated command, as such command needs
+    to be followed by some non-comment blanks. When this situation arises, the
+    [invalid_argument] is raised before attempting to run the command. *)
 val insert_command : ?ghost:bool -> t -> text:string
   -> (command_data, command_error) result
 
@@ -147,8 +155,9 @@ val clear_suffix : ?count:int -> t -> unit
 
 (** [run_step d] advances the cursor of document [d] over the next unprocessed
     item of the document suffix, returning similar data to [insert_command] if
-    the item is a command. If the document suffix is empty, [Invalid_argument]
-    is raised. *)
+    the item is a command. Exception [Invalid_argument] is raised when [d] has
+    an empty suffix, or when the inserted item would interfere with a previous
+    (non-ghost) command (see [insert_blanks] and [insert_command]). *)
 val run_step : t -> (command_data option, command_error) result
 
 (** [run_steps d ~count] is similar to [run_step d], but it steps over [count]
