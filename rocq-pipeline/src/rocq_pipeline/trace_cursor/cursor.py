@@ -8,9 +8,11 @@ import functools
 import hashlib
 import inspect
 from collections.abc import Awaitable, Callable, Coroutine
-from types import CoroutineType
-from typing import Any, override
+from copy import deepcopy
+from types import CoroutineType, FunctionType
+from typing import Any, Final, Literal, get_protocol_members, override
 
+import rocq_agent_toolkit_utils as rat_utils
 from observability import (
     get_logger,
     model_as_otel_attrs,
@@ -32,14 +34,168 @@ async def _maybe_await[T](val: T | Awaitable[T]) -> T:
     return val
 
 
+async def _maybe_next_action(
+    rc: RocqCursor, args: dict[str, Any]
+) -> tuple[str, Literal["blanks", "command", "ghost"]] | None:
+    if suffix := await rc.doc_suffix():
+        return (suffix[0].text, suffix[0].kind)
+    else:
+        return None
+
+
+def _trace_targets(
+    *,
+    cls: type[RocqCursor] = RocqCursor,
+    skip: set[str],
+    trace_kwargs: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    assert not (skip & set(trace_kwargs.keys())), (
+        f"skip should not overlap with trace_kwargs:{rat_utils.objects.info(skip, trace_kwargs)}"
+    )
+    assert set(get_protocol_members(RocqCursor)) <= set(dir(cls)), (
+        f"{cls.__qualname__} must derive from RocqCursor:{rat_utils.objects.info(cls)}",
+    )
+
+    targets: dict[str, dict[str, Any]] = {}
+    for target_nm in (
+        {
+            attr_nm
+            for attr_nm in get_protocol_members(RocqCursor)
+            if callable(getattr(RocqCursor, attr_nm))
+        }
+        | trace_kwargs.keys()
+    ) - skip:
+        assert hasattr(cls, target_nm), f"{cls.__qualname__} missing {target_nm}"
+        target_fn = getattr(cls, target_nm)
+        assert callable(target_fn), (
+            f"{cls.__qualname__}.{target_nm} is not Callable: {repr(target_fn)}"
+        )
+        assert isinstance(target_fn, FunctionType), (
+            f"{cls.__qualname__}.{target_nm} should be a function: {repr(target_fn)}"
+        )
+
+        if target_nm in trace_kwargs:
+            targets[target_nm] = deepcopy(trace_kwargs[target_nm])
+        else:
+            targets[target_nm] = {}
+
+    return targets
+
+
+# methods that should not be instrumented with _trace
+_TRACING_CURSOR_DEFAULT_SKIP: Final[set[str]] = {
+    "_import_export_cmd",
+    "_untraced_location_info",
+    "_untraced_doc_prefix",
+    "_untraced_current_goal",
+}
+# custom kwargs to use for _trace; default=dict()
+_TRACING_CURSOR_DEFAULT_TRACE_KWARGS: Final[dict[str, dict[str, Any]]] = {
+    "advance_to": {
+        "effect": True,
+    },
+    "clear_suffix": {
+        "effect": True,
+    },
+    "go_to": {
+        "effect": True,
+    },
+    "insert_blanks": {
+        "effect": lambda _, args: (args["text"], "blanks"),
+    },
+    "_insert_command": {
+        "method": "insert_command",
+        "effect": lambda _, args: (
+            args["text"],
+            "ghost" if args["ghost"] else "command",
+        ),
+    },
+    "insert_command": {
+        "method": "insert_command_pad_blanks",
+        "effect": True,
+    },
+    "insert_sentences": {
+        "effect": True,
+    },
+    "revert_before": {
+        "effect": True,
+    },
+    "run_command": {"effect": lambda _, args: (args["text"], "ghost")},
+    "run_step": {
+        "effect": _maybe_next_action,
+    },
+    "run_steps": {
+        "effect": lambda _, args: 0 < args["count"],
+        "partial_effect": True,
+    },
+    "ctx": {
+        "effect": lambda _, args: not args["rollback"],
+    },
+    "aborted_goal_ctx": {
+        "effect": lambda _, args: not args["rollback"],
+    },
+    "Section": {
+        "effect": lambda _, args: not args["rollback"],
+    },
+    "goto_first_match": {
+        "effect": True,
+    },
+    "Compute": {
+        "effect": lambda _, args: not args["rollback"],
+    },
+    "Import": {
+        "effect": True,
+    },
+    "RequireImport": {
+        "effect": True,
+    },
+    "Export": {
+        "effect": True,
+    },
+    "RequireExport": {
+        "effect": True,
+    },
+}
+assert _trace_targets(
+    # additionally skip the custom methods on DelegateRocqCursor+TracingCursor
+    skip=_TRACING_CURSOR_DEFAULT_SKIP,
+    trace_kwargs=_TRACING_CURSOR_DEFAULT_TRACE_KWARGS,
+).keys() <= set(get_protocol_members(RocqCursor)), (
+    "Default trace candidates must be a subset of RocqCursor methods"
+)
+
+
 def _trace[**P, A, B, T](
     *,
-    after: bool = False,
     method: str | None = None,
-    cmd: Callable[[dict[str, Any]], str] | None = None,
-    inputs: Callable[[TracingCursor, dict[str, Any]], Any] | None = None,
+    effect: (
+        Callable[
+            [TracingCursor, dict[str, Any]],
+            Awaitable[tuple[str, Literal["blanks", "command", "ghost"]] | bool | None],
+        ]
+        | Callable[
+            [TracingCursor, dict[str, Any]],
+            tuple[str, Literal["blanks", "command", "ghost"]] | bool | None,
+        ]
+        | bool
+        | None
+    ) = None,
+    partial_effect: bool = False,
 ) -> Callable[[Callable[P, Coroutine[A, B, T]]], Callable[P, CoroutineType[A, B, T]]]:
-    fn_input = (lambda _, args: args) if inputs is None else inputs
+    """Decorator: use an opentelemetry to instrument a TracingCursor method.
+
+    Arguments:
+        method (optional): name to use instead of the method name
+        effect (optional): characterize the effect & control whether after_id is generated (use most specific):
+            - Callable: use self+args_dict to produce either:
+              - the text+kind for a /single/ document interaction
+              - a boolean indicating whether there was an effect
+            - bool: whether a document effect was produced (either via navigation or a composite interaction)
+            - None (default): no document interaction
+        partial_effect (optional): whether partial effects remain if rdm_api.Err is returned
+    Returns:
+        instrumented method
+    """
 
     def wrap(func: Callable):
         sig = inspect.signature(func)
@@ -52,15 +208,28 @@ def _trace[**P, A, B, T](
             args_dict = dict(bound_args.arguments)
             args_dict.pop("self", None)
 
-            attrs = TraceCursorSpanAttrs.model_construct(
-                args=await _maybe_await(fn_input(self, args_dict))
-            )
-            if cmd:
-                attrs.action = await _maybe_await(cmd(args_dict))
+            attrs = TraceCursorSpanAttrs.model_construct(args=args_dict)
+            need_after_id: bool = False
+
+            if effect is not None:
+                if isinstance(effect, bool):
+                    need_after_id = effect
+                else:
+                    effect_result = await _maybe_await(effect(self, args_dict))
+                    if isinstance(effect_result, bool):
+                        need_after_id = effect_result
+                    elif isinstance(effect_result, tuple):
+                        assert len(effect_result) == 2, (
+                            f"effect callbacks for _trace should produce 2-tuples: {effect_result}"
+                        )
+                        text, kind = effect_result
+                        need_after_id = kind != "ghost"
+                        attrs.action = text
+                        attrs.action_kind = kind
 
             with trace_context(meth) as span:
                 try:
-                    attrs.before = LocationInfo(**await self.location_info())
+                    attrs.before = LocationInfo(**await self._untraced_location_info())
 
                     result = await func(self, *args, **kwargs)
 
@@ -69,8 +238,10 @@ def _trace[**P, A, B, T](
                         attrs.result_type = str(type(result))
                         attrs.result = result
 
-                    if after:
-                        attrs.after = LocationInfo(**await self.location_info())
+                    if (not attrs.error or partial_effect) and need_after_id:
+                        attrs.after = LocationInfo(
+                            **await self._untraced_location_info()
+                        )
 
                     return result
                 finally:
@@ -90,95 +261,21 @@ class TracingCursor(DelegateRocqCursor):
     a state_id.
     """
 
-    @staticmethod
-    def of_cursor(rc: RocqCursor, *, verbose: bool = False) -> TracingCursor:
-        return TracingCursor(rc, verbose=verbose)
-
     def __init__(self, rc: RocqCursor, *, verbose: bool = True) -> None:
         super().__init__(rc)
         self._verbose = verbose
+
+    @staticmethod
+    def of_cursor(rc: RocqCursor, *, verbose: bool = False) -> TracingCursor:
+        return TracingCursor(rc, verbose=verbose)
 
     @override
     def make_derived(self, rc: RocqCursor) -> RocqCursor:
         return TracingCursor.of_cursor(rc, verbose=self._verbose)
 
-    @override
-    @_trace(
-        method="insert_command",
-        after=True,
-    )
-    async def _insert_command(
-        self, text: str, *, ghost: bool = False
-    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return await self._cursor._insert_command(text, ghost=ghost)
-
-    @staticmethod
-    async def _next_command(me: TracingCursor, args: dict[str, Any]) -> dict[str, Any]:
-        suffix = [item.text for item in await me.doc_suffix() if item.kind == "command"]
-        return {"next_command": suffix[0] if suffix else None}
-
-    @override
-    @_trace(after=True, inputs=_next_command)
-    async def run_step(
-        self,
-    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
-        return await self._cursor.run_step()
-
-    @override
-    @_trace()
-    async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
-        return await self._cursor.query(text)
-
-    @override
-    @_trace()
-    async def query_json(
-        self, text: str, *, index: int
-    ) -> Any | rdm_api.Err[rdm_api.CommandError]:
-        return await self._cursor.query_json(text, index=index)
-
-    @override
-    @_trace()
-    async def query_json_all(
-        self, text: str, *, indices: list[int] | None = None
-    ) -> list[Any] | rdm_api.Err[None]:
-        return await self._cursor.query_json_all(text, indices=indices)
-
-    @override
-    @_trace()
-    async def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
-        return await self._cursor.query_text(text, index=index)
-
-    @override
-    @_trace()
-    async def query_text_all(
-        self, text: str, *, indices: list[int] | None = None
-    ) -> list[str] | rdm_api.Err[None]:
-        return await self._cursor.query_text_all(text, indices=indices)
-
-    # NAVIGATION
-    @override
-    @_trace(after=True)
-    async def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]:
-        return await self._cursor.revert_before(erase, index)
-
-    @override
-    @_trace(after=True)
-    async def advance_to(
-        self, index: int
-    ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
-        # TODO: it might be necessary to insert all of the commands here
-        return await self._cursor.advance_to(index=index)
-
-    @override
-    @_trace(after=True)
-    async def go_to(
-        self, index: int
-    ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
-        return await self._cursor.go_to(index)
-
-    async def location_info(self) -> dict[str, Any]:
+    async def _untraced_location_info(self) -> dict[str, Any]:
         """Construct a functional location by computing the hash of the effectful commands."""
-        prefix = await self.doc_prefix()
+        prefix = await self._untraced_doc_prefix()
         raw = "\n".join(
             [
                 elem.text
@@ -191,6 +288,9 @@ class TracingCursor(DelegateRocqCursor):
             result["goal"] = goal.model_dump_json()
         return result
 
+    async def _untraced_doc_prefix(self) -> list[rdm_api.PrefixItem]:
+        return await self._cursor.doc_prefix()
+
     async def _untraced_current_goal(self) -> rdm_api.ProofState | None:
         # Avoid cycle leading to unbounded recursion & stack overflow:
         #                         TracingCursor.query
@@ -201,12 +301,29 @@ class TracingCursor(DelegateRocqCursor):
         assert not isinstance(result, rdm_api.Err)
         return result.proof_state
 
-    async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
-        for cnt in range(count):
-            result = await self.run_step()
-            if isinstance(result, rdm_api.Err):
-                return rdm_api.Err(
-                    message=result.message,
-                    data=rdm_api.StepsError(cmd_error=result.data, nb_processed=cnt),
-                )
-        return None
+    @classmethod
+    def __init_subclass__(
+        cls,
+        *,
+        extra_skip: set[str] | None = None,
+        extra_trace_kwargs: dict[str, dict[str, Any]] | None = None,
+        **kwargs,
+    ) -> None:
+        """Derivers can customize tracing for RocqCursor methods."""
+        super().__init_subclass__(**kwargs)
+
+        skip = deepcopy(_TRACING_CURSOR_DEFAULT_SKIP)
+        skip |= set() if extra_skip is None else extra_skip
+
+        trace_kwargs = deepcopy(_TRACING_CURSOR_DEFAULT_TRACE_KWARGS)
+        trace_kwargs.update({} if extra_trace_kwargs is None else extra_trace_kwargs)
+
+        for fn_nm, fn_trace_kwargs in _trace_targets(
+            cls=cls, skip=skip, trace_kwargs=trace_kwargs
+        ).items():
+            assert hasattr(cls, fn_nm), "ensured by _trace_targets"
+            fn = getattr(cls, fn_nm)
+            assert callable(fn), "ensured by _trace_targets"
+            assert isinstance(fn, FunctionType), "ensured by _trace_targets"
+
+            setattr(cls, fn_nm, override(_trace(**fn_trace_kwargs)(fn)))

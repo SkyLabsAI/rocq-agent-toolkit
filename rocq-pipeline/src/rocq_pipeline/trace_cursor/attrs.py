@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -46,6 +46,7 @@ class TraceCursorSpanAttrs(BaseModel):
 
     args: Any | None = Field(default_factory=dict)
     action: str | None = None
+    action_kind: Literal["blanks", "command", "ghost"] | None = None
     before: LocationInfo | None = None
     after: LocationInfo | None = None
     error: bool | None = None
