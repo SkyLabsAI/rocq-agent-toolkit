@@ -22,6 +22,10 @@
   > split_sentences [0," reflexivity. About nat."]
   > insert_blanks [0," "]
   > split_sentences [0," reflexivity. About nat."]
+  > split_sentences [0," (* Just blanks. *) "]
+  > split_sentences [0," (* Leading blanks. *) unparseable"]
+  > insert_command [0,"idtac.",false]
+  > split_sentences [0,"reflexivity."]
   > EOF
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
@@ -80,9 +84,10 @@
             "kind": "command",
             "text": "About nat.",
             "data": { "kind": "Print", "pure": true, "attrs": {} }
-          }
+          },
+          { "kind": "blanks", "text": " " }
         ],
-        "rest": " (* junk"
+        "rest": "(* junk"
       },
       "code": -32803,
       "message": "Syntax Error: Lexer: Unterminated comment"
@@ -124,9 +129,10 @@
             "kind": "command",
             "text": "About nat.",
             "data": { "kind": "Print", "pure": true, "attrs": {} }
-          }
+          },
+          { "kind": "blanks", "text": " (* junk *) " }
         ],
-        "rest": " (* junk *) more_junk"
+        "rest": "more_junk"
       },
       "code": -32803,
       "message": "Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command])."
@@ -169,4 +175,46 @@
         "data": { "kind": "Print", "pure": true, "attrs": {} }
       }
     ]
+  }
+  {
+    "id": 13,
+    "jsonrpc": "2.0",
+    "result": [ { "kind": "blanks", "text": " (* Just blanks. *) " } ]
+  }
+  {
+    "id": 14,
+    "jsonrpc": "2.0",
+    "error": {
+      "data": {
+        "sentences": [
+          { "kind": "blanks", "text": " (* Leading blanks. *) " }
+        ],
+        "rest": "unparseable"
+      },
+      "code": -32803,
+      "message": "Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command])."
+    }
+  }
+  {
+    "id": 15,
+    "jsonrpc": "2.0",
+    "result": {
+      "proof_state": {
+        "given_up_goals": 0,
+        "shelved_goals": 0,
+        "focused_goals": [
+          "\nX : Type\nx : X\n============================\nx = x"
+        ]
+      },
+      "synterp_ast": { "kind": "Extend", "attrs": {} }
+    }
+  }
+  {
+    "id": 16,
+    "jsonrpc": "2.0",
+    "error": {
+      "data": { "rest": "reflexivity." },
+      "code": -32803,
+      "message": "Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command])."
+    }
   }
