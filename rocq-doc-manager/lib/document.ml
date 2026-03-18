@@ -206,7 +206,7 @@ let rec whitespace_needed : processed_item list -> bool = fun rev_prefix ->
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
   let backend = get_backend d in
   let _ =
-    (* Ensuire non-empty blanks. *)
+    (* Ensure non-empty blanks. *)
     if text = "" then
       invalid_arg "blanks must be non-empty";
     (* Check blanks validity. *)

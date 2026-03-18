@@ -119,12 +119,13 @@ val insert_blanks : t -> text:string -> unit
     an error occurs while processing the command, then the document is left in
     the same state, and an error message is returned together with information
     about the error. The [ghost] boolean, [false] by default, indicates if the
-    inserted command is meant to be "hidden" (see [commit]). When a command is
-    not "hidden", then its text is expected not to interfere with the previous
-    item in the document prefix (if any). This would typically happen when the
-    previous non-ghost item is a dot-terminated command, as such command needs
+    inserted command is meant to be "hidden" (see [commit]).
+
+    When a command is not "hidden", then its text is expected not to interfere
+    with the previous item in the document prefix (if any). This can happen if
+    the previous non-ghost item is a dot-terminated command, since it needs to
     to be followed by some non-comment blanks. When this situation arises, the
-    [invalid_argument] is raised before attempting to run the command. *)
+    [invalid_argument] exception is raised prior to running the command. *)
 val insert_command : ?ghost:bool -> t -> text:string
   -> (command_data, command_error) result
 

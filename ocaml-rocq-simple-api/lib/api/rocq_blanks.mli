@@ -14,6 +14,6 @@ type t = {
 
 (** [parse text ~offset] parses as many blank characters from [text], starting
     at index [offset]. The returned parsing data can be used to determine what
-    amout of blanks can be successfully skipped, and to identify issues like a
+    amount of blanks can be successfully skipped, or identify issues such as a
     comment not being closed. *)
 val parse : string -> offset:int -> t

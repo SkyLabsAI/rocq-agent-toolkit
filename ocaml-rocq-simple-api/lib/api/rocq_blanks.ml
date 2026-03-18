@@ -6,16 +6,17 @@ type t = {
   unclosed_string : int option;
 }
 
+(* Not using [Char.Ascii.is_white] to remain close to Rocq. *)
+let is_white : char -> bool = fun c ->
+  match c with ' ' | '\t' | '\r' | '\n' -> true | _ -> false
+
 let parse : string -> offset:int -> t = fun text ~offset ->
   let len = String.length text in
   let rec skip state stack i =
     if i >= len then (state, stack, i) else
     match (state, text.[i], stack) with
     (* Blank characters (outside of comments) *)
-    | (`Init, ' ' , []        )
-    | (`Init, '\t', []        )
-    | (`Init, '\r', []        )
-    | (`Init, '\n', []        ) -> skip `Init stack (i+1)
+    | (`Init, c   , []        ) when is_white c -> skip `Init stack (i+1)
     (* String literals (within comment) *)
     | (`Init, '"' , _ :: _    ) -> skip `Strg (i :: stack) (i+1)
     | (`Strg, '"' , _ :: stack) -> skip `Init stack (i+1)
@@ -50,11 +51,6 @@ let parse : string -> offset:int -> t = fun text ~offset ->
     | []     -> stopped_at
     | i :: _ -> i
   in
-  let leading_whitespaces =
-    offset < len &&
-    match text.[offset] with
-    | ' ' | '\t' | '\r' | '\n' -> true
-    | _                        -> false
-  in
+  let leading_whitespaces = offset < len && is_white text.[offset] in
   { valid_until; stopped_at; leading_whitespaces;
     unclosed_comments; unclosed_string }
