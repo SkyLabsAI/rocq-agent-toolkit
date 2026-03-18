@@ -194,8 +194,45 @@ let load_file : t -> (unit, string * loc) result = fun d ->
 type command_data = Rocq_toplevel.run_data
 type command_error = string * Rocq_toplevel.run_error
 
+let rec whitespace_needed : processed_item list -> bool = fun rev_prefix ->
+  match rev_prefix with
+  | []                 -> false
+  | item :: rev_prefix ->
+  match item.kind with
+  | `Blanks     -> false
+  | `Ghost(_)   -> whitespace_needed rev_prefix
+  | `Command(_) -> String.ends_with ~suffix:"." item.text
+
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
   let backend = get_backend d in
+  let _ =
+    (* Ensure non-empty blanks. *)
+    if text = "" then
+      invalid_arg "blanks must be non-empty";
+    (* Check blanks validity. *)
+    let open Rocq_blanks in
+    let blanks = Rocq_blanks.parse text ~offset:0 in
+    if blanks.valid_until <> String.length text then begin
+      let message =
+        let make fmt = Printf.sprintf ("invalid blanks (" ^^ fmt ^^ ")") in
+        match blanks.unclosed_string with
+        | Some(i) -> make "unclosed string litteral started at index %i" i
+        | None    ->
+        match blanks.unclosed_comments with
+        | i :: _  -> make "unclosed comment started at index %i" i
+        | []      ->
+        let trailing =
+          let index = blanks.stopped_at in
+          String.sub text index (String.length text - index)
+        in
+        make "ends in non-blank-only text %S" trailing
+      in
+      invalid_arg message
+    end;
+    (* Check if leading whitespace is required. *)
+    if not blanks.leading_whitespaces && whitespace_needed d.rev_prefix then
+      invalid_arg "leading whitespace required at this point in the document"
+  in
   let processed =
     let index = cursor_index d in
     {index; kind = `Blanks; off = d.cursor_off; text}
@@ -213,6 +250,9 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
 let insert_command : ?ghost:bool -> t -> text:string ->
     (command_data, command_error) result =
     fun ?(ghost=false) d ~text ->
+  let _ = get_backend d in
+  if not ghost && whitespace_needed d.rev_prefix then
+    invalid_arg "whitespace required at this point in the document";
   with_synced_backend d @@ fun backend ->
   let off = if ghost then 0 else d.cursor_off in
   let sid_before = Rocq_toplevel.StateID.current backend.top in
@@ -287,30 +327,37 @@ let run_step : t -> (command_data option, command_error) result = fun d ->
       | Ok(v)      -> d.suffix <- suffix; Ok(Some(v))
       | Error(s,d) -> Error(s, d)
 
-let run_steps : t -> count:int -> (unit, int * command_error) result =
-    fun d ~count ->
+let run_steps : t -> count:int ->
+    (unit, string * (int * command_error option)) result = fun d ~count ->
   let _ = get_backend d in
   if count < 0 then invalid_arg "negative count";
   if List.length d.suffix < count then invalid_arg "invalid count";
   (* NOTE: we could avoid locking the backend at each step here. *)
   let rec loop nb_processed =
     if nb_processed = count then Ok(()) else
-    match run_step d with
-    | Ok(_)    -> loop (nb_processed + 1)
-    | Error(e) -> Error(nb_processed, e)
+    try
+      match run_step d with
+      | Ok(_)    -> loop (nb_processed + 1)
+      | Error(e) ->
+          let message = Printf.sprintf "Error after %i steps" nb_processed in
+          Error(message, (nb_processed, Some(e)))
+    with Invalid_argument(s) ->
+      Error(s, (nb_processed, None))
   in
   loop 0
 
-let advance_to : t -> index:int -> (unit, command_error) result =
-    fun d ~index ->
+let advance_to : t -> index:int ->
+    (unit, string * command_error option) result = fun d ~index ->
   let _ = get_backend d in
   let cur = cursor_index d in
   let len_suffix = List.length d.suffix in
   let one_past = cur + len_suffix in
   if index < cur || one_past < index then invalid_arg "index out of bounds";
-  Result.map_error snd (run_steps d ~count:(index - cur))
+  let ignore_count (msg, (_, err)) = (msg, err) in
+  Result.map_error ignore_count (run_steps d ~count:(index - cur))
 
-let go_to : t -> index:int -> (unit, command_error) result = fun d ~index ->
+let go_to : t -> index:int -> (unit, string * command_error option) result =
+    fun d ~index ->
   let _ = get_backend d in
   let cur = cursor_index d in
   match index < cur with
@@ -325,15 +372,23 @@ let suffix : t -> unprocessed_item list = fun d ->
   let _ = get_backend d in
   d.suffix
 
+(* Makes sure that ghost commands don't break scripts when included. *)
+let document_text : item_kind -> string -> string = fun kind text ->
+  match kind with
+  | `Ghost(_) -> "\n(* GHOST START *)\n" ^ text ^ "\n(* GHOST END *)\n"
+  | _         -> text
+
 let contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string =
     fun ?(include_ghost=false) ?(include_suffix=true) d ->
   let _ = get_backend d in
   let b = Buffer.create 73 in
   let add_processed (p : processed_item) =
-    if not (is_ghost p.kind) || include_ghost then Buffer.add_string b p.text
+    if not (is_ghost p.kind) || include_ghost then
+      Buffer.add_string b (document_text p.kind p.text)
   in
   let add_unprocessed u =
-    if not (is_ghost u.kind) || include_ghost then Buffer.add_string b u.text
+    if not (is_ghost u.kind) || include_ghost then
+      Buffer.add_string b (document_text u.kind u.text)
   in
   List.iter add_processed (List.rev d.rev_prefix);
   if include_suffix then List.iter add_unprocessed d.suffix;
@@ -347,6 +402,17 @@ type sentence = {
 let split_sentences : t -> text:string ->
     sentence list * (unit, string * string) result = fun d ~text ->
   let {file; args; _} = get_backend d in
+  match text with "" -> ([], Ok(())) | _ ->
+  let _ =
+    let open Rocq_blanks in
+    match Rocq_blanks.parse text ~offset:0 with
+    | {leading_whitespaces = true; _} -> ()
+    | {unclosed_comments = []; _}     ->
+        if whitespace_needed d.rev_prefix then
+          invalid_arg "leading blanks required at this point in the document"
+    | _                               ->
+        invalid_arg "unclosed initial comment"
+  in
   let full_text = contents ~include_suffix:false d ^ text in
   let res = Rocq_split.split_string ~file ~args full_text in
   let sentences =
@@ -395,11 +461,11 @@ let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
     Out_channel.with_open_text file @@ fun oc ->
     let output_processed (p : processed_item) =
       if not (is_ghost p.kind) || include_ghost then
-        Out_channel.output_string oc p.text
+        Out_channel.output_string oc (document_text p.kind p.text)
     in
     let output_unprocessed (u : unprocessed_item) =
       if not (is_ghost u.kind) || include_ghost then
-        Out_channel.output_string oc u.text
+        Out_channel.output_string oc (document_text u.kind u.text)
     in
     List.iter output_processed (List.rev d.rev_prefix);
     if include_suffix then List.iter output_unprocessed d.suffix;

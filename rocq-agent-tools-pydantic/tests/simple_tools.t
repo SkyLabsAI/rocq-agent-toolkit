@@ -45,7 +45,7 @@
   proof_script({})
   = ['idtac.', 'try reflexivity.']
   insert_tactics({'text': 'idtac. broken text'})
-  = error='Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command]).' result=(1, ' broken text', ['\n============================\nTrue /\\ True'])
+  = error='Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command]).' result=(1, 'broken text', ['\n============================\nTrue /\\ True'])
   proof_script({})
   = ['idtac.', 'try reflexivity.', 'idtac.']
   insert_tactics({'text': ' simply broken.'})

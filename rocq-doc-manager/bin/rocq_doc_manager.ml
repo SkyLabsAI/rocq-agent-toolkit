@@ -464,7 +464,7 @@ let steps_error =
   let fields =
     API.Fields.add ~name:"nb_processed" ~descr:"number of unprocessed items \
       that were processed successfully" S.int @@
-    API.Fields.add ~name:"cmd_error" S.(obj command_error) @@
+    API.Fields.add ~name:"cmd_error" S.(nullable (obj command_error)) @@
     API.Fields.nil
   in
   let encode (nb_processed, (cmd_error, ())) = (nb_processed, cmd_error) in
@@ -515,7 +515,10 @@ let _ =
     ~err:S.(nullable (obj command_error))
     ~err_descr:"optional source code location for the error"
     @@ fun d (index, ()) ->
-  Result.map_error (fun (e,v) -> e, Some v) @@ Document.advance_to d ~index
+  let adapt (s, e) =
+    match e with None -> (s, None) | Some(s, e) -> (s, Some(e))
+  in
+  Result.map_error adapt @@ Document.advance_to d ~index
 
 let _ =
   declare_full ~name:"go_to" ~descr:"move the cursor right before \
@@ -523,7 +526,10 @@ let _ =
     ~args:index_before_args ~ret:S.null ~err:S.(nullable (obj command_error))
     ~err_descr:"optional source code location for the error"
     @@ fun d (index, ()) ->
-  Result.map_error (fun (e,v) -> e, Some v) @@ Document.go_to d ~index
+  let adapt (s, e) =
+    match e with None -> (s, None) | Some(s, e) -> (s, Some(e))
+  in
+  Result.map_error adapt @@ Document.go_to d ~index
 
 let _ =
   let args =
@@ -556,8 +562,10 @@ let _ =
     ~err:S.(obj steps_error)
     ~err_descr:"error data for the command that was run"
     @@ fun d (count, ()) ->
-  let res = Document.run_steps d ~count in
-  Result.map_error (fun (i, (s, e)) -> (s, (i, e))) res
+  let adapt (s, (i, e)) =
+    match e with None -> (s, (i, None)) | Some(s, e) -> (s, (i, Some(e)))
+  in
+  Result.map_error adapt @@ Document.run_steps d ~count
 
 let item_kind =
   let encode v =

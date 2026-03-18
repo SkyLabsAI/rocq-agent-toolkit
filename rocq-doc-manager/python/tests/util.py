@@ -123,9 +123,8 @@ class RDM_Tests:
                 # Unicode character properties:
                 # - [L]: letter
                 # - [N]: number
-                # - [P]: punctuation
                 # - [Z]: separator
-                whitelist_categories=("L", "N", "P", "Z"),
+                whitelist_categories=("L", "N", "Z"),
                 min_codepoint=32,
                 max_codepoint=126,
             ),

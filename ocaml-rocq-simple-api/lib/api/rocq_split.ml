@@ -76,12 +76,19 @@ let get_sentences : config -> command list -> Loc.t option -> sentence list =
   in
   List.iter handle_cmd cmds;
   let _ =
+    let text = input_all () in
     match loc with
-    | Some(_) -> ()
-    | None    ->
-    match input_all () with
-    | ""   -> ()
-    | text -> add_blanks text !cur_offset (!cur_offset + String.length text)
+    | None when text = "" -> ()
+    | None                ->
+        add_blanks text !cur_offset (!cur_offset + String.length text)
+    | Some(_)             ->
+        (* Parse failure, still add all valid blanks. *)
+        let blanks = Rocq_blanks.parse text ~offset:0 in
+        match blanks.valid_until with
+        | 0 -> ()
+        | _ ->
+        let text = String.sub text 0 blanks.valid_until in
+        add_blanks text !cur_offset (!cur_offset + String.length text)
   in
   List.rev !rev_items
 

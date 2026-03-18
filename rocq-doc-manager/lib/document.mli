@@ -93,7 +93,10 @@ type sentence = {
 (** [split_sentences d ~text] attempts to decompose the given Rocq [text] into
     a list of sentences (blank characters, or vernacular command). The list of
     the successfully parsed sentences is returned along with the result, which
-    in case of error gives an error message and the leftover text. *)
+    in case of error gives an error message and the leftover text. The text is
+    assumed to be insertable at the cursor, without interference with previous
+    (non-ghost) commands, so it should start with blanks as appropriate. If it
+    is not the case, [Invalid_argument] is raised. *)
 val split_sentences : t -> text:string
   -> sentence list * (unit, string * string) result
 
@@ -105,7 +108,10 @@ type command_data = Rocq_toplevel.run_data
 type command_error = string * Rocq_toplevel.run_error
 
 (** [insert_blanks d ~text] inserts the sequence of blank characters [text] at
-    the cursor in document [d], and advances the cursor past them. *)
+    the cursor in document [d], and advances the cursor past them. When [text]
+    is ill-formed (e.g., empty or containing unclosed comments), or interferes
+    with the previous (non-ghost) command's text, exception [Invalid_argument]
+    is raised. *)
 val insert_blanks : t -> text:string -> unit
 
 (** [insert_command ?ghost d ~text] processes the given Rocq command [text] at
@@ -113,7 +119,13 @@ val insert_blanks : t -> text:string -> unit
     an error occurs while processing the command, then the document is left in
     the same state, and an error message is returned together with information
     about the error. The [ghost] boolean, [false] by default, indicates if the
-    inserted command is meant to be "hidden" (see [commit]). *)
+    inserted command is meant to be "hidden" (see [commit]).
+
+    When a command is not "hidden", then its text is expected not to interfere
+    with the previous item in the document prefix (if any). This can happen if
+    the previous non-ghost item is a dot-terminated command, since it needs to
+    to be followed by some non-comment blanks. When this situation arises, the
+    [invalid_argument] exception is raised prior to running the command. *)
 val insert_command : ?ghost:bool -> t -> text:string
   -> (command_data, command_error) result
 
@@ -144,18 +156,23 @@ val clear_suffix : ?count:int -> t -> unit
 
 (** [run_step d] advances the cursor of document [d] over the next unprocessed
     item of the document suffix, returning similar data to [insert_command] if
-    the item is a command. If the document suffix is empty, [Invalid_argument]
-    is raised. *)
+    the item is a command. Exception [Invalid_argument] is raised when [d] has
+    an empty suffix, or when the inserted item would interfere with a previous
+    (non-ghost) command (see [insert_blanks] and [insert_command]). *)
 val run_step : t -> (command_data option, command_error) result
 
 (** [run_steps d ~count] is similar to [run_step d], but it steps over [count]
     unprocessed items. If the document suffix does not hold enough items, then
     [Invalid_argument] is raised immediately (without processing any item). If
     an error occurs while processing a command, then the function returns with
-    a value [Error(n, data)], where [n < count] indicates how many unprocessed
-    items have been processed successfully prior to the the failure. Note that
-    these items remain processed after the error is returned. *)
-val run_steps : t -> count:int -> (unit, int * command_error) result
+    a value [Error(s, (n, eo))], where [s] is an error message, [n < count] is
+    the number of items that were successfully processed prior to the failure,
+    and [eo] holds error data if the error resulted from a command error. Note
+    that successfully processed items are kept even in case of failure. If the
+    insertion of an item would interferes with a previous (non-ghost) command,
+    [Error(s, (n, None))] is given, with [s] an appropriate error message. *)
+val run_steps : t -> count:int
+  -> (unit, string * (int * command_error option)) result
 
 (** [advance_to d ~index] advances the cursor of document [d] to place it just
     before the item with the given [index]. If [index] is invalid, which means
@@ -163,15 +180,16 @@ val run_steps : t -> count:int -> (unit, int * command_error) result
     last item), or that it points to an already processed item, then exception
     [Invalid_argument] is raised. In case of error while processing a command,
     the cursor is left at the reached position, and [Error] is given similarly
-    to what [insert_command] or [run_step] do. *)
-val advance_to : t -> index:int -> (unit, command_error) result
+    to [run_steps]. *)
+val advance_to : t -> index:int
+  -> (unit, string * command_error option) result
 
 (** [go_to d ~index] is the same as [advance_to d ~index], but it additionally
     allows to revert to an earlier index like [revert_before d ~index]. In any
     case, no item is erased from the document. If the [index] is invalid, then
     [Invalid_argument] is raised. Valid indices range from [0] to one past the
     index of the last item in the document's suffix. *)
-val go_to : t -> index:int -> (unit, command_error) result
+val go_to : t -> index:int -> (unit, string * command_error option) result
 
 (** Document item kind: blank characters, command, or ghost command. *)
 type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]

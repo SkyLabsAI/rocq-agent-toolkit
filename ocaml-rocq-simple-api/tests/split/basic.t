@@ -15,6 +15,14 @@
   >   reflexivity.
   > Qed.
   > 
+  > Goal True /\ True.
+  > Proof.
+  >   split.
+  >   2:{idtac. }
+  >   -idtac. admit.
+  >   -idtac. admit.
+  > Admitted.
+  > 
   > EOF
 
   $ rocq-split test.v -- -Q . test.dir
@@ -91,6 +99,94 @@
         "bp": 186,
         "ep": 190
       },
-      { "kind": "blanks", "text": "\n\n", "bp": 190, "ep": 192 }
+      { "kind": "blanks", "text": "\n\n", "bp": 190, "ep": 192 },
+      {
+        "kind": { "tag": "Definition", "pure": true },
+        "text": "Goal True /\\ True.",
+        "bp": 192,
+        "ep": 210
+      },
+      { "kind": "blanks", "text": "\n", "bp": 210, "ep": 211 },
+      {
+        "kind": { "tag": "Proof", "pure": true },
+        "text": "Proof.",
+        "bp": 211,
+        "ep": 217
+      },
+      { "kind": "blanks", "text": "\n  ", "bp": 217, "ep": 220 },
+      {
+        "kind": { "tag": "Extend", "pure": false },
+        "text": "split.",
+        "bp": 220,
+        "ep": 226
+      },
+      { "kind": "blanks", "text": "\n  ", "bp": 226, "ep": 229 },
+      {
+        "kind": { "tag": "Subproof", "pure": true },
+        "text": "2:{",
+        "bp": 229,
+        "ep": 232
+      },
+      {
+        "kind": { "tag": "Extend", "pure": false },
+        "text": "idtac.",
+        "bp": 232,
+        "ep": 238
+      },
+      { "kind": "blanks", "text": " ", "bp": 238, "ep": 239 },
+      {
+        "kind": { "tag": "EndSubproof", "pure": true },
+        "text": "}",
+        "bp": 239,
+        "ep": 240
+      },
+      { "kind": "blanks", "text": "\n  ", "bp": 240, "ep": 243 },
+      {
+        "kind": { "tag": "Bullet", "pure": true },
+        "text": "-",
+        "bp": 243,
+        "ep": 244
+      },
+      {
+        "kind": { "tag": "Extend", "pure": false },
+        "text": "idtac.",
+        "bp": 244,
+        "ep": 250
+      },
+      { "kind": "blanks", "text": " ", "bp": 250, "ep": 251 },
+      {
+        "kind": { "tag": "Extend", "pure": false },
+        "text": "admit.",
+        "bp": 251,
+        "ep": 257
+      },
+      { "kind": "blanks", "text": "\n  ", "bp": 257, "ep": 260 },
+      {
+        "kind": { "tag": "Bullet", "pure": true },
+        "text": "-",
+        "bp": 260,
+        "ep": 261
+      },
+      {
+        "kind": { "tag": "Extend", "pure": false },
+        "text": "idtac.",
+        "bp": 261,
+        "ep": 267
+      },
+      { "kind": "blanks", "text": " ", "bp": 267, "ep": 268 },
+      {
+        "kind": { "tag": "Extend", "pure": false },
+        "text": "admit.",
+        "bp": 268,
+        "ep": 274
+      },
+      { "kind": "blanks", "text": "\n", "bp": 274, "ep": 275 },
+      {
+        "kind": { "tag": "EndProof", "pure": true },
+        "text": "Admitted.",
+        "bp": 275,
+        "ep": 284
+      },
+      { "kind": "blanks", "text": "\n\n", "bp": 284, "ep": 286 }
     ]
   }

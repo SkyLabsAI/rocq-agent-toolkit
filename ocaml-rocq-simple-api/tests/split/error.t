@@ -30,6 +30,12 @@
         "text": "About nat.",
         "bp": 34,
         "ep": 44
+      },
+      {
+        "kind": "blanks",
+        "text": "\n\n(* Ill-formed command. *)\n",
+        "bp": 44,
+        "ep": 72
       }
     ]
   }
