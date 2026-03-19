@@ -23,7 +23,7 @@ from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.cursor import DelegateRocqCursor
 
-from .attrs import LocationInfo, TraceCursorSpanAttrs
+from .telemetry import LocationInfo, TraceCursorSpanAttrs
 
 logger = get_logger("RocqCursor")
 

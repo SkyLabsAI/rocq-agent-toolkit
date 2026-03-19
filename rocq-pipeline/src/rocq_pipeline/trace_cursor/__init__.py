@@ -1,6 +1,6 @@
 """trace_cursor — structured tracing for RocqCursor operations."""
 
-from .attrs import (
+from .telemetry import (
     SCHEMA_FILENAME,
     SCHEMA_VERSION,
     LocationInfo,
