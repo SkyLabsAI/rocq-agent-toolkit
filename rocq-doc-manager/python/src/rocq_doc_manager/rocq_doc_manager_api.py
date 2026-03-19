@@ -649,6 +649,20 @@ class RocqDocManagerAPI:
             return Err(result.message, data)
         return [Sentence.model_validate(v1) for v1 in result.result]
 
+    def whitespace_required(
+        self,
+        cursor: int,
+    ) -> bool:
+        """Indicates whether a whitespace
+    (either space, tab, newline, or carriage return) will be required as next
+    character in the document for it to remain parseable as a whole."""
+        result = self._rpc.raw_request(
+            "whitespace_required",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return bool(result.result)
+
 
 class RocqDocManagerAPIAsync:
     """Main API class."""
@@ -1020,3 +1034,17 @@ class RocqDocManagerAPIAsync:
             data = SentenceSplitError.model_validate(result.data)
             return Err(result.message, data)
         return [Sentence.model_validate(v1) for v1 in result.result]
+
+    async def whitespace_required(
+        self,
+        cursor: int,
+    ) -> bool:
+        """Indicates whether a whitespace
+    (either space, tab, newline, or carriage return) will be required as next
+    character in the document for it to remain parseable as a whole."""
+        result = await self._rpc.raw_request(
+            "whitespace_required",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return bool(result.result)
