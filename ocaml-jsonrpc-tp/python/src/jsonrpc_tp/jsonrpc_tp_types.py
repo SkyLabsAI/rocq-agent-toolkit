@@ -30,10 +30,7 @@ class Err[T_co]:
         return self._data
 
     def to_json(self) -> JsonValue:
-        return {
-            "message": self.message,
-            "data": json.dumps(self.data, default=repr)
-        }
+        return {"message": self.message, "data": json.dumps(self.data, default=repr)}
 
     def __bool__(self) -> bool:
         return False
@@ -70,9 +67,7 @@ class Resp[T_co]:
         return self._result
 
     def to_json(self) -> JsonValue:
-        return {
-            "data": json.dumps(self.result, default=repr)
-        }
+        return {"data": json.dumps(self.result, default=repr)}
 
     def __bool__(self) -> bool:
         return True
