@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, override
+from typing import Any, Literal, override
 
 from .. import rocq_doc_manager_api as rdm_api
 from ..rocq_doc_manager_api import RocqDocManagerAPIAsync as AsyncAPI
@@ -26,6 +26,22 @@ class RDMRocqCursor(RocqCursor):
         if self._the_rdm is None:
             raise Exception(f"Using disposed cursor: {self._cursor}")
         return self._the_rdm
+
+    _ROCQ_WHITESPACE = (" ", "\t", "\r", "\n")
+
+    async def _whitespace_required(self) -> bool:
+        return await self._rdm.whitespace_required(self._cursor)
+
+    async def requires_whitespace(
+        self, *, kind: Literal["blanks" | "command" | "ghost" | "chunk"], text: str
+    ) -> bool:
+        if kind == "command":
+            return await self._whitespace_required()
+        if kind == "blanks" or kind == "chunk":
+            if text.startswith(self._ROCQ_WHITESPACE):
+                return False
+            return await self._whitespace_required()
+        return False
 
     @override
     async def advance_to(
@@ -102,11 +118,17 @@ class RDMRocqCursor(RocqCursor):
 
     @override
     async def insert_blanks(self, text: str) -> None:
-        return await self._rdm.insert_blanks(self._cursor, text)
+        if await self.requires_whitespace(kind="blanks", text=text):
+            await self._rdm.insert_blanks(self._cursor, "\n")
+        await self._rdm.insert_blanks(self._cursor, text)
 
     async def _insert_command(
         self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        if await self.requires_whitespace(
+            kind="ghost" if ghost else "command", text=text
+        ):
+            await self._rdm.insert_blanks(self._cursor, "\n")
         return await self._rdm.insert_command(self._cursor, text, ghost=ghost)
 
     @override
@@ -117,7 +139,15 @@ class RDMRocqCursor(RocqCursor):
     async def split_sentences(
         self, text: str
     ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
-        return await self._rdm.split_sentences(self._cursor, text)
+        revert = False
+        if await self.requires_whitespace(kind="chunk", text=text):
+            await self._rdm.insert_blanks(self._cursor, "\n")
+            revert = True
+        res = await self._rdm.split_sentences(self._cursor, text)
+        if revert:
+            index = await self.cursor_index()
+            await self.revert_before(erase=True, index=index - 1)
+        return res
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
@@ -155,6 +185,11 @@ class RDMRocqCursor(RocqCursor):
     async def run_step(
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
+        suffix = await self.doc_suffix()
+        if suffix:
+            item = suffix[0]
+            if await self.requires_whitespace(kind=item.kind, text=item.text):
+                await self._rdm.insert_blanks(self._cursor, "\n")
         return await self._rdm.run_step(self._cursor)
 
     # @override
