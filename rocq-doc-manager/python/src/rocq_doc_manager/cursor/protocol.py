@@ -57,9 +57,17 @@ class RocqCursorProtocolAsync(Protocol):
         blanks: str | None = "\n",
         ghost: bool = False,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        revert: int | None = None
+        if not ghost and blanks is not None:
+            revert = await self.cursor_index()
         result = await self._insert_command(text, ghost=ghost)
-        if isinstance(result, rdm_api.CommandData) and blanks is not None:
-            await self.insert_blanks(blanks)
+        if isinstance(result, rdm_api.CommandData) and not ghost and blanks is not None:
+            try:
+                await self.insert_blanks(blanks)
+            except Exception:
+                assert revert is not None
+                await self.revert_before(erase=True, index=revert)
+                raise
         return result
 
     async def load_file(

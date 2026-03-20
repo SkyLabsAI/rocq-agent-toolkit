@@ -206,7 +206,7 @@ class RDMRocqCursor(RocqCursor):
         try:
             res = await self._rdm.run_step(self._cursor)
         except Exception:
-            if isinstance(res, rdm_api.Err) and revert:
+            if revert:
                 await self.revert_before(erase=True, index=revert)
             raise
         if isinstance(res, rdm_api.Err) and revert:

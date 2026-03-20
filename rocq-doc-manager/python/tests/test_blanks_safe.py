@@ -46,3 +46,33 @@ async def test_invariant() -> None:
         async with (await rc.clone()).ctx() as rc3:
             assert isinstance(await rc3.insert_command("About nat."), CommandData)
             await check_invariant(rc3, ["\n", "About nat.", "\n"])
+
+
+@pytest.mark.asyncio
+async def test_blanks_revert() -> None:
+    async with rc_sess(Path(__file__).parent / "locator_test.v") as rc:
+        try:
+            await rc.insert_command("About nat.", blanks="bad")
+            failed = False
+        except Exception:
+            failed = True
+        assert failed
+        assert len(await rc.doc_prefix()) == 0
+
+        assert isinstance(await rc.insert_command("About nat."), CommandData)
+        assert len(await rc.doc_prefix()) == 2
+
+        assert isinstance(
+            await rc.insert_command("About nat.", blanks=None), CommandData
+        )
+        assert len(await rc.doc_prefix()) == 3
+
+        await rc.insert_blanks("(* needs extra whitespace before *)")
+        assert len(await rc.doc_prefix()) == 5
+
+        assert isinstance(
+            await rc.insert_command("About nat.", blanks=None), CommandData
+        )
+        assert len(await rc.doc_prefix()) == 6
+        assert isinstance(await rc.insert_command("About nat."), CommandData)
+        assert len(await rc.doc_prefix()) == 9
