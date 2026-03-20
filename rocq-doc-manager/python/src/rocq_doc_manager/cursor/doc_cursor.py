@@ -118,18 +118,30 @@ class RDMRocqCursor(RocqCursor):
 
     @override
     async def insert_blanks(self, text: str) -> None:
+        revert: int | None = None
         if await self.requires_whitespace(kind="blanks", text=text):
+            revert = await self.cursor_index()
             await self._rdm.insert_blanks(self._cursor, "\n")
-        await self._rdm.insert_blanks(self._cursor, text)
+        try:
+            await self._rdm.insert_blanks(self._cursor, text)
+        except Exception:
+            if revert:
+                await self.revert_before(erase=True, index=revert)
+            raise
 
     async def _insert_command(
         self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        revert: int | None = None
         if await self.requires_whitespace(
             kind="ghost" if ghost else "command", text=text
         ):
+            revert = await self.cursor_index()
             await self._rdm.insert_blanks(self._cursor, "\n")
-        return await self._rdm.insert_command(self._cursor, text, ghost=ghost)
+        res = await self._rdm.insert_command(self._cursor, text, ghost=ghost)
+        if isinstance(res, rdm_api.Err) and revert:
+            await self.revert_before(erase=True, index=revert)
+        return res
 
     @override
     async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
@@ -139,14 +151,13 @@ class RDMRocqCursor(RocqCursor):
     async def split_sentences(
         self, text: str
     ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
-        revert = False
+        revert: int | None = None
         if await self.requires_whitespace(kind="chunk", text=text):
+            revert = await self.cursor_index()
             await self._rdm.insert_blanks(self._cursor, "\n")
-            revert = True
         res = await self._rdm.split_sentences(self._cursor, text)
         if revert:
-            index = await self.cursor_index()
-            await self.revert_before(erase=True, index=index - 1)
+            await self.revert_before(erase=True, index=revert)
         return res
 
     # TODO: we should really reduce the repetition on [query],
@@ -186,11 +197,21 @@ class RDMRocqCursor(RocqCursor):
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         suffix = await self.doc_suffix()
+        revert: int | None = None
         if suffix:
             item = suffix[0]
             if await self.requires_whitespace(kind=item.kind, text=item.text):
+                revert = await self.cursor_index()
                 await self._rdm.insert_blanks(self._cursor, "\n")
-        return await self._rdm.run_step(self._cursor)
+        try:
+            res = await self._rdm.run_step(self._cursor)
+        except Exception:
+            if isinstance(res, rdm_api.Err) and revert:
+                await self.revert_before(erase=True, index=revert)
+            raise
+        if isinstance(res, rdm_api.Err) and revert:
+            await self.revert_before(erase=True, index=revert)
+        return res
 
     # @override
     # async def run_steps(self, count: int) -> None | rdm_api.Err[rdm_api.StepsError]:
