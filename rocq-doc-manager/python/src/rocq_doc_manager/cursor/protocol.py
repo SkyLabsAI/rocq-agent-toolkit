@@ -55,34 +55,12 @@ class RocqCursorProtocolAsync(Protocol):
         self,
         text: str,
         blanks: str | None = "\n",
-        safe: bool = True,
         ghost: bool = False,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        if safe:
-            prefix = await self.doc_prefix()
-            if prefix != [] and prefix[-1].kind != "blanks":
-                await self.insert_blanks(blanks if blanks is not None else "\n")
-                revert = True
-            else:
-                revert = False
-        else:
-            revert = False
-
-        # When revert=True, prefix is a local variable that supports `len`
-        if revert:
-            assert "prefix" in locals()
-            assert isinstance(prefix, Sized)
-
-        try:
-            result = await self._insert_command(text, ghost=ghost)
-            if isinstance(result, rdm_api.CommandData):
-                revert = False
-                if blanks is not None:
-                    await self.insert_blanks(blanks)
-            return result
-        finally:
-            if revert:
-                await self.revert_before(erase=True, index=len(prefix))
+        result = await self._insert_command(text, ghost=ghost)
+        if isinstance(result, rdm_api.CommandData) and blanks is not None:
+            await self.insert_blanks(blanks)
+        return result
 
     async def load_file(
         self,
