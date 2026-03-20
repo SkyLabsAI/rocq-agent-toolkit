@@ -51,12 +51,12 @@ async def test_find_lemma() -> None:
     p = Path(__file__).parent / "locator_test.v"
     async with rc_sess(str(p), load_file=True) as rc:
         await rc.go_to(0)
-        await check(rc, "Lemma:foo", 4)
-        await check(rc, "Lemma:foo(1)", 42, next=True)
+        await check(rc, "Lemma:foo", 3)
+        await check(rc, "Lemma:foo(1)", 41, next=True)
         await rc.go_to(0)
-        await check(rc, "Lemma:foo(1)", 22, next=True)
-        await check(rc, "Lemma:foo", 4, next=False)
-        await check(rc, "Lemma:foo(2)", 42, next=False)
+        await check(rc, "Lemma:foo(1)", 21, next=True)
+        await check(rc, "Lemma:foo", 3, next=False)
+        await check(rc, "Lemma:foo(2)", 41, next=False)
 
 
 @pytest.mark.asyncio
@@ -64,10 +64,10 @@ async def test_find_theorem() -> None:
     p = Path(__file__).parent / "locator_test.v"
     async with rc_sess(str(p), load_file=True) as rc:
         await rc.go_to(0)
-        await check(rc, "Theorem:bar", 12)
-        await check(rc, "Theorem:bar(1)", 30)
+        await check(rc, "Theorem:bar", 11)
+        await check(rc, "Theorem:bar(1)", 29)
 
-        await check(rc, "Theorem:bar", 12, next=False)
-        await check(rc, "Theorem:bar(1)", 30, next=False)
-        await check(rc, "Theorem:bar(2)", 50, next=False)
-        await check(rc, "Theorem:bar(1)", 30, next=False)
+        await check(rc, "Theorem:bar", 11, next=False)
+        await check(rc, "Theorem:bar(1)", 29, next=False)
+        await check(rc, "Theorem:bar(2)", 49, next=False)
+        await check(rc, "Theorem:bar(1)", 29, next=False)
