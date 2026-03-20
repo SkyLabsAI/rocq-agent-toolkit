@@ -15,7 +15,6 @@ from collections.abc import Awaitable, Callable, Coroutine
 from types import CoroutineType, FunctionType
 from typing import Any, Concatenate, Literal, Self, get_protocol_members, override
 
-import rocq_agent_toolkit_utils as rat_utils
 from observability import (
     get_logger,
     model_as_otel_attrs,
@@ -212,10 +211,10 @@ class InstrumentRocqCursor(DelegateRocqCursor):
         custom_trace_kwargs = cls.custom_instrument_kwargs()
 
         assert not (skip & set(custom_trace_kwargs.keys())), (
-            f"skip should not overlap with trace_kwargs:{rat_utils.objects.info(skip, custom_trace_kwargs)}"
+            f"skip:\n{skip}\nand custom_trace_kwargs:\n{custom_trace_kwargs}\nshould not overlap"
         )
         assert set(get_protocol_members(RocqCursor)) <= set(dir(cls)), (
-            f"{cls.__qualname__} must implement the RocqCursor interface:{rat_utils.objects.info(cls)}",
+            f"{cls.__qualname__} must implement the RocqCursor interface:{cls.__qualname__}",
         )
 
         targets: dict[str, dict[str, Any]] = {}
