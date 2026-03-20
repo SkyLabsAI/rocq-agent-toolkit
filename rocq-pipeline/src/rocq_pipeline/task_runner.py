@@ -243,8 +243,12 @@ async def run_task(
                 task_file,
                 rocq_args=rocq_args,
                 cwd=project.path,
-                load_file=True,
-            ) as rc:
+                # Note: defer loading the file so we can trace the operation
+                load_file=False,
+            ) as untraced_rc:
+                rc = TracingCursor.of_cursor(untraced_rc)
+                assert await rc.load_file() is None
+
                 progress.status(0.05, "🔃")
                 if not await task.locator.go_to(rc):
                     msg = f"{task_id}: locator returned false"
@@ -255,9 +259,7 @@ async def run_task(
                 for mod in task.modifiers:
                     await mod.run(rc)
                 progress.status(0.15, "💭")
-                task_result = await agent.run(
-                    TracingCursor.of_cursor(rc), task_prompt=task.prompt
-                )
+                task_result = await agent.run(rc, task_prompt=task.prompt)
         except Exception as e:
             progress.log(f"Failure with {e}:\n{traceback.format_exc()}")
             task_result = TaskResult.from_exception(e)
