@@ -158,21 +158,6 @@ class RocqCursorProtocolAsync(Protocol):
         current_idx: int = 0  # satisfies pyright.
         if rollback:
             current_idx = await self.cursor_index()
-            # NOTE: blanks are fused, so inserting blanks at the beginning
-            # of a rollback context can leave the document in a modified state.
-            # By inserting a real (but trivial) command that we rollback, we
-            # ensure that the document is left unchanged.
-            marker_cmd = "Check tt."
-            insert_command_reply = await self.insert_command(marker_cmd)
-            if isinstance(insert_command_reply, rdm_api.Err):
-                raise rdm_api.Error(
-                    " ".join(
-                        [
-                            f"RocqDocManager failed to insert {marker_cmd}:",
-                            str(insert_command_reply),
-                        ]
-                    )
-                )
 
         yield self
 
@@ -551,21 +536,6 @@ class RocqCursorProtocolSync(Protocol):
         current_idx: int = 0  # satisfies pyright.
         if rollback:
             current_idx = self.cursor_index_sync()
-            # NOTE: blanks are fused, so inserting blanks at the beginning
-            # of a rollback context can leave the document in a modified state.
-            # By inserting a real (but trivial) command that we rollback, we
-            # ensure that the document is left unchanged.
-            marker_cmd = "Check tt."
-            insert_command_reply = self.insert_command_sync(marker_cmd)
-            if isinstance(insert_command_reply, rdm_api.Err):
-                raise rdm_api.Error(
-                    " ".join(
-                        [
-                            f"RocqDocManager failed to insert {marker_cmd}:",
-                            str(insert_command_reply),
-                        ]
-                    )
-                )
 
         yield self
 
