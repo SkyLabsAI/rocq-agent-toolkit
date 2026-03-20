@@ -23,6 +23,28 @@ type results = list[str] | None
 type state = tuple[goals, results]
 
 
+def goal_diff(
+    preGoals: goals, postGoals: goals
+) -> tuple[set[int], set[int]]:  # result sets are 1-indexed
+    """
+    Given an initial set of goals, return the sets of changed goals
+    and new goals.
+    """
+    changed = set()
+    new = set(postGoals.keys())
+    for preIdx, preGoal in preGoals.items():
+        preParts = preGoal.parts
+        found = False
+        for idx, goal in postGoals.items():
+            if preParts.equal_up_to_numbering(goal.parts):
+                found = True
+                new.remove(idx)
+                break
+        if not found:
+            changed.add(preIdx)
+    return (changed, new)
+
+
 class JsonGoal(
     DefaultDocumentWatcher,
     BracketedExtractor[state, OutputDict[Any]],
@@ -108,23 +130,6 @@ class JsonGoal(
         result = await self.get_goals(rdm)
         return Extracted((ProofState(await rdm.current_goal()).goals, result))
 
-    def by_goal(
-        self, preGoals: goals, preResult: results, goals: goals, result: results
-    ) -> tuple[set[int], set[int]]:  # result sets are 1-indexed
-        changed = set()
-        new = set(goals.keys())
-        for preIdx, preGoal in preGoals.items():
-            preParts = preGoal.parts
-            found = False
-            for idx, goal in goals.items():
-                if preParts.equal_up_to_numbering(goal.parts):
-                    found = True
-                    new.remove(idx)
-                    break
-            if not found:
-                changed.add(preIdx)
-        return (changed, new)
-
     async def after(
         self,
         rdm: RocqCursor,
@@ -137,7 +142,7 @@ class JsonGoal(
         preGoals, preResult = result_before
 
         if self._by_goal:
-            (changed, new) = self.by_goal(preGoals, preResult, goals, result)
+            (changed, new) = goal_diff(preGoals, goals)
             if len(changed) == 1 and preResult is not None and result is not None:
                 preResult = [preResult[preIdx - 1] for preIdx in changed]
                 result = [result[idx - 1] for idx in new]
