@@ -39,7 +39,7 @@ def test_SRth_ARth() -> None:
         0,
         "qed",
         [
-            """exact (mk_art 0 1 radd rmul SRsub SRopp req
+            """Proof (mk_art 0 1 radd rmul SRsub SRopp req
     (SRadd_0_l SRth) (SRadd_comm SRth) (SRadd_assoc SRth)
     (SRmul_1_l SRth) (SRmul_0_l SRth)
     (SRmul_comm SRth) (SRmul_assoc SRth) (SRdistr_l SRth)
