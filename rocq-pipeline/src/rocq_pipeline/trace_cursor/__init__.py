@@ -1,19 +1,21 @@
 """trace_cursor — structured tracing for RocqCursor operations."""
 
-from .telemetry import (
+from .cursor import TracingCursor
+from .telemetry.instrumentation import InstrumentRocqCursor
+from .telemetry.schema import (
     SCHEMA_FILENAME,
     SCHEMA_VERSION,
+    InstrumentRocqCursorSpanAttrs,
     LocationInfo,
-    TraceCursorSpanAttrs,
     persist_schema,
 )
-from .cursor import TracingCursor
 
 __all__ = [
     "SCHEMA_FILENAME",
     "SCHEMA_VERSION",
     "LocationInfo",
-    "TraceCursorSpanAttrs",
+    "InstrumentRocqCursorSpanAttrs",
+    "InstrumentRocqCursor",
     "TracingCursor",
     "persist_schema",
 ]

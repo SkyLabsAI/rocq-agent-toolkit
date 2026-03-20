@@ -1,7 +1,7 @@
-"""Typed pydantic schema for ``TracingCursor`` span attributes.
+"""Typed pydantic schema for ``InstrumentRocqCursor`` span attributes.
 
-This module defines the structured attribute model that ``_trace`` in
-``cursor.py`` accumulates during execution and flushes to the OTel span.
+This module defines the structured attribute model that ``InstrumentRocqCursor.instrument``
+in ``telemetry.py`` accumulates during execution and flushes to the OTel span.
 The same model is used by downstream consumers (e.g. ``dashboard/backend``) to
 deserialize span attribute dicts back into typed objects.
 """
@@ -25,7 +25,7 @@ from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 SCHEMA_VERSION: str = "0.1.0"
 
-SCHEMA_FILENAME = f"TraceCursorSpanAttrs.v{SCHEMA_VERSION}.json"
+SCHEMA_FILENAME = f"InstrumentRocqCursorSpanAttrs.v{SCHEMA_VERSION}.json"
 
 
 class LocationInfo(BaseModel):
@@ -35,8 +35,8 @@ class LocationInfo(BaseModel):
     goal: str | None = None
 
 
-class TraceCursorSpanAttrs(BaseModel):
-    """Span attributes emitted by ``TracingCursor`` methods.
+class InstrumentRocqCursorSpanAttrs(BaseModel):
+    """Span attributes emitted by instrumented methods RocqCursor.
 
     ``extra="ignore"`` ensures forwards compatibility: consumers running an
     older schema version silently drop unknown fields added in newer versions.
@@ -67,20 +67,22 @@ class TraceCursorSpanAttrs(BaseModel):
 
 
 def persist_schema(schemas_dir: Path | None = None) -> None:
-    """Write the ``TraceCursorSpanAttrs`` JSON schema to *schemas_dir*.
+    """Write the ``InstrumentRocqCursorSpanAttrs`` JSON schema to *schemas_dir*.
 
-    Defaults to ``tests/schemas/`` relative to the working directory.
+    Defaults to `$PWD/.schemas`.
 
     If the target file already exists and its contents match, this is a no-op.
     If the file exists but contents **differ**, raises ``SystemExit`` — bump
     ``SCHEMA_VERSION`` before persisting a breaking change.
     """
     if schemas_dir is None:
-        schemas_dir = Path("src/rocq_pipeline/trace_cursor/.schemas")
+        schemas_dir = Path(__file__).parent / ".schemas"
 
     target = schemas_dir / SCHEMA_FILENAME
     current = (
-        json.dumps(TraceCursorSpanAttrs.model_json_schema(), sort_keys=True, indent=2)
+        json.dumps(
+            InstrumentRocqCursorSpanAttrs.model_json_schema(), sort_keys=True, indent=2
+        )
         + "\n"
     )
 
@@ -99,6 +101,6 @@ def persist_schema(schemas_dir: Path | None = None) -> None:
 
 
 def main() -> None:
-    """CLI entry point (``persist-trace-cursor-schema``)."""
+    """CLI entry point (``persist-instrument-rocq-cursor-schema``)."""
     schemas_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else None
     persist_schema(schemas_dir)

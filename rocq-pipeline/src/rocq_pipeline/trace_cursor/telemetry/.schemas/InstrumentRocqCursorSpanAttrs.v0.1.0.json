@@ -27,7 +27,7 @@
       "type": "object"
     }
   },
-  "description": "Span attributes emitted by ``TracingCursor`` methods.\n\n``extra=\"ignore\"`` ensures forwards compatibility: consumers running an\nolder schema version silently drop unknown fields added in newer versions.",
+  "description": "Span attributes emitted by instrumented methods RocqCursor.\n\n``extra=\"ignore\"`` ensures forwards compatibility: consumers running an\nolder schema version silently drop unknown fields added in newer versions.",
   "properties": {
     "action": {
       "anyOf": [
@@ -124,6 +124,6 @@
       "title": "Result Type"
     }
   },
-  "title": "TraceCursorSpanAttrs",
+  "title": "InstrumentRocqCursorSpanAttrs",
   "type": "object"
 }

@@ -13,11 +13,13 @@ from hypothesis_jsonschema import from_schema
 from observability import model_as_otel_attrs, model_from_otel_attrs
 from rocq_pipeline.trace_cursor import (
     SCHEMA_FILENAME,
+    InstrumentRocqCursorSpanAttrs,
     LocationInfo,
-    TraceCursorSpanAttrs,
 )
 
-SCHEMAS_DIR = Path(__file__).parent.parent / "src/rocq_pipeline/trace_cursor/.schemas"
+SCHEMAS_DIR = (
+    Path(__file__).parent.parent / "src/rocq_pipeline/trace_cursor/telemetry/.schemas"
+)
 
 # ---------------------------------------------------------------------------
 # Strategies
@@ -30,7 +32,7 @@ _location_info_st = st.builds(
 )
 
 _trace_attrs_st = st.builds(
-    TraceCursorSpanAttrs,
+    InstrumentRocqCursorSpanAttrs,
     args=st.text(max_size=100)
     | st.integers()
     | st.dictionaries(
@@ -57,12 +59,12 @@ _trace_attrs_st = st.builds(
 
 @given(attrs=_trace_attrs_st)
 @settings(max_examples=200)
-def test_round_trip(attrs: TraceCursorSpanAttrs) -> None:
+def test_round_trip(attrs: InstrumentRocqCursorSpanAttrs) -> None:
     """serialize -> deserialize must recover the original model."""
     prefix = "RocqCursor.test"
     serialized = model_as_otel_attrs(attrs, prefix=prefix)
     deserialized = model_from_otel_attrs(
-        serialized, TraceCursorSpanAttrs, prefix=prefix
+        serialized, InstrumentRocqCursorSpanAttrs, prefix=prefix
     )
     assert deserialized == attrs
 
@@ -75,7 +77,7 @@ def test_round_trip(attrs: TraceCursorSpanAttrs) -> None:
 def test_schema_unchanged() -> None:
     """Fail loudly when the model schema changes without a version bump."""
     current = json.dumps(
-        TraceCursorSpanAttrs.model_json_schema(), sort_keys=True, indent=2
+        InstrumentRocqCursorSpanAttrs.model_json_schema(), sort_keys=True, indent=2
     )
     persisted = (SCHEMAS_DIR / SCHEMA_FILENAME).read_text()
     expected = json.dumps(json.loads(persisted), sort_keys=True, indent=2)
@@ -91,7 +93,7 @@ def test_schema_unchanged() -> None:
 
 @pytest.mark.parametrize(
     "schema_file",
-    sorted(glob(str(SCHEMAS_DIR / "TraceCursorSpanAttrs.v*.json"))),
+    sorted(glob(str(SCHEMAS_DIR / "InstrumentRocqCursorSpanAttrs.v*.json"))),
     ids=lambda p: Path(p).stem,
 )
 def test_forwards_compat(schema_file: str) -> None:
@@ -102,6 +104,6 @@ def test_forwards_compat(schema_file: str) -> None:
     @given(from_schema(old_schema))
     @settings(max_examples=100)
     def check(value: dict) -> None:
-        TraceCursorSpanAttrs.model_validate(value)
+        InstrumentRocqCursorSpanAttrs.model_validate(value)
 
     check()
