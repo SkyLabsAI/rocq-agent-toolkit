@@ -493,6 +493,13 @@ let _ =
   Document.cursor_index d
 
 let _ =
+  declare ~name:"whitespace_required" ~descr:"indicates whether a whitespace
+    (either space, tab, newline, or carriage return) will be required as next
+    character in the document for it to remain parseable as a whole"
+    ~args:A.nil ~ret:S.bool @@ fun d () ->
+  Document.whitespace_required d
+
+let _ =
   let args =
     A.add ~name:"erase" ~descr:"boolean indicating whether reverted items \
       should be erased" S.bool @@

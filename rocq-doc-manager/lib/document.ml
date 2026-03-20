@@ -194,13 +194,13 @@ let load_file : t -> (unit, string * loc) result = fun d ->
 type command_data = Rocq_toplevel.run_data
 type command_error = string * Rocq_toplevel.run_error
 
-let rec whitespace_needed : processed_item list -> bool = fun rev_prefix ->
+let rec whitespace_required : processed_item list -> bool = fun rev_prefix ->
   match rev_prefix with
   | []                 -> false
   | item :: rev_prefix ->
   match item.kind with
   | `Blanks     -> false
-  | `Ghost(_)   -> whitespace_needed rev_prefix
+  | `Ghost(_)   -> whitespace_required rev_prefix
   | `Command(_) -> String.ends_with ~suffix:"." item.text
 
 let insert_blanks : t -> text:string -> unit = fun d ~text ->
@@ -230,7 +230,7 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
       invalid_arg message
     end;
     (* Check if leading whitespace is required. *)
-    if not blanks.leading_whitespaces && whitespace_needed d.rev_prefix then
+    if not blanks.leading_whitespaces && whitespace_required d.rev_prefix then
       invalid_arg "leading whitespace required at this point in the document"
   in
   let processed =
@@ -251,7 +251,7 @@ let insert_command : ?ghost:bool -> t -> text:string ->
     (command_data, command_error) result =
     fun ?(ghost=false) d ~text ->
   let _ = get_backend d in
-  if not ghost && whitespace_needed d.rev_prefix then
+  if not ghost && whitespace_required d.rev_prefix then
     invalid_arg "whitespace required at this point in the document";
   with_synced_backend d @@ fun backend ->
   let off = if ghost then 0 else d.cursor_off in
@@ -408,7 +408,7 @@ let split_sentences : t -> text:string ->
     match Rocq_blanks.parse text ~offset:0 with
     | {leading_whitespaces = true; _} -> ()
     | {unclosed_comments = []; _}     ->
-        if whitespace_needed d.rev_prefix then
+        if whitespace_required d.rev_prefix then
           invalid_arg "leading blanks required at this point in the document"
     | _                               ->
         invalid_arg "unclosed initial comment"
@@ -451,6 +451,10 @@ let split_sentences : t -> text:string ->
     | Error(s, _) -> Error(s, String.sub text len (String.length text - len))
   in
   (sentences, res)
+
+let whitespace_required : t -> bool = fun d ->
+  let _ = get_backend d in
+  whitespace_required d.rev_prefix
 
 let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
     -> (unit, string) result =

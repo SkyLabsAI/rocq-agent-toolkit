@@ -384,3 +384,13 @@ API Methods
 - Response payload: a list where each element is an instance of the `Sentence` object.
 - Error payload: an instance of the `SentenceSplitError` object.
 - Failure mode: recoverable failure.
+
+### `whitespace_required`
+
+- Description: indicates whether a whitespace
+    (either space, tab, newline, or carriage return) will be required as next
+    character in the document for it to remain parseable as a whole.
+- Arguments (in order, or named):
+  - `cursor`: the cursor to perform the operation on (as an integer).
+- Response payload: a boolean.
+- Failure mode: never fails.

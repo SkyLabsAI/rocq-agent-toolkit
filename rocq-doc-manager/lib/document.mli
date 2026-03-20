@@ -90,6 +90,12 @@ type sentence = {
   text : string;
 }
 
+(** [whitespace_required d] indicates if the next character in document [d] to
+    be inserted must be a white-space ([' '], ['\t'], ['\r'], or ['\n']). This
+    is the case when the last command before the cursor is dot-terminated, and
+    hence must be followed by blanks that start with a white-space. *)
+val whitespace_required : t -> bool
+
 (** [split_sentences d ~text] attempts to decompose the given Rocq [text] into
     a list of sentences (blank characters, or vernacular command). The list of
     the successfully parsed sentences is returned along with the result, which
@@ -125,7 +131,7 @@ val insert_blanks : t -> text:string -> unit
     with the previous item in the document prefix (if any). This can happen if
     the previous non-ghost item is a dot-terminated command, since it needs to
     to be followed by some non-comment blanks. When this situation arises, the
-    [invalid_argument] exception is raised prior to running the command. *)
+    [Invalid_argument] exception is raised prior to running the command. *)
 val insert_command : ?ghost:bool -> t -> text:string
   -> (command_data, command_error) result
 

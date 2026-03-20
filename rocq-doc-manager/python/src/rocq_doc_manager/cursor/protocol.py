@@ -55,34 +55,20 @@ class RocqCursorProtocolAsync(Protocol):
         self,
         text: str,
         blanks: str | None = "\n",
-        safe: bool = True,
         ghost: bool = False,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        if safe:
-            prefix = await self.doc_prefix()
-            if prefix != [] and prefix[-1].kind != "blanks":
-                await self.insert_blanks(blanks if blanks is not None else "\n")
-                revert = True
-            else:
-                revert = False
-        else:
-            revert = False
-
-        # When revert=True, prefix is a local variable that supports `len`
-        if revert:
-            assert "prefix" in locals()
-            assert isinstance(prefix, Sized)
-
-        try:
-            result = await self._insert_command(text, ghost=ghost)
-            if isinstance(result, rdm_api.CommandData):
-                revert = False
-                if blanks is not None:
-                    await self.insert_blanks(blanks)
-            return result
-        finally:
-            if revert:
-                await self.revert_before(erase=True, index=len(prefix))
+        revert: int | None = None
+        if not ghost and blanks is not None:
+            revert = await self.cursor_index()
+        result = await self._insert_command(text, ghost=ghost)
+        if isinstance(result, rdm_api.CommandData) and not ghost and blanks is not None:
+            try:
+                await self.insert_blanks(blanks)
+            except Exception:
+                assert revert is not None
+                await self.revert_before(erase=True, index=revert)
+                raise
+        return result
 
     async def load_file(
         self,
@@ -158,21 +144,6 @@ class RocqCursorProtocolAsync(Protocol):
         current_idx: int = 0  # satisfies pyright.
         if rollback:
             current_idx = await self.cursor_index()
-            # NOTE: blanks are fused, so inserting blanks at the beginning
-            # of a rollback context can leave the document in a modified state.
-            # By inserting a real (but trivial) command that we rollback, we
-            # ensure that the document is left unchanged.
-            marker_cmd = "Check tt."
-            insert_command_reply = await self.insert_command(marker_cmd)
-            if isinstance(insert_command_reply, rdm_api.Err):
-                raise rdm_api.Error(
-                    " ".join(
-                        [
-                            f"RocqDocManager failed to insert {marker_cmd}:",
-                            str(insert_command_reply),
-                        ]
-                    )
-                )
 
         yield self
 
@@ -551,21 +522,6 @@ class RocqCursorProtocolSync(Protocol):
         current_idx: int = 0  # satisfies pyright.
         if rollback:
             current_idx = self.cursor_index_sync()
-            # NOTE: blanks are fused, so inserting blanks at the beginning
-            # of a rollback context can leave the document in a modified state.
-            # By inserting a real (but trivial) command that we rollback, we
-            # ensure that the document is left unchanged.
-            marker_cmd = "Check tt."
-            insert_command_reply = self.insert_command_sync(marker_cmd)
-            if isinstance(insert_command_reply, rdm_api.Err):
-                raise rdm_api.Error(
-                    " ".join(
-                        [
-                            f"RocqDocManager failed to insert {marker_cmd}:",
-                            str(insert_command_reply),
-                        ]
-                    )
-                )
 
         yield self
 
