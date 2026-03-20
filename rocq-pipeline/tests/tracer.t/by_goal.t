@@ -53,7 +53,7 @@
       {
           "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\nP : Prop\n============================\nP -> P",
           "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof (fun (H : P) => H)"
+          "tactic": "Proof\n   (fun (H : P) => H)"
       }
   ]
   [
@@ -81,7 +81,7 @@
       {
           "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\nP : Prop\n============================\nP -> P",
           "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof (fun (H : P) => H)"
+          "tactic": "Proof\n   (fun (H : P) => H)"
       }
   ]
   [

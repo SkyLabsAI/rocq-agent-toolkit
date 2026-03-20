@@ -46,30 +46,32 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
         if sentence.kind != "command":
             continue
         txt: str = sentence.text
-        if txt.startswith("Proof"):
-            if _PROOF_START.match(txt):
-                if tactics:
-                    logging.warning(
-                        f"tactics before `Proof` command: {tactics} / {txt}"
-                    )
-                else:
-                    start = i + 1
-            elif mtch := _PROOF_TERM.match(txt):
-                proof_term = mtch.group(1).strip()
-                return ProofTask(start, start, "qed", [f"Proof {proof_term}."])
+        if sentence.data is None:
+            continue
+        elif sentence.data.kind in ["StartTheoremProof"]:
+            if tactics:
+                logging.warning(f"tactics before `Proof` command: {tactics} / {txt}")
             else:
-                msg = f"Error during proof identification. '{txt}' is an unknown form of 'Proof'."
-                logger.error(msg)
-                raise ValueError(msg)
-        elif txt.startswith("Qed") or txt.startswith("Defined"):
-            return ProofTask(start, i, "qed", tactics)
-        elif txt.startswith("Abort"):
+                start = i + 1
+        elif sentence.data.kind == "ExactProof":
+            return ProofTask(start, start, "qed", [sentence.text])
+        elif sentence.data.kind in ["Abort", "AbortAll"]:
             return ProofTask(start, i, "aborted", tactics)
-        elif txt.startswith("Admitted"):
-            return ProofTask(start, i, "admitted", tactics)
+        elif sentence.data.kind == "EndProof":
+            if sentence.text.startswith(("Qed", "Defined")):
+                return ProofTask(start, i, "qed", tactics)
+            elif txt.startswith("Admitted"):
+                return ProofTask(start, i, "admitted", tactics)
+            else:
+                raise ValueError(f"Unknown end of proof {txt}")
         else:
             tactics.append(txt)
-    raise ValueError("Failed to find the end of the proof")
+        # else:
+        #     msg = f"Error during proof identification. '{txt}' is an unknown form of 'Proof'."
+        #     logger.error(msg)
+        #     raise ValueError(msg)
+
+    raise ValueError(f"Failed to find the end of the proof: {suffix}")
 
 
 async def find_tasks(
