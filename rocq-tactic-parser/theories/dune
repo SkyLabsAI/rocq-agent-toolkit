@@ -1,0 +1,5 @@
+(rocq.theory
+ (name skylabs_ai.tactic_parser)
+ (package rocq-tactic-parser)
+ (plugins rocq-tactic-parser.plugin)
+ (theories Ltac2))

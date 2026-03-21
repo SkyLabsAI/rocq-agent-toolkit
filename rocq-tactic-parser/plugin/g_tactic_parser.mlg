@@ -1,0 +1,17 @@
+DECLARE PLUGIN "rocq-tactic-parser.plugin"
+
+{
+
+[@@@ocaml.warning "-27"]
+
+let query = Vernacextend.classify_as_query
+
+open Ltac_plugin
+open Tacarg
+}
+
+VERNAC COMMAND EXTEND explain_tactic
+| [ "Explain" tactic(tac) ] => { query } -> {
+    Explain.explain (Global.env ()) Evd.empty tac
+  }
+END
