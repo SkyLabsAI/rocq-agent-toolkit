@@ -6,60 +6,127 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
 
+import rocq_ltac_interp as ltac_interp
+from pydantic import BaseModel, Field
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import rocq_args_for
+from rocq_ltac_interp.tacinterp import RunCommandResult, run_tac
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, util
 from rocq_pipeline.args import load_tasks
 from rocq_pipeline.tracers import json_goal
-from rocq_pipeline.tracers.extractor import Tracer
+from rocq_pipeline.tracers.extractor import (
+    InteractionTrace,
+    Tracer,
+)
 from rocq_pipeline.with_deps import rocq_deps_for
 
 
-def find_last_nonwhite_prefix(prefix: list[rdm_api.PrefixItem]) -> str | None:
-    for element in reversed(prefix):
-        if element.kind != "blanks":
-            return element.text
-    return None
+class TraceConfig(BaseModel):
+    subtactic: bool = Field(
+        description="Break aggregate tactics, e.g. `intros; apply x` into atomic tactics.",
+        default=False,
+    )
+
+
+class BracketedTacticRunner(ltac_interp.tacinterp.TacticRunner):
+    def __init__(
+        self, traces: list[InteractionTrace], extractor: Tracer[InteractionTrace]
+    ) -> None:
+        self._traces = traces
+        self._extractor = extractor
+
+    async def __call__(
+        self,
+        rc: RocqCursor,
+        goal: int,
+        tac: str,
+        *,
+        pre: rdm_api.ProofState,
+        trace: int | None = None,
+    ) -> RunCommandResult:
+        local_after = await self._extractor.before_internal(rc, tac)
+        # Make the parent call
+        result = await run_tac(rc, goal, tac, pre=pre, trace=trace)
+        if local_after and (after := await local_after(rc, tac)):
+            self._traces.append(after)
+        return result
 
 
 async def trace_proof(
-    tracer: Tracer[dict[str, Any]],
-    rdm: RocqCursor,
-    progress: util.ProgressCallback,
-    progress_min: float = 0.0,
-    progress_max: float = 1.0,
-) -> list[dict[str, Any]]:
-    tactics = find_tasks.scan_proof(await rdm.doc_suffix()).proof_tactics
-    await tracer.start_proof(rdm)
-    trace: list[dict[str, Any]] = []
+    tracer: Tracer[InteractionTrace],
+    rc: RocqCursor,
+    *,
+    progress: util.ProgressCallback | None = None,
+    config: TraceConfig | None = None,
+) -> list[InteractionTrace]:
+    """Trace a proof.
+
+    subtactic
+    """
+    config = config or TraceConfig()
+
+    prog: util.ProgressCallback = progress if progress else util.MockFeedback()
+    tactics = find_tasks.scan_proof(await rc.doc_suffix()).proof_tactics
+    await tracer.start_proof(rc)
+    traces: list[InteractionTrace] = []
 
     if len(tactics) == 0:
         step_size = 0.0
     else:
-        step_size = (progress_max - progress_min) / len(tactics)
+        step_size = 1.0 / len(tactics)
 
+    await ltac_interp.load(rc)
     for i, tactic in enumerate(tactics):
-        after = await tracer.before_internal(rdm, tactic)
-        progress.status(status=tactic[:10])
+        after = await tracer.before_internal(rc, tactic)
+        prog.status(status=tactic[:10])
 
-        run_command_result = await rdm.run_command(tactic)
+        if config.subtactic:
+            print("subtactic tracing!")
+
+            # TODO: this setup will not be enough because it
+            # 1. is not tracking aggregate tactics
+            # 2. it doesn't eliminate tactics that ultimately don't make progress
+            # 3. it would be very convenient if the atomic runner already gave information
+            #    about what goals where impacted
+            async def run_atom(
+                rc: RocqCursor,
+                goal: int,
+                tac: str,
+                *,
+                pre: rdm_api.ProofState,
+                trace: int | None = None,
+            ) -> RunCommandResult:
+                # Note that that the tactic here does not have a `.`, but
+                # the extractors expect tactics with `.`
+                tac_with_period = f"{tac.strip()}."
+                local_after = await tracer.before_internal(rc, tac_with_period)
+                result = await ltac_interp.tacinterp.run_tac(
+                    rc, goal, tac, pre=pre, trace=trace
+                )
+                if local_after and (after := await local_after(rc, tac_with_period)):
+                    nonlocal traces
+                    traces.append(after)
+                return result
+
+            async with (await rc.clone()).sess() as rc_local:
+                await ltac_interp.interp_tactic(rc_local, tactic, run_atom=run_atom)
+
+        run_command_result = await rc.run_command(tactic)
         if isinstance(run_command_result, rdm_api.Err):
             raise ValueError(
                 f"Running tactic '{str(tactic)}' failed: {str(run_command_result)}"
             )
 
-        progress.status(percent=progress_min + i * step_size)
+        prog.status(percent=i * step_size)
         if after is not None:
-            result = await after(rdm, tactic)
+            result = await after(rc, tactic)
             if result is not None:
-                if "tactic" not in result:
-                    result["tactic"] = tactic.strip(".").strip()
-                trace.append(result)
-    await tracer.end_proof(rdm)
-    return trace
+                traces.append(result)
+    await tracer.end_proof(rc)
+    return traces
 
 
 def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
@@ -122,13 +189,16 @@ def run(
             tracer = tracer_builder()
 
             task_file: Path = project.path / task.file
-            rocq_args = rocq_args_for(task_file, plugins=rocq_deps_for(tracer))
+            rocq_args = rocq_args_for(
+                task_file, plugins=[ltac_interp.PLUGIN] + rocq_deps_for(tracer)
+            )
             async with rc_sess(
                 str(task_file),
                 rocq_args=rocq_args,
                 dune=True,
                 load_file=True,
             ) as rc:
+                await ltac_interp.load(rc)
                 tracer.setup(rc)
                 progress.status(0.05, "🔃")
 
@@ -137,11 +207,16 @@ def run(
                     return False
                 progress.status(0.1, "💭")
 
-                trace = await trace_proof(tracer, rc, progress, 0.1, 0.95)
+                trace = await trace_proof(
+                    tracer,
+                    rc,
+                    progress=util.DelimitedFeedback(progress, min=0.1, max=0.95),
+                    config=TraceConfig(subtactic=True),
+                )
                 progress.status(0.95, "💭")
 
             with open(output_file, "w") as output:
-                json.dump(trace, output)
+                json.dump([m.model_dump() for m in trace], output)
             progress.status(1)
 
             return True

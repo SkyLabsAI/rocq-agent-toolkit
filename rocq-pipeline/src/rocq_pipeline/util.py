@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 from concurrent.futures import CancelledError, Future, ThreadPoolExecutor, as_completed
 from itertools import count
 from types import TracebackType
-from typing import cast
+from typing import Protocol, cast, override
 from warnings import deprecated
 
 from observability import get_logger
@@ -44,7 +44,25 @@ class MockProgress:
         _ = (exc_type, exc, tb)
 
 
-class Feedback:
+class ProgressCallback(Protocol):
+    def status(
+        self, percent: float | None = None, status: str | None = None
+    ) -> None: ...
+
+    def log(self, message: str) -> None: ...
+
+
+class MockFeedback(ProgressCallback):
+    @override
+    def status(self, percent: float | None = None, status: str | None = None) -> None:
+        return
+
+    @override
+    def log(self, message: str) -> None:
+        return
+
+
+class Feedback(ProgressCallback):
     def __init__(
         self,
         show_name: str,
@@ -78,7 +96,24 @@ class Feedback:
             print(f"{self._show_name}: {message}")
 
 
-type ProgressCallback = Feedback
+class DelimitedFeedback(ProgressCallback):
+    def __init__(
+        self, feedback: ProgressCallback, *, min: float = 0.0, max: float = 1.0
+    ) -> None:
+        self._feedback = feedback
+        self._max = max
+        self._min = min
+
+    def status(self, percent: float | None = None, status: str | None = None) -> None:
+        p = (
+            self._min + percent * (self._max - self._min)
+            if percent is not None
+            else None
+        )
+        return self._feedback.status(p, status)
+
+    def log(self, message: str) -> None:
+        return self._feedback.log(message)
 
 
 def parallel_runner[T, U](
