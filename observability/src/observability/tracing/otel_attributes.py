@@ -28,7 +28,7 @@ type OtelAttrValue = (
 
 
 # Note: [type]s cannot be used for isinstance checks
-def is_OtelAttrPrimtive(value: Any) -> TypeGuard[OtelAttrPrimitive]:
+def is_OtelAttrPrimitive(value: Any) -> TypeGuard[OtelAttrPrimitive]:
     return isinstance(value, (str, int, float, bool))
 
 
@@ -66,7 +66,7 @@ def as_otel_attr_value(value: Any) -> OtelAttrValue:
     shares the exact same primitive type (OTel arrays must be homogeneous);
     otherwise the whole value is JSON-encoded.
     """
-    if is_OtelAttrPrimtive(value):
+    if is_OtelAttrPrimitive(value):
         return value
     if isinstance(value, Sequence):
         return _as_otel_sequence(value)
@@ -79,7 +79,7 @@ def _as_otel_sequence(seq: Sequence[Any]) -> OtelAttrValue:
     Uses ``type(x) is ...`` (not ``isinstance``) so that ``bool`` and ``int``
     are kept distinct — OTel treats them as separate element types.
     """
-    if not seq or not is_OtelAttrPrimtive(seq[0]):
+    if not seq or not is_OtelAttrPrimitive(seq[0]):
         return json.dumps(seq, default=str)
 
     primitive_elem_type = type(seq[0])
@@ -161,6 +161,8 @@ def _otel_attrs_flatten(
 ) -> None:
     """Recursively flatten *data* into dot-separated keys in *out*."""
     for key, value in data.items():
+        if isinstance(key, str) and "." in key:
+            raise ValueError(f"OTel flatten dict keys must not contain '.': {key!r}")
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
             _otel_attrs_flatten(value, full_key, out)

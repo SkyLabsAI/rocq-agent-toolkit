@@ -81,7 +81,7 @@ from .tracing.otel_attributes import (
     as_otel_attr_value,
     as_otel_attrs,
     from_otel_attrs,
-    is_OtelAttrPrimtive,
+    is_OtelAttrPrimitive,
     model_as_otel_attrs,
     model_from_otel_attrs,
     set_otel_attrs_on_span,
@@ -127,7 +127,7 @@ __all__ = [
     # OTel attribute (de)serialization
     "OtelAttrPrimitive",
     "OtelAttrValue",
-    "is_OtelAttrPrimtive",
+    "is_OtelAttrPrimitive",
     "as_otel_attr_value",
     "as_otel_attrs",
     "from_otel_attrs",
