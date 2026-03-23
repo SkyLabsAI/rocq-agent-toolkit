@@ -87,7 +87,8 @@ class RocqCursorProtocolAsync(Protocol):
         self, sentence: rdm_api.Sentence
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         if sentence.kind == "blanks":
-            return await self.insert_blanks(sentence.text)
+            await self.insert_blanks(sentence.text)
+            return None
         else:
             return await self.insert_command(
                 sentence.text, ghost=sentence.kind == "ghost"
