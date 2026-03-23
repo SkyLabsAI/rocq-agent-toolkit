@@ -60,6 +60,8 @@ async def run_tactic(
     else:
         assert isinstance(result, rdm_api.CommandData)
         ctx.deps.rocq_script.append((idx, tactic))
+        # NOTE: This is not really necessary.
+        await ctx.deps.rocq_cursor.insert_blanks("\n")
         if result.proof_state:
             return RocqResult(error=None, result=result.proof_state.focused_goals)
         else:

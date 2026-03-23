@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, override
+from typing import override
 
 from .. import rocq_doc_manager_api as rdm_api
+from .delegate import DelegateRocqCursor
 from .protocol import RocqCursor
 
 logger = logging.getLogger(__name__)
 
 
-class DelimitedRocqCursor(RocqCursor):
+class DelimitedRocqCursor(DelegateRocqCursor):
     """
     A RocqCursor that only has access to a portion of a Rocq document.
     """
@@ -109,10 +110,6 @@ class DelimitedRocqCursor(RocqCursor):
         await self._cursor.clear_suffix(nb_to_clear)
 
     @override
-    async def materialize(self) -> None:
-        await self._cursor.materialize()
-
-    @override
     async def clone(self, *, materialize: bool = False) -> RocqCursor:
         cursor = await self._cursor.clone()
         return DelimitedRocqCursor(
@@ -134,10 +131,6 @@ class DelimitedRocqCursor(RocqCursor):
         index = await self._cursor.cursor_index()
         assert self._excl_prefix_items <= index
         return index - self._excl_prefix_items
-
-    @override
-    async def dispose(self) -> None:
-        await self._cursor.dispose()
 
     @override
     async def doc_prefix(self) -> list[rdm_api.PrefixItem]:
@@ -165,49 +158,8 @@ class DelimitedRocqCursor(RocqCursor):
         return len(suffix) != self._excl_suffix_items
 
     @override
-    async def insert_blanks(self, text: str) -> None:
-        await self._cursor.insert_blanks(text)
-
-    async def _insert_command(
-        self, text: str, *, ghost: bool = False
-    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        return await self._cursor._insert_command(text, ghost=ghost)
-
-    @override
     async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
         raise Exception("Cannot load file using a delimited cursor")
-
-    @override
-    async def split_sentences(
-        self, text: str
-    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
-        return await self._cursor.split_sentences(text)
-
-    @override
-    async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
-        return await self._cursor.query(text)
-
-    @override
-    async def query_json(
-        self, text: str, *, index: int
-    ) -> Any | rdm_api.Err[rdm_api.CommandError]:
-        return await self._cursor.query_json(text, index=index)
-
-    @override
-    async def query_json_all(
-        self, text: str, *, indices: list[int] | None = None
-    ) -> list[Any] | rdm_api.Err[None]:
-        return await self._cursor.query_json_all(text, indices=indices)
-
-    @override
-    async def query_text(self, text: str, *, index: int) -> str | rdm_api.Err[None]:
-        return await self._cursor.query_text(text, index=index)
-
-    @override
-    async def query_text_all(
-        self, text: str, *, indices: list[int] | None = None
-    ) -> list[str] | rdm_api.Err[None]:
-        return await self._cursor.query_text_all(text, indices=indices)
 
     @override
     async def revert_before(self, erase: bool, index: int) -> None:
@@ -218,7 +170,6 @@ class DelimitedRocqCursor(RocqCursor):
     async def run_step(
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
-        suffix = await self.doc_suffix()
-        if not suffix:
+        if not await self.has_suffix():
             raise Exception("No item left to process")
         return await self._cursor.run_step()

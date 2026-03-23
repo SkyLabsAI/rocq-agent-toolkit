@@ -20,7 +20,6 @@ class Test_RDM_macros(RDM_Tests):
             ("command", "Goal True."),
             ("blanks", "\n"),
             ("command", "Abort."),
-            ("blanks", "\n"),
         ]
         prefix = await transient_rc.doc_prefix()
         assert len(prefix) == len(expected_prefix)

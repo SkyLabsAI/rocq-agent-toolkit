@@ -34,6 +34,12 @@ class DelegateRocqCursor(RocqCursor):
         return await self._cursor._insert_command(text, ghost=ghost)
 
     @override
+    async def insert_command(
+        self, text: str, blanks: str | None = "\n", ghost: bool = False
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        return await self._cursor.insert_command(text, blanks=blanks, ghost=ghost)
+
+    @override
     async def run_step(
         self,
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:

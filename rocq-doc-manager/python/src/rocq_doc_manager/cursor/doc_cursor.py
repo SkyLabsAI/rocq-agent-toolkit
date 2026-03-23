@@ -132,14 +132,23 @@ class RDMRocqCursor(RocqCursor):
     async def _insert_command(
         self, text: str, *, ghost: bool = False
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        return await self._rdm.insert_command(self._cursor, text, ghost=ghost)
+
+    async def insert_command(
+        self, text: str, blanks: str | None = "\n", ghost: bool = False
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
         revert: int | None = None
-        if await self.requires_whitespace(
-            kind="ghost" if ghost else "command", text=text
+        if (
+            not ghost
+            and blanks is not None
+            and await self.requires_whitespace(
+                kind="ghost" if ghost else "command", text=text
+            )
         ):
             revert = await self.cursor_index()
-            await self._rdm.insert_blanks(self._cursor, "\n")
-        res = await self._rdm.insert_command(self._cursor, text, ghost=ghost)
-        if isinstance(res, rdm_api.Err) and revert:
+            await self._rdm.insert_blanks(self._cursor, blanks)
+        res = await self._insert_command(text, ghost=ghost)
+        if isinstance(res, rdm_api.Err) and revert is not None:
             await self.revert_before(erase=True, index=revert)
         return res
 

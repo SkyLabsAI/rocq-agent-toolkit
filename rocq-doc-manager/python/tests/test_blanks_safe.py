@@ -45,29 +45,37 @@ async def test_invariant() -> None:
 
         async with (await rc.clone()).ctx() as rc3:
             assert isinstance(await rc3.insert_command("About nat."), CommandData)
-            await check_invariant(rc3, ["\n", "About nat.", "\n"])
+            await check_invariant(rc3, ["\n", "About nat."])
 
 
 @pytest.mark.asyncio
 async def test_blanks_revert() -> None:
     async with rc_sess(Path(__file__).parent / "locator_test.v") as rc:
+        await rc.insert_command("About nat.")
         try:
             await rc.insert_command("About nat.", blanks="bad")
             failed = False
         except Exception:
             failed = True
         assert failed
-        assert len(await rc.doc_prefix()) == 0
+        assert len(await rc.doc_prefix()) == 1
 
         assert isinstance(await rc.insert_command("About nat."), CommandData)
-        assert len(await rc.doc_prefix()) == 2
-
-        assert isinstance(
-            await rc.insert_command("About nat.", blanks=None), CommandData
-        )
         assert len(await rc.doc_prefix()) == 3
 
+        # Should fail because whitespace is required
+        try:
+            await rc.insert_command("About nat.", blanks=None)
+            failed = False
+        except Exception:
+            failed = True
+        assert failed
+
         await rc.insert_blanks("(* needs extra whitespace before *)")
+        assert [t.text for t in (await rc.doc_prefix())[-2:]] == [
+            "\n",
+            "(* needs extra whitespace before *)",
+        ]
         assert len(await rc.doc_prefix()) == 5
 
         assert isinstance(
@@ -75,4 +83,4 @@ async def test_blanks_revert() -> None:
         )
         assert len(await rc.doc_prefix()) == 6
         assert isinstance(await rc.insert_command("About nat."), CommandData)
-        assert len(await rc.doc_prefix()) == 9
+        assert len(await rc.doc_prefix()) == 8
