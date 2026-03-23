@@ -1,9 +1,19 @@
-"""Typed pydantic schema for ``TracingCursor`` span attributes.
+"""Auto-instrumentation of `RocqCursor`s using (lexically scoped) span-based telemetry.
 
-This module defines the structured attribute model that ``_trace`` in
-``cursor.py`` accumulates during execution and flushes to the OTel span.
-The same model is used by downstream consumers (e.g. ``dashboard/backend``) to
-deserialize span attribute dicts back into typed objects.
+This module defines `InstrumentRocqCursor`, supporting configurable & extensible auto-instrumentation.
+
+Instrumented methods generate an (opentelemetry) span with attributes matching the
+`InstrumentRocqCursorSpanAttrs` schema (cf. `./schema.py`).
+
+Auto-instrumentation is controlled -- using reasonable defaults -- via:
+- `skip_auto_instrumentation_value`: predicate controlling which values are serialized as span attributes
+- `skip_auto_instrumentation`: set of method names which should be skipped
+- `custom_instrumentation_kwargs`: map from method names to custom instrumentation kwargs
+
+Derivers that wish to customize the behavior should override the above methods & ensure that `super().XXX`
+is called appropriately.
+
+Note: in the future we could expose instrumentation decorators.
 """
 
 from __future__ import annotations
@@ -37,217 +47,20 @@ async def _maybe_await[T](val: T | Awaitable[T]) -> T:
 
 
 class InstrumentRocqCursor(DelegateRocqCursor):
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        cls._auto_instrument()
+
     def __init__(self, rc: RocqCursor, *, verbose: bool = True) -> None:
         super().__init__(rc)
         self._verbose = verbose
 
     @classmethod
-    def of_cursor(cls, rc: RocqCursor, *, verbose: bool = False) -> Self:
-        if type(rc) is cls:
-            return rc
-        else:
-            return cls(rc, verbose=verbose)
-
-    @override
-    def make_derived(self, rc: RocqCursor) -> Self:
-        return self.of_cursor(rc, verbose=self._verbose)
-
-    @override
-    async def clone(self, *, materialize: bool = False) -> Self:
-        return self.of_cursor(
-            await self._cursor.clone(materialize=materialize), verbose=self._verbose
-        )
-
-    @override
-    async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
-        # Note: we hand-trace `load_file` since instrument_method relies on
-        # the document being loaded.
-        meth = "RocqCursor.load_file"
-        attrs = InstrumentRocqCursorSpanAttrs.model_construct()
-
-        with trace_context(meth) as span:
-            try:
-                attrs.result = await self._cursor.load_file()
-
-                if isinstance(attrs.result, rdm_api.Err):
-                    attrs.error = True
-                    attrs.result_type = "rdm_api.Err"
-                else:
-                    attrs.error = False
-                    attrs.result_type = "None"
-                    attrs.after = LocationInfo(**await self._untraced_location_info())
-
-                return attrs.result
-            except rdm_api.Error:
-                attrs.error = True
-                raise
-            finally:
-                logger.info(meth, **attrs.model_dump(exclude_none=True))
-                set_otel_attrs_on_span(span, model_as_otel_attrs(attrs, prefix=meth))
-
-    def __init_subclass__(cls) -> None:
-        super().__init_subclass__()
-        cls.instrument()
-
-    @classmethod
-    def instrument(cls) -> None:
-        """Decorator: auto-instrument an InstrumentRocqCursor deriver."""
-        for fn_nm, fn_trace_kwargs in cls.instrument_kwargs().items():
-            assert hasattr(cls, fn_nm), "ensured by _trace_targets"
-            fn = getattr(cls, fn_nm)
-            assert callable(fn), "ensured by _trace_targets"
-            assert isinstance(fn, FunctionType), "ensured by _trace_targets"
-
-            setattr(cls, fn_nm, override(cls.instrument_method(**fn_trace_kwargs)(fn)))
-
-    @classmethod
-    def instrument_method[**P, A, B, T](
-        cls,
-        *,
-        method: str | None = None,
-        effect: (
-            Callable[
-                [InstrumentRocqCursor, dict[str, Any]],
-                Awaitable[
-                    tuple[str, Literal["blanks", "command", "ghost"]] | bool | None
-                ],
-            ]
-            | Callable[
-                [InstrumentRocqCursor, dict[str, Any]],
-                tuple[str, Literal["blanks", "command", "ghost"]] | bool | None,
-            ]
-            | bool
-            | None
-        ) = None,
-        partial_effect: bool = False,
-    ) -> Callable[
-        [Callable[Concatenate[Self, P], Coroutine[A, B, T]]],
-        Callable[Concatenate[Self, P], CoroutineType[A, B, T]],
-    ]:
-        """Decorator: use an opentelemetry to instrument a TracingCursor method.
-
-        Arguments:
-            method (optional): name to use instead of the method name
-            effect (optional): characterize the effect & control whether after_id is generated (use most specific):
-                - Callable: use self+args_dict to produce either:
-                  - the text+kind for a /single/ document interaction
-                  - a boolean indicating whether there was an effect
-                - bool: whether a document effect was produced (either via navigation or a composite interaction)
-                - None (default): no document interaction
-            partial_effect (optional): whether partial effects remain if rdm_api.Err is returned
-        Returns:
-            instrumented method
-        """
-
-        def wrap(func: Callable[P, Coroutine[A, B, T]]):
-            sig = inspect.signature(func)
-            meth = f"RocqCursor.{method or func.__name__}"
-
-            @functools.wraps(func)
-            async def wrapper(self, *args: P.args, **kwargs: P.kwargs):
-                bound_args = sig.bind(self, *args, **kwargs)
-                bound_args.apply_defaults()
-                args_dict = dict(bound_args.arguments)
-                args_dict.pop("self", None)
-
-                attrs = InstrumentRocqCursorSpanAttrs.model_construct(
-                    args={
-                        k: v
-                        for k, v in args_dict.items()
-                        if not cls.instrument_skip_value(v)
-                    }
-                )
-                need_after_id: bool = False
-
-                if effect is not None:
-                    if isinstance(effect, bool):
-                        need_after_id = effect
-                    else:
-                        effect_result = await _maybe_await(effect(self, args_dict))
-                        if isinstance(effect_result, bool):
-                            need_after_id = effect_result
-                        elif isinstance(effect_result, tuple):
-                            assert len(effect_result) == 2, (
-                                f"effect callbacks for _trace should produce 2-tuples: {effect_result}"
-                            )
-                            text, kind = effect_result
-                            need_after_id = kind != "ghost"
-                            attrs.action = text
-                            attrs.action_kind = kind
-
-                with trace_context(meth) as span:
-                    try:
-                        attrs.before = LocationInfo(
-                            **await self._untraced_location_info()
-                        )
-
-                        result = await func(self, *args, **kwargs)
-
-                        if result is not None:
-                            attrs.error = isinstance(result, rdm_api.Err)
-                            attrs.result_type = str(type(result))
-                            if not cls.instrument_skip_value(result):
-                                attrs.result = result
-
-                        if (not attrs.error or partial_effect) and need_after_id:
-                            attrs.after = LocationInfo(
-                                **await self._untraced_location_info()
-                            )
-
-                        return result
-                    finally:
-                        logger.info(meth, **attrs.model_dump(exclude_none=True))
-                        set_otel_attrs_on_span(
-                            span, model_as_otel_attrs(attrs, prefix=meth)
-                        )
-
-            return wrapper
-
-        return wrap
-
-    @classmethod
-    def instrument_kwargs(cls) -> dict[str, dict[str, Any]]:
-        skip = cls.automatic_instrument_skip()
-        custom_trace_kwargs = cls.custom_instrument_kwargs()
-
-        assert not (skip & set(custom_trace_kwargs.keys())), (
-            f"skip:\n{skip}\nand custom_trace_kwargs:\n{custom_trace_kwargs}\nshould not overlap"
-        )
-        assert set(get_protocol_members(RocqCursor)) <= set(dir(cls)), (
-            f"{cls.__qualname__} must implement the RocqCursor interface:{cls.__qualname__}",
-        )
-
-        targets: dict[str, dict[str, Any]] = {}
-        for target_nm in (
-            {
-                attr_nm
-                for attr_nm in get_protocol_members(RocqCursor)
-                if callable(getattr(RocqCursor, attr_nm))
-            }
-            | custom_trace_kwargs.keys()
-        ) - skip:
-            assert hasattr(cls, target_nm), f"{cls.__qualname__} missing {target_nm}"
-            target_fn = getattr(cls, target_nm)
-            assert callable(target_fn), (
-                f"{cls.__qualname__}.{target_nm} is not Callable: {repr(target_fn)}"
-            )
-            assert isinstance(target_fn, FunctionType), (
-                f"{cls.__qualname__}.{target_nm} should be a function: {repr(target_fn)}"
-            )
-
-            if target_nm in custom_trace_kwargs:
-                targets[target_nm] = custom_trace_kwargs[target_nm]
-            else:
-                targets[target_nm] = {}
-
-        return targets
-
-    @classmethod
-    def instrument_skip_value(cls, v: Any) -> bool:
+    def auto_instrument_skip_value(cls, v: Any) -> bool:
         return isinstance(v, InstrumentRocqCursor) or type(v) is type or callable(v)
 
     @classmethod
-    def automatic_instrument_skip(cls) -> set[str]:
+    def auto_instrument_skip(cls) -> set[str]:
         """Methods that should not be automatically instrumented."""
         return {
             # require manual instrumentation
@@ -327,6 +140,205 @@ class InstrumentRocqCursor(DelegateRocqCursor):
                 "effect": True,
             },
         }
+
+    @classmethod
+    def of_cursor(cls, rc: RocqCursor, *, verbose: bool = False) -> Self:
+        if type(rc) is cls:
+            return rc
+        else:
+            return cls(rc, verbose=verbose)
+
+    @override
+    def make_derived(self, rc: RocqCursor) -> Self:
+        return self.of_cursor(rc, verbose=self._verbose)
+
+    @override
+    async def clone(self, *, materialize: bool = False) -> Self:
+        return self.of_cursor(
+            await self._cursor.clone(materialize=materialize), verbose=self._verbose
+        )
+
+    @override
+    async def load_file(self) -> None | rdm_api.Err[rdm_api.RocqLoc | None]:
+        # Note: we hand-trace `load_file` since instrument_method relies on
+        # the document being loaded.
+        meth = "RocqCursor.load_file"
+        attrs = InstrumentRocqCursorSpanAttrs.model_construct()
+
+        with trace_context(meth) as span:
+            try:
+                attrs.result = await self._cursor.load_file()
+
+                if isinstance(attrs.result, rdm_api.Err):
+                    attrs.error = True
+                    attrs.result_type = "rdm_api.Err"
+                else:
+                    attrs.error = False
+                    attrs.result_type = "None"
+                    attrs.after = LocationInfo(**await self._untraced_location_info())
+
+                return attrs.result
+            except rdm_api.Error:
+                attrs.error = True
+                raise
+            finally:
+                logger.info(meth, **attrs.model_dump(exclude_none=True))
+                set_otel_attrs_on_span(span, model_as_otel_attrs(attrs, prefix=meth))
+
+    @classmethod
+    def _auto_instrument(cls) -> None:
+        """Auto-instrument an InstrumentRocqCursor deriver based on configs."""
+        for fn_nm, fn_trace_kwargs in cls._instrument_kwargs().items():
+            assert hasattr(cls, fn_nm), "ensured by _trace_targets"
+            fn = getattr(cls, fn_nm)
+            assert callable(fn), "ensured by _trace_targets"
+            assert isinstance(fn, FunctionType), "ensured by _trace_targets"
+
+            setattr(cls, fn_nm, override(cls._instrument(**fn_trace_kwargs)(fn)))
+
+    @classmethod
+    def _instrument[**P, A, B, T](
+        cls,
+        *,
+        method: str | None = None,
+        effect: (
+            Callable[
+                [InstrumentRocqCursor, dict[str, Any]],
+                Awaitable[
+                    tuple[str, Literal["blanks", "command", "ghost"]] | bool | None
+                ],
+            ]
+            | Callable[
+                [InstrumentRocqCursor, dict[str, Any]],
+                tuple[str, Literal["blanks", "command", "ghost"]] | bool | None,
+            ]
+            | bool
+            | None
+        ) = None,
+        partial_effect: bool = False,
+    ) -> Callable[
+        [Callable[Concatenate[Self, P], Coroutine[A, B, T]]],
+        Callable[Concatenate[Self, P], CoroutineType[A, B, T]],
+    ]:
+        """Internal decorator: use opentelemetry to instrument a TracingCursor method.
+
+        Arguments:
+            method (optional): name to use instead of the method name
+            effect (optional): characterize the effect & control whether after_id is generated (use
+                most specific):
+                - Callable: use self+args_dict to produce either:
+                  - the text+kind for a /single/ document interaction
+                  - a boolean indicating whether there was an effect
+                - bool: whether a document effect was produced (either via navigation or a
+                  composite interaction)
+                - None (default): no document interaction
+            partial_effect (optional): whether partial effects remain if rdm_api.Err is returned
+        Returns:
+            instrumented method
+        """
+
+        def wrap(func: Callable[P, Coroutine[A, B, T]]):
+            sig = inspect.signature(func)
+            meth = f"RocqCursor.{method or func.__name__}"
+
+            @functools.wraps(func)
+            async def wrapper(self, *args: P.args, **kwargs: P.kwargs):
+                bound_args = sig.bind(self, *args, **kwargs)
+                bound_args.apply_defaults()
+                args_dict = dict(bound_args.arguments)
+                args_dict.pop("self", None)
+
+                attrs = InstrumentRocqCursorSpanAttrs.model_construct(
+                    args={
+                        k: v
+                        for k, v in args_dict.items()
+                        if not cls.auto_instrument_skip_value(v)
+                    }
+                )
+                need_after_id: bool = False
+
+                if effect is not None:
+                    if isinstance(effect, bool):
+                        need_after_id = effect
+                    else:
+                        effect_result = await _maybe_await(effect(self, args_dict))
+                        if isinstance(effect_result, bool):
+                            need_after_id = effect_result
+                        elif isinstance(effect_result, tuple):
+                            assert len(effect_result) == 2, (
+                                f"effect callbacks for _trace should produce 2-tuples: {effect_result}"
+                            )
+                            text, kind = effect_result
+                            need_after_id = kind != "ghost"
+                            attrs.action = text
+                            attrs.action_kind = kind
+
+                with trace_context(meth) as span:
+                    try:
+                        attrs.before = LocationInfo(
+                            **await self._untraced_location_info()
+                        )
+
+                        result = await func(self, *args, **kwargs)
+
+                        if result is not None:
+                            attrs.error = isinstance(result, rdm_api.Err)
+                            attrs.result_type = str(type(result))
+                            if not cls.auto_instrument_skip_value(result):
+                                attrs.result = result
+
+                        if (not attrs.error or partial_effect) and need_after_id:
+                            attrs.after = LocationInfo(
+                                **await self._untraced_location_info()
+                            )
+
+                        return result
+                    finally:
+                        logger.info(meth, **attrs.model_dump(exclude_none=True))
+                        set_otel_attrs_on_span(
+                            span, model_as_otel_attrs(attrs, prefix=meth)
+                        )
+
+            return wrapper
+
+        return wrap
+
+    @classmethod
+    def _instrument_kwargs(cls) -> dict[str, dict[str, Any]]:
+        skip = cls.auto_instrument_skip()
+        custom_trace_kwargs = cls.custom_instrument_kwargs()
+
+        assert not (skip & set(custom_trace_kwargs.keys())), (
+            f"skip:\n{skip}\nand custom_trace_kwargs:\n{custom_trace_kwargs}\nshould not overlap"
+        )
+        assert set(get_protocol_members(RocqCursor)) <= set(dir(cls)), (
+            f"{cls.__qualname__} must implement the RocqCursor interface:{cls.__qualname__}",
+        )
+
+        targets: dict[str, dict[str, Any]] = {}
+        for target_nm in (
+            {
+                attr_nm
+                for attr_nm in get_protocol_members(RocqCursor)
+                if callable(getattr(RocqCursor, attr_nm))
+            }
+            | custom_trace_kwargs.keys()
+        ) - skip:
+            assert hasattr(cls, target_nm), f"{cls.__qualname__} missing {target_nm}"
+            target_fn = getattr(cls, target_nm)
+            assert callable(target_fn), (
+                f"{cls.__qualname__}.{target_nm} is not Callable: {repr(target_fn)}"
+            )
+            assert isinstance(target_fn, FunctionType), (
+                f"{cls.__qualname__}.{target_nm} should be a function: {repr(target_fn)}"
+            )
+
+            if target_nm in custom_trace_kwargs:
+                targets[target_nm] = custom_trace_kwargs[target_nm]
+            else:
+                targets[target_nm] = {}
+
+        return targets
 
     async def _untraced_maybe_next_action(
         self, args: dict[str, Any]

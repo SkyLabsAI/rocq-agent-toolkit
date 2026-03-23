@@ -38,7 +38,33 @@ class LocationInfo(BaseModel):
 class InstrumentRocqCursorSpanAttrs(BaseModel):
     """Span attributes emitted by instrumented methods RocqCursor.
 
-    ``extra="ignore"`` ensures forwards compatibility: consumers running an
+    Attributes:
+    - args (always): the arguments used to call the method
+    - action (success; optional): the /single/ (parseable) doc interaction for the method
+    - action_kind (success; w/`action`): the /kind/ of `action`, one of:
+      + `"blanks"`: insert a single Rocq blank (e.g. whitespace or comment)
+      + `"command"`: insert a single Rocq command
+      + `"ghost"`: run a single Rocq command, but don't insert it
+    - before (success; always): the `LocationInfo` before the method is invoked
+    - after (success; optional): the `LocationInfo` after an effectful method is invoked
+    - error (success; always): whether or not the method resulted in an exception/error
+    - result (success; always): the value returned
+    - result_type (success; w/`result`): the name of the result-value type
+
+    The `InstrumentRocqCursor` class (cf. `./instrumentation.py`) uses
+    `auto_instrument_skip_value` to determine whether or not arg/result values
+    should be included.
+
+    To avoid double counting document interactions, only low-level operations
+    that produce individual document modifications track `action` & `action_kind`.
+    Composite actions which produce multiple document effects will still have a
+    non-`None` value for `after`, but child spans will need to be inspected to
+    access/accumulate the multiple `action`+`action_kind` pairs.
+
+    In case of exception/error (reflected via the span status & `error` attr), some
+    of the attributes may be missing.
+
+    Note: ``extra="ignore"`` ensures forwards compatibility: consumers running an
     older schema version silently drop unknown fields added in newer versions.
     """
 
