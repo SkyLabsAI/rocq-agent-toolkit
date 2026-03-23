@@ -177,8 +177,8 @@ async def run_task(
         "run_task",
         tracer_kwargs=tracer_kwargs,
         attributes={
-            "task.id": task_id,
-            "run.id": run_id,
+            "task": {"id": task_id},
+            "run": {"id": run_id},
         },
     ) as span:
         # Get trace_id from this new span
@@ -399,8 +399,8 @@ def run_config(config: RunConfiguration) -> bool:
     with trace_context(
         "run_config/begin",
         attributes={
-            "run.id": run_id,
-            "tasks.count": len(config.tasks),
+            "run": {"id": run_id},
+            "tasks": {"count": len(config.tasks)},
             "jobs": config.jobs,
         },
     ) as dispatcher_span:

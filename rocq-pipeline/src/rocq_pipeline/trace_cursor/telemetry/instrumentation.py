@@ -27,7 +27,6 @@ from typing import Any, Concatenate, Literal, Self, get_protocol_members, overri
 
 from observability import (
     get_logger,
-    model_as_otel_attrs,
     set_otel_attrs_on_span,
     trace_context,
 )
@@ -183,7 +182,7 @@ class InstrumentRocqCursor(DelegateRocqCursor):
                 raise
             finally:
                 logger.info(meth, **attrs.model_dump(exclude_none=True))
-                set_otel_attrs_on_span(span, model_as_otel_attrs(attrs, prefix=meth))
+                set_otel_attrs_on_span(span, attrs, prefix=meth)
 
     @classmethod
     def _auto_instrument(cls) -> None:
@@ -281,6 +280,7 @@ class InstrumentRocqCursor(DelegateRocqCursor):
 
                         result = await func(self, *args, **kwargs)
 
+                        attrs.error = False
                         if result is not None:
                             attrs.error = isinstance(result, rdm_api.Err)
                             attrs.result_type = str(type(result))
@@ -293,11 +293,12 @@ class InstrumentRocqCursor(DelegateRocqCursor):
                             )
 
                         return result
+                    except Exception:
+                        attrs.error = True
+                        raise
                     finally:
                         logger.info(meth, **attrs.model_dump(exclude_none=True))
-                        set_otel_attrs_on_span(
-                            span, model_as_otel_attrs(attrs, prefix=meth)
-                        )
+                        set_otel_attrs_on_span(span, attrs, prefix=meth)
 
             return wrapper
 
