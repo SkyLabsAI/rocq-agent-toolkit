@@ -49,7 +49,16 @@ class RocqCursorProtocolAsync(Protocol):
 
     async def _insert_command(
         self, text: str, *, ghost: bool = False
-    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]: ...
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        """Insert a command into the document.
+        If inserting the command into the document would result
+        in the document being ill-formed, then an exception is
+        raised.
+
+        Users should use `insert_command` if they do not want
+        to worry about whitespace.
+        """
+        ...
 
     async def insert_command(
         self,
@@ -57,18 +66,14 @@ class RocqCursorProtocolAsync(Protocol):
         blanks: str | None = "\n",
         ghost: bool = False,
     ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
-        revert: int | None = None
-        if not ghost and blanks is not None:
-            revert = await self.cursor_index()
-        result = await self._insert_command(text, ghost=ghost)
-        if isinstance(result, rdm_api.CommandData) and not ghost and blanks is not None:
-            try:
-                await self.insert_blanks(blanks)
-            except Exception:
-                assert revert is not None
-                await self.revert_before(erase=True, index=revert)
-                raise
-        return result
+        """Inserts the command into the document.
+
+        If inserting the command now would break the document invariant, then
+        `blanks` is inserted before the command unless it is `None`, in which
+        case the exception will the thrown.
+
+        If inserting the command fails, no change will be made to the cursor."""
+        ...
 
     async def load_file(
         self,
@@ -78,21 +83,40 @@ class RocqCursorProtocolAsync(Protocol):
         self, text: str
     ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]: ...
 
+    async def insert_sentence(
+        self, sentence: rdm_api.Sentence
+    ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
+        if sentence.kind == "blanks":
+            return await self.insert_blanks(sentence.text)
+        else:
+            return await self.insert_command(
+                sentence.text, ghost=sentence.kind == "ghost"
+            )
+
     async def insert_sentences(
-        self, sentences: list[rdm_api.Sentence]
+        self, sentences: list[rdm_api.Sentence], *, allow_partial: bool = False
     ) -> tuple[
         list[rdm_api.CommandData],
         None | tuple[rdm_api.Err[rdm_api.CommandError], list[rdm_api.Sentence]],
     ]:
+        """The return value contains the results from successfully evaluated
+        commands as well as any error.
+
+        If `allow_partial` is set to True, then, in the case of failure,
+        the cursor will be left after the last successful insertion.
+        """
+        revert: int | None = None
+        if not allow_partial:
+            revert = await self.cursor_index()
         data: list[rdm_api.CommandData] = []
         for i, sentence in enumerate(sentences):
-            if sentence.kind == "blanks":
-                await self.insert_blanks(sentence.text)
-                continue
-            result = await self._insert_command(sentence.text)
+            result = await self.insert_sentence(sentence)
             if isinstance(result, rdm_api.Err):
+                if revert is not None:
+                    await self.revert_before(erase=True, index=revert)
                 return (data, (result, sentences[i:]))
-            data.append(result)
+            elif isinstance(result, rdm_api.CommandData):
+                data.append(result)
         return (data, None)
 
     # TODO: we should really reduce the repetition on [query],
