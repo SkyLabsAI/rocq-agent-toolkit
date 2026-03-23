@@ -139,7 +139,7 @@ class RDMRocqCursor(RocqCursor):
             revert = await self.cursor_index()
             await self._rdm.insert_blanks(self._cursor, "\n")
         res = await self._rdm.insert_command(self._cursor, text, ghost=ghost)
-        if isinstance(res, rdm_api.Err) and revert:
+        if isinstance(res, rdm_api.Err) and revert is not None:
             await self.revert_before(erase=True, index=revert)
         return res
 
