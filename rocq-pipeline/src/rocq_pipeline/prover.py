@@ -220,10 +220,7 @@ async def run_delegated_prover_on_admitted_proof_task(
                 await rc.clear_suffix(count=1)
             else:
                 # 1b) else, try inserting Qed
-                try_qed_result = await rc.insert_command(
-                    "Qed.",
-                    blanks=None,
-                )
+                try_qed_result = await rc.insert_command("Qed.")
                 if not isinstance(try_qed_result, rdm_api.Err):
                     # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
                     await rc.clear_suffix(count=1)
@@ -278,7 +275,7 @@ async def try_replay(
         elif prefix_item.kind == "ghost" and include_ghost:
             await rc.insert_blanks(text=f"(* {prefix_item.text} *)")
         elif prefix_item.kind == "command":
-            insert_result = await rc.insert_command(text=prefix_item.text, blanks=None)
+            insert_result = await rc.insert_command(text=prefix_item.text)
 
             if isinstance(insert_result, rdm_api.Err):
                 await rc.insert_blanks(
