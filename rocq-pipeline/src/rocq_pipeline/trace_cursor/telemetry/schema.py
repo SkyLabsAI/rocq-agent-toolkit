@@ -1,9 +1,13 @@
 """Typed pydantic schema for ``InstrumentRocqCursor`` span attributes.
 
-This module defines the structured attribute model that ``InstrumentRocqCursor.instrument``
-in ``telemetry.py`` accumulates during execution and flushes to the OTel span.
-The same model is used by downstream consumers (e.g. ``dashboard/backend``) to
-deserialize span attribute dicts back into typed objects.
+This module defines the structured attribute model that ``InstrumentRocqCursor``
+accumulates during execution and flushes to the OTel span (via
+``model_dump(mode="json")`` / ``model_as_otel_attrs``).
+
+The dashboard tactic graph (``dashboard/backend`` ``build_rocq_cursor_graph``)
+consumes **Loki log lines**: structured JSON merged with stream labels, not a
+round-trip through this model. Optional future work could deserialize span
+attributes with ``model_from_otel_attrs`` where Tempo data is the source of truth.
 """
 
 from __future__ import annotations
