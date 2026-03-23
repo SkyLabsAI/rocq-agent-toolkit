@@ -43,6 +43,7 @@ class InstrumentRocqCursorSpanAttrs(BaseModel):
     """Span attributes emitted by instrumented methods RocqCursor.
 
     Attributes:
+    - depth (always): logical nesting depth of the instrumented method call
     - args (always): the arguments used to call the method
     - action (success; optional): the /single/ (parseable) doc interaction for the method
     - action_kind (success; w/`action`): the /kind/ of `action`, one of:
@@ -74,6 +75,7 @@ class InstrumentRocqCursorSpanAttrs(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
+    depth: int = 0
     args: Any | None = Field(default_factory=dict)
     action: str | None = None
     action_kind: Literal["blanks", "command", "ghost"] | None = None

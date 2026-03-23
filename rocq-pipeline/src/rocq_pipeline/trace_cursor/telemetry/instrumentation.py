@@ -22,6 +22,7 @@ import functools
 import hashlib
 import inspect
 from collections.abc import Awaitable, Callable, Coroutine
+from contextvars import ContextVar, Token
 from types import CoroutineType, FunctionType
 from typing import Any, Concatenate, Literal, Self, get_protocol_members, override
 
@@ -37,6 +38,14 @@ from rocq_doc_manager.cursor import DelegateRocqCursor
 from .schema import InstrumentRocqCursorSpanAttrs, LocationInfo
 
 logger = get_logger("RocqCursor")
+
+depth: ContextVar[int] = ContextVar("rocq_cursor_instrumentation_depth", default=0)
+
+
+def _push_instrumentation_depth() -> tuple[int, Token[int]]:
+    """Return *(entry_depth, token)* for `depth.reset(token)` in `finally`."""
+    entry = depth.get()
+    return entry, depth.set(entry + 1)
 
 
 async def _maybe_await[T](val: T | Awaitable[T]) -> T:
@@ -162,27 +171,35 @@ class InstrumentRocqCursor(DelegateRocqCursor):
         # Note: we hand-trace `load_file` since instrument_method relies on
         # the document being loaded.
         meth = "RocqCursor.load_file"
-        attrs = InstrumentRocqCursorSpanAttrs.model_construct()
+        entry_depth, depth_token = _push_instrumentation_depth()
+        try:
+            attrs = InstrumentRocqCursorSpanAttrs.model_construct(depth=entry_depth)
 
-        with trace_context(meth) as span:
-            try:
-                attrs.result = await self._cursor.load_file()
+            with trace_context(meth) as span:
+                try:
+                    attrs.result = await self._cursor.load_file()
 
-                if isinstance(attrs.result, rdm_api.Err):
+                    if isinstance(attrs.result, rdm_api.Err):
+                        attrs.error = True
+                        attrs.result_type = "rdm_api.Err"
+                    else:
+                        attrs.error = False
+                        attrs.result_type = "None"
+                        attrs.after = LocationInfo(
+                            **await self._untraced_location_info()
+                        )
+
+                    return attrs.result
+                except rdm_api.Error:
                     attrs.error = True
-                    attrs.result_type = "rdm_api.Err"
-                else:
-                    attrs.error = False
-                    attrs.result_type = "None"
-                    attrs.after = LocationInfo(**await self._untraced_location_info())
-
-                return attrs.result
-            except rdm_api.Error:
-                attrs.error = True
-                raise
-            finally:
-                logger.info(meth, **attrs.model_dump(mode="json", exclude_none=True))
-                set_otel_attrs_on_span(span, attrs, prefix=meth)
+                    raise
+                finally:
+                    logger.info(
+                        meth, **attrs.model_dump(mode="json", exclude_none=True)
+                    )
+                    set_otel_attrs_on_span(span, attrs, prefix=meth)
+        finally:
+            depth.reset(depth_token)
 
     @classmethod
     def _auto_instrument(cls) -> None:
@@ -242,65 +259,70 @@ class InstrumentRocqCursor(DelegateRocqCursor):
 
             @functools.wraps(func)
             async def wrapper(self, *args: P.args, **kwargs: P.kwargs):
-                bound_args = sig.bind(self, *args, **kwargs)
-                bound_args.apply_defaults()
-                args_dict = dict(bound_args.arguments)
-                args_dict.pop("self", None)
+                entry_depth, depth_token = _push_instrumentation_depth()
+                try:
+                    bound_args = sig.bind(self, *args, **kwargs)
+                    bound_args.apply_defaults()
+                    args_dict = dict(bound_args.arguments)
+                    args_dict.pop("self", None)
 
-                attrs = InstrumentRocqCursorSpanAttrs.model_construct(
-                    args={
-                        k: v
-                        for k, v in args_dict.items()
-                        if not cls.auto_instrument_skip_value(v)
-                    }
-                )
-                need_after_id: bool = False
+                    attrs = InstrumentRocqCursorSpanAttrs.model_construct(
+                        depth=entry_depth,
+                        args={
+                            k: v
+                            for k, v in args_dict.items()
+                            if not cls.auto_instrument_skip_value(v)
+                        },
+                    )
+                    need_after_id: bool = False
 
-                if effect is not None:
-                    if isinstance(effect, bool):
-                        need_after_id = effect
-                    else:
-                        effect_result = await _maybe_await(effect(self, args_dict))
-                        if isinstance(effect_result, bool):
-                            need_after_id = effect_result
-                        elif isinstance(effect_result, tuple):
-                            assert len(effect_result) == 2, (
-                                f"effect callbacks for _trace should produce 2-tuples: {effect_result}"
-                            )
-                            text, kind = effect_result
-                            need_after_id = kind != "ghost"
-                            attrs.action = text
-                            attrs.action_kind = kind
+                    if effect is not None:
+                        if isinstance(effect, bool):
+                            need_after_id = effect
+                        else:
+                            effect_result = await _maybe_await(effect(self, args_dict))
+                            if isinstance(effect_result, bool):
+                                need_after_id = effect_result
+                            elif isinstance(effect_result, tuple):
+                                assert len(effect_result) == 2, (
+                                    f"effect callbacks for _trace should produce 2-tuples: {effect_result}"
+                                )
+                                text, kind = effect_result
+                                need_after_id = kind != "ghost"
+                                attrs.action = text
+                                attrs.action_kind = kind
 
-                with trace_context(meth) as span:
-                    try:
-                        attrs.before = LocationInfo(
-                            **await self._untraced_location_info()
-                        )
-
-                        result = await func(self, *args, **kwargs)
-
-                        attrs.error = False
-                        if result is not None:
-                            attrs.error = isinstance(result, rdm_api.Err)
-                            attrs.result_type = str(type(result))
-                            if not cls.auto_instrument_skip_value(result):
-                                attrs.result = result
-
-                        if (not attrs.error or partial_effect) and need_after_id:
-                            attrs.after = LocationInfo(
+                    with trace_context(meth) as span:
+                        try:
+                            attrs.before = LocationInfo(
                                 **await self._untraced_location_info()
                             )
 
-                        return result
-                    except Exception:
-                        attrs.error = True
-                        raise
-                    finally:
-                        logger.info(
-                            meth, **attrs.model_dump(mode="json", exclude_none=True)
-                        )
-                        set_otel_attrs_on_span(span, attrs, prefix=meth)
+                            result = await func(self, *args, **kwargs)
+
+                            attrs.error = False
+                            if result is not None:
+                                attrs.error = isinstance(result, rdm_api.Err)
+                                attrs.result_type = str(type(result))
+                                if not cls.auto_instrument_skip_value(result):
+                                    attrs.result = result
+
+                            if (not attrs.error or partial_effect) and need_after_id:
+                                attrs.after = LocationInfo(
+                                    **await self._untraced_location_info()
+                                )
+
+                            return result
+                        except Exception:
+                            attrs.error = True
+                            raise
+                        finally:
+                            logger.info(
+                                meth, **attrs.model_dump(mode="json", exclude_none=True)
+                            )
+                            set_otel_attrs_on_span(span, attrs, prefix=meth)
+                finally:
+                    depth.reset(depth_token)
 
             return wrapper
 

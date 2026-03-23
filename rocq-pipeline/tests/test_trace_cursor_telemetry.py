@@ -33,6 +33,7 @@ _location_info_st = st.builds(
 
 _trace_attrs_st = st.builds(
     InstrumentRocqCursorSpanAttrs,
+    depth=st.integers(min_value=0, max_value=50),
     args=st.text(max_size=100)
     | st.integers()
     | st.dictionaries(
