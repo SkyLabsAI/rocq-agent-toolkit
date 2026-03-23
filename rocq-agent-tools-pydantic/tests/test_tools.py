@@ -45,20 +45,18 @@ async def test_run_tactic_backtrack_one_noop(N_revert: int) -> None:
         - all commands separated by newlines
         - inserted_commands added just before prefix
         """
-        expected_pf_script_str = (
-            "\n".join(
-                newline_separated_commands[:admitted_idx]
-                + (inserted_commands or [])
-                + newline_separated_commands[admitted_idx:]
-            )
-            + "\n"
+        expected_pf_script_str = "\n".join(
+            newline_separated_commands[:admitted_idx]
+            + (inserted_commands or [])
+            + newline_separated_commands[admitted_idx:]
+            + [""]
         )
         # NOTE: account for trailing newline that `setup_document_state`
-        # implicitly inserts after `Admitted.`, by virtue of using `rc.insert_command`
+        # implicitly inserts after `Admitted.`
 
-        prefix_text = [prefix.text for prefix in await rc.doc_prefix()]
-        suffix_text = [suffix.text for suffix in await rc.doc_suffix()]
-        actual_pf_script_str = "".join(prefix_text + suffix_text)
+        actual_pf_script_str = "".join(
+            t.text for t in await rc.doc_prefix() + await rc.doc_suffix()
+        )
         assert expected_pf_script_str == actual_pf_script_str
 
     async def setup_document_state(rc: RocqCursor) -> None:
@@ -69,14 +67,11 @@ async def test_run_tactic_backtrack_one_noop(N_revert: int) -> None:
             await rc.insert_blanks(text="\n")
         await assert_expected_proof_script(rc)
 
-        # 2) goto the beginning of the document
-        go_to_result = await rc.go_to(0)
-        assert not isinstance(go_to_result, rdm_api.Err)
-
         # 3) navigate to the point just before the `Admitted.` command,
         #    but /after/ its preceding blank
         assert await rc.goto_first_match(
-            fn=lambda text, kind: kind == "command" and text == "Admitted."
+            fn=lambda text, kind: kind == "command" and text == "Admitted.",
+            include_prefix=True,
         )
 
     async with rc_sess(
