@@ -181,7 +181,7 @@ class InstrumentRocqCursor(DelegateRocqCursor):
                 attrs.error = True
                 raise
             finally:
-                logger.info(meth, **attrs.model_dump(exclude_none=True))
+                logger.info(meth, **attrs.model_dump(mode="json", exclude_none=True))
                 set_otel_attrs_on_span(span, attrs, prefix=meth)
 
     @classmethod
@@ -297,7 +297,9 @@ class InstrumentRocqCursor(DelegateRocqCursor):
                         attrs.error = True
                         raise
                     finally:
-                        logger.info(meth, **attrs.model_dump(exclude_none=True))
+                        logger.info(
+                            meth, **attrs.model_dump(mode="json", exclude_none=True)
+                        )
                         set_otel_attrs_on_span(span, attrs, prefix=meth)
 
             return wrapper
