@@ -6,6 +6,16 @@ from rocq_doc_manager.rocq_doc_manager_api import CommandData
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("blanks", [' (** ("" *)', ' (* *"" *)', ' (* "*" *)'])
+async def test_comment_blanks(blanks: str) -> None:
+    async with rc_sess(Path(__file__).parent / "locator_test.v") as rc:
+        for _ in range(0, 4):
+            await rc.run_step()
+        await rc.insert_command("idtac.")
+        await rc.insert_blanks(blanks)
+
+
+@pytest.mark.asyncio
 async def test_no_blanks() -> None:
     async def split(rc: RocqCursor, text: str) -> list[str]:
         sentences = await rc.split_sentences(text)

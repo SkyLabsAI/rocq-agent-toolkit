@@ -10,6 +10,14 @@ type t = {
 let is_white : char -> bool = fun c ->
   match c with ' ' | '\t' | '\r' | '\n' -> true | _ -> false
 
+(* The automaton implemented by the internal [skip] functions has a state that
+   can be either of the following:
+   - [`Init] -- initial state, accepting only blanks if not inside a comment,
+   - [`Strg] -- inside a string literal (until we find another ['"']),
+   - [`Open] -- attempting to open a comment (last character was ['(']),
+   - [`Clos] -- attempting to close a comment (last character ws was ['*']).
+   The stack records the starting position of all (nested) comments and string
+   literal. No string or comment can be nested within a string literal. *)
 let parse : string -> offset:int -> t = fun text ~offset ->
   let len = String.length text in
   let rec skip state stack i =
@@ -26,7 +34,7 @@ let parse : string -> offset:int -> t = fun text ~offset ->
     | (`Open, '*' , _         ) -> skip `Init (i-1 :: stack) (i+1)
     | (`Open, _   , []        ) -> (`Init, stack, i - 1)
     | (`Open, '(' , _         ) -> skip `Open stack (i+1)
-    | (`Open, '"' , _         ) -> skip `Strg stack (i+1)
+    | (`Open, '"' , _         ) -> skip `Strg (i :: stack) (i+1)
     | (`Open, _   , _         ) -> skip `Init stack (i+1)
     (* End of blanks. *)
     | (`Init, _   , []        ) -> (`Init, stack, i)
@@ -34,7 +42,7 @@ let parse : string -> offset:int -> t = fun text ~offset ->
     | (`Init, '*' , _ :: _    ) -> skip `Clos stack (i+1)
     | (`Clos, ')' , _ :: stack) -> skip `Init stack (i+1)
     | (`Clos, '*' , _         ) -> skip `Clos stack (i+1)
-    | (`Clos, '"' , _         ) -> skip `Strg stack (i+1)
+    | (`Clos, '"' , _         ) -> skip `Strg (i :: stack) (i+1)
     | (`Clos, _   , _         ) -> skip `Init stack (i+1)
     (* Any other character in a comment. *)
     | (`Init, _   , _ :: _    ) -> skip `Init stack (i+1)
