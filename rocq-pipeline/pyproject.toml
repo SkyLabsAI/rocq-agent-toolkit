@@ -44,8 +44,6 @@ oracle-agent = "rocq_pipeline.agent.proof.oracle_agent:main"
 progress = "rocq_pipeline.util:main"
 persist-instrument-rocq-cursor-schema = "rocq_pipeline.trace_cursor.telemetry.schema:main"
 
-tacinterp = "rocq_pipeline.tacinterp:main"
-
 [dependency-groups]
 dev = [
     "pytest>=8.4.2,<9",
