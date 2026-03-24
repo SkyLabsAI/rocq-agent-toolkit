@@ -1,4 +1,7 @@
+import json
 from typing import Any, TypeVar, override
+
+from pydantic import JsonValue
 
 # Note: this file uses custom implementations of Reply/Err/Resp because dataclass
 # doesn't play nicely with covariant data, cf. github.com/python/mypy/issues/17623
@@ -10,6 +13,7 @@ from typing import Any, TypeVar, override
 T_co = TypeVar("T_co", covariant=True)
 
 
+# TODO: move to pydantic BaseModel
 class Err[T_co]:
     """JSON-RPC error response, with a message and optional payload."""
 
@@ -24,6 +28,9 @@ class Err[T_co]:
     @property
     def data(self) -> T_co:
         return self._data
+
+    def to_json(self) -> JsonValue:
+        return {"message": self.message, "data": json.dumps(self.data, default=repr)}
 
     def __bool__(self) -> bool:
         return False
@@ -48,6 +55,7 @@ class Err[T_co]:
         return f"{self.__class__.__qualname__}({arg_reprs})"
 
 
+# TODO: move to pydantic BaseModel
 class Resp[T_co]:
     """Json-RPC response, with a payload."""
 
@@ -57,6 +65,9 @@ class Resp[T_co]:
     @property
     def result(self) -> T_co:
         return self._result
+
+    def to_json(self) -> JsonValue:
+        return {"data": json.dumps(self.result, default=repr)}
 
     def __bool__(self) -> bool:
         return True

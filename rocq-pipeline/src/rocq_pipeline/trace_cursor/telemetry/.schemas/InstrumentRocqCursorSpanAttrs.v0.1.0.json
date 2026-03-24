@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "LocationInfo": {
+      "description": "Cursor location snapshot: content-hash id and optional proof goal.",
+      "properties": {
+        "goal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Goal"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "LocationInfo",
+      "type": "object"
+    }
+  },
+  "description": "Span attributes emitted by instrumented methods RocqCursor.\n\nAttributes:\n- depth (always): logical nesting depth of the instrumented method call\n- args (always): the arguments used to call the method\n- action (success; optional): the /single/ (parseable) doc interaction for the method\n- action_kind (success; w/`action`): the /kind/ of `action`, one of:\n  + `\"blanks\"`: insert a single Rocq blank (e.g. whitespace or comment)\n  + `\"command\"`: insert a single Rocq command\n  + `\"ghost\"`: run a single Rocq command, but don't insert it\n- before (success; always): the `LocationInfo` before the method is invoked\n- after (success; optional): the `LocationInfo` after an effectful method is invoked\n- error (success; always): whether or not the method resulted in an exception/error\n- result (success; always): the value returned\n- result_type (success; w/`result`): the name of the result-value type\n\nThe `InstrumentRocqCursor` class (cf. `./instrumentation.py`) uses\n`auto_instrument_skip_value` to determine whether or not arg/result values\nshould be included.\n\nTo avoid double counting document interactions, only low-level operations\nthat produce individual document modifications track `action` & `action_kind`.\nComposite actions which produce multiple document effects will still have a\nnon-`None` value for `after`, but child spans will need to be inspected to\naccess/accumulate the multiple `action`+`action_kind` pairs.\n\nIn case of exception/error (reflected via the span status & `error` attr), some\nof the attributes may be missing.\n\nNote: ``extra=\"ignore\"`` ensures forwards compatibility: consumers running an\nolder schema version silently drop unknown fields added in newer versions.",
+  "properties": {
+    "action": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Action"
+    },
+    "action_kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "blanks",
+            "command",
+            "ghost"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Action Kind"
+    },
+    "after": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocationInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "args": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Args"
+    },
+    "before": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocationInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "depth": {
+      "default": 0,
+      "title": "Depth",
+      "type": "integer"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    },
+    "result": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result"
+    },
+    "result_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result Type"
+    }
+  },
+  "title": "InstrumentRocqCursorSpanAttrs",
+  "type": "object"
+}

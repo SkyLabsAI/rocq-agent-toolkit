@@ -16,6 +16,7 @@ from opentelemetry.trace import Span, Status, StatusCode
 
 from .extractors import get_extractor
 from .extractors.base import AttributeExtractor, NoOpExtractor
+from .otel_attributes import set_otel_attrs_on_span
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ def trace_context(
 
             # Add custom attributes
             if attributes:
-                _set_custom_attributes(span, attributes)
+                set_otel_attrs_on_span(span, attributes)
 
             # Record metrics start
             if metrics_enabled:
@@ -183,6 +184,10 @@ def set_span_attribute(key: str, value: Any) -> None:
     """
     Set an attribute on the current span.
 
+    Primitive types (``int``, ``str``, ``bool``, ``float``) are passed through
+    as native OTel attribute values & top-level sequences are preserved; everything
+    else is JSON-encoded.
+
     Args:
         key: Attribute key
         value: Attribute value
@@ -199,13 +204,12 @@ def set_span_attribute(key: str, value: Any) -> None:
 
             return result
     """
-    span = get_current_span()
-    if span and span.is_recording():
-        # Convert value to string and limit length
-        str_value = str(value)
-        if len(str_value) > 1000:
-            str_value = str_value[:1000] + "..."
-        span.set_attribute(key, str_value)
+
+    if not (span := get_current_span()):
+        logger.info("set_span_attribute.no_current_span")
+        return
+
+    set_otel_attrs_on_span(span, {key: value})
 
 
 @contextmanager
@@ -250,17 +254,6 @@ def _get_operation_extractor(extractor_spec: Any, **kwargs: Any) -> AttributeExt
             f"Failed to create extractor {extractor_spec}: {e}. Using NoOpExtractor."
         )
         return NoOpExtractor()
-
-
-def _set_custom_attributes(span: Span, attributes: dict[str, Any]) -> None:
-    """Set custom attributes on the span."""
-    for key, value in attributes.items():
-        if value is not None:
-            # Convert to string and limit length
-            str_value = str(value)
-            if len(str_value) > 1000:
-                str_value = str_value[:1000] + "..."
-            span.set_attribute(key, str_value)
 
 
 def _record_context_start_metrics(
