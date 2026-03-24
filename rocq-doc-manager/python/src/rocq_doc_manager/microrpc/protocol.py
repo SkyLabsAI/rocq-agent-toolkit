@@ -23,7 +23,7 @@ class AsArguments(Protocol):
 
 def get_protocol(func: Callable) -> tuple[type[BaseModel], type[RootModel]]:
     """
-    Returns a pair of (ArgumentModel, ReturnModel) for the given function.
+    Returns the models used to call and return for the `Callable`.
     """
     # 1. Resolve all type hints
     type_hints = get_type_hints(
@@ -71,6 +71,7 @@ def get_protocol(func: Callable) -> tuple[type[BaseModel], type[RootModel]]:
         return (my_args, my_kwargs)
 
     ArgModel.as_args = as_args
+    assert isinstance(ArgModel, AsArguments)
 
     # 3. Construct Return Model
     # We use RootModel so we can validate return types like list[int] or dict[str, str]

@@ -11,7 +11,7 @@ from typing import (
     override,
 )
 
-from pydantic import JsonValue, RootModel, TypeAdapter
+from pydantic import BaseModel, JsonValue, RootModel, TypeAdapter
 
 from rocq_doc_manager.cursor.websocket import Encoder
 from rocq_doc_manager.microrpc.deserialize import Decoder
@@ -100,7 +100,6 @@ class ClassDispatcher(Dispatcher):
                 ) -> R:
                     method_name, json_payload = _prepare_payload(self, *args, **kwargs)
 
-                    # Await the internal _rpc call
                     raw_response = await self.dispatch(method_name, json_payload)
 
                     if return_type is NoneType:
@@ -117,7 +116,6 @@ class ClassDispatcher(Dispatcher):
                 ) -> R:
                     method_name, json_payload = _prepare_payload(self, *args, **kwargs)
 
-                    # Call the internal _rpc call synchronously
                     raw_response = self.dispatch(method_name, json_payload)
 
                     if return_type is NoneType:
