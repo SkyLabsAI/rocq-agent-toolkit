@@ -35,6 +35,7 @@ from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_doc_manager.cursor import DelegateRocqCursor
 
+from ._backwards_compat import backwards_compat_payload
 from .schema import InstrumentRocqCursorSpanAttrs, LocationInfo
 
 logger = get_logger("RocqCursor")
@@ -172,6 +173,8 @@ class InstrumentRocqCursor(DelegateRocqCursor):
         # the document being loaded.
         meth = "RocqCursor.load_file"
         entry_depth, depth_token = _push_instrumentation_depth()
+        # TODO: remove once `dashboard` has been ported to use `InstrumentRocqCursorSpanAttrs`.
+        _backwards_compat_exception: Exception | None = None
         try:
             attrs = InstrumentRocqCursorSpanAttrs.model_construct(depth=entry_depth)
 
@@ -190,14 +193,20 @@ class InstrumentRocqCursor(DelegateRocqCursor):
                         )
 
                     return attrs.result
-                except rdm_api.Error:
+                except rdm_api.Error as e:
+                    _backwards_compat_exception = e
                     attrs.error = True
                     raise
                 finally:
-                    logger.info(
-                        meth, **attrs.model_dump(mode="json", exclude_none=True)
-                    )
                     set_otel_attrs_on_span(span, attrs, prefix=meth)
+                    # TODO: remove once `dashboard` has been ported to use
+                    # `InstrumentRocqCursorSpanAttrs`.
+                    if backwards_compat_attrs := backwards_compat_payload(
+                        meth,
+                        attrs,
+                        exception=_backwards_compat_exception,
+                    ):
+                        logger.info(meth, **backwards_compat_attrs)
         finally:
             depth.reset(depth_token)
 
@@ -260,6 +269,8 @@ class InstrumentRocqCursor(DelegateRocqCursor):
             @functools.wraps(func)
             async def wrapper(self, *args: P.args, **kwargs: P.kwargs):
                 entry_depth, depth_token = _push_instrumentation_depth()
+                # TODO: remove once `dashboard` has been ported to use `InstrumentRocqCursorSpanAttrs`.
+                _backwards_compat_exception: Exception | None = None
                 try:
                     bound_args = sig.bind(self, *args, **kwargs)
                     bound_args.apply_defaults()
@@ -313,14 +324,20 @@ class InstrumentRocqCursor(DelegateRocqCursor):
                                 )
 
                             return result
-                        except Exception:
+                        except Exception as e:
+                            _backwards_compat_exception = e
                             attrs.error = True
                             raise
                         finally:
-                            logger.info(
-                                meth, **attrs.model_dump(mode="json", exclude_none=True)
-                            )
                             set_otel_attrs_on_span(span, attrs, prefix=meth)
+                            # TODO: remove once `dashboard` has been ported to use
+                            # `InstrumentRocqCursorSpanAttrs`.
+                            if backwards_compat_attrs := backwards_compat_payload(
+                                meth,
+                                attrs,
+                                exception=_backwards_compat_exception,
+                            ):
+                                logger.info(meth, **backwards_compat_attrs)
                 finally:
                     depth.reset(depth_token)
 
