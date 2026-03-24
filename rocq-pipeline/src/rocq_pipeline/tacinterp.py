@@ -2,6 +2,8 @@ import asyncio
 import json
 import sys
 from collections.abc import Awaitable, Callable, Sequence
+from contextlib import AbstractAsyncContextManager
+from types import TracebackType
 from typing import cast
 
 from rocq_doc_manager import RocqCursor, rc_sess
@@ -18,6 +20,40 @@ class LtacFail(Exception):
 
 
 type RunCommandResult = rdm_api.ProofState | None | rdm_api.Err
+
+
+class LtacTry(AbstractAsyncContextManager):
+    def __init__(self, rc: RocqCursor) -> None:
+        self._cursor = rc
+        self._cloned: None | RocqCursor = None
+
+    async def __aenter__(self) -> RocqCursor:
+        self._cloned = await self._cursor.clone()
+        return self._cloned
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> bool:
+        assert self._cloned is not None
+        if exc_type is None:
+            # copy the contents from self._cloned to self._cursor
+            start_prefix = await self._cursor.doc_prefix()
+            end_prefix = await self._cloned.doc_prefix()
+            assert end_prefix[0 : len(start_prefix)] == start_prefix
+            for i in end_prefix[len(start_prefix) :]:
+                if i.kind == "blanks":
+                    await self._cursor.insert_blanks(i.text)
+                else:
+                    await self._cursor.insert_command(
+                        i.text, ghost=i.kind == "ghost", blanks=None
+                    )
+        await self._cloned.dispose()
+        self._cloned = None
+        return False
 
 
 def run_tac(
@@ -120,31 +156,39 @@ async def decomp_run(
         case "Atom":
             tac = tactic[1]
             assert isinstance(tac, str)
-            result = await run_on_each(rc, cast(str, tac), run_tac(tac), goals=goals)
-            return result
+            return await run_on_each(rc, cast(str, tac), run_tac(tac), goals=goals)
         case "Then":
             [_, tac1, tac2] = tactic
             # assert isinstance(tac1, TacticAST)
             # assert isinstance(tac2, TacticAST)
-            new_goals = await decomp_run(rc, cast(TacticAST, tac1), goals=goals)
-            return await decomp_run(
-                rc, cast(TacticAST, tac2), goals=(first_goal, new_goals)
-            )
+            async with LtacTry(rc) as rc_attempt:
+                new_goals = await decomp_run(
+                    rc_attempt, cast(TacticAST, tac1), goals=goals
+                )
+                return await decomp_run(
+                    rc_attempt, cast(TacticAST, tac2), goals=(first_goal, new_goals)
+                )
         case "Thens":
-            new_goals = await decomp_run(rc, cast(TacticAST, tactic[1]), goals=goals)
-            if new_goals != len(tactic[2]):
-                raise LtacFail()
-            return await run_on_goals(
-                rc,
-                [decomp_run_lam(cast(TacticAST, tac)) for tac in tactic[2]],
-                goals=(first_goal, new_goals),
-            )
+            async with LtacTry(rc) as rc_attempt:
+                new_goals = await decomp_run(
+                    rc_attempt, cast(TacticAST, tactic[1]), goals=goals
+                )
+                if new_goals != len(tactic[2]):
+                    raise LtacFail()
+                return await run_on_goals(
+                    rc_attempt,
+                    [decomp_run_lam(cast(TacticAST, tac)) for tac in tactic[2]],
+                    goals=(first_goal, new_goals),
+                )
         case "Thens3":
             [_, tac, before, middle, after] = tactic
-            count = await decomp_run(rc, cast(TacticAST, tac), goals=goals)
-            return await decomp_run(
-                rc, ["ExtendTac", before, middle, after], goals=(first_goal, count)
-            )
+            async with LtacTry(rc) as rc_attempt:
+                count = await decomp_run(rc_attempt, cast(TacticAST, tac), goals=goals)
+                return await decomp_run(
+                    rc_attempt,
+                    ["ExtendTac", before, middle, after],
+                    goals=(first_goal, count),
+                )
         case "ExtendTac":
             [_, before, middle, after] = tactic
             if count < len(before) + len(after):
@@ -173,15 +217,9 @@ async def decomp_run(
                 nonlocal tactic
                 for t in cast(list[TacticAST], tactic[1:]):
                     try:
-                        async with (await rc.clone()).sess() as rc_attempt:
+                        async with LtacTry(rc) as rc_attempt:
                             _ = await decomp_run(rc_attempt, t, goals=(goal, 1))
-                        # TODO: this is not an efficient implementation of try
-                        print(">>>>>>>>>>>>>> REPLICATE")
-                        await decomp_run(rc, t, goals=(goal, 1))
-                        print("<<<<<<<<<<<<<< REPLICATE")
-                        return await rc.current_goal()
-                    except NotImplementedError:
-                        raise
+                            return await rc_attempt.current_goal()
                     except LtacFail:
                         continue
                 raise LtacFail()
@@ -194,15 +232,10 @@ async def decomp_run(
                 nonlocal tactic
                 for t in cast(list[TacticAST], tactic[1:]):
                     try:
-                        async with (await rc.clone()).sess() as rc_attempt:
+                        async with LtacTry(rc) as rc_attempt:
                             count = await decomp_run(rc_attempt, t, goals=(goal, 1))
                             if count > 0:
                                 raise LtacFail()
-
-                        print(">>>>>>>>>>>>>> REPLICATE")
-                        count = await decomp_run(rc, t, goals=(goal, 1))
-                        print("<<<<<<<<<<<<<< REPLICATE")
-                        assert count == 0
                         return await rc.current_goal()
                     except LtacFail:
                         continue
@@ -216,11 +249,8 @@ async def decomp_run(
                 nonlocal tactic
                 t = cast(TacticAST, tactic[1])
                 try:
-                    async with (await rc.clone()).sess() as rc_attempt:
+                    async with LtacTry(rc) as rc_attempt:
                         await decomp_run(rc_attempt, t, goals=(goal, 1))
-                    print(">>>>>>>>>>>>>> REPLICATE")
-                    await decomp_run(rc, t, goals=(goal, 1))
-                    print("<<<<<<<<<<<<<< REPLICATE")
                 except LtacFail:
                     pass
                 return await rc.current_goal()
