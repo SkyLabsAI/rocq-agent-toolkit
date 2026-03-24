@@ -10,16 +10,17 @@ type t = {
 let is_white : char -> bool = fun c ->
   match c with ' ' | '\t' | '\r' | '\n' -> true | _ -> false
 
+(* The automaton implemented by the internal [skip] functions has a state that
+   can be either of the following:
+   - [`Init] -- initial state, accepting only blanks if not inside a comment,
+   - [`Strg] -- inside a string literal (until we find another ['"']),
+   - [`Open] -- attempting to open a comment (last character was ['(']),
+   - [`Clos] -- attempting to close a comment (last character ws was ['*']).
+   The stack records the starting position of all (nested) comments and string
+   literal. No string or comment can be nested within a string literal. *)
 let parse : string -> offset:int -> t = fun text ~offset ->
   let len = String.length text in
   let rec skip state stack i =
-    (* `Init -- non-special character
-       `Strg -- inside a string
-       `Open -- last char was '('
-       `Clos -- last char was '*' (potential to close)
-
-       the stack represents the depth of comment nesting
-     *)
     if i >= len then (state, stack, i) else
     match (state, text.[i], stack) with
     (* Blank characters (outside of comments) *)
