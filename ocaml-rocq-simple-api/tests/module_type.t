@@ -17,26 +17,30 @@
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module foo started" }
     ],
-    "synterp_ast": { "tag": "DefineModule", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "DefineModule", "pure": false }
   }
   [0] 2 > run 0 "Definition a := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.a" ] },
     "feedback_messages": [ { "level": "info", "text": "a is defined" } ],
-    "synterp_ast": { "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
   }
   [0] 3 > run 0 "Module Type bar."
   {
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module Type bar started" }
     ],
-    "synterp_ast": { "tag": "DeclareModuleType", "pure": false }
+    "synterp_ast": {
+      "controls": [],
+      "tag": "DeclareModuleType",
+      "pure": false
+    }
   }
   [0] 4 > run 0 "Definition b := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.bar.b" ] },
     "feedback_messages": [ { "level": "info", "text": "b is defined" } ],
-    "synterp_ast": { "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
   }
   [0] 5 > run 0 "End bar."
   {
@@ -44,13 +48,13 @@
     "feedback_messages": [
       { "level": "info", "text": "Module Type bar is defined" }
     ],
-    "synterp_ast": { "tag": "EndSegment", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false }
   }
   [0] 6 > run 0 "End foo."
   {
     "feedback_messages": [
       { "level": "info", "text": "Module foo is defined" }
     ],
-    "synterp_ast": { "tag": "EndSegment", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false }
   }
   [0] 7 > [EOF]

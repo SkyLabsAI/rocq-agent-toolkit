@@ -187,9 +187,14 @@ let _ =
 let vernac_entry_tag =
   S.variant ~encode:Fun.id (Array.to_list Rocq_vernac_entry.command_tags)
 
+let vernac_control_tag =
+  S.variant ~encode:Fun.id (Array.to_list Rocq_vernac_entry.control_tags)
+
 let vernac_data =
   let fields =
     API.Fields.add ~name:"kind" ~descr:"command kind" vernac_entry_tag @@
+    API.Fields.add ~name:"controls" ~descr:"control instructions"
+      S.(list vernac_control_tag) @@
     API.Fields.add ~name:"pure" ~descr:"indicates if the command is \
       definitely pure for the syntax interpretation phase" S.bool @@
     API.Fields.add ~name:"attrs" ~descr:"Attributes" S.(dict any) @@
@@ -199,8 +204,9 @@ let vernac_data =
   let decode v =
     let kind = Rocq_vernac_entry.command_tag v in
     let pure = Rocq_vernac_entry.command_is_pure v in
+    let controls = Rocq_vernac_entry.command_controls v in
     let attrs =
-      match v.CAst.v with
+      match snd v.CAst.v with
       | Vernacexpr.VernacSynterp(e) ->
           begin
             let open Rocq_vernac_entry in
@@ -268,7 +274,7 @@ let vernac_data =
             | _ -> []
           end
     in
-    (kind, (pure, (attrs, ())))
+    (kind, (controls, (pure, (attrs, ()))))
   in
   API.declare_object api ~name:"VernacData" ~descr:"limited Rocq AST \
     information for a command" ~encode ~decode fields
