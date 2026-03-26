@@ -207,10 +207,12 @@ let vernac_data =
             match e with
             | EVernacBeginSection(id)
             | EVernacEndSegment(id)
-            | EVernacDeclareModule(id)
-            | EVernacDefineModule(id)
-            | EVernacDeclareModuleType(id) ->
+            | EVernacDeclareModule(id) ->
                 [("id", `String(Names.Id.to_string id.CAst.v))]
+            | EVernacDeclareModuleType(id, defn)
+            | EVernacDefineModule(id, defn) ->
+                [("id", `String(Names.Id.to_string id.CAst.v));
+                  ("defn", `Bool(defn))]
             | _ -> []
           end
       | Vernacexpr.VernacSynPure(e) ->
