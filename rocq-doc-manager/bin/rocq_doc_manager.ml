@@ -209,10 +209,10 @@ let vernac_data =
             | EVernacEndSegment(id)
             | EVernacDeclareModule(id) ->
                 [("id", `String(Names.Id.to_string id.CAst.v))]
-            | EVernacDeclareModuleType(id, defn)
-            | EVernacDefineModule(id, defn) ->
+            | EVernacDeclareModuleType{id; has_body}
+            | EVernacDefineModule{id; has_body} ->
                 [("id", `String(Names.Id.to_string id.CAst.v));
-                  ("defn", `Bool(defn))]
+                  ("defn", `Bool(has_body))]
             | _ -> []
           end
       | Vernacexpr.VernacSynPure(e) ->
