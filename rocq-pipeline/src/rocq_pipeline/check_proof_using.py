@@ -23,7 +23,7 @@ _SUCCEED_OR_FAIL = re.compile(r"^(Succeed|Fail)\s.*")
 
 async def process(
     rc: RocqCursor,
-    suffix: Sequence[SuffixItem | PrefixItem],
+    items: Sequence[SuffixItem | PrefixItem],
     *,
     progress: ProgressCallback | None = None,
     trace: bool = False,
@@ -57,9 +57,9 @@ async def process(
                 print(f"Popping section {s} resulted in err: {result}.")
                 print(f"Sections = {sections}")
 
-    step = 1.0 / len(suffix)
+    step = 1.0 / len(items)
 
-    for i, item in enumerate(suffix):
+    for i, item in enumerate(items):
         result = await rc.run_step()
         assert not isinstance(result, Err)
         if progress:
@@ -158,7 +158,7 @@ async def process(
                         # print(f"As occurs:\n{finished}\nAdmitted:\n{admitted}")
 
             else:
-                processed.extend("".join(t.text for t in suffix[proof_start : i + 1]))
+                processed.extend("".join(t.text for t in items[proof_start : i + 1]))
             in_proof = None
 
         elif item.data.kind == "ExactProof":
