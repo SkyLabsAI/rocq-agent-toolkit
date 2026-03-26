@@ -84,6 +84,7 @@ type ProgressCallback = Feedback
 def parallel_runner[T, U](
     run: Callable[[T, ProgressCallback], Awaitable[U]],
     tasks: list[tuple[str, T]],
+    *,
     succeeded: Callable[[U], bool] | None = None,
     jobs: int = 1,
     progress: bool = True,
