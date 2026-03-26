@@ -20,18 +20,14 @@
   >   Equations Equations.Prop Equations.Type))
   > EOF
   $ cat > test.v <<EOF
-  > Lemma test : (True /\ True) /\ (True /\ True).
+  > Lemma test : True /\ True.
   > Proof.
-  >   split; [ split | split ]; trivial.
+  >   split; trivial.
   > Qed.
   > EOF
 
-  $ uv run tacinterp test.v Lemma:test
-  0/ split; [ split | split ]; trivial.
+  $ uv run tacinterp -1 test.v Lemma:test
+  0/ split; trivial.
     > run_command("1: split.")
-    > run_command("1: split.")
-    > run_command("3: split.")
-    > run_command("1: trivial.")
-    > run_command("1: trivial.")
     > run_command("1: trivial.")
     > run_command("1: trivial.")

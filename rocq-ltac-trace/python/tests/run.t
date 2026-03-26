@@ -11,6 +11,7 @@
   > (using rocq 0.11)
   > (name test)
   > EOF
+
   $ cat > dune <<EOF
   > (include_subdirs qualified)
   > (rocq.theory
@@ -26,7 +27,7 @@
   > Qed.
   > EOF
 
-  $ uv run tacinterp test.v Lemma:test
+  $ uv run tacinterp -1 test.v Lemma:test
   0/ split; trivial.
     > run_command("1: split.")
     > run_command("1: trivial.")

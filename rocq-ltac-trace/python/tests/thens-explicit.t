@@ -26,7 +26,7 @@
   > Qed.
   > EOF
 
-  $ uv run tacinterp test.v Lemma:test
+  $ uv run tacinterp -1 test.v Lemma:test
   0/ split; [ split; trivial | split; trivial ].
     > run_command("1: split.")
     > run_command("1: split.")

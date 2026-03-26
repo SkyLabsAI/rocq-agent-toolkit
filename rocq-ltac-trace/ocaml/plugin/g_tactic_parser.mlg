@@ -1,4 +1,4 @@
-DECLARE PLUGIN "rocq-tactic-parser.plugin"
+DECLARE PLUGIN "rocq-tactic-info.plugin"
 
 {
 
@@ -11,7 +11,7 @@ open Tacarg
 }
 
 VERNAC COMMAND EXTEND explain_tactic
-| [ "Explain" tactic(tac) ] => { query } -> {
+| [ "info.Ltac" tactic(tac) ] => { query } -> {
     Explain.explain (Global.env ()) Evd.empty tac
   }
 END

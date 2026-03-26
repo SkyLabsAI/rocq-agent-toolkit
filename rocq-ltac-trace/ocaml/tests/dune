@@ -3,4 +3,4 @@
  (deps
   (package rocq-core)
   (package rocq-stdlib)
-  (package rocq-tactic-parser)))
+  (package rocq-tactic-info)))
