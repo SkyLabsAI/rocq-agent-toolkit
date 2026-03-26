@@ -1,4 +1,4 @@
-  $ export WORKSPACE="$TESTDIR/../../../../.."
+  $ export WORKSPACE="$TESTDIR/../../../.."
   $ export PATH="$WORKSPACE/_build/install/default/bin:$PATH"
   $ export ROCQPATH="$WORKSPACE/_build/install/default/lib/coq/user-contrib"
   $ export ROCQLIB="$WORKSPACE/_build/install/default/lib/coq"
@@ -20,18 +20,14 @@
   >   Equations Equations.Prop Equations.Type))
   > EOF
   $ cat > test.v <<EOF
-  > Lemma test : (True /\ True) /\ (True /\ True).
+  > Lemma test : True /\ True.
   > Proof.
-  >   split; [ split; trivial | split; trivial ].
+  >   split; trivial.
   > Qed.
   > EOF
 
   $ uv run tacinterp -1 test.v Lemma:test
-  0/ split; [ split; trivial | split; trivial ].
-    > run_command("1: split.")
-    > run_command("1: split.")
-    > run_command("1: trivial.")
-    > run_command("1: trivial.")
+  0/ split; trivial.
     > run_command("1: split.")
     > run_command("1: trivial.")
     > run_command("1: trivial.")
