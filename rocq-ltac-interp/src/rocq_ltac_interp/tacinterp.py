@@ -8,21 +8,82 @@ from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import DuneRocqPlugin
 
-type RunCommandResult = rdm_api.ProofState | None | rdm_api.Err
+type LocalProofState = rdm_api.ProofState
+type RunCommandResult = LocalProofState | None | rdm_api.Err
 
 
-class AtomCallback(Protocol):
-    """Protocol for evaluating atomic tactics"""
+def diff_goals(
+    pre: rdm_api.ProofState, on: int, post: rdm_api.ProofState | None
+) -> LocalProofState | None:
+    """Compute the relativized proof state for a tactic that runs on goal `on`."""
+    if post is None:
+        assert on == 0
+        assert len(pre.focused_goals) == 1
+        return None
+    else:
+        # the beginning and ending of the focused_goals will be the
+        # same, but we need to compute the goals that change.
+        assert pre.focused_goals[0:on] == post.focused_goals[0:on]
+        preserved_end = len(pre.focused_goals) - on - 1
+        fg = (
+            post.focused_goals[on:]
+            if preserved_end == 0
+            else post.focused_goals[on:-preserved_end]
+        )
+        return rdm_api.ProofState(
+            focused_goals=fg,
+            unfocused_goals=post.unfocused_goals,
+            shelved_goals=post.shelved_goals,
+            given_up_goals=post.given_up_goals,
+        )
+
+
+class TacticRunner(Protocol):
+    """Protocol for evaluating tactics."""
 
     async def __call__(
-        self, rc: RocqCursor, goal: int, tac: str, *, trace: int | None = None
-    ) -> RunCommandResult: ...
+        self,
+        rc: RocqCursor,
+        goal: int,
+        tac: str,
+        *,
+        pre: rdm_api.ProofState,
+        trace: int | None = None,
+    ) -> RunCommandResult:
+        """This function **must** return a relativized ProofState.
+        A relativized proof state can be computed using `diff_goals`.
+        Clients that want to override this can implement `global_call`
+        to get the
+        """
+        result = await rc.run_command(f"{goal}: {tac}.")
+        if result is None:
+            return result
+        elif isinstance(result, rdm_api.Err):
+            return result
+        else:
+            return diff_goals(pre, goal, result.proof_state)
 
 
 class LtacThunk(Protocol):
     async def __call__(
-        self, rc: RocqCursor, goal: int, *, trace: int | None = None
+        self,
+        rc: RocqCursor,
+        goal: int,
+        *,
+        pre: rdm_api.ProofState,
+        trace: int | None = None,
     ) -> RunCommandResult: ...
+
+
+def atomic_to_thunk(runner: TacticRunner, tactic: str) -> LtacThunk:
+    async def result(
+        rc: RocqCursor, goal: int, *, pre: rdm_api.ProofState, trace: int | None = None
+    ) -> RunCommandResult:
+        nonlocal runner
+        nonlocal tactic
+        return await runner.__call__(rc, goal, tactic, pre=pre, trace=trace)
+
+    return result
 
 
 PLUGIN = DuneRocqPlugin(
@@ -95,7 +156,12 @@ class LtacTry(AbstractAsyncContextManager):
 
 
 async def run_tac(
-    rc: RocqCursor, goal: int, tac: str, *, trace: int | None = None
+    rc: RocqCursor,
+    goal: int,
+    tac: str,
+    *,
+    pre: rdm_api.ProofState,
+    trace: int | None = None,
 ) -> RunCommandResult:
     """Evalute the tactic in the current state"""
 
@@ -158,30 +224,27 @@ async def run_on_goals(
     current_goal = await rc.current_goal()
     if current_goal is None:
         raise NotImplementedError()
-    else:
-        focused_goals = current_goal.focused_goals
     for i, run_tactic in enumerate(tacs):
         if run_tactic is None:
             base += 1
         else:
-            result = await run_tactic(rc, base, trace=trace)
-            if isinstance(result, rdm_api.Err):
-                raise LtacFail(result)
+            pf_state = await run_tactic(rc, base, trace=trace, pre=current_goal)
+            if isinstance(pf_state, rdm_api.Err):
+                raise LtacFail(pf_state)
             else:
                 # diff current_goal[base+1] with result[base:]
-                pf_state = result
                 if pf_state is None:
                     assert i == count - 1
                     return 0
-                elif base + 1 < len(focused_goals):
+                elif base + 1 < len(current_goal.focused_goals):
                     try:
                         base = pf_state.focused_goals[base:].index(
-                            focused_goals[base + 1]
+                            current_goal.focused_goals[base + 1]
                         )
                     except ValueError:
                         print("- " + "\n- ".join(pf_state.focused_goals))
                         raise
-                    focused_goals = pf_state.focused_goals
+                    current_goal = pf_state
                 else:
                     assert i == count - 1
                     return len(pf_state.focused_goals) - first_goal
@@ -191,10 +254,10 @@ async def run_on_goals(
 def decomp_run_curry(
     tactic: TacticAST,
     *,
-    run_atom: AtomCallback = run_tac,
+    run_atom: TacticRunner = run_tac,
 ) -> LtacThunk:
     async def run(
-        rc: RocqCursor, goal: int, *, trace: int | None = None
+        rc: RocqCursor, goal: int, *, pre: rdm_api.ProofState, trace: int | None = None
     ) -> RunCommandResult:
         _count = await interp_rec(
             rc, tactic, goals=(goal, 1), trace=trace, run_atom=run_atom
@@ -219,7 +282,7 @@ async def interp_rec(
     tactic: TacticAST,
     *,
     goals: tuple[int, int] = (0, 1),
-    run_atom: AtomCallback = run_tac,
+    run_atom: TacticRunner = run_tac,
     trace: int | None = None,
 ) -> int:
     """Interprets the tactic AST at the current RocqCursor.
@@ -244,9 +307,13 @@ async def interp_rec(
             assert isinstance(tac, str)
 
             async def lam_run_tac(
-                rc: RocqCursor, goal: int, *, trace: int | None = None
+                rc: RocqCursor,
+                goal: int,
+                *,
+                pre: rdm_api.ProofState,
+                trace: int | None = None,
             ) -> RunCommandResult:
-                return await run_atom(rc, goal, cast(str, tac), trace=trace)
+                return await run_atom(rc, goal, cast(str, tac), trace=trace, pre=pre)
 
             return await run_on_each(
                 rc, cast(str, tac), lam_run_tac, goals=goals, trace=trace_indent(trace)
@@ -394,7 +461,11 @@ async def interp_rec(
         case "First":
 
             async def run_first(
-                rc: RocqCursor, goal: int, *, trace: int | None = None
+                rc: RocqCursor,
+                goal: int,
+                *,
+                pre: rdm_api.ProofState,
+                trace: int | None = None,
             ) -> RunCommandResult:
                 nonlocal tactic
                 for t in cast(list[TacticAST], tactic[1:]):
@@ -419,7 +490,11 @@ async def interp_rec(
         case "Solve":
 
             async def run_solve(
-                rc: RocqCursor, goal: int, *, trace: int | None = None
+                rc: RocqCursor,
+                goal: int,
+                *,
+                pre: rdm_api.ProofState,
+                trace: int | None = None,
             ) -> RunCommandResult:
                 nonlocal tactic
                 for t in cast(list[TacticAST], tactic[1:]):
@@ -444,7 +519,11 @@ async def interp_rec(
         case "Try":
 
             async def run_try(
-                rc: RocqCursor, goal: int, *, trace: int | None = None
+                rc: RocqCursor,
+                goal: int,
+                *,
+                pre: rdm_api.ProofState,
+                trace: int | None = None,
             ) -> RunCommandResult:
                 nonlocal tactic
                 t = cast(TacticAST, tactic[1])
@@ -471,7 +550,7 @@ async def interp_tactic(
     tactic: str,
     *,
     goals: tuple[int, int] = (0, 1),
-    run_atom: AtomCallback = run_tac,
+    run_atom: TacticRunner = run_tac,
     trace: int | None = None,
 ) -> int:
     """Interpret a tactic from a string.

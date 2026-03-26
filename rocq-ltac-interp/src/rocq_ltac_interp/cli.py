@@ -6,6 +6,7 @@ from pathlib import Path
 from rocq_doc_manager import rc_sess
 from rocq_doc_manager.cursor.protocol import RocqCursor
 from rocq_doc_manager.locator import Locator, LocatorParser
+from rocq_doc_manager.rocq_doc_manager_api import ProofState
 from rocq_dune_util import rocq_args_for
 
 from rocq_ltac_interp.tacinterp import (
@@ -24,9 +25,16 @@ async def amain(
     if trace_atom:
 
         async def run_atom(
-            rc: RocqCursor, goal: int, tac: str, *, trace: int | None = None
+            rc: RocqCursor,
+            goal: int,
+            tac: str,
+            *,
+            pre: ProofState,
+            trace: int | None = None,
         ) -> RunCommandResult:
-            return await run_tac(rc, goal, tac, trace=2 if trace is None else trace)
+            return await run_tac(
+                rc, goal, tac, pre=pre, trace=2 if trace is None else trace
+            )
 
     else:
         run_atom = run_tac
