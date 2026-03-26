@@ -11,6 +11,7 @@ from rocq_doc_manager.rocq_doc_manager_api import PrefixItem, SuffixItem
 _SUCCEED_OR_FAIL = re.compile(r"^(Succeed|Fail)\s.*")
 
 
+# TODO: this should get integrated with check_proof_using/process
 def strip_proofs_from_doc_items(items: Sequence[SuffixItem | PrefixItem]) -> list[str]:
     processed: list[str] = []
     in_proof: tuple[bool, str, int] | None = None

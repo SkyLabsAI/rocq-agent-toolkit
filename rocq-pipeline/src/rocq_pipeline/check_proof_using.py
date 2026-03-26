@@ -21,6 +21,7 @@ from rocq_pipeline.util import ProgressCallback, parallel_runner
 _SUCCEED_OR_FAIL = re.compile(r"^(Succeed|Fail)\s.*")
 
 
+# TODO: this should get unified with remove_proofs/strip_proofs_from_doc_items
 async def process(
     rc: RocqCursor,
     items: Sequence[SuffixItem | PrefixItem],
