@@ -26,7 +26,7 @@ Changelog = "https://github.com/SkylabsAI/rocq-agent-toolkit/tree/main/changes"
 
 
 [project.scripts]
-tacinterp = "rocq_ltac_interp.tacinterp:main"
+tacinterp = "rocq_ltac_interp.cli:main"
 
 [dependency-groups]
 dev = [

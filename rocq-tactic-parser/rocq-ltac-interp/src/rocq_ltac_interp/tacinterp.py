@@ -1,16 +1,11 @@
-import asyncio
 import json
-import sys
 from collections.abc import Awaitable, Callable, Sequence
 from contextlib import AbstractAsyncContextManager
 from types import TracebackType
 from typing import cast
 
-from rocq_doc_manager import RocqCursor, rc_sess
+from rocq_doc_manager import RocqCursor
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_doc_manager.locator import LocatorParser
-from rocq_dune_util import rocq_args_for
-from rocq_dune_util.rocq_dune_util import DuneRocqPlugin
 
 type TacticAST = list[str | TacticAST]
 
@@ -21,8 +16,29 @@ class LtacFail(Exception):
 
 type RunCommandResult = rdm_api.ProofState | None | rdm_api.Err
 
+type Intepreter[T] = Callable[[RocqCursor, int], Awaitable[T]]
+
+type AtomCallback = Callable[[RocqCursor, int, str], Awaitable[RunCommandResult]]
+
+
+async def copy_extension(*, src: RocqCursor, dst: RocqCursor) -> None:
+    # copy the contents from self._cloned to self._cursor
+    start_prefix = await dst.doc_prefix()
+    end_prefix = await src.doc_prefix()
+    assert end_prefix[0 : len(start_prefix)] == start_prefix
+    for i in end_prefix[len(start_prefix) :]:
+        if i.kind == "blanks":
+            await dst.insert_blanks(i.text)
+        else:
+            assert isinstance(
+                await dst.insert_command(i.text, ghost=i.kind == "ghost", blanks=None),
+                rdm_api.CommandData,
+            )
+
 
 class LtacTry(AbstractAsyncContextManager):
+    """Context manager that reverts effects if Ltac fails."""
+
     def __init__(self, rc: RocqCursor) -> None:
         self._cursor = rc
         self._cloned: None | RocqCursor = None
@@ -41,34 +57,20 @@ class LtacTry(AbstractAsyncContextManager):
         assert self._cloned is not None
         if exc_type is None:
             # copy the contents from self._cloned to self._cursor
-            start_prefix = await self._cursor.doc_prefix()
-            end_prefix = await self._cloned.doc_prefix()
-            assert end_prefix[0 : len(start_prefix)] == start_prefix
-            for i in end_prefix[len(start_prefix) :]:
-                if i.kind == "blanks":
-                    await self._cursor.insert_blanks(i.text)
-                else:
-                    await self._cursor.insert_command(
-                        i.text, ghost=i.kind == "ghost", blanks=None
-                    )
+            await copy_extension(src=self._cloned, dst=self._cursor)
         await self._cloned.dispose()
         self._cloned = None
         return False
 
 
-def run_tac(
-    tac: str,
-) -> Callable[[RocqCursor, int], Awaitable[RunCommandResult]]:
+async def run_tac(rc: RocqCursor, goal: int, tac: str) -> RunCommandResult:
     """The goal is 0-based"""
 
-    async def result(rc: RocqCursor, goal: int) -> RunCommandResult:
-        print(f'  > run_command("{goal + 1}: {tac}.")')
-        result = await rc.run_command(f"{goal + 1}: {tac}.")
-        if isinstance(result, rdm_api.Err):
-            return result
-        return result.proof_state
-
-    return result
+    print(f'  > run_command("{goal + 1}: {tac}.")')
+    result = await rc.run_command(f"{goal + 1}: {tac}.")
+    if isinstance(result, rdm_api.Err):
+        return result
+    return result.proof_state
 
 
 async def run_on_each(
@@ -78,13 +80,14 @@ async def run_on_each(
     *,
     goals: tuple[int, int],
     multi_goal: bool = False,
+    trace: int | None = None,
 ) -> int:
     """Returns the number of goals resulting from applying
     `tactic` to the goals. This is just the number of goals from that range,
     if `goals` does not include some goals, then these will not be included in the
     count.
     """
-    print(f" > run_atom({tactic}, {goals})")
+    dbg_trace(trace, f"> run_atom({tactic}, {goals})")
     _, count = goals
     if multi_goal:
         raise NotImplementedError()
@@ -95,8 +98,11 @@ async def run_on_each(
 async def run_on_goals(
     rc: RocqCursor,
     tacs: Sequence[Callable[[RocqCursor, int], Awaitable[RunCommandResult]] | None],
+    *,
     goals: tuple[int, int] = (0, 1),
+    trace: int | None = None,
 ) -> int:
+    dbg_trace(trace, f"run_on_goals({tacs}, {goals})")
     first_goal, count = goals
     if len(tacs) != count:
         raise LtacFail()
@@ -141,37 +147,64 @@ def decomp_run_lam(
     tactic: TacticAST,
 ) -> Callable[[RocqCursor, int], Awaitable[RunCommandResult]]:
     async def run(rc: RocqCursor, goal: int) -> RunCommandResult:
-        _count = await decomp_run(rc, tactic, goals=(goal, 1))
+        _count = await interp(rc, tactic, goals=(goal, 1))
         return await rc.current_goal()
 
     return run
 
 
-async def decomp_run(
-    rc: RocqCursor, tactic: TacticAST, *, goals: tuple[int, int]
+def dbg_trace(trace: int | None, msg: str) -> None:
+    if trace is None:
+        return
+    print(" " * trace + msg, flush=True)
+
+
+def indent(trace: int | None) -> int | None:
+    return None if trace is None else (trace + 2)
+
+
+async def interp(
+    rc: RocqCursor,
+    tactic: TacticAST,
+    *,
+    goals: tuple[int, int] = (0, 1),
+    run_atom: AtomCallback = run_tac,
+    trace: int | None = None,
 ) -> int:
-    print(f" > decomp_run({json.dumps(tactic)}, {goals})")
+    dbg_trace(trace, f"decomp_run({json.dumps(tactic)}, {goals})")
     first_goal, count = goals
     match tactic[0]:
         case "Atom":
             tac = tactic[1]
             assert isinstance(tac, str)
-            return await run_on_each(rc, cast(str, tac), run_tac(tac), goals=goals)
+
+            async def lam_run_tac(rc: RocqCursor, goal: int) -> RunCommandResult:
+                return await run_atom(rc, goal, cast(str, tac))
+
+            return await run_on_each(
+                rc, cast(str, tac), lam_run_tac, goals=goals, trace=indent(trace)
+            )
         case "Then":
             [_, tac1, tac2] = tactic
             # assert isinstance(tac1, TacticAST)
             # assert isinstance(tac2, TacticAST)
             async with LtacTry(rc) as rc_attempt:
-                new_goals = await decomp_run(
-                    rc_attempt, cast(TacticAST, tac1), goals=goals
+                new_goals = await interp(
+                    rc_attempt, cast(TacticAST, tac1), goals=goals, trace=indent(trace)
                 )
-                return await decomp_run(
-                    rc_attempt, cast(TacticAST, tac2), goals=(first_goal, new_goals)
+                return await interp(
+                    rc_attempt,
+                    cast(TacticAST, tac2),
+                    goals=(first_goal, new_goals),
+                    trace=indent(trace),
                 )
         case "Thens":
             async with LtacTry(rc) as rc_attempt:
-                new_goals = await decomp_run(
-                    rc_attempt, cast(TacticAST, tactic[1]), goals=goals
+                new_goals = await interp(
+                    rc_attempt,
+                    cast(TacticAST, tactic[1]),
+                    goals=goals,
+                    trace=indent(trace),
                 )
                 if new_goals != len(tactic[2]):
                     raise LtacFail()
@@ -179,15 +212,19 @@ async def decomp_run(
                     rc_attempt,
                     [decomp_run_lam(cast(TacticAST, tac)) for tac in tactic[2]],
                     goals=(first_goal, new_goals),
+                    trace=indent(trace),
                 )
         case "Thens3":
             [_, tac, before, middle, after] = tactic
             async with LtacTry(rc) as rc_attempt:
-                count = await decomp_run(rc_attempt, cast(TacticAST, tac), goals=goals)
-                return await decomp_run(
+                count = await interp(
+                    rc_attempt, cast(TacticAST, tac), goals=goals, trace=indent(trace)
+                )
+                return await interp(
                     rc_attempt,
                     ["ExtendTac", before, middle, after],
                     goals=(first_goal, count),
+                    trace=indent(trace),
                 )
         case "ExtendTac":
             [_, before, middle, after] = tactic
@@ -204,7 +241,9 @@ async def decomp_run(
                 )
                 + [decomp_run_lam(cast(TacticAST, tac)) for tac in after]
             )
-            return await run_on_goals(rc, tacs, goals=(first_goal, count))
+            return await run_on_goals(
+                rc, tacs, goals=(first_goal, count), trace=indent(trace)
+            )
         case "Idtac":
             return count
         case "Fail":
@@ -218,13 +257,20 @@ async def decomp_run(
                 for t in cast(list[TacticAST], tactic[1:]):
                     try:
                         async with LtacTry(rc) as rc_attempt:
-                            _ = await decomp_run(rc_attempt, t, goals=(goal, 1))
+                            _ = await interp(
+                                rc_attempt,
+                                t,
+                                goals=(goal, 1),
+                                trace=indent(indent(trace)),
+                            )
                             return await rc_attempt.current_goal()
                     except LtacFail:
                         continue
                 raise LtacFail()
 
-            return await run_on_each(rc, "<first>", run_first, goals=goals)
+            return await run_on_each(
+                rc, "<first>", run_first, goals=goals, trace=indent(trace)
+            )
 
         case "Solve":
 
@@ -233,7 +279,7 @@ async def decomp_run(
                 for t in cast(list[TacticAST], tactic[1:]):
                     try:
                         async with LtacTry(rc) as rc_attempt:
-                            count = await decomp_run(rc_attempt, t, goals=(goal, 1))
+                            count = await interp(rc_attempt, t, goals=(goal, 1))
                             if count > 0:
                                 raise LtacFail()
                         return await rc.current_goal()
@@ -250,51 +296,33 @@ async def decomp_run(
                 t = cast(TacticAST, tactic[1])
                 try:
                     async with LtacTry(rc) as rc_attempt:
-                        await decomp_run(rc_attempt, t, goals=(goal, 1))
+                        await interp(rc_attempt, t, goals=(goal, 1))
                 except LtacFail:
                     pass
                 return await rc.current_goal()
 
             return await run_on_each(rc, "<try>", run_try, goals=goals)
 
-        case ctor:
-            raise NotImplementedError(ctor)
-
-    return []
+    raise NotImplementedError(tactic)
 
 
-async def amain(file: str, locator: str) -> int:
-    plugin = DuneRocqPlugin(
-        opam_pkg="rocq-tactic-parser", entry_points=["theories/explain.v"]
+async def interp_tactic(
+    rc: RocqCursor,
+    tactic: str,
+    *,
+    goals: tuple[int, int] = (0, 1),
+    run_atom: AtomCallback = run_tac,
+    trace: int | None = None,
+) -> int:
+    top = await rc.cursor_index()
+    assert isinstance(
+        await rc.run_command("Require Import skylabs_ai.tactic_parser.explain."),
+        rdm_api.CommandData,
     )
-    rocq_args = rocq_args_for(file, plugins=[plugin])
-    async with rc_sess(file, rocq_args=rocq_args) as rc:
-        assert isinstance(
-            await rc.run_command("Require Import skylabs_ai.tactic_parser.explain."),
-            rdm_api.CommandData,
-        )
-        assert await LocatorParser.parse(locator).go_to(rc)
-
-        suffix = await rc.doc_suffix()
-        for i, tactic in enumerate([t for t in suffix if t.kind == "command"]):
-            if tactic.data and tactic.data.kind in ["EndProof"]:
-                break
-            tac_str = tactic.text
-            print(f"{i}/ {tac_str}")
-            explanation = await rc.query(f"Explain {tac_str}")
-            if isinstance(explanation, rdm_api.Err):
-                print("query failed!")
-                raise Exception("Oops")
-            explanation = json.loads(explanation.feedback_messages[0].text)
-            count = await decomp_run(rc, explanation, goals=(0, 1))
-            print(f"> ({count})")
-            print("")
-    return 0
-
-
-def main() -> int:
-    return asyncio.run(amain(sys.argv[1], sys.argv[2]))
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    explanation = await rc.query(f"Explain {tactic}.")
+    if isinstance(explanation, rdm_api.Err):
+        await rc.revert_before(erase=True, index=top)
+        print("query failed!")
+        raise Exception(explanation)
+    explanation = json.loads(explanation.feedback_messages[0].text)
+    return await interp(rc, explanation, goals=goals, run_atom=run_atom, trace=trace)
