@@ -7,11 +7,11 @@ from .util import RDM_Tests
 
 @pytest.mark.asyncio(loop_scope="class")
 class Test_RDM_advance_to_first_match(RDM_Tests):
-    def _no_match(self, text: str, kind: str) -> bool:
+    def _no_match(self, item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
         return False
 
-    def _match_any_Theorem(self, text: str, kind: str) -> bool:
-        return kind == "command" and text.startswith("Theorem")
+    def _match_any_Theorem(self, item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+        return item.kind == "command" and item.text.startswith("Theorem")
 
     @pytest.mark.parametrize("steps", list(range(0, 18)))
     async def test_advance_to_first_match_none(
