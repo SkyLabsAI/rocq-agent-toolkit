@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import itertools
 import logging
-from collections.abc import AsyncIterator, Callable, Iterator, Sized
+from collections.abc import AsyncIterator, Callable, Iterator, Sequence, Sized
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Literal, Protocol, Self
 
 from .. import rocq_doc_manager_api as rdm_api
+from .file_offset import FileOffset
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +163,36 @@ class RocqCursorProtocolAsync(Protocol):
                     data=rdm_api.StepsError(cmd_error=r.data, nb_processed=cnt),
                 )
         return None
+
+    async def cursor_offset(self, *, offset: int = 0) -> FileOffset:
+        """Return the `FileOffset` of the current cursor.
+        The `offset` is used to move back into the prefix (negative number)
+        or positive into the suffix (positive number) relative to the current
+        position. For example, `cursor_position(offset=-1)` will get the offset
+        of the previous prefix item. If the offset is not valid, an `IndexError`
+        exception is thrown.
+
+        Note: Ghost commands are not considered in the computation of the FileOffset,
+        but they are counted when factoring the `offset` argument.
+        """
+
+        prefix: Sequence[
+            rdm_api.PrefixItem | rdm_api.SuffixItem
+        ] = await self.doc_prefix()
+        if offset == 0:
+            contents = "".join(x.text for x in prefix if x.kind != "ghost")
+        elif offset < 0:
+            contents = "".join(x.text for x in prefix[:offset] if x.kind != "ghost")
+        else:
+            suffix: Sequence[
+                rdm_api.PrefixItem | rdm_api.SuffixItem
+            ] = await self.doc_suffix()
+            contents = "".join(
+                x.text
+                for x in itertools.chain(prefix, suffix[:offset])
+                if x.kind != "ghost"
+            )
+        return FileOffset.of_string(contents)
 
     # ===== BEGIN: contextmanagers ============================================
     @asynccontextmanager

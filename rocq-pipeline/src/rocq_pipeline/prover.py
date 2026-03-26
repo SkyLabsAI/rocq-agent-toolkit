@@ -5,7 +5,6 @@ import logging
 import sys
 from argparse import ArgumentParser
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 
 from rocq_doc_manager import RocqCursor, rc_sess
@@ -32,31 +31,6 @@ from rocq_pipeline.status_cursor import WatchingCursor
 # - this will not properly handle whitespace between "Admitted" and period
 def is_admitted(text: str, kind: str) -> bool:
     return kind == "command" and text == "Admitted."
-
-
-@dataclass
-class FileOffset:
-    line: int  # first line is 0
-    col: int
-    offset: int
-
-
-async def cursor_offset(rc: RocqCursor) -> FileOffset:
-    """Compute the offset of a RocqCursor.
-
-    TODO: This function should probably be replaced with something else"""
-    prefix = await rc.doc_prefix()
-    contents = "".join(x.text for x in prefix if x.kind != "ghost")
-    if contents == "":
-        return FileOffset(line=0, col=0, offset=0)
-    offset = len(contents)
-    lines = contents.splitlines()
-    line = max(0, len(lines))
-    if contents[-1] == "\n":
-        col = 0
-    else:
-        col = len(lines[-1])
-    return FileOffset(line=line, col=col, offset=offset)
 
 
 async def run_proving_agent(
@@ -296,7 +270,7 @@ async def print_admitted_proof_task(local_rc: RocqCursor) -> None:
 
     goal = await local_rc.current_goal()
     assert goal is not None
-    position = await cursor_offset(local_rc)
+    position = await local_rc.cursor_offset()
     print(
         f"\nFound admit at line {position.line + 1}, column {position.col} (offset={position.offset})."
     )

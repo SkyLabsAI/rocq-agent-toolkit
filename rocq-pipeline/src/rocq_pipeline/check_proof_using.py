@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import asyncio
 import re
@@ -6,8 +8,7 @@ import traceback
 from collections.abc import Sequence
 from pathlib import Path
 
-from pydantic import BaseModel, Field
-from rocq_doc_manager import RocqCursor, rc_sess
+from rocq_doc_manager import FileOffset, RocqCursor, rc_sess
 from rocq_doc_manager.rocq_doc_manager_api import (
     CommandData,
     Err,
@@ -18,30 +19,6 @@ from rocq_doc_manager.rocq_doc_manager_api import (
 from rocq_pipeline.util import ProgressCallback, parallel_runner
 
 _SUCCEED_OR_FAIL = re.compile(r"^(Succeed|Fail)\s.*")
-
-
-class FileOffset(BaseModel):
-    line: int = Field(description="line number (0 base)", ge=0)
-    col: int = Field(description="column number (0 base)", ge=0)
-    offset: int = Field(description="full file offset (0 base)", ge=0)
-
-
-async def cursor_offset(rc: RocqCursor) -> FileOffset:
-    """Compute the offset of a RocqCursor.
-
-    TODO: This function should probably be replaced with something else"""
-    prefix = await rc.doc_prefix()
-    contents = "".join(x.text for x in prefix if x.kind != "ghost")
-    if contents == "":
-        return FileOffset(line=0, col=0, offset=0)
-    offset = len(contents)
-    lines = contents.splitlines()
-    line = max(0, len(lines))
-    if contents[-1] == "\n":
-        col = 0
-    else:
-        col = len(lines[-1])
-    return FileOffset(line=line, col=col, offset=offset)
 
 
 async def process(
@@ -194,7 +171,7 @@ async def process(
                 False,
                 "Proof.",
                 await rc.cursor_index(),
-                await cursor_offset(rc),
+                await rc.cursor_offset(offset=-1),
             )
         elif item.data.kind == "Proof":
             assert in_proof is not None
@@ -216,7 +193,7 @@ async def process(
                 True,
                 item.text,
                 await rc.cursor_index(),
-                await cursor_offset(rc),
+                await rc.cursor_offset(offset=-1),
             )
         elif item.data.kind in ["Definition", "Instance"]:
             # this is probably a definition
@@ -228,7 +205,7 @@ async def process(
                     False,
                     "",
                     await rc.cursor_index(),
-                    await cursor_offset(rc),
+                    await rc.cursor_offset(offset=-1),
                 )
         elif in_proof is None:
             processed.append(item.text)

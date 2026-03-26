@@ -11,7 +11,7 @@ from rocq_doc_manager.rocq_doc_manager_api import PrefixItem, SuffixItem
 _SUCCEED_OR_FAIL = re.compile(r"^(Succeed|Fail)\s.*")
 
 
-def strip_proofs_from_suffix(suffix: Sequence[SuffixItem | PrefixItem]) -> list[str]:
+def strip_proofs_from_doc_items(suffix: Sequence[SuffixItem | PrefixItem]) -> list[str]:
     processed: list[str] = []
     in_proof: tuple[bool, str, int] | None = None
     for i, item in enumerate(suffix):
@@ -64,7 +64,7 @@ def strip_proofs_from_suffix(suffix: Sequence[SuffixItem | PrefixItem]) -> list[
 async def strip_proofs(file: Path, *, output: Literal["-"] | Path) -> None:
     async with rc_sess(file, rocq_args="dune") as rc:
         suffix = await rc.doc_suffix()
-        result = strip_proofs_from_suffix(suffix)
+        result = strip_proofs_from_doc_items(suffix)
     output_str = "".join(result)
     if output == "-":
         print(output_str)

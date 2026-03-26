@@ -12,7 +12,7 @@ from typing import Literal
 from rocq_dune_util import DuneError, in_dune_project, rocq_args_for
 
 from .cursor.doc_cursor import RDMRocqCursor
-from .cursor.protocol import RocqCursor
+from .cursor.protocol import FileOffset, RocqCursor
 from .rocq_doc_manager import AsyncRocqDocManager, RocqDocManager
 
 
@@ -123,4 +123,5 @@ __all__ = [
     "RocqCursor",
     "RocqDocManager",
     "RDMRocqCursor",
+    "FileOffset",
 ]
