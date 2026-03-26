@@ -140,15 +140,15 @@ def parallel_runner[T, U](
             # We want to return a list matching the order of `tasks` so we use
             # `futures_order` to maintain a mapping from `Future` to task-idx
             futures_order: dict[Future, int] = {}
-            for i, task in enumerate(tasks):
-                future = tpe.submit(go, task)
-                futures_order[future] = i
+            try:
+                for i, task in enumerate(tasks):
+                    future = tpe.submit(go, task)
+                    futures_order[future] = i
 
-            # as_completed yields futures the moment they finish
-            for future in as_completed(futures_order.keys()):
-                future_cancelled_or_exception: bool = False
-                final_result: U | BaseException
-                try:
+                # as_completed yields futures the moment they finish
+                for future in as_completed(futures_order.keys()):
+                    future_cancelled_or_exception: bool = False
+                    final_result: U | BaseException
                     if future.cancelled():
                         future_cancelled_or_exception = True
                         final_result = CancelledError()
@@ -157,33 +157,31 @@ def parallel_runner[T, U](
                         final_result = final_exception
                     else:
                         _, final_result = future.result()
-                except CancelledError as e_cancelled:
-                    future_cancelled_or_exception = True
-                    final_result = e_cancelled
-                except Exception as e_unexpected:
-                    future_cancelled_or_exception = True
-                    final_result = e_unexpected
-                    logger.error(
-                        "Unexpected error during task processing", exc_info=e_unexpected
-                    )
+                    final_results[futures_order[future]] = final_result
 
-                final_results[futures_order[future]] = final_result
+                    # Note: while `U` might derive from `BaseException`, `final_result` is guaranteed to have
+                    # type `U` iff `future_cancelled_or_exception=False`
+                    if succeeded is None or (
+                        not future_cancelled_or_exception
+                        and succeeded(cast(U, final_result))
+                    ):
+                        success += 1
+                    else:
+                        failure += 1
 
-                # Note: while `U` might derive from `BaseException`, `final_result` is guaranteed to have
-                # type `U` iff `future_cancelled_or_exception=False`
-                if succeeded is None or (
-                    not future_cancelled_or_exception
-                    and succeeded(cast(U, final_result))
-                ):
-                    success += 1
-                else:
-                    failure += 1
+                    if succeeded is None:
+                        desc = f"{success} / {total_tasks}"
+                    else:
+                        desc = f"[green]{success}[/green] & [red]{failure}[/red] / {total_tasks}"
+                    pb.update(overall, advance=1, description=desc)
 
-                if succeeded is None:
-                    desc = f"{success} / {total_tasks}"
-                else:
-                    desc = f"[green]{success}[/green] & [red]{failure}[/red] / {total_tasks}"
-                pb.update(overall, advance=1, description=desc)
+            except KeyboardInterrupt:
+                raise
+            except Exception as err:
+                logger.error("Unexpected error during task processing", exc_info=err)
+                raise
+            finally:
+                tpe.shutdown(wait=False, cancel_futures=True)
 
         return [final_result for _, final_result in sorted(final_results.items())]
 
