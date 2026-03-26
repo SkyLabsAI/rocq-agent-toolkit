@@ -14,8 +14,17 @@ type entry = Rocq_simple_api_internal.Rocq_vernac_entry.entry =
   | EVernacLoad
   | EVernacExtend
 
+type control = Rocq_simple_api_internal.Rocq_vernac_entry.control =
+  | ControlTime
+  | ControlInstructions
+  | ControlProfile
+  | ControlRedirect
+  | ControlTimeout
+  | ControlFail
+  | ControlSucceed
+
 (** AST of a Rocq vernacular command (slightly simplified). *)
-type command = entry Vernacexpr.vernac_expr_gen CAst.t
+type command = (control list * entry Vernacexpr.vernac_expr_gen) CAst.t
 
 (** [command_tag c] returns a representation of the command kind of [c], based
     on the corresponding OCaml constructor name. *)
@@ -23,6 +32,14 @@ val command_tag : command -> string
 
 (** [command_tags] collects all the possible outputs of [command_tag]. *)
 val command_tags : string array
+
+(** [command_controls c] returns the tag of all the control modifiers that are
+    applied to command [c]. *)
+val command_controls : command -> string list
+
+(** [control_tags] collects all the possible control tags, as contained in the
+    lists produced by [command_controls]. *)
+val control_tags : string array
 
 (** [command_id_pure c] indicates whether the command is pure (for the synterp
     phase), which means that it does not influence parsing. *)

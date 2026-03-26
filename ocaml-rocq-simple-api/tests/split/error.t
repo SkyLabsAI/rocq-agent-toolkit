@@ -26,7 +26,7 @@
         "ep": 34
       },
       {
-        "kind": { "tag": "Print", "pure": true },
+        "kind": { "controls": [], "tag": "Print", "pure": true },
         "text": "About nat.",
         "bp": 34,
         "ep": 44

@@ -12,25 +12,25 @@
 
   $ cat commands.txt | rocq-simple-api.toplevel
   [0] 1 > run 0 "Section test."
-  { "synterp_ast": { "tag": "BeginSection", "pure": false } }
+  { "synterp_ast": { "controls": [], "tag": "BeginSection", "pure": false } }
   [0] 2 > run 0 "Context (n : nat)."
   {
     "feedback_messages": [ { "level": "info", "text": "n is declared" } ],
-    "synterp_ast": { "tag": "Context", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Context", "pure": true }
   }
   [0] 3 > run 0 "Definition get := n."
   {
     "globrefs_diff": { "added_constants": [ "Top.get" ] },
     "feedback_messages": [ { "level": "info", "text": "get is defined" } ],
-    "synterp_ast": { "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
   }
   [0] 4 > run 0 "End test."
-  { "synterp_ast": { "tag": "EndSegment", "pure": false } }
+  { "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false } }
   [0] 5 > run 0 "Check get."
   {
     "feedback_messages": [
       { "level": "notice", "text": "get\n     : nat -> nat" }
     ],
-    "synterp_ast": { "tag": "CheckMayEval", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "CheckMayEval", "pure": true }
   }
   [0] 6 > [EOF]

@@ -15,6 +15,8 @@
   > back_to 3
   > back_to 8
   > run 37 "About test."
+  > run 37 "Fail Qed."
+  > run 37 "Time Succeed Timeout 30 About nat."
   > EOF
 
   $ cat commands.txt | rocq-simple-api.toplevel
@@ -33,10 +35,10 @@
       { "level": "info", "text": "n_rec is defined" },
       { "level": "info", "text": "n_sind is defined" }
     ],
-    "synterp_ast": { "tag": "Inductive", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Inductive", "pure": true }
   }
   [0] 2 > run 0 "Require Import Stdlib.ZArith.BinInt."
-  { "synterp_ast": { "tag": "Require", "pure": false } }
+  { "synterp_ast": { "controls": [], "tag": "Require", "pure": false } }
   [0] 3 > run 0 "Require Import Stdlib.ZArith.BinIntt"
   Error: while processing the command.
   Syntax error: '.' expected after [gallina_ext] (in [vernac_aux]).
@@ -82,24 +84,27 @@
   }
   [0] 3 > run 0 "Lemma test : 0 = 0."
   {
-    "synterp_ast": { "tag": "StartTheoremProof", "pure": true },
+    "synterp_ast": { "controls": [], "tag": "StartTheoremProof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   [0] 5 > run 0 "Proof."
   {
-    "synterp_ast": { "tag": "Proof", "pure": true },
+    "synterp_ast": { "controls": [], "tag": "Proof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
     }
   }
   [0] 6 > run 0 "reflexivity."
-  { "synterp_ast": { "tag": "Extend", "pure": false }, "proof_state": {} }
+  {
+    "synterp_ast": { "controls": [], "tag": "Extend", "pure": false },
+    "proof_state": {}
+  }
   [0] 7 > run 0 "Qed."
   {
     "globrefs_diff": { "added_constants": [ "Top.test" ] },
-    "synterp_ast": { "tag": "EndProof", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "EndProof", "pure": true }
   }
   [0] 8 > run 37 "About test."
   {
@@ -109,7 +114,7 @@
         "text": "test : 0 = 0\n\ntest is not universe polymorphic\ntest is opaque\nExpands to: Constant Top.test\nDeclared in toplevel input, characters 6-10"
       }
     ],
-    "synterp_ast": { "tag": "Print", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Print", "pure": true }
   }
   [0] 9 > back_to 3
   [0] 3 > back_to 8
@@ -120,6 +125,34 @@
     "feedback_messages": [
       { "level": "notice", "text": "test not a defined object." }
     ],
-    "synterp_ast": { "tag": "Print", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Print", "pure": true }
   }
-  [0] 10 > [EOF]
+  [0] 10 > run 37 "Fail Qed."
+  {
+    "feedback_messages": [
+      {
+        "level": "notice",
+        "text": "The command has indeed failed with message:\nCommand not supported (No proof-editing in progress)."
+      }
+    ],
+    "synterp_ast": { "controls": [ "Fail" ], "tag": "EndProof", "pure": true }
+  }
+  [0] 11 > run 37 "Time Succeed Timeout 30 About nat."
+  {
+    "feedback_messages": [
+      {
+        "level": "notice",
+        "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
+      },
+      {
+        "level": "notice",
+        "text": "Finished transaction in 0. secs (0.u,0.s) (successful)"
+      }
+    ],
+    "synterp_ast": {
+      "controls": [ "Time", "Succeed", "Timeout" ],
+      "tag": "Print",
+      "pure": true
+    }
+  }
+  [0] 12 > [EOF]

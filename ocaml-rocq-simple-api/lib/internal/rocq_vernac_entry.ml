@@ -14,21 +14,52 @@ type entry =
   | EVernacLoad
   | EVernacExtend
 
-type command = entry Vernacexpr.vernac_expr_gen CAst.t
+type control =
+  | ControlTime
+  | ControlInstructions
+  | ControlProfile
+  | ControlRedirect
+  | ControlTimeout
+  | ControlFail
+  | ControlSucceed
 
-let of_vernac_control_gen_r : ('b -> entry) ->
+type command = (control list * entry Vernacexpr.vernac_expr_gen) CAst.t
+
+let of_vernac_control_gen_r : ('a -> control) -> ('b -> entry) ->
     ('a, 'b) Vernacexpr.vernac_control_gen_r CAst.t -> command =
-    fun of_entry CAst.{loc; v} ->
-  let v =
+    fun of_control of_entry CAst.{loc; v} ->
+  let expr =
     let open Vernacexpr in
     match v.expr with
     | VernacSynPure(e) -> VernacSynPure(e)
     | VernacSynterp(e) -> VernacSynterp(of_entry e)
   in
-  CAst.make ?loc v
+  let controls = List.map of_control v.Vernacexpr.control in
+  CAst.make ?loc (controls, expr)
+
+(*
+Vernacexpr.vernac_control
+  = synterp_vernac_expr vernac_control_gen
+  = (control_flag                                     , synterp_vernac_expr)
+      vernac_control_gen_r CAst.t
+
+Synterp.vernac_control_entry
+  = (Vernacstate.Synterp.t VernacControl.control_entry, synterp_entry      )
+      vernac_control_gen_r CAst.t
+*)
 
 (* NOTE: There is a bit of a mismatch in constructors. *)
 let of_vernac_control : Vernacexpr.vernac_control -> command =
+  let translate_control (c : Vernacexpr.control_flag) : control =
+    match c with
+    | Vernacexpr.ControlTime         -> ControlTime
+    | Vernacexpr.ControlInstructions -> ControlInstructions
+    | Vernacexpr.ControlProfile(_)   -> ControlProfile
+    | Vernacexpr.ControlRedirect(_)  -> ControlRedirect
+    | Vernacexpr.ControlTimeout(_)   -> ControlTimeout
+    | Vernacexpr.ControlFail         -> ControlFail
+    | Vernacexpr.ControlSucceed      -> ControlSucceed
+  in
   let translate_entry e =
     let open Vernacexpr in
     match e with
@@ -51,9 +82,20 @@ let of_vernac_control : Vernacexpr.vernac_control -> command =
     | VernacProofMode(_) -> EVernacSetOption
     | VernacExtend(_,_) -> EVernacExtend
   in
-  of_vernac_control_gen_r translate_entry
+  of_vernac_control_gen_r translate_control translate_entry
 
 let of_vernac_control_entry : Synterp.vernac_control_entry -> command =
+  let translate_control
+      (c : Vernacstate.Synterp.t VernacControl.control_entry) : control =
+    match Obj.(tag (repr c)) with
+    | 0 -> ControlTime
+    | 1 -> ControlInstructions
+    | 2 -> ControlProfile
+    | 3 -> ControlRedirect
+    | 4 -> ControlTimeout
+    | 5 -> ControlFail
+    | n -> assert (n == 6); ControlSucceed
+  in
   let translate_entry e =
     match e with
     | Synterp.EVernacNoop -> EVernacNoop
@@ -70,7 +112,7 @@ let of_vernac_control_entry : Synterp.vernac_control_entry -> command =
     | Synterp.EVernacLoad(_) -> EVernacLoad
     | Synterp.EVernacExtend(_) -> EVernacExtend
   in
-  of_vernac_control_gen_r translate_entry
+  of_vernac_control_gen_r translate_control translate_entry
 
 let synterp_descr : entry -> string = fun e ->
   match e with
@@ -177,11 +219,24 @@ let synpure_descr : Vernacexpr.synpure_vernac_expr -> string = fun e ->
   | VernacAddOption(_,_)             -> "AddOption"
   | VernacRemoveOption(_,_)          -> "RemoveOption"
 
+let control_descr c =
+  match c with
+  | ControlTime -> "Time"
+  | ControlInstructions -> "Instructions"
+  | ControlProfile -> "Profile"
+  | ControlRedirect -> "Redirect"
+  | ControlTimeout -> "Timeout"
+  | ControlFail -> "Fail"
+  | ControlSucceed -> "Succeed"
+
 let command_tag c =
   let open Vernacexpr in
-  match c.CAst.v with
+  match snd c.CAst.v with
   | VernacSynterp(e) -> synterp_descr e
   | VernacSynPure(e) -> synpure_descr e
+
+let command_controls c =
+  List.map control_descr (fst c.CAst.v)
 
 let command_tags = [|
   "Noop"; "Notation"; "BeginSection"; "EndSegment"; "Require"; "Import";
@@ -203,13 +258,18 @@ let command_tags = [|
   "Proof"; "AddOption"; "RemoveOption"
 |]
 
+let control_tags = [|
+  "Time"; "Instructions"; "Profile"; "Redirect"; "Timeout"; "Fail"; "Succeed";
+|]
+
 let command_is_pure c =
   let open Vernacexpr in
-  match c.CAst.v with
+  match snd c.CAst.v with
   | VernacSynterp(_) -> false
   | VernacSynPure(_) -> true
 
 let command_to_yojson c =
-  let tag = command_tag c in
-  let pure = command_is_pure c in
-  `Assoc([("tag", `String(tag)); ("pure", `Bool(pure))])
+  let controls = `List(List.map (fun s -> `String(s)) (command_controls c)) in
+  let tag = `String(command_tag c) in
+  let pure = `Bool(command_is_pure c) in
+  `Assoc([("controls", controls); ("tag", tag); ("pure", pure)])
