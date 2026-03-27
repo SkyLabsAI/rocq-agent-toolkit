@@ -27,7 +27,6 @@
   
 
 
-
   $ LC_ALL=C ls *.json | sort
   LocatorBug.v_Lemma:locatorL1.json
   LocatorBug.v_Lemma:locatorL2.json
@@ -44,98 +43,157 @@
   $ LC_ALL=C ls *.json | sort | xargs -n 1 python3 -m json.tool
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nTrue",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "exact I"
+          "action": "exact I.",
+          "before": [
+              "\n============================\nTrue"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\nP : Prop\n============================\nP -> P",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof\n   (fun (H : P) => H)"
+          "action": "exact ((fun (H : P) => H)).",
+          "before": [
+              "\nP : Prop\n============================\nP -> P"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\n5 <= 5",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "trivial"
+          "action": "trivial.",
+          "before": [
+              "\n============================\n5 <= 5"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\n5 = 5",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof (eq_refl _)"
+          "action": "exact ((eq_refl _)).",
+          "before": [
+              "\n============================\n5 = 5"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nTrue",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "exact I"
+          "action": "exact I.",
+          "before": [
+              "\n============================\nTrue"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\nP : Prop\n============================\nP -> P",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof\n   (fun (H : P) => H)"
+          "action": "exact ((fun (H : P) => H)).",
+          "before": [
+              "\nP : Prop\n============================\nP -> P"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\n5 <= 5",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "trivial"
+          "action": "trivial.",
+          "before": [
+              "\n============================\n5 <= 5"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\n5 = 5",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof (eq_refl _)"
+          "action": "exact ((eq_refl _)).",
+          "before": [
+              "\n============================\n5 = 5"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nTrue",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof I"
+          "action": "exact (I).",
+          "before": [
+              "\n============================\nTrue"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\n5 = 5",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "Proof (eq_refl _)"
+          "action": "exact ((eq_refl _)).",
+          "before": [
+              "\n============================\n5 = 5"
+          ],
+          "after": [],
+          "info": null
       }
   ]
   [
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nforall x : three, x = One \\/ x = Two \\/ x = Three",
-          "after": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\nx : three\n============================\nx = One \\/ x = Two \\/ x = Three",
-          "tactic": "intros x"
+          "action": "intros x.",
+          "before": [
+              "\n============================\nforall x : three, x = One \\/ x = Two \\/ x = Three"
+          ],
+          "after": [
+              "\nx : three\n============================\nx = One \\/ x = Two \\/ x = Three"
+          ],
+          "info": null
       },
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\nx : three\n============================\nx = One \\/ x = Two \\/ x = Three",
-          "after": "3 Goals Total\n\t3 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nOne = One \\/ One = Two \\/ One = Three\n\n\n============================\nTwo = One \\/ Two = Two \\/ Two = Three\n\n\n============================\nThree = One \\/ Three = Two \\/ Three = Three",
-          "tactic": "destruct x"
+          "action": "destruct x.",
+          "before": [
+              "\nx : three\n============================\nx = One \\/ x = Two \\/ x = Three"
+          ],
+          "after": [
+              "\n============================\nOne = One \\/ One = Two \\/ One = Three",
+              "\n============================\nTwo = One \\/ Two = Two \\/ Two = Three",
+              "\n============================\nThree = One \\/ Three = Two \\/ Three = Three"
+          ],
+          "info": null
       },
       {
-          "before": "3 Goals Total\n\t3 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nOne = One \\/ One = Two \\/ One = Three\n\n\n============================\nTwo = One \\/ Two = Two \\/ Two = Three\n\n\n============================\nThree = One \\/ Three = Two \\/ Three = Three",
-          "after": "2 Goals Total\n\t2 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nTwo = One \\/ Two = Two \\/ Two = Three\n\n\n============================\nThree = One \\/ Three = Two \\/ Three = Three",
-          "tactic": "left; reflexivity"
+          "action": "left; reflexivity.",
+          "before": [
+              "\n============================\nOne = One \\/ One = Two \\/ One = Three",
+              "\n============================\nTwo = One \\/ Two = Two \\/ Two = Three",
+              "\n============================\nThree = One \\/ Three = Two \\/ Three = Three"
+          ],
+          "after": [
+              "\n============================\nTwo = One \\/ Two = Two \\/ Two = Three",
+              "\n============================\nThree = One \\/ Three = Two \\/ Three = Three"
+          ],
+          "info": null
       },
       {
-          "before": "2 Goals Total\n\t2 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nTwo = One \\/ Two = Two \\/ Two = Three\n\n\n============================\nThree = One \\/ Three = Two \\/ Three = Three",
-          "after": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nThree = One \\/ Three = Two \\/ Three = Three",
-          "tactic": "right; left; reflexivity"
+          "action": "right; left; reflexivity.",
+          "before": [
+              "\n============================\nTwo = One \\/ Two = Two \\/ Two = Three",
+              "\n============================\nThree = One \\/ Three = Two \\/ Three = Three"
+          ],
+          "after": [
+              "\n============================\nThree = One \\/ Three = Two \\/ Three = Three"
+          ],
+          "info": null
       },
       {
-          "before": "1 Goal Total\n\t1 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n\n============================\nThree = One \\/ Three = Two \\/ Three = Three",
-          "after": "0 Goal Total\n\t0 focused; 0 unfocused ([]); 0 shelved; 0 admitted\n\n",
-          "tactic": "right; right; reflexivity"
+          "action": "right; right; reflexivity.",
+          "before": [
+              "\n============================\nThree = One \\/ Three = Two \\/ Three = Three"
+          ],
+          "after": [],
+          "info": null
       }
   ]
