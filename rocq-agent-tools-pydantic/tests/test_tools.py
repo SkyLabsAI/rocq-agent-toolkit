@@ -70,7 +70,7 @@ async def test_run_tactic_backtrack_one_noop(N_revert: int) -> None:
         # 3) navigate to the point just before the `Admitted.` command,
         #    but /after/ its preceding blank
         assert await rc.goto_first_match(
-            fn=lambda text, kind: kind == "command" and text == "Admitted.",
+            fn=lambda item: item.kind == "command" and item.text == "Admitted.",
             include_prefix=True,
         )
 

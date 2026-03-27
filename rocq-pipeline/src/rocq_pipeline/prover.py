@@ -29,8 +29,12 @@ from rocq_pipeline.status_cursor import WatchingCursor
 # Notes:
 # - this will ignore `admit`s
 # - this will not properly handle whitespace between "Admitted" and period
-def is_admitted(text: str, kind: str) -> bool:
-    return kind == "command" and text == "Admitted."
+def is_admitted(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+    return (
+        item.data is not None
+        and item.data.kind == "EndProof"
+        and item.data.attrs["kind"] == "Admitted"
+    )
 
 
 async def run_proving_agent(
@@ -50,9 +54,7 @@ async def run_proving_agent(
         partial (optional): whether or not the persist partial proof progress for each admitted proof task
     """
     suffix_items_admitted = [
-        suffix_item
-        for suffix_item in await rc.doc_suffix()
-        if is_admitted(suffix_item.text, suffix_item.kind)
+        item for item in await rc.doc_suffix() if is_admitted(item)
     ]
 
     if not suffix_items_admitted:
@@ -76,9 +78,7 @@ async def run_proving_agent(
     remaining_suffix_items = await rc.doc_suffix()
     if remaining_suffix_items:
         remaining_suffix_items_admitted = [
-            suffix_item
-            for suffix_item in remaining_suffix_items
-            if is_admitted(suffix_item.text, suffix_item.kind)
+            item for item in remaining_suffix_items if is_admitted(item)
         ]
         processed_admitted_cnt = admitted_cnt - len(remaining_suffix_items_admitted)
         if processed_admitted_cnt != admitted_cnt:

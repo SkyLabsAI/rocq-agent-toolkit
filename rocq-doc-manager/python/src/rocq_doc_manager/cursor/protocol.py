@@ -268,7 +268,7 @@ class RocqCursorProtocolAsync(Protocol):
     #   "command" or "blanks".
     async def goto_first_match(
         self,
-        fn: Callable[[str, Literal["blanks", "command", "ghost"]], bool],
+        fn: Callable[[rdm_api.PrefixItem | rdm_api.SuffixItem], bool],
         skip: int = 0,
         include_prefix: bool = False,
         step_over_match: bool = False,
@@ -288,14 +288,12 @@ class RocqCursorProtocolAsync(Protocol):
         suffix = await self.doc_suffix()
 
         candidate_prefix_matches = [
-            (idx, item.text)
-            for idx, item in enumerate(prefix)
-            if fn(item.text, item.kind)
+            (idx, item.text) for idx, item in enumerate(prefix) if fn(item)
         ]
         candidate_suffix_matches = [
             (idx + len(prefix), item.text)
             for idx, item in enumerate(suffix)
-            if fn(item.text, item.kind)
+            if fn(item)
         ]
 
         async def check_result(

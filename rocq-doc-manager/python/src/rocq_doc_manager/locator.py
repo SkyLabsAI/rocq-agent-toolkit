@@ -66,11 +66,8 @@ class FirstAdmit(Locator):
 
     @override
     async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
-        def is_admit(
-            text: str,
-            kind: str,
-        ) -> bool:
-            return kind == "command" and text.startswith("admit")
+        def is_admit(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+            return item.kind == "command" and item.text.startswith("admit")
 
         return await rc.goto_first_match(
             is_admit, skip=self._index, include_prefix=not next
@@ -115,25 +112,30 @@ class FirstLemma(Locator):
         else:
             return f"{self._style}:{self._name}{which}"
 
+    # _DEFAULT_STYLE = "Theorem|Lemma|Fact|Remark|Property|Proposition|Corollary"
+    _DEFAULT_STYLE = "Lemma|Theorem"
+
     def __init__(self, lemma_name: str, style: str | None = None, index: int = 0):
         self._name = lemma_name
+        self._name_re = re.compile(self._name)
         self._style = style
+        self._style_re = re.compile(self._DEFAULT_STYLE if style is None else style)
         self._index = index
 
     @override
     async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
-        if self._style is None:
-            prefix = "Lemma|Theorem"
-        else:
-            prefix = self._style
-
-        mtch = re.compile(f"({prefix})\\s+{self._name}[^0-9a-zA-Z_']")
-
-        def is_lemma(
-            text: str,
-            kind: str,
-        ) -> bool:
-            return kind == "command" and mtch.match(text) is not None
+        def is_lemma(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+            return (
+                item.data is not None
+                and item.data.kind == "StartTheoremProof"
+                and "Fail" not in item.data.controls
+                and "Succeed" not in item.data.controls
+                and any(
+                    self._name_re.fullmatch(id) is not None
+                    for id in item.data.attrs["ids"]
+                )
+                and self._style_re.fullmatch(item.data.attrs["kind"]) is not None
+            )
 
         if await rc.goto_first_match(
             is_lemma, step_over_match=True, skip=self._index, include_prefix=not next
@@ -218,11 +220,8 @@ class CommentMarkerLocator(Locator):
 
     @override
     async def go_to(self, rc: RocqCursor, *, next: bool = False) -> bool:
-        def is_marker_comment(
-            text: str,
-            kind: str,
-        ) -> bool:
-            return kind == "blanks" and self._marker in text
+        def is_marker_comment(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+            return item.kind == "blanks" and self._marker in item.text
 
         return await rc.goto_first_match(is_marker_comment, include_prefix=not next)
 
