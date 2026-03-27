@@ -66,11 +66,19 @@ asyncio_default_fixture_loop_scope = "class"
 asyncio_default_test_loop_scope = "class"
 
 [tool.taskipy.tasks]
-lint_ci = "ruff check"
-format_ci = "ruff format --exclude src/rocq_doc_manager/rocq_doc_manager_api.py --check"
+# Base tasks for individual use
+lint = "ruff check"
+format_check = "ruff format --exclude src/rocq_doc_manager/rocq_doc_manager_api.py --check"
 reformat = "ruff format --exclude src/rocq_doc_manager/rocq_doc_manager_api.py"
-typecheck_ci = "mypy ."
+typecheck = "mypy ."
+
+# Unified CI check task
+# Runs all tasks, saves their exit codes, and exits with an error if any were non-zero.
+check_ci = "task lint; LINT_ERR=$?; task format_check; FMT_ERR=$?; task typecheck; TYPE_ERR=$?; if [ $LINT_ERR -ne 0 ] || [ $FMT_ERR -ne 0 ] || [ $TYPE_ERR -ne 0 ]; then exit 1; fi"
+
+# Test tasks
 test_local = "RDM_USE_DUNE=True pytest tests/"
 test_ocaml_ci = "RDM_USE_DUNE=False pytest tests/"
-# TODO: ensure `test_local` task works with async RDM, then add to `precommit` task
-precommit = "task lint_ci; task reformat; task typecheck_ci"
+
+# Precommit check
+precommit = "task lint --fix && task reformat && task typecheck"
