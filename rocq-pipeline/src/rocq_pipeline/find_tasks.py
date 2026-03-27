@@ -54,7 +54,9 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
             else:
                 start = i + 1
         elif sentence.data.kind == "ExactProof":
-            return ProofTask(start, start, "qed", [sentence.text])
+            mtch = re.match(r"^Proof\s+(.+)\.$", sentence.text)
+            assert mtch is not None
+            return ProofTask(start, start, "qed", [f"exact ({mtch.group(1).strip()})."])
         elif sentence.data.kind in ["Abort", "AbortAll"]:
             return ProofTask(start, i, "aborted", tactics)
         elif sentence.data.kind == "EndProof":
