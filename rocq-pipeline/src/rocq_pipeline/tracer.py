@@ -45,6 +45,9 @@ async def trace_proof(
     """Trace a proof."""
     config = config or TraceConfig()
 
+    if config.subtactic:
+        await ltac_interp.load(rc)
+
     prog: util.ProgressCallback = progress if progress else util.MockFeedback()
     tactics = find_tasks.scan_proof(await rc.doc_suffix()).proof_tactics
     await tracer.start_proof(rc)
@@ -55,7 +58,6 @@ async def trace_proof(
     else:
         step_size = 1.0 / len(tactics)
 
-    await ltac_interp.load(rc)
     for i, tactic in enumerate(tactics):
         after = await tracer.start(rc, tactic)
         prog.status(status=tactic[:10])
