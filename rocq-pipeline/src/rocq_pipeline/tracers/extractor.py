@@ -1,26 +1,39 @@
-from collections.abc import Awaitable, Callable, Generator
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, Literal, Protocol, Self, TypedDict, cast
 
 from pydantic import BaseModel, Field, JsonValue
 from rocq_doc_manager import RocqCursor
+from rocq_dune_util import DuneRocqPlugin
+from rocq_pipeline.with_deps import UsingRocqDeps, rocq_deps_for
 
 
 class OutputDict[A](TypedDict):
+    """Class that captures the intuition that an interaction has a "before"
+    state and an "after" state."""
+
+    # TODO: expand this with an "info" field
     before: A
     after: A
+
+
+def pivot_output_dict[K, A](input: dict[K, OutputDict[A]]) -> OutputDict[dict[K, A]]:
+    """The type says it all."""
+    result: OutputDict[dict[K, A]] = {"before": {}, "after": {}}
+    for k, v in input.items():
+        result["before"][k] = v["before"]
+        result["after"][k] = v["after"]
+    return result
 
 
 class InteractionTrace(BaseModel):
     """The trace of a single interaction, e.g. a tactic execution in a particular proof script."""
 
     action: str = Field(description="The action that is run, usually a tactic")
-    before: dict[str, JsonValue] = Field(
+    before: JsonValue = Field(
         description="Information about the state before the action"
     )
-    after: dict[str, JsonValue] = Field(
-        description="Information about the state after the action"
-    )
-    info: dict[str, JsonValue] | None = Field(
+    after: JsonValue = Field(description="Information about the state after the action")
+    info: JsonValue | None = Field(
         description="Extra information about the action, e.g. the result of `Check x` if the tactic is `rewrite x` or the lemmas applied by a larger bit of automation"
     )
 
@@ -28,7 +41,7 @@ class InteractionTrace(BaseModel):
     def of_output_dict(
         cls,
         tactic: str,
-        result: OutputDict[dict[str, JsonValue]],
+        result: OutputDict[JsonValue],
         *,
         info: dict[str, JsonValue] | None = None,
     ) -> Self:
@@ -48,7 +61,7 @@ class DocumentWatcher(Protocol):
     the document do not affect the behavior of other parts of the file.
     """
 
-    def setup(self, rc: RocqCursor) -> None:
+    async def setup(self, rc: RocqCursor) -> None:
         """
         Sets up the infrastructure necessary to run the extractor.
 
@@ -77,7 +90,7 @@ class DocumentWatcher(Protocol):
 
 
 class DefaultDocumentWatcher(DocumentWatcher):
-    def setup(self, rc: RocqCursor) -> None:
+    async def setup(self, rc: RocqCursor) -> None:
         pass
 
     async def start_proof(self, rc: RocqCursor) -> None:
@@ -99,33 +112,17 @@ class StateExtractor[T](Protocol):
         ...
 
 
-def merge_into[A, B](a: dict[A, B], b: dict[A, B]) -> None:
-    for k, v in b.items():
-        if k in a and a[k] != v:
-            raise ValueError("Overlapping entries")
-        a[k] = v
-
-
-def merge_all[A, B](
-    ds: Generator[dict[A, B]], into: dict[A, B] | None = None
-) -> dict[A, B]:
-    result: dict[A, B] = {} if into is None else into
-    for x in ds:
-        merge_into(result, x)
-    return result
-
-
 class AllDocumentWatcher(DocumentWatcher):
     """
     Produce an object that contains the results of all of the state extractors
     """
 
-    def __init__(self, watchers: dict[str, DocumentWatcher]):
-        self._watchers: dict[str, DocumentWatcher] = watchers
+    def __init__(self, watchers: Mapping[str, DocumentWatcher]):
+        self._watchers: Mapping[str, DocumentWatcher] = watchers
 
-    def setup(self, rc: RocqCursor) -> None:
+    async def setup(self, rc: RocqCursor) -> None:
         for _, w in self._watchers.items():
-            w.setup(rc)
+            await w.setup(rc)
 
     async def start_proof(self, rc: RocqCursor) -> None:
         for _, w in self._watchers.items():
@@ -155,9 +152,6 @@ class AllStateExtractor(StateExtractor[dict[str, Any]]):
         return result
 
 
-type After[A] = Callable[[RocqCursor, str], Awaitable[A | None]]
-
-
 class BracketInterface[A](Protocol):
     """
     Is used internally to enforce the [before]-before-[after] invariant of
@@ -165,6 +159,8 @@ class BracketInterface[A](Protocol):
 
     Inheriting from [BracketedExtractor] automatically implements this interface.
     """
+
+    type After[B] = Callable[[RocqCursor, str], Awaitable[B | None]]
 
     async def before_internal(self, rc: RocqCursor, tactic: str) -> After[A] | None: ...
 
@@ -219,7 +215,9 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
         self, rc: RocqCursor, tactic: str, result_before: B
     ) -> A | None: ...
 
-    async def before_internal(self, rc: RocqCursor, tactic: str) -> After[A] | None:
+    async def before_internal(
+        self, rc: RocqCursor, tactic: str
+    ) -> BracketInterface.After[A] | None:
         result_before = await self.before(rc, tactic)
         match result_before.val():
             case (True, v):
@@ -234,8 +232,14 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
 
 
 class TrivialBracketedExtractor[A](
-    StateExtractor[A], BracketedExtractor[A, OutputDict[A]]
+    BracketedExtractor[A, OutputDict[A]], StateExtractor[A]
 ):
+    """A BracketExtractor from a StateExtractor.
+
+    NOTE: We use inheritence here instead of composition so that
+    we can passthru any dependencies; however, it might be nicer
+    to work with lower-level components."""
+
     async def before(self, rc: RocqCursor, tactic: str) -> ExtractorResult[A]:
         match await self.extract(rc):
             case None:
@@ -252,30 +256,25 @@ class TrivialBracketedExtractor[A](
         return {"before": result_before, "after": result_after}
 
 
-type D = dict[str, Any]
-
-
-class AllBracketedExtractor(BracketedExtractor[D, D]):
-    def __init__(self, extractors: dict[str, BracketedExtractor[Any, Any]]) -> None:
+class AllBracketInterface[K, V](BracketInterface[dict[K, V]]):
+    def __init__(self, extractors: Mapping[K, BracketInterface[V]]) -> None:
         self._extractors = extractors
 
-    async def before(self, rc: RocqCursor, tactic: str) -> ExtractorResult[D]:
-        state = {}
-        for k, e in self._extractors.items():
-            result = await e.before(rc, tactic)
-            if result is None:
-                continue
-            state[k] = result
-        return Extracted(state)
+    async def before_internal(
+        self, rc: RocqCursor, tactic: str
+    ) -> BracketInterface.After[dict[K, V]] | None:
+        result = {
+            k: v
+            for k, extractor in self._extractors.items()
+            if (v := await extractor.before_internal(rc, tactic))
+        }
 
-    async def after(self, rc: RocqCursor, tactic: str, result_before) -> D:
-        results: D = {}
-        for k, e in result_before.items():
-            result_after = await self._extractors[k].after(rc, tactic, result_before=e)
-            if result_after is None:
-                continue
-            results[k] = result_after
-        return results
+        async def final_result(rc: RocqCursor, tactic: str) -> dict[K, V]:
+            return {
+                k: v for k, after in result.items() if (v := await after(rc, tactic))
+            }
+
+        return final_result
 
 
 class Tracer[A](DocumentWatcher, BracketInterface[A], Protocol):
@@ -284,3 +283,51 @@ class Tracer[A](DocumentWatcher, BracketInterface[A], Protocol):
     """
 
     pass
+
+
+class MapTracer[A, B](Tracer[B]):
+    def __init__(self, tracer: Tracer[A], fn: Callable[[A], B]) -> None:
+        self._tracer = tracer
+        self._fn = fn
+
+    def rocq_deps(self) -> list[DuneRocqPlugin]:
+        return rocq_deps_for(self._tracer)
+
+    async def setup(self, rc: RocqCursor) -> None:
+        return await self._tracer.setup(rc)
+
+    async def start_proof(self, rc: RocqCursor) -> None:
+        return await self._tracer.start_proof(rc)
+
+    async def end_proof(self, rc: RocqCursor) -> None:
+        return await self._tracer.end_proof(rc)
+
+    async def before_internal(
+        self, rc: RocqCursor, tactic: str
+    ) -> BracketInterface.After[B] | None:
+        after_a = await self._tracer.before_internal(rc, tactic)
+        if after_a is None:
+            return None
+        fn = self._fn
+
+        async def after_b(rc: RocqCursor, tactic: str) -> B | None:
+            nonlocal after_a, fn
+            assert after_a is not None
+            a = await after_a(rc, tactic)
+            return None if a is None else fn(a)
+
+        return after_b
+
+
+class AllTracer[A](AllDocumentWatcher, AllBracketInterface[str, A], UsingRocqDeps):
+    """Build a `Tracer` that combines many individual `Tracer`s."""
+
+    def __init__(self, tracers: Mapping[str, Tracer[A]]) -> None:
+        # It is a bit wasteful to have two fields instead of just one.
+        AllDocumentWatcher.__init__(self, tracers)
+        AllBracketInterface.__init__(self, tracers)
+
+    def rocq_deps(self) -> list[DuneRocqPlugin]:
+        return [
+            x for tracer in self._extractors.values() for x in rocq_deps_for(tracer)
+        ]

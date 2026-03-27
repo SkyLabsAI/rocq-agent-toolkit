@@ -16,11 +16,14 @@ from rocq_ltac_interp.tacinterp import RunCommandResult
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, util
 from rocq_pipeline.args import load_tasks
-from rocq_pipeline.tracers import json_goal
+from rocq_pipeline.tracers import json_goal, string_goal
 from rocq_pipeline.tracers.extractor import (
+    AllTracer,
     InteractionTrace,
+    MapTracer,
     OutputDict,
     Tracer,
+    pivot_output_dict,
 )
 from rocq_pipeline.with_deps import rocq_deps_for
 
@@ -32,41 +35,14 @@ class TraceConfig(BaseModel):
     )
 
 
-# class BracketedTacticRunner(ltac_interp.tacinterp.TacticRunner):
-#     def __init__(
-#         self, traces: list[InteractionTrace], extractor: Tracer[InteractionTrace]
-#     ) -> None:
-#         self._traces = traces
-#         self._extractor = extractor
-
-#     async def __call__(
-#         self,
-#         rc: RocqCursor,
-#         goal: int,
-#         tac: str,
-#         *,
-#         pre: rdm_api.ProofState,
-#         trace: int | None = None,
-#     ) -> RunCommandResult:
-#         local_after = await self._extractor.before_internal(rc, tac)
-#         # Make the parent call
-#         result = await run_tac(rc, goal, tac, pre=pre, trace=trace)
-#         if local_after and (after := await local_after(rc, tac)):
-#             self._traces.append(after)
-#         return result
-
-
 async def trace_proof(
-    tracer: Tracer[OutputDict[dict[str, JsonValue]]],
+    tracer: Tracer[OutputDict[JsonValue]],
     rc: RocqCursor,
     *,
     progress: util.ProgressCallback | None = None,
     config: TraceConfig | None = None,
 ) -> list[InteractionTrace]:
-    """Trace a proof.
-
-    subtactic
-    """
+    """Trace a proof."""
     config = config or TraceConfig()
 
     prog: util.ProgressCallback = progress if progress else util.MockFeedback()
@@ -211,7 +187,7 @@ def run(
                 load_file=True,
             ) as rc:
                 await ltac_interp.load(rc)
-                tracer.setup(rc)
+                await tracer.setup(rc)
                 progress.status(0.05, "🔃")
 
                 if not await task.locator.go_to(rc):
@@ -252,7 +228,19 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
     if arguments.tracer is None:
 
         def tracer() -> Tracer[Any]:
-            return json_goal.build()
+            return MapTracer(
+                AllTracer(
+                    {
+                        "json_goal": cast(
+                            Tracer[OutputDict[JsonValue]], json_goal.build()
+                        ),
+                        "string_goal": cast(
+                            Tracer[OutputDict[JsonValue]], string_goal.build()
+                        ),
+                    }
+                ),
+                pivot_output_dict,
+            )
     else:
         if isinstance(arguments.tracer, str):
             loaded = loader.load_from_str(arguments.tracer)

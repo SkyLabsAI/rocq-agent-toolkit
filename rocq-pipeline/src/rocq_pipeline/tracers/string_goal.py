@@ -1,22 +1,20 @@
 from rocq_doc_manager import RocqCursor
-from rocq_doc_manager import rocq_doc_manager_api as rdm_api
-from rocq_pipeline.proof_state import ProofState
 
 from .extractor import DefaultDocumentWatcher, StateExtractor, TrivialBracketedExtractor
 
 
-class ExtractGoalAsString(StateExtractor[str]):
+class ExtractGoalAsString(StateExtractor[list[str]]):
     """A simple extractor that just gets the current goal the way it is printed in Rocq."""
 
-    async def extract(self, rc: RocqCursor) -> str:
+    async def extract(self, rc: RocqCursor) -> list[str]:
         result = await rc.current_goal()
-        if isinstance(result, rdm_api.Err):
-            raise RuntimeError("Failed to parse goal: {result}")
-        return str(ProofState(result))
+        if result is None:
+            return []
+        return result.focused_goals
 
 
 class GoalAsString(
-    DefaultDocumentWatcher, TrivialBracketedExtractor[str], ExtractGoalAsString
+    DefaultDocumentWatcher, TrivialBracketedExtractor[list[str]], ExtractGoalAsString
 ):
     pass
 

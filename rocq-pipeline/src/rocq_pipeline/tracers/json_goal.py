@@ -16,7 +16,7 @@ from .extractor import (
     DefaultDocumentWatcher,
     Extracted,
     ExtractorResult,
-    InteractionTrace,
+    OutputDict,
     Skip,
 )
 
@@ -51,7 +51,7 @@ def goal_diff(
 
 class JsonGoal(
     DefaultDocumentWatcher,
-    BracketedExtractor[state, InteractionTrace],
+    BracketedExtractor[state, OutputDict[JsonValue]],
     UsingRocqDeps,
 ):
     _RAW_PATH = "skylabs_ai.extractors.goal_to_json.basic.goal_util"
@@ -139,7 +139,7 @@ class JsonGoal(
         rc: RocqCursor,
         tactic: str,
         result_before: state,
-    ) -> InteractionTrace:
+    ) -> OutputDict[JsonValue]:
         result = await self.get_goals(rc)
         goals = await rc.current_goal()
 
@@ -158,12 +158,7 @@ class JsonGoal(
             [json.loads(goal) for goal in result] if result is not None else []
         )
 
-        return InteractionTrace(
-            action=tactic,
-            before={"json_goal": preGoalsX},
-            after={"json_goal": postGoals},
-            info={},
-        )
+        return {"before": preGoalsX, "after": postGoals}
 
 
 def build_by_goal() -> JsonGoal:
