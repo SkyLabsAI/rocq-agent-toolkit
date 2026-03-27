@@ -1,8 +1,13 @@
 from collections.abc import Awaitable, Callable, Generator
-from typing import Any, Literal, Protocol, TypedDict, cast
+from typing import Any, Literal, Protocol, Self, TypedDict, cast
 
 from pydantic import BaseModel, Field, JsonValue
 from rocq_doc_manager import RocqCursor
+
+
+class OutputDict[A](TypedDict):
+    before: A
+    after: A
 
 
 class InteractionTrace(BaseModel):
@@ -18,6 +23,21 @@ class InteractionTrace(BaseModel):
     info: dict[str, JsonValue] | None = Field(
         description="Extra information about the action, e.g. the result of `Check x` if the tactic is `rewrite x` or the lemmas applied by a larger bit of automation"
     )
+
+    @classmethod
+    def of_output_dict(
+        cls,
+        tactic: str,
+        result: OutputDict[dict[str, JsonValue]],
+        *,
+        info: dict[str, JsonValue] | None = None,
+    ) -> Self:
+        return cls(
+            action=tactic,
+            before=result["before"],
+            after=result["after"],
+            info=info,
+        )
 
 
 class DocumentWatcher(Protocol):
@@ -201,7 +221,6 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
 
     async def before_internal(self, rc: RocqCursor, tactic: str) -> After[A] | None:
         result_before = await self.before(rc, tactic)
-        print(f"result_before={result_before}")
         match result_before.val():
             case (True, v):
                 v = cast(B, v)  # mypy is not smart enough to figure this out
@@ -212,11 +231,6 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
                 return fn
             case _:
                 return None
-
-
-class OutputDict[A](TypedDict):
-    before: A
-    after: A
 
 
 class TrivialBracketedExtractor[A](
@@ -264,7 +278,7 @@ class AllBracketedExtractor(BracketedExtractor[D, D]):
         return results
 
 
-class Tracer[A](DocumentWatcher, BracketInterface[InteractionTrace], Protocol):
+class Tracer[A](DocumentWatcher, BracketInterface[A], Protocol):
     """
     The protocol that the tracer relies on.
     """

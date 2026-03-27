@@ -7,11 +7,11 @@ from types import ModuleType
 from typing import Any, cast
 
 import rocq_ltac_interp as ltac_interp
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import rocq_args_for
-from rocq_ltac_interp.tacinterp import RunCommandResult, run_tac
+from rocq_ltac_interp.tacinterp import RunCommandResult
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, util
@@ -19,6 +19,7 @@ from rocq_pipeline.args import load_tasks
 from rocq_pipeline.tracers import json_goal
 from rocq_pipeline.tracers.extractor import (
     InteractionTrace,
+    OutputDict,
     Tracer,
 )
 from rocq_pipeline.with_deps import rocq_deps_for
@@ -31,32 +32,32 @@ class TraceConfig(BaseModel):
     )
 
 
-class BracketedTacticRunner(ltac_interp.tacinterp.TacticRunner):
-    def __init__(
-        self, traces: list[InteractionTrace], extractor: Tracer[InteractionTrace]
-    ) -> None:
-        self._traces = traces
-        self._extractor = extractor
+# class BracketedTacticRunner(ltac_interp.tacinterp.TacticRunner):
+#     def __init__(
+#         self, traces: list[InteractionTrace], extractor: Tracer[InteractionTrace]
+#     ) -> None:
+#         self._traces = traces
+#         self._extractor = extractor
 
-    async def __call__(
-        self,
-        rc: RocqCursor,
-        goal: int,
-        tac: str,
-        *,
-        pre: rdm_api.ProofState,
-        trace: int | None = None,
-    ) -> RunCommandResult:
-        local_after = await self._extractor.before_internal(rc, tac)
-        # Make the parent call
-        result = await run_tac(rc, goal, tac, pre=pre, trace=trace)
-        if local_after and (after := await local_after(rc, tac)):
-            self._traces.append(after)
-        return result
+#     async def __call__(
+#         self,
+#         rc: RocqCursor,
+#         goal: int,
+#         tac: str,
+#         *,
+#         pre: rdm_api.ProofState,
+#         trace: int | None = None,
+#     ) -> RunCommandResult:
+#         local_after = await self._extractor.before_internal(rc, tac)
+#         # Make the parent call
+#         result = await run_tac(rc, goal, tac, pre=pre, trace=trace)
+#         if local_after and (after := await local_after(rc, tac)):
+#             self._traces.append(after)
+#         return result
 
 
 async def trace_proof(
-    tracer: Tracer[InteractionTrace],
+    tracer: Tracer[OutputDict[dict[str, JsonValue]]],
     rc: RocqCursor,
     *,
     progress: util.ProgressCallback | None = None,
@@ -84,8 +85,6 @@ async def trace_proof(
         prog.status(status=tactic[:10])
 
         if config.subtactic:
-            print("subtactic tracing!")
-
             # TODO: this setup will not be enough because it
             # 1. is not tracking aggregate tactics
             # 2. it doesn't eliminate tactics that ultimately don't make progress
@@ -108,11 +107,17 @@ async def trace_proof(
                 )
                 if local_after and (after := await local_after(rc, tac_with_period)):
                     nonlocal traces
-                    traces.append(after)
+                    traces.append(
+                        InteractionTrace.of_output_dict(tac_with_period, after)
+                    )
                 return result
 
             async with (await rc.clone()).sess() as rc_local:
-                await ltac_interp.interp_tactic(rc_local, tactic, run_atom=run_atom)
+                try:
+                    await ltac_interp.interp_tactic(rc_local, tactic, run_atom=run_atom)
+                except NotImplementedError:
+                    # These are best-effort
+                    pass
 
         run_command_result = await rc.run_command(tactic)
         if isinstance(run_command_result, rdm_api.Err):
@@ -121,10 +126,8 @@ async def trace_proof(
             )
 
         prog.status(percent=i * step_size)
-        if after is not None:
-            result = await after(rc, tactic)
-            if result is not None:
-                traces.append(result)
+        if after is not None and (result := await after(rc, tactic)):
+            traces.append(InteractionTrace.of_output_dict(tactic, result))
     await tracer.end_proof(rc)
     return traces
 
@@ -149,6 +152,13 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
         default=Path("."),
         help="The directory to output task results, as JSON.",
     )
+    parser.add_argument(
+        "--fine-grained",
+        dest="fine_grained",
+        action="store_true",
+        default=False,
+        help="Trace individual tactics within a tactic, e.g. `intros; apply x` will trace `intros` and `apply x` independently.",
+    )
     if with_tracer:
         parser.add_argument(
             "--tracer",
@@ -169,6 +179,8 @@ def run(
     tracer_builder: Callable[[], Tracer[Any]],
     output_dir: Path,
     tasks: list[tuple[Tasks.Project, Tasks.Task]],
+    *,
+    config: TraceConfig | None = None,
     jobs: int = 1,
 ) -> None:
     output_dir.mkdir(exist_ok=True)
@@ -211,7 +223,7 @@ def run(
                     tracer,
                     rc,
                     progress=util.DelimitedFeedback(progress, min=0.1, max=0.95),
-                    config=TraceConfig(subtactic=True),
+                    config=config,
                 )
                 progress.status(0.95, "💭")
 
@@ -265,6 +277,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         tracer,
         arguments.output_dir,
         tasks,
+        config=TraceConfig(subtactic=arguments.fine_grained),
         jobs=arguments.jobs,
     )
     return True

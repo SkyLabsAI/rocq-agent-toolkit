@@ -111,7 +111,6 @@ class JsonGoal(
     async def get_goals(self, rc: RocqCursor) -> list[str] | None:
         result = await rc.query_text_all(self._tactic(), indices=None)
         if isinstance(result, rdm_api.Err):
-            print(f"error! {result}")
             if "Init.Not_focussed" in result.message:
                 return []
             return None
@@ -126,7 +125,6 @@ class JsonGoal(
     @staticmethod
     def supported_tactic(tactic: str) -> bool:
         tactic = tactic.strip()
-        print(f"tactic={tactic}")
         # TODO: ask the tagger if the tactic starts with a goal selector
         return tactic.endswith(".") or tactic in ["{", "}"]
 
