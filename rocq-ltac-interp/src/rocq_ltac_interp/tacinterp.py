@@ -155,7 +155,7 @@ class LtacTry(AbstractAsyncContextManager):
         return False
 
 
-async def run_tac(
+async def run_atom(
     rc: RocqCursor,
     goal: int,
     tac: str,
@@ -254,12 +254,12 @@ async def run_on_goals(
 def decomp_run_curry(
     tactic: TacticAST,
     *,
-    run_atom: TacticRunner = run_tac,
+    run_atom: TacticRunner = run_atom,
 ) -> LtacThunk:
     async def run(
         rc: RocqCursor, goal: int, *, pre: rdm_api.ProofState, trace: int | None = None
     ) -> RunCommandResult:
-        _count = await interp_rec(
+        _count = await interp_tactic(
             rc, tactic, goals=(goal, 1), trace=trace, run_atom=run_atom
         )
         return await rc.current_goal()
@@ -277,12 +277,12 @@ def trace_indent(trace: int | None) -> int | None:
     return None if trace is None else (trace + 2)
 
 
-async def interp_rec(
+async def interp_tactic(
     rc: RocqCursor,
     tactic: TacticAST,
     *,
     goals: tuple[int, int] = (0, 1),
-    run_atom: TacticRunner = run_tac,
+    run_atom: TacticRunner = run_atom,
     trace: int | None = None,
 ) -> int:
     """Interprets the tactic AST at the current RocqCursor.
@@ -323,14 +323,14 @@ async def interp_rec(
             # assert isinstance(tac1, TacticAST)
             # assert isinstance(tac2, TacticAST)
             async with LtacTry(rc) as rc_attempt:
-                new_goals = await interp_rec(
+                new_goals = await interp_tactic(
                     rc_attempt,
                     cast(TacticAST, tac1),
                     goals=goals,
                     run_atom=run_atom,
                     trace=trace_indent(trace),
                 )
-                return await interp_rec(
+                return await interp_tactic(
                     rc_attempt,
                     cast(TacticAST, tac2),
                     goals=(first_goal, new_goals),
@@ -339,7 +339,7 @@ async def interp_rec(
                 )
         case "Thens":
             async with LtacTry(rc) as rc_attempt:
-                new_goals = await interp_rec(
+                new_goals = await interp_tactic(
                     rc_attempt,
                     cast(TacticAST, tactic[1]),
                     goals=goals,
@@ -360,14 +360,14 @@ async def interp_rec(
         case "Thens3":
             [_, tac, before, middle, after] = tactic
             async with LtacTry(rc) as rc_attempt:
-                count = await interp_rec(
+                count = await interp_tactic(
                     rc_attempt,
                     cast(TacticAST, tac),
                     goals=goals,
                     run_atom=run_atom,
                     trace=trace_indent(trace),
                 )
-                return await interp_rec(
+                return await interp_tactic(
                     rc_attempt,
                     ["ExtendTac", before, middle, after],
                     goals=(first_goal, count),
@@ -471,7 +471,7 @@ async def interp_rec(
                 for t in cast(list[TacticAST], tactic[1:]):
                     try:
                         async with LtacTry(rc) as rc_attempt:
-                            _ = await interp_rec(
+                            _ = await interp_tactic(
                                 rc_attempt,
                                 t,
                                 goals=(goal, 1),
@@ -500,7 +500,7 @@ async def interp_rec(
                 for t in cast(list[TacticAST], tactic[1:]):
                     try:
                         async with LtacTry(rc) as rc_attempt:
-                            count = await interp_rec(
+                            count = await interp_tactic(
                                 rc_attempt,
                                 t,
                                 goals=(goal, 1),
@@ -529,7 +529,7 @@ async def interp_rec(
                 t = cast(TacticAST, tactic[1])
                 try:
                     async with LtacTry(rc) as rc_attempt:
-                        await interp_rec(
+                        await interp_tactic(
                             rc_attempt,
                             t,
                             goals=(goal, 1),
@@ -545,19 +545,19 @@ async def interp_rec(
     raise NotImplementedError(tactic)
 
 
-async def interp_tactic(
+async def interp_tactic_str(
     rc: RocqCursor,
     tactic: str,
     *,
     goals: tuple[int, int] = (0, 1),
-    run_atom: TacticRunner = run_tac,
+    run_atom: TacticRunner = run_atom,
     trace: int | None = None,
 ) -> int:
     """Interpret a tactic from a string.
     This is equivalent to calling `parse_tac` and passing the result
     to `interp`."""
     explanation = await parse_tactic(rc, tactic)
-    return await interp_rec(
+    return await interp_tactic(
         rc, explanation, goals=goals, run_atom=run_atom, trace=trace
     )
 

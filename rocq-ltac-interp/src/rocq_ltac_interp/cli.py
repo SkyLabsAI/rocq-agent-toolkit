@@ -12,10 +12,10 @@ from rocq_dune_util import rocq_args_for
 from rocq_ltac_interp.tacinterp import (
     PLUGIN,
     RunCommandResult,
-    interp_rec,
+    interp_tactic,
     load,
     parse_tactic,
-    run_tac,
+    run_atom,
 )
 
 
@@ -32,12 +32,12 @@ async def amain(
             pre: ProofState,
             trace: int | None = None,
         ) -> RunCommandResult:
-            return await run_tac(
+            return await tacinterp.run_atom(
                 rc, goal, tac, pre=pre, trace=2 if trace is None else trace
             )
 
     else:
-        run_atom = run_tac
+        run_atom = run_atom
 
     rocq_args = rocq_args_for(file, plugins=[PLUGIN])
     async with rc_sess(file, rocq_args=rocq_args) as rc:
@@ -51,7 +51,7 @@ async def amain(
             explanation = await parse_tactic(rc, tactic.text)
             print(f"{i}/ {tactic.text}")
 
-            await interp_rec(
+            await interp_tactic(
                 rc, explanation, trace=0 if trace else None, run_atom=run_atom
             )
     return 0
