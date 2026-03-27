@@ -1,5 +1,5 @@
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Any, Literal, Protocol, Self, TypedDict, cast
+from typing import Any, Literal, Protocol, Self, TypedDict, cast, override
 
 from pydantic import BaseModel, Field, JsonValue
 from rocq_doc_manager import RocqCursor
@@ -90,12 +90,15 @@ class DocumentWatcher(Protocol):
 
 
 class DefaultDocumentWatcher(DocumentWatcher):
+    @override
     async def setup(self, rc: RocqCursor) -> None:
         pass
 
+    @override
     async def start_proof(self, rc: RocqCursor) -> None:
         pass
 
+    @override
     async def end_proof(self, rc: RocqCursor) -> None:
         pass
 
@@ -120,14 +123,17 @@ class AllDocumentWatcher(DocumentWatcher):
     def __init__(self, watchers: Mapping[str, DocumentWatcher]):
         self._watchers: Mapping[str, DocumentWatcher] = watchers
 
+    @override
     async def setup(self, rc: RocqCursor) -> None:
         for _, w in self._watchers.items():
             await w.setup(rc)
 
+    @override
     async def start_proof(self, rc: RocqCursor) -> None:
         for _, w in self._watchers.items():
             await w.start_proof(rc)
 
+    @override
     async def end_proof(self, rc: RocqCursor) -> None:
         for _, w in self._watchers.items():
             await w.end_proof(rc)
@@ -141,6 +147,7 @@ class AllStateExtractor(StateExtractor[dict[str, Any]]):
     def __init__(self, extractors: dict[str, StateExtractor[Any]]):
         self._extractors: dict[str, StateExtractor[Any]] = extractors
 
+    @override
     async def extract(self, rc: RocqCursor) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for k, extractor in self._extractors.items():
@@ -162,7 +169,7 @@ class BracketInterface[A](Protocol):
 
     type After[B] = Callable[[RocqCursor, str], Awaitable[B | None]]
 
-    async def before_internal(self, rc: RocqCursor, tactic: str) -> After[A] | None: ...
+    async def start(self, rc: RocqCursor, tactic: str) -> After[A] | None: ...
 
 
 class ExtractorResult[T](Protocol):
@@ -187,11 +194,13 @@ class Extracted[T](ExtractorResult[T]):
     def __init__(self, t: T):
         self._result = t
 
+    @override
     def val(self) -> tuple[Literal[True], T]:
         return (True, self._result)
 
 
 class Skip[T](ExtractorResult[T]):
+    @override
     def val(self) -> tuple[Literal[False], None]:
         return (False, None)
 
@@ -215,7 +224,8 @@ class BracketedExtractor[B, A](BracketInterface[A], Protocol):
         self, rc: RocqCursor, tactic: str, result_before: B
     ) -> A | None: ...
 
-    async def before_internal(
+    @override
+    async def start(
         self, rc: RocqCursor, tactic: str
     ) -> BracketInterface.After[A] | None:
         result_before = await self.before(rc, tactic)
@@ -240,6 +250,7 @@ class TrivialBracketedExtractor[A](
     we can passthru any dependencies; however, it might be nicer
     to work with lower-level components."""
 
+    @override
     async def before(self, rc: RocqCursor, tactic: str) -> ExtractorResult[A]:
         match await self.extract(rc):
             case None:
@@ -247,6 +258,7 @@ class TrivialBracketedExtractor[A](
             case val:
                 return Extracted(val)
 
+    @override
     async def after(
         self, rc: RocqCursor, tactic: str, result_before: A
     ) -> OutputDict[A] | None:
@@ -260,13 +272,14 @@ class AllBracketInterface[K, V](BracketInterface[dict[K, V]]):
     def __init__(self, extractors: Mapping[K, BracketInterface[V]]) -> None:
         self._extractors = extractors
 
-    async def before_internal(
+    @override
+    async def start(
         self, rc: RocqCursor, tactic: str
     ) -> BracketInterface.After[dict[K, V]] | None:
         result = {
             k: v
             for k, extractor in self._extractors.items()
-            if (v := await extractor.before_internal(rc, tactic))
+            if (v := await extractor.start(rc, tactic))
         }
 
         async def final_result(rc: RocqCursor, tactic: str) -> dict[K, V]:
@@ -293,19 +306,23 @@ class MapTracer[A, B](Tracer[B]):
     def rocq_deps(self) -> list[DuneRocqPlugin]:
         return rocq_deps_for(self._tracer)
 
+    @override
     async def setup(self, rc: RocqCursor) -> None:
         return await self._tracer.setup(rc)
 
+    @override
     async def start_proof(self, rc: RocqCursor) -> None:
         return await self._tracer.start_proof(rc)
 
+    @override
     async def end_proof(self, rc: RocqCursor) -> None:
         return await self._tracer.end_proof(rc)
 
-    async def before_internal(
+    @override
+    async def start(
         self, rc: RocqCursor, tactic: str
     ) -> BracketInterface.After[B] | None:
-        after_a = await self._tracer.before_internal(rc, tactic)
+        after_a = await self._tracer.start(rc, tactic)
         if after_a is None:
             return None
         fn = self._fn

@@ -57,7 +57,7 @@ async def trace_proof(
 
     await ltac_interp.load(rc)
     for i, tactic in enumerate(tactics):
-        after = await tracer.before_internal(rc, tactic)
+        after = await tracer.start(rc, tactic)
         prog.status(status=tactic[:10])
 
         if config.subtactic:
@@ -77,7 +77,7 @@ async def trace_proof(
                 # Note that that the tactic here does not have a `.`, but
                 # the extractors expect tactics with `.`
                 tac_with_period = f"{tac.strip()}."
-                local_after = await tracer.before_internal(rc, tac_with_period)
+                local_after = await tracer.start(rc, tac_with_period)
                 result = await ltac_interp.tacinterp.run_tac(
                     rc, goal, tac, pre=pre, trace=trace
                 )
