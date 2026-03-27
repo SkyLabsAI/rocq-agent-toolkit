@@ -43,6 +43,8 @@ tactic-agent = "rocq_pipeline.task_runner:tactic_main"
 oracle-agent = "rocq_pipeline.agent.proof.oracle_agent:main"
 progress = "rocq_pipeline.util:main"
 persist-instrument-rocq-cursor-schema = "rocq_pipeline.trace_cursor.telemetry.schema:main"
+remove-proofs = "rocq_pipeline.remove_proofs:main"
+check-proof-using = "rocq_pipeline.check_proof_using:main"
 
 [dependency-groups]
 dev = [

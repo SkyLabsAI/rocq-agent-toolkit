@@ -153,7 +153,7 @@ def run(
     util.parallel_runner(
         run_task,
         [(f"{t[0].get_id()}#{t[1].get_id()}", t) for t in tasks],
-        lambda x: x,
+        succeeded=lambda x: x,
         jobs=jobs,
     )
 

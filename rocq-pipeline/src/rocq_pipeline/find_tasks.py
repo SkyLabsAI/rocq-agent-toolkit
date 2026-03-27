@@ -348,7 +348,11 @@ def run(output_file: Path, pdir: Path, rocq_files: list[Path], jobs: int = 1) ->
         logger.debug(f"Will ingest file {file}")
 
     results: list[list[Task] | BaseException] = parallel_runner(
-        run_it, [(str(x), x) for x in project_files], None, jobs=jobs, progress=False
+        run_it,
+        [(str(x), x) for x in project_files],
+        succeeded=None,
+        jobs=jobs,
+        progress=False,
     )
     exceptions: list[BaseException] = []
     tasks: list[Task] = []

@@ -7,8 +7,8 @@ type entry = Rocq_simple_api_internal.Rocq_vernac_entry.entry =
   | EVernacRequire
   | EVernacImport
   | EVernacDeclareModule of Names.lident
-  | EVernacDefineModule of Names.lident
-  | EVernacDeclareModuleType of Names.lident
+  | EVernacDefineModule of {id:Names.lident; has_body: bool}
+  | EVernacDeclareModuleType of {id:Names.lident; has_body: bool}
   | EVernacInclude
   | EVernacSetOption
   | EVernacLoad
