@@ -335,6 +335,11 @@ async def interp_rec(
             if tactic[1] not in ["fail", "fail 0"]:
                 raise NotImplementedError(tactic[1])
             raise LtacFail()
+        case "Time":
+            tac = cast(TacticAST, tactic[1])
+            return await interp_rec(
+                rc, tac, goals=goals, run_atom=run_atom, trace=trace
+            )
         case "Repeat":
             tac = cast(TacticAST, tactic[1])
             current = await rc.current_goal()
