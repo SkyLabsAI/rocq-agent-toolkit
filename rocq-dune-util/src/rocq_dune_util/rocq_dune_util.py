@@ -22,11 +22,14 @@ class DuneError(Exception):
         return result
 
 
-def _run_dune(args: list[str], cwd: str | Path | None) -> str:
+def _run_dune(
+    args: list[str], cwd: str | Path | None, *, env: dict[str, str] | None = None
+) -> str:
     res = subprocess.run(
         ["dune"] + args,
         capture_output=True,
         cwd=str(cwd) if cwd is not None else None,
+        env=env,
     )
     stdout = res.stdout.decode(encoding="utf-8")
     if res.returncode != 0:
@@ -45,14 +48,14 @@ def dune_sourceroot(*, cwd: str | Path | None = None) -> Path:
     @raises DuneError: if the source root cannot be located
     """
     args = ["exec", "--no-build", "--", "env"]
-    output = _run_dune(args, cwd=cwd)
+    output = _run_dune(args, cwd=cwd, env=dune_env_hack())
     for line in output.splitlines():
         parts = line.split("=", 1)
         if len(parts) != 2:
             continue
         if parts[0] == "DUNE_SOURCEROOT":
             return Path(parts[1])
-    raise AssertionError("Unreachable code: no DUNE_SOURCEROOT variable")
+    raise AssertionError(f"Unreachable code: no DUNE_SOURCEROOT variable (cwd={cwd})")
 
 
 def in_dune_project(*, cwd: str | Path | None = None) -> bool:
