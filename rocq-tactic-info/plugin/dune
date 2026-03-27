@@ -1,0 +1,7 @@
+(library
+ (name rocq_tactic_info_plugin)
+ (public_name rocq-tactic-info.plugin)
+ (libraries rocq-runtime.plugins.ltac2 rocq-runtime.plugins.ltac yojson))
+
+(rocq.pp
+ (modules g_tactic_parser))
