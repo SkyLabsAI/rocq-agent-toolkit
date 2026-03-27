@@ -568,5 +568,5 @@ async def parse_tactic(rc: RocqCursor, text: str) -> TacticAST:
         text = f"{text}."
     explanation = await rc.query(f"info.Ltac {text}")
     if isinstance(explanation, rdm_api.Err):
-        raise Exception("Failed to parse tactic.", explanation)
+        raise ValueError(f"Failed to parse tactic: '{text}'", explanation)
     return json.loads(explanation.feedback_messages[0].text)

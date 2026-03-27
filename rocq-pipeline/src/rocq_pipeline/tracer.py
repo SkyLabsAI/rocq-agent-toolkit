@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, JsonValue
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 from rocq_dune_util import rocq_args_for
-from rocq_ltac_interp.tacinterp import RunCommandResult
+from rocq_ltac_interp.tacinterp import LtacFail, RunCommandResult
 
 import rocq_pipeline.tasks as Tasks
 from rocq_pipeline import find_tasks, loader, util
@@ -93,7 +93,14 @@ async def trace_proof(
             async with (await rc.clone()).sess() as rc_local:
                 try:
                     await ltac_interp.interp_tactic(rc_local, tactic, run_atom=run_atom)
+                except ValueError:
+                    # not a tactic
+                    pass
                 except NotImplementedError:
+                    # These are best-effort
+                    print(f"Not implemented: {tactic}")
+                    pass
+                except LtacFail:
                     # These are best-effort
                     pass
 
