@@ -58,14 +58,18 @@ def main() -> int:
     parser.add_argument("file", type=Path, help="Input file")
     parser.add_argument("locator", help="The locator", type=LocatorParser.parse)
     parser.add_argument(
-        "-t", dest="trace", action="store_true", default=False, help="Trace all output"
+        "-t",
+        dest="trace",
+        action="store_true",
+        default=False,
+        help="Trace all operations",
     )
     parser.add_argument(
         "-1",
         dest="trace_atom",
         action="store_true",
         default=False,
-        help="Trace atommic operations only",
+        help="Trace atomic operations",
     )
 
     args = parser.parse_args()

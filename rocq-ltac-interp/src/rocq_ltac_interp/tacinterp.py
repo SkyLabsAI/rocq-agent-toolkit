@@ -356,7 +356,7 @@ async def interp_rec(
                         if count == 0:
                             # solved the goal, so we stop
                             return count
-                        new = await rc.current_goal()
+                        new = await rc_attempt.current_goal()
                         if new == current:
                             # no (apparent) progress, so we stop
                             # If the goal changed, we must have made progress;
