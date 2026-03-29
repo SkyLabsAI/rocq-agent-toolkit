@@ -59,7 +59,6 @@ async def trace_proof(
         step_size = 1.0 / len(tactics)
 
     for i, tactic in enumerate(tactics):
-        after = await tracer.start(rc, tactic)
         prog.status(status=tactic[:10])
 
         if config.subtactic:
@@ -104,6 +103,7 @@ async def trace_proof(
                     # These are best-effort
                     pass
 
+        after = await tracer.start(rc, tactic)
         run_command_result = await rc.run_command(tactic)
         if isinstance(run_command_result, rdm_api.Err):
             raise ValueError(
