@@ -79,9 +79,7 @@ async def trace_proof(
                 # the extractors expect tactics with `.`
                 tac_with_period = f"{tac.strip()}."
                 local_after = await tracer.start(rc, tac_with_period)
-                result = await ltac_interp.tacinterp.run_tac(
-                    rc, goal, tac, pre=pre, trace=trace
-                )
+                result = await ltac_interp.run_atom(rc, goal, tac, pre=pre, trace=trace)
                 if local_after and (after := await local_after(rc, tac_with_period)):
                     nonlocal traces
                     traces.append(
@@ -90,18 +88,19 @@ async def trace_proof(
                 return result
 
             async with (await rc.clone()).sess() as rc_local:
-                try:
-                    await ltac_interp.interp_tactic(rc_local, tactic, run_atom=run_atom)
-                except ValueError:
-                    # not a tactic
-                    pass
-                except NotImplementedError:
-                    # These are best-effort
-                    print(f"Not implemented: {tactic}")
-                    pass
-                except LtacFail:
-                    # These are best-effort
-                    pass
+                tac_ast = await ltac_interp.parse_tactic(rc, tactic)
+                if not isinstance(tac_ast, rdm_api.Err):
+                    try:
+                        await ltac_interp.interp_tactic(
+                            rc_local, tac_ast, run_atom=run_atom
+                        )
+                    except NotImplementedError:
+                        # These are best-effort
+                        print(f"Unsupported tactic: {tactic}")
+                        pass
+                    except LtacFail:
+                        # These are best-effort
+                        pass
 
         after = await tracer.start(rc, tactic)
         run_command_result = await rc.run_command(tactic)

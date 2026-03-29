@@ -557,16 +557,18 @@ async def interp_tactic_str(
     This is equivalent to calling `parse_tac` and passing the result
     to `interp`."""
     explanation = await parse_tactic(rc, tactic)
+    if isinstance(explanation, rdm_api.Err):
+        raise ValueError(f"Failed to parse tactic: {tactic}")
     return await interp_tactic(
         rc, explanation, goals=goals, run_atom=run_atom, trace=trace
     )
 
 
-async def parse_tactic(rc: RocqCursor, text: str) -> TacticAST:
+async def parse_tactic(rc: RocqCursor, text: str) -> TacticAST | rdm_api.Err[None]:
     """Parse a tactic and return its AST."""
     if not text.endswith("."):
         text = f"{text}."
     explanation = await rc.query(f"info.Ltac {text}")
     if isinstance(explanation, rdm_api.Err):
-        raise ValueError(f"Failed to parse tactic: '{text}'", explanation)
+        return explanation
     return json.loads(explanation.feedback_messages[0].text)

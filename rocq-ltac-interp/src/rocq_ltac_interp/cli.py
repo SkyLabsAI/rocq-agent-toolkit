@@ -9,13 +9,10 @@ from rocq_doc_manager.locator import Locator, LocatorParser
 from rocq_doc_manager.rocq_doc_manager_api import ProofState
 from rocq_dune_util import rocq_args_for
 
-from rocq_ltac_interp.tacinterp import (
-    PLUGIN,
+from . import tacinterp as tacinterp
+from .tacinterp import (
     RunCommandResult,
-    interp_tactic,
-    load,
-    parse_tactic,
-    run_atom,
+    interp_tactic_str,
 )
 
 
@@ -37,22 +34,21 @@ async def amain(
             )
 
     else:
-        run_atom = run_atom
+        run_atom = tacinterp.run_atom
 
-    rocq_args = rocq_args_for(file, plugins=[PLUGIN])
+    rocq_args = rocq_args_for(file, plugins=[tacinterp.PLUGIN])
     async with rc_sess(file, rocq_args=rocq_args) as rc:
-        await load(rc)
+        await tacinterp.load(rc)
         assert await locator.go_to(rc)
 
         suffix = await rc.doc_suffix()
         for i, tactic in enumerate([t for t in suffix if t.kind == "command"]):
             if tactic.data and tactic.data.kind in ["EndProof"]:
                 break
-            explanation = await parse_tactic(rc, tactic.text)
-            print(f"{i}/ {tactic.text}")
 
-            await interp_tactic(
-                rc, explanation, trace=0 if trace else None, run_atom=run_atom
+            print(f"{i}/ {tactic.text}")
+            await interp_tactic_str(
+                rc, tactic.text, trace=0 if trace else None, run_atom=run_atom
             )
     return 0
 
