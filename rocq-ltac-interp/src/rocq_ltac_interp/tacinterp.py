@@ -172,7 +172,7 @@ async def run_atom(
     return result.proof_state
 
 
-async def run_on_each(
+async def run_on_all(
     rc: RocqCursor,
     tactic: str,
     run_tactic: LtacThunk,
@@ -241,9 +241,11 @@ async def run_on_goals(
                         base = pf_state.focused_goals[base:].index(
                             current_goal.focused_goals[base + 1]
                         )
-                    except ValueError:
+                    except ValueError as err:
                         print("- " + "\n- ".join(pf_state.focused_goals))
-                        raise
+                        raise NotImplementedError(
+                            f"Failed to find next goal. Tactic is likely a multi-goal tactic. {run_tactic}"
+                        ) from err
                     current_goal = pf_state
                 else:
                     assert i == count - 1
@@ -256,15 +258,28 @@ def decomp_run_curry(
     *,
     run_atom: TacticRunner = run_atom,
 ) -> LtacThunk:
-    async def run(
-        rc: RocqCursor, goal: int, *, pre: rdm_api.ProofState, trace: int | None = None
-    ) -> RunCommandResult:
-        _count = await interp_tactic(
-            rc, tactic, goals=(goal, 1), trace=trace, run_atom=run_atom
-        )
-        return await rc.current_goal()
+    class Runner:
+        """A special class so that we can override the `__str__` method"""
 
-    return run
+        async def __call__(
+            self,
+            rc: RocqCursor,
+            goal: int,
+            *,
+            pre: rdm_api.ProofState,
+            trace: int | None = None,
+        ) -> RunCommandResult:
+            nonlocal tactic, run_atom
+            _count = await interp_tactic(
+                rc, tactic, goals=(goal, 1), trace=trace, run_atom=run_atom
+            )
+            return await rc.current_goal()
+
+        def __str__(self) -> str:
+            nonlocal tactic
+            return f"TacticRunner{tactic}"
+
+    return Runner()
 
 
 def dbg_trace(trace: int | None, msg: str) -> None:
@@ -303,20 +318,27 @@ async def interp_tactic(
     first_goal, count = goals
     match tactic[0]:
         case "Atom":
-            tac = tactic[1]
-            assert isinstance(tac, str)
+            assert isinstance(tactic[1], str)
+            tac: str = tactic[1]
 
-            async def lam_run_tac(
-                rc: RocqCursor,
-                goal: int,
-                *,
-                pre: rdm_api.ProofState,
-                trace: int | None = None,
-            ) -> RunCommandResult:
-                return await run_atom(rc, goal, cast(str, tac), trace=trace, pre=pre)
+            class MyTac:
+                async def __call__(
+                    self,
+                    rc: RocqCursor,
+                    goal: int,
+                    *,
+                    pre: rdm_api.ProofState,
+                    trace: int | None = None,
+                ) -> RunCommandResult:
+                    nonlocal tac
+                    return await run_atom(rc, goal, tac, trace=trace, pre=pre)
 
-            return await run_on_each(
-                rc, cast(str, tac), lam_run_tac, goals=goals, trace=trace_indent(trace)
+                def __str__(self) -> str:
+                    nonlocal tac
+                    return tac
+
+            return await run_on_all(
+                rc, cast(str, tac), MyTac(), goals=goals, trace=trace_indent(trace)
             )
         case "Then":
             [_, tac1, tac2] = tactic
@@ -483,7 +505,7 @@ async def interp_tactic(
                         continue
                 raise LtacFail()
 
-            return await run_on_each(
+            return await run_on_all(
                 rc, "<first>", run_first, goals=goals, trace=trace_indent(trace)
             )
 
@@ -514,7 +536,7 @@ async def interp_tactic(
                         continue
                 raise LtacFail()
 
-            return await run_on_each(rc, "<solve>", run_solve, goals=goals)
+            return await run_on_all(rc, "<solve>", run_solve, goals=goals)
 
         case "Try":
 
@@ -540,7 +562,7 @@ async def interp_tactic(
                     pass
                 return await rc.current_goal()
 
-            return await run_on_each(rc, "<try>", run_try, goals=goals, trace=trace)
+            return await run_on_all(rc, "<try>", run_try, goals=goals, trace=trace)
 
     raise NotImplementedError(tactic)
 
