@@ -335,6 +335,62 @@ async def interp_rec(
             if tactic[1] not in ["fail", "fail 0"]:
                 raise NotImplementedError(tactic[1])
             raise LtacFail()
+        case "Time":
+            tac = cast(TacticAST, tactic[1])
+            return await interp_rec(
+                rc, tac, goals=goals, run_atom=run_atom, trace=trace
+            )
+        case "Repeat":
+            tac = cast(TacticAST, tactic[1])
+            current = await rc.current_goal()
+            while True:
+                try:
+                    async with LtacTry(rc) as rc_attempt:
+                        count = await interp_rec(
+                            rc_attempt,
+                            tac,
+                            goals=(first_goal, count),
+                            run_atom=run_atom,
+                            trace=trace_indent(trace),
+                        )
+                        if count == 0:
+                            # solved the goal, so we stop
+                            return count
+                        new = await rc_attempt.current_goal()
+                        if new == current:
+                            # no (apparent) progress, so we stop
+                            # If the goal changed, we must have made progress;
+                            # however, it might be possible that the string
+                            # representation of the goal did not change and we
+                            # still made progress.
+                            return count
+                        current = new
+
+                except LtacFail:
+                    return count
+            else:
+                raise NotImplementedError(
+                    "`repeat` ran for more than 50 steps without stopping. Potentially failed to detect termination."
+                )
+
+        case "Do":
+            [_, n, tac] = tactic
+            if n is None:
+                raise NotImplementedError("`do` with unknown count")
+            else:
+                assert isinstance(n, int)
+                for _ in range(0, n):
+                    if count == 0:
+                        return count
+                    count = await interp_rec(
+                        rc,
+                        cast(TacticAST, tac),
+                        goals=(first_goal, count),
+                        run_atom=run_atom,
+                        trace=trace_indent(trace),
+                    )
+                return count
+
         case "First":
 
             async def run_first(
