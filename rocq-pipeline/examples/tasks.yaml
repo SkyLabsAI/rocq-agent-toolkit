@@ -4,17 +4,28 @@ project:
   git_commit: ee749f84767636b32a65e8f08040131ca1a48a6d-dirty
   path: .
 tasks:
-- file: theories/my_nat.v
-  locator: Lemma:zero_add
-  tags:
-  - NumTactics=1
-  - proof
-  - qed
-  - reflexivity
-- file: theories/test_simple.v
-  locator: Lemma:is_true
-  tags:
-  - NumTactics=1
-  - proof
-  - qed
-  - trivial
+  # - file: theories/my_nat.v
+  #   locator: Lemma:zero_add
+  #   tags:
+  #     - NumTactics=1
+  #     - proof
+  #     - qed
+  #     - reflexivity
+  - file: theories/my_nat.v
+    locator: Lemma:add_zero
+  - file: theories/my_nat.v
+    locator: Lemma:add_S
+  # - file: theories/test_simple.v
+  #   locator: Lemma:is_true
+  #   tags:
+  #     - NumTactics=1
+  #     - proof
+  #     - qed
+  #     - trivial
+  # - file: theories/test_simple.v
+  #   locator: Lemma:not_false
+  #   tags:
+  #     - NumTactics=4
+  #     - proof
+  #     - qed
+  #     - trivial

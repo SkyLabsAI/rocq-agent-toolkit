@@ -26,6 +26,7 @@ dependencies = [
     "sexpdata>=1.0.2",
     "gitpython>=3.1.45",
     "logging>=0.4.9.6",
+    "rocq-ltac-interp",
 ]
 
 [project.urls]
@@ -69,6 +70,7 @@ dev = [
 observability = { workspace = true }
 provenance-toolkit = { workspace = true }
 rocq-doc-manager = { workspace = true }
+rocq-ltac-interp = { workspace = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["src/rocq_pipeline"]

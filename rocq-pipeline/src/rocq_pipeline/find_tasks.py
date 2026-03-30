@@ -31,14 +31,6 @@ class ProofTask:
     proof_tactics: list[str]
 
 
-# This matches `Proof.`, `Proof with ..`, and `Proof using ..`
-_PROOF_START = re.compile(r"Proof(\s+(using\s|with\s).*|\s*)?\.")
-
-# This detects whether there is an argument to 'Proof'
-# OLD _PROOF_TERM = re.compile(r"Proof\s+([^\s].*)\s*\.", flags=re.DOTALL)
-_PROOF_TERM = re.compile(r"^Proof\s+(?!\s)(?!\.\s)(.*)\.\s*$", flags=re.DOTALL)
-
-
 def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
     tactics: list[str] = []
     start = 0
@@ -48,13 +40,15 @@ def scan_proof(suffix: list[rdm_api.SuffixItem]) -> ProofTask:
         txt: str = sentence.text
         if sentence.data is None:
             continue
-        elif sentence.data.kind in ["StartTheoremProof"]:
+        elif sentence.data.kind in ["StartTheoremProof", "Proof"]:
             if tactics:
                 logging.warning(f"tactics before `Proof` command: {tactics} / {txt}")
             else:
                 start = i + 1
         elif sentence.data.kind == "ExactProof":
-            return ProofTask(start, start, "qed", [sentence.text])
+            mtch = re.match(r"^Proof\s+(.+)\.$", sentence.text)
+            assert mtch is not None
+            return ProofTask(start, start, "qed", [f"exact ({mtch.group(1).strip()})."])
         elif sentence.data.kind in ["Abort", "AbortAll"]:
             return ProofTask(start, i, "aborted", tactics)
         elif sentence.data.kind == "EndProof":

@@ -6,15 +6,13 @@ from pathlib import Path
 from rocq_doc_manager import rc_sess
 from rocq_doc_manager.cursor.protocol import RocqCursor
 from rocq_doc_manager.locator import Locator, LocatorParser
+from rocq_doc_manager.rocq_doc_manager_api import ProofState
 from rocq_dune_util import rocq_args_for
 
-from rocq_ltac_interp.tacinterp import (
-    PLUGIN,
+from . import tacinterp as tacinterp
+from .tacinterp import (
     RunCommandResult,
-    interp_rec,
-    load,
-    parse_tactic,
-    run_tac,
+    interp_tactic_str,
 )
 
 
@@ -24,27 +22,33 @@ async def amain(
     if trace_atom:
 
         async def run_atom(
-            rc: RocqCursor, goal: int, tac: str, *, trace: int | None = None
+            rc: RocqCursor,
+            goal: int,
+            tac: str,
+            *,
+            pre: ProofState,
+            trace: int | None = None,
         ) -> RunCommandResult:
-            return await run_tac(rc, goal, tac, trace=2 if trace is None else trace)
+            return await tacinterp.run_atom(
+                rc, goal, tac, pre=pre, trace=2 if trace is None else trace
+            )
 
     else:
-        run_atom = run_tac
+        run_atom = tacinterp.run_atom
 
-    rocq_args = rocq_args_for(file, plugins=[PLUGIN])
+    rocq_args = rocq_args_for(file, plugins=[tacinterp.PLUGIN])
     async with rc_sess(file, rocq_args=rocq_args) as rc:
-        await load(rc)
+        await tacinterp.load(rc)
         assert await locator.go_to(rc)
 
         suffix = await rc.doc_suffix()
         for i, tactic in enumerate([t for t in suffix if t.kind == "command"]):
             if tactic.data and tactic.data.kind in ["EndProof"]:
                 break
-            explanation = await parse_tactic(rc, tactic.text)
-            print(f"{i}/ {tactic.text}")
 
-            await interp_rec(
-                rc, explanation, trace=0 if trace else None, run_atom=run_atom
+            print(f"{i}/ {tactic.text}")
+            await interp_tactic_str(
+                rc, tactic.text, trace=0 if trace else None, run_atom=run_atom
             )
     return 0
 
