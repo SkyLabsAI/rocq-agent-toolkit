@@ -40,7 +40,7 @@ def goal_diff(
     new = set(range(0, len(postGoals.focused_goals)))
     for preIdx, preGoal in enumerate(preGoals.focused_goals):
         for idx, goal in enumerate(postGoals.focused_goals):
-            if preGoal == goal:
+            if idx in new and preGoal == goal:
                 new.remove(idx)
                 break
         else:
