@@ -94,9 +94,9 @@ async def trace_proof(
                         await ltac_interp.interp_tactic(
                             rc_local, tac_ast, run_atom=run_atom
                         )
-                    except NotImplementedError:
+                    except NotImplementedError as err:
                         # These are best-effort
-                        print(f"Unsupported tactic: {tactic}")
+                        print(f"Unsupported tactic: {tactic}\n{err}")
                         pass
                     except LtacFail:
                         # These are best-effort
