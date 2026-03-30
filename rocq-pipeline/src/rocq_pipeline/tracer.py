@@ -143,6 +143,13 @@ def mk_parser(parent: Any | None = None, with_tracer: bool = True) -> Any:
         default=False,
         help="Trace individual tactics within a tactic, e.g. `intros; apply x` will trace `intros` and `apply x` independently.",
     )
+    parser.add_argument(
+        "--resume",
+        dest="resume",
+        action="store_true",
+        default=False,
+        help="Resume a previous run. (Do not re-run if file already exists)",
+    )
     if with_tracer:
         parser.add_argument(
             "--tracer",
@@ -166,6 +173,7 @@ def run(
     *,
     config: TraceConfig | None = None,
     jobs: int = 1,
+    resume: bool = False,
 ) -> None:
     output_dir.mkdir(exist_ok=True)
     if not output_dir.is_dir():
@@ -180,6 +188,9 @@ def run(
         output_file: Path = (
             output_dir / f"{task_id.replace('/', '_').replace('#', '_')}.json"
         )
+        if resume and output_file.exists():
+            progress.status(percent=1.0, status="already complete")
+            return True
 
         try:
             tracer = tracer_builder()
@@ -275,6 +286,7 @@ def run_ns(arguments: argparse.Namespace, extra_args: list[str] | None = None) -
         tasks,
         config=TraceConfig(subtactic=arguments.fine_grained),
         jobs=arguments.jobs,
+        resume=arguments.resume,
     )
     return True
 
