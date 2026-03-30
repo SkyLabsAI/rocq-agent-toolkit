@@ -174,7 +174,6 @@ async def run_atom(
 
 async def run_on_all(
     rc: RocqCursor,
-    tactic: str,
     run_tactic: LtacThunk,
     *,
     goals: tuple[int, int],
@@ -186,7 +185,7 @@ async def run_on_all(
     if `goals` does not include some goals, then these will not be included in the
     count.
     """
-    dbg_trace(trace, f"run_atom({tactic}, {goals})")
+    dbg_trace(trace, f"run_atom({run_tactic}, {goals})")
     _, count = goals
     if multi_goal:
         raise NotImplementedError()
@@ -319,9 +318,11 @@ async def interp_tactic(
     match tactic[0]:
         case "Atom":
             assert isinstance(tactic[1], str)
-            tac: str = tactic[1]
 
-            class MyTac:
+            class AtomThunk(LtacThunk):
+                def __init__(self, atom_tac: str) -> None:
+                    self._atom_tac = atom_tac
+
                 async def __call__(
                     self,
                     rc: RocqCursor,
@@ -330,15 +331,15 @@ async def interp_tactic(
                     pre: rdm_api.ProofState,
                     trace: int | None = None,
                 ) -> RunCommandResult:
-                    nonlocal tac
-                    return await run_atom(rc, goal, tac, trace=trace, pre=pre)
+                    return await run_atom(
+                        rc, goal, self._atom_tac, trace=trace, pre=pre
+                    )
 
                 def __str__(self) -> str:
-                    nonlocal tac
-                    return tac
+                    return self._atom_tac
 
             return await run_on_all(
-                rc, cast(str, tac), MyTac(), goals=goals, trace=trace_indent(trace)
+                rc, AtomThunk(tactic[1]), goals=goals, trace=trace_indent(trace)
             )
         case "Then":
             [_, tac1, tac2] = tactic
@@ -380,7 +381,7 @@ async def interp_tactic(
                     trace=trace_indent(trace),
                 )
         case "Thens3":
-            [_, tac, before, middle, after] = tactic
+            tac, before, middle, after = tuple(tactic[1:])
             async with LtacTry(rc) as rc_attempt:
                 count = await interp_tactic(
                     rc_attempt,
@@ -397,7 +398,7 @@ async def interp_tactic(
                     trace=trace_indent(trace),
                 )
         case "ExtendTac":
-            [_, before, middle, after] = tactic
+            before, middle, after = tuple(tactic[1:])
             if count < len(before) + len(after):
                 raise LtacFail()
 
@@ -426,7 +427,7 @@ async def interp_tactic(
             raise LtacFail()
         case "Time":
             tac = cast(TacticAST, tactic[1])
-            return await interp_rec(
+            return await interp_tactic(
                 rc, tac, goals=goals, run_atom=run_atom, trace=trace
             )
         case "Repeat":
@@ -435,7 +436,7 @@ async def interp_tactic(
             while True:
                 try:
                     async with LtacTry(rc) as rc_attempt:
-                        count = await interp_rec(
+                        count = await interp_tactic(
                             rc_attempt,
                             tac,
                             goals=(first_goal, count),
@@ -457,10 +458,6 @@ async def interp_tactic(
 
                 except LtacFail:
                     return count
-            else:
-                raise NotImplementedError(
-                    "`repeat` ran for more than 50 steps without stopping. Potentially failed to detect termination."
-                )
 
         case "Do":
             [_, n, tac] = tactic
@@ -471,7 +468,7 @@ async def interp_tactic(
                 for _ in range(0, n):
                     if count == 0:
                         return count
-                    count = await interp_rec(
+                    count = await interp_tactic(
                         rc,
                         cast(TacticAST, tac),
                         goals=(first_goal, count),
@@ -482,87 +479,114 @@ async def interp_tactic(
 
         case "First":
 
-            async def run_first(
-                rc: RocqCursor,
-                goal: int,
-                *,
-                pre: rdm_api.ProofState,
-                trace: int | None = None,
-            ) -> RunCommandResult:
-                nonlocal tactic
-                for t in cast(list[TacticAST], tactic[1:]):
-                    try:
-                        async with LtacTry(rc) as rc_attempt:
-                            _ = await interp_tactic(
-                                rc_attempt,
-                                t,
-                                goals=(goal, 1),
-                                run_atom=run_atom,
-                                trace=trace,
-                            )
-                            return await rc_attempt.current_goal()
-                    except LtacFail:
-                        continue
-                raise LtacFail()
+            class FirstThunk(LtacThunk):
+                def __init__(self, tacs: list[TacticAST]) -> None:
+                    self._tactics = tacs
+
+                async def __call__(
+                    self,
+                    rc: RocqCursor,
+                    goal: int,
+                    *,
+                    pre: rdm_api.ProofState,
+                    trace: int | None = None,
+                ) -> RunCommandResult:
+                    for t in self._tactics:
+                        try:
+                            async with LtacTry(rc) as rc_attempt:
+                                _ = await interp_tactic(
+                                    rc_attempt,
+                                    t,
+                                    goals=(goal, 1),
+                                    run_atom=run_atom,
+                                    trace=trace,
+                                )
+                                return await rc_attempt.current_goal()
+                        except LtacFail:
+                            continue
+                    raise LtacFail()
+
+                def __str__(self) -> str:
+                    return f"first [ {self._tactics} ]"
 
             return await run_on_all(
-                rc, "<first>", run_first, goals=goals, trace=trace_indent(trace)
+                rc,
+                FirstThunk(cast(list[TacticAST], tactic[1:])),
+                goals=goals,
+                trace=trace_indent(trace),
             )
 
         case "Solve":
 
-            async def run_solve(
-                rc: RocqCursor,
-                goal: int,
-                *,
-                pre: rdm_api.ProofState,
-                trace: int | None = None,
-            ) -> RunCommandResult:
-                nonlocal tactic
-                for t in cast(list[TacticAST], tactic[1:]):
+            class SolveThunk(LtacThunk):
+                def __init__(self, tactics: list[TacticAST]) -> None:
+                    self._tactics = tactics
+
+                async def __call__(
+                    self,
+                    rc: RocqCursor,
+                    goal: int,
+                    *,
+                    pre: rdm_api.ProofState,
+                    trace: int | None = None,
+                ) -> RunCommandResult:
+                    for t in self._tactics:
+                        try:
+                            async with LtacTry(rc) as rc_attempt:
+                                count = await interp_tactic(
+                                    rc_attempt,
+                                    t,
+                                    goals=(goal, 1),
+                                    trace=trace,
+                                    run_atom=run_atom,
+                                )
+                                if count > 0:
+                                    raise LtacFail()
+                            return await rc.current_goal()
+                        except LtacFail:
+                            continue
+                    raise LtacFail()
+
+                def __str__(self) -> str:
+                    return f"solve [ {self._tactics} ]"
+
+            return await run_on_all(
+                rc, SolveThunk(cast(list[TacticAST], tactic[1:])), goals=goals
+            )
+
+        case "Try":
+
+            class TryThunk(LtacThunk):
+                def __init__(self, tac: TacticAST) -> None:
+                    self._tac = tac
+
+                async def __call__(
+                    self,
+                    rc: RocqCursor,
+                    goal: int,
+                    *,
+                    pre: rdm_api.ProofState,
+                    trace: int | None = None,
+                ) -> RunCommandResult:
                     try:
                         async with LtacTry(rc) as rc_attempt:
-                            count = await interp_tactic(
+                            await interp_tactic(
                                 rc_attempt,
-                                t,
+                                self._tac,
                                 goals=(goal, 1),
                                 trace=trace,
                                 run_atom=run_atom,
                             )
-                            if count > 0:
-                                raise LtacFail()
-                        return await rc.current_goal()
                     except LtacFail:
-                        continue
-                raise LtacFail()
+                        pass
+                    return await rc.current_goal()
 
-            return await run_on_all(rc, "<solve>", run_solve, goals=goals)
+                def __str__(self) -> str:
+                    return f"try ({self._tac})"
 
-        case "Try":
-
-            async def run_try(
-                rc: RocqCursor,
-                goal: int,
-                *,
-                pre: rdm_api.ProofState,
-                trace: int | None = None,
-            ) -> RunCommandResult:
-                nonlocal tactic
-                t = cast(TacticAST, tactic[1])
-                try:
-                    async with LtacTry(rc) as rc_attempt:
-                        await interp_tactic(
-                            rc_attempt,
-                            t,
-                            goals=(goal, 1),
-                            trace=trace,
-                            run_atom=run_atom,
-                        )
-                except LtacFail:
-                    pass
-                return await rc.current_goal()
-
-            return await run_on_all(rc, "<try>", run_try, goals=goals, trace=trace)
+            return await run_on_all(
+                rc, TryThunk(cast(TacticAST, tactic[1])), goals=goals, trace=trace
+            )
 
     raise NotImplementedError(tactic)
 
