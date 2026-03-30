@@ -17,6 +17,7 @@ members = [
     "rocq-dune-util",
     "pyroof-search",
     "rocq-agent-toolkit-utils",
+    "rocq-ltac-interp",
 ]
 
 [tool.ruff]
