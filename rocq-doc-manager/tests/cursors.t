@@ -42,7 +42,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "x1", "kind": "Definition" }
+        "attrs": { "id": "x1", "kind": "Definition", "proof": false }
       }
     }
   }
@@ -76,7 +76,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "inserted", "kind": "Definition" }
+        "attrs": { "id": "inserted", "kind": "Definition", "proof": false }
       }
     }
   }

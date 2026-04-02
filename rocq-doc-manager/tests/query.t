@@ -79,7 +79,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "_", "kind": "Definition" }
+        "attrs": { "id": "_", "kind": "Definition", "proof": true }
       }
     }
   }

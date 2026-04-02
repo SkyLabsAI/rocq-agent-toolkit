@@ -43,7 +43,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "test1", "kind": "Definition" }
+        "attrs": { "id": "test1", "kind": "Definition", "proof": false }
       }
     }
   }
@@ -59,7 +59,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "test2", "kind": "Definition" }
+        "attrs": { "id": "test2", "kind": "Definition", "proof": false }
       }
     }
   }
@@ -75,7 +75,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "test3", "kind": "Definition" }
+        "attrs": { "id": "test3", "kind": "Definition", "proof": false }
       }
     }
   }

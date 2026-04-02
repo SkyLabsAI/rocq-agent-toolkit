@@ -21,7 +21,7 @@ class DelimitedRocqCursor(DelegateRocqCursor):
         excl_prefix_items: int,
         excl_suffix_items: int,
     ) -> None:
-        self._cursor = cursor
+        super().__init__(cursor)
         self._excl_prefix_items = excl_prefix_items
         self._excl_suffix_items = excl_suffix_items
 
@@ -111,7 +111,7 @@ class DelimitedRocqCursor(DelegateRocqCursor):
 
     @override
     async def clone(self, *, materialize: bool = False) -> RocqCursor:
-        cursor = await self._cursor.clone()
+        cursor = await self._cursor.clone(materialize=materialize)
         return DelimitedRocqCursor(
             cursor, self._excl_prefix_items, self._excl_suffix_items
         )
