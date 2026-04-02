@@ -72,7 +72,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "inserted", "kind": "Definition" }
+        "attrs": { "id": "inserted", "kind": "Definition", "proof": false }
       }
     }
   }
@@ -100,7 +100,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "junk", "kind": "Definition" }
+        "attrs": { "id": "junk", "kind": "Definition", "proof": false }
       }
     }
   }
@@ -134,7 +134,7 @@
         "data": {
           "kind": "Definition",
           "pure": true,
-          "attrs": { "id": "inserted", "kind": "Definition" }
+          "attrs": { "id": "inserted", "kind": "Definition", "proof": false }
         }
       },
       { "kind": "blanks", "offset": 89, "text": "\n" },
@@ -152,7 +152,7 @@
         "data": {
           "kind": "Definition",
           "pure": true,
-          "attrs": { "id": "junk", "kind": "Definition" }
+          "attrs": { "id": "junk", "kind": "Definition", "proof": false }
         }
       },
       { "kind": "blanks", "offset": 130, "text": "\n" },

@@ -41,7 +41,7 @@
         "data": {
           "kind": "Definition",
           "pure": true,
-          "attrs": { "id": "test", "kind": "Definition" }
+          "attrs": { "id": "test", "kind": "Definition", "proof": false }
         }
       },
       { "kind": "blanks", "text": "\n" },
@@ -68,7 +68,7 @@
       "synterp_ast": {
         "kind": "Definition",
         "pure": true,
-        "attrs": { "id": "test", "kind": "Definition" }
+        "attrs": { "id": "test", "kind": "Definition", "proof": false }
       }
     }
   }
@@ -121,7 +121,7 @@
         "data": {
           "kind": "Definition",
           "pure": true,
-          "attrs": { "id": "test", "kind": "Definition" }
+          "attrs": { "id": "test", "kind": "Definition", "proof": false }
         }
       },
       { "kind": "blanks", "offset": 23, "text": "\n" },

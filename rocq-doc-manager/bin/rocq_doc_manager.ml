@@ -225,8 +225,13 @@ let vernac_data =
           begin
             let open Vernacexpr in
             match e with
-            | VernacDefinition((_,kind), (id, _),_) ->
+            | VernacDefinition((_,kind), (id, _),e) ->
                 let id = Pp.string_of_ppcmds (Names.Name.print id.CAst.v) in
+                let proof =
+                  match e with
+                  | ProveBody(_,_)      -> true
+                  | DefineBody(_,_,_,_) -> false
+                in
                 let kind =
                   let open Decls in
                   match kind with
@@ -245,7 +250,10 @@ let vernac_data =
                   | Let -> "Let"
                   | LetContext -> "LetContext"
                 in
-                [("id", `String(id)); ("kind", `String(kind))]
+                let id = `String(id) in
+                let proof = `Bool(proof) in
+                let kind = `String(kind) in
+                [("id", id); ("kind", kind); ("proof", proof)]
             | VernacStartTheoremProof(kind, proof_exprs) ->
                 let ids =
                   let to_id ((id, _), _) =

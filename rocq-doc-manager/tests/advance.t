@@ -36,7 +36,7 @@
         "data": {
           "kind": "Definition",
           "pure": true,
-          "attrs": { "id": "n4", "kind": "Definition" }
+          "attrs": { "id": "n4", "kind": "Definition", "proof": false }
         }
       },
       { "kind": "blanks", "text": "\n" },
@@ -46,7 +46,7 @@
         "data": {
           "kind": "Definition",
           "pure": true,
-          "attrs": { "id": "n6", "kind": "Definition" }
+          "attrs": { "id": "n6", "kind": "Definition", "proof": false }
         }
       },
       { "kind": "blanks", "text": "\n" },
@@ -56,7 +56,7 @@
         "data": {
           "kind": "Definition",
           "pure": true,
-          "attrs": { "id": "n8", "kind": "Definition" }
+          "attrs": { "id": "n8", "kind": "Definition", "proof": false }
         }
       },
       { "kind": "blanks", "text": "\n" }
