@@ -1,14 +1,14 @@
 import argparse
 import asyncio
-import difflib
 import logging
 import sys
 from argparse import ArgumentParser
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
 
 from rocq_doc_manager import RocqCursor, rc_sess
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
+from rocq_doc_manager.cursor import DelimitedRocqCursor, GoalRocqCursor
 from rocq_dune_util import DuneError, rocq_args_for
 
 from rocq_pipeline.agent import AgentBuilder
@@ -18,23 +18,267 @@ from rocq_pipeline.prover_ui.ui import Controller, build_ui
 from rocq_pipeline.status_cursor import WatchingCursor
 
 # TODOs:
-# 1) proof formatter
-# 2) properly handle `admit`s in addition to `Admitted`
-# 3) properly handle nested proofs
-# 4) parallel tasks:
-#    - utilize `materialize` and/or `clone(materialize=True)`
-#    - setup a `ThreadPoolExecutor` & use futures to manage interactions
+# - proof formatter
+# - parallel tasks
 
 
-# Notes:
-# - this will ignore `admit`s
-# - this will not properly handle whitespace between "Admitted" and period
+def is_real_command(data: rdm_api.VernacData) -> bool:
+    return all(c not in data.controls for c in ["Fail", "Succeed"])
+
+
+def has_kind(data: rdm_api.VernacData, kind: str) -> bool:
+    return data.kind == kind and is_real_command(data)
+
+
+def starts_proof(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+    return item.data is not None and (
+        has_kind(item.data, "StartTheoremProof")
+        or (has_kind(item.data, "Definition") and item.data.attrs["proof"])
+    )
+
+
+def ends_proof(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+    return item.data is not None and has_kind(item.data, "EndProof")
+
+
 def is_admitted(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
     return (
         item.data is not None
-        and item.data.kind == "EndProof"
+        and has_kind(item.data, "EndProof")
         and item.data.attrs["kind"] == "Admitted"
     )
+
+
+def is_admit(item: rdm_api.PrefixItem | rdm_api.SuffixItem) -> bool:
+    return (
+        item.data is not None
+        and has_kind(item.data, "Extend")
+        and item.text == "admit."  # NOTE could relax blanks.
+    )
+
+
+def statement_index_from_proof_end(
+    items: list[rdm_api.PrefixItem | rdm_api.SuffixItem], proof_end_index: int
+) -> int:
+    """
+    Returns the index of the item of that starts the proof ending at index
+    `proof_end_index`. It is assumed that the `items` correspond to a correct
+    Rocq document, and that `proof_end_index` is indeed the index of a proof
+    ending command (like "Qed" or "Admitted").
+
+    @param items: full list of items in the document
+    @param proof_end_index: index of a proof ending command in `items`
+    @return: the index of the matching proof starting command in `items`
+    @raise ValueError: if either of `proof_end` or `item` is invalid
+    """
+    if not (0 <= proof_end_index < len(items)):
+        raise ValueError(f"Invalid proof end index {proof_end_index}")
+    proof_end = items[proof_end_index]
+    if proof_end.data is None or proof_end.data.kind != "EndProof":
+        raise ValueError(
+            f"No proof terminator at index {proof_end_index} (found {proof_end})"
+        )
+    nested = 0
+    for i in range(proof_end_index - 1, -1, -1):
+        item = items[i]
+        if ends_proof(item):
+            nested += 1
+        elif starts_proof(item):
+            if nested == 0:
+                return i
+            nested -= 1
+    raise ValueError("Could not locate the start of the proof")
+
+
+async def delimited_cursor_for_next_admitted(
+    rc: RocqCursor,
+) -> DelimitedRocqCursor | None:
+    """
+    Creates a delimited cursor spanning the next admitted proof in the suffix
+    of cursor `rc`. The statement and the terminating `Admitted` command are
+    respectively the first and last command of the cursor's region. Note that
+    the returned cursor overlays `rc`, so `rc` itself is fully owned by the
+    returned cursor while it is in use. This means that modifications made in
+    the delimited cursor will take effect in `rc` as well.
+
+    @param rc: the underlying cursor, "fully borrowed" by the operation
+    @return: a delimited cursor for the next admitted proof if any
+    @raise Exception: in case of document processing error
+    """
+    prefix = await rc.doc_prefix()
+    suffix = await rc.doc_suffix()
+    index = await rc.cursor_index()
+    contents = prefix + suffix
+    # Find the next admitted item.
+    admitted_index = next(
+        (index + i for i, item in enumerate(suffix) if is_admitted(item)), None
+    )
+    if admitted_index is None:
+        return None
+    # Find the corresponding proof start.
+    try:
+        start = statement_index_from_proof_end(contents, admitted_index)
+    except ValueError as e:
+        raise AssertionError() from e
+    # Build a delimited cursor for the proof.
+    cursor = await DelimitedRocqCursor.make(
+        rc, start=start, end=admitted_index, clone=False
+    )
+    if isinstance(cursor, rdm_api.Err):
+        raise Exception("Unable to process the document further: {cursor}")
+    return cursor
+
+
+async def step_over_proof(cursor: RocqCursor) -> None:
+    suffix = await cursor.doc_suffix()
+    if len(suffix) == 0:
+        raise ValueError("No item left")
+    if not starts_proof(suffix.pop(0)):
+        raise ValueError("Not on a proof starting item")
+    res = await cursor.run_step()
+    if isinstance(res, rdm_api.Err):
+        raise ValueError("Invalid document (cannot process statement)")
+    level = 0
+    for item in suffix:
+        res = await cursor.run_step()
+        if isinstance(res, rdm_api.Err):
+            raise ValueError("Invalid document (cannot process statement)")
+        elif starts_proof(item):
+            level += 1
+        elif ends_proof(item):
+            level -= 1
+            if level == 0:
+                return
+    raise ValueError("Not enough commands to leave the proof.")
+
+
+async def next_focus_command(cursor: RocqCursor) -> str | None:
+    proof_state = await cursor.current_goal()
+    if proof_state is None:
+        raise ValueError("Not in a proof")
+    if len(proof_state.focused_goals) != 0:
+        raise ValueError("There are focused goals")
+    res = await cursor.query("idtac.")
+    assert isinstance(res, rdm_api.Err)
+    no_such_goal = "No such goal."
+    assert res.message.startswith(no_such_goal)
+    if res.message == no_such_goal:
+        return None
+    reason = res.message.split()
+    return "}" if reason[-2] != "bullet" else reason[-1][:-1]
+
+
+async def try_solve_with_goal_cursor(
+    cursor: DelimitedRocqCursor,
+    try_solve_goal: Callable[[GoalRocqCursor], Awaitable[None]],
+) -> None:
+    proof_state = await cursor.current_goal()
+    assert proof_state is not None
+    needs_focus = len(proof_state.focused_goals) != 1
+    if needs_focus:
+        res = await cursor.insert_command("{")
+        assert not isinstance(res, rdm_api.Err)
+        await cursor.insert_blanks(" ")
+    # Create an empty goal cursor.
+    index = await cursor.cursor_index()
+    goal_cursor = await GoalRocqCursor.make(cursor, start=index, count=0, clone=False)
+    assert isinstance(goal_cursor, GoalRocqCursor)
+    await try_solve_goal(goal_cursor)
+    # Make sure the goal cursor has no trailing suffix.
+    await goal_cursor.clear_suffix()
+    # Close remaining sub-goals with admits.
+    while not await goal_cursor.closed():
+        proof_state = await goal_cursor.current_goal()
+        assert proof_state is not None
+        nb_focused = len(proof_state.focused_goals)
+        if nb_focused != 0:
+            # Close all focused goals.
+            for _ in range(nb_focused):
+                res = await goal_cursor.insert_command("admit.")
+                assert not isinstance(res, rdm_api.Err)
+        else:
+            # No focused goal, figure out how to pop the stack.
+            next_text = await next_focus_command(goal_cursor)
+            assert next_text is not None
+            await cursor.insert_blanks(" ")
+            res = await goal_cursor.run_command(next_text)
+    # Unfocus if needed.
+    if needs_focus:
+        await cursor.insert_blanks(" ")
+        res = await cursor.insert_command("}")
+        assert not isinstance(res, rdm_api.Err)
+
+
+async def process_admitted_proof(
+    cursor: DelimitedRocqCursor,
+    try_solve_goal: Callable[[GoalRocqCursor], Awaitable[None]],
+) -> bool:
+    """
+    Attempts to prove the admitted proof that is contained in `cursor`. It is
+    expected that the cursor prefix starts with the statement, and that the
+    last item of the cursor suffix is an `Admitted` command. If the function
+    returns successfully, the cursor is placed after the closing command with
+    no left-over commands in the suffix.
+    """
+    suffix = await cursor.doc_suffix()
+    # Process the proof statement.
+    assert len(suffix) != 0
+    assert starts_proof(suffix.pop(0))
+    res = await cursor.run_step()
+    if isinstance(res, rdm_api.Err):
+        raise ValueError("Invalid document (cannot process statement)")
+    # Process the rest of the commands.
+    for item in suffix:
+        if starts_proof(item):
+            await step_over_proof(cursor)
+        elif ends_proof(item):
+            # We must have reached the "Admitted".
+            break
+        elif is_admit(item):
+            # Remove the admitted.
+            await cursor.clear_suffix(count=1)
+            # Try solving the goal.
+            await try_solve_with_goal_cursor(cursor, try_solve_goal)
+        else:
+            res = await cursor.run_step()
+            if isinstance(res, rdm_api.Err):
+                raise ValueError("Invalid document (cannot process item)")
+    assert len(await cursor.doc_suffix()) == 1
+    # Solve remaining goals.
+    while True:
+        proof_state = await cursor.current_goal()
+        assert proof_state is not None
+        # Focused goal.
+        if len(proof_state.focused_goals) > 0:
+            for _ in proof_state.focused_goals:
+                await try_solve_with_goal_cursor(cursor, try_solve_goal)
+            continue
+        # Unfocused goals.
+        if sum(proof_state.unfocused_goals) > 0:
+            next_text = await next_focus_command(cursor)
+            assert next_text is not None
+            await cursor.insert_blanks(" ")
+            res = await cursor.run_command(next_text)
+            assert not isinstance(res, rdm_api.Err)
+            continue
+        # Shelved goals.
+        if proof_state.shelved_goals != 0:
+            await cursor.insert_blanks(" ")
+            res = await cursor.run_command("Unshelve.")
+            assert not isinstance(res, rdm_api.Err)
+            continue
+        break
+    # Try to replace the proof terminator by a "Qed".
+    res = await cursor.insert_command("Qed.")
+    if isinstance(res, rdm_api.Err):
+        # Failure, we keep the "Admitted".
+        res = await cursor.run_step()
+        assert not isinstance(res, rdm_api.Err)
+        return False
+    else:
+        # Success, clear the "Admitted" from the suffix.
+        await cursor.clear_suffix()
+        return True
 
 
 async def run_proving_agent(
@@ -53,175 +297,99 @@ async def run_proving_agent(
         output: the Path where the result of the interaction should be committed
         partial (optional): whether or not the persist partial proof progress for each admitted proof task
     """
-    suffix_items_admitted = [
-        item for item in await rc.doc_suffix() if is_admitted(item)
-    ]
+    suffix = await rc.doc_suffix()
+    nb_admitted = sum(1 for item in suffix if is_admitted(item))
 
-    if not suffix_items_admitted:
+    if nb_admitted == 0:
         status.print("No admitted proofs.")
         return
 
-    admitted_cnt = len(suffix_items_admitted)
-    plural = "" if admitted_cnt == 1 else "s"
-    partial_proof_handling = "retained" if partial else "discarded"
+    def show_count(n: int, name: str) -> str:
+        return f"{n} {name}{'' if n == 1 else 's'}"
+
     status.print(
-        f"Running the proving agent on {admitted_cnt} admitted proof{plural}; partial proofs will be {partial_proof_handling}."
+        f"Running the proving agent on {show_count(nb_admitted, 'admitted proof')}; "
+        f"partial proofs will be {'retained' if partial else 'discarded'}."
     )
 
-    # Note: we could add `clone: bool = False` to `RocqCursorProtocolAsync.sess`
-    # and transform `(await rc.clone()).sess()` into `await rc.sess(clone=True)`
-    while await rc.goto_first_match(is_admitted):
-        await run_delegated_prover_on_admitted_proof_task(
-            agent_cls, rc, partial=partial, status=status
-        )
+    nb_success = 0
+    nb_failure = 0
+    while True:
+        # Get a cursor for the next admitted.
+        cursor = await delimited_cursor_for_next_admitted(rc)
+        if cursor is None:
+            break
 
-    remaining_suffix_items = await rc.doc_suffix()
-    if remaining_suffix_items:
-        remaining_suffix_items_admitted = [
-            item for item in remaining_suffix_items if is_admitted(item)
-        ]
-        processed_admitted_cnt = admitted_cnt - len(remaining_suffix_items_admitted)
-        if processed_admitted_cnt != admitted_cnt:
-            processed_plural = "" if processed_admitted_cnt == 1 else "s"
-            run_step_response = await rc.run_step()
-            if isinstance(run_step_response, rdm_api.Err):
-                proximal_cause = "\n".join(
-                    [
-                        ":\n",
-                        remaining_suffix_items[0].text,
-                        "",
-                        run_step_response.message,
-                    ]
-                )
-            else:
-                proximal_cause = "."
+        # Try solving the admitted.
+        async def try_solve_goal(goal_cursor: GoalRocqCursor) -> None:
+            nonlocal status
+            nonlocal agent_cls
+            await run_prover_agent(agent_cls, goal_cursor, status=status)
 
-            status.print(
-                f"\nCommand failure after processing {processed_admitted_cnt} admitted proof{processed_plural}{proximal_cause}"
-            )
+        if await process_admitted_proof(cursor, try_solve_goal):
+            nb_success += 1
+        else:
+            nb_failure += 1
+
+    if nb_success != 0:
+        status.print(f"Completed {show_count(nb_success, 'proof')}")
+    if nb_failure != 0:
+        status.print(f"Failed to complete {show_count(nb_success, 'proof')}")
+    remaining = nb_admitted - nb_success - nb_failure
+    if remaining != 0:
+        status.print(f"Could not attempt {show_count(remaining, 'proof')}")
 
     await rc.commit(str(output), include_suffix=True)
 
 
-async def run_delegated_prover_on_admitted_proof_task(
+async def run_prover_agent(
     agent_cls: AgentBuilder,
     rc: RocqCursor,
     *,
     status: Controller,
-    partial: bool = False,
 ) -> None:
     """Use agent_cls to attempt the admitted proof task captured by the state of main_rc.
 
     Arguments:
         agent_cls: the AgentBuilder used to construct an Agent instance for the admitted proof task
         rc: the (shared) RocqCursor to use for the admitted proof task
-        partial (optional): whether or not the persist partial proof progress for the admitted proof task
+        status: ...
     """
     await print_admitted_proof_task(rc)
     status.proof_visible(True)
 
-    async def safe_to_step(rc: RocqCursor) -> bool:
-        prefix = await rc.doc_prefix()
-        for item in reversed(prefix):
-            if item.kind == "blanks" and item.text:
-                return True
-            elif item.kind == "command":
-                return False
-        return True
+    if status:
 
-    # maybe not necessary
-    async with (await rc.clone(materialize=True)).sess() as local_rc:
-        await local_rc.clear_suffix()
-        if status:
-
-            def print_status(text: str, result: bool | None):
-                nonlocal status
-                if result is None:
-                    icon = "🔃"
-                elif result:
-                    icon = "✅"
-                else:
-                    icon = "❌"
-                status.set_active(f"{icon} {text}")
-
-            local_rc = await WatchingCursor.create(
-                local_rc,
-                on_start_command=lambda text: print_status(text, None),
-                on_finish_command=lambda text, ok: print_status(text, ok),
-                proof_script=lambda script: status.set_proof_script(script),
-            )
-
-        existing_prefix = await local_rc.doc_prefix()
-        task_result = await agent_cls().run(rc=local_rc)
-
-        async def agent_invariant_violated(message: str) -> None:
-            status.print(message)
-            # Step over `Admitted`
-            await rc.run_step()
-
-        # Insert partial progress if the proof is completed, or upon client request
-        doc_modified = False
-        if task_result.success or partial:
-            extended_prefix = await local_rc.doc_prefix()
-            expected_overlapping_prefix = extended_prefix[: len(existing_prefix)]
-
-            if existing_prefix != expected_overlapping_prefix:
-                before = "".join([x.text for x in existing_prefix])
-                after = "".join([x.text for x in extended_prefix])
-                diff = difflib.unified_diff(a=before.split("\n"), b=after.split("\n"))
-                return await agent_invariant_violated(
-                    "\n".join(
-                        ["Agent.prove invariant violated; prefix modified:"]
-                        + list(diff)
-                    )
-                )
-
-            extension = extended_prefix[len(existing_prefix) :]
-            if not await try_replay(rc, extension):
-                return await agent_invariant_violated(
-                    "Agent.prove invariant violated; replaying the proof script failed"
-                )
-
-            # 1a) check if last non-blank command in prefix is a `Qed`
-            #
-            # Note: brittle because agents could insert "extra" commands after `Qed`
-            command_extension = [
-                cmd for cmd in extension[::-1] if cmd.kind == "command"
-            ]
-            doc_modified = len(command_extension) != 0
-            if len(command_extension) != 0 and command_extension[0].text == "Qed.":
-                # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
-                await rc.clear_suffix(count=1)
+        def print_status(text: str, result: bool | None):
+            nonlocal status
+            if result is None:
+                icon = "🔃"
+            elif result:
+                icon = "✅"
             else:
-                # 1b) else, try inserting Qed
-                try_qed_result = await rc.insert_command("Qed.")
-                if not isinstance(try_qed_result, rdm_api.Err):
-                    # Clear `Admitted.` from suffix if this code -- or the agent -- succeeded w/Qed
-                    await rc.clear_suffix(count=1)
-                else:
-                    # There is no whitespace before this command
-                    if not await safe_to_step(rc):
-                        await rc.insert_blanks("\n")
-                    # Step over `Admitted`
-                    await rc.run_step()
-        else:  # Step over `Admitted`
-            if not await safe_to_step(rc):
-                await rc.insert_blanks("\n")
-            await rc.run_step()
+                icon = "❌"
+            status.set_active(f"{icon} {text}")
 
-        # Print task_result and persistence
-        if task_result.success:
-            msg = "Agent succeeded"
-        elif partial and doc_modified:
-            msg = "Agent made partial progress"
-        else:
-            msg = "Agent failed"
+        rc = await WatchingCursor.create(
+            rc,
+            on_start_command=lambda text: print_status(text, None),
+            on_finish_command=lambda text, ok: print_status(text, ok),
+            proof_script=lambda script: status.set_proof_script(script),
+        )
 
-        if task_result.message:
-            status.print(f"{msg}:\n{task_result.message}")
-        else:
-            status.print(f"{msg}.")
-        status.proof_visible(False)
+    task_result = await agent_cls().run(rc=rc)
+
+    # Print task_result and persistence
+    if task_result.success:
+        msg = "Agent succeeded"
+    else:
+        msg = "Agent failed"
+
+    if task_result.message:
+        status.print(f"{msg}:\n{task_result.message}")
+    else:
+        status.print(f"{msg}.")
+    status.proof_visible(False)
 
 
 async def try_replay(
@@ -265,12 +433,12 @@ async def try_replay(
     return True
 
 
-async def print_admitted_proof_task(local_rc: RocqCursor) -> None:
+async def print_admitted_proof_task(cursor: RocqCursor) -> None:
     """Print the admitted proof task captured by the state of main_rc."""
 
-    goal = await local_rc.current_goal()
+    goal = await cursor.current_goal()
     assert goal is not None
-    position = await local_rc.cursor_offset()
+    position = await cursor.cursor_offset()
     print(
         f"\nFound admit at line {position.line + 1}, column {position.col} (offset={position.offset})."
     )
