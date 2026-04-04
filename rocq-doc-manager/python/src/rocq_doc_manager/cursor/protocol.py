@@ -12,6 +12,14 @@ from .file_offset import FileOffset
 logger = logging.getLogger(__name__)
 
 
+class SentenceBase(Protocol):
+    """A base class for Sentence-like things.
+    This should include `PrefixItem`, `SuffixItem`, and `Sentence`."""
+
+    text: str
+    kind: Literal["blanks", "command", "ghost"]
+
+
 class RocqCursorProtocolAsync(Protocol):
     async def advance_to(
         self, index: int
@@ -86,7 +94,7 @@ class RocqCursorProtocolAsync(Protocol):
     ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]: ...
 
     async def insert_sentence(
-        self, sentence: rdm_api.Sentence
+        self, sentence: SentenceBase
     ) -> rdm_api.CommandData | None | rdm_api.Err[rdm_api.CommandError]:
         if sentence.kind == "blanks":
             await self.insert_blanks(sentence.text)
@@ -96,11 +104,11 @@ class RocqCursorProtocolAsync(Protocol):
                 sentence.text, ghost=sentence.kind == "ghost"
             )
 
-    async def insert_sentences(
-        self, sentences: list[rdm_api.Sentence], *, allow_partial: bool = False
+    async def insert_sentences[T: SentenceBase](
+        self, sentences: Sequence[T], *, allow_partial: bool = False
     ) -> tuple[
         list[rdm_api.CommandData],
-        None | tuple[rdm_api.Err[rdm_api.CommandError], list[rdm_api.Sentence]],
+        None | tuple[rdm_api.Err[rdm_api.CommandError], Sequence[T]],
     ]:
         """The return value contains the results from successfully evaluated
         commands as well as any error.
@@ -121,6 +129,29 @@ class RocqCursorProtocolAsync(Protocol):
             elif isinstance(result, rdm_api.CommandData):
                 data.append(result)
         return (data, None)
+
+    async def copy_from(
+        self,
+        src: RocqCursor,
+        *,
+        prefix_only: Literal[True] = True,
+        extension: Literal[True] = True,
+    ) -> None:
+        """Copy the contents from `src` to `self`"""
+        start_prefix = await self.doc_prefix()
+        end_prefix = await src.doc_prefix()
+        assert end_prefix[0 : len(start_prefix)] == start_prefix
+        await self.insert_sentences(end_prefix[len(start_prefix) :])
+        for i in end_prefix[len(start_prefix) :]:
+            if i.kind == "blanks":
+                await self.insert_blanks(i.text)
+            else:
+                assert isinstance(
+                    await self.insert_command(
+                        i.text, ghost=i.kind == "ghost", blanks=None
+                    ),
+                    rdm_api.CommandData,
+                )
 
     # TODO: we should really reduce the repetition on [query],
     # there are 5 functions, but they all do basically the same thing
@@ -157,7 +188,7 @@ class RocqCursorProtocolAsync(Protocol):
     ) -> None | rdm_api.Err[rdm_api.StepsError]:
         for cnt in range(count):
             r = await self.run_step()
-            if isinstance(r, rdm_api.Err):
+            if isinstance(r, rdm_api.Err[rdm_api.CommandError]):
                 return rdm_api.Err(
                     message=r.message,
                     data=rdm_api.StepsError(cmd_error=r.data, nb_processed=cnt),

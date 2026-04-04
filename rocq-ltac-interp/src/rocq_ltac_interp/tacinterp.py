@@ -106,6 +106,9 @@ type TacticAST = list[str | TacticAST]
 
 
 async def copy_extension(*, src: RocqCursor, dst: RocqCursor) -> None:
+    """Copy the prefix of `src` to `dst`.
+    The prefix of `src` is expected to be a prefix of `dst`.
+    """
     # copy the contents from self._cloned to self._cursor
     start_prefix = await dst.doc_prefix()
     end_prefix = await src.doc_prefix()
@@ -149,7 +152,7 @@ class LtacTry(AbstractAsyncContextManager):
         assert self._cloned is not None
         if exc_type is None:
             # copy the contents from self._cloned to self._cursor
-            await copy_extension(src=self._cloned, dst=self._cursor)
+            await self._cursor.copy_from(src=self._cloned, prefix_only=True)
         await self._cloned.dispose()
         self._cloned = None
         return False
