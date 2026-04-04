@@ -456,6 +456,19 @@ let whitespace_required : t -> bool = fun d ->
   let _ = get_backend d in
   whitespace_required d.rev_prefix
 
+let modify_suffix : index:int -> count:int -> unprocessed_item list -> t -> unit = fun ~index ~count sentences d ->
+  let _ = get_backend d in
+  let len_prefix = cursor_index d in
+  if index < len_prefix then raise (Invalid_argument "index occurs in prefix");
+  let len_suffix = List.length d.suffix in
+  if len_prefix + len_suffix < index + count then raise (Invalid_argument "range extends beyond end of suffix");
+  let suff_offset = index - len_prefix in
+  let new_suffix =
+    List.concat [List.take suff_offset d.suffix; sentences; List.drop (suff_offset + count) d.suffix] in
+  assert false
+
+
+
 let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
     -> (unit, string) result =
     fun ?file ?(include_ghost=false) ?(include_suffix=true) d ->

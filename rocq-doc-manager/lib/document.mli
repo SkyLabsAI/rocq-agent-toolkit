@@ -84,6 +84,29 @@ val load_file : t -> (unit, string * Loc.t option) result
 (** Partial AST data attached to a Rocq vernacular command. *)
 type vernac_data = Rocq_vernac_entry.command
 
+(** Document item kind: blank characters, command, or ghost command. *)
+type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]
+
+(** Representation of a processed item (in the document's prefix). *)
+type processed_item = {
+  index : int;
+  (** Index in the document, as passed to, e.g., [advance_to]. *)
+  kind : item_kind;
+  (** Item kind. *)
+  off : int;
+  (** Byte offset of the item in the document. *)
+  text : string;
+  (** Text of the item. *)
+}
+
+(** Representation of an unprocessed item (in the document's suffix). *)
+type unprocessed_item = {
+  kind : item_kind;
+  (** Item kind. *)
+  text : string;
+  (** Text of the item. *)
+}
+
 (** Rocq sentence, as returned by the sentence-splitter. *)
 type sentence = {
   kind : [`Blanks | `Command of vernac_data];
@@ -160,6 +183,18 @@ val with_rollback : t -> (unit -> 'a) -> 'a
     [Invalid_argument] is raised. *)
 val clear_suffix : ?count:int -> t -> unit
 
+(** [modify_suffix index count sentences] replaces [count] sentences starting
+    at [index] with the new [sentences]. The inserted sentences are checked
+    to make sure that they pass synterp given the current document.
+
+    An [Invalid_argument] is raised if:
+    - [index] does not exist or is part of the prefix
+    - [count] is negative
+    - there are not [count] items after [index]
+    - the inserted sentences are not "synterp-compatible" with the rest of
+      the suffix. *)
+val modify_suffix : index:int -> ?count:int -> unprocessed_item list -> t -> unit
+
 (** [run_step d] advances the cursor of document [d] over the next unprocessed
     item of the document suffix, returning similar data to [insert_command] if
     the item is a command. Exception [Invalid_argument] is raised when [d] has
@@ -196,29 +231,6 @@ val advance_to : t -> index:int
     [Invalid_argument] is raised. Valid indices range from [0] to one past the
     index of the last item in the document's suffix. *)
 val go_to : t -> index:int -> (unit, string * command_error option) result
-
-(** Document item kind: blank characters, command, or ghost command. *)
-type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]
-
-(** Representation of a processed item (in the document's prefix). *)
-type processed_item = {
-  index : int;
-  (** Index in the document, as passed to, e.g., [advance_to]. *)
-  kind : item_kind;
-  (** Item kind. *)
-  off : int;
-  (** Byte offset of the item in the document. *)
-  text : string;
-  (** Text of the item. *)
-}
-
-(** Representation of an unprocessed item (in the document's suffix). *)
-type unprocessed_item = {
-  kind : item_kind;
-  (** Item kind. *)
-  text : string;
-  (** Text of the item. *)
-}
 
 (** [rev_prefix d] returns the reversed list of already-processed items in the
     document [d] (in other words, its prefix). *)
