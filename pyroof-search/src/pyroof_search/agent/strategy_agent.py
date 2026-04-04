@@ -66,6 +66,7 @@ class StrategyAgent(ProofAgent):
         # construction via super().prepare calls, but prove/rollout promises to leave
         # it unchanged.
         strategy_ctx: Proposer.Context = MappingProxyType(await self.prepare(rc))
+        initial_rc: RocqCursor = rc
 
         fresh_id: int = 0
 
@@ -129,6 +130,7 @@ class StrategyAgent(ProofAgent):
                             await action_rc.dispose()
                 else:
                     # not executed if we see a break
+                    initial_rc.copy_from(rc, prefix_only=True)
                     return await self.give_up(
                         rc, f"No more proposals (max_breadth={self._max_breadth})"
                     )
