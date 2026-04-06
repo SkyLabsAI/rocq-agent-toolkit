@@ -194,7 +194,7 @@ val clear_suffix : ?count:int -> t -> unit
     - the inserted sentences are not "synterp-compatible" with the rest of
       the suffix. *)
 val modify_suffix : index:int -> count:int -> unprocessed_item list -> t ->
-  (sentence list, string * string) result
+  (sentence list, string * (sentence list * string)) result
 
 (** [run_step d] advances the cursor of document [d] over the next unprocessed
     item of the document suffix, returning similar data to [insert_command] if

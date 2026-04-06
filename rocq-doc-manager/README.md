@@ -293,6 +293,18 @@ API Methods
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
+### `modify_suffix`
+
+- Description: modify the suffix of the document.
+- Arguments (in order, or named):
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `index`: the index of the insertion point (as an integer).
+  - `count`: the number of items to remove (as an integer).
+  - `items`: the items to insert (as a list where each element is an instance of the `SuffixItem` object).
+- Response payload: a list where each element is an instance of the `Sentence` object.
+- Error payload: an instance of the `SentenceSplitError` object.
+- Failure mode: recoverable failure.
+
 ### `query`
 
 - Description: runs the given query at the cursor, not updating the state.

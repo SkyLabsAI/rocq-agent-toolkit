@@ -456,7 +456,8 @@ let whitespace_required : t -> bool = fun d ->
   let _ = get_backend d in
   whitespace_required d.rev_prefix
 
-let modify_suffix : index:int -> count:int -> unprocessed_item list -> t -> (sentence list, string * string) result
+let modify_suffix : index:int -> count:int -> unprocessed_item list -> t ->
+  (sentence list, string * (sentence list * string)) result
   = fun ~index ~count sentences d ->
   let _ = get_backend d in
   let len_prefix = cursor_index d in
@@ -471,7 +472,7 @@ let modify_suffix : index:int -> count:int -> unprocessed_item list -> t -> (sen
     let text_for (ui : unprocessed_item) = ui.text in
     split_sentences d ~text:(String.concat "" @@ List.map text_for new_suffix) in
   match result with
-  | Error err -> Error(err)
+  | Error((a,b)) -> Error(a, (sentences, b))
   | Ok(()) ->
     d.suffix <- new_suffix;
     Ok(sentences)

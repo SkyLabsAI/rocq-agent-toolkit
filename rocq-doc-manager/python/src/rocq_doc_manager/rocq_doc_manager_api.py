@@ -517,6 +517,23 @@ class RocqDocManagerAPI:
             return Err(result.message, data)
         return None
 
+    def modify_suffix(
+        self,
+        cursor: int,
+        index: int,
+        count: int,
+        items: list[SuffixItem],
+    ) -> list[Sentence] | Err[SentenceSplitError]:
+        """Modify the suffix of the document."""
+        result = self._rpc.raw_request(
+            "modify_suffix",
+            [cursor, index, count, items],
+        )
+        if isinstance(result, Err):
+            data = SentenceSplitError.model_validate(result.data)
+            return Err(result.message, data)
+        return [Sentence.model_validate(v1) for v1 in result.result]
+
     def query(
         self,
         cursor: int,
@@ -902,6 +919,23 @@ class RocqDocManagerAPIAsync:
             data = None
             return Err(result.message, data)
         return None
+
+    async def modify_suffix(
+        self,
+        cursor: int,
+        index: int,
+        count: int,
+        items: list[SuffixItem],
+    ) -> list[Sentence] | Err[SentenceSplitError]:
+        """Modify the suffix of the document."""
+        result = await self._rpc.raw_request(
+            "modify_suffix",
+            [cursor, index, count, items],
+        )
+        if isinstance(result, Err):
+            data = SentenceSplitError.model_validate(result.data)
+            return Err(result.message, data)
+        return [Sentence.model_validate(v1) for v1 in result.result]
 
     async def query(
         self,

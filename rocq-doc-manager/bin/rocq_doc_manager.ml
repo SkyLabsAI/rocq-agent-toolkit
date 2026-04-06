@@ -737,6 +737,20 @@ let _ =
   Result.map_error (fun s -> (s, ())) res
 
 let _ =
+  let args =
+    A.add ~name:"index" ~descr:"the index of the insertion point" S.int @@
+    A.add ~name:"count" ~descr:"the number of items to remove" S.int @@
+    A.add ~name:"items" ~descr:"the items to insert" S.(list (obj suffix_item)) @@
+    A.nil
+  in
+  declare_full ~name:"modify_suffix" ~descr:"modify the suffix of the document"
+    ~args ~ret:(S.list (S.obj sentence)) ~err:(S.obj sentence_split_error) @@ fun d (index,(count,(items, ()))) ->
+    match Document.modify_suffix ~index ~count items d with
+    | Ok(sentences) -> Ok(sentences)
+    | Error(msg, (sentences, err)) -> Error(msg, (sentences, (err, ())))
+
+
+let _ =
   declare_full ~name:"materialize" ~descr:"materializes the cursor, \
     giving it its own dedicated top-level" ~args:A.nil ~ret:S.null ~err:S.null
     @@ fun d () ->
