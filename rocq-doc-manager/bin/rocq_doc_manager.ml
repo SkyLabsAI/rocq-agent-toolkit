@@ -629,6 +629,17 @@ let _ =
     ~ret:S.(list (obj prefix_item)) @@ fun d () ->
   List.rev (Document.rev_prefix d)
 
+let tagged_item =
+  let fields =
+    API.Fields.add ~name:"kind" item_kind @@
+    API.Fields.add ~name:"text" S.string @@
+    API.Fields.nil
+  in
+  let encode (kind, (text, ())) = (text, kind) in
+  let decode _ = assert false in
+  API.declare_object api ~name:"UnprocessedItem" ~descr:"an unprocessed item, \
+    to be inserted" ~encode ~decode fields
+
 let suffix_item =
   let fields =
     API.Fields.add ~name:"kind" item_kind @@
@@ -740,14 +751,14 @@ let _ =
   let args =
     A.add ~name:"index" ~descr:"the index of the insertion point" S.int @@
     A.add ~name:"count" ~descr:"the number of items to remove" S.int @@
-    A.add ~name:"items" ~descr:"the items to insert" S.(list (obj suffix_item)) @@
+    A.add ~name:"items" ~descr:"the items to insert" S.(list (obj tagged_item)) @@
     A.nil
   in
   declare_full ~name:"modify_suffix" ~descr:"modify the suffix of the document"
     ~args ~ret:(S.list (S.obj sentence)) ~err:(S.obj sentence_split_error) @@ fun d (index,(count,(items, ()))) ->
     match Document.modify_suffix ~index ~count items d with
-    | Ok(sentences) -> Ok(sentences)
-    | Error(msg, (sentences, err)) -> Error(msg, (sentences, (err, ())))
+    | sentences, Ok(()) -> Ok(sentences)
+    | sentences, Error(msg, err) -> Error(msg, (sentences, (err, ())))
 
 
 let _ =

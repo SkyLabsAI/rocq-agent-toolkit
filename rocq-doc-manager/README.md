@@ -129,6 +129,12 @@ API Objects
 - Field `offset`: an integer.
 - Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
 
+### `UnprocessedItem`
+
+- Description: an unprocessed item, to be inserted.
+- Field `text`: a string.
+- Field `kind`: any of `"blanks"`, `"command"`, `"ghost"`.
+
 ### `SuffixItem`
 
 - Description: document suffix item, appearing after the cursor.
@@ -300,7 +306,7 @@ API Methods
   - `cursor`: the cursor to perform the operation on (as an integer).
   - `index`: the index of the insertion point (as an integer).
   - `count`: the number of items to remove (as an integer).
-  - `items`: the items to insert (as a list where each element is an instance of the `SuffixItem` object).
+  - `items`: the items to insert (as a list where each element is an instance of the `UnprocessedItem` object).
 - Response payload: a list where each element is an instance of the `Sentence` object.
 - Error payload: an instance of the `SentenceSplitError` object.
 - Failure mode: recoverable failure.

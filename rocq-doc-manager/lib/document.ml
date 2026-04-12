@@ -456,8 +456,8 @@ let whitespace_required : t -> bool = fun d ->
   let _ = get_backend d in
   whitespace_required d.rev_prefix
 
-let modify_suffix : index:int -> count:int -> unprocessed_item list -> t ->
-  (sentence list, string * (sentence list * string)) result
+let modify_suffix : index:int -> count:int -> (string * [`Blanks | `Ghost | `Command ]) list -> t ->
+  sentence list * (unit, string * string) result
   = fun ~index ~count sentences d ->
   let _ = get_backend d in
   let len_prefix = cursor_index d in
@@ -465,17 +465,58 @@ let modify_suffix : index:int -> count:int -> unprocessed_item list -> t ->
   let len_suffix = List.length d.suffix in
   if len_prefix + len_suffix < index + count then raise (Invalid_argument "range extends beyond end of suffix");
   let suff_offset = index - len_prefix in
-  let new_suffix: unprocessed_item list =
-      List.concat [List.take suff_offset d.suffix; sentences; List.drop (suff_offset + count) d.suffix] in
+  let new_suffix: (string * [`Blanks | `Ghost | `Command]) list =
+    let erase (ui : unprocessed_item) : string * [`Blanks | `Ghost | `Command] =
+      ui.text, match ui.kind with
+               | `Blanks -> `Blanks
+               | `Command _ -> `Command
+               | `Ghost _ -> `Ghost
+    in
+      List.concat
+        [List.map erase (List.take suff_offset d.suffix)
+        ; sentences
+        ; List.map erase (List.drop (suff_offset + count) d.suffix)] in
   let sentences, result =
     (* the type annotation is necessary because [text] is shadowed *)
-    let text_for (ui : unprocessed_item) = ui.text in
-    split_sentences d ~text:(String.concat "" @@ List.map text_for new_suffix) in
+    let text_for (text, kind) =
+      match kind with
+      | `Ghost -> " " ^ text ^ " "
+      | _ -> text
+    in
+    split_sentences d ~text:(String.concat "" @@ List.map text_for new_suffix)
+  in
+  let rec match_items (acc : unprocessed_item list) (offset : int)
+   (input : (string * [`Blanks | `Ghost | `Command]) list) (processed : sentence list) : (unprocessed_item list, string * string) result =
+   match input , processed with
+    | [], [] -> Ok(List.rev acc)
+    | [], _ :: _ -> assert false (* we can not have less input than processed items *)
+    | _ :: _ , [] -> (* if we have fewer procesed items, then we must have an error *)
+      assert false
+    | ((text, `Blanks) :: ss) , {text=ui_text; kind=`Blanks} :: uis ->
+      if text = ui_text then match_items ({text=ui_text;kind=`Blanks} :: acc) offset ss uis
+      else if String.starts_with ~prefix:text ui_text then
+              let len_text = String.length text in
+              let rtext = String.sub ui_text len_text (String.length ui_text - len_text) in
+              match_items ({text;kind=`Blanks} :: acc) offset ss ({text=rtext;kind=`Blanks} :: uis)
+      else assert false
+    | (text, `Ghost) :: ss , {text=" "; kind=`Blanks} :: {text=ui_text;kind=`Command _ as kind} :: {text=post_blanks; kind=`Blanks} :: uis ->
+      assert (ui_text = text) ;
+      assert (String.starts_with ~prefix:" " post_blanks) ;
+      if ui_text = " " then match_items ({text;kind} :: acc) (offset + 2) ss uis
+      else match_items ({text=ui_text;kind} :: acc) (offset+2) ss ({text=String.sub ui_text 1 (String.length ui_text - 1);kind=`Blanks} :: uis)
+    | (text, `Command) :: ss , {text=ui_text;kind=`Command _ as ui_kind} :: uis ->
+      assert (text = ui_text) ;
+      match_items ({text=ui_text;kind=ui_kind} :: acc) offset ss uis
+    | _ , _ -> assert false
+  in
   match result with
-  | Error((a,b)) -> Error(a, (sentences, b))
+  | Error((a,b)) -> sentences , Error(a, b)
   | Ok(()) ->
-    d.suffix <- new_suffix;
-    Ok(sentences)
+    match match_items [] 0 new_suffix sentences with
+    | Ok(updated) ->
+      d.suffix <- updated;
+      sentences , Ok(())
+    | Error((a,b)) -> sentences, Error(a,b)
 
 
 let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t
