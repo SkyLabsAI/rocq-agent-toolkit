@@ -476,7 +476,7 @@ let modify_suffix : index:int -> count:int -> (string * [`Blanks | `Ghost | `Com
         [List.map erase (List.take suff_offset d.suffix)
         ; sentences
         ; List.map erase (List.drop (suff_offset + count) d.suffix)] in
-  let sentences, result =
+  let parsed_sentences, result =
     (* the type annotation is necessary because [text] is shadowed *)
     let text_for (text, kind) =
       match kind with
@@ -509,14 +509,15 @@ let modify_suffix : index:int -> count:int -> (string * [`Blanks | `Ghost | `Com
       match_items ({text=ui_text;kind=ui_kind} :: acc) offset ss uis
     | _ , _ -> assert false
   in
+  let relevant_sentences = List.take (List.length sentences) @@ List.drop suff_offset parsed_sentences in
   match result with
-  | Error((a,b)) -> sentences , Error(a, b)
+  | Error((a,b)) -> relevant_sentences ,  Error(a, b)
   | Ok(()) ->
-    match match_items [] 0 new_suffix sentences with
+    match match_items [] 0 new_suffix parsed_sentences with
     | Ok(updated) ->
       d.suffix <- updated;
-      sentences , Ok(())
-    | Error((a,b)) -> sentences, Error(a,b)
+      relevant_sentences , Ok(())
+    | Error((a,b)) -> relevant_sentences, Error(a,b)
 
 
 let commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool -> t

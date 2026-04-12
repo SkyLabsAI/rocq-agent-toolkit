@@ -12,6 +12,7 @@ __all__ = [
     "Error",
     "Resp",
     "SuffixItem",
+    "UnprocessedItem",
     "PrefixItem",
     "StepsError",
     "CommandError",
@@ -260,6 +261,17 @@ class PrefixItem(BaseModel):
         kw_only=True,
     )
     offset: int = Field(
+        kw_only=True,
+    )
+    kind: Literal["blanks", "command", "ghost"] = Field(
+        kw_only=True,
+    )
+
+
+class UnprocessedItem(BaseModel):
+    """An unprocessed item, to be inserted."""
+
+    text: str = Field(
         kw_only=True,
     )
     kind: Literal["blanks", "command", "ghost"] = Field(
@@ -522,7 +534,7 @@ class RocqDocManagerAPI:
         cursor: int,
         index: int,
         count: int,
-        items: list[SuffixItem],
+        items: list[UnprocessedItem],
     ) -> list[Sentence] | Err[SentenceSplitError]:
         """Modify the suffix of the document."""
         result = self._rpc.raw_request(
@@ -925,7 +937,7 @@ class RocqDocManagerAPIAsync:
         cursor: int,
         index: int,
         count: int,
-        items: list[SuffixItem],
+        items: list[UnprocessedItem],
     ) -> list[Sentence] | Err[SentenceSplitError]:
         """Modify the suffix of the document."""
         result = await self._rpc.raw_request(
