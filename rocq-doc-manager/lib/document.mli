@@ -106,6 +106,9 @@ val whitespace_required : t -> bool
 val split_sentences : t -> text:string
   -> sentence list * (unit, string * string) result
 
+(** [replace_suffix d ~text] is similar to [split_sentences d ~text], with the
+    addition of replacing the document suffix with the obtained sentences upon
+    success. If sentence-splitting fails, the suffix is left unchanged. *)
 val replace_suffix : t -> text:string
   -> sentence list * (unit, string * string) result
 

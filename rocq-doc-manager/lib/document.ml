@@ -399,6 +399,10 @@ type sentence = {
   text : string;
 }
 
+let sentence_to_unprocessed_item : sentence -> unprocessed_item = fun s ->
+  let k = match s.kind with `Blanks -> `Blanks | `Command(d) -> `Command(d) in
+  {text = s.text; kind = k}
+
 let split_sentences : t -> text:string ->
     sentence list * (unit, string * string) result = fun d ~text ->
   let {file; args; _} = get_backend d in
@@ -452,19 +456,12 @@ let split_sentences : t -> text:string ->
   in
   (sentences, res)
 
-let replace_suffix : t -> text:string -> sentence list * (unit, string * string) result = fun d ~text ->
-  let sentences, result = split_sentences d ~text in
-  let _ =
-    let to_unprocessed ({kind;text} : sentence) : unprocessed_item =
-      { text;
-        kind= match kind with
-              | `Blanks -> `Blanks
-              | `Command(vd) -> `Command(vd) }
-    in
-    if result = Ok(())
-    then d.suffix <- List.map to_unprocessed sentences
-  in
-  sentences , result
+let replace_suffix : t -> text:string ->
+    sentence list * (unit, string * string) result = fun d ~text ->
+  let (sentences, res) as result = split_sentences d ~text in
+  if Result.is_ok res then
+    d.suffix <- List.map sentence_to_unprocessed_item sentences;
+  result
 
 let whitespace_required : t -> bool = fun d ->
   let _ = get_backend d in
