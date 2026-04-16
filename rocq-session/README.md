@@ -4,11 +4,12 @@ HTTP server that loads one Rocq `.v` file with `rocq-doc-manager` and exposes a
 GET API for feedback at an LSP-style position (0-based line, UTF-16
 `character`).
 
-Two commands:
+Three commands:
 
 - `rocq-session-server path/to/file.v [--host HOST] [--port PORT] [--cwd DIR] [-- ROCQ_ARGS...]`
   — start the HTTP server.
 - `rocq-session [--endpoint URL] SUBCOMMAND` — client for a running server.
+- `rocq-session-cram-test file.v [command_json_args...]` — cram testing tool that executes session operations directly without server startup.
   - `rocq-session feedback LINE:CHAR` — GET `/feedback` (LSP-style 0-based
     line, UTF-16 character).
   - `rocq-session health` — GET `/health`.
@@ -40,3 +41,48 @@ Endpoints:
   and kept / dropped cache entries.
 - `POST /quit` — request a graceful shutdown (`202` + `{"status":
   "shutting_down"}` when wired up, `503` if not).
+
+## Cram Testing
+
+The `rocq-session-cram-test` tool provides a way to test session operations directly without starting an HTTP server. It loads a Rocq file using `rocq-doc-manager` and executes session commands specified as JSON arguments.
+
+### Usage
+
+```bash
+rocq-session-cram-test file.v [command_json_args...]
+```
+
+Commands are specified as JSON strings:
+- `"cursor"` - Get current cursor position
+- `["query", {"text": "Check nat."}]` - Run a query
+- `["insert", {"text": "Definition x := 0."}]` - Insert a command
+- `["query", {"text": "Check x.", "line": 1, "character": 10}]` - Query at specific position
+
+### Examples
+
+```bash
+# Basic operations
+rocq-session-cram-test test.v \
+  "cursor" \
+  '["insert", {"text": "Definition x := 0."}]' \
+  '["query", {"text": "Check x."}]' \
+  "cursor"
+
+# With specific positions
+rocq-session-cram-test test.v \
+  '["query", {"text": "About nat.", "line": 0, "character": 0}]' \
+  '["insert", {"text": "Lemma test : True.", "line": 1, "character": 0}]'
+```
+
+### Output Format
+
+Commands are echoed with their arguments, followed by results:
+
+```
+cursor({})
+= {"status": "ok", "index": 0}
+insert({"text": "Definition x := 0."})
+= {"status": "ok", "index": 1, "command_data": {...}}
+```
+
+This format is suitable for cram tests and can be used to verify session operation behavior without the complexity of HTTP server setup.

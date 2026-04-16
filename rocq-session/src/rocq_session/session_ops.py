@@ -127,8 +127,8 @@ async def run_query(
     session_lock: asyncio.Lock,
     *,
     text: str,
-    line: int | None,
-    character: int | None,
+    line: int | None = None,
+    character: int | None = None,
 ) -> QueryPayload:
     async with session_lock:
         current = await cursor.cursor_index()
@@ -178,8 +178,8 @@ async def insert_command(
     session_lock: asyncio.Lock,
     *,
     text: str,
-    line: int | None,
-    character: int | None,
+    line: int | None = None,
+    character: int | None = None,
 ) -> InsertPayload:
     async with session_lock:
         current = await cursor.cursor_index()

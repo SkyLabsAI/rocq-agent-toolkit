@@ -15,6 +15,7 @@ dependencies = [
 [project.scripts]
 rocq-session = "rocq_session.cli:main"
 rocq-session-server = "rocq_session.server:main"
+rocq-session-cram-test = "rocq_session.cram_tester:main"
 
 [tool.uv.sources]
 rocq-doc-manager = { workspace = true }
@@ -32,6 +33,7 @@ dev = [
     "mypy>=1.18.2,<2",
     "ruff>=0.14.4",
     "taskipy>=1.14.1",
+    "cram>=0.7",
 ]
 
 [tool.mypy]
@@ -60,5 +62,5 @@ lint_ci = "ruff check"
 format_ci = "ruff format --check"
 reformat = "ruff format"
 typecheck_ci = "mypy ."
-test_ci = "pytest"
+test_ocaml_ci = "pytest"
 precommit = "task lint_ci --fix; task reformat; task typecheck_ci; task test_ci"
