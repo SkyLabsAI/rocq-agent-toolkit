@@ -12,7 +12,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
 from rocq_doc_manager import AsyncRocqDocManager, create
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
-from .feedback import FeedbackPayload, feedback_at_byte
+from .feedback import FeedbackCache, FeedbackPayload, feedback_at_byte
 from .position import lsp_position_to_byte_offset
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,8 @@ async def feedback(
 
     cursor = request.app.state.cursor
     lock = request.app.state.lock
-    return await feedback_at_byte(cursor, target_byte, lock)
+    cache: FeedbackCache = request.app.state.feedback_cache
+    return await feedback_at_byte(cursor, target_byte, cache, lock)
 
 
 def create_app(
@@ -98,6 +99,7 @@ def create_app(
             raise RuntimeError(msg)
         app.state.cursor = rdm.cursor()
         app.state.lock = asyncio.Lock()
+        app.state.feedback_cache = FeedbackCache()
         app.state.rdm = rdm
         try:
             yield
