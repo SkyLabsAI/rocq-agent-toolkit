@@ -1,0 +1,63 @@
+[project]
+name = "rocq-session"
+version = "0.1.0"
+description = "HTTP server for a single Rocq file via rocq-doc-manager"
+readme = "README.md"
+authors = [{ name = "SkyLabs", email = "support@skylabs-ai.com" }]
+requires-python = ">=3.13"
+dependencies = [
+    "rocq-doc-manager",
+    "fastapi>=0.115.0,<0.118.0",
+    "uvicorn[standard]>=0.32.0,<0.36.0",
+]
+
+[project.scripts]
+rocq-session = "rocq_session.cli:main"
+
+[tool.uv.sources]
+rocq-doc-manager = { workspace = true }
+jsonrpc-tp = { workspace = true }
+rocq-dune-util = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "pytest-asyncio>=0.24.0",
+    "mypy>=1.18.2,<2",
+    "ruff>=0.14.4",
+    "taskipy>=1.14.1",
+    "httpx>=0.28.1",
+]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+disable_error_code = ["import-untyped"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["src"]
+
+[tool.taskipy.tasks]
+lint_ci = "ruff check"
+format_ci = "ruff format --check"
+reformat = "ruff format"
+typecheck_ci = "mypy ."
+test_ci = "pytest"
+precommit = "task lint_ci --fix; task reformat; task typecheck_ci; task test_ci"

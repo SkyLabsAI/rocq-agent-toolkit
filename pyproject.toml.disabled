@@ -18,6 +18,7 @@ members = [
     "pyroof-search",
     "rocq-agent-toolkit-utils",
     "rocq-ltac-interp",
+    "rocq-session",
 ]
 
 [tool.ruff]
