@@ -18,6 +18,21 @@ from rocq_session import cli
 from rocq_session.testing import create_test_app
 
 
+class _StubCloneCursor:
+    async def go_to(
+        self, index: int
+    ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
+        return None
+
+    async def replace_suffix(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
+        return []
+
+    async def dispose(self) -> None:
+        return None
+
+
 class _StubCursorEmpty:
     async def go_to(
         self, index: int
@@ -34,6 +49,19 @@ class _StubCursorEmpty:
 
     async def doc_prefix(self) -> list[rdm_api.PrefixItem]:
         return []
+
+    async def clone(self, *, materialize: bool = False) -> _StubCloneCursor:
+        return _StubCloneCursor()
+
+    async def replace_suffix(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
+        return []
+
+    async def revert_before(
+        self, erase: bool, index: int
+    ) -> None | rdm_api.Err[None]:
+        return None
 
 
 def test_parse_position_valid() -> None:
@@ -61,7 +89,7 @@ def _patch_httpx_to_asgi(
 ) -> Iterator[None]:
     """Route ``httpx.get`` / ``httpx.post`` through an ASGI transport."""
     path = tmp_path / "t.v"
-    path.write_text("x", encoding="utf-8")
+    path.write_text("", encoding="utf-8")
 
     def on_shutdown() -> None:
         _shutdown_counter.append(1)
@@ -139,3 +167,13 @@ def test_cmd_quit_ok(
     assert rc == 0
     assert json.loads(capsys.readouterr().out) == {"status": "shutting_down"}
     assert _shutdown_counter == [1]
+
+
+def test_cmd_reload_ok(
+    capsys: pytest.CaptureFixture[str], _patch_httpx_to_asgi: None
+) -> None:
+    rc = cli._cmd_reload("http://ignored")
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["prefix_items_preserved"] == 0

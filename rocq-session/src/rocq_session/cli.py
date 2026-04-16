@@ -4,6 +4,7 @@ Subcommands:
 
 - ``rocq-session feedback LINE:CHAR`` — GET ``/feedback``.
 - ``rocq-session health`` — GET ``/health``.
+- ``rocq-session reload`` — POST ``/reload`` (reload the file from disk).
 - ``rocq-session quit`` — POST ``/quit`` (asks the server to shut down).
 
 Positions are LSP-style: 0-based line, 0-based UTF-16 character offset on that
@@ -86,17 +87,17 @@ def _cmd_health(endpoint: str) -> int:
     return 0 if response.status_code == 200 else 1
 
 
-_QUIT_OK_STATUSES = frozenset({200, 202, 204})
+_POST_OK_STATUSES = frozenset({200, 202, 204})
 
 
-def _cmd_quit(endpoint: str) -> int:
-    url = f"{endpoint.rstrip('/')}/quit"
+def _cmd_post(endpoint: str, path: str) -> int:
+    url = f"{endpoint.rstrip('/')}{path}"
     try:
         response = httpx.post(url)
     except httpx.HTTPError as exc:
         print(f"request failed: {exc}", file=sys.stderr)
         return 2
-    if response.status_code in _QUIT_OK_STATUSES:
+    if response.status_code in _POST_OK_STATUSES:
         try:
             _print_json(response.json())
         except ValueError:
@@ -111,6 +112,14 @@ def _cmd_quit(endpoint: str) -> int:
             file=sys.stderr,
         )
     return 1
+
+
+def _cmd_quit(endpoint: str) -> int:
+    return _cmd_post(endpoint, "/quit")
+
+
+def _cmd_reload(endpoint: str) -> int:
+    return _cmd_post(endpoint, "/reload")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -138,6 +147,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser("health", help="Ping the server's /health endpoint.")
+    sub.add_parser("reload", help="Reload the file from disk (POST /reload).")
     sub.add_parser("quit", help="Ask the server to shut down (POST /quit).")
 
     return parser
@@ -150,6 +160,8 @@ def main() -> None:
         sys.exit(_cmd_feedback(args.endpoint, line, character))
     if args.subcommand == "health":
         sys.exit(_cmd_health(args.endpoint))
+    if args.subcommand == "reload":
+        sys.exit(_cmd_reload(args.endpoint))
     if args.subcommand == "quit":
         sys.exit(_cmd_quit(args.endpoint))
     raise AssertionError(f"unknown subcommand: {args.subcommand!r}")

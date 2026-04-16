@@ -12,6 +12,8 @@ Two commands:
   - `rocq-session feedback LINE:CHAR` — GET `/feedback` (LSP-style 0-based
     line, UTF-16 character).
   - `rocq-session health` — GET `/health`.
+  - `rocq-session reload` — POST `/reload` (re-read the file from disk and
+    reconcile the session).
   - `rocq-session quit` — POST `/quit` (asks the server to shut down).
 
 Default client endpoint is `http://127.0.0.1:8765`.
@@ -21,5 +23,10 @@ Endpoints:
 - `GET /health` — process up.
 - `GET /feedback?line=LINE&character=CHAR` — LSP-style 0-based line and UTF-16
   character; returns JSON with `status` and `feedback_messages`.
+- `POST /reload` — re-read the file from disk, preserve the longest processed
+  prefix that still matches the file, revert the cursor past any divergence,
+  install the remaining file text as the new document suffix, and invalidate
+  the affected cache entries. Returns counts of preserved / reverted items
+  and kept / dropped cache entries.
 - `POST /quit` — request a graceful shutdown (`202` + `{"status":
   "shutting_down"}` when wired up, `503` if not).

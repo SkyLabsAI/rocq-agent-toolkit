@@ -14,6 +14,7 @@ from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from .feedback import FeedbackCache, FeedbackPayload, feedback_at_byte
 from .position import lsp_position_to_byte_offset
+from .reload import ReloadPayload, reload_file
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,15 @@ async def _shutdown_rdm(rdm: AsyncRocqDocManager) -> None:
 @session_router.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@session_router.post("/reload")
+async def reload_document(request: Request) -> ReloadPayload:
+    file_path: Path = request.app.state.file_path
+    cursor = request.app.state.cursor
+    lock = request.app.state.lock
+    cache: FeedbackCache = request.app.state.feedback_cache
+    return await reload_file(cursor, cache, lock, file_path)
 
 
 @session_router.post("/quit", status_code=202)
