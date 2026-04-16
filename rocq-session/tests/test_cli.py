@@ -51,12 +51,28 @@ def test_parse_position_invalid() -> None:
 
 
 @pytest.fixture
-def _patch_httpx_to_asgi(tmp_path: Path) -> Iterator[None]:
-    """Route ``httpx.get`` through an ASGI transport bound to a test app."""
+def _shutdown_counter() -> list[int]:
+    return []
+
+
+@pytest.fixture
+def _patch_httpx_to_asgi(
+    tmp_path: Path, _shutdown_counter: list[int]
+) -> Iterator[None]:
+    """Route ``httpx.get`` / ``httpx.post`` through an ASGI transport."""
     path = tmp_path / "t.v"
     path.write_text("x", encoding="utf-8")
-    app = create_test_app(path, cast(RocqCursor, _StubCursorEmpty()))
+
+    def on_shutdown() -> None:
+        _shutdown_counter.append(1)
+
+    app = create_test_app(
+        path, cast(RocqCursor, _StubCursorEmpty()), request_shutdown=on_shutdown
+    )
     transport = httpx.ASGITransport(app=app)
+
+    def _path_from(url: str) -> str:
+        return "/" + url.split("://", 1)[-1].split("/", 1)[-1]
 
     def fake_get(
         url: str,
@@ -67,12 +83,23 @@ def _patch_httpx_to_asgi(tmp_path: Path) -> Iterator[None]:
             async with httpx.AsyncClient(
                 transport=transport, base_url="http://test"
             ) as client:
-                path_and_query = url.split("://", 1)[-1].split("/", 1)[-1]
-                return await client.get(f"/{path_and_query}", params=params)
+                return await client.get(_path_from(url), params=params)
 
         return asyncio.run(_do())
 
-    with patch.object(cli.httpx, "get", side_effect=fake_get):
+    def fake_post(url: str) -> httpx.Response:
+        async def _do() -> httpx.Response:
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as client:
+                return await client.post(_path_from(url))
+
+        return asyncio.run(_do())
+
+    with (
+        patch.object(cli.httpx, "get", side_effect=fake_get),
+        patch.object(cli.httpx, "post", side_effect=fake_post),
+    ):
         yield
 
 
@@ -101,3 +128,14 @@ def test_cmd_health_ok(
     rc = cli._cmd_health("http://ignored")
     assert rc == 0
     assert json.loads(capsys.readouterr().out) == {"status": "ok"}
+
+
+def test_cmd_quit_ok(
+    capsys: pytest.CaptureFixture[str],
+    _patch_httpx_to_asgi: None,
+    _shutdown_counter: list[int],
+) -> None:
+    rc = cli._cmd_quit("http://ignored")
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out) == {"status": "shutting_down"}
+    assert _shutdown_counter == [1]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -39,6 +39,20 @@ async def _shutdown_rdm(rdm: AsyncRocqDocManager) -> None:
 @session_router.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@session_router.post("/quit", status_code=202)
+async def quit_server(request: Request) -> dict[str, str]:
+    shutdown: Callable[[], None] | None = getattr(
+        request.app.state, "request_shutdown", None
+    )
+    if shutdown is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Server shutdown is not wired up for this app",
+        )
+    shutdown()
+    return {"status": "shutting_down"}
 
 
 @session_router.get("/feedback")

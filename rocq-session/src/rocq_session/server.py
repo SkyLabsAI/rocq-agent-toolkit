@@ -18,6 +18,27 @@ def _split_argv_at_double_dash(argv: list[str]) -> tuple[list[str], list[str]]:
     return argv, []
 
 
+def _run_server(
+    file_path: Path,
+    rocq_args: list[str],
+    *,
+    host: str,
+    port: int,
+    cwd: Path | None,
+    log_level: str = "info",
+) -> None:
+    """Build the app, wire ``POST /quit`` to the uvicorn server, and serve."""
+    app = create_app(file_path, rocq_args, cwd=cwd)
+    config = uvicorn.Config(app=app, host=host, port=port, log_level=log_level)
+    server = uvicorn.Server(config)
+
+    def _request_shutdown() -> None:
+        server.should_exit = True
+
+    app.state.request_shutdown = _request_shutdown
+    server.run()
+
+
 def main() -> None:
     front, rocq_args = _split_argv_at_double_dash(sys.argv[1:])
     parser = argparse.ArgumentParser(
@@ -53,5 +74,10 @@ def main() -> None:
         parser.error("FILE must be a .v file")
 
     cwd = args.cwd.resolve() if args.cwd is not None else None
-    app = create_app(path.resolve(), rocq_args, cwd=cwd)
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    _run_server(
+        path.resolve(),
+        rocq_args,
+        host=args.host,
+        port=args.port,
+        cwd=cwd,
+    )

@@ -66,3 +66,34 @@ async def test_health_via_asgi(tmp_path: Path) -> None:
         response = await client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_quit_triggers_callback(tmp_path: Path) -> None:
+    path = tmp_path / "t.v"
+    path.write_text("x", encoding="utf-8")
+    called: list[int] = []
+
+    def on_shutdown() -> None:
+        called.append(1)
+
+    app = create_test_app(
+        path, cast(RocqCursor, _StubCursorEmpty()), request_shutdown=on_shutdown
+    )
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/quit")
+    assert response.status_code == 202
+    assert response.json() == {"status": "shutting_down"}
+    assert called == [1]
+
+
+@pytest.mark.asyncio
+async def test_quit_without_shutdown_hook_503(tmp_path: Path) -> None:
+    path = tmp_path / "t.v"
+    path.write_text("x", encoding="utf-8")
+    app = create_test_app(path, cast(RocqCursor, _StubCursorEmpty()))
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/quit")
+    assert response.status_code == 503
