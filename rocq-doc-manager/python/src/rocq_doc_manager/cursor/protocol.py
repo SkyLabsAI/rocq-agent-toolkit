@@ -19,6 +19,10 @@ class RocqCursorProtocolAsync(Protocol):
 
     async def clear_suffix(self, count: int | None = None) -> None: ...
 
+    async def replace_suffix(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]: ...
+
     async def materialize(self) -> None:
         """Enable parallel processing on this cursor."""
         ...

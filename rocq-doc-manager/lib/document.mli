@@ -106,6 +106,9 @@ val whitespace_required : t -> bool
 val split_sentences : t -> text:string
   -> sentence list * (unit, string * string) result
 
+val replace_suffix : t -> text:string
+  -> sentence list * (unit, string * string) result
+
 (** Data returned by the top-level when running a command. *)
 type command_data = Rocq_toplevel.run_data
 

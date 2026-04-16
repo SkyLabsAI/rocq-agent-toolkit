@@ -452,6 +452,20 @@ let split_sentences : t -> text:string ->
   in
   (sentences, res)
 
+let replace_suffix : t -> text:string -> sentence list * (unit, string * string) result = fun d ~text ->
+  let sentences, result = split_sentences d ~text in
+  let _ =
+    let to_unprocessed ({kind;text} : sentence) : unprocessed_item =
+      { text;
+        kind= match kind with
+              | `Blanks -> `Blanks
+              | `Command(vd) -> `Command(vd) }
+    in
+    if result = Ok(())
+    then d.suffix <- List.map to_unprocessed sentences
+  in
+  sentences , result
+
 let whitespace_required : t -> bool = fun d ->
   let _ = get_backend d in
   whitespace_required d.rev_prefix

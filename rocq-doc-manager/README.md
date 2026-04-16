@@ -347,6 +347,16 @@ API Methods
 - Error payload: a `null` value.
 - Failure mode: recoverable failure.
 
+### `replace_suffix`
+
+- Description: replaces the suffix with the sentences from the text.
+- Arguments (in order, or named):
+  - `cursor`: the cursor to perform the operation on (as an integer).
+  - `text`: text to split into sentences (as a string).
+- Response payload: a list where each element is an instance of the `Sentence` object.
+- Error payload: an instance of the `SentenceSplitError` object.
+- Failure mode: recoverable failure.
+
 ### `revert_before`
 
 - Description: revert the cursor to an earlier point in the document.

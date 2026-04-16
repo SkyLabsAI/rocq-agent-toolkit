@@ -596,6 +596,21 @@ class RocqDocManagerAPI:
             return Err(result.message, data)
         return [str(v1) for v1 in result.result]
 
+    def replace_suffix(
+        self,
+        cursor: int,
+        text: str,
+    ) -> list[Sentence] | Err[SentenceSplitError]:
+        """Replaces the suffix with the sentences from the text."""
+        result = self._rpc.raw_request(
+            "replace_suffix",
+            [cursor, text],
+        )
+        if isinstance(result, Err):
+            data = SentenceSplitError.model_validate(result.data)
+            return Err(result.message, data)
+        return [Sentence.model_validate(v1) for v1 in result.result]
+
     def revert_before(
         self,
         cursor: int,
@@ -981,6 +996,21 @@ class RocqDocManagerAPIAsync:
             data = None
             return Err(result.message, data)
         return [str(v1) for v1 in result.result]
+
+    async def replace_suffix(
+        self,
+        cursor: int,
+        text: str,
+    ) -> list[Sentence] | Err[SentenceSplitError]:
+        """Replaces the suffix with the sentences from the text."""
+        result = await self._rpc.raw_request(
+            "replace_suffix",
+            [cursor, text],
+        )
+        if isinstance(result, Err):
+            data = SentenceSplitError.model_validate(result.data)
+            return Err(result.message, data)
+        return [Sentence.model_validate(v1) for v1 in result.result]
 
     async def revert_before(
         self,
