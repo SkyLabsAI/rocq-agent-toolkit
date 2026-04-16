@@ -19,10 +19,18 @@ from rocq_session.testing import create_test_app
 
 
 class _StubCloneCursor:
+    async def advance_to(
+        self, index: int
+    ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
+        return None
+
     async def go_to(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
         return None
+
+    async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
+        return rdm_api.CommandData(synterp_ast=rdm_api.VernacData(kind="Noop"))
 
     async def replace_suffix(
         self, text: str
@@ -34,9 +42,21 @@ class _StubCloneCursor:
 
 
 class _StubCursorEmpty:
+    _index: int = 0
+
+    async def advance_to(
+        self, index: int
+    ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
+        self._index = index
+        return None
+
+    async def cursor_index(self) -> int:
+        return self._index
+
     async def go_to(
         self, index: int
     ) -> None | rdm_api.Err[rdm_api.CommandError | None]:
+        self._index = index
         return None
 
     async def has_suffix(self) -> bool:
@@ -62,6 +82,15 @@ class _StubCursorEmpty:
         self, erase: bool, index: int
     ) -> None | rdm_api.Err[None]:
         return None
+
+    async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:
+        return rdm_api.CommandData(synterp_ast=rdm_api.VernacData(kind="Noop"))
+
+    async def insert_command(
+        self, text: str, blanks: str | None = "\n", ghost: bool = False
+    ) -> rdm_api.CommandData | rdm_api.Err[rdm_api.CommandError]:
+        self._index += 1
+        return rdm_api.CommandData(synterp_ast=rdm_api.VernacData(kind="Noop"))
 
 
 def test_parse_position_valid() -> None:
@@ -115,12 +144,16 @@ def _patch_httpx_to_asgi(
 
         return asyncio.run(_do())
 
-    def fake_post(url: str) -> httpx.Response:
+    def fake_post(
+        url: str,
+        *,
+        json: dict[str, object] | None = None,
+    ) -> httpx.Response:
         async def _do() -> httpx.Response:
             async with httpx.AsyncClient(
                 transport=transport, base_url="http://test"
             ) as client:
-                return await client.post(_path_from(url))
+                return await client.post(_path_from(url), json=json)
 
         return asyncio.run(_do())
 
@@ -177,3 +210,31 @@ def test_cmd_reload_ok(
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "ok"
     assert payload["prefix_items_preserved"] == 0
+
+
+def test_cmd_cursor_ok(
+    capsys: pytest.CaptureFixture[str], _patch_httpx_to_asgi: None
+) -> None:
+    rc = cli._cmd_cursor("http://ignored")
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out) == {"index": 0, "status": "ok"}
+
+
+def test_cmd_query_ok(
+    capsys: pytest.CaptureFixture[str], _patch_httpx_to_asgi: None
+) -> None:
+    rc = cli._cmd_query("http://ignored", "About nat.")
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["index"] == 0
+
+
+def test_cmd_insert_ok(
+    capsys: pytest.CaptureFixture[str], _patch_httpx_to_asgi: None
+) -> None:
+    rc = cli._cmd_insert("http://ignored", "Check nat.")
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["index"] == 1

@@ -9,16 +9,37 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from rocq_doc_manager import AsyncRocqDocManager, create
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from .feedback import FeedbackCache, FeedbackPayload, feedback_at_byte
 from .position import lsp_position_to_byte_offset
 from .reload import ReloadPayload, reload_file
+from .session_ops import (
+    CursorPayload,
+    InsertPayload,
+    QueryPayload,
+    cursor_location,
+    run_query,
+)
+from .session_ops import insert_command as insert_at
 
 logger = logging.getLogger(__name__)
 
 session_router = APIRouter(tags=["session"])
+
+
+class QueryRequest(BaseModel):
+    text: str = Field(min_length=1)
+    line: int | None = Field(default=None, ge=0)
+    character: int | None = Field(default=None, ge=0)
+
+
+class InsertRequest(BaseModel):
+    text: str = Field(min_length=1)
+    line: int | None = Field(default=None, ge=0)
+    character: int | None = Field(default=None, ge=0)
 
 
 async def _shutdown_rdm(rdm: AsyncRocqDocManager) -> None:
@@ -40,6 +61,35 @@ async def _shutdown_rdm(rdm: AsyncRocqDocManager) -> None:
 @session_router.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@session_router.get("/cursor")
+async def cursor(request: Request) -> CursorPayload:
+    return await cursor_location(request.app.state.cursor, request.app.state.lock)
+
+
+@session_router.post("/query")
+async def query(request: Request, payload: QueryRequest) -> QueryPayload:
+    return await run_query(
+        request.app.state.cursor,
+        request.app.state.feedback_cache,
+        request.app.state.lock,
+        text=payload.text,
+        line=payload.line,
+        character=payload.character,
+    )
+
+
+@session_router.post("/insert")
+async def insert(request: Request, payload: InsertRequest) -> InsertPayload:
+    return await insert_at(
+        request.app.state.cursor,
+        request.app.state.feedback_cache,
+        request.app.state.lock,
+        text=payload.text,
+        line=payload.line,
+        character=payload.character,
+    )
 
 
 @session_router.post("/reload")

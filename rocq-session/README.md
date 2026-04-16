@@ -12,6 +12,9 @@ Two commands:
   - `rocq-session feedback LINE:CHAR` — GET `/feedback` (LSP-style 0-based
     line, UTF-16 character).
   - `rocq-session health` — GET `/health`.
+  - `rocq-session cursor` — GET `/cursor` (current document cursor index).
+  - `rocq-session query "QUERY." [--at LINE:CHAR]` — POST `/query`.
+  - `rocq-session insert "COMMAND." [--at LINE:CHAR]` — POST `/insert`.
   - `rocq-session reload` — POST `/reload` (re-read the file from disk and
     reconcile the session).
   - `rocq-session quit` — POST `/quit` (asks the server to shut down).
@@ -21,8 +24,15 @@ Default client endpoint is `http://127.0.0.1:8765`.
 Endpoints:
 
 - `GET /health` — process up.
+- `GET /cursor` — current document cursor index.
 - `GET /feedback?line=LINE&character=CHAR` — LSP-style 0-based line and UTF-16
   character; returns JSON with `status` and `feedback_messages`.
+- `POST /query` — run a Rocq query at an optional LSP position (`line` +
+  `character`, 0-based UTF-16). If omitted, current cursor is used. If the
+  computed location is before the current cursor, evaluation runs on a cloned +
+  materialized cursor and does not move the live cursor.
+- `POST /insert` — insert a command at an optional LSP position (`line` +
+  `character`, 0-based UTF-16). If omitted, current cursor is used.
 - `POST /reload` — re-read the file from disk, preserve the longest processed
   prefix that still matches the file, revert the cursor past any divergence,
   install the remaining file text as the new document suffix, and invalidate

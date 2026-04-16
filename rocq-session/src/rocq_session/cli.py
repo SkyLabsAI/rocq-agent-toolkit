@@ -4,6 +4,9 @@ Subcommands:
 
 - ``rocq-session feedback LINE:CHAR`` — GET ``/feedback``.
 - ``rocq-session health`` — GET ``/health``.
+- ``rocq-session cursor`` — GET ``/cursor``.
+- ``rocq-session query TEXT [--at INDEX]`` — POST ``/query``.
+- ``rocq-session insert TEXT [--at INDEX]`` — POST ``/insert``.
 - ``rocq-session reload`` — POST ``/reload`` (reload the file from disk).
 - ``rocq-session quit`` — POST ``/quit`` (asks the server to shut down).
 
@@ -90,10 +93,29 @@ def _cmd_health(endpoint: str) -> int:
 _POST_OK_STATUSES = frozenset({200, 202, 204})
 
 
-def _cmd_post(endpoint: str, path: str) -> int:
+def _cmd_get(endpoint: str, path: str) -> int:
     url = f"{endpoint.rstrip('/')}{path}"
     try:
-        response = httpx.post(url)
+        response = httpx.get(url)
+    except httpx.HTTPError as exc:
+        print(f"request failed: {exc}", file=sys.stderr)
+        return 2
+    try:
+        payload = response.json()
+    except ValueError:
+        print(
+            f"non-JSON response ({response.status_code}): {response.text}",
+            file=sys.stderr,
+        )
+        return 2
+    _print_json(payload)
+    return 0 if response.status_code == 200 else 1
+
+
+def _cmd_post(endpoint: str, path: str, payload: dict[str, object] | None = None) -> int:
+    url = f"{endpoint.rstrip('/')}{path}"
+    try:
+        response = httpx.post(url, json=payload)
     except httpx.HTTPError as exc:
         print(f"request failed: {exc}", file=sys.stderr)
         return 2
@@ -122,6 +144,28 @@ def _cmd_reload(endpoint: str) -> int:
     return _cmd_post(endpoint, "/reload")
 
 
+def _cmd_cursor(endpoint: str) -> int:
+    return _cmd_get(endpoint, "/cursor")
+
+
+def _cmd_query(
+    endpoint: str, text: str, position: tuple[int, int] | None = None
+) -> int:
+    payload: dict[str, object] = {"text": text}
+    if position is not None:
+        payload["line"], payload["character"] = position
+    return _cmd_post(endpoint, "/query", payload)
+
+
+def _cmd_insert(
+    endpoint: str, text: str, position: tuple[int, int] | None = None
+) -> int:
+    payload: dict[str, object] = {"text": text}
+    if position is not None:
+        payload["line"], payload["character"] = position
+    return _cmd_post(endpoint, "/insert", payload)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="rocq-session",
@@ -147,6 +191,30 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser("health", help="Ping the server's /health endpoint.")
+    sub.add_parser("cursor", help="Report the current cursor index (/cursor).")
+    p_query = sub.add_parser("query", help="Run a query at an optional document position.")
+    p_query.add_argument("text", help="Rocq query text to run.")
+    p_query.add_argument(
+        "--at",
+        dest="position",
+        type=_parse_position,
+        default=None,
+        metavar="LINE:CHAR",
+        help="Optional position as LINE:CHAR (0-based, LSP semantics).",
+    )
+    p_insert = sub.add_parser(
+        "insert",
+        help="Insert a command at an optional document position.",
+    )
+    p_insert.add_argument("text", help="Rocq command text to insert/process.")
+    p_insert.add_argument(
+        "--at",
+        dest="position",
+        type=_parse_position,
+        default=None,
+        metavar="LINE:CHAR",
+        help="Optional position as LINE:CHAR (0-based, LSP semantics).",
+    )
     sub.add_parser("reload", help="Reload the file from disk (POST /reload).")
     sub.add_parser("quit", help="Ask the server to shut down (POST /quit).")
 
@@ -160,6 +228,12 @@ def main() -> None:
         sys.exit(_cmd_feedback(args.endpoint, line, character))
     if args.subcommand == "health":
         sys.exit(_cmd_health(args.endpoint))
+    if args.subcommand == "cursor":
+        sys.exit(_cmd_cursor(args.endpoint))
+    if args.subcommand == "query":
+        sys.exit(_cmd_query(args.endpoint, args.text, args.position))
+    if args.subcommand == "insert":
+        sys.exit(_cmd_insert(args.endpoint, args.text, args.position))
     if args.subcommand == "reload":
         sys.exit(_cmd_reload(args.endpoint))
     if args.subcommand == "quit":
