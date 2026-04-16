@@ -1,0 +1,10 @@
+(executable
+ (public_name rocq-ed)
+ (name main)
+ (package rocq-doc-manager)
+ (preprocess (pps ppx_deriving.show))
+ (libraries
+  cmdliner
+  stdlib-extra
+  rocq-doc-manager.lib
+  uuseg.string))
