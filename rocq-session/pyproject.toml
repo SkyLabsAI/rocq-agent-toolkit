@@ -9,10 +9,12 @@ dependencies = [
     "rocq-doc-manager",
     "fastapi>=0.115.0,<0.118.0",
     "uvicorn[standard]>=0.32.0,<0.36.0",
+    "httpx>=0.28.1",
 ]
 
 [project.scripts]
 rocq-session = "rocq_session.cli:main"
+rocq-session-server = "rocq_session.server:main"
 
 [tool.uv.sources]
 rocq-doc-manager = { workspace = true }
@@ -30,7 +32,6 @@ dev = [
     "mypy>=1.18.2,<2",
     "ruff>=0.14.4",
     "taskipy>=1.14.1",
-    "httpx>=0.28.1",
 ]
 
 [tool.mypy]

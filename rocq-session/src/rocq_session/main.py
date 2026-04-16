@@ -3,18 +3,37 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
-from rocq_doc_manager import create
+from rocq_doc_manager import AsyncRocqDocManager, create
 from rocq_doc_manager import rocq_doc_manager_api as rdm_api
 
 from .feedback import FeedbackPayload, feedback_at_byte
 from .position import lsp_position_to_byte_offset
 
+logger = logging.getLogger(__name__)
+
 session_router = APIRouter(tags=["session"])
+
+
+async def _shutdown_rdm(rdm: AsyncRocqDocManager) -> None:
+    """Best-effort RDM shutdown tolerant to the subprocess having already died.
+
+    SIGINT at the terminal reaches the whole process group, so the Rocq OCaml
+    subprocess may exit first. In that case the RPC transport has already
+    flipped to stopped state and ``rdm.quit()`` raises. Swallow that so the
+    ASGI lifespan can complete cleanly.
+    """
+    try:
+        await rdm.quit()
+    except rdm_api.Error as exc:
+        logger.info("RDM already stopped at shutdown: %s", exc)
+    except Exception as exc:
+        logger.warning("RDM shutdown error: %s", exc)
 
 
 @session_router.get("/health")
@@ -69,7 +88,7 @@ def create_app(
         try:
             yield
         finally:
-            await rdm.quit()
+            await _shutdown_rdm(rdm)
 
     app = FastAPI(title="rocq-session", lifespan=lifespan)
     app.state.file_path = resolved
