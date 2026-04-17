@@ -110,6 +110,14 @@ class DelimitedRocqCursor(DelegateRocqCursor):
         await self._cursor.clear_suffix(nb_to_clear)
 
     @override
+    async def replace_suffix(
+        self, text: str
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
+        raise NotImplementedError(
+            "replace_suffix is not supported for delimited cursors"
+        )
+
+    @override
     async def clone(self, *, materialize: bool = False) -> RocqCursor:
         cursor = await self._cursor.clone(materialize=materialize)
         return DelimitedRocqCursor(
