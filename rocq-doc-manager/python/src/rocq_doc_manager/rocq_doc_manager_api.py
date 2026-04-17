@@ -600,11 +600,12 @@ class RocqDocManagerAPI:
         self,
         cursor: int,
         text: str,
+        count: int | None,
     ) -> list[Sentence] | Err[SentenceSplitError]:
         """Replaces the suffix with the sentences from the text."""
         result = self._rpc.raw_request(
             "replace_suffix",
-            [cursor, text],
+            [cursor, text, count],
         )
         if isinstance(result, Err):
             data = SentenceSplitError.model_validate(result.data)
@@ -1001,11 +1002,12 @@ class RocqDocManagerAPIAsync:
         self,
         cursor: int,
         text: str,
+        count: int | None,
     ) -> list[Sentence] | Err[SentenceSplitError]:
         """Replaces the suffix with the sentences from the text."""
         result = await self._rpc.raw_request(
             "replace_suffix",
-            [cursor, text],
+            [cursor, text, count],
         )
         if isinstance(result, Err):
             data = SentenceSplitError.model_validate(result.data)

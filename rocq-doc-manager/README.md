@@ -353,6 +353,7 @@ API Methods
 - Arguments (in order, or named):
   - `cursor`: the cursor to perform the operation on (as an integer).
   - `text`: text to split into sentences (as a string).
+  - `count`: the number of items to replace (as either `null` or an integer).
 - Response payload: a list where each element is an instance of the `Sentence` object.
 - Error payload: an instance of the `SentenceSplitError` object.
 - Failure mode: recoverable failure.

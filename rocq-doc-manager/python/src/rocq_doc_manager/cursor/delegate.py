@@ -106,9 +106,9 @@ class DelegateRocqCursor(RocqCursor):
 
     @override
     async def replace_suffix(
-        self, text: str
+        self, text: str, *, count: int | None = None
     ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
-        return await self._cursor.replace_suffix(text)
+        return await self._cursor.replace_suffix(text, count=count)
 
     @override
     async def commit(

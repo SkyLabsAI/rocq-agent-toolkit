@@ -109,7 +109,7 @@ val split_sentences : t -> text:string
 (** [replace_suffix d ~text] is similar to [split_sentences d ~text], with the
     addition of replacing the document suffix with the obtained sentences upon
     success. If sentence-splitting fails, the suffix is left unchanged. *)
-val replace_suffix : t -> text:string
+val replace_suffix : t -> count:int option -> text:string
   -> sentence list * (unit, string * string) result
 
 (** Data returned by the top-level when running a command. *)

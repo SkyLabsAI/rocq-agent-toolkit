@@ -456,12 +456,38 @@ let split_sentences : t -> text:string ->
   in
   (sentences, res)
 
-let replace_suffix : t -> text:string ->
-    sentence list * (unit, string * string) result = fun d ~text ->
+let replace_suffix : t -> count:int option -> text:string ->
+    sentence list * (unit, string * string) result = fun d ~count ~text ->
   let (sentences, res) as result = split_sentences d ~text in
   if Result.is_ok res then
-    d.suffix <- List.map sentence_to_unprocessed_item sentences;
-  result
+    match count with
+    | Some drop ->
+      let rec ws_required acc : unprocessed_item list -> _ = function
+        | [] -> acc
+        | ({kind;text} :: rest) ->
+          match kind with
+          | `Blanks -> ws_required false rest
+          | `Command(_) -> ws_required (String.ends_with ~suffix:"." text) rest
+          | `Ghost (_) -> ws_required acc rest
+      in
+      let rec ws_satisfied : unprocessed_item list -> bool = function
+        | [] -> true
+        | {kind=`Blanks;text=_} :: _ -> true
+        | {kind=`Ghost(_);text=_} :: rest -> ws_satisfied rest
+        | {kind=`Command(_);text=_} :: _ -> false
+      in
+      let new_items = List.map sentence_to_unprocessed_item sentences in
+      let ws_required = ws_required false new_items in
+      let kept = List.drop drop d.suffix in
+      if ws_required && not (ws_satisfied kept) then
+        sentences, Error("Missing whitespace after last sentence", "oops")
+      else
+        let _ = d.suffix <- (new_items @ kept) in
+        result
+    | None ->
+      d.suffix <- List.map sentence_to_unprocessed_item sentences ;
+      result
+  else result
 
 let whitespace_required : t -> bool = fun d ->
   let _ = get_backend d in
