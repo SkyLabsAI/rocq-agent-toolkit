@@ -112,7 +112,9 @@ def _cmd_get(endpoint: str, path: str) -> int:
     return 0 if response.status_code == 200 else 1
 
 
-def _cmd_post(endpoint: str, path: str, payload: dict[str, object] | None = None) -> int:
+def _cmd_post(
+    endpoint: str, path: str, payload: dict[str, object] | None = None
+) -> int:
     url = f"{endpoint.rstrip('/')}{path}"
     try:
         response = httpx.post(url, json=payload)
@@ -192,7 +194,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("health", help="Ping the server's /health endpoint.")
     sub.add_parser("cursor", help="Report the current cursor index (/cursor).")
-    p_query = sub.add_parser("query", help="Run a query at an optional document position.")
+    p_query = sub.add_parser(
+        "query", help="Run a query at an optional document position."
+    )
     p_query.add_argument("text", help="Rocq query text to run.")
     p_query.add_argument(
         "--at",

@@ -66,7 +66,9 @@ def _dump_error_loc(loc: rdm_api.RocqLoc | None) -> dict[str, object] | None:
     return None if loc is None else loc.model_dump()
 
 
-def _command_error_payload(message: str, err: rdm_api.CommandError | None) -> InsertErrPayload:
+def _command_error_payload(
+    message: str, err: rdm_api.CommandError | None
+) -> InsertErrPayload:
     if err is None:
         return {
             "status": "error",

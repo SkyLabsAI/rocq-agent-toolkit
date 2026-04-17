@@ -37,6 +37,7 @@ class _StubCloneCursor:
 
 class _StubCursorEmpty:
     """Minimal cursor: empty document, nothing to step."""
+
     _index: int = 0
 
     async def advance_to(
@@ -73,9 +74,7 @@ class _StubCursorEmpty:
     ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
         return []
 
-    async def revert_before(
-        self, erase: bool, index: int
-    ) -> None | rdm_api.Err[None]:
+    async def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]:
         self._index = index
         return None
 

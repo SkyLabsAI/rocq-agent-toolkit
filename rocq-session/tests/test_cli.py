@@ -78,9 +78,7 @@ class _StubCursorEmpty:
     ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
         return []
 
-    async def revert_before(
-        self, erase: bool, index: int
-    ) -> None | rdm_api.Err[None]:
+    async def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]:
         return None
 
     async def query(self, text: str) -> rdm_api.CommandData | rdm_api.Err[None]:

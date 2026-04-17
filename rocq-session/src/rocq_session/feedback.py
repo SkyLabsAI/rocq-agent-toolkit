@@ -161,12 +161,18 @@ async def _advance_to(
             return
         step = await cursor.run_step()
         if isinstance(step, rdm_api.Err):
-            err_data = step.data if isinstance(step.data, rdm_api.CommandError) else None
+            err_data = (
+                step.data if isinstance(step.data, rdm_api.CommandError) else None
+            )
             cache.terminal = _err_payload_from_cmd_error(step.message, err_data)
             return
         prefix = await cursor.doc_prefix()
         cache.processed_extent = processed_byte_length(prefix)
-        if isinstance(step, rdm_api.CommandData) and prefix and prefix[-1].kind == "command":
+        if (
+            isinstance(step, rdm_api.CommandData)
+            and prefix
+            and prefix[-1].kind == "command"
+        ):
             last = prefix[-1]
             byte_len = len(last.text.encode("utf-8"))
             cache.commands.append(

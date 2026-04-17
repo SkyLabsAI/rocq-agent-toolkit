@@ -147,9 +147,7 @@ async def reload_file(
         reverted_count = len(prefix) - divergence_idx
 
         if divergence_idx < len(prefix):
-            revert_result = await cursor.revert_before(
-                erase=True, index=divergence_idx
-            )
+            revert_result = await cursor.revert_before(erase=True, index=divergence_idx)
             if isinstance(revert_result, rdm_api.Err):
                 return {
                     "status": "error",

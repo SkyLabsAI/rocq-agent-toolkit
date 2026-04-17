@@ -54,9 +54,7 @@ class FakeReloadCursor:
     async def doc_prefix(self) -> list[rdm_api.PrefixItem]:
         return list(self.prefix)
 
-    async def revert_before(
-        self, erase: bool, index: int
-    ) -> None | rdm_api.Err[None]:
+    async def revert_before(self, erase: bool, index: int) -> None | rdm_api.Err[None]:
         self.revert_calls.append((erase, index))
         self.prefix = self.prefix[:index]
         return None
@@ -261,9 +259,7 @@ async def test_reload_missing_file_returns_error(tmp_path: Path) -> None:
     cache = FeedbackCache()
     missing = tmp_path / "nope.v"
 
-    result = await reload_file(
-        cast(RocqCursor, cursor), cache, asyncio.Lock(), missing
-    )
+    result = await reload_file(cast(RocqCursor, cursor), cache, asyncio.Lock(), missing)
     assert result["status"] == "error"
     assert "not found" in result["message"].lower()
     assert cursor.clone_calls == 0

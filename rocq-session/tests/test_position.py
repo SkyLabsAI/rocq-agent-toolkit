@@ -10,7 +10,7 @@ def test_utf16_count_ascii() -> None:
 
 
 def test_utf16_count_supplementary() -> None:
-    s = "\U0001F600"  # 😀 — 2 UTF-16 code units
+    s = "\U0001f600"  # 😀 — 2 UTF-16 code units
     assert utf16_code_unit_count(s) == 2
 
 
@@ -21,9 +21,7 @@ def test_single_line_start() -> None:
 
 def test_single_line_end_of_line() -> None:
     src = "Check nat."
-    assert lsp_position_to_byte_offset(src, 0, len("Check nat.")) == len(
-        b"Check nat."
-    )
+    assert lsp_position_to_byte_offset(src, 0, len("Check nat.")) == len(b"Check nat.")
 
 
 def test_multiline_second_line() -> None:
@@ -41,10 +39,10 @@ def test_utf16_after_bmp_char() -> None:
 
 
 def test_utf16_supplementary_on_line() -> None:
-    line = "a\U0001F600b"
+    line = "a\U0001f600b"
     src = line
     # a = 1 utf16, emoji = 2, after emoji character index 3
-    assert lsp_position_to_byte_offset(src, 0, 3) == len("a\U0001F600".encode())
+    assert lsp_position_to_byte_offset(src, 0, 3) == len("a\U0001f600".encode())
 
 
 def test_line_out_of_range() -> None:

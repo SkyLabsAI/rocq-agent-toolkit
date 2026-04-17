@@ -91,7 +91,11 @@ async def execute_session_command(
         print(f"= {json.dumps({'error': str(exc)})}")
 
 
-async def run_session_test(file_path: Path, commands: list[tuple[str, dict[str, Any]]], rocq_args: list[str] | None = None) -> None:
+async def run_session_test(
+    file_path: Path,
+    commands: list[tuple[str, dict[str, Any]]],
+    rocq_args: list[str] | None = None,
+) -> None:
     """Run session commands against a Rocq document."""
     if not file_path.exists():
         print(f"Error: File {file_path} does not exist")
@@ -151,8 +155,12 @@ def main() -> None:
         print("Usage: rocq-session-cram-test <file.v> [command_json_args...]")
         print()
         print("Examples:")
-        print('  rocq-session-cram-test test.v "cursor" \'["insert", {"text": "Definition x := 0."}]\'')
-        print('  echo \'["query", {"text": "Check nat."}]\' | rocq-session-cram-test test.v "cursor"')
+        print(
+            '  rocq-session-cram-test test.v "cursor" \'["insert", {"text": "Definition x := 0."}]\''
+        )
+        print(
+            '  echo \'["query", {"text": "Check nat."}]\' | rocq-session-cram-test test.v "cursor"'
+        )
         sys.exit(1)
 
     # Set up logging
