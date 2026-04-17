@@ -9,20 +9,20 @@
 
   $ cat > calls.txt <<EOF
   > cursor_index [0]
-  > replace_suffix [0,"Definition test4 := 0."]
+  > replace_suffix [0,"Definition test4 := 0.",null]
   > cursor_index [0]
   > doc_suffix [0]
   > run_step [0]
-  > replace_suffix [0,"\nDefinition my_test := test4 + 1.\n"]
+  > replace_suffix [0,"\nDefinition my_test := test4 + 1.\n",null]
   > doc_suffix [0]
   > cursor_index [0]
   > run_step [0]
   > run_step [0]
   > go_to [0,0]
   > doc_suffix [0]
-  > replace_suffix [0,"Definition foo := 0."]
+  > replace_suffix [0,"Definition foo := 0.",null]
   > run_step [0]
-  > replace_suffix [0,"Definition baz := 0."]
+  > replace_suffix [0,"Definition baz := 0.",null]
   > doc_suffix [0]
   > EOF
 

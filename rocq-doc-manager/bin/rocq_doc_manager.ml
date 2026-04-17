@@ -355,11 +355,10 @@ let _ =
       sentences from the text" ~args
     ~ret:S.(list (obj sentence)) ~err:S.(obj sentence_split_error)
     @@ fun d (text, (count, ())) ->
-  let (sentences, ret) = Document.replace_suffix d ~count ~text in
+  let (sentences, ret) = Document.replace_suffix d ?count ~text in
   match ret with
   | Ok(())         -> Ok(sentences)
   | Error(s, rest) -> Error(s, (sentences, (rest, ())))
-
 
 let _ =
   let args =
