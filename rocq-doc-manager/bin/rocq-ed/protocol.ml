@@ -24,6 +24,9 @@ let daemonize : ?log:Filepath.t -> unit -> int = fun ?(log="/dev/null") _ ->
 let daemon_pid_file : string = "daemon.pid"
 let data_dir_suffix : string = ".rocqed" (* no dash to not confuse dune *)
 
+let data_dir_of_basename : string -> string = fun basename ->
+  "." ^ basename ^ data_dir_suffix
+
 let is_pid_running : int -> bool = fun pid ->
   try Unix.kill pid 0; true
   with Unix.Unix_error(ESRCH, _, _) -> false
@@ -62,7 +65,7 @@ let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
   let rocq_file = Filename.basename rocq_file in
   Sys.chdir dir;
   (* Create the data directory, which also locks the session for the file. *)
-  let data_dir = rocq_file ^ data_dir_suffix in
+  let data_dir = data_dir_of_basename rocq_file in
   let clean_stale_data_dir =
     try Sys.mkdir data_dir 0o755; false with Sys_error(s) ->
     if String.ends_with ~suffix:"File exists" s then begin
@@ -147,7 +150,7 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Check that the daemon is running. *)
-  let data_dir = rocq_file ^ data_dir_suffix in
+  let data_dir = data_dir_of_basename rocq_file in
   let pid_file = Filename.concat data_dir daemon_pid_file in
   if not (Sys.file_exists data_dir) then
     panic "Error: no active session for %S." rocq_file;
@@ -175,7 +178,7 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
 
 let stop : Filepath.t -> unit = fun rocq_file ->
   ignore (client_request rocq_file Request.Stop);
-  let data_dir = rocq_file ^ data_dir_suffix in
+  let data_dir = data_dir_of_basename rocq_file in
   let req_fifo = Filename.concat data_dir "req.fifo" in
   let res_fifo = Filename.concat data_dir "res.fifo" in
   List.iter Unix.unlink [req_fifo; res_fifo];

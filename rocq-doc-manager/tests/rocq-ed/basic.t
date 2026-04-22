@@ -32,13 +32,13 @@
   > EOF
 
   $ rocq-ed init test.v
-  Warning: Clearning up stale directory test.v.rocqed
-  $ find test.v.rocqed | LC_ALL=C sort
-  test.v.rocqed
-  test.v.rocqed/daemon.pid
-  test.v.rocqed/log
-  test.v.rocqed/req.fifo
-  test.v.rocqed/res.fifo
+  Warning: Clearning up stale directory .test.v.rocqed
+  $ find .test.v.rocqed | LC_ALL=C sort
+  .test.v.rocqed
+  .test.v.rocqed/daemon.pid
+  .test.v.rocqed/log
+  .test.v.rocqed/req.fifo
+  .test.v.rocqed/res.fifo
   $ rocq-ed status test.v
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
