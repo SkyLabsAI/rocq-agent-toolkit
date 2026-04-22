@@ -21,6 +21,38 @@ let daemonize : ?log:Filepath.t -> unit -> int = fun ?(log="/dev/null") _ ->
   (* Return the PID of the daemon. *)
   Unix.handle_unix_error Unix.getpid ()
 
+let daemon_pid_file : string = "daemon.pid"
+
+let is_pid_running : int -> bool = fun pid ->
+  try Unix.kill pid 0; true
+  with Unix.Unix_error(ESRCH, _, _) -> false
+
+let is_session_active : data_dir:string -> bool = fun ~data_dir ->
+  let pid_file = Filename.concat data_dir daemon_pid_file in
+  match Fileutil.read_lines pid_file with
+  | [pid] -> is_pid_running (int_of_string pid)
+  | exception _ | _ -> false
+
+let clean_data_dir : data_dir:string -> unit = fun ~data_dir ->
+  let files_in_dir dir =
+    List.map (Filename.concat dir) @@ Array.to_list @@ Sys.readdir dir
+  in
+  let rec go files =
+    match files with
+    | dir :: files when Sys.is_directory dir ->
+      let new_files = files_in_dir dir in
+      go @@ new_files @ files;
+      Unix.rmdir dir
+    | file :: files ->
+      if Sys.file_exists file then begin
+        Unix.unlink file
+      end;
+      go files
+    | [] -> ()
+  in
+  go @@ files_in_dir data_dir
+
+
 let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
@@ -30,12 +62,20 @@ let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
   Sys.chdir dir;
   (* Create the data directory, which also locks the session for the file. *)
   let data_dir = rocq_file ^ ".rocq-ed" in
-  let _ =
-    try Sys.mkdir data_dir 0o755 with Sys_error(s) ->
-    if String.ends_with ~suffix:"File exists" s then
-      panic "Error: a session is already running for that file.";
-    panic "Error: %s." s
+  let clean_stale_data_dir =
+    try Sys.mkdir data_dir 0o755; false with Sys_error(s) ->
+    if String.ends_with ~suffix:"File exists" s then begin
+      if is_session_active ~data_dir then
+        panic "Error: a session is already running for that file."
+      else begin
+        wrn "Warning: Clearning up stale directory %s" data_dir;
+        true
+      end
+    end else begin
+      panic "Error: %s." s
+    end
   in
+  begin if clean_stale_data_dir then clean_data_dir ~data_dir end;
   (* Get the CLI arguments and create create a document. *)
   let args = Dune_util.get_args config rocq_file in
   let d = Document.init ~args ~file:rocq_file in
@@ -50,7 +90,7 @@ let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
   (* Daemonize the process, and write its PID to a file. *)
   let log_file = Filename.concat data_dir "log" in
   let pid = daemonize ~log:log_file () in
-  let pid_file = Filename.concat data_dir "daemon.pid" in
+  let pid_file = Filename.concat data_dir daemon_pid_file in
   Fileutil.write_lines pid_file [Printf.sprintf "%i" pid];
   (* Logging function (will end up in the log file). *)
   let log fmt =
@@ -107,7 +147,7 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   assert (Filename.extension rocq_file = ".v");
   (* Check that the daemon is running. *)
   let data_dir = rocq_file ^ ".rocq-ed" in
-  let pid_file = Filename.concat data_dir "daemon.pid" in
+  let pid_file = Filename.concat data_dir daemon_pid_file in
   if not (Sys.file_exists data_dir) then
     panic "Error: no active session for %S." rocq_file;
   if not (Sys.file_exists pid_file) then

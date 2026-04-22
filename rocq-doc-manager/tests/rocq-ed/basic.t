@@ -13,6 +13,14 @@
   > (* END *)
   > EOF
 
+  $ # Testing that failures during `rocq-ed init` do not break future `rocq-ed init` attempts.
+  $ rocq-ed init test.v
+  Error: Cannot find file: test.v
+  Hint: Is the file part of a stanza?
+  Hint: Has the file been written to disk?
+  Error: cannot get CLI arguments for "test.v" (process exited with code 1).
+  [1]
+
   $ cat > dune-project <<EOF
   > (lang dune 3.21)
   > (using rocq 0.11)
@@ -24,6 +32,7 @@
   > EOF
 
   $ rocq-ed init test.v
+  Warning: Clearning up stale directory test.v.rocq-ed
   $ find test.v.rocq-ed | LC_ALL=C sort
   test.v.rocq-ed
   test.v.rocq-ed/daemon.pid
