@@ -77,6 +77,14 @@
      4|   - constructor.
      5|   - <CURSOR>
      6| Admitted.
+  $ # Test that the output of queries is properly terminated by a newline
+  $ rocq-ed query --text "Show." test.v && echo "<NEWLINE>"
+  1 goal
+    
+    x : nat
+    ============================
+    x = x
+  <NEWLINE>
   $ rocq-ed insert --text "reflexivity." test.v
   $ rocq-ed status test.v
      1| Theorem test : forall x : nat, True /\ x = x.

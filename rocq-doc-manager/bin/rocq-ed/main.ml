@@ -156,7 +156,7 @@ let query_cmd =
       In_channel.input_all stdin
     in
     match Protocol.client_request rocq_file Request.(Query({text})) with
-    | Ok(s) -> Printf.printf "%s%!" s
+    | Ok(s) -> Printf.printf "%s\n%!" s
     | Error(s, ()) -> panic "Error: %s." s
   in
   let term = Term.(const run $ query_text $ rocq_file) in
