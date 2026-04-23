@@ -134,7 +134,9 @@ let run_steps d ~count =
   | exception Invalid_argument(s) -> Error(s, 0)
 
 let run_insert d ~text =
-  let (sentences, res) = Document.split_sentences d ~text in
+  match Document.split_sentences d ~text with
+  | exception Invalid_argument(s) -> Error(s, text)
+  | (sentences, res) ->
   let rec run_sentences (sentences : Document.sentence list) =
     match sentences with
     | [] -> ([], None)
