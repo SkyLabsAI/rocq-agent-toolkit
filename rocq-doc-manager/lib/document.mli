@@ -106,6 +106,16 @@ val whitespace_required : t -> bool
 val split_sentences : t -> text:string
   -> sentence list * (unit, string * string) result
 
+(** [replace_suffix d ?count ~text] is like [split_sentences d ~text], but the
+    obtained sentences are used to replace the suffix in case of success. When
+    [count] is not [None], only the given number of suffix items are replaced,
+    instead of the whole suffix. The [Invalid_argument] exception is raised if
+    [text] does not appropriately start and end with blanks, or if [count] has
+    an invalid value. In case of exception or error, the state of the document
+    is left unchanged. *)
+val replace_suffix : ?count:int -> t -> text:string
+  -> sentence list * (unit, string * string) result
+
 (** Data returned by the top-level when running a command. *)
 type command_data = Rocq_toplevel.run_data
 

@@ -110,6 +110,19 @@ class DelimitedRocqCursor(DelegateRocqCursor):
         await self._cursor.clear_suffix(nb_to_clear)
 
     @override
+    async def replace_suffix(
+        self, text: str, *, count: int | None = None
+    ) -> list[rdm_api.Sentence] | rdm_api.Err[rdm_api.SentenceSplitError]:
+        suffix = await self.doc_suffix()
+        len_suffix = len(suffix)
+        nb_to_clear = len_suffix if count is None else count
+        if len_suffix < nb_to_clear:
+            raise Exception(
+                f"Cannot clear {nb_to_clear} suffix items (limited to {len_suffix})"
+            )
+        return await self._cursor.replace_suffix(text, count=nb_to_clear)
+
+    @override
     async def clone(self, *, materialize: bool = False) -> RocqCursor:
         cursor = await self._cursor.clone(materialize=materialize)
         return DelimitedRocqCursor(

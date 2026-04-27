@@ -347,6 +347,21 @@ let _ =
 
 let _ =
   let args =
+    A.add ~name:"text" ~descr:"text to split into sentences" S.string @@
+    A.add ~name:"count" ~descr:"the number of items to replace" (S.nullable S.int) @@
+    A.nil
+  in
+  declare_full ~name:"replace_suffix" ~descr:"replaces the suffix with the \
+      sentences from the text" ~args
+    ~ret:S.(list (obj sentence)) ~err:S.(obj sentence_split_error)
+    @@ fun d (text, (count, ())) ->
+  let (sentences, ret) = Document.replace_suffix d ?count ~text in
+  match ret with
+  | Ok(())         -> Ok(sentences)
+  | Error(s, rest) -> Error(s, (sentences, (rest, ())))
+
+let _ =
+  let args =
     A.add ~name:"text" ~descr:"text of the blanks to insert" S.string @@
     A.nil
   in

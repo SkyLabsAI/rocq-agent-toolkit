@@ -399,6 +399,10 @@ type sentence = {
   text : string;
 }
 
+let sentence_to_unprocessed_item : sentence -> unprocessed_item = fun s ->
+  let k = match s.kind with `Blanks -> `Blanks | `Command(d) -> `Command(d) in
+  {text = s.text; kind = k}
+
 let split_sentences : t -> text:string ->
     sentence list * (unit, string * string) result = fun d ~text ->
   let {file; args; _} = get_backend d in
@@ -451,6 +455,43 @@ let split_sentences : t -> text:string ->
     | Error(s, _) -> Error(s, String.sub text len (String.length text - len))
   in
   (sentences, res)
+
+let replace_suffix : ?count:int -> t -> text:string ->
+    sentence list * (unit, string * string) result = fun ?count d ~text ->
+  let _ = get_backend d in
+  let check_count count =
+    if count < 0 then invalid_arg "negative count";
+    if List.length d.suffix < count then invalid_arg "invalid count"
+  in
+  Option.iter check_count count;
+  let (sentences, res) as result = split_sentences d ~text in
+  if Result.is_error res then result else
+  let new_items = List.map sentence_to_unprocessed_item sentences in
+  let new_suffix =
+    match count with None -> new_items | Some(count) ->
+    let kept = List.drop count d.suffix in
+    let ws_required =
+      let rec whitespace_required_after (sentences : sentence list) =
+        match sentences with
+        | [] -> whitespace_required d.rev_prefix
+        | [{kind = `Blanks; _}] -> false
+        | [{kind = `Command(_); text}] -> String.ends_with ~suffix:"." text
+        | _ :: sentences -> whitespace_required_after sentences
+      in
+      whitespace_required_after sentences
+    in
+    let rec has_leading_whitespace (items : unprocessed_item list) =
+      match items with
+      | [] -> true
+      | {kind = `Blanks; _} :: _ -> true
+      | {kind = `Command(_); _} :: _ -> false
+      | _ :: items -> has_leading_whitespace items
+    in
+    if ws_required && not (has_leading_whitespace kept) then
+      invalid_arg "blanks required at the end of the inserted text";
+    new_items @ kept
+  in
+  d.suffix <- new_suffix; result
 
 let whitespace_required : t -> bool = fun d ->
   let _ = get_backend d in
