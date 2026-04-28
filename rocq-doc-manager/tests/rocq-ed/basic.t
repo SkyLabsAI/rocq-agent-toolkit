@@ -33,7 +33,7 @@
 
   $ rocq-ed init --daemonize=false test.v 1>/dev/null &
   Warning: Clearning up stale directory .test.v.rocqed
-  $ sleep 1
+  $ sleep 5
   $ rocq-ed status test.v
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
