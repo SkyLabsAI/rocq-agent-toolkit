@@ -82,6 +82,15 @@ let context_lines =
   in
   Arg.(value & opt (some int) None & info ["C"; "context"] ~doc ~docv:"NUM")
 
+let auto_print rocq_file =
+  let Ok(status) = Protocol.client_request rocq_file Request.(Status({context=Some(5)})) in
+  let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
+  Printf.printf("%s\n%s%!") status goals
+
+let with_auto_print : (string -> unit) -> (string -> unit) = fun f rocq_file ->
+  f rocq_file;
+  auto_print rocq_file
+
 let status_cmd =
   let doc =
     "Print the current contents of the Rocq document, including the position \
@@ -112,7 +121,7 @@ let steps_cmd =
     | Error(s, i) ->
         panic "Failed after processing %i items.\nError: %s." i s
   in
-  let term = Term.(const run $ step_count $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ step_count) $ rocq_file) in
   Cmd.(make (info "steps" ~version ~doc) term)
 
 let command_text =
@@ -136,7 +145,7 @@ let insert_cmd =
     | Ok(()) -> ()
     | Error(s, left) -> panic "Error: could not process suffix %S.\n%s" left s
   in
-  let term = Term.(const run $ command_text $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ command_text) $ rocq_file) in
   Cmd.(make (info "insert" ~version ~doc) term)
 
 let query_text =
@@ -179,7 +188,7 @@ let delete_cmd =
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(const run $ deleted_item_count $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ deleted_item_count) $ rocq_file) in
   Cmd.(make (info "delete" ~version ~doc) term)
 
 let commit_cmd =
@@ -223,7 +232,7 @@ let undo_cmd =
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(const run $ undo_count $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ undo_count) $ rocq_file) in
   Cmd.(make (info "undo" ~version ~doc) term)
 
 let goto_pos =
@@ -275,7 +284,7 @@ let goto_cmd =
     | Ok(()) -> ()
     | Error(s, i) -> panic "Error: %s.\nThe cursor is now at index %i." s i
   in
-  let term = Term.(const run $ goto_pos $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ goto_pos) $ rocq_file) in
   Cmd.(make (info "goto" ~version ~doc) term)
 
 let _ =
