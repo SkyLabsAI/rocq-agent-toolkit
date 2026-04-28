@@ -39,6 +39,10 @@
   .test.v.rocqed/log
   .test.v.rocqed/req.fifo
   .test.v.rocqed/res.fifo
+  $ kill -9 $(cat .test.v.rocqed/daemon.pid)
+  $ rocq-ed stop test.v
+  Warning: No session active. Clearning up stale directory .test.v.rocqed
+  $ rocq-ed init test.v
   $ rocq-ed status test.v
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.

@@ -66,20 +66,18 @@ let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
   Sys.chdir dir;
   (* Create the data directory, which also locks the session for the file. *)
   let data_dir = data_dir_of_basename rocq_file in
-  let clean_stale_data_dir =
-    try Sys.mkdir data_dir 0o755; false with Sys_error(s) ->
+  begin try Sys.mkdir data_dir 0o755 with Sys_error(s) ->
     if String.ends_with ~suffix:"File exists" s then begin
       if is_session_active ~data_dir then
         panic "Error: a session is already running for that file."
       else begin
         wrn "Warning: Clearning up stale directory %s" data_dir;
-        true
+        clean_data_dir ~data_dir
       end
     end else begin
       panic "Error: %s." s
     end
-  in
-  begin if clean_stale_data_dir then clean_data_dir ~data_dir end;
+  end;
   (* Get the CLI arguments and create create a document. *)
   let args = Dune_util.get_args config rocq_file in
   let d = Document.init ~args ~file:rocq_file in
@@ -177,11 +175,19 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   Unix.rmdir lock_dir; res
 
 let stop : Filepath.t -> unit = fun rocq_file ->
-  ignore (client_request rocq_file Request.Stop);
   let data_dir = data_dir_of_basename rocq_file in
-  let req_fifo = Filename.concat data_dir "req.fifo" in
-  let res_fifo = Filename.concat data_dir "res.fifo" in
-  List.iter Unix.unlink [req_fifo; res_fifo];
-  let log_file = Filename.concat data_dir "log" in
-  if Sys.file_exists log_file then Unix.unlink log_file;
-  Unix.rmdir data_dir
+    if not @@ is_session_active ~data_dir && Sys.file_exists data_dir then begin
+      wrn "Warning: No session active. Clearning up stale directory %s" data_dir;
+      clean_data_dir ~data_dir;
+      Unix.rmdir data_dir
+    end
+    else begin
+      ignore (client_request rocq_file Request.Stop);
+      let req_fifo = Filename.concat data_dir "req.fifo" in
+      let res_fifo = Filename.concat data_dir "res.fifo" in
+      List.iter Unix.unlink [req_fifo; res_fifo];
+      let log_file = Filename.concat data_dir "log" in
+      if Sys.file_exists log_file then Unix.unlink log_file;
+      Unix.rmdir data_dir
+    end
+
