@@ -24,19 +24,21 @@ let rocq_file =
   let v_file = non_dir_file_with_ext ".v" in
   Arg.(required & pos 0 (some v_file) None & info [] ~docv:"FILE" ~doc)
 
-let no_build =
+let no_build_deps =
   let doc =
     "Disables the building of dependencies before starting the editor. This \
      option can be used to speed up the start-up in big projects, when the \
-     user knows that dependencies are up-to-date."
+     user knows that dependencies are up-to-date. \
+     WARNING: Only use this option if you know exactly what you are doing. \
+     It will lead to failures, and, worse, false successes."
   in
-  Arg.(value & flag & info ["no-build"] ~doc)
+  Arg.(value & flag & info ["no-build-deps"] ~doc)
 
 let jobs =
   let doc =
     "Indicates that no more than $(docv) concurrent jobs should be run by \
-     $(b,dune) when building dependencies. If $(b,--no-build) is given, this \
-     option is a no-op."
+     $(b,dune) when building dependencies. If $(b,--no-build-deps) is given, \
+     this option is a no-op."
   in
   Arg.(value & opt (some int) None & info ["j"; "jobs"] ~doc ~docv:"JOBS")
 
@@ -47,17 +49,18 @@ let display =
   in
   let doc =
     "Controls the display mode of $(b,dune) when building the dependencies \
-     of the file to be processed. If $(b,--no-build) is given, this option \
-     is a no-op. Available values are: $(b,progress) (updated status line), \
-     $(b,quiet) (only warnings and errors are displayed), $(b,short) (adds \
-     one line per command), and $(b,verbose) (full command line is printed)."
+     of the file to be processed. If $(b,--no-build-deps) is given, this \
+     option is a no-op. Available values are: $(b,progress) (updated status \
+     line), $(b,quiet) (only warnings and errors are displayed), $(b,short) \
+     (adds one line per command), and $(b,verbose) (full command line is \
+     printed)."
   in
   let i = Arg.info ["display"] ~docv:"MODE" ~doc in
   Arg.(value & opt display "progress" & i)
 
 let dune_config =
   let build no_build jobs display = Dune_util.{no_build; jobs; display} in
-  Term.(const build $ no_build $ jobs $ display)
+  Term.(const build $ no_build_deps $ jobs $ display)
 
 let init_cmd =
   let doc =
