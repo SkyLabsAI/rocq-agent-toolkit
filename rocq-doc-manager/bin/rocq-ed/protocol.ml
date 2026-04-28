@@ -21,6 +21,9 @@ let daemonize : ?log:Filepath.t -> unit -> int = fun ?(log="/dev/null") _ ->
   (* Return the PID of the daemon. *)
   Unix.handle_unix_error Unix.getpid ()
 
+let no_daemonize : unit -> int = fun _ ->
+  Unix.getpid ()
+
 let daemon_pid_file : string = "daemon.pid"
 let data_dir_suffix : string = ".rocqed" (* no dash to not confuse dune *)
 
@@ -57,7 +60,7 @@ let clean_data_dir : data_dir:string -> unit = fun ~data_dir ->
   go @@ files_in_dir data_dir
 
 
-let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
+let init : bool -> Dune_util.config -> Filepath.t -> unit = fun daemon config rocq_file ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Changing the working directory to the file's directory. *)
@@ -91,7 +94,7 @@ let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
   Unix.mkfifo res_fifo 0o640;
   (* Daemonize the process, and write its PID to a file. *)
   let log_file = Filename.concat data_dir "log" in
-  let pid = daemonize ~log:log_file () in
+  let pid = if daemon then daemonize ~log:log_file () else Unix.getpid () in
   let pid_file = Filename.concat data_dir daemon_pid_file in
   Fileutil.write_lines pid_file [Printf.sprintf "%i" pid];
   (* Logging function (will end up in the log file). *)

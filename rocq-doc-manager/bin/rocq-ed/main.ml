@@ -62,13 +62,19 @@ let dune_config =
   let build no_build jobs display = Dune_util.{no_build; jobs; display} in
   Term.(const build $ no_build_deps $ jobs $ display)
 
+let daemonize =
+    let doc =
+      "Indicates whether the `rocq-ed init` runs as a daemon"
+    in
+    Arg.(value & opt bool true & info ["d"; "daemonize"] ~doc ~docv:"DAEMONIZE")
+
 let init_cmd =
   let doc =
     "Starts a CLI editor session for the given Rocq source file. Note that \
      when a session for a given source file is running, no other session can \
      be started on the same file."
   in
-  let term = Term.(const Protocol.init $ dune_config $ rocq_file) in
+  let term = Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file) in
   Cmd.(make (info "init" ~version ~doc) term)
 
 let stop_cmd =
