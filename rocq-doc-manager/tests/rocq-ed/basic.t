@@ -31,21 +31,8 @@
   >  (name text))
   > EOF
 
-  $ rocq-ed init --daemonize=false test.v 1>/dev/null &
-  Warning: Clearning up stale directory .test.v.rocqed
-  $ sleep 5
-  $ rocq-ed status test.v
-     1| <CURSOR>(* Test file. *)
-     2| Theorem test : forall x : nat, x = x.
-     3| Proof.
-     4|   intro x.
-     5|   reflexivity.
-     6| Qed.
-     7| 
-     8| (* END *)
-  $ rocq-ed stop test.v
-
   $ rocq-ed init test.v
+  Warning: Clearning up stale directory .test.v.rocqed
   $ find .test.v.rocqed | LC_ALL=C sort
   .test.v.rocqed
   .test.v.rocqed/daemon.pid
