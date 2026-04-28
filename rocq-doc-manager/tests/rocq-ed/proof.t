@@ -30,6 +30,7 @@
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
+  
   $ rocq-ed insert --text $'\n  intros x; split.' test.v
   $ rocq-ed status test.v
      1| Theorem test : forall x : nat, True /\ x = x.
@@ -41,10 +42,12 @@
     x : nat
     ============================
     True
+  
   Goal 2:
     x : nat
     ============================
     x = x
+  
   $ rocq-ed insert --text $'\n  - fail.\n  -' test.v
   Error: could not process suffix "fail.\n  -".
   Tactic failure.
@@ -130,5 +133,6 @@
   Goal 1:
     ============================
     True
+  
   Shelved goals: 1
   $ rocq-ed stop test.v

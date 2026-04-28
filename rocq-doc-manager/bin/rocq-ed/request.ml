@@ -198,7 +198,8 @@ let run_goals d =
   let add_focused i goal =
     Buffer.add_string b (Printf.sprintf "Goal %i:\n" (i+1));
     let goal_line s = Buffer.add_string b ("  " ^ s ^ "\n") in
-    List.iter goal_line (String.split_on_char '\n' (String.trim goal))
+    List.iter goal_line (String.split_on_char '\n' (String.trim goal));
+    Buffer.add_string b "\n"
   in
   List.iteri add_focused p.Rocq_toplevel.focused_goals;
   let Rocq_toplevel.{given_up_goals; shelved_goals; unfocused_goals; _} = p in
