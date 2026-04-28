@@ -89,7 +89,7 @@ let context_lines =
     "Print $(docv) lines of context before and after the cursor instead of \
      printing the whole Rocq document."
   in
-  Arg.(value & opt (some int) None & info ["C"; "context"] ~doc ~docv:"NUM")
+  Arg.(value & opt (some int) (Some 5) & info ["C"; "context"] ~doc ~docv:"NUM")
 
 let auto_print rocq_file =
   let Ok(status) = Protocol.client_request rocq_file Request.(Status({context=Some(5)})) in

@@ -196,10 +196,6 @@
   
   Shelved goals: 1
   $ rocq-ed status test.v
-     1| Theorem test : forall x : nat, True /\ x = x.
-     2| Proof.
-     3|   intros x; split.
-     4|   - constructor.
      5|   - reflexivity.
      6| Admitted.
      7| 

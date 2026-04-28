@@ -50,8 +50,6 @@
      4|   intro x.
      5|   reflexivity.
      6| Qed.
-     7| 
-     8| (* END *)
   $ rocq-ed status -C 0 test.v
      1| <CURSOR>(* Test file. *)
   $ rocq-ed status -C 1 test.v
@@ -100,8 +98,6 @@
      4|   intro x.
      5|   reflexivity.
      6| Qed.
-     7| 
-     8| (* END *)
   $ rocq-ed steps --count 5 test.v
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
@@ -157,9 +153,6 @@
   
   Not currently in a proof.
   $ rocq-ed status test.v
-     1| (* Test file. *)
-     2| Theorem test : forall x : nat, x = x.
-     3| Proof.
      4|   intro x.
      5|   reflexivity.
      6| Qed.
