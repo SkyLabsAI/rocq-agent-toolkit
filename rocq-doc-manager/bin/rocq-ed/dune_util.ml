@@ -9,8 +9,10 @@ type config = {
 
 let get_dune_root : unit -> string = fun () ->
   let cmd = "dune" in
-  let args = ["exec"; "--"; "printenv"; "DUNE_SOURCEROOT"] in
+  (* TODO: We cannot suppress dune's output of the form "Entering directory [..]" despite specifying the flag here. *)
+  let args = ["exec"; "--no-print-directory"; "--"; "printenv"; "DUNE_SOURCEROOT"] in
   let temp = Filename.temp_file "temp" ".cli" in
+  (* TODO: We also cannot suppress the dune output ending up in our own output despite specifying Null below. *)
   match Cmdutil.(run ~cmd ~stderr:Null ~stdout:(File(temp)) args) with
   | Error(_,s) ->
       Fileutil.remove_file temp;

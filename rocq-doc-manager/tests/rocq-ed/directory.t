@@ -44,7 +44,7 @@
      6| Qed.
   $ rocq-ed stop subdir/test.v
 
-  # one level down from `dune` and `dune-project`
+  $ # one level down from `dune` and `dune-project`
   $ cd subdir
   $ rocq-ed init subsubdir/test.v
   Entering directory '../..'
