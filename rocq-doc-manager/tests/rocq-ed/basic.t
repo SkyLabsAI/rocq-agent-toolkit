@@ -149,6 +149,17 @@
      7| 
      8| (* END *)
      9| <CURSOR>
+  $ rocq-ed steps --count 100 test.v
+  Warning: Only 0 < 100 steps were executed before reaching the end of the file.
+  
+     4|   intro x.
+     5|   reflexivity.
+     6| Qed.
+     7| 
+     8| (* END *)
+     9| <CURSOR>
+  
+  Not currently in a proof.
   $ rocq-ed stop test.v
   $ find test.v.rocq-ed
   find: 'test.v.rocq-ed': No such file or directory

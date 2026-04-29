@@ -126,7 +126,9 @@ let steps_cmd =
   in
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
-    | Ok(()) -> ()
+    | Ok(real_count) ->
+      if real_count < count then
+        Printf.printf "Warning: Only %i < %i steps were executed before reaching the end of the file.\n\n" real_count count
     | Error(s, i) ->
         panic "Failed after processing %i items.\nError: %s." i s
   in

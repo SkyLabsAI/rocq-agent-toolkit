@@ -5,7 +5,7 @@ type empty = |
 type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
-  | Steps : {count : int} -> (unit, int) t
+  | Steps : {count : int} -> (int, int) t
   | Insert : {text : string} -> (unit, string) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
@@ -127,8 +127,13 @@ let run_status d ~context =
   Ok(Buffer.contents b)
 
 let run_steps d ~count =
+  let suffix = Document.suffix d in
+  let count =
+    let len = List.length suffix in
+    if count < len then count else len
+  in
   match Document.run_steps d ~count with
-  | Ok(()) -> Ok(())
+  | Ok(()) -> Ok(count)
   | Error(s, (i, None)) -> Error(s, i)
   | Error(_, (i, Some(s, _))) -> Error(s, i)
   | exception Invalid_argument(s) -> Error(s, 0)
