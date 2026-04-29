@@ -33,8 +33,6 @@
   > EOF
 
   $ rocq-ed init subdir/test.v
-  Entering directory '..'
-  Leaving directory '..'
   $ rocq-ed status subdir/test.v
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
@@ -47,8 +45,6 @@
   $ # one level down from `dune` and `dune-project`
   $ cd subdir
   $ rocq-ed init subsubdir/test.v
-  Entering directory '../..'
-  Leaving directory '../..'
   $ rocq-ed status subsubdir/test.v
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.

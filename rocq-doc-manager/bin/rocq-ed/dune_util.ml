@@ -27,16 +27,20 @@ let get_dune_root : unit -> string = fun () ->
     result
 
 let get_args : config -> Filepath.t -> string list = fun config rocq_file ->
+  let cwd = Sys.getcwd () in
   let dune_root = get_dune_root () in
-  assert (String.starts_with ~prefix:dune_root (Sys.getcwd()));
+  assert (String.starts_with ~prefix:dune_root cwd);
   let relative_path =
-    let path = String.drop (String.length dune_root) (Sys.getcwd()) in
+    let path = String.drop (String.length dune_root) cwd in
     if String.starts_with ~prefix:"/" path then
       String.drop 1 path
     else
       path
   in
   let rocq_file = Filename.concat relative_path rocq_file in
+  (* Temporarily switch to [dune_root] to work around inconsistencies between
+     cram tests and live environments. *)
+  Sys.chdir dune_root;
   let args =
     let display = Printf.sprintf "--display=%s" config.display in
     let jobs = Option.map (Printf.sprintf "-j%i") config.jobs in
@@ -48,8 +52,10 @@ let get_args : config -> Filepath.t -> string list = fun config rocq_file ->
   let temp = Filename.temp_file "temp" ".cli" in
   match Cmdutil.(run ~cmd:"dune" ~stderr:Shell ~stdout:(File(temp)) args) with
   | Error(_,s) ->
+      Sys.chdir cwd;
       Fileutil.remove_file temp;
       panic "Error: cannot get CLI arguments for %S (process %s)." rocq_file s
   | Ok(())     ->
+  Sys.chdir cwd;
   let lines = Fileutil.read_lines temp in
   Fileutil.remove_file temp; lines
