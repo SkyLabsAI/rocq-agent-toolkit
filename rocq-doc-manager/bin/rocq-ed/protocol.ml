@@ -30,6 +30,11 @@ let data_dir_suffix : string = ".rocqed" (* no dash to not confuse dune *)
 let data_dir_of_basename : string -> string = fun basename ->
   "." ^ basename ^ data_dir_suffix
 
+let data_dir_of_filename : string -> string = fun fname ->
+  let dir = Filename.dirname fname in
+  let basename = Filename.basename fname in
+  Filename.concat dir @@ data_dir_of_basename basename
+
 let is_pid_running : int -> bool = fun pid ->
   try Unix.kill pid 0; true
   with Unix.Unix_error(ESRCH, _, _) -> false
@@ -151,7 +156,7 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Check that the daemon is running. *)
-  let data_dir = data_dir_of_basename rocq_file in
+  let data_dir = data_dir_of_filename rocq_file in
   let pid_file = Filename.concat data_dir daemon_pid_file in
   if not (Sys.file_exists data_dir) then
     panic "Error: no active session for %S." rocq_file;
@@ -178,19 +183,19 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   Unix.rmdir lock_dir; res
 
 let stop : Filepath.t -> unit = fun rocq_file ->
-  let data_dir = data_dir_of_basename rocq_file in
-    if not @@ is_session_active ~data_dir && Sys.file_exists data_dir then begin
-      wrn "Warning: No session active. Clearning up stale directory %s" data_dir;
-      clean_data_dir ~data_dir;
-      Unix.rmdir data_dir
-    end
-    else begin
-      ignore (client_request rocq_file Request.Stop);
-      let req_fifo = Filename.concat data_dir "req.fifo" in
-      let res_fifo = Filename.concat data_dir "res.fifo" in
-      List.iter Unix.unlink [req_fifo; res_fifo];
-      let log_file = Filename.concat data_dir "log" in
-      if Sys.file_exists log_file then Unix.unlink log_file;
-      Unix.rmdir data_dir
-    end
+  let data_dir = data_dir_of_filename rocq_file in
+  if not @@ is_session_active ~data_dir && Sys.file_exists data_dir then begin
+    wrn "Warning: No session active. Clearning up stale directory %s" data_dir;
+    clean_data_dir ~data_dir;
+    Unix.rmdir data_dir
+  end
+  else begin
+    ignore (client_request rocq_file Request.Stop);
+    let req_fifo = Filename.concat data_dir "req.fifo" in
+    let res_fifo = Filename.concat data_dir "res.fifo" in
+    List.iter Unix.unlink [req_fifo; res_fifo];
+    let log_file = Filename.concat data_dir "log" in
+    if Sys.file_exists log_file then Unix.unlink log_file;
+    Unix.rmdir data_dir
+  end
 
