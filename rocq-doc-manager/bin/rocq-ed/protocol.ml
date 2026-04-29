@@ -70,10 +70,10 @@ let init : bool -> Dune_util.config -> Filepath.t -> unit = fun daemon config ro
   assert (Filename.extension rocq_file = ".v");
   (* Changing the working directory to the file's directory. *)
   let dir = Filename.dirname rocq_file in
-  let rocq_file = Filename.basename rocq_file in
+  let basename = Filename.basename rocq_file in
   Sys.chdir dir;
   (* Create the data directory, which also locks the session for the file. *)
-  let data_dir = data_dir_of_basename rocq_file in
+  let data_dir = data_dir_of_basename basename in
   begin try Sys.mkdir data_dir 0o755 with Sys_error(s) ->
     if String.ends_with ~suffix:"File exists" s then begin
       if is_session_active ~data_dir then
@@ -87,8 +87,8 @@ let init : bool -> Dune_util.config -> Filepath.t -> unit = fun daemon config ro
     end
   end;
   (* Get the CLI arguments and create create a document. *)
-  let args = Dune_util.get_args config rocq_file in
-  let d = Document.init ~args ~file:rocq_file in
+  let args = Dune_util.get_args config basename in
+  let d = Document.init ~args ~file:basename in
   match Document.load_file d with
   | Error(s, _) -> panic "Error: unable to load the file (%s)." s
   | Ok(())      ->

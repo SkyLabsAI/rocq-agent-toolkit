@@ -7,7 +7,28 @@ type config = {
   display : string;
 }
 
+let get_dune_root : unit -> string = fun () ->
+  let cmd = "dune" in
+  let args = ["exec"; "--"; "printenv"; "DUNE_SOURCEROOT"] in
+  let temp = Filename.temp_file "temp" ".cli" in
+  match Cmdutil.(run ~cmd ~stderr:Null ~stdout:(File(temp)) args) with
+  | Error(_,s) ->
+      Fileutil.remove_file temp;
+      panic "Error: cannot find DUNE_SOURCEROOT of (process %s)." (Sys.getcwd()) s
+  | Ok(()) ->
+  let lines = Fileutil.read_lines temp in
+  Fileutil.remove_file temp;
+  let result = String.trim (List.hd lines) in
+  if String.ends_with ~suffix:"/" result then
+    result
+  else
+    result ^ "/"
+
 let get_args : config -> Filepath.t -> string list = fun config rocq_file ->
+  let dune_root = get_dune_root () in
+  assert (String.starts_with ~prefix:dune_root (Sys.getcwd()));
+  let relative_path = String.drop (String.length dune_root) (Sys.getcwd()) in
+  let rocq_file = Filename.concat relative_path rocq_file in
   let args =
     let display = Printf.sprintf "--display=%s" config.display in
     let jobs = Option.map (Printf.sprintf "-j%i") config.jobs in
