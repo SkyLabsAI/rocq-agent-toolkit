@@ -22,14 +22,20 @@ let get_dune_root : unit -> string = fun () ->
   Fileutil.remove_file temp;
   let result = String.trim (List.hd lines) in
   if String.ends_with ~suffix:"/" result then
-    result
+    String.take (String.length result - 1) result
   else
-    result ^ "/"
+    result
 
 let get_args : config -> Filepath.t -> string list = fun config rocq_file ->
   let dune_root = get_dune_root () in
   assert (String.starts_with ~prefix:dune_root (Sys.getcwd()));
-  let relative_path = String.drop (String.length dune_root) (Sys.getcwd()) in
+  let relative_path =
+    let path = String.drop (String.length dune_root) (Sys.getcwd()) in
+    if String.starts_with ~prefix:"/" path then
+      String.drop 1 path
+    else
+      path
+  in
   let rocq_file = Filename.concat relative_path rocq_file in
   let args =
     let display = Printf.sprintf "--display=%s" config.display in
