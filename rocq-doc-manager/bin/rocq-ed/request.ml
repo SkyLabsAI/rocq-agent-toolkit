@@ -5,7 +5,7 @@ type empty = |
 type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
-  | Steps : {count : int} -> (unit, int) t
+  | Steps : {count : int} -> (int, int) t
   | Insert : {text : string} -> (unit, string) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
@@ -127,14 +127,21 @@ let run_status d ~context =
   Ok(Buffer.contents b)
 
 let run_steps d ~count =
+  let suffix = Document.suffix d in
+  let count =
+    let len = List.length suffix in
+    if count < len then count else len
+  in
   match Document.run_steps d ~count with
-  | Ok(()) -> Ok(())
+  | Ok(()) -> Ok(count)
   | Error(s, (i, None)) -> Error(s, i)
   | Error(_, (i, Some(s, _))) -> Error(s, i)
   | exception Invalid_argument(s) -> Error(s, 0)
 
 let run_insert d ~text =
-  let (sentences, res) = Document.split_sentences d ~text in
+  match Document.split_sentences d ~text with
+  | exception Invalid_argument(s) -> Error(s, text)
+  | (sentences, res) ->
   let rec run_sentences (sentences : Document.sentence list) =
     match sentences with
     | [] -> ([], None)
@@ -196,7 +203,8 @@ let run_goals d =
   let add_focused i goal =
     Buffer.add_string b (Printf.sprintf "Goal %i:\n" (i+1));
     let goal_line s = Buffer.add_string b ("  " ^ s ^ "\n") in
-    List.iter goal_line (String.split_on_char '\n' (String.trim goal))
+    List.iter goal_line (String.split_on_char '\n' (String.trim goal));
+    Buffer.add_string b "\n"
   in
   List.iteri add_focused p.Rocq_toplevel.focused_goals;
   let Rocq_toplevel.{given_up_goals; shelved_goals; unfocused_goals; _} = p in

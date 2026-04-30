@@ -21,24 +21,74 @@ let daemonize : ?log:Filepath.t -> unit -> int = fun ?(log="/dev/null") _ ->
   (* Return the PID of the daemon. *)
   Unix.handle_unix_error Unix.getpid ()
 
-let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
+let no_daemonize : unit -> int = fun _ ->
+  Unix.getpid ()
+
+let daemon_pid_file : string = "daemon.pid"
+let data_dir_suffix : string = ".rocqed" (* no dash to not confuse dune *)
+
+let data_dir_of_basename : string -> string = fun basename ->
+  "." ^ basename ^ data_dir_suffix
+
+let data_dir_of_filename : string -> string = fun fname ->
+  let dir = Filename.dirname fname in
+  let basename = Filename.basename fname in
+  Filename.concat dir @@ data_dir_of_basename basename
+
+let is_pid_running : int -> bool = fun pid ->
+  try Unix.kill pid 0; true
+  with Unix.Unix_error(ESRCH, _, _) -> false
+
+let is_session_active : data_dir:string -> bool = fun ~data_dir ->
+  let pid_file = Filename.concat data_dir daemon_pid_file in
+  match Fileutil.read_lines pid_file with
+  | [pid] -> is_pid_running (int_of_string pid)
+  | exception _ | _ -> false
+
+let clean_data_dir : data_dir:string -> unit = fun ~data_dir ->
+  let files_in_dir dir =
+    List.map (Filename.concat dir) @@ Array.to_list @@ Sys.readdir dir
+  in
+  let rec go files =
+    match files with
+    | dir :: files when Sys.is_directory dir ->
+      let new_files = files_in_dir dir in
+      go @@ new_files @ files;
+      Unix.rmdir dir
+    | file :: files ->
+      if Sys.file_exists file then begin
+        Unix.unlink file
+      end;
+      go files
+    | [] -> ()
+  in
+  go @@ files_in_dir data_dir
+
+
+let init : bool -> Dune_util.config -> Filepath.t -> unit = fun daemon config rocq_file ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Changing the working directory to the file's directory. *)
   let dir = Filename.dirname rocq_file in
-  let rocq_file = Filename.basename rocq_file in
+  let basename = Filename.basename rocq_file in
   Sys.chdir dir;
   (* Create the data directory, which also locks the session for the file. *)
-  let data_dir = rocq_file ^ ".rocq-ed" in
-  let _ =
-    try Sys.mkdir data_dir 0o755 with Sys_error(s) ->
-    if String.ends_with ~suffix:"File exists" s then
-      panic "Error: a session is already running for that file.";
-    panic "Error: %s." s
-  in
+  let data_dir = data_dir_of_basename basename in
+  begin try Sys.mkdir data_dir 0o755 with Sys_error(s) ->
+    if String.ends_with ~suffix:"File exists" s then begin
+      if is_session_active ~data_dir then
+        panic "Error: a session is already running for that file."
+      else begin
+        wrn "Warning: Clearning up stale directory %s" data_dir;
+        clean_data_dir ~data_dir
+      end
+    end else begin
+      panic "Error: %s." s
+    end
+  end;
   (* Get the CLI arguments and create create a document. *)
-  let args = Dune_util.get_args config rocq_file in
-  let d = Document.init ~args ~file:rocq_file in
+  let args = Dune_util.get_args config basename in
+  let d = Document.init ~args ~file:basename in
   match Document.load_file d with
   | Error(s, _) -> panic "Error: unable to load the file (%s)." s
   | Ok(())      ->
@@ -49,8 +99,8 @@ let init : Dune_util.config -> Filepath.t -> unit = fun config rocq_file ->
   Unix.mkfifo res_fifo 0o640;
   (* Daemonize the process, and write its PID to a file. *)
   let log_file = Filename.concat data_dir "log" in
-  let pid = daemonize ~log:log_file () in
-  let pid_file = Filename.concat data_dir "daemon.pid" in
+  let pid = if daemon then daemonize ~log:log_file () else Unix.getpid () in
+  let pid_file = Filename.concat data_dir daemon_pid_file in
   Fileutil.write_lines pid_file [Printf.sprintf "%i" pid];
   (* Logging function (will end up in the log file). *)
   let log fmt =
@@ -106,8 +156,8 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Check that the daemon is running. *)
-  let data_dir = rocq_file ^ ".rocq-ed" in
-  let pid_file = Filename.concat data_dir "daemon.pid" in
+  let data_dir = data_dir_of_filename rocq_file in
+  let pid_file = Filename.concat data_dir daemon_pid_file in
   if not (Sys.file_exists data_dir) then
     panic "Error: no active session for %S." rocq_file;
   if not (Sys.file_exists pid_file) then
@@ -133,11 +183,19 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   Unix.rmdir lock_dir; res
 
 let stop : Filepath.t -> unit = fun rocq_file ->
-  ignore (client_request rocq_file Request.Stop);
-  let data_dir = rocq_file ^ ".rocq-ed" in
-  let req_fifo = Filename.concat data_dir "req.fifo" in
-  let res_fifo = Filename.concat data_dir "res.fifo" in
-  List.iter Unix.unlink [req_fifo; res_fifo];
-  let log_file = Filename.concat data_dir "log" in
-  if Sys.file_exists log_file then Unix.unlink log_file;
-  Unix.rmdir data_dir
+  let data_dir = data_dir_of_filename rocq_file in
+  if not @@ is_session_active ~data_dir && Sys.file_exists data_dir then begin
+    wrn "Warning: No session active. Clearning up stale directory %s" data_dir;
+    clean_data_dir ~data_dir;
+    Unix.rmdir data_dir
+  end
+  else begin
+    ignore (client_request rocq_file Request.Stop);
+    let req_fifo = Filename.concat data_dir "req.fifo" in
+    let res_fifo = Filename.concat data_dir "res.fifo" in
+    List.iter Unix.unlink [req_fifo; res_fifo];
+    let log_file = Filename.concat data_dir "log" in
+    if Sys.file_exists log_file then Unix.unlink log_file;
+    Unix.rmdir data_dir
+  end
+

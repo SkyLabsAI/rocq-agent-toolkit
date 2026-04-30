@@ -24,19 +24,21 @@ let rocq_file =
   let v_file = non_dir_file_with_ext ".v" in
   Arg.(required & pos 0 (some v_file) None & info [] ~docv:"FILE" ~doc)
 
-let no_build =
+let no_build_deps =
   let doc =
     "Disables the building of dependencies before starting the editor. This \
      option can be used to speed up the start-up in big projects, when the \
-     user knows that dependencies are up-to-date."
+     user knows that dependencies are up-to-date. \
+     WARNING: Only use this option if you know exactly what you are doing. \
+     It will lead to failures, and, worse, false successes."
   in
-  Arg.(value & flag & info ["no-build"] ~doc)
+  Arg.(value & flag & info ["no-build-deps"] ~doc)
 
 let jobs =
   let doc =
     "Indicates that no more than $(docv) concurrent jobs should be run by \
-     $(b,dune) when building dependencies. If $(b,--no-build) is given, this \
-     option is a no-op."
+     $(b,dune) when building dependencies. If $(b,--no-build-deps) is given, \
+     this option is a no-op."
   in
   Arg.(value & opt (some int) None & info ["j"; "jobs"] ~doc ~docv:"JOBS")
 
@@ -47,17 +49,24 @@ let display =
   in
   let doc =
     "Controls the display mode of $(b,dune) when building the dependencies \
-     of the file to be processed. If $(b,--no-build) is given, this option \
-     is a no-op. Available values are: $(b,progress) (updated status line), \
-     $(b,quiet) (only warnings and errors are displayed), $(b,short) (adds \
-     one line per command), and $(b,verbose) (full command line is printed)."
+     of the file to be processed. If $(b,--no-build-deps) is given, this \
+     option is a no-op. Available values are: $(b,progress) (updated status \
+     line), $(b,quiet) (only warnings and errors are displayed), $(b,short) \
+     (adds one line per command), and $(b,verbose) (full command line is \
+     printed)."
   in
   let i = Arg.info ["display"] ~docv:"MODE" ~doc in
   Arg.(value & opt display "progress" & i)
 
 let dune_config =
   let build no_build jobs display = Dune_util.{no_build; jobs; display} in
-  Term.(const build $ no_build $ jobs $ display)
+  Term.(const build $ no_build_deps $ jobs $ display)
+
+let daemonize =
+    let doc =
+      "Indicates whether the `rocq-ed init` runs as a daemon"
+    in
+    Arg.(value & opt bool true & info ["d"; "daemonize"] ~doc ~docv:"DAEMONIZE")
 
 let init_cmd =
   let doc =
@@ -65,7 +74,7 @@ let init_cmd =
      when a session for a given source file is running, no other session can \
      be started on the same file."
   in
-  let term = Term.(const Protocol.init $ dune_config $ rocq_file) in
+  let term = Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file) in
   Cmd.(make (info "init" ~version ~doc) term)
 
 let stop_cmd =
@@ -80,7 +89,16 @@ let context_lines =
     "Print $(docv) lines of context before and after the cursor instead of \
      printing the whole Rocq document."
   in
-  Arg.(value & opt (some int) None & info ["C"; "context"] ~doc ~docv:"NUM")
+  Arg.(value & opt (some int) (Some 5) & info ["C"; "context"] ~doc ~docv:"NUM")
+
+let auto_print rocq_file =
+  let Ok(status) = Protocol.client_request rocq_file Request.(Status({context=Some(5)})) in
+  let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
+  Printf.printf("%s\n%s%!") status goals
+
+let with_auto_print : (string -> unit) -> (string -> unit) = fun f rocq_file ->
+  f rocq_file;
+  auto_print rocq_file
 
 let status_cmd =
   let doc =
@@ -108,11 +126,13 @@ let steps_cmd =
   in
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
-    | Ok(()) -> ()
+    | Ok(real_count) ->
+      if real_count < count then
+        Printf.printf "Warning: Only %i < %i steps were executed before reaching the end of the file.\n\n" real_count count
     | Error(s, i) ->
         panic "Failed after processing %i items.\nError: %s." i s
   in
-  let term = Term.(const run $ step_count $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ step_count) $ rocq_file) in
   Cmd.(make (info "steps" ~version ~doc) term)
 
 let command_text =
@@ -136,19 +156,20 @@ let insert_cmd =
     | Ok(()) -> ()
     | Error(s, left) -> panic "Error: could not process suffix %S.\n%s" left s
   in
-  let term = Term.(const run $ command_text $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ command_text) $ rocq_file) in
   Cmd.(make (info "insert" ~version ~doc) term)
 
 let query_text =
   let doc =
-    "Specifies the Rocq command to be run at the cursor."
+    "Specifies the Rocq query to be run at the cursor."
   in
   Arg.(value & opt (some string) None & info ["t"; "text"] ~doc ~docv:"TEXT")
 
 let query_cmd =
   let doc =
-    "Runs the given Rocq command at the cursor, and prints the resulting \
-     $(b,info) and $(b,notice) feedback to standard output."
+    "Executes the given Rocq query at the current cursor $(b,without) \
+     inserting the query it into the document. Prints the resulting $(b,info) \
+     and $(b,notice) feedback to standard output."
   in
   let run text rocq_file =
     let text =
@@ -156,7 +177,7 @@ let query_cmd =
       In_channel.input_all stdin
     in
     match Protocol.client_request rocq_file Request.(Query({text})) with
-    | Ok(s) -> Printf.printf "%s%!" s
+    | Ok(s) -> Printf.printf "%s\n%!" s
     | Error(s, ()) -> panic "Error: %s." s
   in
   let term = Term.(const run $ query_text $ rocq_file) in
@@ -179,7 +200,7 @@ let delete_cmd =
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(const run $ deleted_item_count $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ deleted_item_count) $ rocq_file) in
   Cmd.(make (info "delete" ~version ~doc) term)
 
 let commit_cmd =
@@ -223,7 +244,7 @@ let undo_cmd =
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(const run $ undo_count $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ undo_count) $ rocq_file) in
   Cmd.(make (info "undo" ~version ~doc) term)
 
 let goto_pos =
@@ -275,7 +296,7 @@ let goto_cmd =
     | Ok(()) -> ()
     | Error(s, i) -> panic "Error: %s.\nThe cursor is now at index %i." s i
   in
-  let term = Term.(const run $ goto_pos $ rocq_file) in
+  let term = Term.(map with_auto_print (const run $ goto_pos) $ rocq_file) in
   Cmd.(make (info "goto" ~version ~doc) term)
 
 let _ =
