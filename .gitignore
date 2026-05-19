@@ -1,6 +1,7 @@
 # Rocq
 _build/
 _opam/
+_CoqProject
 _RocqProject
 
 # Python
