@@ -1,5 +1,6 @@
 (rocq.theory
  (name test)
+ (generate_project_file)
  (flags
   (:standard
    -w -notation-incompatible-prefix

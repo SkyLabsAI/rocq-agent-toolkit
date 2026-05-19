@@ -1,2 +1,3 @@
 (rocq.theory
+ (generate_project_file)
  (name test.theory))

@@ -1,6 +1,7 @@
 (rocq.theory
  (name skylabs_ai.extractors.goal_to_json.iris)
  (package rocq-goal-to-json_iris)
+ (generate_project_file)
  (flags
   (:standard
    -w -notation-incompatible-prefix
