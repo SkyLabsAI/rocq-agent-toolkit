@@ -299,6 +299,54 @@ let goto_cmd =
   let term = Term.(map with_auto_print (const run $ goto_pos) $ rocq_file) in
   Cmd.(make (info "goto" ~version ~doc) term)
 
+let main_man = [
+  `S Manpage.s_description;
+  `P "$(b,rocq-ed) is a command-line editor for Rocq source files. It \
+      operates as a per-file daemon: $(b,rocq-ed init) starts a background \
+      session that holds an in-memory representation of a Rocq source file, \
+      and subsequent $(b,rocq-ed) invocations talk to that session to \
+      inspect or modify it. The session is terminated with \
+      $(b,rocq-ed stop).";
+
+  `S "DOCUMENT MODEL";
+  `P "The session-managed $(i,document) is the editable, in-memory \
+      representation of a Rocq source file. It is structured as a sequence \
+      of $(i,items), each of which is either a single Rocq $(i,command) or \
+      a chunk of $(i,blanks) (whitespace and Rocq comments).";
+  `P "The document carries a $(i,cursor) that splits its items into two \
+      parts. The $(i,prefix) holds items that have already been processed \
+      by the underlying Rocq top-level: commands in the prefix have been \
+      replayed by Rocq and contribute to the current proof state. The \
+      $(i,suffix) holds items that belong to the document but have not yet \
+      been processed. Most operations either advance the cursor forward \
+      through the suffix (such as $(b,steps) and $(b,goto)) or move it \
+      backward into the prefix (such as $(b,undo)).";
+  `P "Editing then proceeds by combining cursor movements with \
+      $(b,rocq-ed insert), which adds new items at the cursor and steps \
+      over them, and $(b,rocq-ed delete), which removes items from the \
+      suffix. The current contents of the document, with the cursor \
+      displayed as $(b,<CURSOR>), can be inspected at any time with \
+      $(b,rocq-ed status). The final state can be written back to disk \
+      with $(b,rocq-ed commit). On $(b,rocq-ed init), the document is \
+      initialized with the contents of the source file loaded as \
+      unprocessed items in the suffix, with the cursor at the beginning.";
+
+  `S "BLANK CHARACTERS";
+  `P "Because the document must remain a syntactically valid Rocq source \
+      at all times, blank characters between commands are not inserted \
+      implicitly: the caller is responsible for providing them. After a \
+      dot-terminated command, Rocq requires at least one whitespace \
+      character (space, tab, carriage return, or newline) before the next \
+      command can start. Inserting $(b,\"Check 1.\") directly after such a \
+      command will therefore fail; the inserted text must itself start \
+      with the required blanks, e.g. $(b,\" Check 1.\"). A comment alone \
+      does not satisfy this requirement; an actual whitespace character \
+      is needed.";
+  `P "Blanks are themselves first-class items of the document. They appear \
+      at their position in the output of $(b,rocq-ed status), and they \
+      can be stepped over, undone, or deleted just like commands.";
+]
+
 let _ =
   let cmds =
     [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
@@ -309,6 +357,6 @@ let _ =
     let doc =
       "Command line Rocq editor."
     in
-    Cmd.info "rocq-ed" ~version ~doc
+    Cmd.info "rocq-ed" ~version ~doc ~man:main_man
   in
   exit (Cmd.eval (Cmd.group default_info ~default cmds))
