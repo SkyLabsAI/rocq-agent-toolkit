@@ -1,3 +1,4 @@
 (rocq.theory
  (name skylabs.prover.test)
+ (generate_project_file)
  (theories Stdlib Ltac2))
