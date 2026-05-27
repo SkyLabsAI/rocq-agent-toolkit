@@ -24,7 +24,7 @@
  (name rocq-goal-to-json_iris)
  (synopsis "Extract Rocq goals as JSON (Iris extensions)")
  (depends
-  coq-stdpp coq-iris
+  rocq-stdpp rocq-iris
   ltac2-extra
   ltac2-derive
   ltac2-json))
