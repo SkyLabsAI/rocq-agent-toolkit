@@ -89,7 +89,8 @@ let context_lines =
     "Print $(docv) lines of context before and after the cursor instead of \
      printing the whole Rocq document."
   in
-  Arg.(value & opt (some int) (Some 5) & info ["C"; "context"] ~doc ~docv:"NUM")
+  Arg.(value & opt (some int) (Some 5) &
+    info ["C"; "context-lines"] ~doc ~docv:"NUM")
 
 let auto_print rocq_file =
   let Ok(status) = Protocol.client_request rocq_file Request.(Status({context=Some(5)})) in
@@ -114,10 +115,10 @@ let status_cmd =
 
 let step_count =
   let doc =
-    "Indicates the number of steps $(docv) that should be run (it is equal \
-     to 1 by default)."
+    "Indicates the number of items $(docv) that should be stepped over (it \
+     is equal to 1 by default)."
   in
-  Arg.(value & opt int 1 & info ["n"; "count"] ~doc ~docv:"NUM")
+  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
 
 let steps_cmd =
   let doc =
@@ -188,7 +189,7 @@ let deleted_item_count =
     "Indicates the number of items $(docv) that should be deleted after the \
      cursor (it is equal to 1 by default)."
   in
-  Arg.(value & opt int 1 & info ["n"; "count"] ~doc ~docv:"NUM")
+  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
 
 let delete_cmd =
   let doc =
@@ -232,7 +233,7 @@ let backwards_count =
     "Indicates the number of items $(docv) that the cursor should move \
      backwards (it is equal to 1 by default)."
   in
-  Arg.(value & opt int 1 & info ["n"; "count"] ~doc ~docv:"NUM")
+  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
 
 let backwards_cmd =
   let doc =
@@ -283,8 +284,8 @@ let goto_pos =
     Arg.conv (parse, print)
   in
   let doc = "Specifies the target position as $(docv)." in
-  Arg.(required & opt (some position) None & 
-    info ["p"; "pos"] ~doc ~docv:"LINE[:COLUMN]")
+  Arg.(required & opt (some position) None &
+    info ["p"; "position-line-column"] ~doc ~docv:"LINE[:COLUMN]")
 
 let goto_cmd =
   let doc =

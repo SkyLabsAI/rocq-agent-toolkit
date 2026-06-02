@@ -21,7 +21,7 @@
   > EOF
 
   $ rocq-ed init test.v
-  $ rocq-ed steps --count=7 test.v
+  $ rocq-ed steps --count-items=7 test.v
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
      3| Proof.
@@ -39,7 +39,7 @@
      3| Proof.
      4|   intros n.<CURSOR>
      5|   (* TODO: implement this *)
-  $ rocq-ed delete --count=1 test.v
+  $ rocq-ed delete --count-items=1 test.v
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
      3| Proof.

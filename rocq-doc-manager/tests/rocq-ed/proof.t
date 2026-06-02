@@ -21,7 +21,7 @@
   $ rocq-ed init test.v
   $ rocq-ed goals test.v
   Not currently in a proof.
-  $ rocq-ed steps --count 3 test.v
+  $ rocq-ed steps --count-items 3 test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
      3| Admitted.
@@ -138,7 +138,7 @@
      4|   - constructor.
      5|   - reflexivity.<CURSOR>
      6| Admitted.
-  $ rocq-ed steps --count 2 test.v
+  $ rocq-ed steps --count-items 2 test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.
