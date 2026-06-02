@@ -145,21 +145,43 @@ let command_text =
   in
   Arg.(value & opt (some string) None & info ["t"; "text"] ~doc ~docv:"TEXT")
 
+let insert_keep =
+  let keep =
+    Arg.enum [
+      ("atomic", Request.Atomic);
+      ("succeeding", Request.Succeeding);
+      ("all", Request.All);
+    ]
+  in
+  let doc =
+    "Controls which inserted items are kept if processing fails: \
+     $(b,atomic) rolls back the whole insertion, $(b,succeeding) keeps only \
+     the items processed successfully, and $(b,all) keeps all inserted items \
+     even if some cannot be processed."
+  in
+  Arg.(value & opt keep Request.Atomic & info ["keep"] ~doc ~docv:"MODE")
+
 let insert_cmd =
   let doc =
     "Insert the given chunk of Rocq code in the document, at the cursor. The \
-     cursor is advanced past the inserted chunk."
+     insertion is atomic by default: if any inserted item cannot be processed, \
+     no inserted item is kept. The $(b,--keep) option controls what remains \
+     after such failures. The command will return a non-zero exit code if any \
+     of the insert code cannot be processed."
   in
-  let run text rocq_file =
+  let run keep text rocq_file =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
-    match Protocol.client_request rocq_file Request.(Insert({text})) with
+    match Protocol.client_request rocq_file Request.(Insert({text; keep})) with
     | Ok(()) -> ()
     | Error(s, left) -> panic "Error: could not process suffix %S.\n%s" left s
   in
-  let term = Term.(map with_auto_print (const run $ command_text) $ rocq_file) in
+  let term =
+    Term.(map with_auto_print
+      (const run $ insert_keep $ command_text) $ rocq_file)
+  in
   Cmd.(make (info "insert" ~version ~doc) term)
 
 let query_text =
@@ -325,9 +347,9 @@ let main_man = [
       through the suffix (such as $(b,steps) and $(b,goto)) or move it \
       backward into the prefix (such as $(b,backwards)).";
   `P "Editing then proceeds by combining cursor movements with \
-      $(b,rocq-ed insert), which adds new items at the cursor and steps \
-      over them, and $(b,rocq-ed delete), which removes items from the \
-      suffix. The current contents of the document, with the cursor \
+      $(b,rocq-ed insert), which adds new items at the cursor and attempts \
+      to step over them, and $(b,rocq-ed delete), which removes items from \
+      the suffix. The current contents of the document, with the cursor \
       displayed as $(b,<CURSOR>), can be inspected at any time with \
       $(b,rocq-ed status). The final state can be written back to disk \
       with $(b,rocq-ed commit). On $(b,rocq-ed init), the document is \

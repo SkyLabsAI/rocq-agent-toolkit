@@ -78,10 +78,9 @@
   $ rocq-ed status test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
-     3|   intros x; split.
-     4|   - <CURSOR>
-     5| Admitted.
-  $ rocq-ed insert --text $'constructor.\n  - ' test.v
+     3|   intros x; split.<CURSOR>
+     4| Admitted.
+  $ rocq-ed insert --text $'\n  - constructor.\n  - ' test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.
@@ -208,4 +207,13 @@
     True
   
   Shelved goals: 1
+  $ rocq-ed insert --keep=all --text $'\n  fail.' test.v
+  Error: could not process suffix "fail.".
+  Tactic failure.
+  [1]
+  $ rocq-ed status --context-lines 3 test.v
+     8| Goal True /\ True.
+     9| Proof.
+    10|   split. 1: shelve.
+    11|   <CURSOR>fail.
   $ rocq-ed stop test.v

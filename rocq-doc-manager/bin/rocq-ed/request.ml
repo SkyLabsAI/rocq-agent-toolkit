@@ -2,11 +2,13 @@ open Stdlib_extra.Extra
 
 type empty = |
 
+type insert_keep = Atomic | Succeeding | All
+
 type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
   | Steps : {count : int} -> (int, int) t
-  | Insert : {text : string} -> (unit, string) t
+  | Insert : {text : string; keep : insert_keep} -> (unit, string) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
   | Commit : (unit, unit) t
@@ -27,8 +29,14 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Status({context = %i})" i
   | Steps({count}) ->
       Format.fprintf ff "Steps({count = %i})" count
-  | Insert({text}) ->
-      Format.fprintf ff "Insert({text = %S})" text
+  | Insert({text; keep}) ->
+      let pp_keep ff keep =
+        match keep with
+        | Atomic     -> Format.fprintf ff "Atomic"
+        | Succeeding -> Format.fprintf ff "Succeeding"
+        | All        -> Format.fprintf ff "All"
+      in
+      Format.fprintf ff "Insert({text = %S; keep = %a})" text pp_keep keep
   | Query({text}) ->
       Format.fprintf ff "Query({text = %S})" text
   | Delete({count}) ->
@@ -138,45 +146,66 @@ let run_steps d ~count =
   | Error(_, (i, Some(s, _))) -> Error(s, i)
   | exception Invalid_argument(s) -> Error(s, 0)
 
-let run_insert d ~text =
-  match Document.split_sentences d ~text with
+let sentence_text (sentences : Document.sentence list) =
+  let get_text (s : Document.sentence) = s.Document.text in
+  String.concat "" (List.map get_text sentences)
+
+let run_insert_keep_all d ~text =
+  match Document.replace_suffix ~count:0 d ~text with
   | exception Invalid_argument(s) -> Error(s, text)
-  | (sentences, res) ->
-  let rec run_sentences (sentences : Document.sentence list) =
-    match sentences with
-    | [] -> ([], None)
-    | Document.{kind; text} as s :: sentences ->
-    let err =
-      match kind with
-      | `Blanks ->
-          begin
-            try Document.insert_blanks d ~text; None with
-            | Invalid_argument(s) -> Some(s)
-          end
-      | `Command(_) ->
-          begin
-            match Document.insert_command d ~text with
-            | Ok(_) -> None
-            | Error(s, _) -> Some(s)
-            | exception Invalid_argument(s) -> Some(s)
-          end
-    in
-    match err with
-    | None -> run_sentences sentences
-    | _ -> (s :: sentences, err)
+  | (_sentences, Error(s, remaining)) -> Error(s, remaining)
+  | (sentences, Ok(())) ->
+  let count = List.length sentences in
+  match Document.run_steps d ~count with
+  | Ok(()) -> Ok(())
+  | Error(s, (nb_processed, None)) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      Error(s, remaining)
+  | Error(_, (nb_processed, Some(s, _))) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      Error(s, remaining)
+  | exception Invalid_argument(s) -> Error(s, sentence_text sentences)
+
+let run_insert_keep_succeeding d ~text =
+  let initial_suffix_len = List.length (Document.suffix d) in
+  match Document.replace_suffix ~count:0 d ~text with
+  | exception Invalid_argument(s) -> Error(s, text)
+  | (_sentences, Error(s, remaining)) -> Error(s, remaining)
+  | (sentences, Ok(())) ->
+  let count = List.length sentences in
+  let discard_inserted_suffix () =
+    (* Keep the original suffix, but drop any inserted items that are still
+       unprocessed. Depending on where processing failed, the failing item may
+       or may not still be at the head of the suffix. *)
+    let suffix_len = List.length (Document.suffix d) in
+    let count = max 0 (suffix_len - initial_suffix_len) in
+    Document.clear_suffix ~count d
   in
-  let get_text (d : Document.sentence) = d.Document.text in
-  match (run_sentences sentences, res) with
-  | ((_, None), Ok(())) -> Ok(())
-  | ((_, None), Error(s, remaining)) -> Error(s, remaining)
-  | ((sentences, Some(s)), Ok(())) ->
-      let remaining = List.map get_text sentences in
-      let remaining = String.concat "" remaining in
-      Error(s, remaining)
-  | ((sentences, Some(s)), Error(_, remaining)) ->
-      let remaining = List.map get_text sentences @ [remaining] in
-      let remaining = String.concat "" remaining in
-      Error(s, remaining)
+  match Document.run_steps d ~count with
+  | Ok(()) -> Ok(())
+  | Error(s, (nb_processed, None)) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      discard_inserted_suffix (); Error(s, remaining)
+  | Error(_, (nb_processed, Some(s, _))) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      discard_inserted_suffix (); Error(s, remaining)
+  | exception Invalid_argument(s) ->
+      discard_inserted_suffix (); Error(s, sentence_text sentences)
+
+let run_insert_keep_atomic d ~text =
+  let backup = Document.clone d in
+  let rollback () = Document.copy_contents ~from:backup d in
+  let finish res = Document.stop backup; res in
+  match run_insert_keep_all d ~text with
+  | Ok(()) as res -> finish res
+  | Error(_) as res -> rollback (); finish res
+  | exception e -> rollback (); Document.stop backup; raise e
+
+let run_insert d ~text ~keep =
+  match keep with
+  | Atomic     -> run_insert_keep_atomic d ~text
+  | Succeeding -> run_insert_keep_succeeding d ~text
+  | All        -> run_insert_keep_all d ~text
 
 let run_query d ~text =
   let text = String.trim text in
@@ -316,7 +345,7 @@ let run : type a b. Document.t -> (a, b) t ->
   | Stop              -> Ok(())
   | Status({context}) -> run_status d ~context
   | Steps({count})    -> run_steps d ~count
-  | Insert({text})    -> run_insert d ~text
+  | Insert({text; keep}) -> run_insert d ~text ~keep
   | Query({text})     -> run_query d ~text
   | Delete({count})   -> run_delete d ~count
   | Commit            -> run_commit d
