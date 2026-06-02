@@ -123,9 +123,9 @@ let step_count =
 let steps_cmd =
   let doc =
     "Step over the given number of document items (commands or blanks) in \
-     the Rocq document. The command can fail if one of the items cannot be \
-     processed successfully. In that case, the cursor is moved to just before \
-     the failing item."
+     the Rocq document. The command can return a non-zero exit code if one \
+     of the items cannot be  processed successfully. In that case, the \
+     cursor is moved to just before the failing item."
   in
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
@@ -370,6 +370,11 @@ let main_man = [
   `P "Blanks are themselves first-class items of the document. They appear \
       at their position in the output of $(b,rocq-ed status), and they \
       can be traversed by cursor movements or deleted just like commands.";
+
+  `S "COMMAND FAILURES";
+  `P "All commands except $(b,init) and $(b,stop) can fail without affecting \
+      the health of the rocq-ed session. It is not necessary to restart the \
+      session when any of the other commands fail";
 ]
 
 let _ =
