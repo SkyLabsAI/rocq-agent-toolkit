@@ -123,7 +123,9 @@ let step_count =
 let steps_cmd =
   let doc =
     "Step over the given number of document items (commands or blanks) in \
-     the Rocq document."
+     the Rocq document. The command can fail if one of the items cannot be \
+     processed successfully. In that case, the cursor is moved to just before \
+     the failing item."
   in
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
