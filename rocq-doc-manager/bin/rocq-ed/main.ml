@@ -227,25 +227,25 @@ let goals_cmd =
   let term = Term.(const run $ rocq_file) in
   Cmd.(make (info "goals" ~version ~doc) term)
 
-let undo_count =
+let backwards_count =
   let doc =
-    "Indicates the number of steps $(docv) that should be undone (it is \
-     equal to 1 by default)."
+    "Indicates the number of items $(docv) that the cursor should move \
+     backwards (it is equal to 1 by default)."
   in
   Arg.(value & opt int 1 & info ["n"; "count"] ~doc ~docv:"NUM")
 
-let undo_cmd =
+let backwards_cmd =
   let doc =
-    "Rolls back the cursor by the given number of document items (commands \
-     or blanks) in the Rocq document."
+    "Moves the cursor backwards by the given number of document items \
+     (commands or blanks) in the Rocq document."
   in
   let run count rocq_file =
-    match Protocol.client_request rocq_file Request.(Undo({count})) with
+    match Protocol.client_request rocq_file Request.(Backwards({count})) with
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(map with_auto_print (const run $ undo_count) $ rocq_file) in
-  Cmd.(make (info "undo" ~version ~doc) term)
+  let term = Term.(map with_auto_print (const run $ backwards_count) $ rocq_file) in
+  Cmd.(make (info "backwards" ~version ~doc) term)
 
 let goto_pos =
   let position =
@@ -320,7 +320,7 @@ let main_man = [
       $(i,suffix) holds items that belong to the document but have not yet \
       been processed. Most operations either advance the cursor forward \
       through the suffix (such as $(b,steps) and $(b,goto)) or move it \
-      backward into the prefix (such as $(b,undo)).";
+      backward into the prefix (such as $(b,backwards)).";
   `P "Editing then proceeds by combining cursor movements with \
       $(b,rocq-ed insert), which adds new items at the cursor and steps \
       over them, and $(b,rocq-ed delete), which removes items from the \
@@ -344,13 +344,13 @@ let main_man = [
       is needed.";
   `P "Blanks are themselves first-class items of the document. They appear \
       at their position in the output of $(b,rocq-ed status), and they \
-      can be stepped over, undone, or deleted just like commands.";
+      can be traversed by cursor movements or deleted just like commands.";
 ]
 
 let _ =
   let cmds =
     [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
-      delete_cmd; commit_cmd; goals_cmd; undo_cmd; goto_cmd ]
+      delete_cmd; commit_cmd; goals_cmd; backwards_cmd; goto_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =

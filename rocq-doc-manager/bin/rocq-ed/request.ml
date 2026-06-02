@@ -11,7 +11,7 @@ type (_, _) t =
   | Delete : {count : int} -> (unit, unit) t
   | Commit : (unit, unit) t
   | Goals : (string, empty) t
-  | Undo : {count : int} -> (unit, unit) t
+  | Backwards : {count : int} -> (unit, unit) t
   | Goto : {line: int; col: int option} -> (unit, int) t
 
 let is_stop : type a b. (a, b) t -> bool = fun r ->
@@ -37,8 +37,8 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Commit"
   | Goals ->
       Format.fprintf ff "Goals"
-  | Undo({count}) ->
-      Format.fprintf ff "Undo({count = %i})" count
+  | Backwards({count}) ->
+      Format.fprintf ff "Backwards({count = %i})" count
   | Goto({line; col = None}) ->
       Format.fprintf ff "Goto({line = %i; col = None})" line
   | Goto({line; col = Some(col)}) ->
@@ -217,11 +217,11 @@ let run_goals d =
   print "Unfocused goals" unfocused_goals;
   Ok(Buffer.contents b)
 
-let run_undo d ~count =
+let run_backwards d ~count =
   let cursor_index = Document.cursor_index d in
   let index = cursor_index - count in
   if index < 0 then
-    Error("invalid count (not enough items to undo)", ())
+    Error("invalid count (not enough items to move backwards)", ())
   else
     Ok(Document.revert_before d ~index)
 
@@ -321,5 +321,5 @@ let run : type a b. Document.t -> (a, b) t ->
   | Delete({count})   -> run_delete d ~count
   | Commit            -> run_commit d
   | Goals             -> run_goals d
-  | Undo({count})     -> run_undo d ~count
+  | Backwards({count}) -> run_backwards d ~count
   | Goto({line; col}) -> run_goto d ~line ~col

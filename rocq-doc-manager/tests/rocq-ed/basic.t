@@ -72,7 +72,7 @@
      6| Qed.
      7| 
      8| (* END *)
-  $ rocq-ed undo --count 5 test.v
+  $ rocq-ed backwards --count 5 test.v
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
