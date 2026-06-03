@@ -74,6 +74,7 @@
   $ rocq-ed insert --print-context --print-goals --text $'\n  - fail.\n  -' test.v
   Error: could not process suffix "fail.\n  -".
   Tactic failure.
+  The document is unchanged.
   [1]
   $ rocq-ed status test.v
      1| Theorem test : forall x : nat, True /\ x = x.

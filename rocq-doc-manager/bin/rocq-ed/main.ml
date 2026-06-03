@@ -225,7 +225,11 @@ let insert_cmd =
     in
     match Protocol.client_request rocq_file Request.(Insert({text; keep})) with
     | Ok(()) -> ()
-    | Error(s, left) -> panic "Error: could not process suffix %S.\n%s" left s
+    | Error(s, Request.{remaining; unchanged}) ->
+        let unchanged =
+          if unchanged then "\nThe document is unchanged." else ""
+        in
+        panic "Error: could not process suffix %S.\n%s%s" remaining s unchanged
   in
   let term =
     Term.(const with_print_after $ (const run $ insert_keep $ command_text) $

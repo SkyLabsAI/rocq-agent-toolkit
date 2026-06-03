@@ -4,11 +4,16 @@ type empty = |
 
 type insert_keep = Atomic | Succeeding | All
 
+type insert_error = {
+  remaining : string;
+  unchanged : bool;
+}
+
 type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
   | Steps : {count : int option} -> (int, int) t
-  | Insert : {text : string; keep : insert_keep} -> (unit, string) t
+  | Insert : {text : string; keep : insert_keep} -> (unit, insert_error) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
   | Commit : (unit, unit) t
@@ -154,27 +159,31 @@ let sentence_text (sentences : Document.sentence list) =
   let get_text (s : Document.sentence) = s.Document.text in
   String.concat "" (List.map get_text sentences)
 
+let insert_error ?(unchanged=false) remaining = {remaining; unchanged}
+
 let run_insert_keep_all d ~text =
   match Document.replace_suffix ~count:0 d ~text with
-  | exception Invalid_argument(s) -> Error(s, text)
-  | (_sentences, Error(s, remaining)) -> Error(s, remaining)
+  | exception Invalid_argument(s) -> Error(s, insert_error ~unchanged:true text)
+  | (_sentences, Error(s, remaining)) ->
+      Error(s, insert_error ~unchanged:true remaining)
   | (sentences, Ok(())) ->
   let count = List.length sentences in
   match Document.run_steps d ~count with
   | Ok(()) -> Ok(())
   | Error(s, (nb_processed, None)) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
-      Error(s, remaining)
+      Error(s, insert_error remaining)
   | Error(_, (nb_processed, Some(s, _))) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
-      Error(s, remaining)
-  | exception Invalid_argument(s) -> Error(s, sentence_text sentences)
+      Error(s, insert_error remaining)
+  | exception Invalid_argument(s) -> Error(s, insert_error (sentence_text sentences))
 
 let run_insert_keep_succeeding d ~text =
   let initial_suffix_len = List.length (Document.suffix d) in
   match Document.replace_suffix ~count:0 d ~text with
-  | exception Invalid_argument(s) -> Error(s, text)
-  | (_sentences, Error(s, remaining)) -> Error(s, remaining)
+  | exception Invalid_argument(s) -> Error(s, insert_error ~unchanged:true text)
+  | (_sentences, Error(s, remaining)) ->
+      Error(s, insert_error ~unchanged:true remaining)
   | (sentences, Ok(())) ->
   let count = List.length sentences in
   let discard_inserted_suffix () =
@@ -189,12 +198,15 @@ let run_insert_keep_succeeding d ~text =
   | Ok(()) -> Ok(())
   | Error(s, (nb_processed, None)) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
-      discard_inserted_suffix (); Error(s, remaining)
+      let unchanged = nb_processed = 0 in
+      discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
   | Error(_, (nb_processed, Some(s, _))) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
-      discard_inserted_suffix (); Error(s, remaining)
+      let unchanged = nb_processed = 0 in
+      discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
   | exception Invalid_argument(s) ->
-      discard_inserted_suffix (); Error(s, sentence_text sentences)
+      discard_inserted_suffix ();
+      Error(s, insert_error ~unchanged:true (sentence_text sentences))
 
 let run_insert_keep_atomic d ~text =
   let backup = Document.clone d in
@@ -202,7 +214,8 @@ let run_insert_keep_atomic d ~text =
   let finish res = Document.stop backup; res in
   match run_insert_keep_all d ~text with
   | Ok(()) as res -> finish res
-  | Error(_) as res -> rollback (); finish res
+  | Error(s, e) ->
+      rollback (); finish (Error(s, {e with unchanged = true}))
   | exception e -> rollback (); Document.stop backup; raise e
 
 let run_insert d ~text ~keep =

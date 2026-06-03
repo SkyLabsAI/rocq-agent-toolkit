@@ -73,6 +73,7 @@ test case does not wait indefinitely.
   $ timeout 5s rocq-ed insert --print-context --print-goals --text="*inversion H." test.v
   Error: could not process suffix "*inversion H.".
   inserted text would change the command before the cursor
+  The document is unchanged.
   [1]
 
 The daemon should remain responsive after rejecting the insertion.

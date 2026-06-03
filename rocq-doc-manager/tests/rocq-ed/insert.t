@@ -53,6 +53,7 @@
   $ rocq-ed insert --print-context --print-goals --text="reflexivity. Qed." test.v
   Error: could not process suffix "reflexivity. Qed.".
   leading blanks required at this point in the document
+  The document is unchanged.
   [1]
   $ rocq-ed insert --print-context --print-goals --text=" reflexivity. Qed." test.v
      1| Require Import Init.Datatypes.
