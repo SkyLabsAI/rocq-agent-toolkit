@@ -19,7 +19,7 @@
   > EOF
 
   $ timeout 5s rocq-ed init test.v
-  $ timeout 5s rocq-ed steps --count-items=all test.v
+  $ timeout 5s rocq-ed steps --print-context --print-goals --count-items=all test.v
      1| Theorem test : False -> True /\ True.
      2| Proof.
      3|   intros H; split.
@@ -35,14 +35,14 @@
     ============================
     True
   
-  $ timeout 5s rocq-ed insert --text="*inversion H." test.v
+  $ timeout 5s rocq-ed insert --print-context --print-goals --text="*inversion H." test.v
      1| Theorem test : False -> True /\ True.
      2| Proof.
      3|   intros H; split.
      4| *inversion H.<CURSOR>
   
   Unfocused goals: 1
-  $ timeout 5s rocq-ed backwards --count-items=1 test.v
+  $ timeout 5s rocq-ed backwards --print-context --print-goals --count-items=1 test.v
      1| Theorem test : False -> True /\ True.
      2| Proof.
      3|   intros H; split.
@@ -54,7 +54,7 @@
     True
   
   Unfocused goals: 1
-  $ timeout 5s rocq-ed delete --count-items=1 test.v
+  $ timeout 5s rocq-ed delete --print-context --print-goals --count-items=1 test.v
      1| Theorem test : False -> True /\ True.
      2| Proof.
      3|   intros H; split.
@@ -70,7 +70,7 @@
 The next insertion used to leave the daemon stuck.  Use a short timeout so the
 test case does not wait indefinitely.
 
-  $ timeout 5s rocq-ed insert --text="*inversion H." test.v
+  $ timeout 5s rocq-ed insert --print-context --print-goals --text="*inversion H." test.v
   Error: could not process suffix "*inversion H.".
   inserted text would change the command before the cursor
   [1]

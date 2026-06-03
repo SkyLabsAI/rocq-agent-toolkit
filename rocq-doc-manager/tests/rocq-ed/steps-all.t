@@ -19,9 +19,8 @@
 
   $ rocq-ed init test.v
   $ rocq-ed steps --count-items=all test.v
-     1| Definition x := True.
-     2| Definition y := x.
+  $ rocq-ed status --context-lines=0 test.v
      3| <CURSOR>
-  
-  Not currently in a proof.
+  $ rocq-ed backwards --print-context=0 --count-items=1 test.v
+     2| Definition y := x.<CURSOR>
   $ rocq-ed stop test.v

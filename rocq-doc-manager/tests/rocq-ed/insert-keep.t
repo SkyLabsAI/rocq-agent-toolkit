@@ -18,25 +18,25 @@
   > EOF
 
   $ rocq-ed init atomic.v
-  $ rocq-ed insert --text "Definition ok := True. Check nope. Definition later := True." atomic.v >/dev/null 2>&1 || true
+  $ rocq-ed insert --print-context --print-goals --text "Definition ok := True. Check nope. Definition later := True." atomic.v >/dev/null 2>&1 || true
   $ rocq-ed status --context-lines=0 atomic.v
      1| <CURSOR>
   $ rocq-ed stop atomic.v
 
   $ rocq-ed init succeeding.v
-  $ rocq-ed insert --keep=succeeding --text "Definition ok := True. Check nope. Definition later := True." succeeding.v >/dev/null 2>&1 || true
+  $ rocq-ed insert --print-context --print-goals --keep=succeeding --text "Definition ok := True. Check nope. Definition later := True." succeeding.v >/dev/null 2>&1 || true
   $ rocq-ed status --context-lines=0 succeeding.v
      1| Definition ok := True. <CURSOR>
   $ rocq-ed stop succeeding.v
 
   $ rocq-ed init suffix.v
-  $ rocq-ed insert --keep=succeeding --text "Definition ok := True. Check nope. " suffix.v >/dev/null 2>&1 || true
+  $ rocq-ed insert --print-context --print-goals --keep=succeeding --text "Definition ok := True. Check nope. " suffix.v >/dev/null 2>&1 || true
   $ rocq-ed status --context-lines=0 suffix.v
      1| Definition ok := True. <CURSOR>Definition after := True.
   $ rocq-ed stop suffix.v
 
   $ rocq-ed init all.v
-  $ rocq-ed insert --keep=all --text "Definition ok := True. Check nope. Definition later := True." all.v >/dev/null 2>&1 || true
+  $ rocq-ed insert --print-context --print-goals --keep=all --text "Definition ok := True. Check nope. Definition later := True." all.v >/dev/null 2>&1 || true
   $ rocq-ed status --context-lines=0 all.v
      1| Definition ok := True. <CURSOR>Check nope. Definition later := True.
   $ rocq-ed stop all.v

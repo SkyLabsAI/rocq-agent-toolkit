@@ -92,14 +92,42 @@ let context_lines =
   Arg.(value & opt (some int) (Some 5) &
     info ["C"; "context-lines"] ~doc ~docv:"NUM")
 
-let auto_print rocq_file =
-  let Ok(status) = Protocol.client_request rocq_file Request.(Status({context=Some(5)})) in
-  let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
-  Printf.printf("%s\n%s%!") status goals
+let print_goals =
+  let doc =
+    "Print the current proof goals after successfully running the command."
+  in
+  Arg.(value & flag & info ["print-goals"] ~doc)
 
-let with_auto_print : (string -> unit) -> (string -> unit) = fun f rocq_file ->
+let print_context =
+  let doc =
+    "Print $(docv) lines of context around the cursor after successfully running \
+     the command. If $(b,--print-context) is given without a value, $(docv) \
+     defaults to 5."
+  in
+  Arg.(value & opt ~vopt:(Some 5) (some int) None &
+       info ["print-context"] ~docv:"NUM" ~doc)
+
+let print_after ~context ~goals rocq_file =
+  let printed_context =
+    match context with
+    | None -> false
+    | Some(context) ->
+        let Ok(status) =
+          Protocol.client_request rocq_file Request.(Status({context=Some(context)}))
+        in
+        Printf.printf "%s%!" status;
+        true
+  in
+  if goals then begin
+    if printed_context then Printf.printf "\n%!";
+    let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
+    Printf.printf "%s%!" goals
+  end
+
+let with_print_after : (string -> unit) -> int option -> bool -> string -> unit =
+    fun f context goals rocq_file ->
   f rocq_file;
-  auto_print rocq_file
+  print_after ~context ~goals rocq_file
 
 let status_cmd =
   let doc =
@@ -153,7 +181,10 @@ let steps_cmd =
     | Error(s, i) ->
         panic "Failed after processing %i items.\nError: %s." i s
   in
-  let term = Term.(map with_auto_print (const run $ step_count) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ step_count) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "steps" ~version ~doc) term)
 
 let command_text =
@@ -197,8 +228,8 @@ let insert_cmd =
     | Error(s, left) -> panic "Error: could not process suffix %S.\n%s" left s
   in
   let term =
-    Term.(map with_auto_print
-      (const run $ insert_keep $ command_text) $ rocq_file)
+    Term.(const with_print_after $ (const run $ insert_keep $ command_text) $
+          print_context $ print_goals $ rocq_file)
   in
   Cmd.(make (info "insert" ~version ~doc) term)
 
@@ -245,7 +276,10 @@ let delete_cmd =
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(map with_auto_print (const run $ deleted_item_count) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ deleted_item_count) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "delete" ~version ~doc) term)
 
 let commit_cmd =
@@ -289,7 +323,10 @@ let backwards_cmd =
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(map with_auto_print (const run $ backwards_count) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ backwards_count) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "backwards" ~version ~doc) term)
 
 let goto_pos =
@@ -341,7 +378,10 @@ let goto_cmd =
     | Ok(()) -> ()
     | Error(s, i) -> panic "Error: %s.\nThe cursor is now at index %i." s i
   in
-  let term = Term.(map with_auto_print (const run $ goto_pos) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ goto_pos) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "goto" ~version ~doc) term)
 
 let main_man = [

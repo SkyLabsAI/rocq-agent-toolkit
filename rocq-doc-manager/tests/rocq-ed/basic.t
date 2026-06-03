@@ -49,7 +49,7 @@
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
-  $ rocq-ed steps --count-items 5 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 5 test.v
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -72,7 +72,7 @@
      6| Qed.
      7| 
      8| (* END *)
-  $ rocq-ed backwards --count-items 5 test.v
+  $ rocq-ed backwards --print-context --print-goals --count-items 5 test.v
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -88,7 +88,7 @@
      4|   intro x.
      5|   reflexivity.
      6| Qed.
-  $ rocq-ed steps --count-items 5 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 5 test.v
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -114,7 +114,7 @@
      4|   <CURSOR>intro x.
      5|   reflexivity.
      6| Qed.
-  $ rocq-ed steps --count-items 3 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 3 test.v
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -133,7 +133,7 @@
      6| Qed.
      7| 
      8| (* END *)
-  $ rocq-ed steps --count-items 3 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 3 test.v
      4|   intro x.
      5|   reflexivity.
      6| Qed.
@@ -149,7 +149,7 @@
      7| 
      8| (* END *)
      9| <CURSOR>
-  $ rocq-ed steps --count-items 100 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 100 test.v
   Warning: Only 0 < 100 steps were executed before reaching the end of the file.
   
      4|   intro x.
