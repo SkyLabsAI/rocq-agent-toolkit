@@ -67,15 +67,20 @@
   
   Unfocused goals: 1
 
-The next insertion leaves the daemon stuck.  Use a short timeout so the test
-case does not wait indefinitely.
+The next insertion used to leave the daemon stuck.  Use a short timeout so the
+test case does not wait indefinitely.
 
   $ timeout 5s rocq-ed insert --text="*inversion H." test.v
-  [124]
+  Error: could not process suffix "*inversion H.".
+  inserted text would change the command before the cursor
+  [1]
 
-After removing the stale client lock left by the timed-out client, even a status
-request gets no daemon response.
+The daemon should remain responsive after rejecting the insertion.
 
   $ rmdir .test.v.rocqed/client.lock 2>/dev/null || true
   $ timeout 5s rocq-ed status test.v
-  [124]
+     1| Theorem test : False -> True /\ True.
+     2| Proof.
+     3|   intros H; split.
+     4| *<CURSOR>
+  $ timeout 5s rocq-ed stop test.v

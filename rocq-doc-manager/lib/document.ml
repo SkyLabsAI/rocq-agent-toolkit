@@ -429,7 +429,7 @@ let split_sentences : t -> text:string ->
     let open Rocq_split in
     match sentences with
     | []                                     ->
-        (len, List.rev rev_acc)
+        Ok(len, List.rev rev_acc)
     | s :: sentences when s.ep <= cursor_off ->
         (* Sentence entirely before the cursor, skip. *)
         to_sentences len rev_acc sentences
@@ -439,22 +439,29 @@ let split_sentences : t -> text:string ->
         let rev_acc = {kind = s.kind; text = s.text} :: rev_acc in
         to_sentences len rev_acc sentences
     | s :: sentences                         ->
-        (* Sentence containing the cursor, must be blanks, split it. *)
-        assert (s.kind = `Blanks);
-        let diff = cursor_off - s.bp in
-        let added_len = String.length s.text - diff in
-        let text = String.sub s.text diff added_len in
-        let len = len + added_len in
-        let rev_acc = {kind = `Blanks; text} :: rev_acc in
-        to_sentences len rev_acc sentences
+        (* A sentence crossing the cursor means that the inserted text is being
+           parsed together with the prefix.  This is only safe for blanks,
+           which we can split at the cursor. *)
+        match s.kind with
+        | `Command(_) ->
+            Error("inserted text would change the command before the cursor")
+        | `Blanks ->
+            let diff = cursor_off - s.bp in
+            let added_len = String.length s.text - diff in
+            let text = String.sub s.text diff added_len in
+            let len = len + added_len in
+            let rev_acc = {kind = `Blanks; text} :: rev_acc in
+            to_sentences len rev_acc sentences
   in
-  let (len, sentences) = to_sentences 0 [] sentences in
-  let res =
-    match res with
-    | Ok(_)       -> Ok(())
-    | Error(s, _) -> Error(s, String.sub text len (String.length text - len))
-  in
-  (sentences, res)
+  match to_sentences 0 [] sentences with
+  | Error(msg) -> ([], Error(msg, text))
+  | Ok(len, sentences) ->
+      let res =
+        match res with
+        | Ok(_)       -> Ok(())
+        | Error(s, _) -> Error(s, String.sub text len (String.length text - len))
+      in
+      (sentences, res)
 
 let replace_suffix : ?count:int -> t -> text:string ->
     sentence list * (unit, string * string) result = fun ?count d ~text ->
