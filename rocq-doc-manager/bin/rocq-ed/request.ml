@@ -7,7 +7,7 @@ type insert_keep = Atomic | Succeeding | All
 type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
-  | Steps : {count : int} -> (int, int) t
+  | Steps : {count : int option} -> (int, int) t
   | Insert : {text : string; keep : insert_keep} -> (unit, string) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
@@ -27,7 +27,9 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Status({context = None})"
   | Status({context = Some(i)}) ->
       Format.fprintf ff "Status({context = %i})" i
-  | Steps({count}) ->
+  | Steps({count = None}) ->
+      Format.fprintf ff "Steps({count = all})"
+  | Steps({count = Some(count)}) ->
       Format.fprintf ff "Steps({count = %i})" count
   | Insert({text; keep}) ->
       let pp_keep ff keep =
@@ -138,7 +140,9 @@ let run_steps d ~count =
   let suffix = Document.suffix d in
   let count =
     let len = List.length suffix in
-    if count < len then count else len
+    match count with
+    | None        -> len
+    | Some(count) -> if count < len then count else len
   in
   match Document.run_steps d ~count with
   | Ok(()) -> Ok(count)

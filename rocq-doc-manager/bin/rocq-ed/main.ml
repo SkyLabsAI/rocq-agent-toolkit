@@ -114,11 +114,26 @@ let status_cmd =
   Cmd.(make (info "status" ~version ~doc) term)
 
 let step_count =
+  let count =
+    let parse = function
+      | "all" -> Ok(None)
+      | s ->
+      match int_of_string_opt s with
+      | Some(i) -> Ok(Some(i))
+      | None -> Error(`Msg("expected an integer or \"all\""))
+    in
+    let print ff = function
+      | None    -> Format.fprintf ff "all"
+      | Some(i) -> Format.fprintf ff "%i" i
+    in
+    Arg.conv (parse, print)
+  in
   let doc =
     "Indicates the number of items $(docv) that should be stepped over (it \
-     is equal to 1 by default)."
+     is equal to 1 by default). Use $(b,all) to step all the way to the end \
+     of the file."
   in
-  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
+  Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv:"NUM|all")
 
 let steps_cmd =
   let doc =
@@ -130,8 +145,11 @@ let steps_cmd =
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
     | Ok(real_count) ->
-      if real_count < count then
+      begin match count with
+      | Some(count) when real_count < count ->
         Printf.printf "Warning: Only %i < %i steps were executed before reaching the end of the file.\n\n" real_count count
+      | None | Some(_) -> ()
+      end
     | Error(s, i) ->
         panic "Failed after processing %i items.\nError: %s." i s
   in
