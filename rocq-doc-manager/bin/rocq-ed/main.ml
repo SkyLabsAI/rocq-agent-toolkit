@@ -186,7 +186,8 @@ let insert_cmd =
 
 let query_text =
   let doc =
-    "Specifies the Rocq query to be run at the cursor."
+    "Specifies the Rocq query to be run at the cursor. Must be exactly one \
+     command."
   in
   Arg.(value & opt (some string) None & info ["t"; "text"] ~doc ~docv:"TEXT")
 
@@ -194,7 +195,8 @@ let query_cmd =
   let doc =
     "Executes the given Rocq query at the current cursor $(b,without) \
      inserting the query it into the document. Prints the resulting $(b,info) \
-     and $(b,notice) feedback to standard output."
+     and $(b,notice) feedback to standard output. \
+     WARNING: Do not use with tactics or side-effecting commands."
   in
   let run text rocq_file =
     let text =
