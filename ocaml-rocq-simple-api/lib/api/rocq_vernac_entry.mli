@@ -6,6 +6,7 @@ type entry = Rocq_simple_api_internal.Rocq_vernac_entry.entry =
   | EVernacEndSegment of Names.lident
   | EVernacRequire
   | EVernacImport
+  | EVernacDeclareMLModule
   | EVernacDeclareModule of Names.lident
   | EVernacDefineModule of {id:Names.lident; has_body: bool}
   | EVernacDeclareModuleType of {id:Names.lident; has_body: bool}

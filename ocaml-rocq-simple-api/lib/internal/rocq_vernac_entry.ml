@@ -6,6 +6,7 @@ type entry =
   | EVernacEndSegment of Names.lident
   | EVernacRequire
   | EVernacImport
+  | EVernacDeclareMLModule
   | EVernacDeclareModule of Names.lident
   | EVernacDefineModule of {id: Names.lident; has_body: bool}
   | EVernacDeclareModuleType of {id: Names.lident; has_body: bool}
@@ -51,7 +52,7 @@ Synterp.vernac_control_entry
 (* NOTE: There is a bit of a mismatch in constructors. *)
 let of_vernac_control : Vernacexpr.vernac_control -> command =
   let translate_control (c : Vernacexpr.control_flag) : control =
-    match c with
+    match c.CAst.v with
     | Vernacexpr.ControlTime         -> ControlTime
     | Vernacexpr.ControlInstructions -> ControlInstructions
     | Vernacexpr.ControlProfile(_)   -> ControlProfile
@@ -104,6 +105,7 @@ let of_vernac_control_entry : Synterp.vernac_control_entry -> command =
     | Synterp.EVernacEndSegment(i) -> EVernacEndSegment(i)
     | Synterp.EVernacRequire(_) -> EVernacRequire
     | Synterp.EVernacImport(_) -> EVernacImport
+    | Synterp.EVernacDeclareMLModule(_) -> EVernacDeclareMLModule
     | Synterp.EVernacDeclareModule(_,i,_,_) -> EVernacDeclareModule(i)
     | Synterp.EVernacDefineModule(_,i,_,_,_,expr) -> EVernacDefineModule{id=i;has_body=expr<>[]}
     | Synterp.EVernacDeclareModuleType(i,_,_,_,expr) -> EVernacDeclareModuleType{id=i;has_body=expr<>[]}
@@ -122,6 +124,7 @@ let synterp_descr : entry -> string = fun e ->
   | EVernacEndSegment(_)        -> "EndSegment"
   | EVernacRequire              -> "Require"
   | EVernacImport               -> "Import"
+  | EVernacDeclareMLModule      -> "DeclareMLModule"
   | EVernacDeclareModule(_)     -> "DeclareModule"
   | EVernacDefineModule(_)      -> "DefineModule"
   | EVernacDeclareModuleType(_) -> "DeclareModuleType"
@@ -150,6 +153,7 @@ let synpure_descr : Vernacexpr.synpure_vernac_expr -> string = fun e ->
   | VernacInductive(_,_)             -> "Inductive"
   | VernacFixpoint(_,_)              -> "Fixpoint"
   | VernacCoFixpoint(_,_)            -> "CoFixpoint"
+  | VernacSchemeAll(_,_)             -> "SchemeAll"
   | VernacScheme(_)                  -> "Scheme"
   | VernacSchemeEquality(_,_)        -> "SchemeEquality"
   | VernacCombinedScheme(_,_)        -> "CombinedScheme"
@@ -180,7 +184,7 @@ let synpure_descr : Vernacexpr.synpure_vernac_expr -> string = fun e ->
   | VernacCreateHintDb(_,_)          -> "CreateHintDb"
   | VernacRemoveHints(_,_)           -> "RemoveHints"
   | VernacHints(_,_)                 -> "Hints"
-  | VernacSyntacticDefinition(_,_,_) -> "SyntacticDefinition"
+  | VernacAbbreviation(_,_,_,_)      -> "Abbreviation"
   | VernacArguments(_,_,_,_)         -> "Arguments"
   | VernacReserve(_)                 -> "Reserve"
   | VernacGeneralizable(_)           -> "Generalizable"
