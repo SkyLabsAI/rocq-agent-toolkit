@@ -3,7 +3,7 @@
  (deps
   (package rocq-core)
   (package rocq-stdlib)
-  (package coq-stdpp)
-  (package coq-iris)
+  (package rocq-stdpp)
+  (package rocq-iris)
   (package rocq-goal-to-json_iris)
   (package ltac2-json)))

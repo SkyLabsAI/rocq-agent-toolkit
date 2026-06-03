@@ -8,7 +8,6 @@ homepage: "https://github.com/SkylabsAI/skylabs-fm"
 bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
   "dune" {>= "3.21"}
-  "coq-core"
   "rocq-core"
   "rocq-stdlib"
   "ltac2-derive"
