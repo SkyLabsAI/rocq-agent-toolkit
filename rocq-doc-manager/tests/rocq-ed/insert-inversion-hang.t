@@ -76,9 +76,24 @@ test case does not wait indefinitely.
   The document is unchanged.
   [1]
 
-The daemon should remain responsive after rejecting the insertion.
+The daemon should remain responsive after rejecting the insertion, and the
+client lock should have been released by the failed request.
 
-  $ rmdir .test.v.rocqed/client.lock 2>/dev/null || true
+  $ test ! -d .test.v.rocqed/client.lock
+  $ timeout 5s rocq-ed status test.v
+     1| Theorem test : False -> True /\ True.
+     2| Proof.
+     3|   intros H; split.
+     4| *<CURSOR>
+
+The same splitting failure is atomic even with --keep=all.
+
+  $ timeout 5s rocq-ed insert --print-context --print-goals --keep=all --text="*inversion H." test.v
+  Error: could not process suffix "*inversion H.".
+  inserted text would change the command before the cursor
+  The document is unchanged.
+  [1]
+  $ test ! -d .test.v.rocqed/client.lock
   $ timeout 5s rocq-ed status test.v
      1| Theorem test : False -> True /\ True.
      2| Proof.

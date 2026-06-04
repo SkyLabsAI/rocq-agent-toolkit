@@ -39,6 +39,11 @@
     ============================
     forall x : nat, True /\ x = x
   
+  $ rocq-ed steps --print-goals --count-items 0 test.v
+  Goal 1:
+    ============================
+    forall x : nat, True /\ x = x
+  
   $ rocq-ed insert --print-context --print-goals --text $'\n  intros x; split.' test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
