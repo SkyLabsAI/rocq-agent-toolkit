@@ -198,13 +198,13 @@ let insert_keep =
   let keep =
     Arg.enum [
       ("atomic", Request.Atomic);
-      ("succeeding", Request.Succeeding);
+      ("successful", Request.SuccessfulPrefix);
       ("all", Request.All);
     ]
   in
   let doc =
     "Controls which inserted items are kept if processing fails: \
-     $(b,atomic) rolls back the whole insertion, $(b,succeeding) keeps only \
+     $(b,atomic) rolls back the whole insertion, $(b,successful) keeps only \
      the items processed successfully, and $(b,all) keeps all inserted items \
      even if some cannot be processed."
   in

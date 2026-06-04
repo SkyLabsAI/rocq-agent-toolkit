@@ -2,7 +2,7 @@ open Stdlib_extra.Extra
 
 type empty = |
 
-type insert_keep = Atomic | Succeeding | All
+type insert_keep = Atomic | SuccessfulPrefix | All
 
 type insert_error = {
   remaining : string;
@@ -40,7 +40,7 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       let pp_keep ff keep =
         match keep with
         | Atomic     -> Format.fprintf ff "Atomic"
-        | Succeeding -> Format.fprintf ff "Succeeding"
+        | SuccessfulPrefix -> Format.fprintf ff "SuccessfulPrefix"
         | All        -> Format.fprintf ff "All"
       in
       Format.fprintf ff "Insert({text = %S; keep = %a})" text pp_keep keep
@@ -221,7 +221,7 @@ let run_insert_keep_atomic d ~text =
 let run_insert d ~text ~keep =
   match keep with
   | Atomic     -> run_insert_keep_atomic d ~text
-  | Succeeding -> run_insert_keep_succeeding d ~text
+  | SuccessfulPrefix -> run_insert_keep_succeeding d ~text
   | All        -> run_insert_keep_all d ~text
 
 let run_query d ~text =
