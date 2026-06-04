@@ -264,12 +264,15 @@ let run_goals d =
   Ok(Buffer.contents b)
 
 let run_backwards d ~count =
-  let cursor_index = Document.cursor_index d in
-  let index = cursor_index - count in
-  if index < 0 then
-    Error("invalid count (not enough items to move backwards)", ())
+  if count < 0 then
+    Error("negative count", ())
   else
-    Ok(Document.revert_before d ~index)
+    let cursor_index = Document.cursor_index d in
+    let index = cursor_index - count in
+    if index < 0 then
+      Error("invalid count (not enough items to move backwards)", ())
+    else
+      Ok(Document.revert_before d ~index)
 
 let run_goto d ~line ~col =
   assert (line > 0 && Stdlib.Option.value ~default:1 col > 0);
