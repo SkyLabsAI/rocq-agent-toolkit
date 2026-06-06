@@ -7,7 +7,7 @@
   > Print JSON Environment Corelib.Init.Nat Corelib.Lists Corelib.Init.Decimal.
   > EOF
 
-  $ coqc test.v
+  $ rocq compile test.v
   {
     "constants": [
       {

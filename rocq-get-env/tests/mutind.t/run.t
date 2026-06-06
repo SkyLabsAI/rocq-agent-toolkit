@@ -2,8 +2,8 @@
   $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
   $ export DUNE_CACHE=disabled
 
-  $ coqc -Q . test mutind.v
-  $ coqc -Q . test test.v
+  $ rocq compile -Q . test mutind.v
+  $ rocq compile -Q . test test.v
   {
     "constants": [
       {

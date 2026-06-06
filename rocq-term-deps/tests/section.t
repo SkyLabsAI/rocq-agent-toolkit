@@ -16,7 +16,7 @@
   > DepsOfJSON test.dir.test.g.
   > EOF
 
-  $ coqc -Q . test.dir test.v
+  $ rocq compile -Q . test.dir test.v
   {
     "name": "test.dir.test.f",
     "kind": "Def",

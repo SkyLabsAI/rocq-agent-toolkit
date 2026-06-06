@@ -1,7 +1,7 @@
   $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
   $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
   $ export DUNE_CACHE=disabled
-  $ coqc test.v
+  $ rocq compile test.v
   Available derivers: json.
   json_of_variant : variant -> t
   json_of_variant :=

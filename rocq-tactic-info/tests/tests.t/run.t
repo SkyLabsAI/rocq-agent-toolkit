@@ -1,7 +1,7 @@
   $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
   $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
   $ export DUNE_CACHE=disabled
-  $ coqc test.v
+  $ rocq compile test.v
   [ "Then", [ "Atom", "intros" ], [ "Atom", "intros" ] ]
   [ "Then", [ "Atom", "intro H" ], [ "Atom", "apply _" ] ]
   [
