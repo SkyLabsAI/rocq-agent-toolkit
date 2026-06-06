@@ -8,35 +8,35 @@
     "constants": [
       {
         "kername": "test.mutind.tree_sind",
-        "about": "tree_sind :\nforall (A B : Type) (P : tree A B -> SProp),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_sind is not universe polymorphic\nArguments tree_sind (A B)%_type_scope (P f)%_function_scope t\ntree_sind is transparent\nExpands to: Constant test.mutind.tree_sind\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "tree_sind :\nforall (A B : Type) (P : tree A B -> SProp),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_sind is not universe polymorphic\nArguments tree_sind (A B)%_type_scope (P node)%_function_scope t\ntree_sind is transparent\nExpands to: Constant test.mutind.tree_sind\nDeclared in library test.mutind, line 1, characters 0-156"
       },
       {
         "kername": "test.mutind.tree_rect",
-        "about": "tree_rect :\nforall (A B : Type) (P : tree A B -> Type),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_rect is not universe polymorphic\nArguments tree_rect (A B)%_type_scope (P f)%_function_scope t\ntree_rect is transparent\nExpands to: Constant test.mutind.tree_rect\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "tree_rect :\nforall (A B : Type) (P : tree A B -> Type),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_rect is not universe polymorphic\nArguments tree_rect (A B)%_type_scope (P node)%_function_scope t\ntree_rect is transparent\nExpands to: Constant test.mutind.tree_rect\nDeclared in library test.mutind, line 1, characters 0-156"
       },
       {
         "kername": "test.mutind.forest_sind",
-        "about": "forest_sind :\nforall (A B : Type) (P : forest A B -> SProp),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_sind is not universe polymorphic\nArguments forest_sind (A B)%_type_scope (P f f0)%_function_scope f\nforest_sind is transparent\nExpands to: Constant test.mutind.forest_sind\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "forest_sind :\nforall (A B : Type) (P : forest A B -> SProp),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_sind is not universe polymorphic\nArguments forest_sind (A B)%_type_scope (P leaf cons)%_function_scope f\nforest_sind is transparent\nExpands to: Constant test.mutind.forest_sind\nDeclared in library test.mutind, line 1, characters 0-156"
       },
       {
         "kername": "test.mutind.forest_rect",
-        "about": "forest_rect :\nforall (A B : Type) (P : forest A B -> Type),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_rect is not universe polymorphic\nArguments forest_rect (A B)%_type_scope (P f f0)%_function_scope f\nforest_rect is transparent\nExpands to: Constant test.mutind.forest_rect\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "forest_rect :\nforall (A B : Type) (P : forest A B -> Type),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_rect is not universe polymorphic\nArguments forest_rect (A B)%_type_scope (P leaf cons)%_function_scope f\nforest_rect is transparent\nExpands to: Constant test.mutind.forest_rect\nDeclared in library test.mutind, line 1, characters 0-156"
       },
       {
         "kername": "test.mutind.forest_rec",
-        "about": "forest_rec :\nforall (A B : Type) (P : forest A B -> Set),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_rec is not universe polymorphic\nArguments forest_rec (A B)%_type_scope (P f f0)%_function_scope f\nforest_rec is transparent\nExpands to: Constant test.mutind.forest_rec\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "forest_rec :\nforall (A B : Type) (P : forest A B -> Set),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_rec is not universe polymorphic\nArguments forest_rec (A B)%_type_scope (P leaf cons)%_function_scope f\nforest_rec is transparent\nExpands to: Constant test.mutind.forest_rec\nDeclared in library test.mutind, line 1, characters 0-156"
       },
       {
         "kername": "test.mutind.forest_ind",
-        "about": "forest_ind :\nforall (A B : Type) (P : forest A B -> Prop),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_ind is not universe polymorphic\nArguments forest_ind (A B)%_type_scope (P f f0)%_function_scope f\nforest_ind is transparent\nExpands to: Constant test.mutind.forest_ind\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "forest_ind :\nforall (A B : Type) (P : forest A B -> Prop),\n(forall b : B, P (leaf b)) ->\n(forall (t : tree A B) (f : forest A B), P f -> P (cons t f)) ->\nforall f : forest A B, P f\n\nforest_ind is not universe polymorphic\nArguments forest_ind (A B)%_type_scope (P leaf cons)%_function_scope f\nforest_ind is transparent\nExpands to: Constant test.mutind.forest_ind\nDeclared in library test.mutind, line 1, characters 0-156"
       },
       {
         "kername": "test.mutind.tree_rec",
-        "about": "tree_rec :\nforall (A B : Type) (P : tree A B -> Set),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_rec is not universe polymorphic\nArguments tree_rec (A B)%_type_scope (P f)%_function_scope t\ntree_rec is transparent\nExpands to: Constant test.mutind.tree_rec\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "tree_rec :\nforall (A B : Type) (P : tree A B -> Set),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_rec is not universe polymorphic\nArguments tree_rec (A B)%_type_scope (P node)%_function_scope t\ntree_rec is transparent\nExpands to: Constant test.mutind.tree_rec\nDeclared in library test.mutind, line 1, characters 0-156"
       },
       {
         "kername": "test.mutind.tree_ind",
-        "about": "tree_ind :\nforall (A B : Type) (P : tree A B -> Prop),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_ind is not universe polymorphic\nArguments tree_ind (A B)%_type_scope (P f)%_function_scope t\ntree_ind is transparent\nExpands to: Constant test.mutind.tree_ind\nDeclared in library test.mutind, line 1, characters 0-156"
+        "about": "tree_ind :\nforall (A B : Type) (P : tree A B -> Prop),\n(forall (a : A) (f : forest A B), P (node a f)) -> forall t : tree A B, P t\n\ntree_ind is not universe polymorphic\nArguments tree_ind (A B)%_type_scope (P node)%_function_scope t\ntree_ind is transparent\nExpands to: Constant test.mutind.tree_ind\nDeclared in library test.mutind, line 1, characters 0-156"
       }
     ],
     "inductives": [

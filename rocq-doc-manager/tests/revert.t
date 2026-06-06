@@ -80,7 +80,7 @@
       "feedback_messages": [
         {
           "level": "notice",
-          "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
+          "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 187, characters 10-13"
         }
       ],
       "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} }
