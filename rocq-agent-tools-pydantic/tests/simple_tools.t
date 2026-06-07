@@ -49,7 +49,7 @@
   proof_script({})
   = ['idtac.', 'try reflexivity.', 'idtac.']
   insert_tactics({'text': ' simply broken.'})
-  = error='The reference simply was not found in the current environment.' result=(0, 'simply broken.', None)
+  = error='The reference simply was not found in the current environment. Did you mean\nimplb?' result=(0, 'simply broken.', None)
   proof_script({})
   = ['idtac.', 'try reflexivity.', 'idtac.']
   run_tactic({'tactic': 'split.'})
