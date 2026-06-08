@@ -55,7 +55,8 @@
   }
   [0] 3 > run 0 "Require Import Stdlib.ZArith.BinInk."
   Error: while processing the command.
-  Unable to locate library Stdlib.ZArith.BinInk.
+  Unable to locate library
+  Stdlib.ZArith.BinInk (while searching for a .vos file).
   {
     "error_loc": {
       "fname": [ "ToplevelInput" ],
@@ -78,7 +79,7 @@
           "bp": 15,
           "ep": 35
         },
-        "text": "Unable to locate library Stdlib.ZArith.BinInk."
+        "text": "Unable to locate library\nStdlib.ZArith.BinInk (while searching for a .vos file)."
       }
     ]
   }
@@ -142,7 +143,7 @@
     "feedback_messages": [
       {
         "level": "notice",
-        "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 178, characters 10-13"
+        "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 187, characters 10-13"
       },
       {
         "level": "notice",

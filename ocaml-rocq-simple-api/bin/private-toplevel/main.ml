@@ -234,7 +234,6 @@ let run _ ~opts:_ state =
   Flags.without_option Flags.in_ml_toplevel interact state
 
 let init_document opts injections =
-  Flags.load_vos_libraries := true;
   let (doc, sid) =
     let toplevel_name = opts.Coqargs.config.logic.toplevel_name in
     let doc_type = Stm.Interactive(toplevel_name) in

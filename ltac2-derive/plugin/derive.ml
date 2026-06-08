@@ -49,7 +49,7 @@ let derive : Attributes.vernac_flags -> Names.Id.t list ->
   in
   (* Collect the types. *)
   let ts : type_constant list =
-    let processed = ref Names.KNset.empty in
+    let processed = ref Names.KerName.Set.empty in
     let get_type q =
       let t =
         try Tac2env.locate_type q with Not_found ->
@@ -57,10 +57,10 @@ let derive : Attributes.vernac_flags -> Names.Id.t list ->
           Libnames.pr_qualid q ++ spc () ++
           str "does not correspond to a Ltac2 type.")
       in
-      if Names.KNset.mem t !processed then
+      if Names.KerName.Set.mem t !processed then
         CErrors.user_err Pp.(str "Ltac2 type" ++ spc () ++
           Names.KerName.print t ++ spc () ++ str "already specified.");
-      processed := Names.KNset.add t !processed;
+      processed := Names.KerName.Set.add t !processed;
       t
     in
     List.map get_type ts

@@ -9,7 +9,7 @@
   > DepsOfJSON weird.
   > EOF
 
-  $ coqc test.v
+  $ rocq compile test.v
   {
     "name": "Corelib.Init.Nat.add",
     "kind": "Def",

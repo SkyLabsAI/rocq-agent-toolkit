@@ -6,7 +6,7 @@
   > DepsOf nat.
   > EOF
 
-  $ coqc test.v
+  $ rocq compile test.v
   File "./test.v", line 2, characters 7-10:
   Error: This reference is not a constant, but an inductive.
   

@@ -9,7 +9,7 @@
   > DepsOf weird.
   > EOF
 
-  $ coqc test.v
+  $ rocq compile test.v
   Constants:
   Inductives:
   - Corelib.Init.Datatypes.nat

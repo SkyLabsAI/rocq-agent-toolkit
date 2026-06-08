@@ -107,7 +107,7 @@
   eq_refl is template universe polymorphic
   Arguments eq_refl {A}%_type_scope {x}, [_] _
   Expands to: Constructor Corelib.Init.Logic.eq_refl
-  Declared in library Corelib.Init.Logic, line 379, characters 4-11
+  Declared in library Corelib.Init.Logic, line 380, characters 4-11
   $ rocq-ed status test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.

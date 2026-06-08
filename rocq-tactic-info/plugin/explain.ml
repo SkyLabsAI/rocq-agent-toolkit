@@ -12,7 +12,7 @@ let goal_range_selector_json : Proofview.goal_range_selector -> json list =
   function
   | NthSelector i -> [ `Int i ]
   | RangeSelector (low, high) -> List.map (fun n -> `Int n) (seqn low high)
-  | IdSelector n -> [ `String (Names.Id.to_string n) ]
+  | IdSelector q -> [ `String (Libnames.string_of_qualid q) ]
 
 let goal_select_json : Goal_select.t -> json =
   let open Goal_select in

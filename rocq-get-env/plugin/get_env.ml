@@ -5,7 +5,7 @@ let is_prefix : Names.Id.t list -> Names.ModPath.t -> bool = fun pfx mp ->
   let rec decompose ids mp =
     match mp with
     | Names.MPbound(_)  -> None
-    | Names.MPdot(mp,l) -> decompose (Names.Label.to_id l :: ids) mp
+    | Names.MPdot(mp,l) -> decompose (l :: ids) mp
     | Names.MPfile(dp)  ->
         let dp = Names.DirPath.repr dp in
         Some(List.rev_append dp (List.rev ids))
@@ -96,7 +96,7 @@ let build_inductive : (Names.MutInd.t, Inductive.body, Inductive.t) maker =
     Pp.(string_of_ppcmds (hov 2 print))
   in
   let about =
-    List.init body.Declarations.mind_ntypes @@ fun i ->
+    List.init (Array.length body.Declarations.mind_packets) @@ fun i ->
     let q =
       let gr = Names.GlobRef.IndRef(m, i) in
       let q = Nametab.shortest_qualid_of_global Names.Id.Set.empty gr in
@@ -141,14 +141,8 @@ let build_data : Names.DirPath.t list -> Data.t = fun ds ->
     ) env []
   in
   let abbrevs =
-    let fold_abbrevs f acc =
-      let acc = ref acc in
-      let use = Notationextern.ParsingAndPrinting in
-      let f fp interp = acc := f fp interp !acc; false in
-      Abbreviation.toggle_abbreviations ~on:false ~use f;
-      !acc
-    in
-    fold_abbrevs (fun fp interp acc ->
+    Abbreviation.fold (fun _ interp acc ->
+      let fp = Abbreviation.full_path interp in
       let dp = List.rev (Names.DirPath.repr (Libnames.pop_dirpath (Libnames.dirpath_of_path fp))) in
       match List.exists (fun d -> is_dp_prefix d dp) ds || ds = [] with
       | false -> acc
