@@ -163,7 +163,8 @@ let insert_error ?(unchanged=false) remaining = {remaining; unchanged}
 
 let run_insert_keep_all d ~text =
   match Document.replace_suffix ~count:0 d ~text with
-  | exception Invalid_argument(s) -> Error(s, insert_error ~unchanged:true text)
+  | exception Invalid_argument(s) ->
+      Error(s, insert_error ~unchanged:true text)
   | (_sentences, Error(s, remaining)) ->
       Error(s, insert_error ~unchanged:true remaining)
   | (sentences, Ok(())) ->
@@ -176,12 +177,14 @@ let run_insert_keep_all d ~text =
   | Error(_, (nb_processed, Some(s, _))) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       Error(s, insert_error remaining)
-  | exception Invalid_argument(s) -> Error(s, insert_error (sentence_text sentences))
+  | exception Invalid_argument(s) ->
+      Error(s, insert_error (sentence_text sentences))
 
 let run_insert_keep_succeeding d ~text =
   let initial_suffix_len = List.length (Document.suffix d) in
   match Document.replace_suffix ~count:0 d ~text with
-  | exception Invalid_argument(s) -> Error(s, insert_error ~unchanged:true text)
+  | exception Invalid_argument(s) ->
+      Error(s, insert_error ~unchanged:true text)
   | (_sentences, Error(s, remaining)) ->
       Error(s, insert_error ~unchanged:true remaining)
   | (sentences, Ok(())) ->

@@ -9,14 +9,19 @@ type config = {
 
 let get_dune_root : unit -> string = fun () ->
   let cmd = "dune" in
-  (* TODO: We cannot suppress dune's output of the form "Entering directory [..]" despite specifying the flag here. *)
-  let args = ["exec"; "--no-print-directory"; "--"; "printenv"; "DUNE_SOURCEROOT"] in
+  (* TODO: We cannot suppress dune's output of the form "Entering directory
+     [..]" despite specifying the flag here. *)
+  let args =
+    ["exec"; "--no-print-directory"; "--"; "printenv"; "DUNE_SOURCEROOT"]
+  in
   let temp = Filename.temp_file "temp" ".cli" in
-  (* TODO: We also cannot suppress the dune output ending up in our own output despite specifying Null below. *)
+  (* TODO: We also cannot suppress the dune output ending up in our own output
+     despite specifying Null below. *)
   match Cmdutil.(run ~cmd ~stderr:Null ~stdout:(File(temp)) args) with
   | Error(_,s) ->
       Fileutil.remove_file temp;
-      panic "Error: cannot find DUNE_SOURCEROOT of (process %s)." (Sys.getcwd()) s
+      panic "Error: cannot find DUNE_SOURCEROOT of from directory %S \
+        (process %s)." (Sys.getcwd()) s
   | Ok(()) ->
   let lines = Fileutil.read_lines temp in
   Fileutil.remove_file temp;

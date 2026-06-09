@@ -63,10 +63,8 @@ let dune_config =
   Term.(const build $ no_build_deps $ jobs $ display)
 
 let daemonize =
-    let doc =
-      "Indicates whether the `rocq-ed init` runs as a daemon"
-    in
-    Arg.(value & opt bool true & info ["d"; "daemonize"] ~doc ~docv:"DAEMONIZE")
+  let doc = "Indicates whether the `rocq-ed init` runs as a daemon" in
+  Arg.(value & opt bool true & info ["d"; "daemonize"] ~doc ~docv:"DAEMONIZE")
 
 let init_cmd =
   let doc =
@@ -74,7 +72,9 @@ let init_cmd =
      when a session for a given source file is running, no other session can \
      be started on the same file."
   in
-  let term = Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file) in
+  let term =
+    Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file)
+  in
   Cmd.(make (info "init" ~version ~doc) term)
 
 let stop_cmd =
@@ -100,34 +100,27 @@ let print_goals =
 
 let print_context =
   let doc =
-    "Print $(docv) lines of context around the cursor after successfully running \
-     the command. If $(b,--print-context) is given without a value, $(docv) \
-     defaults to 5."
+    "Print $(docv) lines of context around the cursor after successfully \
+     running the command. If $(b,--print-context) is given without a value, \
+     $(docv) defaults to 5."
   in
   Arg.(value & opt ~vopt:(Some 5) (some int) None &
        info ["print-context"] ~docv:"NUM" ~doc)
 
-let print_after ~context ~goals rocq_file =
-  let printed_context =
-    match context with
-    | None -> false
-    | Some(context) ->
-        let Ok(status) =
-          Protocol.client_request rocq_file Request.(Status({context=Some(context)}))
-        in
-        Printf.printf "%s%!" status;
-        true
+let with_print_after : (string -> unit) -> int option -> bool -> string ->
+    unit = fun f context goals rocq_file ->
+  f rocq_file;
+  let print_context _ =
+    let req = Request.(Status({context})) in
+    let Ok(status) = Protocol.client_request rocq_file req in
+    Printf.printf "%s%!" status
   in
+  Option.iter print_context context;
   if goals then begin
-    if printed_context then Printf.printf "\n%!";
+    if context <> None then Printf.printf "\n%!";
     let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
     Printf.printf "%s%!" goals
   end
-
-let with_print_after : (string -> unit) -> int option -> bool -> string -> unit =
-    fun f context goals rocq_file ->
-  f rocq_file;
-  print_after ~context ~goals rocq_file
 
 let status_cmd =
   let doc =
@@ -161,7 +154,8 @@ let step_count =
      is equal to 1 by default). Use $(b,all) to step all the way to the end \
      of the file."
   in
-  Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv:"NUM|all")
+  let docv = "NUM|all" in
+  Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv)
 
 let steps_cmd =
   let doc =
@@ -172,14 +166,14 @@ let steps_cmd =
   in
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
+    | Error(s, i) -> panic "Failed after processing %i items.\nError: %s." i s
     | Ok(real_count) ->
-      begin match count with
-      | Some(count) when real_count < count ->
-        Printf.printf "Warning: Only %i < %i steps were executed before reaching the end of the file.\n\n" real_count count
-      | None | Some(_) -> ()
-      end
-    | Error(s, i) ->
-        panic "Failed after processing %i items.\nError: %s." i s
+    let check_count count =
+      if real_count < count then
+        Printf.printf "Warning: Only %i < %i steps were executed before \
+          reaching the end of the file.\n\n" real_count count
+    in
+    Option.iter check_count count
   in
   let term =
     Term.(const with_print_after $ (const run $ step_count) $
@@ -213,23 +207,25 @@ let insert_keep =
 let insert_cmd =
   let doc =
     "Insert the given chunk of Rocq code in the document, at the cursor. The \
-     insertion is atomic by default: if any inserted item cannot be processed, \
-     no inserted item is kept. The $(b,--keep) option controls what remains \
-     after such failures. The command will return a non-zero exit code if any \
-     of the insert code cannot be processed."
+     insertion is atomic by default: if any inserted item cannot be \
+     processed, no inserted item is kept. The $(b,--keep) option controls \
+     what remains after such failures. The command will return a non-zero \
+     exit code if any of the insert code cannot be processed."
   in
   let run keep text rocq_file =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
-    match Protocol.client_request rocq_file Request.(Insert({text; keep})) with
+    let req = Request.(Insert({text; keep})) in
+    match Protocol.client_request rocq_file req with
     | Ok(()) -> ()
     | Error(s, Request.{remaining; unchanged}) ->
         let unchanged =
           if unchanged then "\nThe document is unchanged." else ""
         in
-        panic "Error: could not process suffix %S.\n%s%s" remaining s unchanged
+        panic "Error: could not process suffix %S.\n%s%s"
+          remaining s unchanged
   in
   let term =
     Term.(const with_print_after $ (const run $ insert_keep $ command_text) $
@@ -247,9 +243,9 @@ let query_text =
 let query_cmd =
   let doc =
     "Executes the given Rocq query at the current cursor $(b,without) \
-     inserting the query it into the document. Prints the resulting $(b,info) \
-     and $(b,notice) feedback to standard output. \
-     WARNING: Do not use with tactics or side-effecting commands."
+     inserting the query it into the document. Prints the resulting \
+     $(b,info) and $(b,notice) feedback to standard output. WARNING: Do not \
+     use with tactics or side-effecting commands."
   in
   let run text rocq_file =
     let text =

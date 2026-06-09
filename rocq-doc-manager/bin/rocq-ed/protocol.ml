@@ -65,7 +65,8 @@ let clean_data_dir : data_dir:string -> unit = fun ~data_dir ->
   go @@ files_in_dir data_dir
 
 
-let init : bool -> Dune_util.config -> Filepath.t -> unit = fun daemon config rocq_file ->
+let init : bool -> Dune_util.config -> Filepath.t -> unit =
+    fun daemon config rocq_file ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Changing the working directory to the file's directory. *)
@@ -185,7 +186,8 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
 let stop : Filepath.t -> unit = fun rocq_file ->
   let data_dir = data_dir_of_filename rocq_file in
   if not @@ is_session_active ~data_dir && Sys.file_exists data_dir then begin
-    wrn "Warning: No session active. Clearning up stale directory %s" data_dir;
+    wrn "Warning: No session active. Clearning up stale directory %s"
+      data_dir;
     clean_data_dir ~data_dir;
     Unix.rmdir data_dir
   end
