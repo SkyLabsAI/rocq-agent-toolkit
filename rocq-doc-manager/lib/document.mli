@@ -102,7 +102,7 @@ val whitespace_required : t -> bool
     in case of error gives an error message and the leftover text. The text is
     assumed to be insertable at the cursor, without interference with previous
     (non-ghost) commands, so it should start with blanks as appropriate. If it
-    is not the case, a corresponding [Error] is returned. *)
+    is not the case, [Invalid_argument] is raised. *)
 val split_sentences : t -> text:string
   -> sentence list * (unit, string * string) result
 
