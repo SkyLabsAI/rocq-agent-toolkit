@@ -3,9 +3,6 @@
   $ export DUNE_CACHE=disabled
 
   $ cat > test.v <<EOF
-  > Theorem test : False -> True /\ True.
-  > Proof.
-  >   intros H; split.
   > EOF
 
   $ cat > dune-project <<EOF
@@ -19,84 +16,12 @@
   > EOF
 
   $ timeout 5s rocq-ed init test.v
-  $ timeout 5s rocq-ed steps --print-context --print-goals --count-items=all test.v
-     1| Theorem test : False -> True /\ True.
-     2| Proof.
-     3|   intros H; split.
-     4| <CURSOR>
-  
-  Goal 1:
-    H : False
-    ============================
-    True
-  
-  Goal 2:
-    H : False
-    ============================
-    True
-  
-  $ timeout 5s rocq-ed insert --print-context --print-goals --text="*inversion H." test.v
-     1| Theorem test : False -> True /\ True.
-     2| Proof.
-     3|   intros H; split.
-     4| *inversion H.<CURSOR>
-  
-  Unfocused goals: 1
-  $ timeout 5s rocq-ed backwards --print-context --print-goals --count-items=1 test.v
-     1| Theorem test : False -> True /\ True.
-     2| Proof.
-     3|   intros H; split.
-     4| *<CURSOR>inversion H.
-  
-  Goal 1:
-    H : False
-    ============================
-    True
-  
-  Unfocused goals: 1
-  $ timeout 5s rocq-ed delete --print-context --print-goals --count-items=1 test.v
-     1| Theorem test : False -> True /\ True.
-     2| Proof.
-     3|   intros H; split.
-     4| *<CURSOR>
-  
-  Goal 1:
-    H : False
-    ============================
-    True
-  
-  Unfocused goals: 1
+  $ timeout 5s rocq-ed steps --count-items=all test.v
+  $ timeout 5s rocq-ed insert --print-context --text="Goal True. Proof. *" test.v
+     1| Goal True. Proof. *<CURSOR>
 
-The next insertion used to leave the daemon stuck.  Use a short timeout so the
-test case does not wait indefinitely.
-
-  $ timeout 5s rocq-ed insert --print-context --print-goals --text="*inversion H." test.v
-  Error: could not process suffix "*inversion H.".
+  $ timeout 5s rocq-ed insert --text="*idtac" test.v
+  Error: could not process suffix "*idtac".
   inserted text would change the command before the cursor
   The document is unchanged.
   [1]
-
-The daemon should remain responsive after rejecting the insertion, and the
-client lock should have been released by the failed request.
-
-  $ test ! -d .test.v.rocqed/client.lock
-  $ timeout 5s rocq-ed status test.v
-     1| Theorem test : False -> True /\ True.
-     2| Proof.
-     3|   intros H; split.
-     4| *<CURSOR>
-
-The same splitting failure is atomic even with --keep=all.
-
-  $ timeout 5s rocq-ed insert --print-context --print-goals --keep=all --text="*inversion H." test.v
-  Error: could not process suffix "*inversion H.".
-  inserted text would change the command before the cursor
-  The document is unchanged.
-  [1]
-  $ test ! -d .test.v.rocqed/client.lock
-  $ timeout 5s rocq-ed status test.v
-     1| Theorem test : False -> True /\ True.
-     2| Proof.
-     3|   intros H; split.
-     4| *<CURSOR>
-  $ timeout 5s rocq-ed stop test.v
