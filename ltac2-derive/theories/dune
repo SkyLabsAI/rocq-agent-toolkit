@@ -1,5 +1,6 @@
 (rocq.theory
  (name skylabs_ai.ltac2_derive)
  (package ltac2-derive)
+ (generate_project_file)
  (plugins ltac2-derive.plugin)
  (theories Ltac2))

@@ -1,5 +1,6 @@
 (rocq.theory
  (name skylabs.tactic_info)
  (package rocq-tactic-info)
+ (generate_project_file)
  (plugins rocq-tactic-info.plugin)
  (theories Ltac2))
