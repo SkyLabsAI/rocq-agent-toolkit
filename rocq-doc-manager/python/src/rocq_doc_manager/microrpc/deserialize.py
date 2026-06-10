@@ -27,8 +27,6 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
 
-# TODO: Maybe we could simply derive this entire file using pydantic serialization?
-
 
 class TypeMismatch(Exception):
     pass
