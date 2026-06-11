@@ -21,7 +21,7 @@
   > EOF
 
   $ rocq-ed init test.v
-  $ rocq-ed steps --count=7 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items=7 test.v
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
      3| Proof.
@@ -39,7 +39,7 @@
      3| Proof.
      4|   intros n.<CURSOR>
      5|   (* TODO: implement this *)
-  $ rocq-ed delete --count=1 test.v
+  $ rocq-ed delete --print-context --print-goals --count-items=1 test.v
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
      3| Proof.
@@ -50,11 +50,12 @@
     ============================
     S n + n = S (n + n)
   
-  $ rocq-ed insert --text="reflexivity. Qed." test.v
+  $ rocq-ed insert --print-context --print-goals --text="reflexivity. Qed." test.v
   Error: could not process suffix "reflexivity. Qed.".
   leading blanks required at this point in the document
+  The document is unchanged.
   [1]
-  $ rocq-ed insert --text=" reflexivity. Qed." test.v
+  $ rocq-ed insert --print-context --print-goals --text=" reflexivity. Qed." test.v
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
      3| Proof.

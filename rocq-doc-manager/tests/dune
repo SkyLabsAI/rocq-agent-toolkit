@@ -5,4 +5,5 @@
   (package rocq-core)
   (package rocq-stdlib)
   (package rocq-doc-manager)
+  (package rocq-fake-repl)
   (package rocq-term-deps)))

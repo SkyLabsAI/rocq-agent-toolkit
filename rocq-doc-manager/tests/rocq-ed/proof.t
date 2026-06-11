@@ -21,7 +21,7 @@
   $ rocq-ed init test.v
   $ rocq-ed goals test.v
   Not currently in a proof.
-  $ rocq-ed steps --count 3 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 3 test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
      3| Admitted.
@@ -39,7 +39,12 @@
     ============================
     forall x : nat, True /\ x = x
   
-  $ rocq-ed insert --text $'\n  intros x; split.' test.v
+  $ rocq-ed steps --print-goals --count-items 0 test.v
+  Goal 1:
+    ============================
+    forall x : nat, True /\ x = x
+  
+  $ rocq-ed insert --print-context --print-goals --text $'\n  intros x; split.' test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.<CURSOR>
@@ -71,17 +76,17 @@
     ============================
     x = x
   
-  $ rocq-ed insert --text $'\n  - fail.\n  -' test.v
+  $ rocq-ed insert --print-context --print-goals --text $'\n  - fail.\n  -' test.v
   Error: could not process suffix "fail.\n  -".
   Tactic failure.
+  The document is unchanged.
   [1]
   $ rocq-ed status test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
-     3|   intros x; split.
-     4|   - <CURSOR>
-     5| Admitted.
-  $ rocq-ed insert --text $'constructor.\n  - ' test.v
+     3|   intros x; split.<CURSOR>
+     4| Admitted.
+  $ rocq-ed insert --print-context --print-goals --text $'\n  - constructor.\n  - ' test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.
@@ -123,7 +128,7 @@
     ============================
     x = x
   <NEWLINE>
-  $ rocq-ed insert --text "reflexivity." test.v
+  $ rocq-ed insert --print-context --print-goals --text "reflexivity." test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.
@@ -138,7 +143,7 @@
      4|   - constructor.
      5|   - reflexivity.<CURSOR>
      6| Admitted.
-  $ rocq-ed steps --count 2 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 2 test.v
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.
@@ -166,7 +171,7 @@
     - constructor.
     - reflexivity.
   Admitted.
-  $ rocq-ed insert --text $'\n\nGoal True /\ True.\nProof.\n  split.' test.v
+  $ rocq-ed insert --print-context --print-goals --text $'\n\nGoal True /\ True.\nProof.\n  split.' test.v
      5|   - reflexivity.
      6| Admitted.
      7| 
@@ -182,7 +187,7 @@
     ============================
     True
   
-  $ rocq-ed insert --text $' 1: shelve.' test.v
+  $ rocq-ed insert --print-context --print-goals --text $' 1: shelve.' test.v
      5|   - reflexivity.
      6| Admitted.
      7| 
@@ -208,4 +213,13 @@
     True
   
   Shelved goals: 1
+  $ rocq-ed insert --print-context --print-goals --keep=all --text $'\n  fail.' test.v
+  Error: could not process suffix "fail.".
+  Tactic failure.
+  [1]
+  $ rocq-ed status --context-lines 3 test.v
+     8| Goal True /\ True.
+     9| Proof.
+    10|   split. 1: shelve.
+    11|   <CURSOR>fail.
   $ rocq-ed stop test.v

@@ -2,16 +2,23 @@ open Stdlib_extra.Extra
 
 type empty = |
 
+type insert_keep = Atomic | SuccessfulPrefix | All
+
+type insert_error = {
+  remaining : string;
+  unchanged : bool;
+}
+
 type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
-  | Steps : {count : int} -> (int, int) t
-  | Insert : {text : string} -> (unit, string) t
+  | Steps : {count : int option} -> (int, int) t
+  | Insert : {text : string; keep : insert_keep} -> (unit, insert_error) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
   | Commit : (unit, unit) t
   | Goals : (string, empty) t
-  | Undo : {count : int} -> (unit, unit) t
+  | Backwards : {count : int} -> (unit, unit) t
   | Goto : {line: int; col: int option} -> (unit, int) t
 
 let is_stop : type a b. (a, b) t -> bool = fun r ->
@@ -25,10 +32,18 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Status({context = None})"
   | Status({context = Some(i)}) ->
       Format.fprintf ff "Status({context = %i})" i
-  | Steps({count}) ->
+  | Steps({count = None}) ->
+      Format.fprintf ff "Steps({count = all})"
+  | Steps({count = Some(count)}) ->
       Format.fprintf ff "Steps({count = %i})" count
-  | Insert({text}) ->
-      Format.fprintf ff "Insert({text = %S})" text
+  | Insert({text; keep}) ->
+      let pp_keep ff keep =
+        match keep with
+        | Atomic     -> Format.fprintf ff "Atomic"
+        | SuccessfulPrefix -> Format.fprintf ff "SuccessfulPrefix"
+        | All        -> Format.fprintf ff "All"
+      in
+      Format.fprintf ff "Insert({text = %S; keep = %a})" text pp_keep keep
   | Query({text}) ->
       Format.fprintf ff "Query({text = %S})" text
   | Delete({count}) ->
@@ -37,8 +52,8 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Commit"
   | Goals ->
       Format.fprintf ff "Goals"
-  | Undo({count}) ->
-      Format.fprintf ff "Undo({count = %i})" count
+  | Backwards({count}) ->
+      Format.fprintf ff "Backwards({count = %i})" count
   | Goto({line; col = None}) ->
       Format.fprintf ff "Goto({line = %i; col = None})" line
   | Goto({line; col = Some(col)}) ->
@@ -130,7 +145,9 @@ let run_steps d ~count =
   let suffix = Document.suffix d in
   let count =
     let len = List.length suffix in
-    if count < len then count else len
+    match count with
+    | None        -> len
+    | Some(count) -> if count < len then count else len
   in
   match Document.run_steps d ~count with
   | Ok(()) -> Ok(count)
@@ -138,45 +155,77 @@ let run_steps d ~count =
   | Error(_, (i, Some(s, _))) -> Error(s, i)
   | exception Invalid_argument(s) -> Error(s, 0)
 
-let run_insert d ~text =
-  match Document.split_sentences d ~text with
-  | exception Invalid_argument(s) -> Error(s, text)
-  | (sentences, res) ->
-  let rec run_sentences (sentences : Document.sentence list) =
-    match sentences with
-    | [] -> ([], None)
-    | Document.{kind; text} as s :: sentences ->
-    let err =
-      match kind with
-      | `Blanks ->
-          begin
-            try Document.insert_blanks d ~text; None with
-            | Invalid_argument(s) -> Some(s)
-          end
-      | `Command(_) ->
-          begin
-            match Document.insert_command d ~text with
-            | Ok(_) -> None
-            | Error(s, _) -> Some(s)
-            | exception Invalid_argument(s) -> Some(s)
-          end
-    in
-    match err with
-    | None -> run_sentences sentences
-    | _ -> (s :: sentences, err)
+let sentence_text (sentences : Document.sentence list) =
+  let get_text (s : Document.sentence) = s.Document.text in
+  String.concat "" (List.map get_text sentences)
+
+let insert_error ?(unchanged=false) remaining = {remaining; unchanged}
+
+let run_insert_keep_all d ~text =
+  match Document.replace_suffix ~count:0 d ~text with
+  | exception Invalid_argument(s) ->
+      Error(s, insert_error ~unchanged:true text)
+  | (_sentences, Error(s, remaining)) ->
+      Error(s, insert_error ~unchanged:true remaining)
+  | (sentences, Ok(())) ->
+  let count = List.length sentences in
+  match Document.run_steps d ~count with
+  | Ok(()) -> Ok(())
+  | Error(s, (nb_processed, None)) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      Error(s, insert_error remaining)
+  | Error(_, (nb_processed, Some(s, _))) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      Error(s, insert_error remaining)
+  | exception Invalid_argument(s) ->
+      Error(s, insert_error (sentence_text sentences))
+
+let run_insert_keep_succeeding d ~text =
+  let initial_suffix_len = List.length (Document.suffix d) in
+  match Document.replace_suffix ~count:0 d ~text with
+  | exception Invalid_argument(s) ->
+      Error(s, insert_error ~unchanged:true text)
+  | (_sentences, Error(s, remaining)) ->
+      Error(s, insert_error ~unchanged:true remaining)
+  | (sentences, Ok(())) ->
+  let count = List.length sentences in
+  let discard_inserted_suffix () =
+    (* Keep the original suffix, but drop any inserted items that are still
+       unprocessed. Depending on where processing failed, the failing item may
+       or may not still be at the head of the suffix. *)
+    let suffix_len = List.length (Document.suffix d) in
+    let count = max 0 (suffix_len - initial_suffix_len) in
+    Document.clear_suffix ~count d
   in
-  let get_text (d : Document.sentence) = d.Document.text in
-  match (run_sentences sentences, res) with
-  | ((_, None), Ok(())) -> Ok(())
-  | ((_, None), Error(s, remaining)) -> Error(s, remaining)
-  | ((sentences, Some(s)), Ok(())) ->
-      let remaining = List.map get_text sentences in
-      let remaining = String.concat "" remaining in
-      Error(s, remaining)
-  | ((sentences, Some(s)), Error(_, remaining)) ->
-      let remaining = List.map get_text sentences @ [remaining] in
-      let remaining = String.concat "" remaining in
-      Error(s, remaining)
+  match Document.run_steps d ~count with
+  | Ok(()) -> Ok(())
+  | Error(s, (nb_processed, None)) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      let unchanged = nb_processed = 0 in
+      discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
+  | Error(_, (nb_processed, Some(s, _))) ->
+      let remaining = sentence_text (List.drop nb_processed sentences) in
+      let unchanged = nb_processed = 0 in
+      discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
+  | exception Invalid_argument(s) ->
+      discard_inserted_suffix ();
+      Error(s, insert_error ~unchanged:true (sentence_text sentences))
+
+let run_insert_keep_atomic d ~text =
+  let backup = Document.clone d in
+  let rollback () = Document.copy_contents ~from:backup d in
+  let finish res = Document.stop backup; res in
+  match run_insert_keep_all d ~text with
+  | Ok(()) as res -> finish res
+  | Error(s, e) ->
+      rollback (); finish (Error(s, {e with unchanged = true}))
+  | exception e -> rollback (); Document.stop backup; raise e
+
+let run_insert d ~text ~keep =
+  match keep with
+  | Atomic     -> run_insert_keep_atomic d ~text
+  | SuccessfulPrefix -> run_insert_keep_succeeding d ~text
+  | All        -> run_insert_keep_all d ~text
 
 let run_query d ~text =
   let text = String.trim text in
@@ -217,13 +266,16 @@ let run_goals d =
   print "Unfocused goals" unfocused_goals;
   Ok(Buffer.contents b)
 
-let run_undo d ~count =
-  let cursor_index = Document.cursor_index d in
-  let index = cursor_index - count in
-  if index < 0 then
-    Error("invalid count (not enough items to undo)", ())
+let run_backwards d ~count =
+  if count < 0 then
+    Error("negative count", ())
   else
-    Ok(Document.revert_before d ~index)
+    let cursor_index = Document.cursor_index d in
+    let index = cursor_index - count in
+    if index < 0 then
+      Error("invalid count (not enough items to move backwards)", ())
+    else
+      Ok(Document.revert_before d ~index)
 
 let run_goto d ~line ~col =
   assert (line > 0 && Stdlib.Option.value ~default:1 col > 0);
@@ -316,10 +368,10 @@ let run : type a b. Document.t -> (a, b) t ->
   | Stop              -> Ok(())
   | Status({context}) -> run_status d ~context
   | Steps({count})    -> run_steps d ~count
-  | Insert({text})    -> run_insert d ~text
+  | Insert({text; keep}) -> run_insert d ~text ~keep
   | Query({text})     -> run_query d ~text
   | Delete({count})   -> run_delete d ~count
   | Commit            -> run_commit d
   | Goals             -> run_goals d
-  | Undo({count})     -> run_undo d ~count
+  | Backwards({count}) -> run_backwards d ~count
   | Goto({line; col}) -> run_goto d ~line ~col

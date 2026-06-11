@@ -438,15 +438,18 @@ let split_sentences : t -> text:string ->
         let len = len + String.length s.text in
         let rev_acc = {kind = s.kind; text = s.text} :: rev_acc in
         to_sentences len rev_acc sentences
-    | s :: sentences                         ->
-        (* Sentence containing the cursor, must be blanks, split it. *)
-        assert (s.kind = `Blanks);
+    | s :: sentences when s.kind = `Blanks   ->
+        (* A blanks sentence contains the cursor, split it. *)
         let diff = cursor_off - s.bp in
         let added_len = String.length s.text - diff in
         let text = String.sub s.text diff added_len in
         let len = len + added_len in
         let rev_acc = {kind = `Blanks; text} :: rev_acc in
         to_sentences len rev_acc sentences
+    | _ :: _                                 ->
+        (* Merged commands, for example when inserting ["*"] at a cursor after
+           a bullet command ["*"], which would yield bullet ["**"]. *)
+        invalid_arg "inserted text would change the command before the cursor"
   in
   let (len, sentences) = to_sentences 0 [] sentences in
   let res =

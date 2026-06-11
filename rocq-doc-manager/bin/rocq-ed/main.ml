@@ -63,10 +63,8 @@ let dune_config =
   Term.(const build $ no_build_deps $ jobs $ display)
 
 let daemonize =
-    let doc =
-      "Indicates whether the `rocq-ed init` runs as a daemon"
-    in
-    Arg.(value & opt bool true & info ["d"; "daemonize"] ~doc ~docv:"DAEMONIZE")
+  let doc = "Indicates whether the `rocq-ed init` runs as a daemon" in
+  Arg.(value & opt bool true & info ["d"; "daemonize"] ~doc ~docv:"DAEMONIZE")
 
 let init_cmd =
   let doc =
@@ -74,7 +72,9 @@ let init_cmd =
      when a session for a given source file is running, no other session can \
      be started on the same file."
   in
-  let term = Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file) in
+  let term =
+    Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file)
+  in
   Cmd.(make (info "init" ~version ~doc) term)
 
 let stop_cmd =
@@ -89,16 +89,38 @@ let context_lines =
     "Print $(docv) lines of context before and after the cursor instead of \
      printing the whole Rocq document."
   in
-  Arg.(value & opt (some int) (Some 5) & info ["C"; "context"] ~doc ~docv:"NUM")
+  Arg.(value & opt (some int) (Some 5) &
+    info ["C"; "context-lines"] ~doc ~docv:"NUM")
 
-let auto_print rocq_file =
-  let Ok(status) = Protocol.client_request rocq_file Request.(Status({context=Some(5)})) in
-  let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
-  Printf.printf("%s\n%s%!") status goals
+let print_goals =
+  let doc =
+    "Print the current proof goals after successfully running the command."
+  in
+  Arg.(value & flag & info ["print-goals"] ~doc)
 
-let with_auto_print : (string -> unit) -> (string -> unit) = fun f rocq_file ->
+let print_context =
+  let doc =
+    "Print $(docv) lines of context around the cursor after successfully \
+     running the command. If $(b,--print-context) is given without a value, \
+     $(docv) defaults to 5."
+  in
+  Arg.(value & opt ~vopt:(Some 5) (some int) None &
+       info ["print-context"] ~docv:"NUM" ~doc)
+
+let with_print_after : (string -> unit) -> int option -> bool -> string ->
+    unit = fun f context goals rocq_file ->
   f rocq_file;
-  auto_print rocq_file
+  let print_context _ =
+    let req = Request.(Status({context})) in
+    let Ok(status) = Protocol.client_request rocq_file req in
+    Printf.printf "%s%!" status
+  in
+  Option.iter print_context context;
+  if goals then begin
+    if context <> None then Printf.printf "\n%!";
+    let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
+    Printf.printf "%s%!" goals
+  end
 
 let status_cmd =
   let doc =
@@ -113,26 +135,50 @@ let status_cmd =
   Cmd.(make (info "status" ~version ~doc) term)
 
 let step_count =
-  let doc =
-    "Indicates the number of steps $(docv) that should be run (it is equal \
-     to 1 by default)."
+  let count =
+    let parse = function
+      | "all" -> Ok(None)
+      | s ->
+      match int_of_string_opt s with
+      | Some(i) -> Ok(Some(i))
+      | None -> Error(`Msg("expected an integer or \"all\""))
+    in
+    let print ff = function
+      | None    -> Format.fprintf ff "all"
+      | Some(i) -> Format.fprintf ff "%i" i
+    in
+    Arg.conv (parse, print)
   in
-  Arg.(value & opt int 1 & info ["n"; "count"] ~doc ~docv:"NUM")
+  let doc =
+    "Indicates the number of items $(docv) that should be stepped over (it \
+     is equal to 1 by default). Use $(b,all) to step all the way to the end \
+     of the file."
+  in
+  let docv = "NUM|all" in
+  Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv)
 
 let steps_cmd =
   let doc =
     "Step over the given number of document items (commands or blanks) in \
-     the Rocq document."
+     the Rocq document. The command can return a non-zero exit code if one \
+     of the items cannot be  processed successfully. In that case, the \
+     cursor is moved to just before the failing item."
   in
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
+    | Error(s, i) -> panic "Failed after processing %i items.\nError: %s." i s
     | Ok(real_count) ->
+    let check_count count =
       if real_count < count then
-        Printf.printf "Warning: Only %i < %i steps were executed before reaching the end of the file.\n\n" real_count count
-    | Error(s, i) ->
-        panic "Failed after processing %i items.\nError: %s." i s
+        Printf.printf "Warning: Only %i < %i steps were executed before \
+          reaching the end of the file.\n\n" real_count count
+    in
+    Option.iter check_count count
   in
-  let term = Term.(map with_auto_print (const run $ step_count) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ step_count) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "steps" ~version ~doc) term)
 
 let command_text =
@@ -142,34 +188,64 @@ let command_text =
   in
   Arg.(value & opt (some string) None & info ["t"; "text"] ~doc ~docv:"TEXT")
 
+let insert_keep =
+  let keep =
+    Arg.enum [
+      ("atomic", Request.Atomic);
+      ("successful", Request.SuccessfulPrefix);
+      ("all", Request.All);
+    ]
+  in
+  let doc =
+    "Controls which inserted items are kept if processing fails: \
+     $(b,atomic) rolls back the whole insertion, $(b,successful) keeps only \
+     the items processed successfully, and $(b,all) keeps all inserted items \
+     even if some cannot be processed."
+  in
+  Arg.(value & opt keep Request.Atomic & info ["keep"] ~doc ~docv:"MODE")
+
 let insert_cmd =
   let doc =
     "Insert the given chunk of Rocq code in the document, at the cursor. The \
-     cursor is advanced past the inserted chunk."
+     insertion is atomic by default: if any inserted item cannot be \
+     processed, no inserted item is kept. The $(b,--keep) option controls \
+     what remains after such failures. The command will return a non-zero \
+     exit code if any of the insert code cannot be processed."
   in
-  let run text rocq_file =
+  let run keep text rocq_file =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
-    match Protocol.client_request rocq_file Request.(Insert({text})) with
+    let req = Request.(Insert({text; keep})) in
+    match Protocol.client_request rocq_file req with
     | Ok(()) -> ()
-    | Error(s, left) -> panic "Error: could not process suffix %S.\n%s" left s
+    | Error(s, Request.{remaining; unchanged}) ->
+        let unchanged =
+          if unchanged then "\nThe document is unchanged." else ""
+        in
+        panic "Error: could not process suffix %S.\n%s%s"
+          remaining s unchanged
   in
-  let term = Term.(map with_auto_print (const run $ command_text) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ insert_keep $ command_text) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "insert" ~version ~doc) term)
 
 let query_text =
   let doc =
-    "Specifies the Rocq query to be run at the cursor."
+    "Specifies the Rocq query to be run at the cursor. Must be exactly one \
+     command."
   in
   Arg.(value & opt (some string) None & info ["t"; "text"] ~doc ~docv:"TEXT")
 
 let query_cmd =
   let doc =
     "Executes the given Rocq query at the current cursor $(b,without) \
-     inserting the query it into the document. Prints the resulting $(b,info) \
-     and $(b,notice) feedback to standard output."
+     inserting the query it into the document. Prints the resulting \
+     $(b,info) and $(b,notice) feedback to standard output. WARNING: Do not \
+     use with tactics or side-effecting commands."
   in
   let run text rocq_file =
     let text =
@@ -188,7 +264,7 @@ let deleted_item_count =
     "Indicates the number of items $(docv) that should be deleted after the \
      cursor (it is equal to 1 by default)."
   in
-  Arg.(value & opt int 1 & info ["n"; "count"] ~doc ~docv:"NUM")
+  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
 
 let delete_cmd =
   let doc =
@@ -200,7 +276,10 @@ let delete_cmd =
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(map with_auto_print (const run $ deleted_item_count) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ deleted_item_count) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "delete" ~version ~doc) term)
 
 let commit_cmd =
@@ -227,25 +306,28 @@ let goals_cmd =
   let term = Term.(const run $ rocq_file) in
   Cmd.(make (info "goals" ~version ~doc) term)
 
-let undo_count =
+let backwards_count =
   let doc =
-    "Indicates the number of steps $(docv) that should be undone (it is \
-     equal to 1 by default)."
+    "Indicates the number of items $(docv) that the cursor should move \
+     backwards (it is equal to 1 by default)."
   in
-  Arg.(value & opt int 1 & info ["n"; "count"] ~doc ~docv:"NUM")
+  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
 
-let undo_cmd =
+let backwards_cmd =
   let doc =
-    "Rolls back the cursor by the given number of document items (commands \
-     or blanks) in the Rocq document."
+    "Moves the cursor backwards by the given number of document items \
+     (commands or blanks) in the Rocq document."
   in
   let run count rocq_file =
-    match Protocol.client_request rocq_file Request.(Undo({count})) with
+    match Protocol.client_request rocq_file Request.(Backwards({count})) with
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(map with_auto_print (const run $ undo_count) $ rocq_file) in
-  Cmd.(make (info "undo" ~version ~doc) term)
+  let term =
+    Term.(const with_print_after $ (const run $ backwards_count) $
+          print_context $ print_goals $ rocq_file)
+  in
+  Cmd.(make (info "backwards" ~version ~doc) term)
 
 let goto_pos =
   let position =
@@ -283,8 +365,8 @@ let goto_pos =
     Arg.conv (parse, print)
   in
   let doc = "Specifies the target position as $(docv)." in
-  Arg.(required & opt (some position) None & 
-    info ["p"; "pos"] ~doc ~docv:"LINE[:COLUMN]")
+  Arg.(required & opt (some position) None &
+    info ["p"; "position-line-column"] ~doc ~docv:"LINE[:COLUMN]")
 
 let goto_cmd =
   let doc =
@@ -296,7 +378,10 @@ let goto_cmd =
     | Ok(()) -> ()
     | Error(s, i) -> panic "Error: %s.\nThe cursor is now at index %i." s i
   in
-  let term = Term.(map with_auto_print (const run $ goto_pos) $ rocq_file) in
+  let term =
+    Term.(const with_print_after $ (const run $ goto_pos) $
+          print_context $ print_goals $ rocq_file)
+  in
   Cmd.(make (info "goto" ~version ~doc) term)
 
 let main_man = [
@@ -320,11 +405,11 @@ let main_man = [
       $(i,suffix) holds items that belong to the document but have not yet \
       been processed. Most operations either advance the cursor forward \
       through the suffix (such as $(b,steps) and $(b,goto)) or move it \
-      backward into the prefix (such as $(b,undo)).";
+      backward into the prefix (such as $(b,backwards)).";
   `P "Editing then proceeds by combining cursor movements with \
-      $(b,rocq-ed insert), which adds new items at the cursor and steps \
-      over them, and $(b,rocq-ed delete), which removes items from the \
-      suffix. The current contents of the document, with the cursor \
+      $(b,rocq-ed insert), which adds new items at the cursor and attempts \
+      to step over them, and $(b,rocq-ed delete), which removes items from \
+      the suffix. The current contents of the document, with the cursor \
       displayed as $(b,<CURSOR>), can be inspected at any time with \
       $(b,rocq-ed status). The final state can be written back to disk \
       with $(b,rocq-ed commit). On $(b,rocq-ed init), the document is \
@@ -344,13 +429,18 @@ let main_man = [
       is needed.";
   `P "Blanks are themselves first-class items of the document. They appear \
       at their position in the output of $(b,rocq-ed status), and they \
-      can be stepped over, undone, or deleted just like commands.";
+      can be traversed by cursor movements or deleted just like commands.";
+
+  `S "COMMAND FAILURES";
+  `P "All commands except $(b,init) and $(b,stop) can fail without affecting \
+      the health of the rocq-ed session. It is not necessary to restart the \
+      session when any of the other commands fail";
 ]
 
 let _ =
   let cmds =
     [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
-      delete_cmd; commit_cmd; goals_cmd; undo_cmd; goto_cmd ]
+      delete_cmd; commit_cmd; goals_cmd; backwards_cmd; goto_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =
