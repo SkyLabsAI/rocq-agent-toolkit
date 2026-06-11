@@ -15,14 +15,16 @@ let non_dir_file_with_ext : string -> string Arg.conv = fun ext ->
   in
   Arg.conv (parse, Arg.conv_printer Arg.non_dir_file)
 
-let rocq_file =
+let rocq_file_at index =
   let doc =
     "Path to an existing Rocq source file. The source file is expected to be \
      managed by a dune project, so that appropriate CLI arguments can be \
      automatically obtained."
   in
   let v_file = non_dir_file_with_ext ".v" in
-  Arg.(required & pos 0 (some v_file) None & info [] ~docv:"FILE" ~doc)
+  Arg.(required & pos index (some v_file) None & info [] ~docv:"FILE" ~doc)
+
+let rocq_file = rocq_file_at 0
 
 let no_build_deps =
   let doc =
@@ -299,6 +301,72 @@ let goto_cmd =
   let term = Term.(map with_auto_print (const run $ goto_pos) $ rocq_file) in
   Cmd.(make (info "goto" ~version ~doc) term)
 
+let named_target =
+  let doc = "Specifies the target name." in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"NAME" ~doc)
+
+let named_rocq_file = rocq_file_at 1
+
+let run_named_navigation request rocq_file =
+  match Protocol.client_request rocq_file request with
+  | Ok(()) -> ()
+  | Error(s, i) -> panic "Error: %s.\nThe cursor is now at index %i." s i
+
+let goto_lemma_cmd =
+  let doc =
+    "Moves the cursor to the theorem-like declaration named $(docv), whether \
+     it was introduced with $(b,Lemma), $(b,Theorem), $(b,Fact), \
+     $(b,Remark), $(b,Property), $(b,Proposition), or $(b,Corollary)."
+  in
+  let run name rocq_file =
+    run_named_navigation Request.(GotoLemma({name})) rocq_file
+  in
+  let term = Term.(map with_auto_print (const run $ named_target) $ named_rocq_file) in
+  Cmd.(make (info "goto-lemma" ~version ~doc) term)
+
+let lemma_end_cmd =
+  let doc =
+    "Moves the cursor to the final command that belongs to the declaration \
+     or proof of the theorem-like declaration named $(docv)."
+  in
+  let run name rocq_file =
+    run_named_navigation Request.(LemmaEnd({name})) rocq_file
+  in
+  let term = Term.(map with_auto_print (const run $ named_target) $ named_rocq_file) in
+  Cmd.(make (info "lemma-end" ~version ~doc) term)
+
+let next_lemma_cmd =
+  let doc =
+    "Moves the cursor to the next theorem-like declaration after the current \
+     cursor position."
+  in
+  let run rocq_file =
+    run_named_navigation Request.NextLemma rocq_file
+  in
+  let term = Term.(map with_auto_print (const run) $ rocq_file) in
+  Cmd.(make (info "next-lemma" ~version ~doc) term)
+
+let goto_section_cmd =
+  let doc =
+    "Moves the cursor to the beginning of the section named $(docv)."
+  in
+  let run name rocq_file =
+    run_named_navigation Request.(GotoSection({name})) rocq_file
+  in
+  let term = Term.(map with_auto_print (const run $ named_target) $ named_rocq_file) in
+  Cmd.(make (info "goto-section" ~version ~doc) term)
+
+let section_end_cmd =
+  let doc =
+    "Moves the cursor to the matching $(b,End) command for the section named \
+     $(docv)."
+  in
+  let run name rocq_file =
+    run_named_navigation Request.(SectionEnd({name})) rocq_file
+  in
+  let term = Term.(map with_auto_print (const run $ named_target) $ named_rocq_file) in
+  Cmd.(make (info "section-end" ~version ~doc) term)
+
 let main_man = [
   `S Manpage.s_description;
   `P "$(b,rocq-ed) is a command-line editor for Rocq source files. It \
@@ -350,7 +418,8 @@ let main_man = [
 let _ =
   let cmds =
     [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
-      delete_cmd; commit_cmd; goals_cmd; undo_cmd; goto_cmd ]
+      delete_cmd; commit_cmd; goals_cmd; undo_cmd; goto_cmd; goto_lemma_cmd;
+      lemma_end_cmd; next_lemma_cmd; goto_section_cmd; section_end_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =

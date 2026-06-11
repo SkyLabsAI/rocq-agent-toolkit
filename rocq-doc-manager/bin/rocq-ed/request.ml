@@ -13,6 +13,11 @@ type (_, _) t =
   | Goals : (string, empty) t
   | Undo : {count : int} -> (unit, unit) t
   | Goto : {line: int; col: int option} -> (unit, int) t
+  | GotoLemma : {name : string} -> (unit, int) t
+  | LemmaEnd : {name : string} -> (unit, int) t
+  | NextLemma : (unit, int) t
+  | GotoSection : {name : string} -> (unit, int) t
+  | SectionEnd : {name : string} -> (unit, int) t
 
 let is_stop : type a b. (a, b) t -> bool = fun r ->
   match r with Stop -> true | _ -> false
@@ -43,6 +48,16 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Goto({line = %i; col = None})" line
   | Goto({line; col = Some(col)}) ->
       Format.fprintf ff "Goto({line = %i; col = %i})" line col
+  | GotoLemma({name}) ->
+      Format.fprintf ff "GotoLemma({name = %S})" name
+  | LemmaEnd({name}) ->
+      Format.fprintf ff "LemmaEnd({name = %S})" name
+  | NextLemma ->
+      Format.fprintf ff "NextLemma"
+  | GotoSection({name}) ->
+      Format.fprintf ff "GotoSection({name = %S})" name
+  | SectionEnd({name}) ->
+      Format.fprintf ff "SectionEnd({name = %S})" name
 
 let lines : string -> string array = fun s ->
   let lines = Dynarray.create () in
@@ -310,16 +325,64 @@ let run_goto d ~line ~col =
   | Ok(()) -> Ok(())
   | Error(msg, _) -> Error(msg, Document.cursor_index d)
 
+let run_go_to_index d ~index =
+  match Document.go_to d ~index with
+  | Ok(()) -> Ok(())
+  | Error(msg, _) -> Error(msg, Document.cursor_index d)
+  | exception Invalid_argument(msg) -> Error(msg, Document.cursor_index d)
+
+let run_goto_lemma d ~name =
+  match Document.find_lemma d ~name with
+  | None ->
+      Error(Printf.sprintf "no lemma named %S" name, Document.cursor_index d)
+  | Some(span) -> run_go_to_index d ~index:span.Document.start_index
+
+let run_lemma_end d ~name =
+  match Document.find_lemma d ~name with
+  | None ->
+      Error(Printf.sprintf "no lemma named %S" name, Document.cursor_index d)
+  | Some({Document.end_index = None; _}) ->
+      Error(Printf.sprintf "no end found for lemma %S" name,
+        Document.cursor_index d)
+  | Some({Document.end_index = Some(index); _}) ->
+      run_go_to_index d ~index
+
+let run_next_lemma d =
+  match Document.find_next_lemma d with
+  | None -> Error("no next lemma", Document.cursor_index d)
+  | Some(span) -> run_go_to_index d ~index:span.Document.start_index
+
+let run_goto_section d ~name =
+  match Document.find_section d ~name with
+  | None ->
+      Error(Printf.sprintf "no section named %S" name, Document.cursor_index d)
+  | Some(span) -> run_go_to_index d ~index:span.Document.start_index
+
+let run_section_end d ~name =
+  match Document.find_section d ~name with
+  | None ->
+      Error(Printf.sprintf "no section named %S" name, Document.cursor_index d)
+  | Some({Document.end_index = None; _}) ->
+      Error(Printf.sprintf "no end found for section %S" name,
+        Document.cursor_index d)
+  | Some({Document.end_index = Some(index); _}) ->
+      run_go_to_index d ~index
+
 let run : type a b. Document.t -> (a, b) t ->
     (a, string * b) Result.t = fun d r ->
   match r with
-  | Stop              -> Ok(())
-  | Status({context}) -> run_status d ~context
-  | Steps({count})    -> run_steps d ~count
-  | Insert({text})    -> run_insert d ~text
-  | Query({text})     -> run_query d ~text
-  | Delete({count})   -> run_delete d ~count
-  | Commit            -> run_commit d
-  | Goals             -> run_goals d
-  | Undo({count})     -> run_undo d ~count
-  | Goto({line; col}) -> run_goto d ~line ~col
+  | Stop                  -> Ok(())
+  | Status({context})     -> run_status d ~context
+  | Steps({count})        -> run_steps d ~count
+  | Insert({text})        -> run_insert d ~text
+  | Query({text})         -> run_query d ~text
+  | Delete({count})       -> run_delete d ~count
+  | Commit                -> run_commit d
+  | Goals                 -> run_goals d
+  | Undo({count})         -> run_undo d ~count
+  | Goto({line; col})     -> run_goto d ~line ~col
+  | GotoLemma({name})     -> run_goto_lemma d ~name
+  | LemmaEnd({name})      -> run_lemma_end d ~name
+  | NextLemma             -> run_next_lemma d
+  | GotoSection({name})   -> run_goto_section d ~name
+  | SectionEnd({name})    -> run_section_end d ~name
