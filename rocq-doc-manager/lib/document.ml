@@ -364,6 +364,219 @@ let go_to : t -> index:int -> (unit, string * command_error option) result =
   | true  -> revert_before d ~index ~erase:false; Ok(())
   | false -> advance_to d ~index
 
+type lemma_kind =
+  [ `Theorem | `Lemma | `Fact | `Remark | `Property
+  | `Proposition | `Corollary ]
+
+type lemma_span = {
+  name : string;
+  names : string list;
+  kind : lemma_kind;
+  start_index : int;
+  end_index : int option;
+}
+
+type section_span = {
+  name : string;
+  start_index : int;
+  end_index : int option;
+}
+
+type indexed_item = {
+  nav_index : int;
+  nav_kind : item_kind;
+}
+
+let indexed_items : t -> indexed_item list = fun d ->
+  let prefix =
+    let to_indexed (p : processed_item) =
+      {nav_index = p.index; nav_kind = p.kind}
+    in
+    List.rev_map to_indexed d.rev_prefix
+  in
+  let suffix =
+    let cur = cursor_index d in
+    let to_indexed i (u : unprocessed_item) =
+      {nav_index = cur + i; nav_kind = u.kind}
+    in
+    List.mapi to_indexed d.suffix
+  in
+  prefix @ suffix
+
+let command_of_indexed_item : indexed_item -> vernac_data option = fun item ->
+  match item.nav_kind with
+  | `Command(c) -> Some(c)
+  | `Blanks | `Ghost(_) -> None
+
+let has_search_suppressing_control : Rocq_vernac_entry.control list -> bool =
+    fun controls ->
+  let suppressing = function
+    | Rocq_vernac_entry.ControlFail
+    | Rocq_vernac_entry.ControlSucceed -> true
+    | _ -> false
+  in
+  List.exists suppressing controls
+
+let lemma_kind_of_theorem_kind : Decls.theorem_kind -> lemma_kind = fun kind ->
+  let open Decls in
+  match kind with
+  | Theorem -> `Theorem
+  | Lemma -> `Lemma
+  | Fact -> `Fact
+  | Remark -> `Remark
+  | Property -> `Property
+  | Proposition -> `Proposition
+  | Corollary -> `Corollary
+
+let lemma_start_of_command : vernac_data -> (string * string list * lemma_kind) option =
+    fun c ->
+  let (controls, expr) = c.CAst.v in
+  if has_search_suppressing_control controls then None else
+  match expr with
+  | Vernacexpr.VernacSynPure(Vernacexpr.VernacStartTheoremProof(kind, proof_exprs)) ->
+      let get_name ((id, _), _) = Names.Id.to_string id.CAst.v in
+      let names = List.map get_name proof_exprs in
+      let name = match names with [] -> "" | name :: _ -> name in
+      Some(name, names, lemma_kind_of_theorem_kind kind)
+  | _ -> None
+
+let lemma_end_command : vernac_data -> bool = fun c ->
+  let (controls, expr) = c.CAst.v in
+  not (has_search_suppressing_control controls) &&
+  match expr with
+  | Vernacexpr.VernacSynPure(Vernacexpr.VernacEndProof(_))
+  | Vernacexpr.VernacSynPure(Vernacexpr.VernacExactProof(_))
+  | Vernacexpr.VernacSynPure(Vernacexpr.VernacAbort) -> true
+  | _ -> false
+
+let rec find_lemma_end : indexed_item list -> int option = fun items ->
+  match items with
+  | [] -> None
+  | item :: items ->
+  match command_of_indexed_item item with
+  | Some(c) when lemma_end_command c -> Some(item.nav_index)
+  | _ -> find_lemma_end items
+
+let lemma_spans : t -> lemma_span list = fun d ->
+  let _ = get_backend d in
+  let rec scan acc items =
+    match items with
+    | [] -> List.rev acc
+    | item :: items ->
+    match command_of_indexed_item item with
+    | None -> scan acc items
+    | Some(c) ->
+    match lemma_start_of_command c with
+    | None -> scan acc items
+    | Some(name, names, kind) ->
+        let span : lemma_span =
+          {name; names; kind; start_index = item.nav_index;
+           end_index = find_lemma_end items}
+        in
+        scan (span :: acc) items
+  in
+  scan [] (indexed_items d)
+
+let find_lemma : t -> name:string -> lemma_span option = fun d ~name ->
+  let matches (span : lemma_span) =
+    List.exists (String.equal name) span.names
+  in
+  List.find_opt matches (lemma_spans d)
+
+let find_next_lemma : t -> lemma_span option = fun d ->
+  let cur = cursor_index d in
+  let after_cursor (span : lemma_span) = span.start_index > cur in
+  List.find_opt after_cursor (lemma_spans d)
+
+type segment_kind = [`Section | `Module | `ModuleType]
+
+type open_segment = {
+  seg_kind : segment_kind;
+  seg_name : string;
+  seg_start : int;
+}
+
+let id_to_string : Names.lident -> string = fun id ->
+  Names.Id.to_string id.CAst.v
+
+let segment_start_of_command : vernac_data -> (segment_kind * string) option =
+    fun c ->
+  let (controls, expr) = c.CAst.v in
+  if has_search_suppressing_control controls then None else
+  match expr with
+  | Vernacexpr.VernacSynterp(Rocq_vernac_entry.EVernacBeginSection(id)) ->
+      Some(`Section, id_to_string id)
+  | Vernacexpr.VernacSynterp(Rocq_vernac_entry.EVernacDefineModule
+      {id; has_body = false}) ->
+      Some(`Module, id_to_string id)
+  | Vernacexpr.VernacSynterp(Rocq_vernac_entry.EVernacDeclareModuleType
+      {id; has_body = false}) ->
+      Some(`ModuleType, id_to_string id)
+  | _ -> None
+
+let segment_end_of_command : vernac_data -> string option = fun c ->
+  let (controls, expr) = c.CAst.v in
+  if has_search_suppressing_control controls then None else
+  match expr with
+  | Vernacexpr.VernacSynterp(Rocq_vernac_entry.EVernacEndSegment(id)) ->
+      Some(id_to_string id)
+  | _ -> None
+
+let section_spans : t -> section_span list = fun d ->
+  let _ = get_backend d in
+  let close_section end_index spans (seg : open_segment) =
+    match seg.seg_kind with
+    | `Section ->
+        let span : section_span =
+          {name = seg.seg_name; start_index = seg.seg_start;
+           end_index = Some(end_index)}
+        in
+        span :: spans
+    | `Module | `ModuleType -> spans
+  in
+  let add_open_section spans (seg : open_segment) =
+    match seg.seg_kind with
+    | `Section ->
+        let span : section_span =
+          {name = seg.seg_name; start_index = seg.seg_start; end_index = None}
+        in
+        span :: spans
+    | `Module | `ModuleType -> spans
+  in
+  let rec scan stack spans items =
+    match items with
+    | [] ->
+        let spans = List.fold_left add_open_section spans stack in
+        let compare_start (s1 : section_span) (s2 : section_span) =
+          compare s1.start_index s2.start_index
+        in
+        List.sort compare_start spans
+    | item :: items ->
+    match command_of_indexed_item item with
+    | None -> scan stack spans items
+    | Some(c) ->
+    match segment_start_of_command c with
+    | Some(seg_kind, seg_name) ->
+        let seg = {seg_kind; seg_name; seg_start = item.nav_index} in
+        scan (seg :: stack) spans items
+    | None ->
+    match segment_end_of_command c with
+    | None -> scan stack spans items
+    | Some(end_name) ->
+        let (stack, spans) =
+          match stack with
+          | seg :: stack when String.equal seg.seg_name end_name ->
+              (stack, close_section item.nav_index spans seg)
+          | _ -> (stack, spans)
+        in
+        scan stack spans items
+  in
+  scan [] [] (indexed_items d)
+
+let find_section : t -> name:string -> section_span option = fun d ~name ->
+  let matches (span : section_span) = String.equal name span.name in
+  List.find_opt matches (section_spans d)
+
 let rev_prefix : t -> processed_item list = fun d ->
   let _ = get_backend d in
   d.rev_prefix
@@ -386,7 +599,7 @@ let contents : ?include_ghost:bool -> ?include_suffix:bool -> t -> string =
     if not (is_ghost p.kind) || include_ghost then
       Buffer.add_string b (document_text p.kind p.text)
   in
-  let add_unprocessed u =
+  let add_unprocessed (u : unprocessed_item) =
     if not (is_ghost u.kind) || include_ghost then
       Buffer.add_string b (document_text u.kind u.text)
   in

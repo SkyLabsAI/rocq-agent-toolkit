@@ -207,6 +207,48 @@ val advance_to : t -> index:int
     index of the last item in the document's suffix. *)
 val go_to : t -> index:int -> (unit, string * command_error option) result
 
+(** Kinds of theorem-like declarations that can be targeted by semantic
+    navigation. *)
+type lemma_kind =
+  [ `Theorem | `Lemma | `Fact | `Remark | `Property
+  | `Proposition | `Corollary ]
+
+(** Span of a theorem-like declaration and its proof. [start_index] is the
+    declaration command index. [end_index], when present, is the final command
+    belonging to the proof, such as [Qed.], [Defined.], or [Admitted.]. *)
+type lemma_span = {
+  name : string;
+  names : string list;
+  kind : lemma_kind;
+  start_index : int;
+  end_index : int option;
+}
+
+(** Span of a section. [start_index] is the [Section] command index, and
+    [end_index], when present, is the matching [End] command index. *)
+type section_span = {
+  name : string;
+  start_index : int;
+  end_index : int option;
+}
+
+(** [lemma_spans d] returns all theorem-like declarations in document order. *)
+val lemma_spans : t -> lemma_span list
+
+(** [section_spans d] returns all sections in document order. *)
+val section_spans : t -> section_span list
+
+(** [find_lemma d ~name] finds the first theorem-like declaration whose list of
+    declared names contains [name]. *)
+val find_lemma : t -> name:string -> lemma_span option
+
+(** [find_next_lemma d] finds the first theorem-like declaration whose start
+    index is strictly after the current cursor index. *)
+val find_next_lemma : t -> lemma_span option
+
+(** [find_section d ~name] finds the first section named [name]. *)
+val find_section : t -> name:string -> section_span option
+
 (** Document item kind: blank characters, command, or ghost command. *)
 type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]
 
