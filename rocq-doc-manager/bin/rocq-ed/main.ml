@@ -367,6 +367,17 @@ let section_end_cmd =
   let term = Term.(map with_auto_print (const run $ named_target) $ named_rocq_file) in
   Cmd.(make (info "section-end" ~version ~doc) term)
 
+let next_section_cmd =
+  let doc =
+    "Moves the cursor to the next section declaration after the current \
+     cursor position."
+  in
+  let run rocq_file =
+    run_named_navigation Request.NextSection rocq_file
+  in
+  let term = Term.(map with_auto_print (const run) $ rocq_file) in
+  Cmd.(make (info "next-section" ~version ~doc) term)
+
 let main_man = [
   `S Manpage.s_description;
   `P "$(b,rocq-ed) is a command-line editor for Rocq source files. It \
@@ -419,7 +430,8 @@ let _ =
   let cmds =
     [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
       delete_cmd; commit_cmd; goals_cmd; undo_cmd; goto_cmd; goto_lemma_cmd;
-      lemma_end_cmd; next_lemma_cmd; goto_section_cmd; section_end_cmd ]
+      lemma_end_cmd; next_lemma_cmd; goto_section_cmd; section_end_cmd;
+      next_section_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =

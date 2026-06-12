@@ -577,6 +577,11 @@ let find_section : t -> name:string -> section_span option = fun d ~name ->
   let matches (span : section_span) = String.equal name span.name in
   List.find_opt matches (section_spans d)
 
+let find_next_section : t -> section_span option = fun d ->
+  let cur = cursor_index d in
+  let after_cursor (span : section_span) = span.start_index > cur in
+  List.find_opt after_cursor (section_spans d)
+
 let rev_prefix : t -> processed_item list = fun d ->
   let _ = get_backend d in
   d.rev_prefix

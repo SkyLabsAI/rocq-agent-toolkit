@@ -18,6 +18,7 @@ type (_, _) t =
   | NextLemma : (unit, int) t
   | GotoSection : {name : string} -> (unit, int) t
   | SectionEnd : {name : string} -> (unit, int) t
+  | NextSection : (unit, int) t
 
 let is_stop : type a b. (a, b) t -> bool = fun r ->
   match r with Stop -> true | _ -> false
@@ -58,6 +59,8 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "GotoSection({name = %S})" name
   | SectionEnd({name}) ->
       Format.fprintf ff "SectionEnd({name = %S})" name
+  | NextSection ->
+      Format.fprintf ff "NextSection"
 
 let lines : string -> string array = fun s ->
   let lines = Dynarray.create () in
@@ -368,6 +371,11 @@ let run_section_end d ~name =
   | Some({Document.end_index = Some(index); _}) ->
       run_go_to_index d ~index
 
+let run_next_section d =
+  match Document.find_next_section d with
+  | None -> Error("no next section", Document.cursor_index d)
+  | Some(span) -> run_go_to_index d ~index:span.Document.start_index
+
 let run : type a b. Document.t -> (a, b) t ->
     (a, string * b) Result.t = fun d r ->
   match r with
@@ -386,3 +394,4 @@ let run : type a b. Document.t -> (a, b) t ->
   | NextLemma             -> run_next_lemma d
   | GotoSection({name})   -> run_goto_section d ~name
   | SectionEnd({name})    -> run_section_end d ~name
+  | NextSection           -> run_next_section d

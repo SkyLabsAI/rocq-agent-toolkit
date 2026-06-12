@@ -249,6 +249,10 @@ val find_next_lemma : t -> lemma_span option
 (** [find_section d ~name] finds the first section named [name]. *)
 val find_section : t -> name:string -> section_span option
 
+(** [find_next_section d] finds the first section whose start index is strictly
+    after the current cursor index. *)
+val find_next_section : t -> section_span option
+
 (** Document item kind: blank characters, command, or ghost command. *)
 type item_kind = [`Blanks | `Command of vernac_data | `Ghost of vernac_data]
 
