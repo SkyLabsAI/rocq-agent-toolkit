@@ -24,7 +24,9 @@ Section Outer.
   Qed.
 End Outer.
 
-Fact after_section : True.
-Proof.
-  exact I.
-Qed.
+Section next.
+  Fact after_section : True.
+  Proof.
+    exact I.
+  Qed.
+End next.

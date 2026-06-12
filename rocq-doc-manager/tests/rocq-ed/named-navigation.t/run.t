@@ -30,10 +30,10 @@ stopping at an inner section end.
     24|   Qed.
     25| <CURSOR>End Outer.
     26| 
-    27| Fact after_section : True.
-    28| Proof.
-    29|   exact I.
-    30| Qed.
+    27| Section next.
+    28|   Fact after_section : True.
+    29|   Proof.
+    30|     exact I.
   
   Not currently in a proof.
   $ rocq-ed status -C 0 test.v
@@ -209,8 +209,67 @@ lemma declaration, the current lemma is skipped.
      8|     exact I.
   
   Not currently in a proof.
+  $ rocq-ed next-section test.v
+    11|   Theorem second : n = n.
+    12|   Proof.
+    13|     reflexivity.
+    14|   Qed.
+    15| 
+    16|   <CURSOR>Section Inner.
+    17|     Remark inside : True.
+    18|     Proof. exact I. Qed.
+    19|   End Inner.
+    20| 
+    21|   Corollary later : True.
+  
+  Not currently in a proof.
+  $ rocq-ed next-section test.v
+    22|   Proof.
+    23|     exact I.
+    24|   Qed.
+    25| End Outer.
+    26| 
+    27| <CURSOR>Section next.
+    28|   Fact after_section : True.
+    29|   Proof.
+    30|     exact I.
+    31|   Qed.
+    32| End next.
+  
+  Not currently in a proof.
   $ rocq-ed status -C 0 test.v
+    27| <CURSOR>Section next.
+  $ rocq-ed goto --pos 1:1 test.v
+     1| <CURSOR>(* Prelude. *)
+     2| 
+     3| Section Outer.
+     4|   Variable n : nat.
+     5| 
+     6|   Lemma first : True.
+  
+  Not currently in a proof.
+  $ rocq-ed next-section test.v
+     1| (* Prelude. *)
+     2| 
      3| <CURSOR>Section Outer.
+     4|   Variable n : nat.
+     5| 
+     6|   Lemma first : True.
+     7|   Proof.
+     8|     exact I.
+  
+  Not currently in a proof.
+  $ rocq-ed steps test.v
+     1| (* Prelude. *)
+     2| 
+     3| Section Outer.<CURSOR>
+     4|   Variable n : nat.
+     5| 
+     6|   Lemma first : True.
+     7|   Proof.
+     8|     exact I.
+  
+  Not currently in a proof.
   $ rocq-ed next-section test.v
     11|   Theorem second : n = n.
     12|   Proof.
@@ -227,15 +286,36 @@ lemma declaration, the current lemma is skipped.
   Not currently in a proof.
   $ rocq-ed status -C 0 test.v
     16|   <CURSOR>Section Inner.
-  $ rocq-ed section-end second test.v
-  Error: no section named "second".
-  The cursor is now at index 21.
-  [1]
+
+  $ rocq-ed section-end Inner test.v
+    14|   Qed.
+    15| 
+    16|   Section Inner.
+    17|     Remark inside : True.
+    18|     Proof. exact I. Qed.
+    19|   <CURSOR>End Inner.
+    20| 
+    21|   Corollary later : True.
+    22|   Proof.
+    23|     exact I.
+    24|   Qed.
+  
+  Not currently in a proof.
   $ rocq-ed next-section test.v
-  Error: no next section.
-  The cursor is now at index 21.
-  [1]
+    22|   Proof.
+    23|     exact I.
+    24|   Qed.
+    25| End Outer.
+    26| 
+    27| <CURSOR>Section next.
+    28|   Fact after_section : True.
+    29|   Proof.
+    30|     exact I.
+    31|   Qed.
+    32| End next.
+  
+  Not currently in a proof.
   $ rocq-ed status -C 0 test.v
-    16|   <CURSOR>Section Inner.
+    27| <CURSOR>Section next.
 
   $ rocq-ed stop test.v
