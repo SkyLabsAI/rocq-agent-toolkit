@@ -318,4 +318,83 @@ lemma declaration, the current lemma is skipped.
   $ rocq-ed status -C 0 test.v
     27| <CURSOR>Section next.
 
+`next-section-or-end` searches forward to the next `Section` command, or to the
+matching `End` command for the named section, whichever comes first.
+
+  $ rocq-ed goto-section Outer test.v
+     1| (* Prelude. *)
+     2| 
+     3| <CURSOR>Section Outer.
+     4|   Variable n : nat.
+     5| 
+     6|   Lemma first : True.
+     7|   Proof.
+     8|     exact I.
+  
+  Not currently in a proof.
+  $ rocq-ed next-section-or-end Outer test.v
+    11|   Theorem second : n = n.
+    12|   Proof.
+    13|     reflexivity.
+    14|   Qed.
+    15| 
+    16|   <CURSOR>Section Inner.
+    17|     Remark inside : True.
+    18|     Proof. exact I. Qed.
+    19|   End Inner.
+    20| 
+    21|   Corollary later : True.
+  
+  Not currently in a proof.
+  $ rocq-ed status -C 0 test.v
+    16|   <CURSOR>Section Inner.
+  $ rocq-ed next-section-or-end Inner test.v
+    14|   Qed.
+    15| 
+    16|   Section Inner.
+    17|     Remark inside : True.
+    18|     Proof. exact I. Qed.
+    19|   <CURSOR>End Inner.
+    20| 
+    21|   Corollary later : True.
+    22|   Proof.
+    23|     exact I.
+    24|   Qed.
+  
+  Not currently in a proof.
+  $ rocq-ed status -C 0 test.v
+    19|   <CURSOR>End Inner.
+  $ rocq-ed next-section-or-end Outer test.v
+    20| 
+    21|   Corollary later : True.
+    22|   Proof.
+    23|     exact I.
+    24|   Qed.
+    25| <CURSOR>End Outer.
+    26| 
+    27| Section next.
+    28|   Fact after_section : True.
+    29|   Proof.
+    30|     exact I.
+  
+  Not currently in a proof.
+  $ rocq-ed status -C 0 test.v
+    25| <CURSOR>End Outer.
+  $ rocq-ed next-section-or-end next test.v
+    22|   Proof.
+    23|     exact I.
+    24|   Qed.
+    25| End Outer.
+    26| 
+    27| <CURSOR>Section next.
+    28|   Fact after_section : True.
+    29|   Proof.
+    30|     exact I.
+    31|   Qed.
+    32| End next.
+  
+  Not currently in a proof.
+  $ rocq-ed status -C 0 test.v
+    27| <CURSOR>Section next.
+
   $ rocq-ed stop test.v
