@@ -186,4 +186,56 @@ lemma declaration, the current lemma is skipped.
   $ rocq-ed status -C 0 test.v
     17|     <CURSOR>Remark inside : True.
 
+`next-section` searches forward from the current cursor. When the cursor is at a
+`Section` keyword, the current section is skipped.
+
+  $ rocq-ed goto --pos 1:1 test.v
+     1| <CURSOR>(* Prelude. *)
+     2| 
+     3| Section Outer.
+     4|   Variable n : nat.
+     5| 
+     6|   Lemma first : True.
+  
+  Not currently in a proof.
+  $ rocq-ed next-section test.v
+     1| (* Prelude. *)
+     2| 
+     3| <CURSOR>Section Outer.
+     4|   Variable n : nat.
+     5| 
+     6|   Lemma first : True.
+     7|   Proof.
+     8|     exact I.
+  
+  Not currently in a proof.
+  $ rocq-ed status -C 0 test.v
+     3| <CURSOR>Section Outer.
+  $ rocq-ed next-section test.v
+    11|   Theorem second : n = n.
+    12|   Proof.
+    13|     reflexivity.
+    14|   Qed.
+    15| 
+    16|   <CURSOR>Section Inner.
+    17|     Remark inside : True.
+    18|     Proof. exact I. Qed.
+    19|   End Inner.
+    20| 
+    21|   Corollary later : True.
+  
+  Not currently in a proof.
+  $ rocq-ed status -C 0 test.v
+    16|   <CURSOR>Section Inner.
+  $ rocq-ed section-end second test.v
+  Error: no section named "second".
+  The cursor is now at index 21.
+  [1]
+  $ rocq-ed next-section test.v
+  Error: no next section.
+  The cursor is now at index 21.
+  [1]
+  $ rocq-ed status -C 0 test.v
+    16|   <CURSOR>Section Inner.
+
   $ rocq-ed stop test.v
