@@ -416,6 +416,19 @@ let main_man = [
       initialized with the contents of the source file loaded as \
       unprocessed items in the suffix, with the cursor at the beginning.";
 
+  `S "EDITING WORKFLOW";
+  `P "For interactive Rocq source edits, $(b,rocq-ed) is usually a better \
+      edit/query loop than repeatedly invoking $(b,dune build file.vo). \
+      $(b,rocq-ed init) obtains the Rocq command-line arguments from Dune \
+      and builds dependencies by default; $(b,--no-build-deps) is an \
+      explicit opt-out for cases where dependencies are already known to \
+      be current.";
+  `P "Once initialized, the daemon keeps a per-file session. Cursor \
+      movement, queries, edits, and proof-state inspection can reuse the \
+      already-processed prefix instead of restarting the whole Dune target \
+      each time. Use normal composed Dune builds afterwards for final \
+      validation.";
+
   `S "BLANK CHARACTERS";
   `P "Because the document must remain a syntactically valid Rocq source \
       at all times, blank characters between commands are not inserted \
