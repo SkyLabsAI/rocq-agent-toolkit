@@ -1,17 +1,23 @@
-type t = Names.Cset.t * Names.Mindset.t
+(* We track mutual inductives in a [Mindmap_env] used as a set (the [_env]
+   variant; [Names.Mindset] is deprecated). *)
+type t = Names.Cset.t * unit Names.Mindmap_env.t
+
+(* The mutual-inductive names collected in [inds], as a list. *)
+let minds_of (inds : unit Names.Mindmap_env.t) : Names.MutInd.t list =
+  List.rev (Names.Mindmap_env.fold (fun k _ acc -> k :: acc) inds [])
 
 let term_deps : Constr.named_context -> Constr.t -> t = fun hyps t ->
   let constants = ref Names.Cset.empty in
-  let inductives = ref Names.Mindset.empty in
+  let inductives = ref Names.Mindmap_env.empty in
   let rec term_deps t =
     let _ =
       match Constr.kind t with
       | Constr.Const((c,_))     ->
           constants := Names.Cset.add c !constants
       | Constr.Ind((i,_))       ->
-          inductives := Names.Mindset.add (fst i) !inductives
+          inductives := Names.Mindmap_env.add (fst i) () !inductives
       | Constr.Construct((c,_)) ->
-          inductives := Names.Mindset.add (fst (fst c)) !inductives
+          inductives := Names.Mindmap_env.add (fst (fst c)) () !inductives
       | _                       ->
           ()
     in
@@ -20,6 +26,12 @@ let term_deps : Constr.named_context -> Constr.t -> t = fun hyps t ->
   List.iter (Context.Named.Declaration.iter_constr term_deps) hyps;
   term_deps t;
   (!constants, !inductives)
+
+(* The (inductive names, constant names) of a collected [t]. Shared by the
+   [DepsOfJSON] command and the [term_deps] Ltac2 external. *)
+let dep_names ((constants, inductives) : t) : string list * string list =
+  (List.map Names.MutInd.to_string (minds_of inductives),
+   List.map Names.Constant.to_string (Names.Cset.elements constants))
 
 let constant_of_qualid : Libnames.qualid -> Names.Constant.t = fun r ->
   let error pp = CErrors.user_err ?loc:r.CAst.loc pp in
@@ -52,7 +64,7 @@ let print_term_deps : Libnames.qualid -> unit = fun r ->
   in
   let (constants, inductives) = term_deps hyps t in
   let constants = Names.Cset.elements constants in
-  let inductives = Names.Mindset.elements inductives in
+  let inductives = minds_of inductives in
   let pp_c c = Pp.(str "- " ++ Names.Constant.print c ++ fnl ()) in
   let pp_i i = Pp.(str "- " ++ Names.MutInd.print i ++ fnl ()) in
   let pp =
@@ -80,14 +92,27 @@ let print_json_term_deps : Libnames.qualid -> unit = fun r ->
     match def with
     | None      -> []
     | Some(def) ->
-    let (constants, inductives) = term_deps hyps def in
-    let constants = Names.Cset.elements constants in
-    let inductives = Names.Mindset.elements inductives in
-    let make_ind i = `String(Names.MutInd.to_string i) in
-    let make_cst c = `String(Names.Constant.to_string c) in
-    ("inductive_deps", `List(List.map make_ind inductives)) ::
-    ("constant_deps" , `List(List.map make_cst constants) ) :: []
+    let (ind_names, cst_names) = dep_names (term_deps hyps def) in
+    let str s = `String(s) in
+    ("inductive_deps", `List(List.map str ind_names)) ::
+    ("constant_deps" , `List(List.map str cst_names)) :: []
   in
   let json : Yojson.Safe.t = `Assoc(fields) in
   let data = Yojson.Safe.pretty_to_string ~std:true json in
   Feedback.msg_notice (Pp.str data)
+
+(* Ltac2 external: [term_deps : constr -> string list * string list] returns the
+   immediate (inductive names, constant names) dependencies of a single term.
+   This lets Ltac2 code compute the dependencies of an arbitrary term (e.g. a
+   sub-term of a goal/spec), not just a defined constant. The result is returned
+   as plain structured data, so callers can post-process it freely (e.g. build a
+   JSON object, union over several terms, or look the names back up). *)
+let () =
+  let open Ltac2_plugin in
+  let open Tac2ffi in
+  let open Tac2externals in
+  let define s =
+    define Tac2expr.{ mltac_plugin = "rocq-term-deps"; mltac_tactic = s }
+  in
+  define "term_deps" (constr @-> ret (pair (list string) (list string))) (fun t ->
+    dep_names (term_deps [] (EConstr.Unsafe.to_constr t)))

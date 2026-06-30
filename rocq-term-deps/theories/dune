@@ -2,4 +2,5 @@
  (name skylabs_ai.tools.term_deps)
  (package rocq-term-deps)
  (generate_project_file)
- (plugins rocq-term-deps.plugin))
+ (plugins rocq-term-deps.plugin)
+ (theories Ltac2))
