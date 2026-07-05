@@ -525,6 +525,11 @@ let query : t -> text:string -> (command_data, string) result = fun d ~text ->
   with_rollback d @@ fun _ ->
   Result.map_error fst (insert_command ~ghost:true d ~text)
 
+let structured_goals : t ->
+    (Rocq_toplevel.structured_goal list option, string) result = fun d ->
+  with_synced_backend d @@ fun backend ->
+  Rocq_toplevel.structured_goals backend.top
+
 let get_info_or_notice : command_data -> string list = fun data ->
   let filter Rocq_toplevel.{level; text; _} =
     match level with

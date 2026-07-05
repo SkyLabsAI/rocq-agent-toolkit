@@ -435,6 +435,32 @@ let globrefs_diff =
   API.declare_object api ~name:"GlobrefsDiff" ~descr:"environment \
     modification performed by a Rocq command" ~default ~encode ~decode fields
 
+let structured_hyp =
+  let fields =
+    API.Fields.add ~name:"name" S.string @@
+    API.Fields.add ~name:"def" S.(nullable string) @@
+    API.Fields.add ~name:"type" S.string @@
+    API.Fields.nil
+  in
+  let open Rocq_toplevel in
+  let encode (name, (def, (hyp_type, ()))) = {name; def; hyp_type} in
+  let decode {name; def; hyp_type} = (name, (def, (hyp_type, ()))) in
+  API.declare_object api ~name:"StructuredHyp"
+    ~descr:"Hypothesis of a structured goal"
+    ~encode ~decode fields
+
+let structured_goal =
+  let fields =
+    API.Fields.add ~name:"hyps" S.(list (obj structured_hyp)) @@
+    API.Fields.add ~name:"goal" S.string @@
+    API.Fields.nil
+  in
+  let open Rocq_toplevel in
+  let encode (hyps, (goal, ())) = {hyps; goal} in
+  let decode {hyps; goal} = (hyps, (goal, ())) in
+  API.declare_object api ~name:"StructuredGoal" ~descr:"Structured goal"
+    ~encode ~decode fields
+
 let proof_state =
   let fields =
     API.Fields.add ~name:"given_up_goals" S.int @@
@@ -749,6 +775,14 @@ let _ =
     ~ret:S.(list any) ~err:S.null
     @@ fun d (text, (indices, ())) ->
   let res = Document.query_json_all d ~text ?indices in
+  Result.map_error (fun s -> (s, ())) res
+
+let _ =
+  declare_full ~name:"structured_goals" ~descr:"returns the focused goals at \
+      the cursor, or `null` when not in proof mode; does not change the state"
+    ~args:A.nil ~ret:S.(nullable (list (obj structured_goal))) ~err:S.null
+    @@ fun d () ->
+  let res = Document.structured_goals d in
   Result.map_error (fun s -> (s, ())) res
 
 let _ =

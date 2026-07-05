@@ -79,6 +79,17 @@ type globrefs_diff = {
   removed_inductives : Names.MutInd.t list;
 }
 
+type structured_hyp = {
+  name : string;
+  def : string option;
+  hyp_type : string;
+}
+
+type structured_goal = {
+  hyps : structured_hyp list;
+  goal : string;
+}
+
 type proof_state = {
   given_up_goals : int;
   shelved_goals : int;
@@ -107,11 +118,20 @@ type run_error = {
 val run : toplevel -> off:int -> text:string
   -> (run_data, string * run_error) result
 
+(** [structured_goals t] returns the the focused goals at the cursor, or [None]
+    when [t] is not in proof mode. It does not change the state. *)
+val structured_goals : toplevel
+  -> (structured_goal list option, string) result
+
 (** {2 JSON serialization for data returned by [run]} *)
 
 val feedback_message_to_yojson : feedback_message -> Yojson.Safe.t
 
 val globrefs_diff_to_yojson : globrefs_diff -> Yojson.Safe.t
+
+val structured_hyp_to_yojson : structured_hyp -> Yojson.Safe.t
+
+val structured_goal_to_yojson : structured_goal -> Yojson.Safe.t
 
 val proof_state_to_yojson : proof_state -> Yojson.Safe.t
 

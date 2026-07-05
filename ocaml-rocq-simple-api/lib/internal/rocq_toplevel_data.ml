@@ -46,6 +46,19 @@ let empty_globrefs_diff = {
   removed_inductives = [];
 }
 
+type structured_hyp = {
+  name : string;
+  def : (string option [@default None]);
+  hyp_type : string [@key "type"];
+}
+[@@deriving to_yojson]
+
+type structured_goal = {
+  hyps : structured_hyp list;
+  goal : string;
+}
+[@@deriving to_yojson]
+
 type proof_state = {
   given_up_goals : (int [@default 0]);
   shelved_goals : (int [@default 0]);
@@ -72,3 +85,4 @@ type (_, _) command =
   | Run : {off : int; text : string} -> (run_data, string * run_error) command
   | BackTo : {sid : int} -> (unit, string) command
   | Fork : {pipe_in : string; pipe_out : string} -> (int, string) command
+  | StructuredGoals : (structured_goal list option, string) command
