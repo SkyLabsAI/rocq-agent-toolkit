@@ -17,6 +17,8 @@ __all__ = [
     "CommandError",
     "CommandData",
     "ProofState",
+    "StructuredGoal",
+    "StructuredHyp",
     "GlobrefsDiff",
     "FeedbackMessage",
     "Quickfix",
@@ -176,6 +178,33 @@ class GlobrefsDiff(BaseModel):
         default_factory=list,
     )
     added_constants: list[str] = Field(
+        kw_only=True,
+        default_factory=list,
+    )
+
+
+class StructuredHyp(BaseModel):
+    """Hypothesis of a structured goal."""
+
+    type: str = Field(
+        kw_only=True,
+    )
+    defn: str | None = Field(
+        kw_only=True,
+        default=None,
+    )
+    name: str = Field(
+        kw_only=True,
+    )
+
+
+class StructuredGoal(BaseModel):
+    """Structured goal."""
+
+    goal: str = Field(
+        kw_only=True,
+    )
+    hyps: list[StructuredHyp] = Field(
         kw_only=True,
         default_factory=list,
     )
@@ -670,6 +699,18 @@ class RocqDocManagerAPI:
             return Err(result.message, data)
         return [Sentence.model_validate(v1) for v1 in result.result]
 
+    def structured_goals(
+        self,
+        cursor: int,
+    ) -> list[StructuredGoal] | None:
+        """Returns the focused goals at the cursor, or `null` when not in proof mode; does not change the state."""
+        result = self._rpc.raw_request(
+            "structured_goals",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return None if result.result is None else [StructuredGoal.model_validate(v1) for v1 in result.result]
+
     def whitespace_required(
         self,
         cursor: int,
@@ -1071,6 +1112,18 @@ class RocqDocManagerAPIAsync:
             data = SentenceSplitError.model_validate(result.data)
             return Err(result.message, data)
         return [Sentence.model_validate(v1) for v1 in result.result]
+
+    async def structured_goals(
+        self,
+        cursor: int,
+    ) -> list[StructuredGoal] | None:
+        """Returns the focused goals at the cursor, or `null` when not in proof mode; does not change the state."""
+        result = await self._rpc.raw_request(
+            "structured_goals",
+            [cursor],
+        )
+        assert not isinstance(result, Err)
+        return None if result.result is None else [StructuredGoal.model_validate(v1) for v1 in result.result]
 
     async def whitespace_required(
         self,

@@ -83,9 +83,8 @@ let run : toplevel -> off:int -> text:string ->
     (run_data, string * run_error) result = fun s ~off ~text ->
   request s (Run({off; text}))
 
-let structured_goals : toplevel ->
-    (structured_goal list option, string) result = fun s ->
-  request s StructuredGoals
+let structured_goals : toplevel -> structured_goal list option = fun s ->
+  match request s StructuredGoals with Ok(goals) -> goals
 
 let unlink file =
   try Unix.unlink file with Unix.Unix_error(_,_,_) -> ()

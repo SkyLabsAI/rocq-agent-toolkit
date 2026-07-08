@@ -118,10 +118,9 @@ type run_error = {
 val run : toplevel -> off:int -> text:string
   -> (run_data, string * run_error) result
 
-(** [structured_goals t] returns the the focused goals at the cursor, or [None]
-    when [t] is not in proof mode. It does not change the state. *)
-val structured_goals : toplevel
-  -> (structured_goal list option, string) result
+(** [structured_goals t] returns the focused goals at the cursor, or [None] if
+    [t] is not in proof mode. It does not change the state. *)
+val structured_goals : toplevel -> structured_goal list option
 
 (** {2 JSON serialization for data returned by [run]} *)
 

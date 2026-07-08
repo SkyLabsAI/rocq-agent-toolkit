@@ -81,8 +81,10 @@ type run_error = {
 }
 [@@deriving to_yojson]
 
+type empty = |
+
 type (_, _) command =
   | Run : {off : int; text : string} -> (run_data, string * run_error) command
   | BackTo : {sid : int} -> (unit, string) command
   | Fork : {pipe_in : string; pipe_out : string} -> (int, string) command
-  | StructuredGoals : (structured_goal list option, string) command
+  | StructuredGoals : (structured_goal list option, empty) command

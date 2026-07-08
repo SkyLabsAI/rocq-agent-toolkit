@@ -93,6 +93,19 @@ API Objects
 - Field `removed_constants`: a list where each element is a string.
 - Field `added_constants`: a list where each element is a string.
 
+### `StructuredHyp`
+
+- Description: Hypothesis of a structured goal.
+- Field `type`: a string.
+- Field `defn`: either `null` or a string.
+- Field `name`: a string.
+
+### `StructuredGoal`
+
+- Description: Structured goal.
+- Field `goal`: a string.
+- Field `hyps`: a list where each element is an instance of the `StructuredHyp` object.
+
 ### `ProofState`
 
 - Description: Summary of a Rocq proof state, including the text of focused goals.
@@ -396,6 +409,14 @@ API Methods
 - Response payload: a list where each element is an instance of the `Sentence` object.
 - Error payload: an instance of the `SentenceSplitError` object.
 - Failure mode: recoverable failure.
+
+### `structured_goals`
+
+- Description: returns the focused goals at the cursor, or `null` when not in proof mode; does not change the state.
+- Arguments (in order, or named):
+  - `cursor`: the cursor to perform the operation on (as an integer).
+- Response payload: either `null` or a list where each element is an instance of the `StructuredGoal` object.
+- Failure mode: never fails.
 
 ### `whitespace_required`
 

@@ -438,7 +438,7 @@ let globrefs_diff =
 let structured_hyp =
   let fields =
     API.Fields.add ~name:"name" S.string @@
-    API.Fields.add ~name:"def" S.(nullable string) @@
+    API.Fields.add ~name:"defn" S.(nullable string) @@
     API.Fields.add ~name:"type" S.string @@
     API.Fields.nil
   in
@@ -778,12 +778,11 @@ let _ =
   Result.map_error (fun s -> (s, ())) res
 
 let _ =
-  declare_full ~name:"structured_goals" ~descr:"returns the focused goals at \
-      the cursor, or `null` when not in proof mode; does not change the state"
-    ~args:A.nil ~ret:S.(nullable (list (obj structured_goal))) ~err:S.null
+  declare ~name:"structured_goals" ~descr:"returns the focused goals at the \
+      cursor, or `null` when not in proof mode; does not change the state"
+    ~args:A.nil ~ret:S.(nullable (list (obj structured_goal)))
     @@ fun d () ->
-  let res = Document.structured_goals d in
-  Result.map_error (fun s -> (s, ())) res
+  Document.structured_goals d
 
 let _ =
   declare_full ~name:"materialize" ~descr:"materializes the cursor, \

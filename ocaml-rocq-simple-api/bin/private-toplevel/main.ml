@@ -131,10 +131,11 @@ let structured_goal_of_evar : Evd.evar_map -> Evar.t -> structured_goal =
   {hyps; goal = pr (Evd.evar_concl evi)}
 
 let structured_goals state =
-  match state.Vernac.State.proof with None -> (state, Ok(None))
-  | Some(proof) ->
+  let get_goals proof =
     let Proof.{goals; sigma; _} = Proof.data proof in
-    (state, Ok(Some(List.map (structured_goal_of_evar sigma) goals)))
+    List.map (structured_goal_of_evar sigma) goals
+  in
+  (state, Ok(Option.map get_goals state.Vernac.State.proof))
 
 let run state off text =
   Feed.reset ();

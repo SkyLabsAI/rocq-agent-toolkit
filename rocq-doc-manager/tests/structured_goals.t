@@ -90,7 +90,7 @@
       {
         "hyps": [
           { "name": "n", "type": "nat" },
-          { "name": "x", "def": "n", "type": "nat" }
+          { "name": "x", "defn": "n", "type": "nat" }
         ],
         "goal": "True"
       }
