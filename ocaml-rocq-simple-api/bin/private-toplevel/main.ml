@@ -116,6 +116,27 @@ let fixup_subgoal : Pp.t -> Pp.t = fun p ->
     | _ -> raise Fallback
   with Fallback -> p
 
+let structured_goal_of_evar : Evd.evar_map -> Evar.t -> structured_goal =
+    fun sigma ev ->
+  let evi = Evd.find_undefined sigma ev in
+  let env = Evd.evar_filtered_env (Global.env ()) evi in
+  let pr c = Pp.string_of_ppcmds (Printer.pr_econstr_env env sigma c) in
+  let open Context.Named.Declaration in
+  let hyp_of_decl d =
+    let name = Names.Id.to_string (get_id d) in
+    let def = Option.map pr (get_value d) in
+    {name; def; hyp_type = pr (get_type d)}
+  in
+  let hyps = List.rev_map hyp_of_decl (Evd.evar_filtered_context evi) in
+  {hyps; goal = pr (Evd.evar_concl evi)}
+
+let structured_goals state =
+  let get_goals proof =
+    let Proof.{goals; sigma; _} = Proof.data proof in
+    List.map (structured_goal_of_evar sigma) goals
+  in
+  (state, Ok(Option.map get_goals state.Vernac.State.proof))
+
 let run state off text =
   Feed.reset ();
   try
@@ -213,6 +234,7 @@ let run_command : type r e. state -> (r, e) command -> state * (r, e) result =
   | Run({off; text})          -> run state off text
   | BackTo({sid})             -> back_to state sid
   | Fork({pipe_in; pipe_out}) -> fork state ~pipe_in ~pipe_out
+  | StructuredGoals           -> structured_goals state
 
 let interact : state -> unit = fun state ->
   let pid = Unix.getpid () in
