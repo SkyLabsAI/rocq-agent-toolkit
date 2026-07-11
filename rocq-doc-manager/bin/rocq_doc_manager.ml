@@ -489,12 +489,15 @@ let command_data =
     API.Fields.add ~name:"proof_state" S.(nullable (obj proof_state)) @@
     API.Fields.add ~name:"synterp_ast" ~descr:"limited Rocq AST data"
       S.(obj vernac_data) @@
+    API.Fields.add ~name:"loc" ~descr:"source location of the command"
+      S.(nullable (obj rocq_loc)) @@
     API.Fields.nil
   in
   let open Rocq_toplevel in
   let encode _ = assert false in
-  let decode {globrefs_diff; feedback_messages; synterp_ast; proof_state} =
-    (globrefs_diff, (feedback_messages, (proof_state, (synterp_ast, ()))))
+  let decode {globrefs_diff; feedback_messages; synterp_ast; proof_state; loc} =
+    (globrefs_diff,
+      (feedback_messages, (proof_state, (synterp_ast, (loc, ())))))
   in
   API.declare_object api ~name:"CommandData"
     ~descr:"data gathered while running a Rocq command" ~encode ~decode fields
@@ -505,14 +508,16 @@ let command_error =
       for the error" S.(nullable (obj rocq_loc)) @@
     API.Fields.add ~name:"feedback_messages"
       S.(list (obj feedback_message)) @@
+    API.Fields.add ~name:"loc" ~descr:"source location of the command"
+      S.(nullable (obj rocq_loc)) @@
     API.Fields.nil
   in
   let open Rocq_toplevel in
-  let encode (error_loc, (feedback_messages, ())) =
-    {error_loc; feedback_messages}
+  let encode (error_loc, (feedback_messages, (loc, ()))) =
+    {error_loc; feedback_messages; loc}
   in
-  let decode {error_loc; feedback_messages} =
-    (error_loc, (feedback_messages, ()))
+  let decode {error_loc; feedback_messages; loc} =
+    (error_loc, (feedback_messages, (loc, ())))
   in
   API.declare_object api ~name:"CommandError"
     ~descr:"data returned on Rocq command errors" ~encode ~decode fields

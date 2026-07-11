@@ -102,11 +102,13 @@ type run_data = {
   feedback_messages : feedback_message list;
   synterp_ast : Rocq_vernac_entry.command;
   proof_state : proof_state option;
+  loc : Loc.t option;
 }
 
 type run_error = {
   error_loc : Loc.t option;
   feedback_messages : feedback_message list;
+  loc : Loc.t option;
 }
 
 (** [run t ~off ~text] runs the vernacular command from [text] in the toplevel
