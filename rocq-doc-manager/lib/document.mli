@@ -263,7 +263,7 @@ val commit : ?file:string -> ?include_ghost:bool -> ?include_suffix:bool
     an error occurs (queries are not part of the document). *)
 val query : t -> text:string -> (command_data, string) result
 
-(** [structured_goals d] returns the focused goals in structured form at the
+(** [structured_goals d] returns the focused goals, in structured form, at the
     cursor in document [d], or [None] when not in proof mode. The state is not
     changed. *)
 val structured_goals : t -> Rocq_toplevel.structured_goal list option

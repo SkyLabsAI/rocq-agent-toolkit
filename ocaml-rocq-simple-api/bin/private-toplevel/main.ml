@@ -120,15 +120,18 @@ let structured_goal_of_evar : Evd.evar_map -> Evar.t -> structured_goal =
     fun sigma ev ->
   let evi = Evd.find_undefined sigma ev in
   let env = Evd.evar_filtered_env (Global.env ()) evi in
-  let pr c = Pp.string_of_ppcmds (Printer.pr_econstr_env env sigma c) in
+  let pr c = Pp.string_of_ppcmds (Printer.pr_leconstr_env env sigma c) in
+  let pr_type ?goal_concl_style t =
+    Pp.string_of_ppcmds (Printer.pr_letype_env ?goal_concl_style env sigma t)
+  in
   let open Context.Named.Declaration in
   let hyp_of_decl d =
     let name = Names.Id.to_string (get_id d) in
     let def = Option.map pr (get_value d) in
-    {name; def; hyp_type = pr (get_type d)}
+    {name; def; hyp_type = pr_type (get_type d)}
   in
   let hyps = List.rev_map hyp_of_decl (Evd.evar_filtered_context evi) in
-  {hyps; goal = pr (Evd.evar_concl evi)}
+  {hyps; goal = pr_type ~goal_concl_style:true (Evd.evar_concl evi)}
 
 let structured_goals state =
   let get_goals proof =
