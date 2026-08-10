@@ -117,6 +117,7 @@ API Objects
 ### `CommandData`
 
 - Description: data gathered while running a Rocq command.
+- Field `loc`: source location of the command (as either `null` or an instance of the `RocqLoc` object).
 - Field `synterp_ast`: limited Rocq AST data (as an instance of the `VernacData` object).
 - Field `proof_state`: either `null` or an instance of the `ProofState` object.
 - Field `feedback_messages`: a list where each element is an instance of the `FeedbackMessage` object.
@@ -125,6 +126,7 @@ API Objects
 ### `CommandError`
 
 - Description: data returned on Rocq command errors.
+- Field `loc`: source location of the command (as either `null` or an instance of the `RocqLoc` object).
 - Field `feedback_messages`: a list where each element is an instance of the `FeedbackMessage` object.
 - Field `error_loc`: optional source code location for the error (as either `null` or an instance of the `RocqLoc` object).
 
