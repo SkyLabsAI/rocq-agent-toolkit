@@ -45,6 +45,14 @@
         "kind": "StartTheoremProof",
         "pure": true,
         "attrs": { "ids": [ "refl" ], "kind": "Theorem" }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 40
       }
     }
   }
@@ -60,7 +68,15 @@
           "\nX : Type\nx : X\n============================\nx = x"
         ]
       },
-      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} }
+      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 41,
+        "ep": 47
+      }
     }
   }
   { "id": 5, "jsonrpc": "2.0", "result": null }
@@ -203,7 +219,15 @@
           "\nX : Type\nx : X\n============================\nx = x"
         ]
       },
-      "synterp_ast": { "kind": "Extend", "attrs": {} }
+      "synterp_ast": { "kind": "Extend", "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 66,
+        "ep": 72
+      }
     }
   }
   {

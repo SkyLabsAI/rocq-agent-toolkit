@@ -36,6 +36,14 @@
         "kind": "StartTheoremProof",
         "pure": true,
         "attrs": { "ids": [ "demo" ], "kind": "Theorem" }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 27
       }
     }
   }
@@ -49,7 +57,15 @@
         "shelved_goals": 0,
         "focused_goals": [ "\n============================\nnat -> True" ]
       },
-      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} }
+      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 28,
+        "ep": 34
+      }
     }
   }
   { "id": 5, "jsonrpc": "2.0", "result": null }
@@ -62,7 +78,15 @@
         "shelved_goals": 0,
         "focused_goals": [ "\nn : nat\n============================\nTrue" ]
       },
-      "synterp_ast": { "kind": "Extend", "attrs": {} }
+      "synterp_ast": { "kind": "Extend", "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 37,
+        "ep": 45
+      }
     }
   }
   { "id": 7, "jsonrpc": "2.0", "result": null }
@@ -77,7 +101,15 @@
           "\nn : nat\nx := n : nat\n============================\nTrue"
         ]
       },
-      "synterp_ast": { "kind": "Extend", "attrs": {} }
+      "synterp_ast": { "kind": "Extend", "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 48,
+        "ep": 61
+      }
     }
   }
   {

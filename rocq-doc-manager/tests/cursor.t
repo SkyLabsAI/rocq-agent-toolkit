@@ -41,6 +41,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "test1", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 24
       }
     }
   }
@@ -57,6 +65,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "test2", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 25,
+        "ep": 49
       }
     }
   }
@@ -73,6 +89,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "test3", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 50,
+        "ep": 74
       }
     }
   }

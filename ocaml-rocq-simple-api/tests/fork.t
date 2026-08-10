@@ -28,7 +28,16 @@
       { "level": "info", "text": "n_rec is defined" },
       { "level": "info", "text": "n_sind is defined" }
     ],
-    "synterp_ast": { "controls": [], "tag": "Inductive", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Inductive", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 40
+    }
   }
   [0] 2 > stop 0
   Error: cannot stop the current toplevel.
@@ -47,7 +56,16 @@
         "text": "n : Set\n\nn is not universe polymorphic\nExpands to: Inductive Top.n\nDeclared in toplevel input, characters 10-11"
       }
     ],
-    "synterp_ast": { "controls": [], "tag": "Print", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Print", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 8
+    }
   }
   [1] 3 > fork 1
   New toplevel forked with identifier 2.

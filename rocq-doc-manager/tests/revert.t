@@ -66,6 +66,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "test", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 23
       }
     }
   }
@@ -80,7 +88,15 @@
           "text": "nat : Set\n\nnat is not universe polymorphic\nExpands to: Inductive Corelib.Init.Datatypes.nat\nDeclared in library Corelib.Init.Datatypes, line 187, characters 10-13"
         }
       ],
-      "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} }
+      "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 24,
+        "ep": 34
+      }
     }
   }
   {
@@ -151,7 +167,15 @@
       "feedback_messages": [
         { "level": "notice", "text": "test\n     : Set" }
       ],
-      "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} }
+      "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 35,
+        "ep": 46
+      }
     }
   }
   { "id": 13, "jsonrpc": "2.0", "result": null }
