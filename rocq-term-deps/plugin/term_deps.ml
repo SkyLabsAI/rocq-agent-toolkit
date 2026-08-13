@@ -1,17 +1,17 @@
-type t = Names.Cset.t * Names.Mindset.t
+type t = Names.Cset.t * unit Names.Mindmap_env.t
 
 let term_deps : Constr.named_context -> Constr.t -> t = fun hyps t ->
   let constants = ref Names.Cset.empty in
-  let inductives = ref Names.Mindset.empty in
+  let inductives = ref Names.Mindmap_env.empty in
   let rec term_deps t =
     let _ =
       match Constr.kind t with
       | Constr.Const((c,_))     ->
           constants := Names.Cset.add c !constants
       | Constr.Ind((i,_))       ->
-          inductives := Names.Mindset.add (fst i) !inductives
+          inductives := Names.Mindmap_env.add (fst i) () !inductives
       | Constr.Construct((c,_)) ->
-          inductives := Names.Mindset.add (fst (fst c)) !inductives
+          inductives := Names.Mindmap_env.add (fst (fst c)) () !inductives
       | _                       ->
           ()
     in
@@ -52,9 +52,9 @@ let print_term_deps : Libnames.qualid -> unit = fun r ->
   in
   let (constants, inductives) = term_deps hyps t in
   let constants = Names.Cset.elements constants in
-  let inductives = Names.Mindset.elements inductives in
+  let inductives = Names.Mindmap_env.bindings inductives in
   let pp_c c = Pp.(str "- " ++ Names.Constant.print c ++ fnl ()) in
-  let pp_i i = Pp.(str "- " ++ Names.MutInd.print i ++ fnl ()) in
+  let pp_i (i, ()) = Pp.(str "- " ++ Names.MutInd.print i ++ fnl ()) in
   let pp =
     let open Pp in
     str "Constants:" ++ fnl () ++ seq (List.map pp_c constants) ++
@@ -82,8 +82,8 @@ let print_json_term_deps : Libnames.qualid -> unit = fun r ->
     | Some(def) ->
     let (constants, inductives) = term_deps hyps def in
     let constants = Names.Cset.elements constants in
-    let inductives = Names.Mindset.elements inductives in
-    let make_ind i = `String(Names.MutInd.to_string i) in
+    let inductives = Names.Mindmap_env.bindings inductives in
+    let make_ind (i, ()) = `String(Names.MutInd.to_string i) in
     let make_cst c = `String(Names.Constant.to_string c) in
     ("inductive_deps", `List(List.map make_ind inductives)) ::
     ("constant_deps" , `List(List.map make_cst constants) ) :: []
