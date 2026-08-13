@@ -98,11 +98,14 @@ let run : config -> res = fun config ->
   | Ok(dirpath)    ->
       let sentences = get_sentences config res.commands None in
       Ok({dirpath; sentences})
-  | Error(s, None) ->
-      assert (res.commands = []);
-      Error(s, {parsed_sentences = []; error_loc = None})
   | Error(s, loc ) ->
-      let parsed_sentences = get_sentences config res.commands loc in
+      (* The [loc] can be [None] in two cases: (1) on an initialization error,
+         or (2) on Rocq errors that don't have a location (e.g., bad vo). *)
+      let parsed_sentences =
+        match res.commands with
+        | []   -> [] (* Load-bearing if the input file does not exist. *)
+        | cmds -> get_sentences config cmds loc
+      in
       Error(s, {parsed_sentences; error_loc = loc})
 
 let split_file : file:string -> args:string list -> res = fun ~file ~args ->
