@@ -11,8 +11,12 @@
  (name rocq-doc-manager)
  (synopsis "Tool for programatically editing Rocq source files")
  (depends
+  uuseg
+  cmdliner
+  ppx_inline_test
   jsonrpc-tp
   stdlib-extra
+  rocq-fake-repl
   rocq-simple-api))
 
 (subst disabled)
