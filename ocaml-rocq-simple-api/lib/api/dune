@@ -1,5 +1,35 @@
+; This rule hard-codes the path to the Rocq repository in a workspace build,
+; so the path will need to change if the repository is ever moved. Outside of
+; a SkyLabs AI workspace build, no dependency is added to the created file.
+(rule
+ (target rocq_dep)
+ (deps
+  (glob_files "%{workspace_root}/vendored/rocq/Makefile"))
+ (action
+  (with-stdout-to %{target}
+   (progn
+    (echo "(\n")
+    ; We can't just test for the existence of the directory, since dune will
+    ; create it even when the above glob does not match anything.
+    (bash "if [[ -f \"%{workspace_root}/vendored/rocq/Makefile\" ]]; then
+             echo \"(alias ../../../../../vendored/rocq/install)\"
+           fi")
+    (echo ")\n")))))
+
+(rule
+ (target binaries_ready.ml)
+ (deps
+  ; Hack to depend on alias @vendored/rocq/install in a workspace build.
+  (include rocq_dep)
+  ; Ensure that the private binaries are ready.
+  %{workspace_root}/_build/install/%{context_name}/bin/rocq-simple-api.private.splitter
+  %{workspace_root}/_build/install/%{context_name}/bin/rocq-simple-api.private.toplevel)
+ (action
+  (write-file %{target} "(* Dummy file. *)")))
+
 (library
  (name rocq_toplevel)
  (public_name rocq-simple-api.api)
+ (private_modules binaries_ready)
  (wrapped false)
  (libraries rocq_simple_api_internal))

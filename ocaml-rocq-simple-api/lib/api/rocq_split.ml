@@ -1,3 +1,4 @@
+include Binaries_ready
 include Rocq_simple_api_internal.Rocq_split_data
 
 type command = Rocq_vernac_entry.command
