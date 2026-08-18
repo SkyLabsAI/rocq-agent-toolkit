@@ -7,7 +7,7 @@ license: "LGPL-2.1-only"
 homepage: "https://github.com/SkylabsAI/skylabs-fm"
 bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
-  "dune" {>= "3.21"}
+  "dune" {>= "3.22"}
   "rocq-core"
   "rocq-stdlib"
   "yojson"

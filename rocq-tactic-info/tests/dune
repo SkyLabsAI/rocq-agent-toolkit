@@ -1,6 +1,6 @@
-(cram
- (applies_to :whole_subtree)
- (deps
-  (package rocq-core)
-  (package rocq-stdlib)
-  (package rocq-tactic-info)))
+(include_subdirs qualified)
+(rocq.theory
+ (name tactic_info.tests)
+ (generate_project_file)
+ (flags (:standard -test-mode))
+ (theories Ltac2 skylabs.tactic_info))
