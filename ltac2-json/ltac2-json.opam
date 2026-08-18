@@ -7,7 +7,7 @@ license: "GPL-2.0-or-later"
 homepage: "https://github.com/SkylabsAI/skylabs-fm"
 bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
-  "dune" {>= "3.21"}
+  "dune" {>= "3.22"}
   "rocq-core"
   "rocq-stdlib"
   "ltac2-derive"
