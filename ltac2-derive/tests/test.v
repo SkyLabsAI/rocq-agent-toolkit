@@ -7,4 +7,4 @@ Ltac2 Derive List.
 
 Ltac2 Type variant := [ VariantA | VariantB | VariantC ].
 
-Ltac2 Derive pp, eq For variant.
+Fail Ltac2 Derive pp, eq For variant.
