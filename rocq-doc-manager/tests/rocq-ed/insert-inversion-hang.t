@@ -1,9 +1,4 @@
-  $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
-  $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
-  $ export DUNE_CACHE=disabled
-
-  $ cat > test.v <<EOF
-  > EOF
+  $ touch test.v
 
   $ cat > dune-project <<EOF
   > (lang dune 3.21)

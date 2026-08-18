@@ -13,7 +13,7 @@ license: "LGPL-2.0"
 homepage: "https://github.com/SkylabsAI/skylabs-fm"
 bug-reports: "https://github.com/SkylabsAI/skylabs-fm/issues"
 depends: [
-  "dune" {>= "3.21"}
+  "dune" {>= "3.22"}
   "rocq-stdpp"
   "rocq-iris"
   "ltac2-extra"

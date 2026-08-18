@@ -1,0 +1,3 @@
+File "./fmdeps/rocq-agent-toolkit/rocq-term-deps/tests/fail.v", line 2, characters 12-15:
+The command has indeed failed with message:
+This reference is not a constant, but an inductive.

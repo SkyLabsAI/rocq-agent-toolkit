@@ -1,7 +1,3 @@
-  $ export ROCQPATH="$DUNE_SOURCEROOT/_build/install/default/lib/coq/user-contrib"
-  $ export ROCQLIB="$DUNE_SOURCEROOT/_build/install/default/lib/coq"
-  $ export DUNE_CACHE=disabled
-
   $ dune build
   $ dune rocq top --toplevel rocq-fake-repl theories/file.v | sed 's/\/.*\/\(_build\/\)/$TESTCASE_ROOT\/\1/'
   -w

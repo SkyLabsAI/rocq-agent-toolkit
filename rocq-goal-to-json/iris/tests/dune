@@ -1,9 +1,9 @@
-(cram
- (applies_to :whole_subtree)
- (deps
-  (package rocq-core)
-  (package rocq-stdlib)
-  (package rocq-stdpp)
-  (package rocq-iris)
-  (package rocq-goal-to-json_iris)
-  (package ltac2-json)))
+(include_subdirs qualified)
+(rocq.theory
+ (name goal_to_json_iris.tests)
+ (generate_project_file)
+ (flags (:standard -test-mode -w -level-tolerance -w -deprecated-focus))
+ (theories
+  Stdlib Ltac2
+  skylabs_ai.ltac2_derive skylabs_ai.ltac2_json
+  skylabs_ai.extractors.goal_to_json.iris))

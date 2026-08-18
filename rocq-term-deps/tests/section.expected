@@ -1,0 +1,36 @@
+{
+  "name": "term_deps.tests.section.f",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": [ "Corelib.Init.Nat.add" ]
+}
+{
+  "name": "term_deps.tests.section.f",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": [ "Corelib.Init.Nat.add" ]
+}
+{
+  "name": "term_deps.tests.section.g",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": [ "Corelib.Init.Nat.add", "term_deps.tests.section.f" ]
+}
+{
+  "name": "term_deps.tests.section.f",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": [ "Corelib.Init.Nat.add" ]
+}
+{
+  "name": "term_deps.tests.section.f",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": [ "Corelib.Init.Nat.add" ]
+}
+{
+  "name": "term_deps.tests.section.g",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": [ "Corelib.Init.Nat.add", "term_deps.tests.section.f" ]
+}

@@ -1,0 +1,15 @@
+File "./fmdeps/rocq-agent-toolkit/rocq-term-deps/tests/json.v", line 2, characters 12-15:
+The command has indeed failed with message:
+This reference is not a constant, but an inductive.
+{
+  "name": "Corelib.Init.Nat.add",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": []
+}
+{
+  "name": "term_deps.tests.json.weird",
+  "kind": "Def",
+  "inductive_deps": [ "Corelib.Init.Datatypes.nat" ],
+  "constant_deps": [ "Corelib.Init.Nat.mul", "Corelib.Init.Nat.add" ]
+}
