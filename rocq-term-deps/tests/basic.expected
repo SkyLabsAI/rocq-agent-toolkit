@@ -1,0 +1,13 @@
+File "./fmdeps/rocq-agent-toolkit/rocq-term-deps/tests/basic.v", line 2, characters 12-15:
+The command has indeed failed with message:
+This reference is not a constant, but an inductive.
+Constants:
+Inductives:
+- Corelib.Init.Datatypes.nat
+
+Constants:
+- Corelib.Init.Nat.mul
+- Corelib.Init.Nat.add
+Inductives:
+- Corelib.Init.Datatypes.nat
+
