@@ -142,7 +142,6 @@ let structured_goals state =
 
 let run state off text =
   Feed.reset ();
-  let open Vernac.State in
   let error ?loc e =
     let (e, info) = Exninfo.capture e in
     let error_loc = Loc.get_loc info in
@@ -150,38 +149,39 @@ let run state off text =
     let feedback_messages = Feed.collect feedback_filter in
     (state, Error(msg, {error_loc; feedback_messages; loc}))
   in
-  match
-    try
-      let stream = Gramlib.Stream.of_string ~offset:off text in
-      let input = Procq.Parsable.make stream in
-      let entry = Pvernac.main_entry in
-      let vernac =
-        match Stm.parse_sentence ~doc:state.doc state.sid ~entry input with
-        | Some(vernac) -> vernac
-        | None         ->
-            CErrors.user_err (Pp.str "End of file, no command found in input.")
-      in
-      match vernac.CAst.loc with None -> assert false | Some(loc) ->
-      (* Check for leading text. *)
-      let len_leading = loc.Loc.bp - off in
-      if len_leading <> 0 then begin
-        let s = String.sub text 0 len_leading in
-        let msg = Printf.sprintf "Leading text before command: %S." s in
-        CErrors.user_err (Pp.str msg)
-      end;
-      (* Check for trailing text. *)
-      let len_command = loc.Loc.ep - loc.Loc.bp in
-      let len_text = String.length text in
-      if len_command < len_text then begin
-        let s = String.sub text len_command (len_text - len_command) in
-        let msg = Printf.sprintf "Trailing text after command: %S." s in
-        CErrors.user_err (Pp.str msg)
-      end;
-      Ok(vernac)
-    with e -> Error(error e)
-  with
+  let run () =
+    let stream = Gramlib.Stream.of_string ~offset:off text in
+    let input = Procq.Parsable.make stream in
+    let entry = Pvernac.main_entry in
+    let open Vernac.State in
+    let vernac =
+      match Stm.parse_sentence ~doc:state.doc state.sid ~entry input with
+      | Some(vernac) -> vernac
+      | None         ->
+          CErrors.user_err (Pp.str "End of file, no command found in input.")
+    in
+    match vernac.CAst.loc with None -> assert false | Some(loc) ->
+    (* Check for leading text. *)
+    let len_leading = loc.Loc.bp - off in
+    if len_leading <> 0 then begin
+      let s = String.sub text 0 len_leading in
+      let msg = Printf.sprintf "Leading text before command: %S." s in
+      CErrors.user_err (Pp.str msg)
+    end;
+    (* Check for trailing text. *)
+    let len_command = loc.Loc.ep - loc.Loc.bp in
+    let len_text = String.length text in
+    if len_command < len_text then begin
+      let s = String.sub text len_command (len_text - len_command) in
+      let msg = Printf.sprintf "Trailing text after command: %S." s in
+      CErrors.user_err (Pp.str msg)
+    end;
+    Ok(vernac)
+  in
+  match run () with
+  | exception e   -> error e
   | Error(result) -> result
-  | Ok(vernac) ->
+  | Ok(vernac)    ->
   let loc = vernac.CAst.loc in
   try
     let env1 = Global.env () in
