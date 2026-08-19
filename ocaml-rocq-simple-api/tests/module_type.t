@@ -13,13 +13,31 @@
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module foo started" }
     ],
-    "synterp_ast": { "controls": [], "tag": "DefineModule", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "DefineModule", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 11
+    }
   }
   [0] 2 > run 0 "Definition a := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.a" ] },
     "feedback_messages": [ { "level": "info", "text": "a is defined" } ],
-    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 20
+    }
   }
   [0] 3 > run 0 "Module Type bar."
   {
@@ -30,13 +48,31 @@
       "controls": [],
       "tag": "DeclareModuleType",
       "pure": false
+    },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 16
     }
   }
   [0] 4 > run 0 "Definition b := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.bar.b" ] },
     "feedback_messages": [ { "level": "info", "text": "b is defined" } ],
-    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 20
+    }
   }
   [0] 5 > run 0 "End bar."
   {
@@ -44,13 +80,31 @@
     "feedback_messages": [
       { "level": "info", "text": "Module Type bar is defined" }
     ],
-    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 8
+    }
   }
   [0] 6 > run 0 "End foo."
   {
     "feedback_messages": [
       { "level": "info", "text": "Module foo is defined" }
     ],
-    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 8
+    }
   }
   [0] 7 > [EOF]

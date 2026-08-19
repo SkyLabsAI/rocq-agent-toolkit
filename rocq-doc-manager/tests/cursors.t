@@ -40,6 +40,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "x1", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 18,
+        "ep": 39
       }
     }
   }
@@ -74,6 +82,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "inserted", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 63,
+        "ep": 90
       }
     }
   }

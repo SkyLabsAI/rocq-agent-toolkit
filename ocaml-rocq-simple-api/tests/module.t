@@ -16,49 +16,134 @@
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module foo started" }
     ],
-    "synterp_ast": { "controls": [], "tag": "DefineModule", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "DefineModule", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 11
+    }
   }
   [0] 2 > run 0 "Definition a := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.a" ] },
     "feedback_messages": [ { "level": "info", "text": "a is defined" } ],
-    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 20
+    }
   }
   [0] 3 > run 0 "Module bar."
   {
     "feedback_messages": [
       { "level": "info", "text": "Interactive Module bar started" }
     ],
-    "synterp_ast": { "controls": [], "tag": "DefineModule", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "DefineModule", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 11
+    }
   }
   [0] 4 > run 0 "Definition b := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.bar.b" ] },
     "feedback_messages": [ { "level": "info", "text": "b is defined" } ],
-    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 20
+    }
   }
   [0] 5 > run 0 "End bar."
   {
     "feedback_messages": [
       { "level": "info", "text": "Module bar is defined" }
     ],
-    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 8
+    }
   }
   [0] 6 > run 0 "Section junk."
-  { "synterp_ast": { "controls": [], "tag": "BeginSection", "pure": false } }
+  {
+    "synterp_ast": { "controls": [], "tag": "BeginSection", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 13
+    }
+  }
   [0] 7 > run 0 "Definition c := nat."
   {
     "globrefs_diff": { "added_constants": [ "Top.foo.c" ] },
     "feedback_messages": [ { "level": "info", "text": "c is defined" } ],
-    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "Definition", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 20
+    }
   }
   [0] 8 > run 0 "End junk."
-  { "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false } }
+  {
+    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 9
+    }
+  }
   [0] 9 > run 0 "End foo."
   {
     "feedback_messages": [
       { "level": "info", "text": "Module foo is defined" }
     ],
-    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false }
+    "synterp_ast": { "controls": [], "tag": "EndSegment", "pure": false },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 8
+    }
   }
   [0] 10 > [EOF]

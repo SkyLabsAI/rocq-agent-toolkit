@@ -77,6 +77,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "_", "kind": "Definition", "proof": true }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 10
       }
     }
   }
@@ -91,5 +99,15 @@
   {
     "id": 9,
     "jsonrpc": "2.0",
-    "result": { "synterp_ast": { "kind": "Abort", "pure": true, "attrs": {} } }
+    "result": {
+      "synterp_ast": { "kind": "Abort", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 6
+      }
+    }
   }

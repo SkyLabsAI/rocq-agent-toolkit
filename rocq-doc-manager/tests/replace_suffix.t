@@ -69,6 +69,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "test4", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 22
       }
     }
   }
@@ -120,6 +128,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "my_test", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 23,
+        "ep": 55
       }
     }
   }
@@ -175,6 +191,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "foo", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 20
       }
     }
   }

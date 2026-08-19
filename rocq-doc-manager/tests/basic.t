@@ -54,7 +54,17 @@
   {
     "id": 2,
     "jsonrpc": "2.0",
-    "result": { "synterp_ast": { "kind": "Require", "attrs": {} } }
+    "result": {
+      "synterp_ast": { "kind": "Require", "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 0,
+        "ep": 36
+      }
+    }
   }
   { "id": 3, "jsonrpc": "2.0", "result": null }
   { "id": 4, "jsonrpc": "2.0", "result": null }
@@ -70,6 +80,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "inserted", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 62,
+        "ep": 89
       }
     }
   }
@@ -84,7 +102,15 @@
           "text": "nil : forall {A : Type}, list A\n\nnil is template universe polymorphic\nArguments nil {A}%_type_scope\nExpands to: Constructor Corelib.Init.Datatypes.nil\nDeclared in library Corelib.Init.Datatypes, line 328, characters 3-6"
         }
       ],
-      "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} }
+      "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 90,
+        "ep": 100
+      }
     }
   }
   { "id": 8, "jsonrpc": "2.0", "result": null }
@@ -98,6 +124,14 @@
         "kind": "Definition",
         "pure": true,
         "attrs": { "id": "junk", "kind": "Definition", "proof": false }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 4,
+        "bol_pos_last": 126,
+        "bp": 105,
+        "ep": 130
       }
     }
   }
@@ -109,7 +143,15 @@
       "feedback_messages": [
         { "level": "notice", "text": "12 < 42 <= 100\n     : Prop" }
       ],
-      "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} }
+      "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 131,
+        "ep": 152
+      }
     }
   }
   {
@@ -222,6 +264,14 @@
         "kind": "StartTheoremProof",
         "pure": true,
         "attrs": { "ids": [ "test" ], "kind": "Theorem" }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 155,
+        "ep": 192
       }
     }
   }
@@ -237,7 +287,15 @@
           "\n============================\nforall x : nat, x = x"
         ]
       },
-      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} }
+      "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 193,
+        "ep": 199
+      }
     }
   }
   { "id": 18, "jsonrpc": "2.0", "result": null }
@@ -250,7 +308,15 @@
         "shelved_goals": 0,
         "focused_goals": [ "\nx : nat\n============================\nx = x" ]
       },
-      "synterp_ast": { "kind": "Extend", "attrs": {} }
+      "synterp_ast": { "kind": "Extend", "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 202,
+        "ep": 210
+      }
     }
   }
   { "id": 20, "jsonrpc": "2.0", "result": null }
@@ -259,7 +325,15 @@
     "jsonrpc": "2.0",
     "result": {
       "proof_state": { "given_up_goals": 0, "shelved_goals": 0 },
-      "synterp_ast": { "kind": "Extend", "attrs": {} }
+      "synterp_ast": { "kind": "Extend", "attrs": {} },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 213,
+        "ep": 225
+      }
     }
   }
   { "id": 22, "jsonrpc": "2.0", "result": null }
@@ -272,6 +346,14 @@
         "kind": "EndProof",
         "pure": true,
         "attrs": { "kind": "Qed" }
+      },
+      "loc": {
+        "line_nb": 1,
+        "bol_pos": 0,
+        "line_nb_last": 1,
+        "bol_pos_last": 0,
+        "bp": 226,
+        "ep": 230
       }
     }
   }

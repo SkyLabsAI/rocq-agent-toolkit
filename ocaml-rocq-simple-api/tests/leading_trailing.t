@@ -38,6 +38,15 @@
     "synterp_ast": { "controls": [], "tag": "Definition", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
+    },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 11
     }
   }
   [0] 2 > run 0 "Proof.   "
@@ -49,6 +58,15 @@
     "synterp_ast": { "controls": [], "tag": "Proof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
+    },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 6
     }
   }
   [0] 3 > run 127 "- reflexivity."
@@ -69,23 +87,59 @@
     "proof_state": {
       "unfocused_goals": [ 0 ],
       "focused_goals": [ "\n============================\n0 = 0" ]
+    },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 1
     }
   }
   [0] 4 > run 0 "reflexivity."
   {
     "synterp_ast": { "controls": [], "tag": "Extend", "pure": false },
-    "proof_state": { "unfocused_goals": [ 0 ] }
+    "proof_state": { "unfocused_goals": [ 0 ] },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 12
+    }
   }
   [0] 5 > run 0 "Qed."
   {
     "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm" ] },
-    "synterp_ast": { "controls": [], "tag": "EndProof", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "EndProof", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 4
+    }
   }
   [0] 6 > run 0 "Goal 0 = 0."
   {
     "synterp_ast": { "controls": [], "tag": "Definition", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
+    },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 11
     }
   }
   [0] 7 > run 0 "Proof."
@@ -93,6 +147,15 @@
     "synterp_ast": { "controls": [], "tag": "Proof", "pure": true },
     "proof_state": {
       "focused_goals": [ "\n============================\n0 = 0" ]
+    },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 6
     }
   }
   [0] 8 > run 0 "1:"
@@ -112,7 +175,16 @@
   [0] 8 > run 0 "1: reflexivity."
   {
     "synterp_ast": { "controls": [], "tag": "Extend", "pure": false },
-    "proof_state": {}
+    "proof_state": {},
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 15
+    }
   }
   [0] 9 > run 0 "1:{ "
   Error: while processing the command.
@@ -145,7 +217,16 @@
         },
         "text": "[Focus] No such goal (1)."
       }
-    ]
+    ],
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 3
+    }
   }
   [0] 9 > run 0 "reflexivity."
   Error: while processing the command.
@@ -174,7 +255,16 @@
         },
         "text": "No such goal."
       }
-    ]
+    ],
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 12
+    }
   }
   [0] 9 > run 246 "} "
   Error: while processing the command.
@@ -211,12 +301,30 @@
         },
         "text": "The proof is not focused"
       }
-    ]
+    ],
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 1
+    }
   }
   [0] 9 > run 0 "Qed."
   {
     "globrefs_diff": { "added_constants": [ "Top.Unnamed_thm0" ] },
-    "synterp_ast": { "controls": [], "tag": "EndProof", "pure": true }
+    "synterp_ast": { "controls": [], "tag": "EndProof", "pure": true },
+    "loc": {
+      "fname": [ "ToplevelInput" ],
+      "line_nb": 1,
+      "bol_pos": 0,
+      "line_nb_last": 1,
+      "bol_pos_last": 0,
+      "bp": 0,
+      "ep": 4
+    }
   }
   [0] 13 > run 0 "  Locate nat."
   Error: while processing the command.

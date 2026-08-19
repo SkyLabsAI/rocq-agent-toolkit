@@ -232,6 +232,11 @@ class ProofState(BaseModel):
 class CommandData(BaseModel):
     """Data gathered while running a Rocq command."""
 
+    loc: RocqLoc | None = Field(
+        kw_only=True,
+        default=None,
+        description="source location of the command",
+    )
     synterp_ast: VernacData = Field(
         kw_only=True,
         description="limited Rocq AST data",
@@ -253,6 +258,11 @@ class CommandData(BaseModel):
 class CommandError(BaseModel):
     """Data returned on Rocq command errors."""
 
+    loc: RocqLoc | None = Field(
+        kw_only=True,
+        default=None,
+        description="source location of the command",
+    )
     feedback_messages: list[FeedbackMessage] = Field(
         kw_only=True,
         default_factory=list,

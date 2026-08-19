@@ -71,13 +71,15 @@ type run_data = {
   globrefs_diff : (globrefs_diff [@default empty_globrefs_diff]);
   feedback_messages : (feedback_message list [@default []]);
   synterp_ast : Rocq_vernac_entry.command;
-  proof_state : (proof_state option [@default None])
+  proof_state : (proof_state option [@default None]);
+  loc : (Rocq_loc.t option [@default None]);
 }
 [@@deriving to_yojson]
 
 type run_error = {
   error_loc : (Rocq_loc.t option [@default None]);
   feedback_messages : (feedback_message list [@default []]);
+  loc : (Rocq_loc.t option [@default None]);
 }
 [@@deriving to_yojson]
 
