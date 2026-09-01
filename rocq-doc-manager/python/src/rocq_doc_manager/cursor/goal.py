@@ -36,6 +36,7 @@ class GoalRocqCursor(DelegateRocqCursor):
         start: int | None = None,
         end: int | None = None,
         count: int | None = None,
+        clone: bool = True,
         materialize: bool = False,
     ) -> GoalRocqCursor | rdm_api.Err[rdm_api.CommandError | None]:
         """
@@ -47,6 +48,7 @@ class GoalRocqCursor(DelegateRocqCursor):
         @param start: see `DelimitedRocqCursor.make`
         @param end: see `DelimitedRocqCursor.make`
         @param count: see `DelimitedRocqCursor.make`
+        @param clone: see `DelimitedRocqCursor.make`
         @param materialize: see `DelimitedRocqCursor.make`
         @returns: the goal cursor or a command error
         @raises ValueError: see `DelimitedRocqCursor.make`
@@ -55,7 +57,12 @@ class GoalRocqCursor(DelegateRocqCursor):
         """
         # Create the underlying delimited cursor.
         delimited_cursor = await DelimitedRocqCursor.make(
-            cursor, start=start, end=end, count=count, materialize=materialize
+            cursor,
+            start=start,
+            end=end,
+            count=count,
+            clone=clone,
+            materialize=materialize,
         )
         if isinstance(delimited_cursor, rdm_api.Err):
             return delimited_cursor
