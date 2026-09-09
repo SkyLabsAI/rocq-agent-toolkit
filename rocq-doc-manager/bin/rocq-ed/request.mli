@@ -22,6 +22,7 @@ type (_, _, _) t =
   | Goals : (unit, string, empty) t
   | Backwards : {count : int} -> (unit, unit, unit) t
   | Goto : {line: int; col: int option} -> (unit, unit, int) t
+  | Try : {text : string} -> (Document.commands_data, string, insert_error) t
 
 val is_stop : ('a, 'b, 'c) t -> bool
 

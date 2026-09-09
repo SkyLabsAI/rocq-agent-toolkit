@@ -22,6 +22,7 @@ type (_, _, _) t =
   | Goals : (unit, string, empty) t
   | Backwards : {count : int} -> (unit, unit, unit) t
   | Goto : {line: int; col: int option} -> (unit, unit, int) t
+  | Try : {text : string} -> (Document.commands_data, string, insert_error) t
 
 let is_stop : type a b c. (a, b, c) t -> bool = fun r ->
   match r with Stop -> true | _ -> false
@@ -61,6 +62,8 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
       Format.fprintf ff "Goto({line = %i; col = None})" line
   | Goto({line; col = Some(col)}) ->
       Format.fprintf ff "Goto({line = %i; col = %i})" line col
+  | Try({text}) ->
+      Format.fprintf ff "Try({text = %S})" text
 
 let lines : string -> string array = fun s ->
   let lines = Dynarray.create () in
@@ -285,7 +288,7 @@ let run_goals d =
   | Error(_) -> assert false
   | Ok(data) ->
   match data.Rocq_toplevel.proof_state with
-  | None -> Ok("Not currently in a proof.")
+  | None -> "Not currently in a proof."
   | Some(p) ->
   let b = Buffer.create 73 in
   let add_focused i goal =
@@ -303,7 +306,7 @@ let run_goals d =
   print "Given up goals" given_up_goals;
   print "Shelved goals" shelved_goals;
   print "Unfocused goals" unfocused_goals;
-  Ok(Buffer.contents b)
+  Buffer.contents b
 
 let run_backwards d ~count =
   if count < 0 then
@@ -401,6 +404,16 @@ let run_goto d ~line ~col =
   | Ok(()) -> Ok(())
   | Error(msg, _) -> Error(msg, Document.cursor_index d)
 
+let run_try d ~text =
+  Document.with_rollback d @@ fun () ->
+  let (data, res) = run_insert_keep_all d ~text in
+  let res =
+    match res with
+    | Ok() -> Ok(run_goals d)
+    | Error(s, e) -> Error(s, {e with unchanged = true})
+  in
+  (data, res)
+
 let run : type a b c. Document.t -> (a, b, c) t ->
     a * (b, string * c) Result.t = fun d r ->
   match r with
@@ -411,6 +424,7 @@ let run : type a b c. Document.t -> (a, b, c) t ->
   | Query({text}) -> ((), run_query d ~text)
   | Delete({count}) -> ((), run_delete d ~count)
   | Commit({file; exclude_suffix}) -> ((), run_commit d ~file ~exclude_suffix)
-  | Goals -> ((), run_goals d)
+  | Goals -> ((), Ok(run_goals d))
   | Backwards({count}) -> ((), run_backwards d ~count)
   | Goto({line; col}) -> ((), run_goto d ~line ~col)
+  | Try({text}) -> run_try d ~text
