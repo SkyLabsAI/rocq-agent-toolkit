@@ -12,11 +12,11 @@ type insert_error = {
 type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
-  | Steps : {count : int option} -> (int, int) t
-  | Insert : {text : string; keep : insert_keep} -> (unit, insert_error) t
+  | Steps : {count : int option} -> (int * string list, int) t
+  | Insert : {text : string; keep : insert_keep} -> (string list, insert_error) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
-  | Commit : (unit, unit) t
+  | Commit : {file : string option; exclude_suffix : bool} -> (int, unit) t
   | Goals : (string, empty) t
   | Backwards : {count : int} -> (unit, unit) t
   | Goto : {line: int; col: int option} -> (unit, int) t
@@ -48,8 +48,9 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Query({text = %S})" text
   | Delete({count}) ->
       Format.fprintf ff "Delete({count = %i})" count
-  | Commit ->
-      Format.fprintf ff "Commit"
+  | Commit({file; exclude_suffix}) ->
+      Format.fprintf ff "Commit({file = %s; exclude_suffix = %b})"
+        (Stdlib.Option.value file ~default:"<document file>") exclude_suffix
   | Goals ->
       Format.fprintf ff "Goals"
   | Backwards({count}) ->
@@ -141,6 +142,40 @@ let run_status d ~context =
   in
   Ok(Buffer.contents b)
 
+(** Warning-level feedback texts produced while stepping over items. *)
+let warning_texts (data : Document.command_data option) : string list =
+  match data with
+  | None -> []
+  | Some(data) ->
+      let f (m : Rocq_toplevel.feedback_message) =
+        match m.level with
+        | Feedback.Warning -> Some(m.text)
+        | _ ->
+            (* Some toplevels report warnings as info text prefixed "Warning:". *)
+            if String.starts_with ~prefix:"Warning:" m.text then Some(m.text)
+            else None
+      in
+      List.filter_map f data.Rocq_toplevel.feedback_messages
+
+(** [run_steps_collect d ~count] is [Document.run_steps], but keeps the
+    warning texts of every processed command. *)
+let run_steps_collect d ~count =
+  let warnings = ref [] in
+  let rec loop nb_processed =
+    if nb_processed = count then Ok(()) else
+    match Document.run_step d with
+    | Ok(data) ->
+        warnings := List.rev_append (warning_texts data) !warnings;
+        loop (nb_processed + 1)
+    | Error(e) ->
+        let message = Printf.sprintf "Error after %i steps" nb_processed in
+        Error(message, (nb_processed, Some(e)))
+    | exception Invalid_argument(s) -> Error(s, (nb_processed, None))
+  in
+  let res = if count < 0 then Error("negative count", (0, None)) else
+    if List.length (Document.suffix d) < count then Error("invalid count", (0, None)) else loop 0 in
+  (res, List.rev !warnings)
+
 let run_steps d ~count =
   let suffix = Document.suffix d in
   let count =
@@ -149,11 +184,10 @@ let run_steps d ~count =
     | None        -> len
     | Some(count) -> if count < len then count else len
   in
-  match Document.run_steps d ~count with
-  | Ok(()) -> Ok(count)
-  | Error(s, (i, None)) -> Error(s, i)
-  | Error(_, (i, Some(s, _))) -> Error(s, i)
-  | exception Invalid_argument(s) -> Error(s, 0)
+  match run_steps_collect d ~count with
+  | (Ok(()), warnings) -> Ok((count, warnings))
+  | (Error(s, (i, None)), _) -> Error(s, i)
+  | (Error(_, (i, Some(s, _))), _) -> Error(s, i)
 
 let sentence_text (sentences : Document.sentence list) =
   let get_text (s : Document.sentence) = s.Document.text in
@@ -169,16 +203,14 @@ let run_insert_keep_all d ~text =
       Error(s, insert_error ~unchanged:true remaining)
   | (sentences, Ok(())) ->
   let count = List.length sentences in
-  match Document.run_steps d ~count with
-  | Ok(()) -> Ok(())
-  | Error(s, (nb_processed, None)) ->
+  match run_steps_collect d ~count with
+  | (Ok(()), warnings) -> Ok(warnings)
+  | (Error(s, (nb_processed, None)), _) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       Error(s, insert_error remaining)
-  | Error(_, (nb_processed, Some(s, _))) ->
+  | (Error(_, (nb_processed, Some(s, _))), _) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       Error(s, insert_error remaining)
-  | exception Invalid_argument(s) ->
-      Error(s, insert_error (sentence_text sentences))
 
 let run_insert_keep_succeeding d ~text =
   let initial_suffix_len = List.length (Document.suffix d) in
@@ -197,26 +229,23 @@ let run_insert_keep_succeeding d ~text =
     let count = max 0 (suffix_len - initial_suffix_len) in
     Document.clear_suffix ~count d
   in
-  match Document.run_steps d ~count with
-  | Ok(()) -> Ok(())
-  | Error(s, (nb_processed, None)) ->
+  match run_steps_collect d ~count with
+  | (Ok(()), warnings) -> Ok(warnings)
+  | (Error(s, (nb_processed, None)), _) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       let unchanged = nb_processed = 0 in
       discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
-  | Error(_, (nb_processed, Some(s, _))) ->
+  | (Error(_, (nb_processed, Some(s, _))), _) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       let unchanged = nb_processed = 0 in
       discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
-  | exception Invalid_argument(s) ->
-      discard_inserted_suffix ();
-      Error(s, insert_error ~unchanged:true (sentence_text sentences))
 
 let run_insert_keep_atomic d ~text =
   let backup = Document.clone d in
   let rollback () = Document.copy_contents ~from:backup d in
   let finish res = Document.stop backup; res in
   match run_insert_keep_all d ~text with
-  | Ok(()) as res -> finish res
+  | Ok(_) as res -> finish res
   | Error(s, e) ->
       rollback (); finish (Error(s, {e with unchanged = true}))
   | exception e -> rollback (); Document.stop backup; raise e
@@ -237,9 +266,18 @@ let run_delete d ~count =
   try Ok(Document.clear_suffix ~count d) with
   | Invalid_argument(s) -> Error(s, ())
 
-let run_commit d =
-  let res = Document.commit d in
-  Result.map_error (fun s -> (s, ())) res
+let run_commit d ~file ~exclude_suffix =
+  (* [commit] writes the unprocessed suffix by default; callers get the number
+     of unprocessed items that were written so they can refuse or warn. *)
+  (* Only unprocessed commands matter; trailing blanks are not proof text. *)
+  let is_command (it : Document.unprocessed_item) =
+    match it.kind with `Blanks -> false | `Command(_) | `Ghost(_) -> true
+  in
+  let suffix_len = List.length (List.filter is_command (Document.suffix d)) in
+  let include_suffix = not exclude_suffix in
+  match Document.commit ?file ~include_suffix d with
+  | Ok(()) -> Ok(if include_suffix then suffix_len else 0)
+  | Error(s) -> Error(s, ())
 
 let run_goals d =
   match Document.query d ~text:"Locate nat." with
@@ -371,7 +409,7 @@ let run : type a b. Document.t -> (a, b) t ->
   | Insert({text; keep}) -> run_insert d ~text ~keep
   | Query({text})     -> run_query d ~text
   | Delete({count})   -> run_delete d ~count
-  | Commit            -> run_commit d
+  | Commit({file; exclude_suffix}) -> run_commit d ~file ~exclude_suffix
   | Goals             -> run_goals d
   | Backwards({count}) -> run_backwards d ~count
   | Goto({line; col}) -> run_goto d ~line ~col
