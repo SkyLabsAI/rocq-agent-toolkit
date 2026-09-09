@@ -157,6 +157,16 @@ let step_count =
   let docv = "NUM|all" in
   Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv)
 
+(** Rocq warnings emitted while processing commands are printed on standard
+    output, one per line, prefixed by "Warning: " when Rocq did not already. *)
+let print_warnings warnings =
+  let print w =
+    let w = String.trim w in
+    if String.starts_with ~prefix:"Warning" w then Printf.printf "%s\n%!" w
+    else Printf.printf "Warning: %s\n%!" w
+  in
+  List.iter print warnings
+
 let steps_cmd =
   let doc =
     "Step over the given number of document items (commands or blanks) in \
@@ -167,7 +177,8 @@ let steps_cmd =
   let run count rocq_file =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
     | Error(s, i) -> panic "Failed after processing %i items.\nError: %s." i s
-    | Ok(real_count) ->
+    | Ok((real_count, warnings)) ->
+    print_warnings warnings;
     let check_count count =
       if real_count < count then
         Printf.printf "Warning: Only %i < %i steps were executed before \
@@ -219,7 +230,7 @@ let insert_cmd =
     in
     let req = Request.(Insert({text; keep})) in
     match Protocol.client_request rocq_file req with
-    | Ok(()) -> ()
+    | Ok(warnings) -> print_warnings warnings
     | Error(s, Request.{remaining; unchanged}) ->
         let unchanged =
           if unchanged then "\nThe document is unchanged." else ""
@@ -282,16 +293,38 @@ let delete_cmd =
   in
   Cmd.(make (info "delete" ~version ~doc) term)
 
+let commit_file =
+  let doc =
+    "Write the document to $(docv) instead of the source file (a snapshot). \
+     The session keeps targeting the source file."
+  in
+  Arg.(value & opt (some string) None & info ["file"] ~doc ~docv:"PATH")
+
+let commit_exclude_suffix =
+  let doc =
+    "Do not write the unprocessed suffix (items after the cursor). By default \
+     the whole document is written, including items that have never been \
+     processed by Rocq; a warning is printed when that happens."
+  in
+  Arg.(value & flag & info ["exclude-suffix"] ~doc)
+
 let commit_cmd =
   let doc =
-    "Commit the current state of the document to the source file."
+    "Commit the current state of the document to the source file. Items after \
+     the cursor (the unprocessed suffix) are written too unless \
+     $(b,--exclude-suffix) is given; a warning reports how many such items \
+     were written, since they have not been checked by Rocq."
   in
-  let run rocq_file =
-    match Protocol.client_request rocq_file Request.Commit with
-    | Ok(()) -> ()
+  let run file exclude_suffix rocq_file =
+    let req = Request.(Commit({file; exclude_suffix})) in
+    match Protocol.client_request rocq_file req with
+    | Ok(0) -> ()
+    | Ok(n) ->
+        Printf.printf "Warning: %i unprocessed item(s) after the cursor were \
+          written without having been checked by Rocq.\n%!" n
     | Error(s, ()) -> panic "Error: unable to commit.\n%s" s
   in
-  let term = Term.(const run $ rocq_file) in
+  let term = Term.(const run $ commit_file $ commit_exclude_suffix $ rocq_file) in
   Cmd.(make (info "commit" ~version ~doc) term)
 
 let goals_cmd =
