@@ -20,6 +20,7 @@ type (_, _) t =
   | Goals : (string, empty) t
   | Backwards : {count : int} -> (unit, unit) t
   | Goto : {line: int; col: int option} -> (unit, int) t
+  | Try : {text : string} -> (string * string list, insert_error) t
 
 let is_stop : type a b. (a, b) t -> bool = fun r ->
   match r with Stop -> true | _ -> false
@@ -59,6 +60,8 @@ let pp : type a b. (a, b) t Format.pp = fun ff r ->
       Format.fprintf ff "Goto({line = %i; col = None})" line
   | Goto({line; col = Some(col)}) ->
       Format.fprintf ff "Goto({line = %i; col = %i})" line col
+  | Try({text}) ->
+      Format.fprintf ff "Try({text = %S})" text
 
 let lines : string -> string array = fun s ->
   let lines = Dynarray.create () in
@@ -400,6 +403,25 @@ let run_goto d ~line ~col =
   | Ok(()) -> Ok(())
   | Error(msg, _) -> Error(msg, Document.cursor_index d)
 
+(** [run_try d ~text] processes [text] at the cursor exactly like an atomic
+    insertion, renders the resulting proof state, and then rolls the document
+    back: nothing is inserted, whatever the outcome. The Rocq top-level is
+    resynchronised lazily through a single state rollback, so a trial costs the
+    candidate's own processing plus one [back_to]. *)
+let run_try d ~text =
+  let attempt () =
+    match run_insert_keep_all d ~text with
+    | Ok(warnings) ->
+        let goals =
+          match run_goals d with Ok(g) -> g | Error(_) -> ""
+        in
+        Ok((goals, warnings))
+    | Error(s, e) -> Error(s, {e with unchanged = true})
+    | exception Invalid_argument(s) ->
+        Error(s, insert_error ~unchanged:true text)
+  in
+  Document.with_rollback d attempt
+
 let run : type a b. Document.t -> (a, b) t ->
     (a, string * b) Result.t = fun d r ->
   match r with
@@ -413,3 +435,4 @@ let run : type a b. Document.t -> (a, b) t ->
   | Goals             -> run_goals d
   | Backwards({count}) -> run_backwards d ~count
   | Goto({line; col}) -> run_goto d ~line ~col
+  | Try({text})       -> run_try d ~text

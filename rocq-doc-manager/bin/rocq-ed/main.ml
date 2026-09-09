@@ -327,6 +327,30 @@ let commit_cmd =
   let term = Term.(const run $ commit_file $ commit_exclude_suffix $ rocq_file) in
   Cmd.(make (info "commit" ~version ~doc) term)
 
+let try_cmd =
+  let doc =
+    "Process the given chunk of Rocq code at the cursor as $(b,insert) would, \
+     print the proof state it leads to (and any warnings), then roll the \
+     document back so that nothing is inserted, whatever the outcome. Use it \
+     to explore candidate steps; $(b,insert) only the one you keep, so that \
+     exploration never enters the document."
+  in
+  let run text rocq_file =
+    let text =
+      match text with Some(text) -> text | None ->
+      In_channel.input_all stdin
+    in
+    match Protocol.client_request rocq_file Request.(Try({text})) with
+    | Ok((goals, warnings)) ->
+        print_warnings warnings;
+        Printf.printf "%s%!" goals
+    | Error(s, Request.{remaining; _}) ->
+        panic "Error: could not process suffix %S.\n%s\nThe document is unchanged."
+          remaining s
+  in
+  let term = Term.(const run $ command_text $ rocq_file) in
+  Cmd.(make (info "try" ~version ~doc) term)
+
 let goals_cmd =
   let doc =
     "Print the current proof state of the document, including the list of \
@@ -486,7 +510,7 @@ let main_man = [
 let _ =
   let cmds =
     [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
-      delete_cmd; commit_cmd; goals_cmd; backwards_cmd; goto_cmd ]
+      delete_cmd; commit_cmd; goals_cmd; backwards_cmd; goto_cmd; try_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =
