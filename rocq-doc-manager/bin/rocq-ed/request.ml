@@ -149,7 +149,7 @@ let run_steps d ~count =
     | None        -> len
     | Some(count) -> if count < len then count else len
   in
-  match Document.run_steps d ~count with
+  match snd (Document.run_steps d ~count) with
   | Ok(()) -> Ok(count)
   | Error(s, (i, None)) -> Error(s, i)
   | Error(_, (i, Some(s, _))) -> Error(s, i)
@@ -169,7 +169,7 @@ let run_insert_keep_all d ~text =
       Error(s, insert_error ~unchanged:true remaining)
   | (sentences, Ok(())) ->
   let count = List.length sentences in
-  match Document.run_steps d ~count with
+  match snd (Document.run_steps d ~count) with
   | Ok(()) -> Ok(())
   | Error(s, (nb_processed, None)) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
@@ -197,7 +197,7 @@ let run_insert_keep_succeeding d ~text =
     let count = max 0 (suffix_len - initial_suffix_len) in
     Document.clear_suffix ~count d
   in
-  match Document.run_steps d ~count with
+  match snd (Document.run_steps d ~count) with
   | Ok(()) -> Ok(())
   | Error(s, (nb_processed, None)) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
