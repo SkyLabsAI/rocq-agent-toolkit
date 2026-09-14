@@ -244,16 +244,16 @@ let command_controls c =
 
 let command_tags = [|
   "Noop"; "Notation"; "BeginSection"; "EndSegment"; "Require"; "Import";
-  "DeclareModule"; "DefineModule"; "DeclareModuleType"; "Include";
+  "DeclareMLModule"; "DeclareModule"; "DefineModule"; "DeclareModuleType"; "Include";
   "SetOption"; "Load"; "Extend"; "OpenCloseScope"; "DeclareScope";
   "Delimiters"; "BindScope"; "EnableNotation"; "Definition";
   "StartTheoremProof"; "EndProof"; "ExactProof"; "Assumption"; "Symbol";
-  "Inductive"; "Fixpoint"; "CoFixpoint"; "Scheme"; "SchemeEquality";
+  "Inductive"; "Fixpoint"; "CoFixpoint"; "SchemeAll"; "Scheme"; "SchemeEquality";
   "CombinedScheme"; "Universe"; "Sort"; "Constraint"; "AddRewRule";
   "Canonical"; "Coercion"; "IdentityCoercion"; "NameSectionHypSet";
   "Instance"; "DeclareInstance"; "Context"; "ExistingInstance";
   "ExistingClass"; "ResetName"; "ResetInitial"; "Back"; "CreateHintDb";
-  "RemoveHints"; "Hints"; "SyntacticDefinition"; "Arguments"; "Reserve";
+  "RemoveHints"; "Hints"; "Abbreviation"; "Arguments"; "Reserve";
   "Generalizable"; "SetOpacity"; "SetStrategy"; "MemOption"; "PrintOption";
   "CheckMayEval"; "GlobalCheck"; "DeclareReduction"; "Print"; "Search";
   "Locate"; "Register"; "Primitive"; "Comments"; "Attributes"; "Abort";
