@@ -230,14 +230,12 @@ let run_insert_keep_succeeding d ~text =
     let res =
       match res with
       | Ok(()) -> Ok(())
-      | Error(s, (nb_processed, None)) ->
+      | Error(s, (nb_processed, os)) ->
           let remaining = sentence_text (List.drop nb_processed sentences) in
           let unchanged = nb_processed = 0 in
-          discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
-      | Error(_, (nb_processed, Some(s, _))) ->
-          let remaining = sentence_text (List.drop nb_processed sentences) in
-          let unchanged = nb_processed = 0 in
-          discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
+          discard_inserted_suffix ();
+          let s = match os with Some(s, _) -> s | None -> s in
+          Error(s, insert_error ~unchanged remaining)
     in
     (data, res)
   with Invalid_argument(s) ->
