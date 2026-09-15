@@ -587,7 +587,7 @@ let _ =
   let adapt (s, e) =
     match e with None -> (s, None) | Some(s, e) -> (s, Some(e))
   in
-  Result.map_error adapt @@ Document.advance_to d ~index
+  Result.map_error adapt @@ snd @@ Document.advance_to d ~index
 
 let _ =
   declare_full ~name:"go_to" ~descr:"move the cursor right before \
@@ -634,7 +634,7 @@ let _ =
   let adapt (s, (i, e)) =
     match e with None -> (s, (i, None)) | Some(s, e) -> (s, (i, Some(e)))
   in
-  Result.map_error adapt @@ Document.run_steps d ~count
+  Result.map_error adapt @@ snd @@ Document.run_steps d ~count
 
 let item_kind =
   let encode v =

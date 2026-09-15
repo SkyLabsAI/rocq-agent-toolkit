@@ -194,6 +194,8 @@ let load_file : t -> (unit, string * loc) result = fun d ->
 type command_data = Rocq_toplevel.run_data
 type command_error = string * Rocq_toplevel.run_error
 
+type commands_data = command_data option list
+
 let rec whitespace_required : processed_item list -> bool = fun rev_prefix ->
   match rev_prefix with
   | []                 -> false
@@ -328,33 +330,37 @@ let run_step : t -> (command_data option, command_error) result = fun d ->
       | Error(s,d) -> Error(s, d)
 
 let run_steps : t -> count:int ->
-    (unit, string * (int * command_error option)) result = fun d ~count ->
+    command_data option list *
+      (unit, string * (int * command_error option)) result =
+    fun d ~count ->
   let _ = get_backend d in
   if count < 0 then invalid_arg "negative count";
   if List.length d.suffix < count then invalid_arg "invalid count";
   (* NOTE: we could avoid locking the backend at each step here. *)
-  let rec loop nb_processed =
-    if nb_processed = count then Ok(()) else
+  let rec loop data nb_processed =
+    if nb_processed = count then (List.rev data, Ok(())) else
     try
       match run_step d with
-      | Ok(_)    -> loop (nb_processed + 1)
+      | Ok(d)    -> loop (d :: data) (nb_processed + 1)
       | Error(e) ->
           let message = Printf.sprintf "Error after %i steps" nb_processed in
-          Error(message, (nb_processed, Some(e)))
+          (List.rev data, Error(message, (nb_processed, Some(e))))
     with Invalid_argument(s) ->
-      Error(s, (nb_processed, None))
+      (List.rev data, Error(s, (nb_processed, None)))
   in
-  loop 0
+  loop [] 0
 
 let advance_to : t -> index:int ->
-    (unit, string * command_error option) result = fun d ~index ->
+    command_data option list * (unit, string * command_error option) result =
+    fun d ~index ->
   let _ = get_backend d in
   let cur = cursor_index d in
   let len_suffix = List.length d.suffix in
   let one_past = cur + len_suffix in
   if index < cur || one_past < index then invalid_arg "index out of bounds";
   let ignore_count (msg, (_, err)) = (msg, err) in
-  Result.map_error ignore_count (run_steps d ~count:(index - cur))
+  let (data, res) = run_steps d ~count:(index - cur) in
+  (data, Result.map_error ignore_count res)
 
 let go_to : t -> index:int -> (unit, string * command_error option) result =
     fun d ~index ->
@@ -362,7 +368,7 @@ let go_to : t -> index:int -> (unit, string * command_error option) result =
   let cur = cursor_index d in
   match index < cur with
   | true  -> revert_before d ~index ~erase:false; Ok(())
-  | false -> advance_to d ~index
+  | false -> snd (advance_to d ~index)
 
 let rev_prefix : t -> processed_item list = fun d ->
   let _ = get_backend d in

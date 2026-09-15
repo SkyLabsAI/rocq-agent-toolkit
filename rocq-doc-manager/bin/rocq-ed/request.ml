@@ -142,39 +142,23 @@ let run_status d ~context =
   in
   Ok(Buffer.contents b)
 
-(** Warning-level feedback texts produced while stepping over items. *)
-let warning_texts (data : Document.command_data option) : string list =
-  match data with
-  | None -> []
-  | Some(data) ->
-      let f (m : Rocq_toplevel.feedback_message) =
-        match m.level with
-        | Feedback.Warning -> Some(m.text)
-        | _ ->
-            (* Some toplevels report warnings as info text prefixed "Warning:". *)
-            if String.starts_with ~prefix:"Warning:" m.text then Some(m.text)
-            else None
-      in
-      List.filter_map f data.Rocq_toplevel.feedback_messages
-
-(** [run_steps_collect d ~count] is [Document.run_steps], but keeps the
-    warning texts of every processed command. *)
-let run_steps_collect d ~count =
-  let warnings = ref [] in
-  let rec loop nb_processed =
-    if nb_processed = count then Ok(()) else
-    match Document.run_step d with
-    | Ok(data) ->
-        warnings := List.rev_append (warning_texts data) !warnings;
-        loop (nb_processed + 1)
-    | Error(e) ->
-        let message = Printf.sprintf "Error after %i steps" nb_processed in
-        Error(message, (nb_processed, Some(e)))
-    | exception Invalid_argument(s) -> Error(s, (nb_processed, None))
+(** [warnings data] gives the texts of the warnings emitted by Rocq while
+    processing the items whose data is [data]. *)
+let warnings : Document.commands_data -> string list = fun data ->
+  let of_message (m : Rocq_toplevel.feedback_message) =
+    match m.level with
+    | Feedback.Warning -> Some(m.text)
+    | _                ->
+        (* Some toplevels report warnings as info text prefixed "Warning:". *)
+        if String.starts_with ~prefix:"Warning:" m.text then Some(m.text)
+        else None
   in
-  let res = if count < 0 then Error("negative count", (0, None)) else
-    if List.length (Document.suffix d) < count then Error("invalid count", (0, None)) else loop 0 in
-  (res, List.rev !warnings)
+  let of_data (data : Document.command_data option) =
+    match data with
+    | None       -> []
+    | Some(data) -> List.filter_map of_message data.Rocq_toplevel.feedback_messages
+  in
+  List.concat_map of_data data
 
 let run_steps d ~count =
   let suffix = Document.suffix d in
@@ -184,10 +168,11 @@ let run_steps d ~count =
     | None        -> len
     | Some(count) -> if count < len then count else len
   in
-  match run_steps_collect d ~count with
-  | (Ok(()), warnings) -> Ok((count, warnings))
-  | (Error(s, (i, None)), _) -> Error(s, i)
-  | (Error(_, (i, Some(s, _))), _) -> Error(s, i)
+  match Document.run_steps d ~count with
+  | (data, Ok(())) -> Ok((count, warnings data))
+  | (_, Error(s, (i, None))) -> Error(s, i)
+  | (_, Error(_, (i, Some(s, _)))) -> Error(s, i)
+  | exception Invalid_argument(s) -> Error(s, 0)
 
 let sentence_text (sentences : Document.sentence list) =
   let get_text (s : Document.sentence) = s.Document.text in
@@ -203,14 +188,16 @@ let run_insert_keep_all d ~text =
       Error(s, insert_error ~unchanged:true remaining)
   | (sentences, Ok(())) ->
   let count = List.length sentences in
-  match run_steps_collect d ~count with
-  | (Ok(()), warnings) -> Ok(warnings)
-  | (Error(s, (nb_processed, None)), _) ->
+  match Document.run_steps d ~count with
+  | (data, Ok(())) -> Ok(warnings data)
+  | (_, Error(s, (nb_processed, None))) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       Error(s, insert_error remaining)
-  | (Error(_, (nb_processed, Some(s, _))), _) ->
+  | (_, Error(_, (nb_processed, Some(s, _)))) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       Error(s, insert_error remaining)
+  | exception Invalid_argument(s) ->
+      Error(s, insert_error (sentence_text sentences))
 
 let run_insert_keep_succeeding d ~text =
   let initial_suffix_len = List.length (Document.suffix d) in
@@ -229,16 +216,19 @@ let run_insert_keep_succeeding d ~text =
     let count = max 0 (suffix_len - initial_suffix_len) in
     Document.clear_suffix ~count d
   in
-  match run_steps_collect d ~count with
-  | (Ok(()), warnings) -> Ok(warnings)
-  | (Error(s, (nb_processed, None)), _) ->
+  match Document.run_steps d ~count with
+  | (data, Ok(())) -> Ok(warnings data)
+  | (_, Error(s, (nb_processed, None))) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       let unchanged = nb_processed = 0 in
       discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
-  | (Error(_, (nb_processed, Some(s, _))), _) ->
+  | (_, Error(_, (nb_processed, Some(s, _)))) ->
       let remaining = sentence_text (List.drop nb_processed sentences) in
       let unchanged = nb_processed = 0 in
       discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
+  | exception Invalid_argument(s) ->
+      discard_inserted_suffix ();
+      Error(s, insert_error ~unchanged:true (sentence_text sentences))
 
 let run_insert_keep_atomic d ~text =
   let backup = Document.clone d in

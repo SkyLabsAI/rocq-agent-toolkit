@@ -119,6 +119,10 @@ val replace_suffix : ?count:int -> t -> text:string
 (** Data returned by the top-level when running a command. *)
 type command_data = Rocq_toplevel.run_data
 
+(** Data obtained when processing several items. One list element is given per
+    item, and blank items get no data (i.e., a [None] value). *)
+type commands_data = command_data option list
+
 (** Error message and data returned upon failure of the top-level when running
     a command. *)
 type command_error = string * Rocq_toplevel.run_error
@@ -188,7 +192,7 @@ val run_step : t -> (command_data option, command_error) result
     insertion of an item would interferes with a previous (non-ghost) command,
     [Error(s, (n, None))] is given, with [s] an appropriate error message. *)
 val run_steps : t -> count:int
-  -> (unit, string * (int * command_error option)) result
+  -> commands_data * (unit, string * (int * command_error option)) result
 
 (** [advance_to d ~index] advances the cursor of document [d] to place it just
     before the item with the given [index]. If [index] is invalid, which means
@@ -198,7 +202,7 @@ val run_steps : t -> count:int
     the cursor is left at the reached position, and [Error] is given similarly
     to [run_steps]. *)
 val advance_to : t -> index:int
-  -> (unit, string * command_error option) result
+  -> commands_data * (unit, string * command_error option) result
 
 (** [go_to d ~index] is the same as [advance_to d ~index], but it additionally
     allows to revert to an earlier index like [revert_before d ~index]. In any
