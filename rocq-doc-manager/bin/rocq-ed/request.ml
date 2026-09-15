@@ -13,7 +13,8 @@ type (_, _) t =
   | Stop : (unit, empty) t
   | Status : {context : int option} -> (string, empty) t
   | Steps : {count : int option} -> (int * string list, int) t
-  | Insert : {text : string; keep : insert_keep} -> (string list, insert_error) t
+  | Insert : {text : string; keep : insert_keep}
+      -> (string list, insert_error) t
   | Query : {text : string} -> (string, unit) t
   | Delete : {count : int} -> (unit, unit) t
   | Commit : {file : string option; exclude_suffix : bool} -> (int, unit) t
@@ -148,17 +149,20 @@ let run_status d ~context =
 let warnings : Document.commands_data -> string list = fun data ->
   let of_message (m : Rocq_toplevel.feedback_message) =
     let text = String.trim m.text in
-    let prefixed = String.starts_with ~prefix:"Warning" text in
     match m.level with
-    | Feedback.Warning -> Some(if prefixed then text else "Warning: " ^ text)
+    | Feedback.Warning ->
+        if String.starts_with ~prefix:"Warning" text then Some(text)
+        else Some("Warning: " ^ text)
     | _                ->
         (* Some toplevels report warnings as info text prefixed "Warning:". *)
-        if prefixed then Some(text) else None
+        if String.starts_with ~prefix:"Warning:" text then Some(text)
+        else None
   in
   let of_data (data : Document.command_data option) =
     match data with
     | None       -> []
-    | Some(data) -> List.filter_map of_message data.Rocq_toplevel.feedback_messages
+    | Some(data) ->
+        List.filter_map of_message data.Rocq_toplevel.feedback_messages
   in
   List.concat_map of_data data
 

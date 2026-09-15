@@ -314,7 +314,9 @@ let commit_cmd =
           written without having been checked by Rocq.\n%!" n
     | Error(s, ()) -> panic "Error: unable to commit.\n%s" s
   in
-  let term = Term.(const run $ commit_file $ commit_exclude_suffix $ rocq_file) in
+  let term =
+    Term.(const run $ commit_file $ commit_exclude_suffix $ rocq_file)
+  in
   Cmd.(make (info "commit" ~version ~doc) term)
 
 let goals_cmd =
