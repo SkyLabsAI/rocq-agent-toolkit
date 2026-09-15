@@ -22,6 +22,8 @@ and commit reports unprocessed items (or excludes them).
   $ rocq-ed insert --text $'\nCheck foo.\n' test.v
   Warning: Reference foo is deprecated since 1.0. use bar
   [deprecated-reference-since-1.0,deprecated-since-1.0,deprecated-reference,deprecated,default]
+  foo
+       : nat
 
 A prefix edit leaves the suffix unprocessed; a plain commit writes it and says so.
 
@@ -48,4 +50,6 @@ Re-processing items prints their warnings again.
   $ rocq-ed steps --count-items all test.v
   Warning: Reference foo is deprecated since 1.0. use bar
   [deprecated-reference-since-1.0,deprecated-since-1.0,deprecated-reference,deprecated,default]
+  foo
+       : nat
   $ rocq-ed stop test.v

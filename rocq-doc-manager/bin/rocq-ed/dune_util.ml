@@ -1,5 +1,4 @@
 open Stdlib_extra.Extra
-open Panic
 
 type config = {
   no_build : bool;
@@ -7,7 +6,7 @@ type config = {
   display : string;
 }
 
-let get_dune_root : unit -> string = fun () ->
+let get_dune_root : unit -> Filepath.t = fun () ->
   let cmd = "dune" in
   let args =
     ["exec"; "--no-print-directory"; "--"; "printenv"; "DUNE_SOURCEROOT"]

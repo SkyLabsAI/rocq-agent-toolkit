@@ -1,5 +1,4 @@
 open Stdlib_extra.Extra
-open Panic
 
 let daemonize : ?log:Filepath.t -> unit -> int = fun ?(log="/dev/null") _ ->
   (fun f -> Unix.handle_unix_error f ()) @@ fun _ ->
@@ -20,9 +19,6 @@ let daemonize : ?log:Filepath.t -> unit -> int = fun ?(log="/dev/null") _ ->
   Unix.close null_fd;
   (* Return the PID of the daemon. *)
   Unix.handle_unix_error Unix.getpid ()
-
-let no_daemonize : unit -> int = fun _ ->
-  Unix.getpid ()
 
 let daemon_pid_file : string = "daemon.pid"
 let data_dir_suffix : string = ".rocqed" (* no dash to not confuse dune *)
@@ -122,8 +118,8 @@ let init : bool -> Dune_util.config -> Filepath.t -> unit =
     let res = Request.run d req in
     let _ =
       match res with
-      | Ok(_) -> log "Request successful."
-      | Error(s, _) ->
+      | (_, Ok(_)) -> log "Request successful."
+      | (_, Error(s, _)) ->
       match String.split_on_char '\n' (String.trim s) with
       | []     -> log "Request error."
       | [line] -> log "Request error [%s]." line
@@ -152,8 +148,8 @@ let init : bool -> Dune_util.config -> Filepath.t -> unit =
   log "Reached deamon shutdown.";
   exit 0
 
-let client_request : type a b. Filepath.t -> (a, b) Request.t ->
-    (a, string * b) Result.t = fun rocq_file req ->
+let full_client_request : type a b c. Filepath.t -> (a, b, c) Request.t ->
+    a * (b, string * c) Result.t = fun rocq_file req ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Check that the daemon is running. *)
@@ -182,6 +178,10 @@ let client_request : type a b. Filepath.t -> (a, b) Request.t ->
   let res = In_channel.with_open_text res_fifo Marshal.from_channel in
   (* Release the lock, and return the response. *)
   Unix.rmdir lock_dir; res
+
+let client_request : type a b. Filepath.t -> (unit, a, b) Request.t ->
+    (a, string * b) Result.t = fun rocq_file req ->
+  snd (full_client_request rocq_file req)
 
 let stop : Filepath.t -> unit = fun rocq_file ->
   let data_dir = data_dir_of_filename rocq_file in

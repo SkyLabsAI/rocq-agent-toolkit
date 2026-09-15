@@ -1,5 +1,5 @@
+open Stdlib_extra.Extra
 open Cmdliner
-open Panic
 
 let version = "dev"
 
@@ -128,8 +128,9 @@ let status_cmd =
      of the cursor marked as $(b,<CURSOR>)."
   in
   let run context rocq_file =
-    match Protocol.client_request rocq_file Request.(Status({context})) with
-    | Ok(doc) -> Printf.printf "%s%!" doc
+    let req = Request.Status({context}) in
+    let Ok(doc) = Protocol.client_request rocq_file req in
+    Printf.printf "%s%!" doc
   in
   let term = Term.(const run $ context_lines $ rocq_file) in
   Cmd.(make (info "status" ~version ~doc) term)
@@ -165,10 +166,13 @@ let steps_cmd =
      cursor is moved to just before the failing item."
   in
   let run count rocq_file =
-    match Protocol.client_request rocq_file Request.(Steps({count})) with
+    let (data, res) =
+      Protocol.full_client_request rocq_file Request.(Steps({count}))
+    in
+    Request.print_feedback data;
+    match res with
     | Error(s, i) -> panic "Failed after processing %i items.\nError: %s." i s
-    | Ok((real_count, warnings)) ->
-    List.iter (Printf.printf "%s\n%!") warnings;
+    | Ok(real_count) ->
     let check_count count =
       if real_count < count then
         Printf.printf "Warning: Only %i < %i steps were executed before \
@@ -219,8 +223,10 @@ let insert_cmd =
       In_channel.input_all stdin
     in
     let req = Request.(Insert({text; keep})) in
-    match Protocol.client_request rocq_file req with
-    | Ok(warnings) -> List.iter (Printf.printf "%s\n%!") warnings
+    let (data, res) = Protocol.full_client_request rocq_file req in
+    Request.print_feedback data;
+    match res with
+    | Ok(()) -> ()
     | Error(s, Request.{remaining; unchanged}) ->
         let unchanged =
           if unchanged then "\nThe document is unchanged." else ""
@@ -292,16 +298,16 @@ let commit_file =
 
 let commit_exclude_suffix =
   let doc =
-    "Do not write the unprocessed suffix (items after the cursor). By default \
-     the whole document is written, including items that have never been \
-     processed by Rocq; a warning is printed when that happens."
+    "Do not write the unprocessed suffix (items after the cursor). By \
+     default the whole document is written, including items that have never \
+     been processed by Rocq; a warning is printed when that happens."
   in
   Arg.(value & flag & info ["exclude-suffix"] ~doc)
 
 let commit_cmd =
   let doc =
-    "Commit the current state of the document to the source file. Items after \
-     the cursor (the unprocessed suffix) are written too unless \
+    "Commit the current state of the document to the source file. Items \
+     after the cursor (the unprocessed suffix) are written too unless \
      $(b,--exclude-suffix) is given; a warning reports how many such items \
      were written, since they have not been checked by Rocq."
   in
@@ -325,8 +331,8 @@ let goals_cmd =
      the goals currently in focus."
   in
   let run rocq_file =
-    match Protocol.client_request rocq_file Request.Goals with
-    | Ok(s) -> Printf.printf "%s%!" s
+    let Ok(s) = Protocol.client_request rocq_file Request.Goals in
+    Printf.printf "%s%!" s
   in
   let term = Term.(const run $ rocq_file) in
   Cmd.(make (info "goals" ~version ~doc) term)

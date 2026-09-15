@@ -9,23 +9,24 @@ type insert_error = {
   unchanged : bool;
 }
 
-type (_, _) t =
-  | Stop : (unit, empty) t
-  | Status : {context : int option} -> (string, empty) t
-  | Steps : {count : int option} -> (int * string list, int) t
+type (_, _, _) t =
+  | Stop : (unit, unit, empty) t
+  | Status : {context : int option} -> (unit, string, empty) t
+  | Steps : {count : int option} -> (Document.commands_data, int, int) t
   | Insert : {text : string; keep : insert_keep}
-      -> (string list, insert_error) t
-  | Query : {text : string} -> (string, unit) t
-  | Delete : {count : int} -> (unit, unit) t
-  | Commit : {file : string option; exclude_suffix : bool} -> (int, unit) t
-  | Goals : (string, empty) t
-  | Backwards : {count : int} -> (unit, unit) t
-  | Goto : {line: int; col: int option} -> (unit, int) t
+      -> (Document.commands_data, unit, insert_error) t
+  | Query : {text : string} -> (unit, string, unit) t
+  | Delete : {count : int} -> (unit, unit, unit) t
+  | Commit : {file : string option; exclude_suffix : bool}
+      -> (unit, int, unit) t
+  | Goals : (unit, string, empty) t
+  | Backwards : {count : int} -> (unit, unit, unit) t
+  | Goto : {line: int; col: int option} -> (unit, unit, int) t
 
-let is_stop : type a b. (a, b) t -> bool = fun r ->
+let is_stop : type a b c. (a, b, c) t -> bool = fun r ->
   match r with Stop -> true | _ -> false
 
-let pp : type a b. (a, b) t Format.pp = fun ff r ->
+let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
   match r with
   | Stop ->
       Format.fprintf ff "Stop"
@@ -143,28 +144,17 @@ let run_status d ~context =
   in
   Ok(Buffer.contents b)
 
-(** [warnings data] gives the warnings emitted by Rocq while processing the
-    items whose data is [data], as lines ready to be printed: each one starts
-    with "Warning" (Rocq's own prefix is kept when present). *)
-let warnings : Document.commands_data -> string list = fun data ->
-  let of_message (m : Rocq_toplevel.feedback_message) =
-    let text = String.trim m.text in
+let print_feedback : Document.commands_data -> unit = fun data ->
+  let print_feedback_message (m : Rocq_toplevel.feedback_message) =
     match m.level with
-    | Feedback.Warning ->
-        if String.starts_with ~prefix:"Warning" text then Some(text)
-        else Some("Warning: " ^ text)
-    | _                ->
-        (* Some toplevels report warnings as info text prefixed "Warning:". *)
-        if String.starts_with ~prefix:"Warning:" text then Some(text)
-        else None
+    | Feedback.Warning -> Printf.eprintf "Warning: %s\n%!" m.text
+    | Feedback.Notice  -> Printf.printf "%s\n%!" m.text
+    | _                -> ()
   in
-  let of_data (data : Document.command_data option) =
-    match data with
-    | None       -> []
-    | Some(data) ->
-        List.filter_map of_message data.Rocq_toplevel.feedback_messages
+  let print_feedback (data : Document.command_data) =
+    List.iter print_feedback_message (data.Rocq_toplevel.feedback_messages)
   in
-  List.concat_map of_data data
+  List.iter (Option.iter print_feedback) data
 
 let run_steps d ~count =
   let suffix = Document.suffix d in
@@ -174,11 +164,16 @@ let run_steps d ~count =
     | None        -> len
     | Some(count) -> if count < len then count else len
   in
-  match Document.run_steps d ~count with
-  | (data, Ok(())) -> Ok((count, warnings data))
-  | (_, Error(s, (i, None))) -> Error(s, i)
-  | (_, Error(_, (i, Some(s, _)))) -> Error(s, i)
-  | exception Invalid_argument(s) -> Error(s, 0)
+  try
+    let (data, res) = Document.run_steps d ~count in
+    let res =
+      match res with
+      | Ok(()) -> Ok(count)
+      | Error(s, (i, None)) -> Error(s, i)
+      | Error(_, (i, Some(s, _))) -> Error(s, i)
+    in
+    (data, res)
+  with Invalid_argument(s) -> ([], Error(s, 0))
 
 let sentence_text (sentences : Document.sentence list) =
   let get_text (s : Document.sentence) = s.Document.text in
@@ -189,29 +184,34 @@ let insert_error ?(unchanged=false) remaining = {remaining; unchanged}
 let run_insert_keep_all d ~text =
   match Document.replace_suffix ~count:0 d ~text with
   | exception Invalid_argument(s) ->
-      Error(s, insert_error ~unchanged:true text)
+      ([], Error(s, insert_error ~unchanged:true text))
   | (_sentences, Error(s, remaining)) ->
-      Error(s, insert_error ~unchanged:true remaining)
+      ([], Error(s, insert_error ~unchanged:true remaining))
   | (sentences, Ok(())) ->
   let count = List.length sentences in
-  match Document.run_steps d ~count with
-  | (data, Ok(())) -> Ok(warnings data)
-  | (_, Error(s, (nb_processed, None))) ->
-      let remaining = sentence_text (List.drop nb_processed sentences) in
-      Error(s, insert_error remaining)
-  | (_, Error(_, (nb_processed, Some(s, _)))) ->
-      let remaining = sentence_text (List.drop nb_processed sentences) in
-      Error(s, insert_error remaining)
-  | exception Invalid_argument(s) ->
-      Error(s, insert_error (sentence_text sentences))
+  try
+    let (data, res) = Document.run_steps d ~count in
+    let res =
+      match res with
+      | Ok(()) -> Ok(())
+      | Error(s, (nb_processed, None)) ->
+          let remaining = sentence_text (List.drop nb_processed sentences) in
+          Error(s, insert_error remaining)
+      | Error(_, (nb_processed, Some(s, _))) ->
+          let remaining = sentence_text (List.drop nb_processed sentences) in
+          Error(s, insert_error remaining)
+    in
+    (data, res)
+  with Invalid_argument(s) ->
+    ([], Error(s, insert_error (sentence_text sentences)))
 
 let run_insert_keep_succeeding d ~text =
   let initial_suffix_len = List.length (Document.suffix d) in
   match Document.replace_suffix ~count:0 d ~text with
   | exception Invalid_argument(s) ->
-      Error(s, insert_error ~unchanged:true text)
+      ([], Error(s, insert_error ~unchanged:true text))
   | (_sentences, Error(s, remaining)) ->
-      Error(s, insert_error ~unchanged:true remaining)
+      ([], Error(s, insert_error ~unchanged:true remaining))
   | (sentences, Ok(())) ->
   let count = List.length sentences in
   let discard_inserted_suffix () =
@@ -222,28 +222,33 @@ let run_insert_keep_succeeding d ~text =
     let count = max 0 (suffix_len - initial_suffix_len) in
     Document.clear_suffix ~count d
   in
-  match Document.run_steps d ~count with
-  | (data, Ok(())) -> Ok(warnings data)
-  | (_, Error(s, (nb_processed, None))) ->
-      let remaining = sentence_text (List.drop nb_processed sentences) in
-      let unchanged = nb_processed = 0 in
-      discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
-  | (_, Error(_, (nb_processed, Some(s, _)))) ->
-      let remaining = sentence_text (List.drop nb_processed sentences) in
-      let unchanged = nb_processed = 0 in
-      discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
-  | exception Invalid_argument(s) ->
-      discard_inserted_suffix ();
-      Error(s, insert_error ~unchanged:true (sentence_text sentences))
+  try
+    let (data, res) = Document.run_steps d ~count in
+    let res =
+      match res with
+      | Ok(()) -> Ok(())
+      | Error(s, (nb_processed, None)) ->
+          let remaining = sentence_text (List.drop nb_processed sentences) in
+          let unchanged = nb_processed = 0 in
+          discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
+      | Error(_, (nb_processed, Some(s, _))) ->
+          let remaining = sentence_text (List.drop nb_processed sentences) in
+          let unchanged = nb_processed = 0 in
+          discard_inserted_suffix (); Error(s, insert_error ~unchanged remaining)
+    in
+    (data, res)
+  with Invalid_argument(s) ->
+    discard_inserted_suffix ();
+    ([], Error(s, insert_error ~unchanged:true (sentence_text sentences)))
 
 let run_insert_keep_atomic d ~text =
   let backup = Document.clone d in
   let rollback () = Document.copy_contents ~from:backup d in
-  let finish res = Document.stop backup; res in
+  let finish data res = Document.stop backup; (data, res) in
   match run_insert_keep_all d ~text with
-  | Ok(_) as res -> finish res
-  | Error(s, e) ->
-      rollback (); finish (Error(s, {e with unchanged = true}))
+  | (data, (Ok(_) as res)) -> finish data res
+  | (data, Error(s, e)) ->
+      rollback (); finish data (Error(s, {e with unchanged = true}))
   | exception e -> rollback (); Document.stop backup; raise e
 
 let run_insert d ~text ~keep =
@@ -391,21 +396,21 @@ let run_goto d ~line ~col =
   in
   match index with
   | Error(msg, i) -> Error(msg, i)
-  | Ok(index)  ->
+  | Ok(index) ->
   match Document.go_to d ~index with
   | Ok(()) -> Ok(())
   | Error(msg, _) -> Error(msg, Document.cursor_index d)
 
-let run : type a b. Document.t -> (a, b) t ->
-    (a, string * b) Result.t = fun d r ->
+let run : type a b c. Document.t -> (a, b, c) t ->
+    a * (b, string * c) Result.t = fun d r ->
   match r with
-  | Stop              -> Ok(())
-  | Status({context}) -> run_status d ~context
-  | Steps({count})    -> run_steps d ~count
+  | Stop -> ((), Ok(()))
+  | Status({context}) -> ((), run_status d ~context)
+  | Steps({count}) -> run_steps d ~count
   | Insert({text; keep}) -> run_insert d ~text ~keep
-  | Query({text})     -> run_query d ~text
-  | Delete({count})   -> run_delete d ~count
-  | Commit({file; exclude_suffix}) -> run_commit d ~file ~exclude_suffix
-  | Goals             -> run_goals d
-  | Backwards({count}) -> run_backwards d ~count
-  | Goto({line; col}) -> run_goto d ~line ~col
+  | Query({text}) -> ((), run_query d ~text)
+  | Delete({count}) -> ((), run_delete d ~count)
+  | Commit({file; exclude_suffix}) -> ((), run_commit d ~file ~exclude_suffix)
+  | Goals -> ((), run_goals d)
+  | Backwards({count}) -> ((), run_backwards d ~count)
+  | Goto({line; col}) -> ((), run_goto d ~line ~col)
