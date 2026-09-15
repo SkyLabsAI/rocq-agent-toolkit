@@ -327,11 +327,11 @@ let commit_cmd =
 
 let try_cmd =
   let doc =
-    "Process the given chunk of Rocq code at the cursor as $(b,insert) would, \
-     print the proof state it leads to (and any warnings), then roll the \
-     document back so that nothing is inserted, whatever the outcome. Use it \
-     to explore candidate steps; $(b,insert) only the one you keep, so that \
-     exploration never enters the document."
+    "Process the given chunk of Rocq code at the cursor as $(b,insert) \
+     would, print the proof state it leads to (and any warnings), then roll \
+     the document back so that nothing is inserted, whatever the outcome. \
+     Use it to explore candidate steps; $(b,insert) only the one you keep, \
+     so that exploration never enters the document."
   in
   let run text rocq_file =
     let text =
