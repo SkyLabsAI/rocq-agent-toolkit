@@ -157,16 +157,6 @@ let step_count =
   let docv = "NUM|all" in
   Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv)
 
-(** Rocq warnings emitted while processing commands are printed on standard
-    output, one per line, prefixed by "Warning: " when Rocq did not already. *)
-let print_warnings warnings =
-  let print w =
-    let w = String.trim w in
-    if String.starts_with ~prefix:"Warning" w then Printf.printf "%s\n%!" w
-    else Printf.printf "Warning: %s\n%!" w
-  in
-  List.iter print warnings
-
 let steps_cmd =
   let doc =
     "Step over the given number of document items (commands or blanks) in \
@@ -178,7 +168,7 @@ let steps_cmd =
     match Protocol.client_request rocq_file Request.(Steps({count})) with
     | Error(s, i) -> panic "Failed after processing %i items.\nError: %s." i s
     | Ok((real_count, warnings)) ->
-    print_warnings warnings;
+    List.iter (Printf.printf "%s\n%!") warnings;
     let check_count count =
       if real_count < count then
         Printf.printf "Warning: Only %i < %i steps were executed before \
@@ -230,7 +220,7 @@ let insert_cmd =
     in
     let req = Request.(Insert({text; keep})) in
     match Protocol.client_request rocq_file req with
-    | Ok(warnings) -> print_warnings warnings
+    | Ok(warnings) -> List.iter (Printf.printf "%s\n%!") warnings
     | Error(s, Request.{remaining; unchanged}) ->
         let unchanged =
           if unchanged then "\nThe document is unchanged." else ""

@@ -142,16 +142,18 @@ let run_status d ~context =
   in
   Ok(Buffer.contents b)
 
-(** [warnings data] gives the texts of the warnings emitted by Rocq while
-    processing the items whose data is [data]. *)
+(** [warnings data] gives the warnings emitted by Rocq while processing the
+    items whose data is [data], as lines ready to be printed: each one starts
+    with "Warning" (Rocq's own prefix is kept when present). *)
 let warnings : Document.commands_data -> string list = fun data ->
   let of_message (m : Rocq_toplevel.feedback_message) =
+    let text = String.trim m.text in
+    let prefixed = String.starts_with ~prefix:"Warning" text in
     match m.level with
-    | Feedback.Warning -> Some(m.text)
+    | Feedback.Warning -> Some(if prefixed then text else "Warning: " ^ text)
     | _                ->
         (* Some toplevels report warnings as info text prefixed "Warning:". *)
-        if String.starts_with ~prefix:"Warning:" m.text then Some(m.text)
-        else None
+        if prefixed then Some(text) else None
   in
   let of_data (data : Document.command_data option) =
     match data with
