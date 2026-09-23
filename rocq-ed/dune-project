@@ -1,0 +1,19 @@
+(lang dune 3.22)
+(name rocq-ed)
+(generate_opam_files true)
+
+(source (github SkylabsAI/rocq-agent-toolkit))
+(authors "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(maintainers "Rodolphe Lepigre <rodolphe.lepigre@skylabs-ai.com>")
+(license  LGPL-2.1-only)
+
+(package
+ (name rocq-ed)
+ (synopsis "Command-line editor for Rocq")
+ (depends
+  uuseg
+  cmdliner
+  stdlib-extra
+  rocq-doc-manager))
+
+(subst disabled)

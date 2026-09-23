@@ -1,7 +1,8 @@
 (executable
  (public_name rocq-ed)
  (name main)
- (package rocq-doc-manager)
+ (package rocq-ed)
+ (flags :standard %{dune-warnings})
  (preprocess (pps ppx_deriving.show))
  (libraries
   cmdliner
