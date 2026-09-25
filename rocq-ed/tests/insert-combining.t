@@ -7,16 +7,18 @@
 
   $ cat > dune <<EOF
   > (rocq.theory
-  >  (name text))
+  >  (name test))
   > EOF
 
-  $ timeout 5s rocq-ed init test.v
-  $ timeout 5s rocq-ed steps --count-items=all test.v
-  $ timeout 5s rocq-ed insert --print-context --text="Goal True. Proof. *" test.v
+  $ eval $(rocq-ed init test.v)
+  $ rocq-ed steps --count-items=all
+  $ rocq-ed insert --print-context --text="Goal True. Proof. *"
      1| Goal True. Proof. *<CURSOR>
 
-  $ timeout 5s rocq-ed insert --text="*idtac" test.v
+  $ rocq-ed insert --text="*idtac"
   Error: could not process suffix "*idtac".
   inserted text would change the command before the cursor
   The document is unchanged.
   [1]
+
+  $ rocq-ed stop

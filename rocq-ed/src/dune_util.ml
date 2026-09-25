@@ -6,7 +6,7 @@ type config = {
   display : string;
 }
 
-let get_dune_root : unit -> Filepath.t = fun () ->
+let get_dune_root : unit -> (Filepath.t, string) Result.t = fun () ->
   let cmd = "dune" in
   let args =
     ["exec"; "--no-print-directory"; "--"; "printenv"; "DUNE_SOURCEROOT"]
@@ -15,20 +15,26 @@ let get_dune_root : unit -> Filepath.t = fun () ->
   match Cmdutil.(run ~cmd ~stderr:Null ~stdout:(File(temp)) args) with
   | Error(_,s) ->
       Fileutil.remove_file temp;
-      panic "Error: cannot find DUNE_SOURCEROOT of from directory %S \
-        (process %s)." (Sys.getcwd()) s
+      let msg =
+        Printf.sprintf "cannot find DUNE_SOURCEROOT of from directory %S \
+          (process %s)" (Sys.getcwd()) s
+      in
+      Error(msg)
   | Ok(()) ->
   let lines = Fileutil.read_lines temp in
   Fileutil.remove_file temp;
   let result = String.trim (List.hd lines) in
   if String.ends_with ~suffix:"/" result then
-    String.take (String.length result - 1) result
+    Ok(String.take (String.length result - 1) result)
   else
-    result
+    Ok(result)
 
-let get_args : config -> Filepath.t -> string list = fun config rocq_file ->
+let get_args : config -> Filepath.t -> (string list, string) Result.t =
+    fun config rocq_file ->
   let cwd = Sys.getcwd () in
-  let dune_root = get_dune_root () in
+  match get_dune_root () with
+  | Error(s) -> Error(s)
+  | Ok(dune_root) ->
   assert (String.starts_with ~prefix:dune_root cwd);
   let relative_path =
     let path = String.drop (String.length dune_root) cwd in
@@ -54,8 +60,12 @@ let get_args : config -> Filepath.t -> string list = fun config rocq_file ->
   | Error(_,s) ->
       Sys.chdir cwd;
       Fileutil.remove_file temp;
-      panic "Error: cannot get CLI arguments for %S (process %s)." rocq_file s
+      let msg =
+        Printf.sprintf "cannot get CLI arguments for %S (process %s)"
+          rocq_file s
+      in
+      Error(msg)
   | Ok(())     ->
   Sys.chdir cwd;
   let lines = Fileutil.read_lines temp in
-  Fileutil.remove_file temp; lines
+  Fileutil.remove_file temp; Ok(lines)

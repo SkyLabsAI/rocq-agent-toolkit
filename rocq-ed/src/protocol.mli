@@ -1,11 +1,13 @@
 open Stdlib_extra.Extra
 
-val init : bool -> Dune_util.config -> Filepath.t -> unit
+type session_id = string
 
-val full_client_request : Filepath.t -> ('a, 'b, 'c) Request.t
+val init : Dune_util.config -> bool -> Filepath.t -> unit
+
+val full_client_request : session_id -> ('a, 'b, 'c) Request.t
   -> 'a * ('b, string * 'c) Result.t
 
-val client_request : Filepath.t -> (unit, 'a, 'b) Request.t
+val client_request : session_id -> (unit, 'a, 'b) Request.t
   -> ('a, string * 'b) Result.t
 
-val stop : Filepath.t -> unit
+val stop : session_id -> unit

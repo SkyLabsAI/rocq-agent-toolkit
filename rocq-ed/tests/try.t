@@ -17,9 +17,9 @@ rolls the document back: nothing is inserted, whether the candidate works or not
   >  (name text))
   > EOF
 
-  $ rocq-ed init test.v
-  $ rocq-ed steps --count-items 3 test.v
-  $ rocq-ed try --text $'\n  intros x; split.\n' test.v
+  $ eval $(rocq-ed init test.v)
+  $ rocq-ed steps --count-items 3
+  $ rocq-ed try --text $'\n  intros x; split.\n'
   Goal 1:
     x : nat
     ============================
@@ -30,25 +30,25 @@ rolls the document back: nothing is inserted, whether the candidate works or not
     ============================
     x = x
   
-  $ rocq-ed status test.v
+  $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
      3| Admitted.
-  $ rocq-ed try --text $'\n  reflexivity.\n' test.v
+  $ rocq-ed try --text $'\n  reflexivity.\n'
   Error: could not process suffix "reflexivity.\n".
    The relation and is not a declared reflexive relation. Maybe you need to require the Corelib.Classes.RelationClasses library
   The document is unchanged.
   [1]
-  $ rocq-ed goals test.v
+  $ rocq-ed goals
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
   
-  $ rocq-ed insert --text $'\n  intros x; split.\n' test.v
-  $ rocq-ed status test.v
+  $ rocq-ed insert --text $'\n  intros x; split.\n'
+  $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.
      4| <CURSOR>
      5| Admitted.
-  $ rocq-ed stop test.v
+  $ rocq-ed stop

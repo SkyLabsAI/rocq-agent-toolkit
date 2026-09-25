@@ -9,13 +9,17 @@
   > (* END *)
   > EOF
 
-  $ # Testing that failures during `rocq-ed init` do not break future `rocq-ed init` attempts.
-  $ rocq-ed init test.v
+  $ eval $(rocq-ed init test.v)
   Error: Cannot find file: test.v
   Hint: Is the file part of a stanza?
   Hint: Has the file been written to disk?
   Error: cannot get CLI arguments for "test.v" (process exited with code 1).
   [1]
+
+  $ rocq-ed status
+  rocq-ed: environment variable ROCQED_SESSION_ID is undefined, so the
+           --session-id option is required
+  [124]
 
   $ cat > dune-project <<EOF
   > (lang dune 3.21)
@@ -27,25 +31,40 @@
   >  (name text))
   > EOF
 
-  $ rocq-ed init test.v
-  Warning: Clearning up stale directory .test.v.rocqed
-  $ rocq-ed status test.v
+  $ printenv ROCQED_SESSION_ID
+  [1]
+  $ find "$HOME" | sort
+  $TESTCASE_ROOT/user
+
+  $ eval $(rocq-ed init test.v)
+
+  $ find "$HOME" | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/" | sort
+  $TESTCASE_ROOT/user
+  $TESTCASE_ROOT/user/.cache
+  $TESTCASE_ROOT/user/.cache/rocq-ed
+  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx
+  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/log
+  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/pid
+  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/req.fifo
+  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/res.fifo
+
+  $ rocq-ed status
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
      4|   intro x.
      5|   reflexivity.
      6| Qed.
-  $ rocq-ed status --context-lines 0 test.v
+  $ rocq-ed status --context-lines 0
      1| <CURSOR>(* Test file. *)
-  $ rocq-ed status --context-lines 1 test.v
+  $ rocq-ed status --context-lines 1
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
-  $ rocq-ed status --context-lines 2 test.v
+  $ rocq-ed status --context-lines 2
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
-  $ rocq-ed steps --print-context --print-goals --count-items 5 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 5
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -59,7 +78,7 @@
     ============================
     forall x : nat, x = x
   
-  $ rocq-ed status test.v
+  $ rocq-ed status
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -68,7 +87,7 @@
      6| Qed.
      7| 
      8| (* END *)
-  $ rocq-ed backwards --print-context --print-goals --count-items 5 test.v
+  $ rocq-ed backwards --print-context --print-goals --count-items 5
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -77,14 +96,14 @@
      6| Qed.
   
   Not currently in a proof.
-  $ rocq-ed status test.v
+  $ rocq-ed status
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
      4|   intro x.
      5|   reflexivity.
      6| Qed.
-  $ rocq-ed steps --print-context --print-goals --count-items 5 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 5
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -98,19 +117,19 @@
     ============================
     forall x : nat, x = x
   
-  $ rocq-ed status --context-lines 0 test.v
+  $ rocq-ed status --context-lines 0
      4|   <CURSOR>intro x.
-  $ rocq-ed status --context-lines 1 test.v
+  $ rocq-ed status --context-lines 1
      3| Proof.
      4|   <CURSOR>intro x.
      5|   reflexivity.
-  $ rocq-ed status --context-lines 2 test.v
+  $ rocq-ed status --context-lines 2
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
      4|   <CURSOR>intro x.
      5|   reflexivity.
      6| Qed.
-  $ rocq-ed steps --print-context --print-goals --count-items 3 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 3
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -120,7 +139,7 @@
      7| 
      8| (* END *)
   
-  $ rocq-ed status test.v
+  $ rocq-ed status
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -129,7 +148,7 @@
      6| Qed.
      7| 
      8| (* END *)
-  $ rocq-ed steps --print-context --print-goals --count-items 3 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 3
      4|   intro x.
      5|   reflexivity.
      6| Qed.
@@ -138,14 +157,14 @@
      9| <CURSOR>
   
   Not currently in a proof.
-  $ rocq-ed status test.v
+  $ rocq-ed status
      4|   intro x.
      5|   reflexivity.
      6| Qed.
      7| 
      8| (* END *)
      9| <CURSOR>
-  $ rocq-ed steps --print-context --print-goals --count-items 100 test.v
+  $ rocq-ed steps --print-context --print-goals --count-items 100
   Warning: Only 0 < 100 steps were executed before reaching the end of the file.
   
      4|   intro x.
@@ -156,7 +175,9 @@
      9| <CURSOR>
   
   Not currently in a proof.
-  $ rocq-ed stop test.v
-  $ find test.v.rocq-ed
-  find: 'test.v.rocq-ed': No such file or directory
-  [1]
+  $ rocq-ed stop
+
+  $ find "$HOME" | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/" | sort
+  $TESTCASE_ROOT/user
+  $TESTCASE_ROOT/user/.cache
+  $TESTCASE_ROOT/user/.cache/rocq-ed
