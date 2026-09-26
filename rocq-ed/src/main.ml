@@ -3,6 +3,14 @@ open Cmdliner
 
 let version = "dev"
 
+let exits = [
+  Cmd.Exit.info 0 ~doc:"on success.";
+  Cmd.Exit.info 1 ~doc:"on command/request failures.";
+  Cmd.Exit.info 123 ~doc:"on protocol errors (e.g., busy or stopped daemon).";
+  Cmd.Exit.info 124 ~doc:"on command-line parsing error.";
+  Cmd.Exit.info 125 ~doc:"on unexpected internal errors (bugs).";
+]
+
 let non_dir_file_with_ext : string -> string Arg.conv = fun ext ->
   let parse s =
     let err s = Error(`Msg(s)) in
@@ -75,14 +83,14 @@ let init_cmd =
   let term =
     Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file)
   in
-  Cmd.(make (info "init" ~version ~doc) term)
+  Cmd.(make (info "init" ~version ~exits ~doc) term)
 
 let stop_cmd =
   let doc =
     "Stop the running CLI editor session for the given Rocq source file."
   in
   let term = Term.(const Protocol.stop $ rocq_file) in
-  Cmd.(make (info "stop" ~version ~doc) term)
+  Cmd.(make (info "stop" ~version ~exits ~doc) term)
 
 let context_lines =
   let doc =
@@ -133,7 +141,7 @@ let status_cmd =
     Printf.printf "%s%!" doc
   in
   let term = Term.(const run $ context_lines $ rocq_file) in
-  Cmd.(make (info "status" ~version ~doc) term)
+  Cmd.(make (info "status" ~version ~exits ~doc) term)
 
 let step_count =
   let count =
@@ -184,7 +192,7 @@ let steps_cmd =
     Term.(const with_print_after $ (const run $ step_count) $
           print_context $ print_goals $ rocq_file)
   in
-  Cmd.(make (info "steps" ~version ~doc) term)
+  Cmd.(make (info "steps" ~version ~exits ~doc) term)
 
 let command_text =
   let doc =
@@ -238,7 +246,7 @@ let insert_cmd =
     Term.(const with_print_after $ (const run $ insert_keep $ command_text) $
           print_context $ print_goals $ rocq_file)
   in
-  Cmd.(make (info "insert" ~version ~doc) term)
+  Cmd.(make (info "insert" ~version ~exits ~doc) term)
 
 let query_text =
   let doc =
@@ -264,7 +272,7 @@ let query_cmd =
     | Error(s, ()) -> panic "Error: %s." s
   in
   let term = Term.(const run $ query_text $ rocq_file) in
-  Cmd.(make (info "query" ~version ~doc) term)
+  Cmd.(make (info "query" ~version ~exits ~doc) term)
 
 let deleted_item_count =
   let doc =
@@ -287,7 +295,7 @@ let delete_cmd =
     Term.(const with_print_after $ (const run $ deleted_item_count) $
           print_context $ print_goals $ rocq_file)
   in
-  Cmd.(make (info "delete" ~version ~doc) term)
+  Cmd.(make (info "delete" ~version ~exits ~doc) term)
 
 let commit_file =
   let doc =
@@ -323,7 +331,7 @@ let commit_cmd =
   let term =
     Term.(const run $ commit_file $ commit_exclude_suffix $ rocq_file)
   in
-  Cmd.(make (info "commit" ~version ~doc) term)
+  Cmd.(make (info "commit" ~version ~exits ~doc) term)
 
 let try_cmd =
   let doc =
@@ -348,7 +356,7 @@ let try_cmd =
           unchanged." remaining s
   in
   let term = Term.(const run $ command_text $ rocq_file) in
-  Cmd.(make (info "try" ~version ~doc) term)
+  Cmd.(make (info "try" ~version ~exits ~doc) term)
 
 let goals_cmd =
   let doc =
@@ -360,7 +368,7 @@ let goals_cmd =
     Printf.printf "%s%!" s
   in
   let term = Term.(const run $ rocq_file) in
-  Cmd.(make (info "goals" ~version ~doc) term)
+  Cmd.(make (info "goals" ~version ~exits ~doc) term)
 
 let backwards_count =
   let doc =
@@ -383,7 +391,7 @@ let backwards_cmd =
     Term.(const with_print_after $ (const run $ backwards_count) $
           print_context $ print_goals $ rocq_file)
   in
-  Cmd.(make (info "backwards" ~version ~doc) term)
+  Cmd.(make (info "backwards" ~version ~exits ~doc) term)
 
 let goto_pos =
   let position =
@@ -438,7 +446,7 @@ let goto_cmd =
     Term.(const with_print_after $ (const run $ goto_pos) $
           print_context $ print_goals $ rocq_file)
   in
-  Cmd.(make (info "goto" ~version ~doc) term)
+  Cmd.(make (info "goto" ~version ~exits ~doc) term)
 
 let main_man = [
   `S Manpage.s_description;
@@ -516,6 +524,6 @@ let _ =
     let doc =
       "Command line Rocq editor."
     in
-    Cmd.info "rocq-ed" ~version ~doc ~man:main_man
+    Cmd.info "rocq-ed" ~version ~exits ~doc ~man:main_man
   in
   exit (Cmd.eval (Cmd.group default_info ~default cmds))

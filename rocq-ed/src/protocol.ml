@@ -74,13 +74,13 @@ let init : bool -> Dune_util.config -> Filepath.t -> unit =
   begin try Sys.mkdir data_dir 0o755 with Sys_error(s) ->
     if String.ends_with ~suffix:"File exists" s then begin
       if is_session_active ~data_dir then
-        panic "Error: a session is already running for that file."
+        panic ~code:123 "Error: a session is already running for that file."
       else begin
         wrn "Warning: Clearning up stale directory %s" data_dir;
         clean_data_dir ~data_dir
       end
     end else begin
-      panic "Error: %s." s
+      panic ~code:123 "Error: %s." s
     end
   end;
   (* Get the CLI arguments and create create a document. *)
@@ -156,16 +156,16 @@ let full_client_request : type a b c. Filepath.t -> (a, b, c) Request.t ->
   let data_dir = data_dir_of_filename rocq_file in
   let pid_file = Filename.concat data_dir daemon_pid_file in
   if not (Sys.file_exists data_dir) then
-    panic "Error: no active session for %S." rocq_file;
+    panic ~code:123 "Error: no active session for %S." rocq_file;
   if not (Sys.file_exists pid_file) then
-    panic "Error: session daemon is not ready for %S." rocq_file;
+    panic ~code:123 "Error: session daemon is not ready for %S." rocq_file;
   (* Attempt to take the client lock. *)
   let lock_dir = Filename.concat data_dir "client.lock" in
   let _ =
     try Sys.mkdir lock_dir 0o755 with Sys_error(s) ->
     if String.ends_with ~suffix:"File exists" s then
-      panic "Error: a request is already in progress.";
-    panic "Error: %s." s
+      panic ~code:123 "Error: a request is already in progress.";
+    panic ~code:123 "Error: %s." s
   in
   (* Run the request. *)
   let req_fifo = Filename.concat data_dir "req.fifo" in
