@@ -16,22 +16,17 @@ Commands that used to auto-print context and goals are quiet by default.
   > Definition c := 2.
   > EOF
 
-  $ rocq-ed init print.v
-  $ rocq-ed goto --print-context=1 --position-line-column 2:1 print.v
+  $ eval $(rocq-ed init print.v)
+  $ rocq-ed goto --print-context=1 --position-line-column 2:1
      1| Definition a := 0.
      2| <CURSOR>Definition b := 1.
      3| Definition c := 2.
-  $ rocq-ed goto --position-line-column 1:1 print.v && echo "<NO OUTPUT: goto>"
-  <NO OUTPUT: goto>
-  $ rocq-ed steps --count-items=2 print.v && echo "<NO OUTPUT: steps>"
-  <NO OUTPUT: steps>
-  $ rocq-ed backwards --count-items=1 print.v && echo "<NO OUTPUT: backwards>"
-  <NO OUTPUT: backwards>
-  $ rocq-ed insert --text $'\nDefinition inserted := 42.' print.v && echo "<NO OUTPUT: insert>"
-  <NO OUTPUT: insert>
-  $ rocq-ed delete --count-items=1 print.v && echo "<NO OUTPUT: delete>"
-  <NO OUTPUT: delete>
-  $ rocq-ed stop print.v
+  $ rocq-ed goto --position-line-column 1:1
+  $ rocq-ed steps --count-items=2
+  $ rocq-ed backwards --count-items=1
+  $ rocq-ed insert --text $'\nDefinition inserted := 42.'
+  $ rocq-ed delete --count-items=1
+  $ rocq-ed stop
 
 --print-goals can be requested without printing context.
 
@@ -42,10 +37,10 @@ Commands that used to auto-print context and goals are quiet by default.
   > Qed.
   > EOF
 
-  $ rocq-ed init goals_only.v
-  $ rocq-ed goto --print-goals --position-line-column 2:1 goals_only.v
+  $ eval $(rocq-ed init goals_only.v)
+  $ rocq-ed goto --print-goals --position-line-column 2:1
   Goal 1:
     ============================
     True
   
-  $ rocq-ed stop goals_only.v
+  $ rocq-ed stop

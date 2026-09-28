@@ -1,6 +1,4 @@
-  $ export DUNE_ROOT=$(pwd)
-  $ echo $DUNE_ROOT
-  $TESTCASE_ROOT
+  $ export DUNE_ROOT=$PWD
 
   $ mkdir subdir
   $ cat > subdir/test.v <<EOF
@@ -28,24 +26,23 @@
   >  (name text))
   > EOF
 
-  $ rocq-ed init subdir/test.v
-  $ rocq-ed status subdir/test.v
+  $ eval $(rocq-ed init subdir/test.v)
+  $ rocq-ed status
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
      4|   intro x.
      5|   reflexivity.
      6| Qed.
-  $ rocq-ed stop subdir/test.v
-
-  $ # one level down from `dune` and `dune-project`
   $ cd subdir
-  $ rocq-ed init subsubdir/test.v
-  $ rocq-ed status subsubdir/test.v
+  $ rocq-ed stop
+
+  $ eval $(rocq-ed init subsubdir/test.v)
+  $ rocq-ed status
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
      4|   intro x.
      5|   reflexivity.
      6| Qed.
-  $ rocq-ed stop subsubdir/test.v
+  $ rocq-ed stop

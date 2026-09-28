@@ -13,10 +13,10 @@
   >  (name text))
   > EOF
 
-  $ rocq-ed init test.v
-  $ rocq-ed steps --count-items=all test.v
-  $ rocq-ed status --context-lines=0 test.v
+  $ eval $(rocq-ed init test.v)
+  $ rocq-ed steps --count-items=all
+  $ rocq-ed status --context-lines=0
      3| <CURSOR>
-  $ rocq-ed backwards --print-context=0 --count-items=1 test.v
+  $ rocq-ed backwards --print-context=0 --count-items=1
      2| Definition y := x.<CURSOR>
-  $ rocq-ed stop test.v
+  $ rocq-ed stop

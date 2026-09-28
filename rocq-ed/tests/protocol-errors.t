@@ -8,15 +8,10 @@
   >  (name text))
   > EOF
 
-  $ rocq-ed status test.v
-  Error: no active session for "test.v".
+  $ rocq-ed status --session-id xxxxxx
+  Error: No active session with ID xxxxxx.
   [123]
-  $ rocq-ed init test.v
-  $ rocq-ed status test.v
+  $ eval $(rocq-ed init test.v)
+  $ rocq-ed status
      1| <CURSOR>
-  $ rocq-ed init test.v
-  Error: a session is already running for that file.
-  [123]
-  $ rocq-ed status test.v
-     1| <CURSOR>
-  $ rocq-ed stop test.v
+  $ rocq-ed stop

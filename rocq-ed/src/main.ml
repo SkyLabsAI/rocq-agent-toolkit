@@ -6,7 +6,7 @@ let version = "dev"
 let exits = [
   Cmd.Exit.info 0 ~doc:"on success.";
   Cmd.Exit.info 1 ~doc:"on command/request failures.";
-  Cmd.Exit.info 123 ~doc:"on protocol errors (e.g., busy or stopped daemon).";
+  Cmd.Exit.info 123 ~doc:"on protocol errors (e.g., busy / stopped server).";
   Cmd.Exit.info 124 ~doc:"on command-line parsing error.";
   Cmd.Exit.info 125 ~doc:"on unexpected internal errors (bugs).";
 ]
@@ -70,26 +70,61 @@ let dune_config =
   let build no_build jobs display = Dune_util.{no_build; jobs; display} in
   Term.(const build $ no_build_deps $ jobs $ display)
 
-let daemonize =
-  let doc = "Indicates whether the `rocq-ed init` runs as a daemon" in
-  Arg.(value & opt bool true & info ["d"; "daemonize"] ~doc ~docv:"DAEMONIZE")
+let no_daemon =
+  let doc =
+    "When this option is specified, $(b,rocq-ed) will not detach to become a \
+     daemon, and logging output will be printed to the terminal."
+  in
+  Arg.(value & flag & info ["D"; "no-daemon"] ~doc)
 
 let init_cmd =
   let doc =
-    "Starts a CLI editor session for the given Rocq source file. Note that \
-     when a session for a given source file is running, no other session can \
-     be started on the same file."
+    "Starts a fresh CLI editor session for the given Rocq source file. By \
+     default, the session's process is detached to run as a daemon, and \
+     session configuration commands are printed to standard output. As a \
+     consequence, one can start the daemon with $(b,eval \\$(rocq-ed init \
+     path/to/file.v)) to configure the shell's environment appropriately for \
+     interacting with the created session on file $(b,path/to/file.v) in \
+     follow-up $(b,rocq-ed) commands. When $(b,--no-daemon) is set, the \
+     appropriate environment configuration is still printed to standard \
+     output, but one cannot use $(b,eval) since the program does not return \
+     until the end of the session. In this case, it is up to the user to \
+     set up the environment in a separate shell, or to use $(b,--session-id) \
+     with the printed value in follow-up invocations."
   in
   let term =
-    Term.(const Protocol.init $ daemonize $ dune_config $ rocq_file)
+    Term.(const Protocol.init $ dune_config $ no_daemon $ rocq_file)
   in
   Cmd.(make (info "init" ~version ~exits ~doc) term)
 
-let stop_cmd =
-  let doc =
-    "Stop the running CLI editor session for the given Rocq source file."
+let session_id =
+  let env =
+    let doc = "Unique identifier for the rocq-ed session." in
+    Cmd.Env.info "ROCQED_SESSION_ID" ~doc
   in
-  let term = Term.(const Protocol.stop $ rocq_file) in
+  let doc =
+    "Specify $(docv) as the target $(b,rocq-ed) session identifier. Note \
+     that it is generally preferable to set the $(b,ROCQED_SESSION_ID) \
+     environment variable to pass the session identifier. This can be \
+     done automatically by starting a session using $(b,eval \\$(rocq-ed \
+     init path/to/file.v))."
+  in
+  let arg =
+    Arg.(value & opt (some string) None &
+      info ["s"; "session-id"] ~env ~doc ~docv:"ID")
+  in
+  let check o =
+    match o with
+    | Some(id) -> Ok(id)
+    | None     ->
+        Error(`Msg("environment variable ROCQED_SESSION_ID is undefined, so \
+          the --session-id option is required"))
+  in
+  Term.(term_result (const check $ arg))
+
+let stop_cmd =
+  let doc = "Stop the session." in
+  let term = Term.(const Protocol.stop $ session_id) in
   Cmd.(make (info "stop" ~version ~exits ~doc) term)
 
 let context_lines =
@@ -116,17 +151,17 @@ let print_context =
        info ["print-context"] ~docv:"NUM" ~doc)
 
 let with_print_after : (string -> unit) -> int option -> bool -> string ->
-    unit = fun f context goals rocq_file ->
-  f rocq_file;
+    unit = fun f context goals id ->
+  f id;
   let print_context _ =
     let req = Request.(Status({context})) in
-    let Ok(status) = Protocol.client_request rocq_file req in
+    let Ok(status) = Protocol.client_request id req in
     Printf.printf "%s%!" status
   in
   Option.iter print_context context;
   if goals then begin
     if context <> None then Printf.printf "\n%!";
-    let Ok(goals) = Protocol.client_request rocq_file Request.Goals in
+    let Ok(goals) = Protocol.client_request id Request.Goals in
     Printf.printf "%s%!" goals
   end
 
@@ -135,12 +170,12 @@ let status_cmd =
     "Print the current contents of the Rocq document, including the position \
      of the cursor marked as $(b,<CURSOR>)."
   in
-  let run context rocq_file =
+  let run context id =
     let req = Request.Status({context}) in
-    let Ok(doc) = Protocol.client_request rocq_file req in
+    let Ok(doc) = Protocol.client_request id req in
     Printf.printf "%s%!" doc
   in
-  let term = Term.(const run $ context_lines $ rocq_file) in
+  let term = Term.(const run $ context_lines $ session_id) in
   Cmd.(make (info "status" ~version ~exits ~doc) term)
 
 let step_count =
@@ -173,9 +208,9 @@ let steps_cmd =
      of the items cannot be  processed successfully. In that case, the \
      cursor is moved to just before the failing item."
   in
-  let run count rocq_file =
+  let run count id =
     let (data, res) =
-      Protocol.full_client_request rocq_file Request.(Steps({count}))
+      Protocol.full_client_request id Request.(Steps({count}))
     in
     Request.print_feedback data;
     match res with
@@ -190,7 +225,7 @@ let steps_cmd =
   in
   let term =
     Term.(const with_print_after $ (const run $ step_count) $
-          print_context $ print_goals $ rocq_file)
+          print_context $ print_goals $ session_id)
   in
   Cmd.(make (info "steps" ~version ~exits ~doc) term)
 
@@ -225,13 +260,13 @@ let insert_cmd =
      what remains after such failures. The command will return a non-zero \
      exit code if any of the insert code cannot be processed."
   in
-  let run keep text rocq_file =
+  let run keep text id =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
     let req = Request.(Insert({text; keep})) in
-    let (data, res) = Protocol.full_client_request rocq_file req in
+    let (data, res) = Protocol.full_client_request id req in
     Request.print_feedback data;
     match res with
     | Ok(()) -> ()
@@ -244,7 +279,7 @@ let insert_cmd =
   in
   let term =
     Term.(const with_print_after $ (const run $ insert_keep $ command_text) $
-          print_context $ print_goals $ rocq_file)
+          print_context $ print_goals $ session_id)
   in
   Cmd.(make (info "insert" ~version ~exits ~doc) term)
 
@@ -262,16 +297,16 @@ let query_cmd =
      $(b,info) and $(b,notice) feedback to standard output. WARNING: Do not \
      use with tactics or side-effecting commands."
   in
-  let run text rocq_file =
+  let run text id =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
-    match Protocol.client_request rocq_file Request.(Query({text})) with
+    match Protocol.client_request id Request.(Query({text})) with
     | Ok(s) -> Printf.printf "%s\n%!" s
     | Error(s, ()) -> panic "Error: %s." s
   in
-  let term = Term.(const run $ query_text $ rocq_file) in
+  let term = Term.(const run $ query_text $ session_id) in
   Cmd.(make (info "query" ~version ~exits ~doc) term)
 
 let deleted_item_count =
@@ -286,14 +321,14 @@ let delete_cmd =
     "Delete the given number of items (blanks or commands) after the cursor. \
      The cursor is not moved in the operation."
   in
-  let run count rocq_file =
-    match Protocol.client_request rocq_file Request.(Delete({count})) with
+  let run count id =
+    match Protocol.client_request id Request.(Delete({count})) with
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
   let term =
     Term.(const with_print_after $ (const run $ deleted_item_count) $
-          print_context $ print_goals $ rocq_file)
+          print_context $ print_goals $ session_id)
   in
   Cmd.(make (info "delete" ~version ~exits ~doc) term)
 
@@ -319,9 +354,9 @@ let commit_cmd =
      $(b,--exclude-suffix) is given; a warning reports how many such items \
      were written, since they have not been checked by Rocq."
   in
-  let run file exclude_suffix rocq_file =
+  let run file exclude_suffix id =
     let req = Request.(Commit({file; exclude_suffix})) in
-    match Protocol.client_request rocq_file req with
+    match Protocol.client_request id req with
     | Ok(0) -> ()
     | Ok(n) ->
         Printf.printf "Warning: %i unprocessed item(s) after the cursor were \
@@ -329,7 +364,7 @@ let commit_cmd =
     | Error(s, ()) -> panic "Error: unable to commit.\n%s" s
   in
   let term =
-    Term.(const run $ commit_file $ commit_exclude_suffix $ rocq_file)
+    Term.(const run $ commit_file $ commit_exclude_suffix $ session_id)
   in
   Cmd.(make (info "commit" ~version ~exits ~doc) term)
 
@@ -341,13 +376,13 @@ let try_cmd =
      Use it to explore candidate steps; $(b,insert) only the one you keep, \
      so that exploration never enters the document."
   in
-  let run text rocq_file =
+  let run text id =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
     let req = Request.(Try({text})) in
-    let (data, res) = Protocol.full_client_request rocq_file req in
+    let (data, res) = Protocol.full_client_request id req in
     Request.print_feedback data;
     match res with
     | Ok(goals) -> Printf.printf "%s%!" goals
@@ -355,7 +390,7 @@ let try_cmd =
         panic "Error: could not process suffix %S.\n%s\nThe document is \
           unchanged." remaining s
   in
-  let term = Term.(const run $ command_text $ rocq_file) in
+  let term = Term.(const run $ command_text $ session_id) in
   Cmd.(make (info "try" ~version ~exits ~doc) term)
 
 let goals_cmd =
@@ -363,11 +398,11 @@ let goals_cmd =
     "Print the current proof state of the document, including the list of \
      the goals currently in focus."
   in
-  let run rocq_file =
-    let Ok(s) = Protocol.client_request rocq_file Request.Goals in
+  let run id =
+    let Ok(s) = Protocol.client_request id Request.Goals in
     Printf.printf "%s%!" s
   in
-  let term = Term.(const run $ rocq_file) in
+  let term = Term.(const run $ session_id) in
   Cmd.(make (info "goals" ~version ~exits ~doc) term)
 
 let backwards_count =
@@ -382,14 +417,14 @@ let backwards_cmd =
     "Moves the cursor backwards by the given number of document items \
      (commands or blanks) in the Rocq document."
   in
-  let run count rocq_file =
-    match Protocol.client_request rocq_file Request.(Backwards({count})) with
+  let run count id =
+    match Protocol.client_request id Request.(Backwards({count})) with
     | Ok(()) -> ()
     | Error(s, ()) -> panic "Error: %s." s
   in
   let term =
     Term.(const with_print_after $ (const run $ backwards_count) $
-          print_context $ print_goals $ rocq_file)
+          print_context $ print_goals $ session_id)
   in
   Cmd.(make (info "backwards" ~version ~exits ~doc) term)
 
@@ -437,25 +472,37 @@ let goto_cmd =
     "Moves the cursor to the item identified by the given line and column \
      numbers."
   in
-  let run (line, col) rocq_file =
-    match Protocol.client_request rocq_file Request.(Goto({line; col})) with
+  let run (line, col) id =
+    match Protocol.client_request id Request.(Goto({line; col})) with
     | Ok(()) -> ()
     | Error(s, i) -> panic "Error: %s.\nThe cursor is now at index %i." s i
   in
   let term =
     Term.(const with_print_after $ (const run $ goto_pos) $
-          print_context $ print_goals $ rocq_file)
+          print_context $ print_goals $ session_id)
   in
   Cmd.(make (info "goto" ~version ~exits ~doc) term)
 
 let main_man = [
   `S Manpage.s_description;
-  `P "$(b,rocq-ed) is a command-line editor for Rocq source files. It \
-      operates as a per-file daemon: $(b,rocq-ed init) starts a background \
-      session that holds an in-memory representation of a Rocq source file, \
-      and subsequent $(b,rocq-ed) invocations talk to that session to \
-      inspect or modify it. The session is terminated with \
-      $(b,rocq-ed stop).";
+  `P "$(b,rocq-ed) is a command-line editor for Rocq source files. An editor \
+      session is created by $(b,rocq-ed init path/to/file.v), which starts \
+      a server process holding an in-memory representation of the given Rocq \
+      source file. Subsequent $(b,rocq-ed) invocations are used to interact \
+      with the server, querying or editing the state of the Rocq source file
+      in memory, and potentially committing changes back to disk. A session \
+      is terminated via $(b,rocq-ed stop).";
+
+  `S "SESSION IDENTIFIER";
+  `P "A $(b,rocq-ed) session is identified by a unique session identifier, \
+      created at $(b,rocq-ed init) and printed to the shell. The identifier \
+      must be provided for subsequent interactions, either using the \
+      $(b,--session-id) argument, or by setting environment variable \
+      $(b,ROCQED_SESSION_ID). Note that $(b,eval \\$(rocq-ed init \
+      path/to/file.v)) can be used to set up the environment variable in the \
+      current shell when creating a session. However, this only works when \
+      the session process is daemonized (which is the default), and not when \
+      $(b,--no-daemon) is used.";
 
   `S "DOCUMENT MODEL";
   `P "The session-managed $(i,document) is the editable, in-memory \
@@ -487,7 +534,7 @@ let main_man = [
       and builds dependencies by default; $(b,--no-build-deps) is an \
       explicit opt-out for cases where dependencies are already known to \
       be current.";
-  `P "Once initialized, the daemon keeps a per-file session. Cursor \
+  `P "Once initialized, the server maintains an editor session. Cursor \
       movement, queries, edits, and proof-state inspection can reuse the \
       already-processed prefix instead of restarting the whole Dune target \
       each time. Use normal composed Dune builds afterwards for final \

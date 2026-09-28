@@ -16,28 +16,28 @@ daemon should remain responsive afterwards.
   > Definition b := 1.
   > EOF
 
-  $ rocq-ed init count.v
-  $ rocq-ed steps --count-items=-1 count.v
+  $ eval $(rocq-ed init count.v)
+  $ rocq-ed steps --count-items=-1
   Failed after processing 0 items.
   Error: negative count.
   [1]
-  $ rocq-ed status --context-lines=0 count.v
+  $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition a := 0.
-  $ rocq-ed delete --count-items=-1 count.v
+  $ rocq-ed delete --count-items=-1
   Error: negative count.
   [1]
-  $ rocq-ed status --context-lines=0 count.v
+  $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition a := 0.
-  $ rocq-ed status --context-lines=0 count.v
+  $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition a := 0.
 
 `backwards` currently lets negative counts reach the daemon as an uncaught
 Invalid_argument exception.  The timeout makes the regression visible without
 letting the test suite hang.
 
-  $ timeout 5s rocq-ed backwards --count-items=-1 count.v
+  $ rocq-ed backwards --count-items=-1
   Error: negative count.
   [1]
-  $ timeout 5s rocq-ed status --context-lines=0 count.v
+  $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition a := 0.
-  $ rocq-ed stop count.v >/dev/null 2>&1 || true
+  $ rocq-ed stop
