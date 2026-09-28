@@ -38,6 +38,18 @@ let daemonize : ?log:Filepath.t -> (int -> unit) -> unit =
   let pid = Unix.handle_unix_error Unix.getpid () in
   run pid
 
+let wait_for_file ~timeout ~interval file =
+  try
+    let t0 = Unix.gettimeofday () in
+    let rec loop () =
+      match Sys.file_exists file with true -> true | false ->
+      let t1 = Unix.gettimeofday () in
+      match t1 -. t0 >= timeout with true -> false | false ->
+      Unix.sleepf interval; loop ()
+    in
+    loop ()
+  with Unix.Unix_error(_,_,_) | Sys_error(_) -> false
+
 let pid_file : string = "pid"
 
 let get_pid : data_dir:string -> int option = fun ~data_dir ->
@@ -61,6 +73,21 @@ let session_active : data_dir:string -> bool = fun ~data_dir ->
 
 let init : Dune_util.config -> bool -> Filepath.t -> unit =
     fun config no_daemon rocq_file ->
+  (* Handle exceptions. *)
+  let handle f =
+    try f () with
+    | Sys_error(s) ->
+        if not no_daemon then Printf.printf "false\n%!";
+        panic ~code:123 "Error: system error (%s)." s
+    | Unix.Unix_error(e,f,a) ->
+        if not no_daemon then Printf.printf "false\n%!";
+        let msg = Unix.error_message e in
+        panic ~code:123 "Error: failed to \"%s %s\" (%s)." f a msg
+    | e ->
+        if not no_daemon then Printf.printf "false\n%!";
+        raise e
+  in
+  handle @@ fun () ->
   assert (Sys.file_exists rocq_file);
   assert (Filename.extension rocq_file = ".v");
   (* Changing the working directory to the file's directory. *)
@@ -73,9 +100,15 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
       if not no_daemon then Printf.printf "false\n%!";
       panic "Error: %s." s
   | Ok(args) ->
-  let d = Document.init ~args ~file:basename in
+  match Document.init ~args ~file:basename with
+  | exception Failure(s) ->
+      if not no_daemon then Printf.printf "false\n%!";
+      panic "Error: %s." s
+  | d ->
   match Document.load_file d with
-  | Error(s, _) -> panic "Error: unable to load the file (%s)." s
+  | Error(s, _) ->
+      if not no_daemon then Printf.printf "false\n%!";
+      panic "Error: unable to load the file (%s)." s
   | Ok(())      ->
   (* Create the data directory. *)
   let cache_dir = Lazy.force cache_dir in
@@ -87,10 +120,11 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   Unix.mkfifo req_fifo 0o640;
   let res_fifo = Filename.concat data_dir "res.fifo" in
   Unix.mkfifo res_fifo 0o640;
-  (* Daemonize the process, and write its PID to a file. *)
+  (* Prepare paths to other files in the data directory. *)
   let log_file = Filename.concat data_dir "log" in
+  let pid_file = Filename.concat data_dir pid_file in
+  (* Function running the server loop. *)
   let run pid =
-    let pid_file = Filename.concat data_dir pid_file in
     Fileutil.write_lines pid_file [Printf.sprintf "%i" pid];
     (* Logging function (will end up in the log file). *)
     let log fmt =
@@ -141,14 +175,18 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
     log "Exited the loop (stopping)."
   in
   match no_daemon with
-  | false ->
-      daemonize ~log:log_file run;
-      Printf.printf "export ROCQED_SESSION_ID=%s\n%!" id
   | true  ->
       Printf.printf "==== Environemnt for queries in the session ===\n%!";
       Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
       Printf.printf "===============================================\n%!";
       run (Unix.getpid ())
+  | false ->
+  daemonize ~log:log_file run;
+  match wait_for_file ~timeout:2.0 ~interval:0.1 pid_file with
+  | true  -> Printf.printf "export ROCQED_SESSION_ID=%s\n%!" id
+  | false ->
+  Printf.printf "false\n%!";
+  panic ~code:123 "Error: the daemon never write its PID."
 
 let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->
