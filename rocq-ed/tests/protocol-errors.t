@@ -9,7 +9,7 @@
   > EOF
 
   $ rocq-ed status --session-id xxxxxx
-  Error: no active session for ID "xxxxxx".
+  Error: No active session with ID xxxxxx.
   [123]
   $ eval $(rocq-ed init test.v)
   $ rocq-ed status

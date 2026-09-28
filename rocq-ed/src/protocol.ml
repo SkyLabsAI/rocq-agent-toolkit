@@ -152,13 +152,14 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
 
 let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->
-  (* Check that the server is running. *)
   let data_dir = get_data_dir id in
-  let pid_file = Filename.concat data_dir pid_file in
-  if not (Sys.file_exists data_dir) then
-    panic ~code:123 "Error: no active session for ID %S." id;
-  if not (Sys.file_exists pid_file) then
-    panic ~code:123 "Error: session is not ready for ID %S." id;
+  (* Check that the server is running. *)
+  match session_active ~data_dir with
+  | false when Sys.file_exists data_dir ->
+      panic ~code:123 "Error: Session with ID %s is stale or not ready." id
+  | false ->
+      panic ~code:123 "Error: No active session with ID %s." id
+  | true  ->
   (* Attempt to take the client lock. *)
   let lock_dir = Filename.concat data_dir "client.lock" in
   let _ =
@@ -184,22 +185,16 @@ let client_request : type a b. session_id -> (unit, a, b) Request.t ->
   snd (full_client_request rocq_file req)
 
 let stop : session_id -> unit = fun id ->
+  ignore (client_request id Request.Stop);
   let data_dir = get_data_dir id in
-  match session_active ~data_dir with
-  | false when Sys.file_exists data_dir ->
-      wrn "Warning: No active session (directory %s is stale)." data_dir
-  | false ->
-      wrn "Warning: No active session"
-  | true  ->
-      ignore (client_request id Request.Stop);
-      let warn_unix_failure f x =
-        try f x with Unix.Unix_error(e, f, args) ->
-        let msg = Unix.error_message e in
-        wrn "Warning: failed to \"%s %s\" (%s)." f args msg
-      in
-      let unlink file = warn_unix_failure Unix.unlink file in
-      unlink (Filename.concat data_dir "req.fifo");
-      unlink (Filename.concat data_dir "res.fifo");
-      let log_file = Filename.concat data_dir "log" in
-      if Sys.file_exists log_file then unlink log_file;
-      warn_unix_failure Unix.rmdir data_dir
+  let warn_unix_failure f x =
+    try f x with Unix.Unix_error(e, f, args) ->
+    let msg = Unix.error_message e in
+    wrn "Warning: failed to \"%s %s\" (%s)." f args msg
+  in
+  let unlink file = warn_unix_failure Unix.unlink file in
+  unlink (Filename.concat data_dir "req.fifo");
+  unlink (Filename.concat data_dir "res.fifo");
+  let log_file = Filename.concat data_dir "log" in
+  if Sys.file_exists log_file then unlink log_file;
+  warn_unix_failure Unix.rmdir data_dir
