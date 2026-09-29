@@ -52,25 +52,6 @@ let wait_for_file ~timeout ~interval file =
 
 let pid_file : string = "pid"
 
-let get_pid : data_dir:string -> int option = fun ~data_dir ->
-  let pid_file = Filename.concat data_dir pid_file in
-  try
-    match Fileutil.read_lines pid_file with
-    | [pid] -> Some(int_of_string pid)
-    | _ -> None
-  with Sys_error(_) | Failure(_) -> None
-
-let session_active : data_dir:string -> bool = fun ~data_dir ->
-  match get_pid ~data_dir with
-  | None      -> false
-  | Some(pid) ->
-  try Unix.kill pid 0; true with
-  | Unix.Unix_error(ESRCH, _, _) -> false
-  | Unix.Unix_error(EPERM, _, _) -> true
-  | Unix.Unix_error(e, f, args)  ->
-  let msg = Unix.error_message e in
-  panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
-
 let init : Dune_util.config -> bool -> Filepath.t -> unit =
     fun config no_daemon rocq_file ->
   (* Handle exceptions. *)
@@ -191,13 +172,14 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
 let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->
   let data_dir = get_data_dir id in
-  (* Check that the server is running. *)
-  match session_active ~data_dir with
-  | false when Sys.file_exists data_dir ->
-      panic ~code:123 "Error: Session with ID %s is stale or not ready." id
-  | false ->
-      panic ~code:123 "Error: No active session with ID %s." id
-  | true  ->
+  (* Check that the server is running. The PID is not checked: it is only
+     meaningful in the server's PID namespace, clients may be in another.
+     Note: a killed server leaves its pid file, and the client then blocks
+     opening req.fifo; probe the FIFO itself if that matters. *)
+  if not (Sys.file_exists data_dir) then
+    panic ~code:123 "Error: No active session with ID %s." id;
+  if not (Sys.file_exists (Filename.concat data_dir pid_file)) then
+    panic ~code:123 "Error: Session with ID %s is stale or not ready." id;
   (* Attempt to take the client lock. *)
   let lock_dir = Filename.concat data_dir "client.lock" in
   let _ =
