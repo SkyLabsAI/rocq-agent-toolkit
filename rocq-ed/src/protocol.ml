@@ -172,14 +172,8 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
 let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->
   let data_dir = get_data_dir id in
-  (* Check that the server is running. The PID is not checked: it is only
-     meaningful in the server's PID namespace, clients may be in another.
-     Note: a killed server leaves its pid file, and the client then blocks
-     opening req.fifo; probe the FIFO itself if that matters. *)
   if not (Sys.file_exists data_dir) then
     panic ~code:123 "Error: No active session with ID %s." id;
-  if not (Sys.file_exists (Filename.concat data_dir pid_file)) then
-    panic ~code:123 "Error: Session with ID %s is stale or not ready." id;
   (* Attempt to take the client lock. *)
   let lock_dir = Filename.concat data_dir "client.lock" in
   let _ =
@@ -188,14 +182,28 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
       panic ~code:123 "Error: a request is already in progress.";
     panic ~code:123 "Error: %s." s
   in
-  (* Run the request. *)
+  (* Check that the server is running: opening the request FIFO without
+     blocking fails with ENXIO when no process reads it. The server's PID is
+     only meaningful in its own PID namespace, clients may be in another. The
+     retry covers the server re-opening the FIFO after its last response. The
+     request must be sent on this descriptor: the server fails on EOF. *)
   let req_fifo = Filename.concat data_dir "req.fifo" in
   let res_fifo = Filename.concat data_dir "res.fifo" in
-  let _ =
-    Out_channel.with_open_text req_fifo @@ fun oc ->
-    Marshal.to_channel oc req [];
-    Out_channel.flush oc
+  let deadline = Unix.gettimeofday () +. 1.0 in
+  let rec open_req_fifo () =
+    match Unix.openfile req_fifo Unix.[O_WRONLY; O_NONBLOCK; O_CLOEXEC] 0 with
+    | fd -> Unix.clear_nonblock fd; fd
+    | exception Unix.Unix_error(ENXIO, _, _)
+        when Unix.gettimeofday () < deadline ->
+        Unix.sleepf 0.05; open_req_fifo ()
+    | exception Unix.Unix_error((ENXIO | ENOENT), _, _) ->
+        Unix.rmdir lock_dir;
+        panic ~code:123 "Error: Session with ID %s is stale or not ready." id
   in
+  (* Run the request. *)
+  let oc = Unix.out_channel_of_descr (open_req_fifo ()) in
+  Marshal.to_channel oc req [];
+  close_out oc;
   let res = In_channel.with_open_text res_fifo Marshal.from_channel in
   (* Release the lock, and return the response. *)
   Unix.rmdir lock_dir; res
