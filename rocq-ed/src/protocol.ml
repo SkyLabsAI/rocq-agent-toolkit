@@ -56,24 +56,6 @@ let client_lock_file : string = "client.lock"
 let req_fifo : string = "req.fifo"
 let res_fifo : string = "res.fifo"
 
-let session_active : data_dir:string -> bool = fun ~data_dir ->
-  let pid_file = Filename.concat data_dir pid_file in
-  match Sys.file_exists pid_file with
-  | false -> false
-  | true  ->
-  let server_lock_file = Filename.concat data_dir server_lock_file in
-  try
-    let lock_fd = Unix.openfile server_lock_file Unix.[O_WRONLY] 0 in
-    Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
-    match Unix.lockf lock_fd F_TLOCK 0 with
-    | () -> false
-    | exception Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
-  with
-  | Unix.Unix_error(ENOENT, _, _) -> false
-  | Unix.Unix_error(e, f, args)   ->
-  let msg = Unix.error_message e in
-  panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
-
 let init : Dune_util.config -> bool -> Filepath.t -> unit =
     fun config no_daemon rocq_file ->
   (* Handle exceptions. *)
@@ -209,11 +191,27 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->
   let data_dir = get_data_dir id in
   (* Check that the server is running. *)
-  match session_active ~data_dir with
-  | false when Sys.file_exists data_dir ->
-      panic ~code:123 "Error: Session with ID %s is stale or not ready." id
+  let pid_file = Filename.concat data_dir pid_file in
+  match Sys.file_exists pid_file with
+  | false -> panic ~code:123 "Error: No active session with ID %s." id
+  | true  ->
+  let server_lock_file = Filename.concat data_dir server_lock_file in
+  let server_live =
+    try
+      let lock_fd = Unix.openfile server_lock_file Unix.[O_WRONLY] 0 in
+      Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
+      try Unix.lockf lock_fd F_TEST 0; false with
+      | Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
+    with
+    | Unix.Unix_error(ENOENT, _, _) ->
+        panic ~code:123 "Error: Session with ID %s is stopping (or stale)." id
+    | Unix.Unix_error(e, f, args)   ->
+        let msg = Unix.error_message e in
+        panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
+  in
+  match server_live with
   | false ->
-      panic ~code:123 "Error: No active session with ID %s." id
+      panic ~code:123 "Error: Session with ID %s crashed or was killed." id
   | true  ->
   (* Attempt to take the client lock. *)
   let client_lock_file = Filename.concat data_dir client_lock_file in
