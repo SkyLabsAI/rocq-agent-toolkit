@@ -51,16 +51,19 @@ let wait_for_file ~timeout ~interval file =
   with Unix.Unix_error(_,_,_) | Sys_error(_) -> false
 
 let pid_file : string = "pid"
-let lock_file : string = "lock"
+let server_lock_file : string = "server.lock"
+let client_lock_file : string = "client.lock"
+let req_fifo : string = "req.fifo"
+let res_fifo : string = "res.fifo"
 
 let session_active : data_dir:string -> bool = fun ~data_dir ->
   let pid_file = Filename.concat data_dir pid_file in
   match Sys.file_exists pid_file with
   | false -> false
   | true  ->
-  let lock_file = Filename.concat data_dir lock_file in
+  let server_lock_file = Filename.concat data_dir server_lock_file in
   try
-    let lock_fd = Unix.openfile lock_file Unix.[O_WRONLY] 0 in
+    let lock_fd = Unix.openfile server_lock_file Unix.[O_WRONLY] 0 in
     Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
     match Unix.lockf lock_fd F_TLOCK 0 with
     | () -> false
@@ -116,19 +119,26 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   let data_dir = Filename.temp_dir ~temp_dir:cache_dir "" "" in
   let id = Filename.basename data_dir in
   (* Prepare the communication pipes. *)
-  let req_fifo = Filename.concat data_dir "req.fifo" in
+  let req_fifo = Filename.concat data_dir req_fifo in
   Unix.mkfifo req_fifo 0o640;
-  let res_fifo = Filename.concat data_dir "res.fifo" in
+  let res_fifo = Filename.concat data_dir res_fifo in
   Unix.mkfifo res_fifo 0o640;
   (* Prepare paths to other files in the data directory. *)
   let log_file = Filename.concat data_dir "log" in
   let pid_file = Filename.concat data_dir pid_file in
-  let lock_file = Filename.concat data_dir lock_file in
+  let server_lock_file = Filename.concat data_dir server_lock_file in
+  let client_lock_file = Filename.concat data_dir client_lock_file in
   (* Function running the server loop. *)
   let run ?(ready = fun () -> ()) pid =
-    let lock_fd = Unix.openfile lock_file Unix.[O_WRONLY; O_CREAT] 0o640 in
+    let lock_fd =
+      Unix.openfile server_lock_file Unix.[O_WRONLY; O_CREAT] 0o640
+    in
     Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
     Unix.lockf lock_fd F_LOCK 0;
+    let client_lock_fd =
+      Unix.openfile client_lock_file Unix.[O_WRONLY; O_CREAT] 0o640
+    in
+    Unix.close client_lock_fd;
     Fileutil.write_lines pid_file [Printf.sprintf "%i" pid];
     ready ();
     (* Logging function (will end up in the log file). *)
@@ -206,24 +216,26 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
       panic ~code:123 "Error: No active session with ID %s." id
   | true  ->
   (* Attempt to take the client lock. *)
-  let lock_dir = Filename.concat data_dir "client.lock" in
-  let _ =
-    try Sys.mkdir lock_dir 0o755 with Sys_error(s) ->
-    if String.ends_with ~suffix:"File exists" s then
-      panic ~code:123 "Error: a request is already in progress.";
-    panic ~code:123 "Error: %s." s
+  let client_lock_file = Filename.concat data_dir client_lock_file in
+  let client_lock_fd =
+    let fd = Unix.openfile client_lock_file Unix.[O_WRONLY] 0 in
+    match Unix.lockf fd F_TLOCK 0 with
+    | () -> fd
+    | exception Unix.Unix_error((EACCES | EAGAIN), _, _) ->
+        Unix.close fd;
+        panic ~code:123 "Error: a request is already in progress."
+    | exception e -> Unix.close fd; raise e
   in
+  Fun.protect ~finally:(fun () -> Unix.close client_lock_fd) @@ fun () ->
   (* Run the request. *)
-  let req_fifo = Filename.concat data_dir "req.fifo" in
-  let res_fifo = Filename.concat data_dir "res.fifo" in
+  let req_fifo = Filename.concat data_dir req_fifo in
+  let res_fifo = Filename.concat data_dir res_fifo in
   let _ =
     Out_channel.with_open_text req_fifo @@ fun oc ->
     Marshal.to_channel oc req [];
     Out_channel.flush oc
   in
-  let res = In_channel.with_open_text res_fifo Marshal.from_channel in
-  (* Release the lock, and return the response. *)
-  Unix.rmdir lock_dir; res
+  In_channel.with_open_text res_fifo Marshal.from_channel
 
 let client_request : type a b. session_id -> (unit, a, b) Request.t ->
     (a, string * b) Result.t = fun rocq_file req ->
@@ -240,7 +252,8 @@ let stop : session_id -> unit = fun id ->
   let unlink file = warn_unix_failure Unix.unlink file in
   unlink (Filename.concat data_dir "req.fifo");
   unlink (Filename.concat data_dir "res.fifo");
-  unlink (Filename.concat data_dir lock_file);
+  unlink (Filename.concat data_dir client_lock_file);
+  unlink (Filename.concat data_dir server_lock_file);
   let log_file = Filename.concat data_dir "log" in
   if Sys.file_exists log_file then unlink log_file;
   warn_unix_failure Unix.rmdir data_dir
