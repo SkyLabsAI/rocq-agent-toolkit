@@ -127,13 +127,28 @@ let stop_cmd =
   let term = Term.(const Protocol.stop $ session_id) in
   Cmd.(make (info "stop" ~version ~exits ~doc) term)
 
+let int_or_all =
+  let parse = function
+    | "all" -> Ok(None)
+    | s ->
+    match int_of_string_opt s with
+    | Some(i) -> Ok(Some(i))
+    | None -> Error(`Msg("expected an integer or \"all\""))
+  in
+  let print ff = function
+    | None    -> Format.fprintf ff "all"
+    | Some(i) -> Format.fprintf ff "%i" i
+  in
+  Arg.conv (parse, print)
+
 let context_lines =
   let doc =
     "Print $(docv) lines of context before and after the cursor instead of \
-     printing the whole Rocq document."
+     printing the whole Rocq document. Use $(b,all) to print the whole \
+     document."
   in
-  Arg.(value & opt (some int) (Some 5) &
-    info ["C"; "context-lines"] ~doc ~docv:"NUM")
+  Arg.(value & opt int_or_all (Some 5) &
+    info ["C"; "context-lines"] ~doc ~docv:"NUM|all")
 
 let print_goals =
   let doc =
@@ -188,27 +203,14 @@ let status_cmd =
   Cmd.(make (info "status" ~version ~exits ~doc) term)
 
 let step_count =
-  let count =
-    let parse = function
-      | "all" -> Ok(None)
-      | s ->
-      match int_of_string_opt s with
-      | Some(i) -> Ok(Some(i))
-      | None -> Error(`Msg("expected an integer or \"all\""))
-    in
-    let print ff = function
-      | None    -> Format.fprintf ff "all"
-      | Some(i) -> Format.fprintf ff "%i" i
-    in
-    Arg.conv (parse, print)
-  in
   let doc =
     "Indicates the number of items $(docv) that should be stepped over (it \
      is equal to 1 by default). Use $(b,all) to step all the way to the end \
      of the file."
   in
   let docv = "NUM|all" in
-  Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv)
+  Arg.(value & opt int_or_all (Some 1) &
+    info ["n"; "count-items"] ~doc ~docv)
 
 let steps_cmd =
   let doc =
