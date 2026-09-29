@@ -244,22 +244,22 @@ let command_controls c =
 
 let command_tags = [|
   "Noop"; "Notation"; "BeginSection"; "EndSegment"; "Require"; "Import";
-  "DeclareModule"; "DefineModule"; "DeclareModuleType"; "Include";
-  "SetOption"; "Load"; "Extend"; "OpenCloseScope"; "DeclareScope";
+  "DeclareMLModule"; "DeclareModule"; "DefineModule"; "DeclareModuleType";
+  "Include"; "SetOption"; "Load"; "Extend"; "OpenCloseScope"; "DeclareScope";
   "Delimiters"; "BindScope"; "EnableNotation"; "Definition";
   "StartTheoremProof"; "EndProof"; "ExactProof"; "Assumption"; "Symbol";
-  "Inductive"; "Fixpoint"; "CoFixpoint"; "Scheme"; "SchemeEquality";
-  "CombinedScheme"; "Universe"; "Sort"; "Constraint"; "AddRewRule";
-  "Canonical"; "Coercion"; "IdentityCoercion"; "NameSectionHypSet";
-  "Instance"; "DeclareInstance"; "Context"; "ExistingInstance";
-  "ExistingClass"; "ResetName"; "ResetInitial"; "Back"; "CreateHintDb";
-  "RemoveHints"; "Hints"; "SyntacticDefinition"; "Arguments"; "Reserve";
-  "Generalizable"; "SetOpacity"; "SetStrategy"; "MemOption"; "PrintOption";
-  "CheckMayEval"; "GlobalCheck"; "DeclareReduction"; "Print"; "Search";
-  "Locate"; "Register"; "Primitive"; "Comments"; "Attributes"; "Abort";
-  "AbortAll"; "Restart"; "Undo"; "UndoTo"; "Focus"; "Unfocus"; "Unfocused";
-  "Bullet"; "Subproof"; "EndSubproof"; "Show"; "CheckGuard"; "ValidateProof";
-  "Proof"; "AddOption"; "RemoveOption"
+  "Inductive"; "Fixpoint"; "CoFixpoint"; "SchemeAll"; "Scheme";
+  "SchemeEquality"; "CombinedScheme"; "Universe"; "Sort"; "Constraint";
+  "AddRewRule"; "Canonical"; "Coercion"; "IdentityCoercion";
+  "NameSectionHypSet"; "Instance"; "DeclareInstance"; "Context";
+  "ExistingInstance"; "ExistingClass"; "ResetName"; "ResetInitial"; "Back";
+  "CreateHintDb"; "RemoveHints"; "Hints"; "Abbreviation"; "Arguments";
+  "Reserve"; "Generalizable"; "SetOpacity"; "SetStrategy"; "MemOption";
+  "PrintOption"; "CheckMayEval"; "GlobalCheck"; "DeclareReduction"; "Print";
+  "Search"; "Locate"; "Register"; "Primitive"; "Comments"; "Attributes";
+  "Abort"; "AbortAll"; "Restart"; "Undo"; "UndoTo"; "Focus"; "Unfocus";
+  "Unfocused"; "Bullet"; "Subproof"; "EndSubproof"; "Show"; "CheckGuard";
+  "ValidateProof"; "Proof"; "AddOption"; "RemoveOption"
 |]
 
 let control_tags = [|
