@@ -127,13 +127,28 @@ let stop_cmd =
   let term = Term.(const Protocol.stop $ session_id) in
   Cmd.(make (info "stop" ~version ~exits ~doc) term)
 
+let int_or_all =
+  let parse = function
+    | "all" -> Ok(None)
+    | s ->
+    match int_of_string_opt s with
+    | Some(i) -> Ok(Some(i))
+    | None -> Error(`Msg("expected an integer or \"all\""))
+  in
+  let print ff = function
+    | None    -> Format.fprintf ff "all"
+    | Some(i) -> Format.fprintf ff "%i" i
+  in
+  Arg.conv (parse, print)
+
 let context_lines =
   let doc =
     "Print $(docv) lines of context before and after the cursor instead of \
-     printing the whole Rocq document."
+     printing the whole Rocq document. Use $(b,all) to print the whole \
+     document."
   in
-  Arg.(value & opt (some int) (Some 5) &
-    info ["C"; "context-lines"] ~doc ~docv:"NUM")
+  Arg.(value & opt int_or_all (Some 5) &
+    info ["C"; "context-lines"] ~doc ~docv:"NUM|all")
 
 let print_goals =
   let doc =
@@ -154,7 +169,7 @@ let with_print_after : (string -> unit) -> int option -> bool -> string ->
     unit = fun f context goals id ->
   f id;
   let print_context _ =
-    let req = Request.(Status({context})) in
+    let req = Request.(Status({context; json = false})) in
     let Ok(status) = Protocol.client_request id req in
     Printf.printf "%s%!" status
   in
@@ -165,41 +180,37 @@ let with_print_after : (string -> unit) -> int option -> bool -> string ->
     Printf.printf "%s%!" goals
   end
 
+let status_json =
+  let doc =
+    "Print a JSON object containing item lists for the processed prefix and \
+     unprocessed suffix, plus the current structured proof goals, if any."
+  in
+  Arg.(value & flag & info ["json"] ~doc)
+
 let status_cmd =
   let doc =
     "Print the current contents of the Rocq document, including the position \
-     of the cursor marked as $(b,<CURSOR>)."
+     of the cursor marked as $(b,<CURSOR>). With $(b,--json), print the \
+     document prefix and suffix as item lists, together with the current \
+     structured goals, as JSON instead."
   in
-  let run context id =
-    let req = Request.Status({context}) in
+  let run context json id =
+    let req = Request.Status({context; json}) in
     let Ok(doc) = Protocol.client_request id req in
     Printf.printf "%s%!" doc
   in
-  let term = Term.(const run $ context_lines $ session_id) in
+  let term = Term.(const run $ context_lines $ status_json $ session_id) in
   Cmd.(make (info "status" ~version ~exits ~doc) term)
 
 let step_count =
-  let count =
-    let parse = function
-      | "all" -> Ok(None)
-      | s ->
-      match int_of_string_opt s with
-      | Some(i) -> Ok(Some(i))
-      | None -> Error(`Msg("expected an integer or \"all\""))
-    in
-    let print ff = function
-      | None    -> Format.fprintf ff "all"
-      | Some(i) -> Format.fprintf ff "%i" i
-    in
-    Arg.conv (parse, print)
-  in
   let doc =
     "Indicates the number of items $(docv) that should be stepped over (it \
      is equal to 1 by default). Use $(b,all) to step all the way to the end \
      of the file."
   in
   let docv = "NUM|all" in
-  Arg.(value & opt count (Some 1) & info ["n"; "count-items"] ~doc ~docv)
+  Arg.(value & opt int_or_all (Some 1) &
+    info ["n"; "count-items"] ~doc ~docv)
 
 let steps_cmd =
   let doc =

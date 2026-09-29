@@ -11,7 +11,7 @@ type insert_error = {
 
 type (_, _, _) t =
   | Stop : (unit, unit, empty) t
-  | Status : {context : int option} -> (unit, string, empty) t
+  | Status : {context : int option; json : bool} -> (unit, string, empty) t
   | Steps : {count : int option} -> (Document.commands_data, int, int) t
   | Insert : {text : string; keep : insert_keep}
       -> (Document.commands_data, unit, insert_error) t

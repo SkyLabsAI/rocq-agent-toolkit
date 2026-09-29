@@ -12,6 +12,7 @@ depends: [
   "cmdliner"
   "stdlib-extra"
   "rocq-doc-manager"
+  "yojson"
   "odoc" {with-doc}
 ]
 build: [

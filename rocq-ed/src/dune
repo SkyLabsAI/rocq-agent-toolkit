@@ -8,4 +8,5 @@
   cmdliner
   stdlib-extra
   rocq-doc-manager.lib
-  uuseg.string))
+  uuseg.string
+  yojson))

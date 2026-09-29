@@ -64,6 +64,15 @@
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
+  $ rocq-ed status --context-lines all
+     1| <CURSOR>(* Test file. *)
+     2| Theorem test : forall x : nat, x = x.
+     3| Proof.
+     4|   intro x.
+     5|   reflexivity.
+     6| Qed.
+     7| 
+     8| (* END *)
   $ rocq-ed steps --print-context --print-goals --count-items 5
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
