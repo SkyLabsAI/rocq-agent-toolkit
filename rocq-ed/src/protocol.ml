@@ -50,11 +50,26 @@ let wait_for_file ~timeout ~interval file =
     loop ()
   with Unix.Unix_error(_,_,_) | Sys_error(_) -> false
 
+(* Used to keep Unix-domain socket addresses short. *)
+let in_dir : Filepath.t -> (unit -> 'a) -> 'a = fun dir f ->
+  let cwd = Sys.getcwd () in
+  Fun.protect ~finally:(fun () -> Sys.chdir cwd) @@ fun () ->
+  Sys.chdir dir; f ()
+
+let with_socket_channels socket_fd f =
+  let output_fd =
+    try Unix.dup ~cloexec:true socket_fd with
+    | e -> Unix.close socket_fd; raise e
+  in
+  let ic = Unix.in_channel_of_descr socket_fd in
+  let oc = Unix.out_channel_of_descr output_fd in
+  let finally _ = close_out_noerr oc; close_in_noerr ic in
+  Fun.protect ~finally (fun () -> f ic oc)
+
 let pid_file : string = "pid"
 let server_lock_file : string = "server.lock"
 let client_lock_file : string = "client.lock"
-let req_fifo : string = "req.fifo"
-let res_fifo : string = "res.fifo"
+let socket_file : string = "socket"
 
 let init : Dune_util.config -> bool -> Filepath.t -> unit =
     fun config no_daemon rocq_file ->
@@ -100,12 +115,7 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   Fileutil.mkdir ~mode:0o700 cache_dir;
   let data_dir = Filename.temp_dir ~temp_dir:cache_dir "" "" in
   let id = Filename.basename data_dir in
-  (* Prepare the communication pipes. *)
-  let req_fifo = Filename.concat data_dir req_fifo in
-  Unix.mkfifo req_fifo 0o640;
-  let res_fifo = Filename.concat data_dir res_fifo in
-  Unix.mkfifo res_fifo 0o640;
-  (* Prepare paths to other files in the data directory. *)
+  (* Prepare paths to files in the data directory. *)
   let log_file = Filename.concat data_dir "log" in
   let pid_file = Filename.concat data_dir pid_file in
   let server_lock_file = Filename.concat data_dir server_lock_file in
@@ -121,6 +131,10 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
       Unix.openfile client_lock_file Unix.[O_WRONLY; O_CREAT] 0o640
     in
     Unix.close client_lock_fd;
+    let socket_fd = Unix.socket ~cloexec:true PF_UNIX SOCK_STREAM 0 in
+    Fun.protect ~finally:(fun () -> Unix.close socket_fd) @@ fun () ->
+    in_dir data_dir (fun () -> Unix.bind socket_fd (ADDR_UNIX socket_file));
+    Unix.listen socket_fd 1;
     Fileutil.write_lines pid_file [Printf.sprintf "%i" pid];
     ready ();
     (* Logging function (will end up in the log file). *)
@@ -132,11 +146,10 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
     (* Single request handler. *)
     let handle_request () =
       log "Running request handler.";
-      let req =
-        In_channel.with_open_text req_fifo @@ fun ic ->
-        log "Waiting for a request.";
-        Marshal.from_channel ic
-      in
+      log "Waiting for a request.";
+      let (client_fd, _) = Unix.accept ~cloexec:true socket_fd in
+      with_socket_channels client_fd @@ fun ic oc ->
+      let req = Marshal.from_channel ic in
       log "Request [%a] received." Request.pp req;
       let is_stop = Request.is_stop req in
       let res = Request.run d req in
@@ -152,12 +165,9 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
         List.iter (Printf.printf "> %s\n%!") lines
       in
       if is_stop then Unix.unlink pid_file;
-      let _ =
-        Out_channel.with_open_text res_fifo @@ fun oc ->
-        log "Sending response.";
-        Marshal.to_channel oc res [];
-        Out_channel.flush oc
-      in
+      log "Sending response.";
+      Marshal.to_channel oc res [];
+      Out_channel.flush oc;
       log "Response sent.";
       not is_stop
     in
@@ -225,15 +235,18 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     | exception e -> Unix.close fd; raise e
   in
   Fun.protect ~finally:(fun () -> Unix.close client_lock_fd) @@ fun () ->
-  (* Run the request. *)
-  let req_fifo = Filename.concat data_dir req_fifo in
-  let res_fifo = Filename.concat data_dir res_fifo in
-  let _ =
-    Out_channel.with_open_text req_fifo @@ fun oc ->
-    Marshal.to_channel oc req [];
-    Out_channel.flush oc
+  (* Connect to the server and run the request. *)
+  let socket_fd =
+    let fd = Unix.socket ~cloexec:true PF_UNIX SOCK_STREAM 0 in
+    try
+      in_dir data_dir @@ fun () ->
+      Unix.connect fd (ADDR_UNIX socket_file); fd
+    with e -> Unix.close fd; raise e
   in
-  In_channel.with_open_text res_fifo Marshal.from_channel
+  with_socket_channels socket_fd @@ fun ic oc ->
+  Marshal.to_channel oc req [];
+  Out_channel.flush oc;
+  Marshal.from_channel ic
 
 let client_request : type a b. session_id -> (unit, a, b) Request.t ->
     (a, string * b) Result.t = fun rocq_file req ->
@@ -248,8 +261,7 @@ let stop : session_id -> unit = fun id ->
     wrn "Warning: failed to \"%s %s\" (%s)." f args msg
   in
   let unlink file = warn_unix_failure Unix.unlink file in
-  unlink (Filename.concat data_dir "req.fifo");
-  unlink (Filename.concat data_dir "res.fifo");
+  unlink (Filename.concat data_dir socket_file);
   unlink (Filename.concat data_dir client_lock_file);
   unlink (Filename.concat data_dir server_lock_file);
   let log_file = Filename.concat data_dir "log" in

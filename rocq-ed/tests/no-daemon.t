@@ -41,9 +41,8 @@
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/client.lock
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/pid
-  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/req.fifo
-  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/res.fifo
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/server.lock
+  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/socket
 
   $ rocq-ed status --context-lines 0
      1| <CURSOR>(* Test file. *)
