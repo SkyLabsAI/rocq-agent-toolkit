@@ -43,6 +43,7 @@
   $TESTCASE_ROOT/user/.cache
   $TESTCASE_ROOT/user/.cache/rocq-ed
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx
+  $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/lock
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/log
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/pid
   $TESTCASE_ROOT/user/.cache/rocq-ed/xxxxxx/req.fifo

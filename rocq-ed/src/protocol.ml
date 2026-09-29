@@ -51,23 +51,23 @@ let wait_for_file ~timeout ~interval file =
   with Unix.Unix_error(_,_,_) | Sys_error(_) -> false
 
 let pid_file : string = "pid"
-
-let get_pid : data_dir:string -> int option = fun ~data_dir ->
-  let pid_file = Filename.concat data_dir pid_file in
-  try
-    match Fileutil.read_lines pid_file with
-    | [pid] -> Some(int_of_string pid)
-    | _ -> None
-  with Sys_error(_) | Failure(_) -> None
+let lock_file : string = "lock"
 
 let session_active : data_dir:string -> bool = fun ~data_dir ->
-  match get_pid ~data_dir with
-  | None      -> false
-  | Some(pid) ->
-  try Unix.kill pid 0; true with
-  | Unix.Unix_error(ESRCH, _, _) -> false
-  | Unix.Unix_error(EPERM, _, _) -> true
-  | Unix.Unix_error(e, f, args)  ->
+  let pid_file = Filename.concat data_dir pid_file in
+  match Sys.file_exists pid_file with
+  | false -> false
+  | true  ->
+  let lock_file = Filename.concat data_dir lock_file in
+  try
+    let lock_fd = Unix.openfile lock_file Unix.[O_WRONLY] 0 in
+    Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
+    match Unix.lockf lock_fd F_TLOCK 0 with
+    | () -> false
+    | exception Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
+  with
+  | Unix.Unix_error(ENOENT, _, _) -> false
+  | Unix.Unix_error(e, f, args)   ->
   let msg = Unix.error_message e in
   panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
 
@@ -123,9 +123,14 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   (* Prepare paths to other files in the data directory. *)
   let log_file = Filename.concat data_dir "log" in
   let pid_file = Filename.concat data_dir pid_file in
+  let lock_file = Filename.concat data_dir lock_file in
   (* Function running the server loop. *)
-  let run pid =
+  let run ?(ready = fun () -> ()) pid =
+    let lock_fd = Unix.openfile lock_file Unix.[O_WRONLY; O_CREAT] 0o640 in
+    Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
+    Unix.lockf lock_fd F_LOCK 0;
     Fileutil.write_lines pid_file [Printf.sprintf "%i" pid];
+    ready ();
     (* Logging function (will end up in the log file). *)
     let log fmt =
       let time = Unix.gettimeofday () in
@@ -176,17 +181,19 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   in
   match no_daemon with
   | true  ->
-      Printf.printf "==== Environemnt for queries in the session ===\n%!";
-      Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
-      Printf.printf "===============================================\n%!";
-      run (Unix.getpid ())
+      let ready () =
+        Printf.printf "==== Environemnt for queries in the session ===\n%!";
+        Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
+        Printf.printf "===============================================\n%!"
+      in
+      run ~ready (Unix.getpid ())
   | false ->
-  daemonize ~log:log_file run;
+  daemonize ~log:log_file (fun pid -> run pid);
   match wait_for_file ~timeout:2.0 ~interval:0.1 pid_file with
   | true  -> Printf.printf "export ROCQED_SESSION_ID=%s\n%!" id
   | false ->
   Printf.printf "false\n%!";
-  panic ~code:123 "Error: the daemon never write its PID."
+  panic ~code:123 "Error: the daemon never wrote its PID."
 
 let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->
@@ -233,6 +240,7 @@ let stop : session_id -> unit = fun id ->
   let unlink file = warn_unix_failure Unix.unlink file in
   unlink (Filename.concat data_dir "req.fifo");
   unlink (Filename.concat data_dir "res.fifo");
+  unlink (Filename.concat data_dir lock_file);
   let log_file = Filename.concat data_dir "log" in
   if Sys.file_exists log_file then unlink log_file;
   warn_unix_failure Unix.rmdir data_dir
