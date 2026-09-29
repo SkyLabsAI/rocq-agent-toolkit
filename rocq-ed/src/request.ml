@@ -11,7 +11,7 @@ type insert_error = {
 
 type (_, _, _) t =
   | Stop : (unit, unit, empty) t
-  | Status : {context : int option} -> (unit, string, empty) t
+  | Status : {context : int option; json : bool} -> (unit, string, empty) t
   | Steps : {count : int option} -> (Document.commands_data, int, int) t
   | Insert : {text : string; keep : insert_keep}
       -> (Document.commands_data, unit, insert_error) t
@@ -31,10 +31,11 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
   match r with
   | Stop ->
       Format.fprintf ff "Stop"
-  | Status({context = None}) ->
-      Format.fprintf ff "Status({context = None})"
-  | Status({context = Some(i)}) ->
-      Format.fprintf ff "Status({context = %i})" i
+  | Status({context; json}) ->
+      let context =
+        match context with None -> "None" | Some(i) -> string_of_int i
+      in
+      Format.fprintf ff "Status({context = %s; json = %b})" context json
   | Steps({count = None}) ->
       Format.fprintf ff "Steps({count = all})"
   | Steps({count = Some(count)}) ->
@@ -88,7 +89,7 @@ let lines : string -> string array = fun s ->
 let newline_terminated : string -> bool =
   String.ends_with ~suffix:"\n"
 
-let run_status d ~context =
+let document_parts d =
   let prefix =
     let prefix = List.rev (Document.rev_prefix d) in
     let filter (Document.{kind; text; _} : Document.processed_item) =
@@ -103,6 +104,10 @@ let run_status d ~context =
     in
     String.concat "" (List.filter_map filter suffix)
   in
+  (prefix, suffix)
+
+let run_status d ~context =
+  let (prefix, suffix) = document_parts d in
   (* Invariant: all lines end with a newline. *)
   let (prefix, cursor_line, suffix) =
     let prefix = lines prefix in
@@ -146,6 +151,10 @@ let run_status d ~context =
         done
   in
   Ok(Buffer.contents b)
+
+let run_json_status d =
+  let json = Json.document_to_yojson d in
+  Ok(Yojson.Safe.pretty_to_string ~std:true json ^ "\n")
 
 let print_feedback : Document.commands_data -> unit = fun data ->
   let print_feedback_message (m : Rocq_toplevel.feedback_message) =
@@ -416,7 +425,8 @@ let run : type a b c. Document.t -> (a, b, c) t ->
     a * (b, string * c) Result.t = fun d r ->
   match r with
   | Stop -> ((), Ok(()))
-  | Status({context}) -> ((), run_status d ~context)
+  | Status({json = true; context = _}) -> ((), run_json_status d)
+  | Status({json = false; context}) -> ((), run_status d ~context)
   | Steps({count}) -> run_steps d ~count
   | Insert({text; keep}) -> run_insert d ~text ~keep
   | Query({text}) -> ((), run_query d ~text)

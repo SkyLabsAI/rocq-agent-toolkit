@@ -154,7 +154,7 @@ let with_print_after : (string -> unit) -> int option -> bool -> string ->
     unit = fun f context goals id ->
   f id;
   let print_context _ =
-    let req = Request.(Status({context})) in
+    let req = Request.(Status({context; json = false})) in
     let Ok(status) = Protocol.client_request id req in
     Printf.printf "%s%!" status
   in
@@ -165,17 +165,26 @@ let with_print_after : (string -> unit) -> int option -> bool -> string ->
     Printf.printf "%s%!" goals
   end
 
+let status_json =
+  let doc =
+    "Print a JSON object containing item lists for the processed prefix and \
+     unprocessed suffix, plus the current structured proof goals, if any."
+  in
+  Arg.(value & flag & info ["json"] ~doc)
+
 let status_cmd =
   let doc =
     "Print the current contents of the Rocq document, including the position \
-     of the cursor marked as $(b,<CURSOR>)."
+     of the cursor marked as $(b,<CURSOR>). With $(b,--json), print the \
+     document prefix and suffix as item lists, together with the current \
+     structured goals, as JSON instead."
   in
-  let run context id =
-    let req = Request.Status({context}) in
+  let run context json id =
+    let req = Request.Status({context; json}) in
     let Ok(doc) = Protocol.client_request id req in
     Printf.printf "%s%!" doc
   in
-  let term = Term.(const run $ context_lines $ session_id) in
+  let term = Term.(const run $ context_lines $ status_json $ session_id) in
   Cmd.(make (info "status" ~version ~exits ~doc) term)
 
 let step_count =
