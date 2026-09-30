@@ -127,58 +127,83 @@ let stop_cmd =
   let term = Term.(const Protocol.stop $ session_id) in
   Cmd.(make (info "stop" ~version ~exits ~doc) term)
 
-let int_or_all =
-  let parse = function
-    | "all" -> Ok(None)
-    | s ->
+let non_negative_int_or_all =
+  let parse s =
+    match s with "all" -> Ok(None) | _ ->
     match int_of_string_opt s with
-    | Some(i) -> Ok(Some(i))
-    | None -> Error(`Msg("expected an integer or \"all\""))
+    | None    -> Error(`Msg("expected a non-negative integer or \"all\""))
+    | Some(i) ->
+    if i >= 0 then Ok(Some(i)) else
+    Error(`Msg("expected a non-negative integer or \"all\""))
   in
-  let print ff = function
+  let print ff v =
+    match v with
     | None    -> Format.fprintf ff "all"
     | Some(i) -> Format.fprintf ff "%i" i
   in
   Arg.conv (parse, print)
 
+let context =
+  let parse s =
+    match s with
+    | "none" -> Ok(Request.No_context)
+    | "all"  -> Ok(Request.All_context)
+    | s      ->
+    match int_of_string_opt s with
+    | None    -> Error(`Msg("expected an integer, \"all\", or \"none\""))
+    | Some(i) ->
+    if i >= 0 then Ok(Request.Context_lines(i)) else
+    Error(`Msg("expected a non-negative integer, \"all\", or \"none\""))
+  in
+  let print ff v =
+    match v with
+    | Request.No_context       -> Format.fprintf ff "none"
+    | Request.All_context      -> Format.fprintf ff "all"
+    | Request.Context_lines(i) -> Format.fprintf ff "%i" i
+  in
+  Arg.conv (parse, print)
+
 let context_lines =
   let doc =
-    "Print $(docv) lines of context before and after the cursor instead of \
-     printing the whole Rocq document. Use $(b,all) to print the whole \
-     document."
+    "Control how much document context is printed. A non-negative integer \
+     specifies how many lines are printed before and after the cursor. Use \
+     $(b,all) to print the whole Rocq document, or $(b,none) to disable \
+     context printing. The default is 5. This option cannot be combined \
+     with $(b,--json)."
   in
-  Arg.(value & opt int_or_all (Some 5) &
-    info ["C"; "context-lines"] ~doc ~docv:"NUM|all")
+  Arg.(value & opt (some context) None &
+    info ["C"; "context-lines"] ~doc ~docv:"NUM|all|none")
 
 let print_goals =
   let doc =
-    "Print the current proof goals after successfully running the command."
+    "Print the open proof goals at the cursor after running the command, but \
+     before any potential rollback, even when document processing fails. No \
+     printing is done in case of invalid argument for the command."
   in
-  Arg.(value & flag & info ["print-goals"] ~doc)
+  Arg.(value & flag & info ["G"; "print-goals"] ~doc)
 
 let print_context =
   let doc =
-    "Print $(docv) lines of context around the cursor after successfully \
-     running the command. If $(b,--print-context) is given without a value, \
-     $(docv) defaults to 5."
+    "Print document context after running the command, but before any \
+     potential rollback, including when document processing fails. A \
+     non-negative integer specifies how many lines are printed before and \
+     after the cursor. Use $(b,all) to print the whole document, or \
+     $(b,none) to disable context printing. The default is $(b,none). If \
+     $(b,--print-context) is given without argument it defaults to $(b,5). \
+     No printing is done in case of invalid argument for the command."
   in
-  Arg.(value & opt ~vopt:(Some 5) (some int) None &
-       info ["print-context"] ~docv:"NUM" ~doc)
+  let vopt = Request.Context_lines(5) in
+  Arg.(value & opt ~vopt context Request.No_context &
+    info ["C"; "print-context"] ~docv:"NUM|all|none" ~doc)
 
-let with_print_after : (string -> unit) -> int option -> bool -> string ->
-    unit = fun f context goals id ->
-  f id;
-  let print_context _ =
-    let req = Request.(Status({context; json = false})) in
-    let Ok(status) = Protocol.client_request id req in
-    Printf.printf "%s%!" status
-  in
-  Option.iter print_context context;
-  if goals then begin
-    if context <> None then Printf.printf "\n%!";
-    let Ok(goals) = Protocol.client_request id Request.Goals in
-    Printf.printf "%s%!" goals
-  end
+let print_after =
+  let make context goals = Request.{context; goals} in
+  Term.(const make $ print_context $ print_goals)
+
+let output_after_error s =
+  match s with "" -> "" | _ ->
+  let len = String.length s in
+  "\n\n" ^ if s.[len - 1] = '\n' then String.sub s 0 (len - 1) else s
 
 let status_json =
   let doc =
@@ -187,19 +212,44 @@ let status_json =
   in
   Arg.(value & flag & info ["json"] ~doc)
 
+let status_goals =
+  let doc =
+    "Print the current proof goals at the cursor. This option cannot be \
+     combined with $(b,--json), whose output already includes structured \
+     goals."
+  in
+  Arg.(value & flag & info ["goals"] ~doc)
+
+let status_mode =
+  let make context goals json =
+    match (json, goals, context) with
+    | (true , true , _      ) ->
+        Error(`Msg("'--goals' and '--json' cannot be used together"))
+    | (true , _    , Some(_)) ->
+        Error(`Msg("'--context-lines' and '--json' cannot be used together"))
+    | (true , false, None   ) ->
+        Ok(`JSON)
+    | (false, _    , _      ) ->
+    let context =
+      let default = Request.Context_lines(5) in
+      Stdlib.Option.value context ~default
+    in
+    Ok(`Text(Request.{context; goals}))
+  in
+  Term.(term_result (const make $ context_lines $ status_goals $ status_json))
+
 let status_cmd =
   let doc =
     "Print the current contents of the Rocq document, including the position \
-     of the cursor marked as $(b,<CURSOR>). With $(b,--json), print the \
-     document prefix and suffix as item lists, together with the current \
-     structured goals, as JSON instead."
+     of the cursor marked as $(b,<CURSOR>), and optionally the open goals at \
+     the cursor. With $(b,--json), print the document prefix and suffix as \
+     item lists, together with the current structured goals, as JSON instead."
   in
-  let run context json id =
-    let req = Request.Status({context; json}) in
-    let Ok(doc) = Protocol.client_request id req in
+  let run mode id =
+    let Ok(doc) = Protocol.client_request id (Request.Status({mode})) in
     Printf.printf "%s%!" doc
   in
-  let term = Term.(const run $ context_lines $ status_json $ session_id) in
+  let term = Term.(const run $ status_mode $ session_id) in
   Cmd.(make (info "status" ~version ~exits ~doc) term)
 
 let step_count =
@@ -209,7 +259,7 @@ let step_count =
      of the file."
   in
   let docv = "NUM|all" in
-  Arg.(value & opt int_or_all (Some 1) &
+  Arg.(value & opt non_negative_int_or_all (Some(1)) &
     info ["n"; "count-items"] ~doc ~docv)
 
 let steps_cmd =
@@ -219,25 +269,25 @@ let steps_cmd =
      of the items cannot be  processed successfully. In that case, the \
      cursor is moved to just before the failing item."
   in
-  let run count id =
-    let (data, res) =
-      Protocol.full_client_request id Request.(Steps({count}))
+  let run count print id =
+    let ((data, output), res) =
+      Protocol.full_client_request id Request.(Steps({count; print}))
     in
     Request.print_feedback data;
     match res with
-    | Error(s, i) -> panic "Failed after processing %i items.\nError: %s." i s
+    | Error(s, count) ->
+        panic "Failed after processing %i items.\nError: %s.%s" count s
+          (output_after_error output)
     | Ok(real_count) ->
     let check_count count =
       if real_count < count then
         Printf.printf "Warning: Only %i < %i steps were executed before \
           reaching the end of the file.\n\n" real_count count
     in
-    Option.iter check_count count
+    Option.iter check_count count;
+    Printf.printf "%s%!" output
   in
-  let term =
-    Term.(const with_print_after $ (const run $ step_count) $
-          print_context $ print_goals $ session_id)
-  in
+  let term = Term.(const run $ step_count $ print_after $ session_id) in
   Cmd.(make (info "steps" ~version ~exits ~doc) term)
 
 let command_text =
@@ -250,18 +300,21 @@ let command_text =
 let insert_keep =
   let keep =
     Arg.enum [
-      ("atomic", Request.Atomic);
-      ("successful", Request.SuccessfulPrefix);
-      ("all", Request.All);
+      ("atomic", `Atomic);
+      ("successful", `Successful);
+      ("all", `All);
+      ("none", `None);
     ]
   in
   let doc =
-    "Controls which inserted items are kept if processing fails: \
-     $(b,atomic) rolls back the whole insertion, $(b,successful) keeps only \
-     the items processed successfully, and $(b,all) keeps all inserted items \
-     even if some cannot be processed."
+    "Controls which inserted items are kept: $(b,atomic) either succeeds at \
+     inserting all items or rolls back any change, $(b,successful) keeps the \
+     prefix of items that were inserted successfully and discards remaining \
+     ones, $(b,all) inserts all items but adds any failing suffix after the \
+     cursor, and $(b,none) always rolls back any change and only checks \
+     whether the items could be inserted successfully."
   in
-  Arg.(value & opt keep Request.Atomic & info ["keep"] ~doc ~docv:"MODE")
+  Arg.(value & opt keep `Atomic & info ["k"; "keep"] ~doc ~docv:"MODE")
 
 let insert_cmd =
   let doc =
@@ -271,26 +324,25 @@ let insert_cmd =
      what remains after such failures. The command will return a non-zero \
      exit code if any of the insert code cannot be processed."
   in
-  let run keep text id =
+  let run keep text print id =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
-    let req = Request.(Insert({text; keep})) in
-    let (data, res) = Protocol.full_client_request id req in
+    let req = Request.(Insert({text; keep; print})) in
+    let ((data, output), res) = Protocol.full_client_request id req in
     Request.print_feedback data;
     match res with
-    | Ok(()) -> ()
+    | Ok(()) -> Printf.printf "%s%!" output
     | Error(s, Request.{remaining; unchanged}) ->
         let unchanged =
           if unchanged then "\nThe document is unchanged." else ""
         in
-        panic "Error: could not process suffix %S.\n%s%s"
-          remaining s unchanged
+        panic "Error: could not process suffix %S.\n%s%s%s"
+          remaining s unchanged (output_after_error output)
   in
   let term =
-    Term.(const with_print_after $ (const run $ insert_keep $ command_text) $
-          print_context $ print_goals $ session_id)
+    Term.(const run $ insert_keep $ command_text $ print_after $ session_id)
   in
   Cmd.(make (info "insert" ~version ~exits ~doc) term)
 
@@ -325,21 +377,24 @@ let deleted_item_count =
     "Indicates the number of items $(docv) that should be deleted after the \
      cursor (it is equal to 1 by default)."
   in
-  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
+  Arg.(value & opt non_negative_int_or_all (Some(1)) &
+    info ["n"; "count-items"] ~doc ~docv:"NUM")
 
 let delete_cmd =
   let doc =
     "Delete the given number of items (blanks or commands) after the cursor. \
      The cursor is not moved in the operation."
   in
-  let run count id =
-    match Protocol.client_request id Request.(Delete({count})) with
-    | Ok(()) -> ()
-    | Error(s, ()) -> panic "Error: %s." s
+  let run count print id =
+    let (output, res) =
+      Protocol.full_client_request id Request.(Delete({count; print}))
+    in
+    match res with
+    | Ok(()) -> Printf.printf "%s%!" output
+    | Error(s, ()) -> panic "Error: %s.%s" s (output_after_error output)
   in
   let term =
-    Term.(const with_print_after $ (const run $ deleted_item_count) $
-          print_context $ print_goals $ session_id)
+    Term.(const run $ deleted_item_count $ print_after $ session_id)
   in
   Cmd.(make (info "delete" ~version ~exits ~doc) term)
 
@@ -379,31 +434,6 @@ let commit_cmd =
   in
   Cmd.(make (info "commit" ~version ~exits ~doc) term)
 
-let try_cmd =
-  let doc =
-    "Process the given chunk of Rocq code at the cursor as $(b,insert) \
-     would, print the proof state it leads to (and any warnings), then roll \
-     the document back so that nothing is inserted, whatever the outcome. \
-     Use it to explore candidate steps; $(b,insert) only the one you keep, \
-     so that exploration never enters the document."
-  in
-  let run text id =
-    let text =
-      match text with Some(text) -> text | None ->
-      In_channel.input_all stdin
-    in
-    let req = Request.(Try({text})) in
-    let (data, res) = Protocol.full_client_request id req in
-    Request.print_feedback data;
-    match res with
-    | Ok(goals) -> Printf.printf "%s%!" goals
-    | Error(s, Request.{remaining; _}) ->
-        panic "Error: could not process suffix %S.\n%s\nThe document is \
-          unchanged." remaining s
-  in
-  let term = Term.(const run $ command_text $ session_id) in
-  Cmd.(make (info "try" ~version ~exits ~doc) term)
-
 let goals_cmd =
   let doc =
     "Print the current proof state of the document, including the list of \
@@ -418,25 +448,29 @@ let goals_cmd =
 
 let backwards_count =
   let doc =
-    "Indicates the number of items $(docv) that the cursor should move \
-     backwards (it is equal to 1 by default)."
+    "Indicates the number of items that the cursor should be moved over \
+     backwards in the document. It is equal to 1 by default, and $(b,all) \
+     can be used to move the cursor to the start of the document."
   in
-  Arg.(value & opt int 1 & info ["n"; "count-items"] ~doc ~docv:"NUM")
+  Arg.(value & opt non_negative_int_or_all (Some(1)) &
+    info ["n"; "count-items"] ~doc ~docv:"NUM|all")
 
 let backwards_cmd =
   let doc =
-    "Moves the cursor backwards by the given number of document items \
-     (commands or blanks) in the Rocq document."
+    "Moves the cursor backwards over the given number of items (commands or \
+     blanks) in the Rocq document. Said otherwise, the given number of items \
+     are moved from the (processed) prefix of the document to its \
+     (unprocessed) suffix."
   in
-  let run count id =
-    match Protocol.client_request id Request.(Backwards({count})) with
-    | Ok(()) -> ()
-    | Error(s, ()) -> panic "Error: %s." s
+  let run count print id =
+    let (output, res) =
+      Protocol.full_client_request id Request.(Backwards({count; print}))
+    in
+    match res with
+    | Ok(()) -> Printf.printf "%s%!" output
+    | Error(s, ()) -> panic "Error: %s.%s" s (output_after_error output)
   in
-  let term =
-    Term.(const with_print_after $ (const run $ backwards_count) $
-          print_context $ print_goals $ session_id)
-  in
+  let term = Term.(const run $ backwards_count $ print_after $ session_id) in
   Cmd.(make (info "backwards" ~version ~exits ~doc) term)
 
 let goto_pos =
@@ -483,15 +517,19 @@ let goto_cmd =
     "Moves the cursor to the item identified by the given line and column \
      numbers."
   in
-  let run (line, col) id =
-    match Protocol.client_request id Request.(Goto({line; col})) with
-    | Ok(()) -> ()
-    | Error(s, i) -> panic "Error: %s.\nThe cursor is now at index %i." s i
+  let run (line, col) print id =
+    let (output, res) =
+      Protocol.full_client_request id Request.(Goto({line; col; print}))
+    in
+    match res with
+    | Ok(()) -> Printf.printf "%s%!" output
+    | Error(s, None) ->
+        panic "Error: %s.%s" s (output_after_error output)
+    | Error(s, Some(line, col)) ->
+        panic "Error: failed to process the item at line %i, column %i.\n%s%s"
+          line col s (output_after_error output)
   in
-  let term =
-    Term.(const with_print_after $ (const run $ goto_pos) $
-          print_context $ print_goals $ session_id)
-  in
+  let term = Term.(const run $ goto_pos $ print_after $ session_id) in
   Cmd.(make (info "goto" ~version ~exits ~doc) term)
 
 let main_man = [
@@ -575,13 +613,11 @@ let main_man = [
 let _ =
   let cmds =
     [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
-      delete_cmd; commit_cmd; goals_cmd; backwards_cmd; goto_cmd; try_cmd ]
+      delete_cmd; commit_cmd; goals_cmd; backwards_cmd; goto_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =
-    let doc =
-      "Command line Rocq editor."
-    in
+    let doc = "Command line Rocq editor." in
     Cmd.info "rocq-ed" ~version ~exits ~doc ~man:main_man
   in
   exit (Cmd.eval (Cmd.group default_info ~default cmds))

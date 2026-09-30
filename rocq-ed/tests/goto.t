@@ -33,12 +33,10 @@
            least 1.
   [124]
   $ rocq-ed goto --print-context --print-goals --position-line-column 6:1
-  Error: no item on the given line.
-  The cursor is now at index 0.
+  Error: no item on line 6.
   [1]
   $ rocq-ed goto --print-context --print-goals --position-line-column 1:18
-  Error: no item on the given column.
-  The cursor is now at index 0.
+  Error: no item on line 1, column 18.
   [1]
   $ rocq-ed goto --print-context --print-goals --position-line-column 1:1
      1| <CURSOR>(* Test file. *)
@@ -130,4 +128,21 @@
      3| Proof. intro x. reflexivity. Qed.<CURSOR>
      4| 
      5| (* END *)
+  $ rocq-ed stop
+
+  $ cat > failure.v <<EOF
+  > Check nat.
+  > Check missing_identifier.
+  > (* END *)
+  > EOF
+
+  $ eval $(rocq-ed init failure.v)
+  $ rocq-ed goto --position-line-column 3:1
+  Error: failed to process the item at line 2, column 1.
+  The reference missing_identifier was not found in the current environment.
+  [1]
+  $ rocq-ed goto --position-line-column 3:1
+  Error: failed to process the item at line 2, column 1.
+  The reference missing_identifier was not found in the current environment.
+  [1]
   $ rocq-ed stop

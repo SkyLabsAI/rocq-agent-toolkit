@@ -76,6 +76,22 @@
   Error: could not process suffix "fail.\n  -".
   Tactic failure.
   The document is unchanged.
+  
+  Context and open goals before the failing suffix (prior to document rollback):
+  
+     1| Theorem test : forall x : nat, True /\ x = x.
+     2| Proof.
+     3|   intros x; split.
+     4|   - <CURSOR>fail.
+     5|   -
+     6| Admitted.
+  
+  Goal 1:
+    x : nat
+    ============================
+    True
+  
+  Unfocused goals: 1
   [1]
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
@@ -214,6 +230,19 @@ Test that the output of queries is properly terminated by a newline
   $ rocq-ed insert --print-context --print-goals --keep=all --text $'\n  fail.'
   Error: could not process suffix "fail.".
   Tactic failure.
+  
+     6| Admitted.
+     7| 
+     8| Goal True /\ True.
+     9| Proof.
+    10|   split. 1: shelve.
+    11|   <CURSOR>fail.
+  
+  Goal 1:
+    ============================
+    True
+  
+  Shelved goals: 1
   [1]
   $ rocq-ed status --context-lines 3
      8| Goal True /\ True.
