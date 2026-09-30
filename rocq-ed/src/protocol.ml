@@ -16,39 +16,90 @@ let get_data_dir : session_id -> Filepath.t = fun id ->
   let cache_dir = Lazy.force cache_dir in
   Filename.concat cache_dir id
 
-let daemonize : ?log:Filepath.t -> (int -> unit) -> unit =
-    fun ?(log="/dev/null") run ->
-  (fun f -> Unix.handle_unix_error f ()) @@ fun () ->
-  (* Detatch the process from the terminal. *)
-  let pid = Unix.fork () in
-  if pid > 0 then () else
-  let _ = Unix.setsid () in
-  let pid = Unix.fork () in
-  if pid > 0 then exit 0;
-  (* Change the stdout and stderr descriptors to write to the log. *)
-  let log_fd = Unix.openfile log Unix.[O_WRONLY; O_CREAT; O_APPEND] 0o640 in
-  Unix.dup2 log_fd Unix.stdout;
-  Unix.dup2 log_fd Unix.stderr;
-  Unix.close log_fd;
-  (* Change the stdin descriptor to read from /dev/null. *)
-  let null_fd = Unix.openfile "/dev/null" Unix.[O_RDONLY] 0 in
-  Unix.dup2 null_fd Unix.stdin;
-  Unix.close null_fd;
-  (* get the PID of the daemon. *)
-  let pid = Unix.handle_unix_error Unix.getpid () in
-  run pid
+type daemon_status =
+  | Ready
+  | Failed of int * string
 
-let wait_for_file ~timeout ~interval file =
+let error_of_exception = function
+  | Sys_error(s) ->
+      (123, Printf.sprintf "Error: system error (%s)." s)
+  | Unix.Unix_error(e, f, a) ->
+      let msg = Unix.error_message e in
+      (123, Printf.sprintf "Error: failed to \"%s %s\" (%s)." f a msg)
+  | e ->
+      let msg = Printexc.to_string e in
+      (125, Printf.sprintf "Error: daemon failed unexpectedly (%s)." msg)
+
+let daemonize : ?log:Filepath.t ->
+    (notify:(daemon_status -> unit) -> int -> unit) -> daemon_status =
+    fun ?(log="/dev/null") run ->
+  (* Pipe used for the deamon to notify the original process of its status. *)
+  let (status_in, status_out) = Unix.pipe ~cloexec:true () in
+  (* Fork and have the parent wait for the status on the pipe. *)
+  match Unix.fork () with
+  | exception e -> Unix.close status_in; Unix.close status_out; raise e
+  | pid when pid <> 0 ->
+      Unix.close status_out;
+      (* Wait for the intermediate child (used by the double fork). *)
+      let rec wait () =
+        try ignore (Unix.waitpid [] pid) with Unix.Unix_error(EINTR, _, _) ->
+        wait ()
+      in
+      wait ();
+      (* Wait for the daemon to report its status. *)
+      let ic = Unix.in_channel_of_descr status_in in
+      Fun.protect ~finally:(fun () -> close_in_noerr ic) @@ fun () ->
+      begin
+        try (Marshal.from_channel ic : daemon_status) with
+        | End_of_file ->
+            Failed(125, "Error: the daemon exited during startup.")
+        | Failure(s) ->
+            Failed(125, "Error: failed to read daemon status (" ^ s ^ ").")
+      end
+  | _ ->
+  Unix.close status_in;
+  let oc = Unix.out_channel_of_descr status_out in
+  let notified = ref false in
+  let exit_code = ref 0 in
+  let notify status =
+    match !notified with true -> () | false ->
+    notified := true;
+    (match status with Failed(code, _) -> exit_code := code | _ -> ());
+    Fun.protect ~finally:(fun () -> close_out_noerr oc) @@ fun () ->
+    Marshal.to_channel oc status [];
+    Out_channel.flush oc
+  in
+  let redirected = ref false in
+  let fail e =
+    let (code, msg) = error_of_exception e in
+    notify (Failed(code, msg));
+    if !redirected then Format.eprintf "%s\n%!" msg;
+    Unix._exit code
+  in
   try
-    let t0 = Unix.gettimeofday () in
-    let rec loop () =
-      match Sys.file_exists file with true -> true | false ->
-      let t1 = Unix.gettimeofday () in
-      match t1 -. t0 >= timeout with true -> false | false ->
-      Unix.sleepf interval; loop ()
+    ignore (Unix.setsid ());
+    match Unix.fork () with
+    | pid when pid <> 0 -> close_out_noerr oc; Unix._exit 0
+    | _ ->
+    (* Change stdout and stderr to write to the session log. *)
+    let log_fd =
+      Unix.openfile log Unix.[O_WRONLY; O_CREAT; O_APPEND] 0o640
     in
-    loop ()
-  with Unix.Unix_error(_,_,_) | Sys_error(_) -> false
+    Unix.dup2 log_fd Unix.stdout;
+    Unix.dup2 log_fd Unix.stderr;
+    Unix.close log_fd;
+    (* Change stdin to read from /dev/null. *)
+    let null_fd = Unix.openfile "/dev/null" Unix.[O_RDONLY] 0 in
+    Unix.dup2 null_fd Unix.stdin;
+    Unix.close null_fd;
+    redirected := true;
+    run ~notify (Unix.getpid ());
+    if not !notified then begin
+      let msg = "Error: the daemon did not report readiness." in
+      notify (Failed(125, msg))
+    end;
+    Unix._exit !exit_code
+  with e -> fail e
 
 (* Used to keep Unix-domain socket addresses short. *)
 let in_dir : Filepath.t -> (unit -> 'a) -> 'a = fun dir f ->
@@ -94,22 +145,12 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   let dir = Filename.dirname rocq_file in
   let basename = Filename.basename rocq_file in
   Sys.chdir dir;
-  (* Get the CLI arguments and create create a document. *)
+  (* Get the CLI arguments. *)
   match Dune_util.get_args config basename with
   | Error(s) ->
       if not no_daemon then Printf.printf "false\n%!";
       panic "Error: %s." s
   | Ok(args) ->
-  match Document.init ~args ~file:basename with
-  | exception Failure(s) ->
-      if not no_daemon then Printf.printf "false\n%!";
-      panic "Error: %s." s
-  | d ->
-  match Document.load_file d with
-  | Error(s, _) ->
-      if not no_daemon then Printf.printf "false\n%!";
-      panic "Error: unable to load the file (%s)." s
-  | Ok(())      ->
   (* Create the data directory. *)
   let cache_dir = Lazy.force cache_dir in
   Fileutil.mkdir ~mode:0o700 cache_dir;
@@ -120,8 +161,29 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   let pid_file = Filename.concat data_dir pid_file in
   let server_lock_file = Filename.concat data_dir server_lock_file in
   let client_lock_file = Filename.concat data_dir client_lock_file in
+  let socket_path = Filename.concat data_dir socket_file in
+  (* Remove (partial) data directory. *)
+  let cleanup_data_dir () =
+    let remove file = try Sys.remove file with Sys_error(_) -> () in
+    List.iter remove
+      [socket_path; pid_file; client_lock_file; server_lock_file; log_file];
+    try Sys.rmdir data_dir with Sys_error(_) -> ()
+  in
+  (* Document initialization holds on to stderr: run after daemonizing. *)
+  let init_document () =
+    match Document.init ~args ~file:basename with
+    | exception Failure(s) -> Error(1, Printf.sprintf "Error: %s." s)
+    | d ->
+    let stop () = try Document.stop d with _ -> () in
+    match Document.load_file d with
+    | exception e -> stop (); raise e
+    | Ok(()) -> Ok(d)
+    | Error(s, _) ->
+    stop ();
+    Error(1, Printf.sprintf "Error: unable to load the file (%s)." s)
+  in
   (* Function running the server loop. *)
-  let run ?(ready = fun () -> ()) pid =
+  let run d ?(ready = fun () -> ()) pid =
     let lock_fd =
       Unix.openfile server_lock_file Unix.[O_WRONLY; O_CREAT] 0o640
     in
@@ -181,21 +243,38 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
     (* Cleanup and shutdown since a stop request must have been received. *)
     log "Exited the loop (stopping)."
   in
-  match no_daemon with
-  | true  ->
-      let ready () =
-        Printf.printf "==== Environemnt for queries in the session ===\n%!";
-        Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
-        Printf.printf "===============================================\n%!"
-      in
-      run ~ready (Unix.getpid ())
-  | false ->
-  daemonize ~log:log_file (fun pid -> run pid);
-  match wait_for_file ~timeout:2.0 ~interval:0.1 pid_file with
-  | true  -> Printf.printf "export ROCQED_SESSION_ID=%s\n%!" id
-  | false ->
-  Printf.printf "false\n%!";
-  panic ~code:123 "Error: the daemon never wrote its PID."
+  let run_daemon () =
+    let status =
+      try
+        daemonize ~log:log_file @@ fun ~notify pid ->
+        match init_document () with
+        | Error(code, msg) -> notify (Failed(code, msg))
+        | Ok(d)            ->
+        Fun.protect ~finally:(fun () -> Document.stop d) @@ fun () ->
+        run d ~ready:(fun () -> notify Ready) pid
+      with e ->
+        cleanup_data_dir ();
+        raise e
+    in
+    match status with
+    | Ready -> Printf.printf "export ROCQED_SESSION_ID=%s\n%!" id
+    | Failed(code, s) ->
+        cleanup_data_dir (); Printf.printf "false\n%!"; panic ~code "%s" s
+  in
+  let run_no_daemon () =
+    match init_document () with
+    | exception e -> cleanup_data_dir (); raise e
+    | Error(code, s) -> cleanup_data_dir (); panic ~code "%s" s
+    | Ok(d) ->
+    let ready () =
+      Printf.printf "==== Environemnt for queries in the session ===\n%!";
+      Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
+      Printf.printf "===============================================\n%!"
+    in
+    Fun.protect ~finally:(fun () -> Document.stop d) @@ fun () ->
+    run d ~ready (Unix.getpid ())
+  in
+  if no_daemon then run_no_daemon () else run_daemon ()
 
 let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->
