@@ -20,12 +20,24 @@ type daemon_status =
   | Ready
   | Failed of int * string
 
+(* Sandboxes may forbid Unix-domain sockets, which we rely on. *)
+let unix_error_message : Unix.error -> string -> string -> string =
+    fun e f a ->
+  let msg = Unix.error_message e in
+  let hint =
+    match (e, f) with
+    | (EPERM, ("bind" | "connect")) ->
+        "\nHint: the environment (e.g., a sandbox without network access) \
+         probably forbids Unix-domain sockets, which rocq-ed relies on."
+    | _ -> ""
+  in
+  Printf.sprintf "Error: failed to \"%s %s\" (%s).%s" f a msg hint
+
 let error_of_exception = function
   | Sys_error(s) ->
       (123, Printf.sprintf "Error: system error (%s)." s)
   | Unix.Unix_error(e, f, a) ->
-      let msg = Unix.error_message e in
-      (123, Printf.sprintf "Error: failed to \"%s %s\" (%s)." f a msg)
+      (123, unix_error_message e f a)
   | e ->
       let msg = Printexc.to_string e in
       (125, Printf.sprintf "Error: daemon failed unexpectedly (%s)." msg)
@@ -132,8 +144,7 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
         panic ~code:123 "Error: system error (%s)." s
     | Unix.Unix_error(e,f,a) ->
         if not no_daemon then Printf.printf "false\n%!";
-        let msg = Unix.error_message e in
-        panic ~code:123 "Error: failed to \"%s %s\" (%s)." f a msg
+        panic ~code:123 "%s" (unix_error_message e f a)
     | e ->
         if not no_daemon then Printf.printf "false\n%!";
         raise e
@@ -330,7 +341,10 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     try
       in_dir data_dir @@ fun () ->
       Unix.connect fd (ADDR_UNIX socket_file); fd
-    with e -> Unix.close fd; raise e
+    with
+    | Unix.Unix_error(EPERM, f, a) ->
+        Unix.close fd; panic ~code:123 "%s" (unix_error_message EPERM f a)
+    | e -> Unix.close fd; raise e
   in
   with_socket_channels socket_fd @@ fun ic oc ->
   Marshal.to_channel oc req [];
