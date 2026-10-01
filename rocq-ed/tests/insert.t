@@ -66,4 +66,14 @@
   $ rocq-ed goals
   Not currently in a proof.
 
+Without --text, the inserted text is read from standard input.
+
+  $ printf '\nDefinition two := 2.\n' | rocq-ed insert --print-context
+     1| Require Import Init.Datatypes.
+     2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
+     3| Proof.
+     4|   intros n. reflexivity. Qed.
+     5| Definition two := 2.
+     6| <CURSOR>
+
   $ rocq-ed stop
