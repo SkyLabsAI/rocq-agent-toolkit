@@ -283,29 +283,32 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   in
   if no_daemon then run_no_daemon () else run_daemon ()
 
-let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
-    a * (b, string * c) Result.t = fun id req ->
+(* Check that the session exists, and return [false] if its server crashed or
+   was killed. *)
+let server_live : session_id -> bool = fun id ->
   let data_dir = get_data_dir id in
-  (* Check that the server is running. *)
   let pid_file = Filename.concat data_dir pid_file in
   match Sys.file_exists pid_file with
   | false -> panic ~code:123 "Error: No active session with ID %s." id
   | true  ->
   let server_lock_file = Filename.concat data_dir server_lock_file in
-  let server_live =
-    try
-      let lock_fd = Unix.openfile server_lock_file Unix.[O_WRONLY] 0 in
-      Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
-      try Unix.lockf lock_fd F_TEST 0; false with
-      | Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
-    with
-    | Unix.Unix_error(ENOENT, _, _) ->
-        panic ~code:123 "Error: Session with ID %s is stopping (or stale)." id
-    | Unix.Unix_error(e, f, args)   ->
-        let msg = Unix.error_message e in
-        panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
-  in
-  match server_live with
+  try
+    let lock_fd = Unix.openfile server_lock_file Unix.[O_WRONLY] 0 in
+    Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
+    try Unix.lockf lock_fd F_TEST 0; false with
+    | Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
+  with
+  | Unix.Unix_error(ENOENT, _, _) ->
+      panic ~code:123 "Error: Session with ID %s is stopping (or stale)." id
+  | Unix.Unix_error(e, f, args)   ->
+      let msg = Unix.error_message e in
+      panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
+
+let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
+    a * (b, string * c) Result.t = fun id req ->
+  let data_dir = get_data_dir id in
+  (* Check that the server is running. *)
+  match server_live id with
   | false ->
       panic ~code:123 "Error: Session with ID %s crashed or was killed." id
   | true  ->
@@ -339,7 +342,10 @@ let client_request : type a b. session_id -> (unit, a, b) Request.t ->
   snd (full_client_request rocq_file req)
 
 let stop : session_id -> unit = fun id ->
-  ignore (client_request id Request.Stop);
+  (* The data directory of a dead session is cleaned up as well. *)
+  let live = server_live id in
+  if live then ignore (client_request id Request.Stop)
+  else wrn "Warning: Session with ID %s crashed or was killed." id;
   let data_dir = get_data_dir id in
   let warn_unix_failure f x =
     try f x with Unix.Unix_error(e, f, args) ->
@@ -347,6 +353,7 @@ let stop : session_id -> unit = fun id ->
     wrn "Warning: failed to \"%s %s\" (%s)." f args msg
   in
   let unlink file = warn_unix_failure Unix.unlink file in
+  if not live then unlink (Filename.concat data_dir pid_file);
   unlink (Filename.concat data_dir socket_file);
   unlink (Filename.concat data_dir client_lock_file);
   unlink (Filename.concat data_dir server_lock_file);
