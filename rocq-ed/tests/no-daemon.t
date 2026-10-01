@@ -55,3 +55,15 @@
   $TESTCASE_ROOT/user
   $TESTCASE_ROOT/user/.cache
   $TESTCASE_ROOT/user/.cache/rocq-ed
+
+Build options are accepted together with --no-build-deps, and a held session
+terminates normally when stopped.
+
+  $ rocq-ed init --no-daemon --display=quiet --jobs=2 --no-build-deps test.v > held.log 2>&1 < /dev/null &
+  $ server_pid=$!
+  $ until grep ROCQED_SESSION_ID held.log > /dev/null; do sleep 0.05; done
+  $ export $(grep '^ROCQED_SESSION_ID=' held.log)
+  $ rocq-ed status --context-lines 0
+     1| <CURSOR>(* Test file. *)
+  $ rocq-ed stop
+  $ wait ${server_pid}
