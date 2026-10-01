@@ -228,11 +228,18 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
       in
       if is_stop then Unix.unlink pid_file;
       log "Sending response.";
-      Marshal.to_channel oc res [];
-      Out_channel.flush oc;
-      log "Response sent.";
+      begin
+        (* The client may have gone away: drop the response. *)
+        try
+          Marshal.to_channel oc res [];
+          Out_channel.flush oc;
+          log "Response sent."
+        with Sys_error(s) -> log "Failed to send the response (%s)." s
+      end;
       not is_stop
     in
+    (* Writing to the socket of a client that went away must not kill us. *)
+    Sys.set_signal Sys.sigpipe Sys.Signal_ignore;
     (* Run the request loop. *)
     log "Running the request loop.";
     let rec loop () =
