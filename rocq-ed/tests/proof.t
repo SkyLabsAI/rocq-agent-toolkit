@@ -118,7 +118,10 @@
      4|   - constructor.
      5|   - <CURSOR>
      6| Admitted.
-  $ rocq-ed query --text "About eq_refl."
+
+Inserting with --keep=none can be used to run a query.
+
+  $ rocq-ed insert --keep=none --text "About eq_refl."
   eq_refl : forall {A : Type} {x : A}, x = x
   
   eq_refl is template universe polymorphic
@@ -133,15 +136,25 @@
      5|   - <CURSOR>
      6| Admitted.
 
-Test that the output of queries is properly terminated by a newline
+Even for a query the user needs to be careful to deal with blanks.
 
-  $ rocq-ed query --text "Show." && echo "<NEWLINE>"
+  $ rocq-ed insert --text "idtac."
+  $ rocq-ed insert --keep=none --text "Show."
+  Error: could not process suffix "Show.".
+  leading blanks required at this point in the document
+  The document is unchanged.
+  [1]
+
+  $ rocq-ed insert --keep=none --text " Show."
   1 goal
     
     x : nat
     ============================
     x = x
-  <NEWLINE>
+
+  $ rocq-ed backwards
+  $ rocq-ed delete
+
   $ rocq-ed insert --print-context --print-goals --text "reflexivity."
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.

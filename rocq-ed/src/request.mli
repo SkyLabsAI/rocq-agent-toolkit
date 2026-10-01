@@ -26,7 +26,6 @@ type (_, _, _) t =
       -> (Document.commands_data * string, int, int) t
   | Insert : {text : string; keep : insert_keep; print : print_after}
       -> (Document.commands_data * string, unit, insert_error) t
-  | Query : {text : string} -> (unit, string, unit) t
   | Delete : {count : int option; print : print_after}
       -> (string, unit, unit) t
   | Commit : {file : string option; force : bool; include_suffix : bool}

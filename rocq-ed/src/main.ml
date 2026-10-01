@@ -346,32 +346,6 @@ let insert_cmd =
   in
   Cmd.(make (info "insert" ~version ~exits ~doc) term)
 
-let query_text =
-  let doc =
-    "Specifies the Rocq query to be run at the cursor. Must be exactly one \
-     command."
-  in
-  Arg.(value & opt (some string) None & info ["t"; "text"] ~doc ~docv:"TEXT")
-
-let query_cmd =
-  let doc =
-    "Executes the given Rocq query at the current cursor $(b,without) \
-     inserting the query it into the document. Prints the resulting \
-     $(b,info) and $(b,notice) feedback to standard output. WARNING: Do not \
-     use with tactics or side-effecting commands."
-  in
-  let run text id =
-    let text =
-      match text with Some(text) -> text | None ->
-      In_channel.input_all stdin
-    in
-    match Protocol.client_request id Request.(Query({text})) with
-    | Ok(s) -> Printf.printf "%s\n%!" s
-    | Error(s, ()) -> panic "Error: %s." s
-  in
-  let term = Term.(const run $ query_text $ session_id) in
-  Cmd.(make (info "query" ~version ~exits ~doc) term)
-
 let deleted_item_count =
   let doc =
     "Indicates the number of items $(docv) that should be deleted after the \
@@ -607,6 +581,17 @@ let main_man = [
       at their position in the output of $(b,rocq-ed status), and they \
       can be traversed by cursor movements or deleted just like commands.";
 
+  `S "QUERYING ROCQ";
+  `P "In addition to inspecting the proof state using $(b,rocq-ed goals), \
+      arbitrary Rocq queries can be run with $(b,rocq-ed insert --keep=none) \
+      since it does not persist any change to the document. For example, to \
+      query the definition of a function $(b,f) together with all available \
+      lemmas about it, one can use $(b,rocq-ed insert --keep=none --text=' \
+      About f. Search f. '). Even if no changes are persisted to the \
+      document, the user must ensure that the text is insertable at the \
+      cursor. In particular, appropriate blank characters should be included \
+      around the text.";
+
   `S "COMMAND FAILURES";
   `P "All commands except $(b,init) and $(b,stop) can fail without affecting \
       the health of the rocq-ed session. It is not necessary to restart the \
@@ -615,8 +600,8 @@ let main_man = [
 
 let _ =
   let cmds =
-    [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; query_cmd;
-      delete_cmd; commit_cmd; goals_cmd; backwards_cmd; goto_cmd ]
+    [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; delete_cmd;
+      commit_cmd; goals_cmd; backwards_cmd; goto_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =

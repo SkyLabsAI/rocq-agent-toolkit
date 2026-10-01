@@ -26,7 +26,6 @@ type (_, _, _) t =
       -> (Document.commands_data * string, int, int) t
   | Insert : {text : string; keep : insert_keep; print : print_after}
       -> (Document.commands_data * string, unit, insert_error) t
-  | Query : {text : string} -> (unit, string, unit) t
   | Delete : {count : int option; print : print_after}
       -> (string, unit, unit) t
   | Commit : {file : string option; force : bool; include_suffix : bool}
@@ -75,8 +74,6 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
   | Insert({text; keep; print}) ->
       Format.fprintf ff "Insert({text = %S; keep = %a; print = %a})"
         text pp_insert_keep keep pp_print_after print
-  | Query({text}) ->
-      Format.fprintf ff "Query({text = %S})" text
   | Delete({count; print}) ->
       Format.fprintf ff "Delete({count = %a; print = %a})"
         (pp_option Format.pp_print_int) count pp_print_after print
@@ -352,12 +349,6 @@ let run_insert d ~text ~keep ~print =
   | `All -> run_insert_keep_all d ~text ~print
   | `None -> run_insert_keep_none d ~text ~print
 
-let run_query d ~text =
-  let text = String.trim text in
-  match Document.query_text_all d ~text with
-  | Ok(ls) -> Ok(String.concat "\n" ls)
-  | Error(s) -> Error(s, ())
-
 let run_delete d ~count ~print =
   try
     Document.clear_suffix ?count d;
@@ -507,7 +498,6 @@ let run : type a b c. Document.t -> (a, b, c) t ->
   | Status({mode = `Text(print)}) -> ((), Ok(render_print_after d print))
   | Steps({count; print}) -> run_steps d ~count ~print
   | Insert({text; keep; print}) -> run_insert d ~text ~keep ~print
-  | Query({text}) -> ((), run_query d ~text)
   | Delete({count; print}) -> run_delete d ~count ~print
   | Commit({file; force; include_suffix}) ->
       ((), run_commit d ~file ~force ~include_suffix)
