@@ -68,3 +68,18 @@ boundary was found to insert into the document.
   $ rocq-ed status --context-lines=0
      1| <CURSOR>
   $ rocq-ed stop
+
+The default can be given explicitly as --keep=atomic. A successful insertion
+prints the resulting goals.
+
+  $ eval $(rocq-ed init atomic.v)
+  $ rocq-ed insert --keep=atomic --print-goals --text "Goal True /\ True. split."
+  Goal 1:
+    ============================
+    True
+  
+  Goal 2:
+    ============================
+    True
+  
+  $ rocq-ed stop
