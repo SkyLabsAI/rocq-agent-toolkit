@@ -29,8 +29,8 @@ type (_, _, _) t =
   | Query : {text : string} -> (unit, string, unit) t
   | Delete : {count : int option; print : print_after}
       -> (string, unit, unit) t
-  | Commit : {file : string option; exclude_suffix : bool}
-      -> (unit, int, unit) t
+  | Commit : {file : string option; force : bool; include_suffix : bool}
+      -> (unit, unit, unit) t
   | Goals : (unit, string, empty) t
   | Backwards : {count : int option; print : print_after}
       -> (string, unit, unit) t
@@ -80,9 +80,10 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
   | Delete({count; print}) ->
       Format.fprintf ff "Delete({count = %a; print = %a})"
         (pp_option Format.pp_print_int) count pp_print_after print
-  | Commit({file; exclude_suffix}) ->
-      Format.fprintf ff "Commit({file = %s; exclude_suffix = %b})"
-        (Stdlib.Option.value file ~default:"<document file>") exclude_suffix
+  | Commit({file; force; include_suffix}) ->
+      Format.fprintf ff "Commit({file = %s; force = %b; include_suffix = %b})"
+        (Stdlib.Option.value file ~default:"<document file>")
+        force include_suffix
   | Goals ->
       Format.fprintf ff "Goals"
   | Backwards({count; print}) ->
@@ -364,18 +365,13 @@ let run_delete d ~count ~print =
   with Invalid_argument(s) ->
     ("", Error(s, ()))
 
-let run_commit d ~file ~exclude_suffix =
-  (* [commit] writes the unprocessed suffix by default; callers get the number
-     of unprocessed items that were written so they can refuse or warn. *)
-  (* Only unprocessed commands matter; trailing blanks are not proof text. *)
-  let is_command (it : Document.unprocessed_item) =
-    match it.kind with `Blanks -> false | `Command(_) | `Ghost(_) -> true
-  in
-  let suffix_len = List.length (List.filter is_command (Document.suffix d)) in
-  let include_suffix = not exclude_suffix in
-  match Document.commit ?file ~include_suffix d with
-  | Ok(()) -> Ok(if include_suffix then suffix_len else 0)
-  | Error(s) -> Error(s, ())
+let run_commit d ~file ~force ~include_suffix =
+  match Document.suffix d with
+  | _ :: _ when not include_suffix && not force ->
+      Error("The document is not fully processed (non-empty suffix).", ())
+  | _ ->
+  let res = Document.commit ?file ~include_suffix d in
+  Result.map_error (fun s -> (s, ())) res
 
 let run_backwards d ~count ~print =
   assert (match count with None -> true | Some(i) -> 0 <= i);
@@ -513,7 +509,8 @@ let run : type a b c. Document.t -> (a, b, c) t ->
   | Insert({text; keep; print}) -> run_insert d ~text ~keep ~print
   | Query({text}) -> ((), run_query d ~text)
   | Delete({count; print}) -> run_delete d ~count ~print
-  | Commit({file; exclude_suffix}) -> ((), run_commit d ~file ~exclude_suffix)
+  | Commit({file; force; include_suffix}) ->
+      ((), run_commit d ~file ~force ~include_suffix)
   | Goals -> ((), Ok(run_goals d))
   | Backwards({count; print}) -> run_backwards d ~count ~print
   | Goto({line; col; print}) -> run_goto d ~line ~col ~print

@@ -177,7 +177,7 @@ Test that the output of queries is properly terminated by a newline
   Theorem test : forall x : nat, True /\ x = x.
   Proof.
   Admitted.
-  $ rocq-ed commit
+  $ rocq-ed commit --force
   $ cat test.v
   Theorem test : forall x : nat, True /\ x = x.
   Proof.

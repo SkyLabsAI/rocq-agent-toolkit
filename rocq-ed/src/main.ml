@@ -405,32 +405,35 @@ let commit_file =
   in
   Arg.(value & opt (some string) None & info ["file"] ~doc ~docv:"PATH")
 
-let commit_exclude_suffix =
+let commit_include_suffix =
   let doc =
-    "Do not write the unprocessed suffix (items after the cursor). By \
-     default the whole document is written, including items that have never \
-     been processed by Rocq; a warning is printed when that happens."
+    "Include the unprocessed suffix (items after the cursor). By default the \
+     suffix is excluded since it was not checked by Rocq."
   in
-  Arg.(value & flag & info ["exclude-suffix"] ~doc)
+  Arg.(value & flag & info ["a"; "include-suffix"] ~doc)
+
+let commit_force =
+  let doc =
+    "Force the commit of the document even if there are unprocessed items \
+     after the cursor, and $(b,--include-suffix) was not used."
+  in
+  Arg.(value & flag & info ["f"; "force"] ~doc)
 
 let commit_cmd =
   let doc =
-    "Commit the current state of the document to the source file. Items \
-     after the cursor (the unprocessed suffix) are written too unless \
-     $(b,--exclude-suffix) is given; a warning reports how many such items \
-     were written, since they have not been checked by Rocq."
+    "Commits the processed prefix of the document to the file system. Unless \
+     $(b,--force) or $(b,--include-suffix) is used, the command fail when \
+     there are unprocesed item after the cursor."
   in
-  let run file exclude_suffix id =
-    let req = Request.(Commit({file; exclude_suffix})) in
+  let run file force include_suffix id =
+    let req = Request.(Commit({file; force; include_suffix})) in
     match Protocol.client_request id req with
-    | Ok(0) -> ()
-    | Ok(n) ->
-        Printf.printf "Warning: %i unprocessed item(s) after the cursor were \
-          written without having been checked by Rocq.\n%!" n
     | Error(s, ()) -> panic "Error: unable to commit.\n%s" s
+    | Ok(()) -> ()
   in
   let term =
-    Term.(const run $ commit_file $ commit_exclude_suffix $ session_id)
+    Term.(const run $ commit_file $ commit_force $ commit_include_suffix $
+      session_id)
   in
   Cmd.(make (info "commit" ~version ~exits ~doc) term)
 

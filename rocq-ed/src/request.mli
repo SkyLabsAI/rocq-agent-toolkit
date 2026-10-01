@@ -29,8 +29,8 @@ type (_, _, _) t =
   | Query : {text : string} -> (unit, string, unit) t
   | Delete : {count : int option; print : print_after}
       -> (string, unit, unit) t
-  | Commit : {file : string option; exclude_suffix : bool}
-      -> (unit, int, unit) t
+  | Commit : {file : string option; force : bool; include_suffix : bool}
+      -> (unit, unit, unit) t
   | Goals : (unit, string, empty) t
   | Backwards : {count : int option; print : print_after}
       -> (string, unit, unit) t
