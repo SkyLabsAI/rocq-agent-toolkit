@@ -18,7 +18,7 @@ rolls the document back: nothing is inserted, whether the candidate works or not
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --count-items 3
+  $ rocq-ed move --item=+3
   $ rocq-ed insert --keep=none --print-goals --text $'\n  intros x; split.\n'
   Open goals after the inserted text (prior to document rollback):
   

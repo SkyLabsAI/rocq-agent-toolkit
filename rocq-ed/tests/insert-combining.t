@@ -11,7 +11,7 @@
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --count-items=all
+  $ rocq-ed move --item=+all
   $ rocq-ed insert --print-context --text="Goal True. Proof. *"
      1| Goal True. Proof. *<CURSOR>
 

@@ -19,7 +19,7 @@ Commands that used to auto-print context and goals are quiet by default.
   > EOF
 
   $ eval $(rocq-ed init print.v)
-  $ rocq-ed goto --print-context=1 --position-line-column 2:1
+  $ rocq-ed move --print-context=1 --position-line-column 2:1
      1| Definition a := 0.
      2| <CURSOR>Definition b := 1.
      3| Definition c := 2.
@@ -31,15 +31,15 @@ Printing after a command is part of the command's single server request.
 
 The whole document can be requested too.
 
-  $ rocq-ed goto --print-context=all --position-line-column 2:1
+  $ rocq-ed move --print-context=all --position-line-column 2:1
      1| Definition a := 0.
      2| <CURSOR>Definition b := 1.
      3| Definition c := 2.
      4| Definition d := 3.
      5| Definition e := 4.
-  $ rocq-ed goto --position-line-column 1:1
-  $ rocq-ed steps --count-items=2
-  $ rocq-ed backwards --count-items=1
+  $ rocq-ed move --position-line-column 1:1
+  $ rocq-ed move --item=+2
+  $ rocq-ed move --item=-1
   $ rocq-ed insert --text $'\nDefinition inserted := 42.'
   $ rocq-ed delete --count-items=1
   $ rocq-ed stop
@@ -54,7 +54,7 @@ The whole document can be requested too.
   > EOF
 
   $ eval $(rocq-ed init goals_only.v)
-  $ rocq-ed goto --print-goals --position-line-column 2:1
+  $ rocq-ed move --print-goals --position-line-column 2:1
   Goal 1:
     ============================
     True

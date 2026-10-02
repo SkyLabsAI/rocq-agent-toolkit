@@ -1,4 +1,4 @@
-Warnings emitted while processing commands are printed on insert and steps.
+Warnings emitted while processing commands are printed on insert and move.
 
   $ cat > test.v <<EOF
   > #[deprecated(since="1.0", note="use bar")] Definition foo := 0.
@@ -17,7 +17,7 @@ Warnings emitted while processing commands are printed on insert and steps.
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --feedback=+info --count-items 1
+  $ rocq-ed move --feedback=+info --item=+1
   foo is defined
   $ rocq-ed insert --text $'\nCheck foo.\n'
   Warning: Reference foo is deprecated since 1.0. use bar
@@ -27,8 +27,8 @@ Warnings emitted while processing commands are printed on insert and steps.
 
 Re-processing items prints their warnings again.
 
-  $ rocq-ed backwards --count-items 3
-  $ rocq-ed steps --count-items all
+  $ rocq-ed move --item=-3
+  $ rocq-ed move --item=+all
   Warning: Reference foo is deprecated since 1.0. use bar
   [deprecated-reference-since-1.0,deprecated-since-1.0,deprecated-reference,deprecated,default]
   foo
@@ -77,7 +77,7 @@ Debug feedback is retained and can be printed too.
 
 Error feedback is handled separately and is not configurable.
 
-  $ rocq-ed steps --feedback=+error 2>&1 | grep -o 'invalid feedback selector "+error"'
+  $ rocq-ed move --item=+1 --feedback=+error 2>&1 | grep -o 'invalid feedback selector "+error"'
   invalid feedback selector "+error"
   [124]
   $ rocq-ed stop

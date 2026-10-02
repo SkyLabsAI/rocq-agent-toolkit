@@ -17,7 +17,7 @@
   $ SESSION1=$(rocq-ed init test.v | sed 's/^[^=]*=//')
   $ SESSION2=$(rocq-ed init test.v | sed 's/^[^=]*=//')
 
-  $ rocq-ed steps --count-items=2 --session-id=${SESSION1}
+  $ rocq-ed move --item=+2 --session-id=${SESSION1}
   $ rocq-ed status --context-lines=0 --session-id=${SESSION1}
      2| <CURSOR>Proof.
   $ rocq-ed status --context-lines=0 --session-id=${SESSION2}

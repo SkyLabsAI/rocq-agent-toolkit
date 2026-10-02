@@ -314,46 +314,161 @@ let status_cmd =
   let term = Term.(const run $ status_mode $ session_id) in
   Cmd.(make (info "status" ~version ~exits ~doc) term)
 
-let step_count =
-  let doc =
-    "Indicates the number of items $(docv) that should be stepped over (it \
-     is equal to 1 by default). Use $(b,all) to step all the way to the end \
-     of the file."
-  in
-  let docv = "NUM|all" in
-  Arg.(value & opt non_negative_int_or_all (Some(1)) &
-    info ["n"; "count-items"] ~doc ~docv)
-
-let steps_cmd =
-  let doc =
-    "Step over the given number of document items (commands or blanks) in \
-     the Rocq document. The command can return a non-zero exit code if one \
-     of the items cannot be  processed successfully. In that case, the \
-     cursor is moved to just before the failing item."
-  in
-  let run count print feedback id =
-    let ((data, output), res) =
-      Protocol.full_client_request id Request.(Steps({count; print}))
+let move_pos =
+  let position =
+    let parse s =
+      match String.split_on_char ':' s with
+      | [line] ->
+          begin
+            match int_of_string_opt line with
+            | None -> Error(`Msg("The line number must be an integer."))
+            | Some(line) when line < 1 ->
+                Error(`Msg("The line number should be at least 1."))
+            | Some(line) -> Ok(Request.Position({line; col = None}))
+          end
+      | [line; col] ->
+          begin
+            match int_of_string_opt line with
+            | None -> Error(`Msg("The line number must be an integer."))
+            | Some(line) when line < 1 ->
+                Error(`Msg("The line number should be at least 1."))
+            | Some(line) ->
+            match int_of_string_opt col with
+            | None -> Error(`Msg("The column number must be an integer."))
+            | Some(col) when col < 1 ->
+                Error(`Msg("The column number should be at least 1."))
+            | Some(col) -> Ok(Request.Position({line; col = Some(col)}))
+          end
+      | _ -> Error(`Msg("Format must be LINE or LINE:COLUMN."))
     in
+    let print ff target =
+      match target with
+      | Request.Position({line; col}) ->
+          Format.fprintf ff "%i" line;
+          Option.iter (Format.fprintf ff ":%i") col
+      | _ -> assert false
+    in
+    Arg.conv (parse, print)
+  in
+  let doc =
+    "Move to the item at the specified source position. If $(b,COLUMN) is \
+     omitted, move to the first item on $(b,LINE)."
+  in
+  Arg.(value & opt (some position) None &
+    info ["p"; "position-line-column"] ~doc ~docv:"LINE[:COLUMN]")
+
+let move_item =
+  let item =
+    let error () =
+      Error(`Msg("expected NUM, +NUM, -NUM, +all, or -all"))
+    in
+    let non_negative s make =
+      match int_of_string_opt s with
+      | Some(i) when i >= 0 -> Ok(make i)
+      | None | Some(_) -> error ()
+    in
+    let parse s =
+      match s with
+      | "+all" -> Ok(Request.Relative(Request.Forward, None))
+      | "-all" -> Ok(Request.Relative(Request.Backward, None))
+      | _ when String.starts_with ~prefix:"+" s ->
+          let value = String.sub s 1 (String.length s - 1) in
+          non_negative value
+            (fun i -> Request.Relative(Request.Forward, Some(i)))
+      | _ when String.starts_with ~prefix:"-" s ->
+          let value = String.sub s 1 (String.length s - 1) in
+          non_negative value
+            (fun i -> Request.Relative(Request.Backward, Some(i)))
+      | _ -> non_negative s (fun i -> Request.Absolute(i))
+    in
+    let print ff target =
+      match target with
+      | Request.Absolute(i) -> Format.fprintf ff "%i" i
+      | Request.Relative(Request.Forward, None) ->
+          Format.fprintf ff "+all"
+      | Request.Relative(Request.Backward, None) ->
+          Format.fprintf ff "-all"
+      | Request.Relative(Request.Forward, Some(i)) ->
+          Format.fprintf ff "+%i" i
+      | Request.Relative(Request.Backward, Some(i)) ->
+          Format.fprintf ff "-%i" i
+      | Request.Position(_) -> assert false
+    in
+    Arg.conv (parse, print)
+  in
+  let doc =
+    "Move using an item position. $(b,NUM) is an absolute, zero-based cursor \
+     position (the number of items before the cursor). $(b,+NUM) and \
+     $(b,-NUM) move relative to the current cursor. $(b,+all) moves to the \
+     end of the document and $(b,-all) moves to its start."
+  in
+  Arg.(value & opt (some item) None &
+    info ["n"; "item"] ~doc ~docv:"NUM|+NUM|-NUM|+all|-all")
+
+let move_target =
+  let make position item =
+    match (position, item) with
+    | (Some(target), None) | (None, Some(target)) -> Ok(target)
+    | (None, None) -> Ok(Request.Relative(Request.Forward, Some(1)))
+    | (Some(_), Some(_)) ->
+        Error(`Msg("'--position-line-column' and '--item' are incompatible"))
+  in
+  Term.(term_result (const make $ move_pos $ move_item))
+
+let move_cmd =
+  let doc =
+    "Move the cursor to a different item boundary in the document. The \
+     target can either be specified as a source code position using \
+     $(b,--position-line-column=LINE:[COLUMN]), or as a relative or absolute \
+     position in the list of document items using \
+     $(b,--item=NUM|+NUM|-NUM|+all|-all). Moving forward in the document \
+     processes the traversed Rocq commands and can fail; in that case, the \
+     cursor is left just before the failing item. By default, the cursor \
+     moves forward over one item, as if $(b,--item=+1)) had been used."
+  in
+  let run target print feedback id =
+    let req = Request.(Move({target; print})) in
+    let ((data, output), res) = Protocol.full_client_request id req in
     Request.print_feedback feedback data;
     Printf.printf "%s%!" output;
     match res with
-    | Error(s, count) ->
+    | Error(s, Request.Relative_failure(count)) ->
         if output <> "" then Printf.printf "\n%!";
         panic "Failed after processing %i items.\nError: %s." count s
+    | Error(s, Request.Target_failure(None)) ->
+        if output <> "" then Printf.printf "\n%!";
+        panic "Error: %s." s
+    | Error(s, Request.Target_failure(Some(line, col))) ->
+        if output <> "" then Printf.printf "\n%!";
+        panic "Error: failed to process the item at line %i, column %i.\n%s"
+          line col s
     | Ok(real_count) ->
-        let check_count count =
+        let warn direction count endpoint =
           match real_count < count with false -> () | true ->
           if output <> "" then Printf.printf "\n%!";
-          Printf.eprintf "Warning: Only %i < %i steps were executed before \
-            reaching the end of the file.\n" real_count count
+          match direction with
+          | Request.Forward ->
+              Printf.eprintf "Warning: Only %i < %i steps were executed \
+                before reaching the %s of the file.\n%!"
+                real_count count endpoint
+          | Request.Backward ->
+              Printf.eprintf "Warning: Only %i < %i steps were reverted \
+                before reaching the %s of the file.\n%!"
+                real_count count endpoint
         in
-        Option.iter check_count count
+        match target with
+        | Request.Relative(Request.Forward, Some(count)) ->
+            warn Request.Forward count "end"
+        | Request.Relative(Request.Backward, Some(count)) ->
+            warn Request.Backward count "start"
+        | Request.Relative(_, None)
+        | Request.Absolute(_)
+        | Request.Position(_) -> ()
   in
   let term =
-    Term.(const run $ step_count $ print_after $ feedback $ session_id)
+    Term.(const run $ move_target $ print_after $ feedback $ session_id)
   in
-  Cmd.(make (info "steps" ~version ~exits ~doc) term)
+  Cmd.(make (info "move" ~version ~exits ~doc) term)
 
 let command_text =
   let doc =
@@ -493,100 +608,6 @@ let goals_cmd =
   let term = Term.(const run $ session_id) in
   Cmd.(make (info "goals" ~version ~exits ~doc) term)
 
-let backwards_count =
-  let doc =
-    "Indicates the number of items that the cursor should be moved over \
-     backwards in the document. It is equal to 1 by default, and $(b,all) \
-     can be used to move the cursor to the start of the document."
-  in
-  Arg.(value & opt non_negative_int_or_all (Some(1)) &
-    info ["n"; "count-items"] ~doc ~docv:"NUM|all")
-
-let backwards_cmd =
-  let doc =
-    "Moves the cursor backwards over the given number of items (commands or \
-     blanks) in the Rocq document. Said otherwise, the given number of items \
-     are moved from the (processed) prefix of the document to its \
-     (unprocessed) suffix."
-  in
-  let run count print id =
-    let (output, Ok(real_count)) =
-      Protocol.full_client_request id Request.(Backwards({count; print}))
-    in
-    Printf.printf "%s%!" output;
-    let check_count count =
-      match real_count < count with false -> () | true ->
-      if output <> "" then Printf.printf "\n%!";
-      Printf.eprintf "Warning: Only %i < %i steps were reverted before \
-        reaching the start of the file.\n%!" real_count count
-    in
-    Option.iter check_count count;
-  in
-  let term = Term.(const run $ backwards_count $ print_after $ session_id) in
-  Cmd.(make (info "backwards" ~version ~exits ~doc) term)
-
-let goto_pos =
-  let position =
-    let parse s =
-      match String.split_on_char ':' s with
-      | [line] ->
-          begin
-            match int_of_string_opt line with
-            | None ->
-                Error(`Msg("The line number must be an integer."))
-            | Some(line) when line < 1 ->
-                Error(`Msg("The line number should be at least 1."))
-            | Some(line) ->
-                Ok(line, None)
-          end
-      | [line; col] ->
-          begin
-            match int_of_string_opt line with
-            | None -> Error(`Msg("The line number must be an integer."))
-            | Some(line) when line < 1 ->
-                Error(`Msg("The line number should be at least 1."))
-            | Some(line) ->
-            match int_of_string_opt col with
-            | None -> Error(`Msg("The column number must be an integer."))
-            | Some(col) when col < 1 ->
-                Error(`Msg("The column number should be at least 1."))
-            | Some(col) -> Ok(line, Some(col))
-          end
-      | _ -> Error(`Msg("Format must be LINE or LINE:COLUMN."))
-    in
-    let print ff (line, col) =
-      Format.fprintf ff "%i" line;
-      Option.iter (Format.fprintf ff ":%i") col
-    in
-    Arg.conv (parse, print)
-  in
-  let doc = "Specifies the target position as $(docv)." in
-  Arg.(required & opt (some position) None &
-    info ["p"; "position-line-column"] ~doc ~docv:"LINE[:COLUMN]")
-
-let goto_cmd =
-  let doc =
-    "Moves the cursor to the item identified by the given line and column \
-     numbers."
-  in
-  let run (line, col) print id =
-    let (output, res) =
-      Protocol.full_client_request id Request.(Goto({line; col; print}))
-    in
-    Printf.printf "%s%!" output;
-    match res with
-    | Ok(()) -> ()
-    | Error(s, None) ->
-        if output <> "" then Printf.printf "\n%!";
-        panic "Error: %s." s
-    | Error(s, Some(line, col)) ->
-        if output <> "" then Printf.printf "\n%!";
-        panic "Error: failed to process the item at line %i, column %i.\n%s"
-          line col s
-  in
-  let term = Term.(const run $ goto_pos $ print_after $ session_id) in
-  Cmd.(make (info "goto" ~version ~exits ~doc) term)
-
 let main_man = [
   `S Manpage.s_description;
   `P "$(b,rocq-ed) is a command-line editor for Rocq source files. An editor \
@@ -618,9 +639,9 @@ let main_man = [
       by the underlying Rocq top-level: commands in the prefix have been \
       replayed by Rocq and contribute to the current proof state. The \
       $(i,suffix) holds items that belong to the document but have not yet \
-      been processed. Most operations either advance the cursor forward \
-      through the suffix (such as $(b,steps) and $(b,goto)) or move it \
-      backward into the prefix (such as $(b,backwards)).";
+      been processed. The $(b,move) command moves the cursor in either \
+      direction using a source position, an absolute item offset, or a \
+      relative item offset.";
   `P "Editing then proceeds by combining cursor movements with \
       $(b,rocq-ed insert), which adds new items at the cursor and attempts \
       to step over them, and $(b,rocq-ed delete), which removes items from \
@@ -685,8 +706,8 @@ let main_man = [
 
 let _ =
   let cmds =
-    [ init_cmd; stop_cmd; status_cmd; steps_cmd; insert_cmd; delete_cmd;
-      commit_cmd; goals_cmd; backwards_cmd; goto_cmd ]
+    [ init_cmd; stop_cmd; status_cmd; move_cmd; insert_cmd; delete_cmd;
+      commit_cmd; goals_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =

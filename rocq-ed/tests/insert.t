@@ -17,7 +17,7 @@
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --print-context --print-goals --count-items=7
+  $ rocq-ed move --print-context --print-goals --item=+7
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
      3| Proof.

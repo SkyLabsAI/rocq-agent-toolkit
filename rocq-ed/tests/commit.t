@@ -15,7 +15,7 @@ Test commit behaviour.
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --count-items 2
+  $ rocq-ed move --item=+2
 
 Check that committing fails by default if there are unprocessed items.
 

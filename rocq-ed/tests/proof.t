@@ -17,7 +17,7 @@
   $ eval $(rocq-ed init test.v)
   $ rocq-ed goals
   Not currently in a proof.
-  $ rocq-ed steps --print-context --print-goals --count-items 3
+  $ rocq-ed move --print-context --print-goals --item=+3
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
      3| Admitted.
@@ -33,7 +33,7 @@
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  $ rocq-ed steps --print-goals --count-items 0
+  $ rocq-ed move --print-goals --item=+0
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
@@ -148,7 +148,7 @@ Even for a query the user needs to be careful to deal with blanks.
     ============================
     x = x
 
-  $ rocq-ed backwards
+  $ rocq-ed move --item=-1
   $ rocq-ed delete
 
   $ rocq-ed insert --print-context --print-goals --text "reflexivity."
@@ -166,7 +166,7 @@ Even for a query the user needs to be careful to deal with blanks.
      4|   - constructor.
      5|   - reflexivity.<CURSOR>
      6| Admitted.
-  $ rocq-ed steps --print-context --print-goals --count-items 2
+  $ rocq-ed move --print-context --print-goals --item=+2
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.

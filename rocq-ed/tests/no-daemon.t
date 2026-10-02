@@ -46,7 +46,7 @@
 
   $ rocq-ed status --context-lines 0
      1| <CURSOR>(* Test file. *)
-  $ rocq-ed steps --count-items 2
+  $ rocq-ed move --item=+2
   $ rocq-ed status --context-lines 0
      2| Theorem test : forall x : nat, x = x.<CURSOR>
   $ rocq-ed stop

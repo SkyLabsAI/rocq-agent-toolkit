@@ -18,12 +18,23 @@ type insert_error = {
 
 type position = int * int
 
+type move_direction = Forward | Backward
+
+type move_target =
+  | Position of {line : int; col : int option}
+  | Absolute of int
+  | Relative of move_direction * int option
+
+type move_error =
+  | Relative_failure of int
+  | Target_failure of position option
+
 type (_, _, _) t =
   | Stop : (unit, unit, empty) t
   | Status : {mode : [`JSON | `Text of print_after]}
       -> (unit, string, empty) t
-  | Steps : {count : int option; print : print_after}
-      -> (Document.commands_data * string, int, int) t
+  | Move : {target : move_target; print : print_after}
+      -> (Document.commands_data * string, int, move_error) t
   | Insert : {text : string; keep : insert_keep; print : print_after}
       -> (Document.commands_data * string, unit, insert_error) t
   | Delete : {count : int option; print : print_after}
@@ -31,10 +42,6 @@ type (_, _, _) t =
   | Commit : {file : string option; force : bool; include_suffix : bool}
       -> (unit, unit, unit) t
   | Goals : (unit, string, empty) t
-  | Backwards : {count : int option; print : print_after}
-      -> (string, int, empty) t
-  | Goto : {line: int; col: int option; print : print_after}
-      -> (string, unit, position option) t
 
 let is_stop : type a b c. (a, b, c) t -> bool = fun r ->
   match r with Stop -> true | _ -> false
@@ -68,9 +75,22 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
       Format.fprintf ff "Status({mode = `JSON})"
   | Status({mode = `Text(print)}) ->
       Format.fprintf ff "Status({mode = `Text(%a)})" pp_print_after print
-  | Steps({count; print}) ->
-      Format.fprintf ff "Steps({count = %a; print = %a})"
-        (pp_option Format.pp_print_int) count pp_print_after print
+  | Move({target; print}) ->
+      let pp_target ff = function
+        | Position({line; col}) ->
+            Format.fprintf ff "Position({line = %i; col = %a})"
+              line (pp_option Format.pp_print_int) col
+        | Absolute(index) ->
+            Format.fprintf ff "Absolute(%i)" index
+        | Relative(direction, count) ->
+            let direction =
+              match direction with Forward -> "Forward" | Backward -> "Backward"
+            in
+            Format.fprintf ff "Relative(%s, %a)" direction
+              (pp_option Format.pp_print_int) count
+      in
+      Format.fprintf ff "Move({target = %a; print = %a})"
+        pp_target target pp_print_after print
   | Insert({text; keep; print}) ->
       Format.fprintf ff "Insert({text = %S; keep = %a; print = %a})"
         text pp_insert_keep keep pp_print_after print
@@ -83,12 +103,6 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
         force include_suffix
   | Goals ->
       Format.fprintf ff "Goals"
-  | Backwards({count; print}) ->
-      Format.fprintf ff "Backwards({count = %a; print = %a})"
-        (pp_option Format.pp_print_int) count pp_print_after print
-  | Goto({line; col; print}) ->
-      Format.fprintf ff "Goto({line = %i; col = %a; print = %a})"
-        line (pp_option Format.pp_print_int) col pp_print_after print
 
 let lines : string -> string array = fun s ->
   let lines = Dynarray.create () in
@@ -235,24 +249,6 @@ let render_print_after d {context; goals} =
   let goals = if goals then [run_goals d] else [] in
   String.concat "\n" (context @ goals)
 
-let run_steps d ~count ~print =
-  let count =
-    let len = List.length (Document.suffix d) in
-    match count with
-    | None        -> len
-    | Some(count) -> if count < len then count else len
-  in
-  try
-    let (data, res) = Document.run_steps d ~count in
-    let res =
-      match res with
-      | Ok(()) -> Ok(count)
-      | Error(s, (i, None)) -> Error(s, i)
-      | Error(_, (i, Some(s, _))) -> Error(s, i)
-    in
-    ((data, render_print_after d print), res)
-  with Invalid_argument(s) -> (([], ""), Error(s, 0))
-
 let sentence_text (sentences : Document.sentence list) =
   let get_text (s : Document.sentence) = s.Document.text in
   String.concat "" (List.map get_text sentences)
@@ -371,17 +367,6 @@ let run_commit d ~file ~force ~include_suffix =
   let res = Document.commit ?file ~include_suffix d in
   Result.map_error (fun s -> (s, ())) res
 
-let run_backwards d ~count ~print =
-  assert (match count with None -> true | Some(i) -> 0 <= i);
-  let cursor_index = Document.cursor_index d in
-  let count = match count with None -> cursor_index | Some(n) -> n in
-  let (index, actual_count) =
-    let index = cursor_index - count in
-    (max 0 index, if index < 0 then count + index else count)
-  in
-  Document.revert_before d ~index;
-  (render_print_after d print, Ok(actual_count))
-
 let cursor_position d =
   let (prefix, _) = document_parts d in
   let (line, line_text) =
@@ -399,7 +384,7 @@ let cursor_position d =
   in
   (line, col)
 
-let run_goto d ~line ~col ~print =
+let index_at_position d ~line ~col =
   assert (line > 0 && Stdlib.Option.value ~default:1 col > 0);
   (* Collect the text of all document items. *)
   let items =
@@ -419,8 +404,7 @@ let run_goto d ~line ~col ~print =
   (* Check that there are enough lines. *)
   match nb_lines < line with
   | true  ->
-      let msg = Printf.sprintf "no item on line %i" line in
-      ("", Error(msg, None))
+      Error(Printf.sprintf "no item on line %i" line)
   | false ->
   (* Finding the byte offset of the start of the line, and the line length. *)
   let line_start_off =
@@ -460,38 +444,72 @@ let run_goto d ~line ~col ~print =
     assert (line_text = lines.(line - 1))
   in
   (* Select the index. *)
+  match col with
+  | None      ->
+      let (_, index, _, _) = List.hd candidates in
+      Ok(index)
+  | Some(col) ->
+      let rec find_col n candidates =
+        match candidates with
+        | [] ->
+            Error(Printf.sprintf "no item on line %i, column %i" line col)
+        | (text, index, _, _) :: candidates ->
+            let next_n =
+              Uuseg_string.fold_utf_8 `Grapheme_cluster
+                (fun n _ -> n + 1) n text
+            in
+            if col <= next_n then Ok(index) else find_col next_n candidates
+      in
+      find_col 0 candidates
+
+let run_move d ~target ~print =
+  let initial_index = Document.cursor_index d in
+  let suffix_length = List.length (Document.suffix d) in
   let index =
-    match col with
-    | None      ->
-        let (_, index, _, _) = List.hd candidates in
-        Ok(index)
-    | Some(col) ->
-        let rec find_col n candidates =
-          match candidates with
-          | [] ->
-              let msg =
-                Printf.sprintf "no item on line %i, column %i" line col
-              in
-              Error(msg, None)
-          | (text, index, _, _) :: candidates ->
-              let next_n =
-                Uuseg_string.fold_utf_8 `Grapheme_cluster
-                  (fun n _ -> n + 1) n text
-              in
-              if col <= next_n then Ok(index) else find_col next_n candidates
-        in
-        find_col 0 candidates
+    match target with
+    | Absolute(index) -> Ok(index)
+    | Position({line; col}) -> index_at_position d ~line ~col
+    | Relative(Forward, count) ->
+        let count = Stdlib.Option.value count ~default:suffix_length in
+        assert (count >= 0);
+        Ok(initial_index + min count suffix_length)
+    | Relative(Backward, count) ->
+        let count = Stdlib.Option.value count ~default:initial_index in
+        assert (count >= 0);
+        Ok(initial_index - min count initial_index)
   in
   match index with
-  | Error(msg, pos) -> ("", Error(msg, pos))
+  | Error(msg) -> (([], ""), Error(msg, Target_failure(None)))
   | Ok(index) ->
-  let res =
-    match Document.go_to d ~index with
-    | Ok(()) -> Ok(())
-    | Error(msg, None)
-    | Error(_, Some(msg, _)) -> Error(msg, Some(cursor_position d))
-  in
-  (render_print_after d print, res)
+  try
+    let (data, res) =
+      match index < initial_index with
+      | true  -> Document.revert_before d ~index; ([], Ok(()))
+      | false -> Document.advance_to d ~index
+    in
+    let output = render_print_after d print in
+    let actual_count = abs (Document.cursor_index d - initial_index) in
+    let res =
+      match res with
+      | Ok(()) -> Ok(actual_count)
+      | Error(msg, error) ->
+          let msg = match error with None -> msg | Some(msg, _) -> msg in
+          let error =
+            match target with
+            | Relative(_) -> Relative_failure(actual_count)
+            | Absolute(_) | Position(_) ->
+                Target_failure(Some(cursor_position d))
+          in
+          Error(msg, error)
+    in
+    ((data, output), res)
+  with Invalid_argument(s) ->
+    let error =
+      match target with
+      | Relative(_) -> Relative_failure(0)
+      | Absolute(_) | Position(_) -> Target_failure(None)
+    in
+    (([], ""), Error(s, error))
 
 let run : type a b c. Document.t -> (a, b, c) t ->
     a * (b, string * c) Result.t = fun d r ->
@@ -499,11 +517,9 @@ let run : type a b c. Document.t -> (a, b, c) t ->
   | Stop -> ((), Ok(()))
   | Status({mode = `JSON}) -> ((), run_json_status d)
   | Status({mode = `Text(print)}) -> ((), Ok(render_print_after d print))
-  | Steps({count; print}) -> run_steps d ~count ~print
+  | Move({target; print}) -> run_move d ~target ~print
   | Insert({text; keep; print}) -> run_insert d ~text ~keep ~print
   | Delete({count; print}) -> run_delete d ~count ~print
   | Commit({file; force; include_suffix}) ->
       ((), run_commit d ~file ~force ~include_suffix)
   | Goals -> ((), Ok(run_goals d))
-  | Backwards({count; print}) -> run_backwards d ~count ~print
-  | Goto({line; col; print}) -> run_goto d ~line ~col ~print
