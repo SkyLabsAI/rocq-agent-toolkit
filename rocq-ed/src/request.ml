@@ -299,7 +299,9 @@ let run_insert_keep_succeeding d ~text ~print =
 let run_insert_keep_atomic d ~text ~print =
   let backup = Document.clone d in
   match run_insert_keep_all d ~text ~print with
-  | (_, Ok(_)) as res -> res
+  | (_, Ok(_)) as res ->
+      Document.stop backup;
+      res
   | ((data, status), Error(s, e)) ->
       Document.copy_contents ~from:backup d;
       Document.stop backup;
