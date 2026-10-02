@@ -267,7 +267,7 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
     | Error(code, s) -> cleanup_data_dir (); panic ~code "%s" s
     | Ok(d) ->
     let ready () =
-      Printf.printf "==== Environemnt for queries in the session ===\n%!";
+      Printf.printf "==== Environment for queries in the session ===\n%!";
       Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
       Printf.printf "===============================================\n%!"
     in
