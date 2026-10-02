@@ -185,6 +185,17 @@
      9| <CURSOR>
   
   Not currently in a proof.
+  $ rocq-ed backwards --print-context --print-goals --count-items 100
+  Warning: Only 11 < 100 steps were reverted before reaching the start of the file.
+  
+     1| <CURSOR>(* Test file. *)
+     2| Theorem test : forall x : nat, x = x.
+     3| Proof.
+     4|   intro x.
+     5|   reflexivity.
+     6| Qed.
+  
+  Not currently in a proof.
   $ rocq-ed stop
 
   $ find "$HOME" | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/" | sort

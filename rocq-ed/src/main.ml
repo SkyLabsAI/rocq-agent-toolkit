@@ -442,12 +442,16 @@ let backwards_cmd =
      (unprocessed) suffix."
   in
   let run count print id =
-    let (output, res) =
+    let (output, Ok(real_count)) =
       Protocol.full_client_request id Request.(Backwards({count; print}))
     in
-    match res with
-    | Ok(()) -> Printf.printf "%s%!" output
-    | Error(s, ()) -> panic "Error: %s.%s" s (output_after_error output)
+    let check_count count =
+      if real_count < count then
+        Printf.printf "Warning: Only %i < %i steps were reverted before \
+          reaching the start of the file.\n\n" real_count count
+    in
+    Option.iter check_count count;
+    Printf.printf "%s%!" output
   in
   let term = Term.(const run $ backwards_count $ print_after $ session_id) in
   Cmd.(make (info "backwards" ~version ~exits ~doc) term)

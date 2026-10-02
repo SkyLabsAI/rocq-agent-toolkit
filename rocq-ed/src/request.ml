@@ -32,7 +32,7 @@ type (_, _, _) t =
       -> (unit, unit, unit) t
   | Goals : (unit, string, empty) t
   | Backwards : {count : int option; print : print_after}
-      -> (string, unit, unit) t
+      -> (string, int, empty) t
   | Goto : {line: int; col: int option; print : print_after}
       -> (string, unit, position option) t
 
@@ -369,17 +369,13 @@ let run_commit d ~file ~force ~include_suffix =
 let run_backwards d ~count ~print =
   assert (match count with None -> true | Some(i) -> 0 <= i);
   let cursor_index = Document.cursor_index d in
-  let index = match count with None -> 0 | Some(n) -> cursor_index - n in
-  match index < 0 with
-  | true  ->
-      let msg =
-        Printf.sprintf "the cursor can only move up to %i steps backwards"
-          cursor_index
-      in
-      ("", Error(msg, ()))
-  | false ->
-      Document.revert_before d ~index;
-      (render_print_after d print, Ok(()))
+  let count = match count with None -> cursor_index | Some(n) -> n in
+  let (index, actual_count) =
+    let index = cursor_index - count in
+    (max 0 index, if index < 0 then count + index else count)
+  in
+  Document.revert_before d ~index;
+  (render_print_after d print, Ok(actual_count))
 
 let cursor_position d =
   let (prefix, _) = document_parts d in

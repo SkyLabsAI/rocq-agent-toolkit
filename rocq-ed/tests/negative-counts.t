@@ -45,6 +45,9 @@ A well-formed command that cannot be applied to the document does print the
 requested state.
 
   $ rocq-ed backwards --print-context=0 --print-goals --count-items=1
-  Error: the cursor can only move up to 0 steps backwards.
-  [1]
+  Warning: Only 0 < 1 steps were reverted before reaching the start of the file.
+  
+     1| <CURSOR>Definition a := 0.
+  
+  Not currently in a proof.
   $ rocq-ed stop

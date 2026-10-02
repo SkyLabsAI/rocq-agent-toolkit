@@ -32,7 +32,7 @@ type (_, _, _) t =
       -> (unit, unit, unit) t
   | Goals : (unit, string, empty) t
   | Backwards : {count : int option; print : print_after}
-      -> (string, unit, unit) t
+      -> (string, int, empty) t
   | Goto : {line: int; col: int option; print : print_after}
       -> (string, unit, position option) t
 
