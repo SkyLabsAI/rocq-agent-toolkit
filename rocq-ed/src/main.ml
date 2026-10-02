@@ -200,6 +200,73 @@ let print_after =
   let make context goals = Request.{context; goals} in
   Term.(const make $ print_context $ print_goals)
 
+let feedback =
+  let default = Feedback.[Notice; Warning] in
+  let names =
+    (Feedback.Debug, "debug") :: (Feedback.Info, "info") ::
+      (Feedback.Notice, "notice") :: (Feedback.Warning, "warning") :: []
+  in
+  let components =
+    let make (l, s) =
+      Either.[(s, Left(l)); ("+"^s, Right(true,l)); ("-"^s, Right(false,l))]
+    in
+    List.concat_map make names
+  in
+  let parse s =
+    match s with
+    | "all" -> Ok(List.map fst names)
+    | "none" -> Ok([])
+    | _ ->
+    let items = String.split_on_char ',' s in
+    let find acc item =
+      match acc with Error(_) -> acc | Ok(items) ->
+      match List.assoc_opt item components with
+      | None -> Error(item)
+      | Some(item) -> Ok(item :: items)
+    in
+    match List.fold_left find (Ok([])) items with
+    | Error(item) ->
+        Error(`Msg(Printf.sprintf "invalid feedback selector %S (expected \
+          all, none, LEVEL, +LEVEL, or -LEVEL)" item))
+    | Ok(items) ->
+    let apply_selectors sels levels =
+      let add acc (enable, level) =
+        let acc = List.filter (fun l -> l <> level) acc in
+        if enable then level :: acc else acc
+      in
+      List.fold_left add levels sels
+    in
+    match List.partition_map Fun.id (List.rev items) with
+    | (items, []  ) -> Ok(items)
+    | ([]   , sels) -> Ok(apply_selectors sels default)
+    | (_    , _   ) ->
+        Error(`Msg("explicit feedback levels cannot be mixed with +LEVEL or \
+          -LEVEL selectors"))
+  in
+  let print ff levels =
+    let pp ff level = Format.pp_print_string ff (List.assoc level names) in
+    let levels = List.sort_uniq Stdlib.compare levels in
+    match List.length levels with
+    | 0 -> Format.pp_print_string ff "none"
+    | 4 -> Format.pp_print_string ff "all"
+    | _ ->
+    let pp_sep ff () = Format.pp_print_string ff "," in
+    Format.pp_print_list ~pp_sep pp ff levels
+  in
+  let doc =
+    "Controls which Rocq feedback messages are printed while processing \
+     commands. Values $(b,all) and $(b,none) respectively enable / disable \
+     all configurable feedback levels. A comma-separated list of $(b,LEVEL)s \
+     can be used to enable exactly those levels, and a comma-separated list \
+     of selectors of the form $(b,+LEVEL) / $(b,-LEVEL) modifies the default \
+     of $(b,notice,warning). Available $(b,LEVEL)s are $(b,debug), \
+     $(b,info), $(b,notice), and $(b,warning). For example, using \
+     $(b,--feedback=+info,-warning) is equivalent to \
+     $(b,--feedback=notice,info)."
+  in
+  Arg.(value & opt (Arg.conv (parse, print)) default &
+    info ["feedback"] ~docv:"SPEC" ~doc)
+
 let status_json =
   let doc =
     "Print a JSON object containing item lists for the processed prefix and \
@@ -264,11 +331,11 @@ let steps_cmd =
      of the items cannot be  processed successfully. In that case, the \
      cursor is moved to just before the failing item."
   in
-  let run count print id =
+  let run count print feedback id =
     let ((data, output), res) =
       Protocol.full_client_request id Request.(Steps({count; print}))
     in
-    Request.print_feedback data;
+    Request.print_feedback feedback data;
     Printf.printf "%s%!" output;
     match res with
     | Error(s, count) ->
@@ -283,7 +350,9 @@ let steps_cmd =
         in
         Option.iter check_count count
   in
-  let term = Term.(const run $ step_count $ print_after $ session_id) in
+  let term =
+    Term.(const run $ step_count $ print_after $ feedback $ session_id)
+  in
   Cmd.(make (info "steps" ~version ~exits ~doc) term)
 
 let command_text =
@@ -322,14 +391,14 @@ let insert_cmd =
      what remains after such failures. The command will return a non-zero \
      exit code if any of the insert code cannot be processed."
   in
-  let run keep text print id =
+  let run keep text print feedback id =
     let text =
       match text with Some(text) -> text | None ->
       In_channel.input_all stdin
     in
     let req = Request.(Insert({text; keep; print})) in
     let ((data, output), res) = Protocol.full_client_request id req in
-    Request.print_feedback data;
+    Request.print_feedback feedback data;
     Printf.printf "%s%!" output;
     match res with
     | Ok(()) -> ()
@@ -339,7 +408,8 @@ let insert_cmd =
         panic "Error: could not process suffix %S.\n%s" remaining s
   in
   let term =
-    Term.(const run $ insert_keep $ command_text $ print_after $ session_id)
+    Term.(const run $ insert_keep $ command_text $ print_after $ feedback $
+      session_id)
   in
   Cmd.(make (info "insert" ~version ~exits ~doc) term)
 
@@ -603,6 +673,9 @@ let main_man = [
       the document, the user must ensure that the text is insertable at the \
       cursor. In particular, appropriate blank characters should be included \
       as per the previous section.";
+  `P "By default $(b,rocq-ed insert) does not print $(b,info)-level feedback \
+      to the terminal. For certain queries, it may be useful to use option \
+      $(b,--feedback=+info) or even $(b,--feedback=all).";
 
   `S "COMMAND FAILURES";
   `P "All commands except $(b,init) and $(b,stop) can fail without affecting \

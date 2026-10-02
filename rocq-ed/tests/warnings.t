@@ -17,7 +17,8 @@ Warnings emitted while processing commands are printed on insert and steps.
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --count-items 1
+  $ rocq-ed steps --feedback=+info --count-items 1
+  foo is defined
   $ rocq-ed insert --text $'\nCheck foo.\n'
   Warning: Reference foo is deprecated since 1.0. use bar
   [deprecated-reference-since-1.0,deprecated-since-1.0,deprecated-reference,deprecated,default]
@@ -32,4 +33,51 @@ Re-processing items prints their warnings again.
   [deprecated-reference-since-1.0,deprecated-since-1.0,deprecated-reference,deprecated,default]
   foo
        : nat
+
+Feedback levels can be enabled and disabled relative to the default. Notices
+remain enabled in this example, but the warning is disabled.
+
+  $ rocq-ed insert --keep=none --feedback=+info,-warning --text $'\nDefinition modified := 3.\nCheck foo.\n'
+  modified is defined
+  foo
+       : nat
+
+An unsigned list enables exactly the listed feedback levels.
+
+  $ rocq-ed insert --keep=none --feedback=debug,info --text $'\nSet Debug "vernacinterp".\nDefinition explicit := 5.\nCheck foo.\n'
+  Debug: [vernacinterp] interpreting: Definition explicit := 5
+  explicit is defined
+  Debug: [vernacinterp] interpreting: Check foo
+
+The default levels can also be selected explicitly.
+
+  $ rocq-ed insert --keep=none --feedback=notice,warning --text $'\nCheck foo.\n'
+  Warning: Reference foo is deprecated since 1.0. use bar
+  [deprecated-reference-since-1.0,deprecated-since-1.0,deprecated-reference,deprecated,default]
+  foo
+       : nat
+
+All feedback can be disabled.
+
+  $ rocq-ed insert --keep=none --feedback=none --text $'\nCheck foo.\n'
+
+Or enabled, including informational messages.
+
+  $ rocq-ed insert --keep=none --feedback=all --text $'\nDefinition all_info := 4.\nCheck foo.\n'
+  all_info is defined
+  Warning: Reference foo is deprecated since 1.0. use bar
+  [deprecated-reference-since-1.0,deprecated-since-1.0,deprecated-reference,deprecated,default]
+  foo
+       : nat
+
+Debug feedback is retained and can be printed too.
+
+  $ rocq-ed insert --keep=none --feedback=+debug --text $'\nSet Debug "vernacinterp".\nDefinition debugged := 5.\n'
+  Debug: [vernacinterp] interpreting: Definition debugged := 5
+
+Error feedback is handled separately and is not configurable.
+
+  $ rocq-ed steps --feedback=+error 2>&1 | grep -o 'invalid feedback selector "+error"'
+  invalid feedback selector "+error"
+  [124]
   $ rocq-ed stop

@@ -42,4 +42,4 @@ val pp : ('a, 'b, 'c) t Format.pp
 
 val run : Document.t -> ('a, 'b, 'c) t -> 'a * ('b, string * 'c) Result.t
 
-val print_feedback : Document.commands_data -> unit
+val print_feedback : Feedback.level list -> Document.commands_data -> unit

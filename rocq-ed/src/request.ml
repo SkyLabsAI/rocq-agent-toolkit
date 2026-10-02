@@ -180,12 +180,16 @@ let run_json_status d =
   let json = Json.document_to_yojson d in
   Ok(Yojson.Safe.pretty_to_string ~std:true json ^ "\n")
 
-let print_feedback : Document.commands_data -> unit = fun data ->
+let print_feedback : Feedback.level list -> Document.commands_data -> unit =
+    fun levels data ->
   let print_feedback_message (m : Rocq_toplevel.feedback_message) =
-    match m.level with
-    | Feedback.Warning -> Printf.eprintf "Warning: %s\n%!" m.text
-    | Feedback.Notice  -> Printf.printf "%s\n%!" m.text
-    | _                -> ()
+    if List.mem m.level levels then
+      match m.level with
+      | Feedback.Debug   -> Printf.printf "Debug: %s\n%!" m.text
+      | Feedback.Info    -> Printf.printf "%s\n%!" m.text
+      | Feedback.Notice  -> Printf.printf "%s\n%!" m.text
+      | Feedback.Warning -> Printf.eprintf "Warning: %s\n%!" m.text
+      | Feedback.Error   -> ()
   in
   let print_feedback (data : Document.command_data) =
     List.iter print_feedback_message (data.Rocq_toplevel.feedback_messages)
