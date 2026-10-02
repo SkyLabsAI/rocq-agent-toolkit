@@ -90,7 +90,6 @@
   Goal 1:
     ============================
     forall x : nat, x = x
-  
   $ rocq-ed status
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
@@ -107,7 +106,6 @@
   Goal 1:
     ============================
     forall x : nat, x = x
-  
   $ rocq-ed status
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.

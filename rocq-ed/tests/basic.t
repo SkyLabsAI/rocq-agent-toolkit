@@ -87,7 +87,6 @@
   Goal 1:
     ============================
     forall x : nat, x = x
-  
   $ rocq-ed status
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
@@ -126,7 +125,6 @@
   Goal 1:
     ============================
     forall x : nat, x = x
-  
   $ rocq-ed status --context-lines 0
      4|   <CURSOR>intro x.
   $ rocq-ed status --context-lines 1
@@ -175,8 +173,6 @@
      8| (* END *)
      9| <CURSOR>
   $ rocq-ed steps --print-context --print-goals --count-items 100
-  Warning: Only 0 < 100 steps were executed before reaching the end of the file.
-  
      4|   intro x.
      5|   reflexivity.
      6| Qed.
@@ -185,9 +181,9 @@
      9| <CURSOR>
   
   Not currently in a proof.
-  $ rocq-ed backwards --print-context --print-goals --count-items 100
-  Warning: Only 11 < 100 steps were reverted before reaching the start of the file.
   
+  Warning: Only 0 < 100 steps were executed before reaching the end of the file.
+  $ rocq-ed backwards --print-context --print-goals --count-items 100
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
      3| Proof.
@@ -196,6 +192,8 @@
      6| Qed.
   
   Not currently in a proof.
+  
+  Warning: Only 11 < 100 steps were reverted before reaching the start of the file.
   $ rocq-ed stop
 
   $ find "$HOME" | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/" | sort

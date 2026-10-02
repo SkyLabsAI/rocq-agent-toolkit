@@ -16,9 +16,10 @@
      1| Goal True. Proof. *<CURSOR>
 
   $ rocq-ed insert --text="*idtac"
+  The document is unchanged.
+  
   Error: could not process suffix "*idtac".
   inserted text would change the command before the cursor
-  The document is unchanged.
   [1]
 
   $ rocq-ed stop

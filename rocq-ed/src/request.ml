@@ -197,7 +197,7 @@ let run_goals d =
   | Error(_) -> assert false
   | Ok(data) ->
   match data.Rocq_toplevel.proof_state with
-  | None -> "Not currently in a proof."
+  | None -> "Not currently in a proof.\n"
   | Some(p) ->
   let b = Buffer.create 73 in
   let add_focused i goal =
@@ -215,7 +215,10 @@ let run_goals d =
   print "Given up goals" given_up_goals;
   print "Shelved goals" shelved_goals;
   print "Unfocused goals" unfocused_goals;
-  Buffer.contents b
+  let goals = Buffer.contents b in
+  match String.ends_with ~suffix:"\n\n" goals with
+  | false -> goals
+  | true  -> String.sub goals 0 (String.length goals - 1)
 
 let render_print_after d {context; goals} =
   let context =
@@ -224,11 +227,9 @@ let render_print_after d {context; goals} =
     | All_context -> Some(run_status d ~context:None)
     | Context_lines lines -> Some(run_status d ~context:(Some(lines)))
   in
-  match context, goals with
-  | None, false -> ""
-  | Some(context), false -> context
-  | None, true -> run_goals d
-  | Some(context), true -> context ^ "\n" ^ run_goals d
+  let context = Stdlib.Option.to_list context in
+  let goals = if goals then [run_goals d] else [] in
+  String.concat "\n" (context @ goals)
 
 let run_steps d ~count ~print =
   let count =

@@ -58,7 +58,6 @@ The whole document can be requested too.
   Goal 1:
     ============================
     True
-  
   $ grep -c 'Request .* received' "$HOME/.cache/rocq-ed/$ROCQED_SESSION_ID/log"
   1
 
@@ -72,12 +71,10 @@ The status command can print context and goals together, or goals alone.
   Goal 1:
     ============================
     True
-  
   $ rocq-ed status --context-lines=none --goals
   Goal 1:
     ============================
     True
-  
   $ rocq-ed status --context-lines=none
   $ rocq-ed status --json --goals
   rocq-ed: '--goals' and '--json' cannot be used together

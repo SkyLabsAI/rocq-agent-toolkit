@@ -31,28 +31,26 @@ rolls the document back: nothing is inserted, whether the candidate works or not
     x : nat
     ============================
     x = x
-  
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
      3| Admitted.
   $ rocq-ed insert --keep=none --print-goals --text $'\n  reflexivity.\n'
-  Error: could not process suffix "reflexivity.\n".
-   The relation and is not a declared reflexive relation. Maybe you need to require the Corelib.Classes.RelationClasses library
-  The document is unchanged.
-  
   Open goals before the failing suffix (prior to document rollback):
   
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
   
+  The document is unchanged.
+  
+  Error: could not process suffix "reflexivity.\n".
+   The relation and is not a declared reflexive relation. Maybe you need to require the Corelib.Classes.RelationClasses library
   [1]
   $ rocq-ed goals
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  
   $ rocq-ed insert --text $'\n  intros x; split.\n'
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.

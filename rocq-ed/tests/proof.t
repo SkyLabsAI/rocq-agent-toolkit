@@ -25,7 +25,6 @@
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
@@ -34,12 +33,10 @@
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  
   $ rocq-ed steps --print-goals --count-items 0
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  
   $ rocq-ed insert --print-context --print-goals --text $'\n  intros x; split.'
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -55,7 +52,6 @@
     x : nat
     ============================
     x = x
-  
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -71,12 +67,7 @@
     x : nat
     ============================
     x = x
-  
   $ rocq-ed insert --print-context --print-goals --text $'\n  - fail.\n  -'
-  Error: could not process suffix "fail.\n  -".
-  Tactic failure.
-  The document is unchanged.
-  
   Context and open goals before the failing suffix (prior to document rollback):
   
      1| Theorem test : forall x : nat, True /\ x = x.
@@ -92,6 +83,11 @@
     True
   
   Unfocused goals: 1
+  
+  The document is unchanged.
+  
+  Error: could not process suffix "fail.\n  -".
+  Tactic failure.
   [1]
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
@@ -110,7 +106,6 @@
     x : nat
     ============================
     x = x
-  
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -140,9 +135,10 @@ Even for a query the user needs to be careful to deal with blanks.
 
   $ rocq-ed insert --text "idtac."
   $ rocq-ed insert --keep=none --text "Show."
+  The document is unchanged.
+  
   Error: could not process suffix "Show.".
   leading blanks required at this point in the document
-  The document is unchanged.
   [1]
 
   $ rocq-ed insert --keep=none --text " Show."
@@ -213,7 +209,6 @@ Even for a query the user needs to be careful to deal with blanks.
   Goal 2:
     ============================
     True
-  
   $ rocq-ed insert --print-context --print-goals --text $' 1: shelve.'
      5|   - reflexivity.
      6| Admitted.
@@ -241,9 +236,6 @@ Even for a query the user needs to be careful to deal with blanks.
   
   Shelved goals: 1
   $ rocq-ed insert --print-context --print-goals --keep=all --text $'\n  fail.'
-  Error: could not process suffix "fail.".
-  Tactic failure.
-  
      6| Admitted.
      7| 
      8| Goal True /\ True.
@@ -256,6 +248,9 @@ Even for a query the user needs to be careful to deal with blanks.
     True
   
   Shelved goals: 1
+  
+  Error: could not process suffix "fail.".
+  Tactic failure.
   [1]
   $ rocq-ed status --context-lines 3
      8| Goal True /\ True.

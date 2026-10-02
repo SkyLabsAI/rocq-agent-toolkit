@@ -200,11 +200,6 @@ let print_after =
   let make context goals = Request.{context; goals} in
   Term.(const make $ print_context $ print_goals)
 
-let output_after_error s =
-  match s with "" -> "" | _ ->
-  let len = String.length s in
-  "\n\n" ^ if s.[len - 1] = '\n' then String.sub s 0 (len - 1) else s
-
 let status_json =
   let doc =
     "Print a JSON object containing item lists for the processed prefix and \
@@ -274,18 +269,19 @@ let steps_cmd =
       Protocol.full_client_request id Request.(Steps({count; print}))
     in
     Request.print_feedback data;
+    Printf.printf "%s%!" output;
     match res with
     | Error(s, count) ->
-        panic "Failed after processing %i items.\nError: %s.%s" count s
-          (output_after_error output)
+        if output <> "" then Printf.printf "\n%!";
+        panic "Failed after processing %i items.\nError: %s." count s
     | Ok(real_count) ->
-    let check_count count =
-      if real_count < count then
-        Printf.printf "Warning: Only %i < %i steps were executed before \
-          reaching the end of the file.\n\n" real_count count
-    in
-    Option.iter check_count count;
-    Printf.printf "%s%!" output
+        let check_count count =
+          match real_count < count with false -> () | true ->
+          if output <> "" then Printf.printf "\n%!";
+          Printf.eprintf "Warning: Only %i < %i steps were executed before \
+            reaching the end of the file.\n" real_count count
+        in
+        Option.iter check_count count
   in
   let term = Term.(const run $ step_count $ print_after $ session_id) in
   Cmd.(make (info "steps" ~version ~exits ~doc) term)
@@ -334,14 +330,13 @@ let insert_cmd =
     let req = Request.(Insert({text; keep; print})) in
     let ((data, output), res) = Protocol.full_client_request id req in
     Request.print_feedback data;
+    Printf.printf "%s%!" output;
     match res with
-    | Ok(()) -> Printf.printf "%s%!" output
+    | Ok(()) -> ()
     | Error(s, Request.{remaining; unchanged}) ->
-        let unchanged =
-          if unchanged then "\nThe document is unchanged." else ""
-        in
-        panic "Error: could not process suffix %S.\n%s%s%s"
-          remaining s unchanged (output_after_error output)
+        if output <> "" then Printf.printf "\n%!";
+        if unchanged then Printf.printf "The document is unchanged.\n\n%!";
+        panic "Error: could not process suffix %S.\n%s" remaining s
   in
   let term =
     Term.(const run $ insert_keep $ command_text $ print_after $ session_id)
@@ -365,9 +360,12 @@ let delete_cmd =
     let (output, res) =
       Protocol.full_client_request id Request.(Delete({count; print}))
     in
+    Printf.printf "%s%!" output;
     match res with
-    | Ok(()) -> Printf.printf "%s%!" output
-    | Error(s, ()) -> panic "Error: %s.%s" s (output_after_error output)
+    | Ok(()) -> ()
+    | Error(s, ()) ->
+        if output <> "" then Printf.printf "\n%!";
+        panic "Error: %s." s
   in
   let term =
     Term.(const run $ deleted_item_count $ print_after $ session_id)
@@ -445,13 +443,14 @@ let backwards_cmd =
     let (output, Ok(real_count)) =
       Protocol.full_client_request id Request.(Backwards({count; print}))
     in
+    Printf.printf "%s%!" output;
     let check_count count =
-      if real_count < count then
-        Printf.printf "Warning: Only %i < %i steps were reverted before \
-          reaching the start of the file.\n\n" real_count count
+      match real_count < count with false -> () | true ->
+      if output <> "" then Printf.printf "\n%!";
+      Printf.eprintf "Warning: Only %i < %i steps were reverted before \
+        reaching the start of the file.\n%!" real_count count
     in
     Option.iter check_count count;
-    Printf.printf "%s%!" output
   in
   let term = Term.(const run $ backwards_count $ print_after $ session_id) in
   Cmd.(make (info "backwards" ~version ~exits ~doc) term)
@@ -504,13 +503,16 @@ let goto_cmd =
     let (output, res) =
       Protocol.full_client_request id Request.(Goto({line; col; print}))
     in
+    Printf.printf "%s%!" output;
     match res with
-    | Ok(()) -> Printf.printf "%s%!" output
+    | Ok(()) -> ()
     | Error(s, None) ->
-        panic "Error: %s.%s" s (output_after_error output)
+        if output <> "" then Printf.printf "\n%!";
+        panic "Error: %s." s
     | Error(s, Some(line, col)) ->
-        panic "Error: failed to process the item at line %i, column %i.\n%s%s"
-          line col s (output_after_error output)
+        if output <> "" then Printf.printf "\n%!";
+        panic "Error: failed to process the item at line %i, column %i.\n%s"
+          line col s
   in
   let term = Term.(const run $ goto_pos $ print_after $ session_id) in
   Cmd.(make (info "goto" ~version ~exits ~doc) term)
