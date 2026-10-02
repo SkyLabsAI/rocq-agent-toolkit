@@ -293,7 +293,9 @@ let steps_cmd =
 let command_text =
   let doc =
     "Specifies a chunk of Rocq code $(docv) to insert into the document. If \
-     it is not given, then the chunk of text is read from standard input"
+     it is not given, then the chunk of text is read from standard input. \
+     Leading / trailing white spaces may be required (see $(b,rocq-ed \
+     --help) for details)."
   in
   Arg.(value & opt (some string) None & info ["t"; "text"] ~doc ~docv:"TEXT")
 
@@ -534,7 +536,7 @@ let main_man = [
   `P "The session-managed $(i,document) is the editable, in-memory \
       representation of a Rocq source file. It is structured as a sequence \
       of $(i,items), each of which is either a single Rocq $(i,command) or \
-      a chunk of $(i,blanks) (whitespace and Rocq comments).";
+      a chunk of $(i,blanks) (white spaces and Rocq comments).";
   `P "The document carries a $(i,cursor) that splits its items into two \
       parts. The $(i,prefix) holds items that have already been processed \
       by the underlying Rocq top-level: commands in the prefix have been \
@@ -567,30 +569,34 @@ let main_man = [
       validation.";
 
   `S "BLANK CHARACTERS";
-  `P "Because the document must remain a syntactically valid Rocq source \
-      at all times, blank characters between commands are not inserted \
-      implicitly: the caller is responsible for providing them. After a \
-      dot-terminated command, Rocq requires at least one whitespace \
-      character (space, tab, carriage return, or newline) before the next \
-      command can start. Inserting $(b,\"Check 1.\") directly after such a \
-      command will therefore fail; the inserted text must itself start \
-      with the required blanks, e.g. $(b,\" Check 1.\"). A comment alone \
-      does not satisfy this requirement; an actual whitespace character \
-      is needed.";
-  `P "Blanks are themselves first-class items of the document. They appear \
-      at their position in the output of $(b,rocq-ed status), and they \
-      can be traversed by cursor movements or deleted just like commands.";
+  `P "Appropriate chunks of blank characters formed of white spaces and \
+      Rocq comments must be explicitly inserted by the user in between Rocq \
+      commands, so that the document remains syntactically valid as a Rocq \
+      source file. Blank characters are never automatically inserted by \
+      $(b,rocq-ed).";
+  `P "A chunk of blank characters counts as its own item in the document,
+      and it can be inserted and deleted just like a Rocq command. Two items \
+      each containing a chunk of blank characters may appear next to \
+      each-other in the document: they are not automatically combined.";
+  `P "The user should pay close attention to the items immediately \
+      surrounding the cursor when inserting a chunk of text. Indeed, \
+      leading/trailing spaces may be required for the inserted text not to \
+      interfere with the surrounding items. For example, if the cursor is at \
+      the end of the document and immediately follows item \
+      $(b,\"Check 0.\"), then inserting $(b,\"Check 1.\") fails because it \
+      would produce $(b,\"Check 0.Check 1.\") (which is a syntax error). \
+      Inserting additional blanks using $(b,\" Check 1.\") avoids the issue.";
 
   `S "QUERYING ROCQ";
   `P "In addition to inspecting the proof state using $(b,rocq-ed goals), \
       arbitrary Rocq queries can be run with $(b,rocq-ed insert --keep=none) \
       since it does not persist any change to the document. For example, to \
-      query the definition of a function $(b,f) together with all available \
-      lemmas about it, one can use $(b,rocq-ed insert --keep=none --text=' \
-      About f. Search f. '). Even if no changes are persisted to the \
-      document, the user must ensure that the text is insertable at the \
+      query the definition of a function $(b,f) together with a list of all \
+      available lemmas about it, one can use $(b,rocq-ed insert --keep=none \
+      --text=' About f. Search f. '). Although no changes are persisted to \
+      the document, the user must ensure that the text is insertable at the \
       cursor. In particular, appropriate blank characters should be included \
-      around the text.";
+      as per the previous section.";
 
   `S "COMMAND FAILURES";
   `P "All commands except $(b,init) and $(b,stop) can fail without affecting \
