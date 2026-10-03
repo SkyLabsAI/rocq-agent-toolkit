@@ -13,12 +13,12 @@
   > Definition after := True.
   > EOF
 
-Atomic insertions report the failing suffix, exit with failure, and leave the
-document unchanged.
+Atomic insertions report the remaining inserted text, exit with failure, and
+leave the document unchanged.
 
   $ eval $(rocq-ed init atomic.v)
-  $ sh -c 'rocq-ed insert --print-context --print-goals --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not process suffix \"Check nope. Definition later := True.\"." out; grep -F "The document is unchanged." out; echo "EXIT:$code"'
-  Error: could not process suffix "Check nope. Definition later := True.".
+  $ sh -c 'rocq-ed insert --print-context --print-goals --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not parse or process remaining text \"Check nope. Definition later := True.\"." out; grep -F "The document is unchanged." out; echo "EXIT:$code"'
+  Error: could not parse or process remaining text "Check nope. Definition later := True.".
   The document is unchanged.
   EXIT:1
   $ rocq-ed status --context-lines=0
@@ -29,8 +29,8 @@ With --keep=successful, successfully processed items are kept, but the failing
 and later inserted items are discarded.
 
   $ eval $(rocq-ed init successful.v)
-  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=successful --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not process suffix \"Check nope. Definition later := True.\"." out; if grep -q "The document is unchanged." out; then echo "unexpected unchanged message"; fi; echo "EXIT:$code"'
-  Error: could not process suffix "Check nope. Definition later := True.".
+  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=successful --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not parse or process remaining text \"Check nope. Definition later := True.\"." out; if grep -q "The document is unchanged." out; then echo "unexpected unchanged message"; fi; echo "EXIT:$code"'
+  Error: could not parse or process remaining text "Check nope. Definition later := True.".
   EXIT:1
   $ rocq-ed status --context-lines=0
      1| Definition ok := True. <CURSOR>
@@ -39,8 +39,8 @@ and later inserted items are discarded.
 The original suffix is preserved when discarding inserted suffix items.
 
   $ eval $(rocq-ed init suffix.v)
-  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=successful --text "Definition ok := True. Check nope. " >out 2>&1; code=$?; grep -F "Error: could not process suffix \"Check nope. \"." out; if grep -q "The document is unchanged." out; then echo "unexpected unchanged message"; fi; echo "EXIT:$code"'
-  Error: could not process suffix "Check nope. ".
+  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=successful --text "Definition ok := True. Check nope. " >out 2>&1; code=$?; grep -F "Error: could not parse or process remaining text \"Check nope. \"." out; if grep -q "The document is unchanged." out; then echo "unexpected unchanged message"; fi; echo "EXIT:$code"'
+  Error: could not parse or process remaining text "Check nope. ".
   EXIT:1
   $ rocq-ed status --context-lines=0
      1| Definition ok := True. <CURSOR>Definition after := True.
@@ -49,8 +49,8 @@ The original suffix is preserved when discarding inserted suffix items.
 With --keep=all, the failing and later inserted items remain in the suffix.
 
   $ eval $(rocq-ed init all.v)
-  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=all --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not process suffix \"Check nope. Definition later := True.\"." out; if grep -q "The document is unchanged." out; then echo "unexpected unchanged message"; fi; echo "EXIT:$code"'
-  Error: could not process suffix "Check nope. Definition later := True.".
+  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=all --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not parse or process remaining text \"Check nope. Definition later := True.\"." out; if grep -q "The document is unchanged." out; then echo "unexpected unchanged message"; fi; echo "EXIT:$code"'
+  Error: could not parse or process remaining text "Check nope. Definition later := True.".
   EXIT:1
   $ rocq-ed status --context-lines=0
      1| Definition ok := True. <CURSOR>Check nope. Definition later := True.
@@ -60,8 +60,8 @@ Parse failures are still atomic even with --keep=all, because no reliable item
 boundary was found to insert into the document.
 
   $ eval $(rocq-ed init parse_fail.v)
-  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=all --text "(* unterminated" >out 2>&1; code=$?; grep -F "Error: could not process suffix \"(* unterminated\"." out; grep -F "unclosed initial comment" out; grep -F "The document is unchanged." out; echo "EXIT:$code"'
-  Error: could not process suffix "(* unterminated".
+  $ sh -c 'rocq-ed insert --print-context --print-goals --keep=all --text "(* unterminated" >out 2>&1; code=$?; grep -F "Error: could not parse or process remaining text \"(* unterminated\"." out; grep -F "unclosed initial comment" out; grep -F "The document is unchanged." out; echo "EXIT:$code"'
+  Error: could not parse or process remaining text "(* unterminated".
   unclosed initial comment
   The document is unchanged.
   EXIT:1

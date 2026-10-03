@@ -52,7 +52,6 @@ let feedback_filter : Feed.t -> feedback_message option = fun fb ->
     {level; loc; quickfix; text}
   in
   match fb.contents with
-  | Message(Debug, _  , _       , _ ) -> None
   | Message(level, loc, quickfix, pp) -> Some(make level loc quickfix pp)
   | _                                 -> None
 

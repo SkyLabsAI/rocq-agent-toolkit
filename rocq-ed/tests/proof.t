@@ -17,7 +17,7 @@
   $ eval $(rocq-ed init test.v)
   $ rocq-ed goals
   Not currently in a proof.
-  $ rocq-ed steps --print-context --print-goals --count-items 3
+  $ rocq-ed move --print-context --print-goals --item=+3
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
      3| Admitted.
@@ -25,7 +25,6 @@
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.<CURSOR>
@@ -34,12 +33,10 @@
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  
-  $ rocq-ed steps --print-goals --count-items 0
+  $ rocq-ed move --print-goals --item=+0
   Goal 1:
     ============================
     forall x : nat, True /\ x = x
-  
   $ rocq-ed insert --print-context --print-goals --text $'\n  intros x; split.'
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -55,7 +52,6 @@
     x : nat
     ============================
     x = x
-  
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -71,11 +67,27 @@
     x : nat
     ============================
     x = x
-  
   $ rocq-ed insert --print-context --print-goals --text $'\n  - fail.\n  -'
-  Error: could not process suffix "fail.\n  -".
-  Tactic failure.
+  Context and open goals at the insertion failure (prior to document rollback):
+  
+     1| Theorem test : forall x : nat, True /\ x = x.
+     2| Proof.
+     3|   intros x; split.
+     4|   - <CURSOR>fail.
+     5|   -
+     6| Admitted.
+  
+  Goal 1:
+    x : nat
+    ============================
+    True
+  
+  Unfocused goals: 1
+  
   The document is unchanged.
+  
+  Error: could not parse or process remaining text "fail.\n  -".
+  Tactic failure.
   [1]
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
@@ -94,7 +106,6 @@
     x : nat
     ============================
     x = x
-  
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -102,7 +113,10 @@
      4|   - constructor.
      5|   - <CURSOR>
      6| Admitted.
-  $ rocq-ed query --text "About eq_refl."
+
+Inserting with --keep=none can be used to run a query.
+
+  $ rocq-ed insert --keep=none --text "About eq_refl."
   eq_refl : forall {A : Type} {x : A}, x = x
   
   eq_refl is template universe polymorphic
@@ -117,15 +131,26 @@
      5|   - <CURSOR>
      6| Admitted.
 
-Test that the output of queries is properly terminated by a newline
+Even for a query the user needs to be careful to deal with blanks.
 
-  $ rocq-ed query --text "Show." && echo "<NEWLINE>"
+  $ rocq-ed insert --text "idtac."
+  $ rocq-ed insert --keep=none --text "Show."
+  The document is unchanged.
+  
+  Error: could not parse or process remaining text "Show.".
+  leading blanks required at this point in the document
+  [1]
+
+  $ rocq-ed insert --keep=none --text " Show."
   1 goal
     
     x : nat
     ============================
     x = x
-  <NEWLINE>
+
+  $ rocq-ed move --item=-1
+  $ rocq-ed delete
+
   $ rocq-ed insert --print-context --print-goals --text "reflexivity."
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -134,6 +159,7 @@ Test that the output of queries is properly terminated by a newline
      5|   - reflexivity.<CURSOR>
      6| Admitted.
   
+  No open goals.
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -141,7 +167,7 @@ Test that the output of queries is properly terminated by a newline
      4|   - constructor.
      5|   - reflexivity.<CURSOR>
      6| Admitted.
-  $ rocq-ed steps --print-context --print-goals --count-items 2
+  $ rocq-ed move --print-context --print-goals --item=+2
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
      3|   intros x; split.
@@ -161,7 +187,7 @@ Test that the output of queries is properly terminated by a newline
   Theorem test : forall x : nat, True /\ x = x.
   Proof.
   Admitted.
-  $ rocq-ed commit
+  $ rocq-ed commit --force
   $ cat test.v
   Theorem test : forall x : nat, True /\ x = x.
   Proof.
@@ -184,7 +210,6 @@ Test that the output of queries is properly terminated by a newline
   Goal 2:
     ============================
     True
-  
   $ rocq-ed insert --print-context --print-goals --text $' 1: shelve.'
      5|   - reflexivity.
      6| Admitted.
@@ -212,7 +237,20 @@ Test that the output of queries is properly terminated by a newline
   
   Shelved goals: 1
   $ rocq-ed insert --print-context --print-goals --keep=all --text $'\n  fail.'
-  Error: could not process suffix "fail.".
+     6| Admitted.
+     7| 
+     8| Goal True /\ True.
+     9| Proof.
+    10|   split. 1: shelve.
+    11|   <CURSOR>fail.
+  
+  Goal 1:
+    ============================
+    True
+  
+  Shelved goals: 1
+  
+  Error: could not parse or process remaining text "fail.".
   Tactic failure.
   [1]
   $ rocq-ed status --context-lines 3
