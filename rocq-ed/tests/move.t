@@ -19,18 +19,15 @@
   $ eval $(rocq-ed init test.v)
   $ rocq-ed move --position-line-column 0
   Usage: rocq-ed move [--help] [OPTION]…
-  rocq-ed: option '--position-line-column': The line number should be at least
-           1.
+  rocq-ed: option '--position-line-column': line number must be at least 1
   [124]
   $ rocq-ed move --position-line-column 0:1
   Usage: rocq-ed move [--help] [OPTION]…
-  rocq-ed: option '--position-line-column': The line number should be at least
-           1.
+  rocq-ed: option '--position-line-column': line number must be at least 1
   [124]
   $ rocq-ed move --position-line-column 1:0
   Usage: rocq-ed move [--help] [OPTION]…
-  rocq-ed: option '--position-line-column': The column number should be at
-           least 1.
+  rocq-ed: option '--position-line-column': column number must be at least 1
   [124]
   $ rocq-ed move --print-context --print-goals --position-line-column 6:1
   Error: no item on line 6.

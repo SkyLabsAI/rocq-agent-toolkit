@@ -16,8 +16,8 @@ let get_dune_root : unit -> (Filepath.t, string) Result.t = fun () ->
   | Error(_,s) ->
       Fileutil.remove_file temp;
       let msg =
-        Printf.sprintf "cannot find DUNE_SOURCEROOT of from directory %S \
-          (process %s)" (Sys.getcwd()) s
+        Printf.sprintf "cannot determine the dune workspace root from \
+          directory %S (process %s)" (Sys.getcwd()) s
       in
       Error(msg)
   | Ok(()) ->

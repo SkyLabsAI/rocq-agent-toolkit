@@ -25,9 +25,9 @@ let non_dir_file_with_ext : string -> string Arg.conv = fun ext ->
 
 let rocq_file =
   let doc =
-    "Path to an existing Rocq source file. The source file is expected to be \
-     managed by a dune project, so that appropriate CLI arguments can be \
-     automatically obtained."
+    "Path to an existing Rocq source file. The source file must belong to an \
+     appropriate Rocq stanza in a dune project, so that the Rocq \
+     command-line arguments can be obtained automatically."
   in
   let v_file = non_dir_file_with_ext ".v" in
   Arg.(required & pos 0 (some v_file) None & info [] ~docv:"FILE" ~doc)
@@ -43,9 +43,8 @@ let no_build_deps =
 
 let jobs =
   let doc =
-    "Indicates that no more than $(docv) concurrent jobs should be run by \
-     $(b,dune) when building dependencies. If $(b,--no-build-deps) is given, \
-     this option is a no-op."
+    "Limit $(b,dune) to at most $(docv) concurrent jobs when building \
+     dependencies. If $(b,--no-build-deps) is given, this option is a no-op."
   in
   Arg.(value & opt (some int) None & info ["j"; "jobs"] ~doc ~docv:"JOBS")
 
@@ -82,12 +81,13 @@ let init_cmd =
     "Start a fresh command-line editor session for the given Rocq source \
      file. By default, the server detaches to run as a daemon and prints an \
      $(b,export) command for $(b,ROCQED_SESSION_ID). In a POSIX-compatible \
-     shell, pass the output of $(b,rocq-ed) $(b,init) to $(b,eval) to start \
-     the daemon and configure the current shell. With $(b,--no-daemon), the \
-     server remains in the foreground until the session is stopped and \
-     prints $(b,ROCQED_SESSION_ID=ID). Because the command does not return, \
-     it cannot be passed to $(b,eval). Instead, pass the identifier to \
-     follow-up commands or export the assignment in a separate shell."
+     shell, pass the output of $(b,rocq-ed init) to $(b,eval) to start \
+     the daemon and configure the current shell. With \
+     $(b,--no-daemon), the server remains in the foreground until the \
+     session is stopped and prints a banner containing \
+     $(b,ROCQED_SESSION_ID=ID). Because the command does not return, it \
+     cannot be passed to $(b,eval). Instead, pass the identifier to \
+     follow-up commands or export the printed assignment in a separate shell."
   in
   let term =
     Term.(const Protocol.init $ dune_config $ no_daemon $ rocq_file)
@@ -177,10 +177,12 @@ let print_goals operation =
   let doc =
     match operation with
     | `Insert ->
-        "Print the open proof goals after attempting the insertion and \
-         before any rollback. Goals are printed after a Rocq processing \
-         failure, but not when the insertion is rejected before Rocq \
-         processing begins."
+        "Print the open proof goals after attempting the insertion. On a \
+         failed insertion with $(b,--keep=atomic) or $(b,--keep=none), the \
+         goals describe the transient state before rollback. Otherwise they \
+         describe the state retained by the selected keep policy. Goals are \
+         not printed when the insertion is rejected before Rocq processing \
+         begins."
     | `Move ->
         "Print the open proof goals after moving the cursor, including when \
          forward processing stops at a failing item. Nothing is printed if \
@@ -195,10 +197,12 @@ let print_context operation =
   let timing =
     match operation with
     | `Insert ->
-        "Print document context after attempting the insertion and before \
-         any rollback. Context is printed after a Rocq processing failure, \
-         but not when the insertion is rejected before Rocq processing \
-         begins."
+        "Print document context after attempting the insertion. On a failed \
+         insertion with $(b,--keep=atomic) or $(b,--keep=none), the context \
+         describes the transient document before rollback. Otherwise it \
+         describes the document retained by the selected keep policy. \
+         Context is not printed when the insertion is rejected before Rocq \
+         processing begins."
     | `Move ->
         "Print document context after moving the cursor, including when \
          forward processing stops at a failing item. Nothing is printed if \
@@ -291,8 +295,11 @@ let feedback =
 
 let status_json =
   let doc =
-    "Print a JSON object containing item lists for the processed prefix and \
-     unprocessed suffix, plus the current structured proof goals, if any."
+    "Print a JSON object containing $(b,prefix), $(b,suffix), and \
+     $(b,goals). Each item contains its kind and text; processed prefix \
+     items also contain a zero-based byte offset. Command and ghost items \
+     also contain structured command data. $(b,goals) is null outside proof \
+     mode and is a list of focused goals in proof mode, possibly empty."
   in
   Arg.(value & flag & info ["json"] ~doc)
 
@@ -345,25 +352,25 @@ let move_pos =
       | [line] ->
           begin
             match int_of_string_opt line with
-            | None -> Error(`Msg("The line number must be an integer."))
+            | None -> Error(`Msg("line number must be an integer"))
             | Some(line) when line < 1 ->
-                Error(`Msg("The line number should be at least 1."))
+                Error(`Msg("line number must be at least 1"))
             | Some(line) -> Ok(Request.Position({line; col = None}))
           end
       | [line; col] ->
           begin
             match int_of_string_opt line with
-            | None -> Error(`Msg("The line number must be an integer."))
+            | None -> Error(`Msg("line number must be an integer"))
             | Some(line) when line < 1 ->
-                Error(`Msg("The line number should be at least 1."))
+                Error(`Msg("line number must be at least 1"))
             | Some(line) ->
             match int_of_string_opt col with
-            | None -> Error(`Msg("The column number must be an integer."))
+            | None -> Error(`Msg("column number must be an integer"))
             | Some(col) when col < 1 ->
-                Error(`Msg("The column number should be at least 1."))
+                Error(`Msg("column number must be at least 1"))
             | Some(col) -> Ok(Request.Position({line; col = Some(col)}))
           end
-      | _ -> Error(`Msg("Format must be LINE or LINE:COLUMN."))
+      | _ -> Error(`Msg("expected LINE or LINE:COLUMN"))
     in
     let print ff target =
       match target with
@@ -375,9 +382,11 @@ let move_pos =
     Arg.conv (parse, print)
   in
   let doc =
-    "Move to the item at the specified source position. Line and column \
-     numbers are one-based. If $(b,COLUMN) is omitted, move to the first \
-     item on $(b,LINE)."
+    "Move to just before the item containing the specified source position. \
+     Line and column numbers are one-based, and columns count Unicode \
+     grapheme clusters. If $(b,COLUMN) is omitted, move to the first item on \
+     $(b,LINE). The cursor is always placed at an item boundary, never \
+     inside an item."
   in
   Arg.(value & opt (some position) None &
     info ["p"; "position-line-column"] ~doc ~docv:"LINE[:COLUMN]")
@@ -422,10 +431,13 @@ let move_item =
     Arg.conv (parse, print)
   in
   let doc =
-    "Move using an item position. $(b,NUM) is an absolute, zero-based cursor \
-     position (the number of items before the cursor). $(b,+NUM) and \
-     $(b,-NUM) move relative to the current cursor. $(b,+all) moves to the \
-     end of the document and $(b,-all) moves to its start."
+    "Move using an item position. Items include Rocq commands and chunks of \
+     blanks. $(b,NUM) is an absolute, zero-based cursor position (the number \
+     of items before the cursor). $(b,+NUM) and $(b,-NUM) move relative to \
+     the current cursor. A relative move beyond an endpoint stops there and \
+     emits a warning; an out-of-range absolute position is an error. \
+     $(b,+all) moves to the end of the document and $(b,-all) moves to its \
+     start."
   in
   Arg.(value & opt (some item) None &
     info ["n"; "item"] ~doc ~docv:"NUM|+NUM|-NUM|+all|-all")
@@ -458,7 +470,8 @@ let move_cmd =
     match res with
     | Error(s, Request.Relative_failure(count)) ->
         if output <> "" then Printf.printf "\n%!";
-        panic "Failed after processing %i items.\nError: %s." count s
+        panic "Error: processing failed after the cursor advanced across %i \
+          items.\n%s" count s
     | Error(s, Request.Target_failure(None)) ->
         if output <> "" then Printf.printf "\n%!";
         panic "Error: %s." s
@@ -472,12 +485,12 @@ let move_cmd =
           if output <> "" then Printf.printf "\n%!";
           match direction with
           | Request.Forward ->
-              Printf.eprintf "Warning: Only %i < %i steps were executed \
-                before reaching the %s of the file.\n%!"
+              Printf.eprintf "Warning: moved forward by %i of %i requested \
+                items; reached the %s of the document.\n%!"
                 real_count count endpoint
           | Request.Backward ->
-              Printf.eprintf "Warning: Only %i < %i steps were reverted \
-                before reaching the %s of the file.\n%!"
+              Printf.eprintf "Warning: moved backward by %i of %i requested \
+                items; reached the %s of the document.\n%!"
                 real_count count endpoint
         in
         match target with
@@ -545,7 +558,8 @@ let insert_cmd =
     | Error(s, Request.{remaining; unchanged}) ->
         if output <> "" then Printf.printf "\n%!";
         if unchanged then Printf.printf "The document is unchanged.\n\n%!";
-        panic "Error: could not process suffix %S.\n%s" remaining s
+        panic "Error: could not parse or process remaining text %S.\n%s"
+          remaining s
   in
   let term =
     Term.(const run $ insert_keep $ command_text $ print_after `Insert $
@@ -565,8 +579,9 @@ let deleted_item_count =
 let delete_cmd =
   let doc =
     "Delete items (blanks or commands) after the cursor. One item is deleted \
-     by default; $(b,--count-items=all) deletes the whole suffix. The cursor \
-     is not moved."
+     by default; $(b,--count-items=all) deletes the whole suffix. Only \
+     unprocessed suffix items can be deleted; move the cursor backward first \
+     to delete a processed item. The cursor is not moved by deletion."
   in
   let run count print id =
     let (output, res) =
@@ -586,8 +601,10 @@ let delete_cmd =
 
 let commit_file =
   let doc =
-    "Write the committed contents to $(docv) instead of the source file. The \
-     session continues to target the original source file."
+    "Write the committed contents to $(docv) instead of the source file. A \
+     relative path is resolved from the source file's directory, and an \
+     existing target is overwritten. The session continues to target the \
+     original source file."
   in
   Arg.(value & opt (some string) None & info ["file"] ~doc ~docv:"PATH")
 
@@ -613,7 +630,8 @@ let commit_cmd =
      $(b,--file). By default, the command fails if there are unprocessed \
      items after the cursor. Use $(b,--force) to write only the processed \
      prefix despite a non-empty suffix, or $(b,--include-suffix) to also \
-     write the unchecked suffix."
+     write the unchecked suffix. Committing does not process items or move \
+     the cursor."
   in
   let run file force include_suffix id =
     let req = Request.(Commit({file; force; include_suffix})) in
@@ -629,8 +647,10 @@ let commit_cmd =
 
 let goals_cmd =
   let doc =
-    "Print the current proof state of the document, including the list of \
-     the goals currently in focus."
+    "Print the current proof state. Focused goals are printed in full; \
+     given-up, shelved, and unfocused goals are summarized by count. The \
+     command distinguishes being outside proof mode from having no open \
+     goals."
   in
   let run id =
     let Ok(s) = Protocol.client_request id Request.Goals in
@@ -655,8 +675,9 @@ let main_man = [
       POSIX-compatible shell, the following starts a session and configures \
       the current shell:";
   `Pre "$(b,eval \\$(rocq-ed init path/to/file.v))";
-  `P "With $(b,--no-daemon), export the printed assignment in a separate \
-      shell or pass the identifier with $(b,--session-id=ID).";
+  `P "With $(b,--no-daemon), copy and export the printed \
+      $(b,ROCQED_SESSION_ID=ID) assignment in a separate shell, or pass the \
+      identifier with $(b,--session-id=ID).";
 
   `S "DOCUMENT MODEL";
   `P "The session-managed $(i,document) is the editable, in-memory \

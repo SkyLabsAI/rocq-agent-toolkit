@@ -15,7 +15,7 @@
 
   $ eval $(rocq-ed init test.v)
   $ rocq-ed move --item=100
-  Error: index out of bounds.
+  Error: item position 100 is out of bounds (valid range: 0 to 4).
   [1]
   $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition x := True.

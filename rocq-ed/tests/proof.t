@@ -68,7 +68,7 @@
     ============================
     x = x
   $ rocq-ed insert --print-context --print-goals --text $'\n  - fail.\n  -'
-  Context and open goals before the failing suffix (prior to document rollback):
+  Context and open goals at the insertion failure (prior to document rollback):
   
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -86,7 +86,7 @@
   
   The document is unchanged.
   
-  Error: could not process suffix "fail.\n  -".
+  Error: could not parse or process remaining text "fail.\n  -".
   Tactic failure.
   [1]
   $ rocq-ed status
@@ -137,7 +137,7 @@ Even for a query the user needs to be careful to deal with blanks.
   $ rocq-ed insert --keep=none --text "Show."
   The document is unchanged.
   
-  Error: could not process suffix "Show.".
+  Error: could not parse or process remaining text "Show.".
   leading blanks required at this point in the document
   [1]
 
@@ -159,6 +159,7 @@ Even for a query the user needs to be careful to deal with blanks.
      5|   - reflexivity.<CURSOR>
      6| Admitted.
   
+  No open goals.
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
@@ -249,7 +250,7 @@ Even for a query the user needs to be careful to deal with blanks.
   
   Shelved goals: 1
   
-  Error: could not process suffix "fail.".
+  Error: could not parse or process remaining text "fail.".
   Tactic failure.
   [1]
   $ rocq-ed status --context-lines 3

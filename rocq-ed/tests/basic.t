@@ -147,6 +147,7 @@
      7| 
      8| (* END *)
   
+  No open goals.
   $ rocq-ed status
      1| (* Test file. *)
      2| Theorem test : forall x : nat, x = x.
@@ -182,7 +183,7 @@
   
   Not currently in a proof.
   
-  Warning: Only 0 < 100 steps were executed before reaching the end of the file.
+  Warning: moved forward by 0 of 100 requested items; reached the end of the document.
   $ rocq-ed move --print-context --print-goals --item=-100
      1| <CURSOR>(* Test file. *)
      2| Theorem test : forall x : nat, x = x.
@@ -193,7 +194,7 @@
   
   Not currently in a proof.
   
-  Warning: Only 11 < 100 steps were reverted before reaching the start of the file.
+  Warning: moved backward by 11 of 100 requested items; reached the start of the document.
   $ rocq-ed stop
 
   $ find "$HOME" | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/" | sort

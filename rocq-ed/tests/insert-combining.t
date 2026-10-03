@@ -18,7 +18,7 @@
   $ rocq-ed insert --text="*idtac"
   The document is unchanged.
   
-  Error: could not process suffix "*idtac".
+  Error: could not parse or process remaining text "*idtac".
   inserted text would change the command before the cursor
   [1]
 

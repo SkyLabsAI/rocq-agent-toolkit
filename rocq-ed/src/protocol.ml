@@ -267,7 +267,7 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
     | Error(code, s) -> cleanup_data_dir (); panic ~code "%s" s
     | Ok(d) ->
     let ready () =
-      Printf.printf "==== Environment for queries in the session ===\n%!";
+      Printf.printf "==== Environment for this rocq-ed session ====\n%!";
       Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
       Printf.printf "===============================================\n%!"
     in
@@ -282,7 +282,7 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
   (* Check that the server is running. *)
   let pid_file = Filename.concat data_dir pid_file in
   match Sys.file_exists pid_file with
-  | false -> panic ~code:123 "Error: No active session with ID %s." id
+  | false -> panic ~code:123 "Error: no active session with ID %s." id
   | true  ->
   let server_lock_file = Filename.concat data_dir server_lock_file in
   let server_live =
@@ -293,14 +293,14 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
       | Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
     with
     | Unix.Unix_error(ENOENT, _, _) ->
-        panic ~code:123 "Error: Session with ID %s is stopping (or stale)." id
+        panic ~code:123 "Error: session with ID %s is stopping (or stale)." id
     | Unix.Unix_error(e, f, args)   ->
         let msg = Unix.error_message e in
         panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
   in
   match server_live with
   | false ->
-      panic ~code:123 "Error: Session with ID %s crashed or was killed." id
+      panic ~code:123 "Error: session with ID %s crashed or was killed." id
   | true  ->
   (* Attempt to take the client lock. *)
   let client_lock_file = Filename.concat data_dir client_lock_file in

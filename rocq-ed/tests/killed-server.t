@@ -19,5 +19,5 @@
   $ wait ${server_pid} || true
 
   $ rocq-ed status 2>&1 | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/"
-  Error: Session with ID xxxxxx crashed or was killed.
+  Error: session with ID xxxxxx crashed or was killed.
   [123]

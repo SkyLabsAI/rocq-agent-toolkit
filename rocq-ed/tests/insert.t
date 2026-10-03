@@ -47,7 +47,7 @@
   $ rocq-ed insert --print-context --print-goals --text="reflexivity. Qed."
   The document is unchanged.
   
-  Error: could not process suffix "reflexivity. Qed.".
+  Error: could not parse or process remaining text "reflexivity. Qed.".
   leading blanks required at this point in the document
   [1]
   $ rocq-ed insert --print-context --print-goals --text=" reflexivity. Qed."

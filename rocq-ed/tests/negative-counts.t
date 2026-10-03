@@ -49,5 +49,5 @@ requested state.
   
   Not currently in a proof.
   
-  Warning: Only 0 < 1 steps were reverted before reaching the start of the file.
+  Warning: moved backward by 0 of 1 requested items; reached the start of the document.
   $ rocq-ed stop

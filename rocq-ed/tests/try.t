@@ -1,5 +1,6 @@
-`try` processes a candidate at the cursor, prints the resulting proof state, and
-rolls the document back: nothing is inserted, whether the candidate works or not.
+`insert --keep=none` processes a candidate at the cursor, prints the resulting
+proof state, and rolls the document back: nothing is inserted, whether the
+candidate works or not.
 
   $ cat > test.v <<EOF
   > Theorem test : forall x : nat, True /\ x = x.
@@ -20,7 +21,7 @@ rolls the document back: nothing is inserted, whether the candidate works or not
   $ eval $(rocq-ed init test.v)
   $ rocq-ed move --item=+3
   $ rocq-ed insert --keep=none --print-goals --text $'\n  intros x; split.\n'
-  Open goals after the inserted text (prior to document rollback):
+  Open goals after processing the inserted text (prior to document rollback):
   
   Goal 1:
     x : nat
@@ -36,7 +37,7 @@ rolls the document back: nothing is inserted, whether the candidate works or not
      2| Proof.<CURSOR>
      3| Admitted.
   $ rocq-ed insert --keep=none --print-goals --text $'\n  reflexivity.\n'
-  Open goals before the failing suffix (prior to document rollback):
+  Open goals at the insertion failure (prior to document rollback):
   
   Goal 1:
     ============================
@@ -44,7 +45,7 @@ rolls the document back: nothing is inserted, whether the candidate works or not
   
   The document is unchanged.
   
-  Error: could not process suffix "reflexivity.\n".
+  Error: could not parse or process remaining text "reflexivity.\n".
    The relation and is not a declared reflexive relation. Maybe you need to require the Corelib.Classes.RelationClasses library
   [1]
   $ rocq-ed goals

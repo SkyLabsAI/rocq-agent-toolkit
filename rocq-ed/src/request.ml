@@ -84,7 +84,9 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
             Format.fprintf ff "Absolute(%i)" index
         | Relative(direction, count) ->
             let direction =
-              match direction with Forward -> "Forward" | Backward -> "Backward"
+              match direction with
+              | Forward  -> "Forward"
+              | Backward -> "Backward"
             in
             Format.fprintf ff "Relative(%s, %a)" direction
               (pp_option Format.pp_print_int) count
@@ -234,9 +236,11 @@ let run_goals d =
   print "Shelved goals" shelved_goals;
   print "Unfocused goals" unfocused_goals;
   let goals = Buffer.contents b in
-  match String.ends_with ~suffix:"\n\n" goals with
-  | false -> goals
-  | true  -> String.sub goals 0 (String.length goals - 1)
+  match goals with
+  | "" -> "No open goals.\n"
+  | _ when String.ends_with ~suffix:"\n\n" goals ->
+      String.sub goals 0 (String.length goals - 1)
+  | _ -> goals
 
 let render_print_after d {context; goals} =
   let context =
@@ -309,7 +313,7 @@ let run_insert_keep_atomic d ~text ~print =
       let header =
         if status = "" then "" else
         let tail =
-          " before the failing suffix (prior to document rollback):\n\n"
+          " at the insertion failure (prior to document rollback):\n\n"
         in
         match (print.context <> No_context, print.goals) with
         | (false, false) -> ""
@@ -331,8 +335,8 @@ let run_insert_keep_none d ~text ~print =
     let tail =
       let tail = " (prior to document rollback):\n\n" in
       match res with
-      | Ok(_) -> " after the inserted text" ^ tail
-      | Error(_) -> " before the failing suffix" ^ tail
+      | Ok(_) -> " after processing the inserted text" ^ tail
+      | Error(_) -> " at the insertion failure" ^ tail
     in
     match (print.context <> No_context, print.goals) with
     | (false, false) -> ""
@@ -465,6 +469,7 @@ let index_at_position d ~line ~col =
 let run_move d ~target ~print =
   let initial_index = Document.cursor_index d in
   let suffix_length = List.length (Document.suffix d) in
+  let last_index = initial_index + suffix_length in
   let index =
     match target with
     | Absolute(index) -> Ok(index)
@@ -504,6 +509,13 @@ let run_move d ~target ~print =
     in
     ((data, output), res)
   with Invalid_argument(s) ->
+    let s =
+      match target with
+      | Absolute(index) when s = "index out of bounds" ->
+          Printf.sprintf "item position %i is out of bounds (valid range: 0 \
+            to %i)" index last_index
+      | Relative(_) | Absolute(_) | Position(_) -> s
+    in
     let error =
       match target with
       | Relative(_) -> Relative_failure(0)
