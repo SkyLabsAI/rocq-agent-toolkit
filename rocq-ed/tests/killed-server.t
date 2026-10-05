@@ -10,7 +10,7 @@
 
   $ rocq-ed init --no-daemon test.v > log 2>&1 &
   $ server_pid=$!
-  $ until grep ROCQED_SESSION_ID log > /dev/null; do sleep 0.05; done
+  $ until grep ROCQED_SESSION_ID log > /dev/null 2>&1; do sleep 0.05; done
   $ export $(grep ROCQED_SESSION_ID log)
   $ rocq-ed status
      1| <CURSOR>
@@ -19,5 +19,5 @@
   $ wait ${server_pid} || true
 
   $ rocq-ed status 2>&1 | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/"
-  Error: Session with ID xxxxxx crashed or was killed.
+  Error: session with ID xxxxxx crashed or was killed.
   [123]

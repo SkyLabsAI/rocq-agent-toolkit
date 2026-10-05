@@ -11,14 +11,15 @@
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --count-items=all
+  $ rocq-ed move --item=+all
   $ rocq-ed insert --print-context --text="Goal True. Proof. *"
      1| Goal True. Proof. *<CURSOR>
 
   $ rocq-ed insert --text="*idtac"
-  Error: could not process suffix "*idtac".
-  inserted text would change the command before the cursor
   The document is unchanged.
+  
+  Error: could not parse or process remaining text "*idtac".
+  inserted text would change the command before the cursor
   [1]
 
   $ rocq-ed stop
