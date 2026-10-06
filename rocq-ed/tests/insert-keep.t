@@ -14,13 +14,16 @@
   > EOF
 
 Atomic insertions report the remaining inserted text, exit with failure, and
-leave the document unchanged.
+leave the document unchanged. This is the default, and --keep=atomic selects
+it explicitly.
 
   $ eval $(rocq-ed init atomic.v)
   $ sh -c 'rocq-ed insert --print-context --print-goals --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not parse or process remaining text \"Check nope. Definition later := True.\"." out; grep -F "The document is unchanged." out; echo "EXIT:$code"'
   Error: could not parse or process remaining text "Check nope. Definition later := True.".
   The document is unchanged.
   EXIT:1
+  $ rocq-ed insert --keep=atomic --text "Definition ok := True. Check nope." > /dev/null 2>&1
+  [1]
   $ rocq-ed status --context-lines=0
      1| <CURSOR>
   $ rocq-ed stop
@@ -67,18 +70,4 @@ boundary was found to insert into the document.
   EXIT:1
   $ rocq-ed status --context-lines=0
      1| <CURSOR>
-  $ rocq-ed stop
-
-The default can be given explicitly as --keep=atomic. A successful insertion
-prints the resulting goals.
-
-  $ eval $(rocq-ed init atomic.v)
-  $ rocq-ed insert --keep=atomic --print-goals --text "Goal True /\ True. split."
-  Goal 1:
-    ============================
-    True
-  
-  Goal 2:
-    ============================
-    True
   $ rocq-ed stop
