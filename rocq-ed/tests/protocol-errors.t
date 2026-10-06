@@ -26,7 +26,7 @@ Redirect target once in each phase of the command.
   $ until grep -q block $HOME/.cache/rocq-ed/$ROCQED_SESSION_ID/log; do sleep 0.05; done
   $ rocq-ed status
   Error: a request is already in progress.
-  [123]
+  [75]
   $ exec 3<> block.out
   $ wait $query_pid
   $ exec 3>&-
