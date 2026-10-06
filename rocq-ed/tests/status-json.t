@@ -64,7 +64,7 @@ proof mode, there are no current goals.
 
 Within a proof, goals are decomposed into hypotheses and conclusions.
 
-  $ rocq-ed steps --count-items 5
+  $ rocq-ed move --item=+5
   $ rocq-ed status --json
   {
     "prefix": [

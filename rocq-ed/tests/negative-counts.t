@@ -8,8 +8,8 @@
   >  (name text))
   > EOF
 
-Negative counts should be rejected without changing the document, and the
-daemon should remain responsive afterwards.
+Malformed move offsets should be rejected by the client without printing the
+requested context or goals. The document and daemon remain unaffected.
 
   $ cat > count.v <<EOF
   > Definition a := 0.
@@ -17,27 +17,37 @@ daemon should remain responsive afterwards.
   > EOF
 
   $ eval $(rocq-ed init count.v)
-  $ rocq-ed steps --count-items=-1
-  Failed after processing 0 items.
-  Error: negative count.
-  [1]
+  $ rocq-ed move --print-context --print-goals --item=all
+  Usage: rocq-ed move [--help] [OPTION]…
+  rocq-ed: option '--item': expected NUM, +NUM, -NUM, +all, or -all
+  [124]
   $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition a := 0.
-  $ rocq-ed delete --count-items=-1
-  Error: negative count.
-  [1]
+  $ rocq-ed delete --print-context --print-goals --count-items=-1
+  Usage: rocq-ed delete [--help] [OPTION]…
+  rocq-ed: option '--count-items': expected a non-negative integer or "all"
+  [124]
   $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition a := 0.
+  $ rocq-ed status --context-lines=-1 --goals
+  Usage: rocq-ed status [--help] [OPTION]…
+  rocq-ed: option '--context-lines': expected a non-negative integer, "all", or
+           "none"
+  [124]
+  $ rocq-ed move --print-context --print-goals --item=+-1
+  Usage: rocq-ed move [--help] [OPTION]…
+  rocq-ed: option '--item': expected NUM, +NUM, -NUM, +all, or -all
+  [124]
   $ rocq-ed status --context-lines=0
      1| <CURSOR>Definition a := 0.
 
-`backwards` currently lets negative counts reach the daemon as an uncaught
-Invalid_argument exception.  The timeout makes the regression visible without
-letting the test suite hang.
+A well-formed command that cannot be applied to the document does print the
+requested state.
 
-  $ rocq-ed backwards --count-items=-1
-  Error: negative count.
-  [1]
-  $ rocq-ed status --context-lines=0
+  $ rocq-ed move --print-context=0 --print-goals --item=-1
      1| <CURSOR>Definition a := 0.
+  
+  Not currently in a proof.
+  
+  Warning: moved backward by 0 of 1 requested items; reached the start of the document.
   $ rocq-ed stop

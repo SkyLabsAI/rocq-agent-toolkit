@@ -18,7 +18,7 @@ session down. The request below blocks until its output FIFO is opened, and the
 log shows that it was received.
 
   $ mkfifo block.out
-  $ rocq-ed query --text 'Redirect "block" Check I.' > /dev/null 2>&1 &
+  $ rocq-ed insert --keep=none --text 'Redirect "block" Check I.' > /dev/null 2>&1 &
   $ client_pid=$!
   $ until grep -q block log; do sleep 0.05; done
   $ kill ${client_pid}

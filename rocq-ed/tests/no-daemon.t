@@ -31,7 +31,7 @@
   > EOF
 
   $ rocq-ed init --no-daemon test.v > log 2>&1 &
-  $ until grep ROCQED_SESSION_ID log > /dev/null; do sleep 0.05; done
+  $ until grep ROCQED_SESSION_ID log > /dev/null 2>&1; do sleep 0.05; done
   $ export $(grep ROCQED_SESSION_ID log)
 
   $ find "$HOME" | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/" | sort
@@ -46,7 +46,7 @@
 
   $ rocq-ed status --context-lines 0
      1| <CURSOR>(* Test file. *)
-  $ rocq-ed steps --count-items 2
+  $ rocq-ed move --item=+2
   $ rocq-ed status --context-lines 0
      2| Theorem test : forall x : nat, x = x.<CURSOR>
   $ rocq-ed stop

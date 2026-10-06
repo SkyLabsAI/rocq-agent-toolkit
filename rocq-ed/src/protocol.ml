@@ -285,7 +285,7 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
     | Error(code, s) -> cleanup_data_dir (); panic ~code "%s" s
     | Ok(d) ->
     let ready () =
-      Printf.printf "==== Environemnt for queries in the session ===\n%!";
+      Printf.printf "==== Environment for this rocq-ed session ====\n%!";
       Printf.printf "ROCQED_SESSION_ID=%s\n%!" id;
       Printf.printf "===============================================\n%!"
     in
@@ -300,7 +300,7 @@ let server_live : session_id -> bool = fun id ->
   let data_dir = get_data_dir id in
   let pid_file = Filename.concat data_dir pid_file in
   match Sys.file_exists pid_file with
-  | false -> panic ~code:123 "Error: No active session with ID %s." id
+  | false -> panic ~code:123 "Error: no active session with ID %s." id
   | true  ->
   let server_lock_file = Filename.concat data_dir server_lock_file in
   try
@@ -310,7 +310,7 @@ let server_live : session_id -> bool = fun id ->
     | Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
   with
   | Unix.Unix_error(ENOENT, _, _) ->
-      panic ~code:123 "Error: Session with ID %s is stopping (or stale)." id
+      panic ~code:123 "Error: session with ID %s is stopping (or stale)." id
   | Unix.Unix_error(e, f, args)   ->
       let msg = Unix.error_message e in
       panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
@@ -321,7 +321,7 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
   (* Check that the server is running. *)
   match server_live id with
   | false ->
-      panic ~code:123 "Error: Session with ID %s crashed or was killed." id
+      panic ~code:123 "Error: session with ID %s crashed or was killed." id
   | true  ->
   (* Attempt to take the client lock. *)
   let client_lock_file = Filename.concat data_dir client_lock_file in
@@ -359,7 +359,7 @@ let stop : session_id -> unit = fun id ->
   (* The data directory of a dead session is cleaned up as well. *)
   let live = server_live id in
   if live then ignore (client_request id Request.Stop)
-  else wrn "Warning: Session with ID %s crashed or was killed." id;
+  else wrn "Warning: session with ID %s crashed or was killed." id;
   let data_dir = get_data_dir id in
   let warn_unix_failure f x =
     try f x with Unix.Unix_error(e, f, args) ->

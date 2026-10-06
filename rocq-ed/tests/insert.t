@@ -17,7 +17,7 @@
   > EOF
 
   $ eval $(rocq-ed init test.v)
-  $ rocq-ed steps --print-context --print-goals --count-items=7
+  $ rocq-ed move --print-context --print-goals --item=+7
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
      3| Proof.
@@ -28,7 +28,6 @@
     n : nat
     ============================
     S n + n = S (n + n)
-  
   $ rocq-ed status
      1| Require Import Init.Datatypes.
      2| Theorem add_1_n : forall n : nat, S n + n = S (n + n).
@@ -45,11 +44,11 @@
     n : nat
     ============================
     S n + n = S (n + n)
-  
   $ rocq-ed insert --print-context --print-goals --text="reflexivity. Qed."
-  Error: could not process suffix "reflexivity. Qed.".
-  leading blanks required at this point in the document
   The document is unchanged.
+  
+  Error: could not parse or process remaining text "reflexivity. Qed.".
+  leading blanks required at this point in the document
   [1]
   $ rocq-ed insert --print-context --print-goals --text=" reflexivity. Qed."
      1| Require Import Init.Datatypes.
