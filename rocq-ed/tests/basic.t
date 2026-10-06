@@ -210,3 +210,4 @@ Session data is stored under $XDG_CACHE_HOME when it is set.
   xxxxxx
   $ rocq-ed stop
   $ ls cache/rocq-ed
+  $ unset XDG_CACHE_HOME
