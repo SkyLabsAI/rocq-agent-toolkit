@@ -17,6 +17,8 @@
 
 A request made while another one is in progress is rejected. The first request
 blocks until its output pipe is opened; the session log shows it was received.
+The pipe is held open until the request completes, because Rocq opens a
+Redirect target once in each phase of the command.
 
   $ mkfifo block.out
   $ rocq-ed insert --keep=none --text 'Redirect "block" Check I.' > /dev/null 2>&1 &
