@@ -81,5 +81,4 @@ prints the resulting goals.
   Goal 2:
     ============================
     True
-  
   $ rocq-ed stop
