@@ -20,12 +20,13 @@ blocks until its output pipe is opened; the session log shows it was received.
 
   $ mkfifo block.out
   $ rocq-ed insert --keep=none --text 'Redirect "block" Check I.' > /dev/null 2>&1 &
+  $ query_pid=$!
   $ until grep -q block $HOME/.cache/rocq-ed/$ROCQED_SESSION_ID/log; do sleep 0.05; done
   $ rocq-ed status
   Error: a request is already in progress.
   [123]
   $ exec 3<> block.out
-  $ wait $!
+  $ wait $query_pid
   $ exec 3>&-
   $ rocq-ed status
      1| <CURSOR>
