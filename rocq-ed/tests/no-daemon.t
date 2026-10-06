@@ -68,7 +68,7 @@ together with it, and a held session terminates normally when stopped.
 
   $ rocq-ed init --no-daemon --display=quiet --jobs=2 --no-build-deps user.v > held.log 2>&1 < /dev/null &
   $ server_pid=$!
-  $ until grep ROCQED_SESSION_ID held.log > /dev/null; do sleep 0.05; done
+  $ until grep ROCQED_SESSION_ID held.log > /dev/null 2>&1; do sleep 0.05; done
   $ export $(grep '^ROCQED_SESSION_ID=' held.log)
   $ rocq-ed move --item=+all
   $ rocq-ed insert --keep=none --text 'Print value.'
