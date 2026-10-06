@@ -123,7 +123,7 @@
      3| Proof. intro x. reflexivity. Qed.<CURSOR>
      4| 
      5| (* END *)
-  $ rocq-ed goto -p 2:1
+  $ rocq-ed move -p 2:1
   $ rocq-ed status --context-lines 0
      2| <CURSOR>Theorem test : forall x : nat, x = x.
   $ rocq-ed stop
