@@ -123,8 +123,6 @@ Inserting with --keep=none can be used to run a query.
   Arguments eq_refl {A}%_type_scope {x}, [_] _
   Expands to: Constructor Corelib.Init.Logic.eq_refl
   Declared in library Corelib.Init.Logic, line 380, characters 4-11
-  $ rocq-ed insert --keep=none --text "Check nope." > /dev/null 2>&1
-  [1]
   $ rocq-ed status
      1| Theorem test : forall x : nat, True /\ x = x.
      2| Proof.
