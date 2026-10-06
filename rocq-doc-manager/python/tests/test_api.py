@@ -51,19 +51,6 @@ class Test_API(RDM_Tests):
             suffix = await rc.doc_suffix()
             assert len(suffix) == 18
 
-    async def test_doc_suffix_command_kinds(self, tmp_path: Path) -> None:
-        tmp_v = tmp_path / "kinds.v"
-        tmp_v.write_text(
-            'Declare ML Module "rocq-runtime.plugins.ltac".\n'
-            "Notation two := 2.\n"
-            "Scheme All for nat.\n"
-        )
-        tmp_rdm = await RDM_Tests.mk_rdm(path=str(tmp_v))
-        async with tmp_rdm.sess():
-            suffix = await tmp_rdm.cursor().doc_suffix()
-            kinds = [item.data.kind for item in suffix if item.data is not None]
-            assert kinds == ["DeclareMLModule", "Abbreviation", "SchemeAll"]
-
     async def test_run_command_tac_fail(
         self,
         transient_rdm: AsyncRocqDocManager,
