@@ -27,13 +27,12 @@ let main : Document.t -> unit = fun state ->
   | Some(d) ->
   let filter Rocq_toplevel.{level; text; _} =
     match level with
-    | Feedback.Info | Feedback.Notice -> Some(text)
+    | Feedback.Notice -> Some(text)
     | _ -> None
   in
   match List.filter_map filter d.Rocq_toplevel.feedback_messages with
-  | []          -> panic "Error: the last command gave no feedback."
-  | _ :: _ :: _ -> panic "Error: the last command gave too much feedback."
-  | [s]         -> Printf.printf "%s%!" s
+  | [] -> panic "Error: the last command gave no notice feedback."
+  | ls -> List.iter (Printf.printf "%s%!") ls
 
 (* We assume a single Rocq source file is passed last. *)
 let parse_args : argv:string array -> string list * string = fun ~argv ->

@@ -35,7 +35,7 @@ It fails otherwise.
   > Set Printing All.
   > EOF
   $ rocq-query test.v -- -Q . test.dir
-  Error: the last command gave no feedback.
+  Error: the last command gave no notice feedback.
   [1]
 
   $ cat > test.v <<EOF
