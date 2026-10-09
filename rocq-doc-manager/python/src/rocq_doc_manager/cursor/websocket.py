@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import json
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import (
     Any,
+    get_type_hints,
     override,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue, RootModel, TypeAdapter
 
-from rocq_doc_manager.microrpc.dispatcher import Dispatcher
-from rocq_doc_manager.microrpc.tunnel import WSMux, proxy_protocol
+from rocq_doc_manager.microrpc.dispatcher import Dispatcher, proxy_protocol
+from rocq_doc_manager.microrpc.duplex import RPCClient
 
 from .. import rocq_doc_manager_api as rdm_api
 from ..microrpc.deserialize import (
@@ -140,18 +143,18 @@ def ug_decode_exception(payload: Any) -> Exception:
 unguided_decoder.add_decoder("Exception", ug_decode_exception)
 
 
-class ClosedOK(rdm_api.Error):
-    def __init__(self):
-        return super().__init__("Connection to remote cursor closed normally.")
+# class ClosedOK(rdm_api.Error):
+#     def __init__(self):
+#         return super().__init__("Connection to remote cursor closed normally.")
 
 
-class ClosedError(rdm_api.Error):
-    def __init__(self):
-        return super().__init__("Connection to remote cursor closed unexpectedly.")
+# class ClosedError(rdm_api.Error):
+#     def __init__(self):
+#         return super().__init__("Connection to remote cursor closed unexpectedly.")
 
 
 # ===============================================================
-#  Server Code
+#  The client code
 # ===============================================================
 
 
@@ -160,39 +163,51 @@ class ClosedError(rdm_api.Error):
     passthru=["ctx", "aborted_goal_ctx", "Section", "goto_first_match"],
 )
 class WSCursor:
-    """A cursor that proxies method calls through WSMux.
+    """A cursor that proxies method calls through an RPCClient.
 
     NOTE: We cannot convince mypy that WSCursor implements
     RocqCursorProtocolAsync because we are not listing the methods explicitly."""
 
-    _mux: WSMux  # shared between cloned cursors
+    _mux: RPCClient  # shared between cloned cursors
     _id: CursorId  # unique to a single cursor
 
-    def __init__(self, mux: WSMux, id: CursorId):
+    def __init__(self, mux: RPCClient, id: CursorId):
         self._mux = mux
         self._id = id
 
     @classmethod
-    def create(cls, mux: WSMux, id: CursorId) -> RocqCursorProtocolAsync:
-        return cls(mux, id)  # type: ignore[return-value]
+    def create(cls, mux: RPCClient, id: int) -> RocqCursorProtocolAsync:
+        return cls(mux, CursorId(cursor=id))  # type: ignore[return-value]
 
-    async def clone(self, **kwargs) -> WSCursor:
-        cursor = await self._rpc(CursorId, "clone", [], kwargs)
-        return WSCursor(self._mux, cursor)
+    async def clone(self, *, materialize: bool = False) -> WSCursor:
+        success, result = await self._rpc("clone", {"materialize": materialize})
+        if success and isinstance(result, int):
+            return WSCursor(self._mux, CursorId(cursor=result))
+        else:
+            raise RPCException(result)
 
     async def _rpc(
-        self, ty: type, method: str, args: list[Any], kwargs: dict[str, Any]
-    ):
-        bundled_args: list[Any] = [self._id]
-        bundled_args.extend(args)
-        (is_exception, value_json) = await self._mux.send(method, bundled_args, kwargs)
-        if not is_exception:
-            value = decoder.decode(json.loads(value_json), ty)
+        self, method: str, params: dict[str, JsonValue] | None
+    ) -> tuple[bool, JsonValue]:
+        rpc_args: JsonValue
+        if params is None:
+            rpc_args = {}
         else:
-            value = json.loads(value_json, object_hook=unguided_decoder.object_hook)
-            assert isinstance(value, BaseException)
-            raise value
-        return value
+            rpc_args = params.copy()
+        rpc_args["<object>"] = self._id.cursor
+        return await self._mux.send(method, rpc_args)
+        # if not is_exception:
+        #     value = decoder.decode(json.loads(value_json), ty)
+        # else:
+        #     value = json.loads(value_json, object_hook=unguided_decoder.object_hook)
+        #     assert isinstance(value, BaseException)
+        #     raise value
+        # return value
+
+
+# ===============================================================
+#  The server code
+# ===============================================================
 
 
 class CursorDispatcher(Dispatcher):
@@ -212,34 +227,79 @@ class CursorDispatcher(Dispatcher):
         }
         self._fresh = max(cursors.keys())
 
-    def extract_cursor(self, args: list[Any]) -> tuple[RocqCursor, list[Any]]:
-        cursor_idx = args.pop(0)
-        cursor = decoder.decode(cursor_idx, CursorId)
-        # if not isinstance(cursor_idx, int):
-        #     raise ValueError(f"Invalid cursor, expected integer, got '{cursor_idx}'")
-        # cursor = CursorId(cursor=cursor_idx)
-        if cursor not in self._cursors:
-            raise ValueError(f"Unbound cursor. {cursor}")
-        return (self._cursors[cursor], args)
+    def extract_cursor(self, params: JsonValue) -> tuple[RocqCursor, JsonValue]:
+        if isinstance(params, dict):
+            idx = params.pop("!cursor")
+            if idx is None:
+                raise KeyError(f"Missing '<object>' parameter: {params}")
+            if isinstance(idx, int):
+                cursor = self._cursors.get(CursorId(cursor=idx))
+                if cursor:
+                    return (cursor, params)
+                else:
+                    raise ValueError(f"Unknown <object>={idx}: {params}")
+            else:
+                raise ValueError(
+                    f"Invalid '<object>' parameter, expected int: {params}"
+                )
+        raise ValueError(f"Invalid message type, expected dict: {params}")
+
+    async def default_dispatch_rpc[R](
+        func: Callable[..., R], payload: JsonValue
+    ) -> JsonValue:
+        """
+        Takes a Pydantic JsonValue, validates it against the function signature,
+        executes the function, and returns the result as a JsonValue.
+        """
+        # 1. Ensure the payload is a mapping (dictionary) to match function kwargs
+        if not isinstance(payload, dict):
+            raise ValueError(f"RPC payload must be a dictionary, got {type(payload)}")
+
+        # 2. Get function signature and type hints
+        sig = inspect.signature(func)
+        type_hints = get_type_hints(func)
+
+        # 3. Validate arguments
+        # We iterate through the signature to match payload keys to function parameters
+        resolved_kwargs = {}
+        for param_name, param in sig.parameters.items():
+            if param_name == "self":
+                continue
+
+            if param_name in payload:
+                param_type = type_hints.get(param_name, Any)
+                # Use TypeAdapter to coerce the JsonValue into the specific Python type
+                adapter = TypeAdapter(param_type)
+                resolved_kwargs[param_name] = adapter.validate_python(
+                    payload[param_name]
+                )
+            elif param.default is inspect.Parameter.empty:
+                raise TypeError(f"Missing required argument: {param_name}")
+
+        # 4. Execute the function (handling both sync and async)
+        if inspect.iscoroutinefunction(func):
+            result = await func(**resolved_kwargs)
+        else:
+            result = func(**resolved_kwargs)
+
+        # 5. Convert return value back to a JsonValue
+        # .model_dump(mode='json') ensures the output is a serializable JsonValue (dict/list/etc)
+        return RootModel(result).model_dump(mode="json")
 
     @override
-    async def dispatch(
-        self, method: str, args: list[Any], kwargs: dict[str, Any]
-    ) -> Any:
-        (cursor, args) = self.extract_cursor(args)
+    async def dispatch(self, method: str, params: JsonValue) -> Any:
+        (cursor, params) = self.extract_cursor(params)
         match method:
             case "clone":
-
-                async def fn(args, kwargs):
-                    new_cursor = await cursor.clone()
-                    self._fresh += 1
-                    new_id = CursorId(cursor=self._fresh)
-                    self._cursors[new_id] = new_cursor
-                    return new_id
+                materialize = (
+                    params.get("materialize", False)
+                    if isinstance(params, dict)
+                    else False
+                )
+                new_cursor = await cursor.clone(materialize=materialize)
+                self._fresh += 1
+                new_id = CursorId(cursor=self._fresh)
+                self._cursors[new_id] = new_cursor
+                return new_id
             case _:
-
-                async def fn(args, kwargs):
-                    # TODO: insert await below when wrapped cursors are async
-                    return await getattr(cursor, method)(*args, **kwargs)
-
-        return await fn(args, kwargs)
+                return await getattr(cursor, method)(*args)
