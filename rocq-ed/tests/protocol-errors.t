@@ -14,4 +14,22 @@
   $ eval $(rocq-ed init test.v)
   $ rocq-ed status
      1| <CURSOR>
+
+A request made while another one is in progress is rejected. The first request
+blocks until its output pipe is opened; the session log shows it was received.
+The pipe is held open until the request completes, because Rocq opens a
+Redirect target once in each phase of the command.
+
+  $ mkfifo block.out
+  $ rocq-ed insert --keep=none --text 'Redirect "block" Check I.' > /dev/null 2>&1 &
+  $ query_pid=$!
+  $ until grep -q block $HOME/.cache/rocq-ed/$ROCQED_SESSION_ID/log; do sleep 0.05; done
+  $ rocq-ed status
+  Error: a request is already in progress.
+  [123]
+  $ exec 3<> block.out
+  $ wait $query_pid
+  $ exec 3>&-
+  $ rocq-ed status
+     1| <CURSOR>
   $ rocq-ed stop

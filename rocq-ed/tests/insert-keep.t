@@ -14,15 +14,21 @@
   > EOF
 
 Atomic insertions report the remaining inserted text, exit with failure, and
-leave the document unchanged.
+leave the document unchanged. This is the default, and --keep=atomic selects
+it explicitly. A successful atomic insertion is kept.
 
   $ eval $(rocq-ed init atomic.v)
   $ sh -c 'rocq-ed insert --print-context --print-goals --text "Definition ok := True. Check nope. Definition later := True." >out 2>&1; code=$?; grep -F "Error: could not parse or process remaining text \"Check nope. Definition later := True.\"." out; grep -F "The document is unchanged." out; echo "EXIT:$code"'
   Error: could not parse or process remaining text "Check nope. Definition later := True.".
   The document is unchanged.
   EXIT:1
+  $ rocq-ed insert --keep=atomic --text "Definition ok := True. Check nope." > /dev/null 2>&1
+  [1]
   $ rocq-ed status --context-lines=0
      1| <CURSOR>
+  $ rocq-ed insert --keep=atomic --text "Definition ok := True."
+  $ rocq-ed status --context-lines=0
+     1| Definition ok := True.<CURSOR>
   $ rocq-ed stop
 
 With --keep=successful, successfully processed items are kept, but the failing

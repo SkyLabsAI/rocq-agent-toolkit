@@ -201,3 +201,13 @@
   $TESTCASE_ROOT/user
   $TESTCASE_ROOT/user/.cache
   $TESTCASE_ROOT/user/.cache/rocq-ed
+
+Session data is stored under $XDG_CACHE_HOME when it is set.
+
+  $ export XDG_CACHE_HOME=$PWD/cache
+  $ eval $(rocq-ed init test.v)
+  $ ls cache/rocq-ed | sed "s/$ROCQED_SESSION_ID/xxxxxx/"
+  xxxxxx
+  $ rocq-ed stop
+  $ ls cache/rocq-ed
+  $ unset XDG_CACHE_HOME
