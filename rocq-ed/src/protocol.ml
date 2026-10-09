@@ -20,12 +20,24 @@ type daemon_status =
   | Ready
   | Failed of int * string
 
+(* Sandboxes may forbid Unix-domain sockets, which we rely on. *)
+let unix_error_message : Unix.error -> string -> string -> string =
+    fun e f a ->
+  let msg = Unix.error_message e in
+  let hint =
+    match (e, f) with
+    | (EPERM, ("bind" | "connect")) ->
+        "\nHint: the environment (e.g., a sandbox without network access) \
+         probably forbids Unix-domain sockets, which rocq-ed relies on."
+    | _ -> ""
+  in
+  Printf.sprintf "Error: failed to \"%s %s\" (%s).%s" f a msg hint
+
 let error_of_exception = function
   | Sys_error(s) ->
       (123, Printf.sprintf "Error: system error (%s)." s)
   | Unix.Unix_error(e, f, a) ->
-      let msg = Unix.error_message e in
-      (123, Printf.sprintf "Error: failed to \"%s %s\" (%s)." f a msg)
+      (123, unix_error_message e f a)
   | e ->
       let msg = Printexc.to_string e in
       (125, Printf.sprintf "Error: daemon failed unexpectedly (%s)." msg)
@@ -132,8 +144,7 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
         panic ~code:123 "Error: system error (%s)." s
     | Unix.Unix_error(e,f,a) ->
         if not no_daemon then Printf.printf "false\n%!";
-        let msg = Unix.error_message e in
-        panic ~code:123 "Error: failed to \"%s %s\" (%s)." f a msg
+        panic ~code:123 "%s" (unix_error_message e f a)
     | e ->
         if not no_daemon then Printf.printf "false\n%!";
         raise e
@@ -228,11 +239,18 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
       in
       if is_stop then Unix.unlink pid_file;
       log "Sending response.";
-      Marshal.to_channel oc res [];
-      Out_channel.flush oc;
-      log "Response sent.";
+      begin
+        (* The client may have gone away: drop the response. *)
+        try
+          Marshal.to_channel oc res [];
+          Out_channel.flush oc;
+          log "Response sent."
+        with Sys_error(s) -> log "Failed to send the response (%s)." s
+      end;
       not is_stop
     in
+    (* Writing to the socket of a client that went away must not kill us. *)
+    Sys.set_signal Sys.sigpipe Sys.Signal_ignore;
     (* Run the request loop. *)
     log "Running the request loop.";
     let rec loop () =
@@ -276,29 +294,32 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
   in
   if no_daemon then run_no_daemon () else run_daemon ()
 
-let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
-    a * (b, string * c) Result.t = fun id req ->
+(* Check that the session exists, and return [false] if its server crashed or
+   was killed. *)
+let server_live : session_id -> bool = fun id ->
   let data_dir = get_data_dir id in
-  (* Check that the server is running. *)
   let pid_file = Filename.concat data_dir pid_file in
   match Sys.file_exists pid_file with
   | false -> panic ~code:123 "Error: no active session with ID %s." id
   | true  ->
   let server_lock_file = Filename.concat data_dir server_lock_file in
-  let server_live =
-    try
-      let lock_fd = Unix.openfile server_lock_file Unix.[O_WRONLY] 0 in
-      Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
-      try Unix.lockf lock_fd F_TEST 0; false with
-      | Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
-    with
-    | Unix.Unix_error(ENOENT, _, _) ->
-        panic ~code:123 "Error: session with ID %s is stopping (or stale)." id
-    | Unix.Unix_error(e, f, args)   ->
-        let msg = Unix.error_message e in
-        panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
-  in
-  match server_live with
+  try
+    let lock_fd = Unix.openfile server_lock_file Unix.[O_WRONLY] 0 in
+    Fun.protect ~finally:(fun () -> Unix.close lock_fd) @@ fun () ->
+    try Unix.lockf lock_fd F_TEST 0; false with
+    | Unix.Unix_error((EACCES | EAGAIN), _, _) -> true
+  with
+  | Unix.Unix_error(ENOENT, _, _) ->
+      panic ~code:123 "Error: session with ID %s is stopping (or stale)." id
+  | Unix.Unix_error(e, f, args)   ->
+      let msg = Unix.error_message e in
+      panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
+
+let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
+    a * (b, string * c) Result.t = fun id req ->
+  let data_dir = get_data_dir id in
+  (* Check that the server is running. *)
+  match server_live id with
   | false ->
       panic ~code:123 "Error: session with ID %s crashed or was killed." id
   | true  ->
@@ -320,7 +341,10 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     try
       in_dir data_dir @@ fun () ->
       Unix.connect fd (ADDR_UNIX socket_file); fd
-    with e -> Unix.close fd; raise e
+    with
+    | Unix.Unix_error(EPERM, f, a) ->
+        Unix.close fd; panic ~code:123 "%s" (unix_error_message EPERM f a)
+    | e -> Unix.close fd; raise e
   in
   with_socket_channels socket_fd @@ fun ic oc ->
   Marshal.to_channel oc req [];
@@ -332,7 +356,10 @@ let client_request : type a b. session_id -> (unit, a, b) Request.t ->
   snd (full_client_request rocq_file req)
 
 let stop : session_id -> unit = fun id ->
-  ignore (client_request id Request.Stop);
+  (* The data directory of a dead session is cleaned up as well. *)
+  let live = server_live id in
+  if live then ignore (client_request id Request.Stop)
+  else wrn "Warning: session with ID %s crashed or was killed." id;
   let data_dir = get_data_dir id in
   let warn_unix_failure f x =
     try f x with Unix.Unix_error(e, f, args) ->
@@ -340,6 +367,7 @@ let stop : session_id -> unit = fun id ->
     wrn "Warning: failed to \"%s %s\" (%s)." f args msg
   in
   let unlink file = warn_unix_failure Unix.unlink file in
+  if not live then unlink (Filename.concat data_dir pid_file);
   unlink (Filename.concat data_dir socket_file);
   unlink (Filename.concat data_dir client_lock_file);
   unlink (Filename.concat data_dir server_lock_file);

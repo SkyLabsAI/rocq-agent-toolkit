@@ -21,3 +21,15 @@
   $ rocq-ed status 2>&1 | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/"
   Error: session with ID xxxxxx crashed or was killed.
   [123]
+
+Stopping the session removes its data directory.
+
+  $ rocq-ed stop 2>&1 | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/"
+  Warning: session with ID xxxxxx crashed or was killed.
+  $ find "$HOME" | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/" | sort
+  $TESTCASE_ROOT/user
+  $TESTCASE_ROOT/user/.cache
+  $TESTCASE_ROOT/user/.cache/rocq-ed
+  $ rocq-ed status 2>&1 | sed "s/$(printenv ROCQED_SESSION_ID)/xxxxxx/"
+  Error: no active session with ID xxxxxx.
+  [123]
