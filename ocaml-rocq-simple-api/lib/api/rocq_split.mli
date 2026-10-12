@@ -41,3 +41,12 @@ val split_file : file:string -> args:string list
     never actually opened / read). *)
 val split_string : file:string -> args:string list -> string
   -> (split_data, string * split_error) result
+
+(** [split_in_toplevel t contents] is like [split_string ~file ~args contents],
+    but [contents] is considered to follow the current state of toplevel [t],
+    which is not changed. Unlike [split_string], no process is started and the
+    commands leading to the current state are not processed again. Sentence
+    and error locations are relative to [contents]. [None] is returned if the
+    state of [t] is not available. *)
+val split_in_toplevel : Rocq_toplevel.toplevel -> string
+  -> (split_data, string * split_error) result option

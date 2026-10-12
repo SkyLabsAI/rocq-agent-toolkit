@@ -124,6 +124,12 @@ val run : toplevel -> off:int -> text:string
     [t] is not in proof mode. It does not change the state. *)
 val structured_goals : toplevel -> structured_goal list option
 
+(** [split_raw t ~text] runs the sentence-splitter on [text] as if it followed
+    the current state of [t], which is not changed. [None] is returned if that
+    state is not available. Use [Rocq_split.split_in_toplevel] instead. *)
+val split_raw : toplevel -> text:string ->
+  Rocq_simple_api_internal.Rocq_split_data.res option
+
 (** {2 JSON serialization for data returned by [run]} *)
 
 val feedback_message_to_yojson : feedback_message -> Yojson.Safe.t

@@ -238,6 +238,40 @@ let fork : state -> pipe_in:string -> pipe_out:string ->
   with Unix.Unix_error(e,_,_) ->
     (state, Error(Unix.error_message e))
 
+(* Sentence-splitting of [text], as if it followed the current state, which is
+   not changed. Like in the sentence-splitter, sentences are parsed and their
+   synterp phase is run, but starting from the cached synterp state. *)
+let split state text =
+  Feed.reset ();
+  let open Vernac.State in
+  match Stm.state_of_id ~doc:state.doc state.sid with
+  | Stm.Valid(Some(vs)) ->
+      let saved = Vernacstate.Synterp.freeze () in
+      let rev_commands = ref [] in
+      let rec loop stream =
+        let mode = Some(Synterp.get_default_proof_mode ()) in
+        match Procq.Entry.parse (Pvernac.main_entry mode) stream with
+        | None    -> Ok(Lib.library_dp ())
+        | Some(c) ->
+        let c = Synterp.synterp_control ~intern:Vernacinterp.fs_intern c in
+        let c = Rocq_vernac_entry.of_vernac_control_entry c in
+        rev_commands := c :: !rev_commands;
+        loop stream
+      in
+      let result =
+        try
+          Vernacstate.Synterp.unfreeze vs.Vernacstate.synterp;
+          loop (Procq.Parsable.make (Gramlib.Stream.of_string text))
+        with e ->
+          let (e, info) = Exninfo.capture e in
+          let msg = Format.asprintf "@[%a@]" Pp.pp_with (CErrors.print e) in
+          Error(msg, Loc.get_loc info)
+      in
+      Vernacstate.Synterp.unfreeze saved;
+      let commands = List.rev !rev_commands in
+      (state, Ok(Some(Rocq_split_data.{commands; feedback = []; result})))
+  | _                   -> (state, Ok(None))
+
 let run_command : type r e. state -> (r, e) command -> state * (r, e) result =
     fun state c ->
   match c with
@@ -245,6 +279,7 @@ let run_command : type r e. state -> (r, e) command -> state * (r, e) result =
   | BackTo({sid})             -> back_to state sid
   | Fork({pipe_in; pipe_out}) -> fork state ~pipe_in ~pipe_out
   | StructuredGoals           -> structured_goals state
+  | Split({text})             -> split state text
 
 let interact : state -> unit = fun state ->
   let pid = Unix.getpid () in

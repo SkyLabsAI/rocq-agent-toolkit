@@ -413,24 +413,46 @@ let split_sentences : t -> text:string ->
     sentence list * (unit, string * string) result = fun d ~text ->
   let {file; args; _} = get_backend d in
   match text with "" -> ([], Ok(())) | _ ->
-  let _ =
+  let leading_whitespaces =
     let open Rocq_blanks in
     match Rocq_blanks.parse text ~offset:0 with
-    | {leading_whitespaces = true; _} -> ()
+    | {leading_whitespaces = true; _} -> true
     | {unclosed_comments = []; _}     ->
         if whitespace_required d.rev_prefix then
-          invalid_arg "leading blanks required at this point in the document"
+          invalid_arg "leading blanks required at this point in the document";
+        false
     | _                               ->
         invalid_arg "unclosed initial comment"
   in
-  let full_text = contents ~include_suffix:false d ^ text in
-  let res = Rocq_split.split_string ~file ~args full_text in
+  (* Unless the text could merge with the command before the cursor, it can be
+     split in the toplevel, without processing the whole prefix again. This is
+     not done if the prefix has ghosts (ignored by the full split) or has no
+     command (the full split then reports errors differently). *)
+  let in_toplevel =
+    let kinds = List.map (fun (p : processed_item) -> p.kind) d.rev_prefix in
+    let is_command k = match k with `Command(_) -> true | _ -> false in
+    let after_command = match kinds with k :: _ -> is_command k | [] -> false in
+    let splittable =
+      List.exists is_command kinds && not (List.exists is_ghost kinds)
+      && (leading_whitespaces || not after_command)
+    in
+    match splittable with
+    | false -> None
+    | true  ->
+    with_synced_backend d @@ fun b -> Rocq_split.split_in_toplevel b.top text
+  in
+  let (res, cursor_off) =
+    match in_toplevel with
+    | Some(res) -> (res, 0)
+    | None      ->
+    let full_text = contents ~include_suffix:false d ^ text in
+    (Rocq_split.split_string ~file ~args full_text, d.cursor_off)
+  in
   let sentences =
     match res with
     | Ok(data)       -> data.Rocq_split.sentences
     | Error(_, data) -> data.Rocq_split.parsed_sentences
   in
-  let cursor_off = d.cursor_off in
   let rec to_sentences len rev_acc sentences =
     let open Rocq_split in
     match sentences with

@@ -87,6 +87,10 @@ let run : toplevel -> off:int -> text:string ->
 let structured_goals : toplevel -> structured_goal list option = fun s ->
   match request s StructuredGoals with Ok(goals) -> goals
 
+let split_raw : toplevel -> text:string ->
+    Rocq_simple_api_internal.Rocq_split_data.res option = fun s ~text ->
+  match request s (Split({text})) with Ok(res) -> res
+
 let unlink file =
   try Unix.unlink file with Unix.Unix_error(_,_,_) -> ()
 

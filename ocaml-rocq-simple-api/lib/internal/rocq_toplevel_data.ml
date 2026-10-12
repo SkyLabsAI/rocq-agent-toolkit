@@ -90,3 +90,4 @@ type (_, _) command =
   | BackTo : {sid : int} -> (unit, string) command
   | Fork : {pipe_in : string; pipe_out : string} -> (int, string) command
   | StructuredGoals : (structured_goal list option, empty) command
+  | Split : {text : string} -> (Rocq_split_data.res option, empty) command

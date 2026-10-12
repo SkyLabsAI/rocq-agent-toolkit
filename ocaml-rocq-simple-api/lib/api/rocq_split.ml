@@ -115,3 +115,16 @@ let split_file : file:string -> args:string list -> res = fun ~file ~args ->
 let split_string : file:string -> args:string list -> string -> res =
     fun ~file ~args contents ->
   run {file; args; contents = Some(contents)}
+
+let split_in_toplevel : Rocq_toplevel.toplevel -> string -> res option =
+    fun top contents ->
+  let config = {file = ""; args = []; contents = Some(contents)} in
+  let make res =
+    match res.result with
+    | Ok(dirpath)    ->
+        Ok({dirpath; sentences = get_sentences config res.commands None})
+    | Error(s, loc ) ->
+        let parsed_sentences = get_sentences config res.commands loc in
+        Error(s, {parsed_sentences; error_loc = loc})
+  in
+  Option.map make (Rocq_toplevel.split_raw top ~text:contents)
