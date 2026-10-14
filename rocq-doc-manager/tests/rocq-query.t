@@ -27,6 +27,13 @@ last command must be a query.
   $ rocq-query test.v -- -Q . test.dir
   Inductive Corelib.Init.Datatypes.nat
 
+With [--stdin], the source is read from standard input. The file name is still
+used to configure Rocq, but the file does not need to exist.
+
+  $ rm test.v
+  $ printf 'Locate nat.\n' | rocq-query --stdin test.v -- -Q . test.dir
+  Inductive Corelib.Init.Datatypes.nat
+
 It fails otherwise.
 
   $ cat > test.v <<EOF

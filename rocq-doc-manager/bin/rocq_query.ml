@@ -7,12 +7,26 @@ type ('a, 'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 let panic : ('a,'b) koutfmt -> 'a = fun fmt ->
   Format.kfprintf (fun _ -> exit 1) Format.err_formatter (fmt ^^ "\n%!")
 
-let main : Document.t -> unit = fun state ->
-  let _ =
+type input = File | Stdin
+
+let load : input -> Document.t -> unit = fun input state ->
+  let load_file () =
     match Document.load_file state with
     | Ok(())     -> ()
     | Error(s,_) -> panic "Error: failed to load the file.\n%s" s
   in
+  let load_stdin () =
+    let text = In_channel.input_all stdin in
+    match snd (Document.replace_suffix state ~text) with
+    | Ok(())     -> ()
+    | Error(s,_) -> panic "Error: failed to load standard input.\n%s" s
+  in
+  match input with
+  | File  -> load_file ()
+  | Stdin -> load_stdin ()
+
+let main : input -> Document.t -> unit = fun input state ->
+  load input state;
   let rec loop last_data =
     match Document.suffix state with
     | [] -> last_data
@@ -34,17 +48,23 @@ let main : Document.t -> unit = fun state ->
   | [] -> panic "Error: the last command gave no notice feedback."
   | ls -> List.iter (Printf.printf "%s%!") ls
 
-(* We assume a single Rocq source file is passed last. *)
-let parse_args : argv:string array -> string list * string = fun ~argv ->
+let parse_args : argv:string array -> string list * input * string =
+    fun ~argv ->
   let (argv, rocq_args) = Rocq_args.split ~argv in
-  let argc = Array.length argv in
-  if argc < 2 then panic "Usage: %s FILE.v [-- ROCQ ARGS]" argv.(0);
-  let file = argv.(argc - 1) in
+  let usage () =
+    panic "Usage: %s [--stdin] FILE.v [-- ROCQ ARGS]" argv.(0)
+  in
+  let (input, file) =
+    match Array.to_list argv with
+    | [_; file]            -> (File , file)
+    | [_; "--stdin"; file] -> (Stdin, file)
+    | _                    -> usage ()
+  in
   if not (Filename.check_suffix file ".v") then
     panic "Error: a Rocq source file is expected as last argument.";
-  (rocq_args, file)
+  (rocq_args, input, file)
 
 let _ =
-  let (args, file) = parse_args ~argv:Sys.argv in
-  try main (Document.init ~args ~file) with
+  let (args, input, file) = parse_args ~argv:Sys.argv in
+  try main input (Document.init ~args ~file) with
   | Sys_error(s) | Failure(s) -> panic "Error: %s." s
