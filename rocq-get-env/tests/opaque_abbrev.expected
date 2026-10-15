@@ -1,0 +1,15 @@
+{
+  "constants": [
+    {
+      "kername": "get_env.tests.opaque_abbrev.target",
+      "about": "target : True\n\ntarget is not universe polymorphic\ntarget is opaque\nExpands to: Constant get_env.tests.opaque_abbrev.target\nDeclared in library get_env.tests.opaque_abbrev, line 3, characters 6-12"
+    }
+  ],
+  "inductives": [],
+  "abbrevs": [
+    {
+      "full_path": "get_env.tests.opaque_abbrev.alias",
+      "print": "Notation alias := target\nExpands to: Notation get_env.tests.opaque_abbrev.alias\nDeclared in library get_env.tests.opaque_abbrev, line 6, characters 0-29\n\ntarget : True\n\ntarget is not universe polymorphic\ntarget is opaque\nExpands to: Constant get_env.tests.opaque_abbrev.target\nDeclared in library get_env.tests.opaque_abbrev, line 3, characters 6-12"
+    }
+  ]
+}

@@ -107,15 +107,30 @@ let build_inductive : (Names.MutInd.t, Inductive.body, Inductive.t) maker =
   in
   Inductive.{kername; print; about}
 
-let build_abbrev env sigma fp _ =
+let abbrev_opaque env interp =
+  let opaque_const c =
+    let cb = Environ.lookup_constant c env in
+    match cb.Declarations.const_body with
+    | Declarations.OpaqueDef(_) -> true
+    | _                         -> false
+  in
+  match Abbreviation.interp interp with
+  | (_, Notation_term.NRef(Names.GlobRef.ConstRef(c), _)) -> opaque_const c
+  | _ -> false
+
+let build_abbrev env sigma fp interp =
   let q = Libnames.qualid_of_path fp in
   let full_path = Libnames.string_of_qualid q in
+  let q = CAst.make (Constrexpr.AN q) in
   let print =
-    let q = CAst.make (Constrexpr.AN q) in
-    let access = Global.{access_proof = fun _ -> None} in 
-    let print = Prettyp.print_name access env sigma q None in
-    Pp.(string_of_ppcmds (hov 2 print))
+    (* Printing makes no sense for opaque abbreviations, about instead. *)
+    match abbrev_opaque env interp with
+    | true  -> Prettyp.print_about env sigma q None
+    | false ->
+    let access = Global.{access_proof = fun _ -> None} in
+    Prettyp.print_name access env sigma q None
   in
+  let print = Pp.(string_of_ppcmds (hov 2 print)) in
   Abbrev.{full_path; print}
 
 let build_data : Names.DirPath.t list -> Data.t = fun ds ->
