@@ -27,8 +27,6 @@
 
   $ rocq-split test.v -- -Q . test.dir
   {
-    "file": "test.v",
-    "dirpath": "test.dir.test",
     "items": [
       {
         "kind": { "controls": [], "tag": "Require", "pure": false },

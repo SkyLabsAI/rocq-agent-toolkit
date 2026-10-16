@@ -68,8 +68,7 @@ module StateID = struct
     {toplevel = t.uid; sid}
 end
 
-let request : type r e. toplevel -> (r, e) command -> (r, e) Result.t =
-    fun s c ->
+let request : type r e. toplevel -> (r, e) cmd -> (r, e) Result.t = fun s c ->
   check_not_stopped s;
   Marshal.to_channel s.oc c [];
   Out_channel.flush s.oc;
@@ -115,3 +114,50 @@ let fork : toplevel -> (toplevel, string) result = fun s ->
       Out_channel.close_noerr oc;
       In_channel.close_noerr ic;
       Error(s)
+
+let get_items ~off ~text ~complete commands =
+  let len = String.length text in
+  let end_off = off + len in
+  let cur_off = ref off in
+  let rev_items = ref [] in
+  let add kind bp ep =
+    let rel_bp = bp - off in
+    let rel_ep = ep - off in
+    if rel_bp < 0 || rel_ep < rel_bp || len < rel_ep then assert false;
+    let text = String.sub text rel_bp (rel_ep - rel_bp) in
+    rev_items := {kind; text; bp; ep} :: !rev_items
+  in
+  let add_blanks ep =
+    if ep < !cur_off then assert false;
+    if !cur_off < ep then add `Blanks !cur_off ep;
+    cur_off := ep
+  in
+  let add_command command =
+    let loc = Option.get command.CAst.loc in
+    add_blanks loc.Loc.bp;
+    add (`Command(command)) loc.bp loc.ep;
+    cur_off := loc.ep
+  in
+  List.iter add_command commands;
+  if complete then add_blanks end_off else begin
+    let offset = !cur_off - off in
+    let blanks = Rocq_blanks.parse text ~offset in
+    add_blanks (off + blanks.valid_until)
+  end;
+  (List.rev !rev_items, !cur_off - off)
+
+let split : ?sid:StateID.t -> toplevel -> off:int -> text:string ->
+    (split_data, split_error) result = fun ?sid s ~off ~text ->
+  let sid = Option.map (StateID.to_int s) sid in
+  let raw = match request s (Split({sid; off; text})) with Ok(raw) -> raw in
+  match raw.result with
+  | Ok(()) ->
+      let (items, _) = get_items ~off ~text ~complete:true raw.commands in
+      Ok({items})
+  | Error(error_text, error_loc) ->
+      let (parsed_items, parsed_len) =
+        get_items ~off ~text ~complete:false raw.commands
+      in
+      let leftover_len = String.length text - parsed_len in
+      let leftover = String.sub text parsed_len leftover_len in
+      Error({parsed_items; leftover; error_text; error_loc})

@@ -13,7 +13,7 @@
     "status": "error",
     "message": " (in proof test): Attempt to save an incomplete proof\n(there are remaining open goals).",
     "loc": {
-      "fname": [ "ToplevelInput" ],
+      "fname": [ "InFile", { "dirpath": null, "file": "test.v" } ],
       "line_nb": 1,
       "bol_pos": 0,
       "line_nb_last": 1,

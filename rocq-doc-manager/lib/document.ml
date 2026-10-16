@@ -33,7 +33,7 @@ type in_toplevel = {
 type backend = {
   args : string list;
   file : string;
-  top : Rocq_toplevel.toplevel;
+  mutable top : Rocq_toplevel.toplevel;
   mutex : Mutex.t;
   mutable top_refs : int;
   mutable rev_processed : in_toplevel list;
@@ -82,6 +82,15 @@ let stop : t -> unit = fun d ->
   unsync backend d;
   if backend.top_refs = 0 then Rocq_toplevel.stop backend.top;
   d.backend <- None
+
+let restart : t -> unit = fun d ->
+  with_backend d @@ fun backend ->
+  let args = backend.args @ ["-topfile"; backend.file] in
+  let new_toplevel = Rocq_toplevel.init ~args in
+  Rocq_toplevel.stop backend.top;
+  backend.top <- new_toplevel;
+  backend.synced <- [];
+  backend.rev_processed <- []
 
 let clone : t -> t = fun d ->
   with_backend d @@ fun backend ->
@@ -174,20 +183,33 @@ let copy_contents : from:t -> t -> unit = fun ~from d ->
 let cursor_index : t -> int = fun d ->
   match d.rev_prefix with [] -> 0 | p :: _ -> p.index + 1
 
-let to_unprocessed : Rocq_split.sentence -> unprocessed_item = fun s ->
-  let text = s.Rocq_split.text in
-  match s.Rocq_split.kind with
+let to_unprocessed : Rocq_toplevel.item -> unprocessed_item = fun s ->
+  let Rocq_toplevel.{text; kind; _} = s in
+  match kind with
   | `Blanks     -> {kind = `Blanks    ; text}
   | `Command(c) -> {kind = `Command(c); text}
 
 type loc = Loc.t option
 
+let first_sid : backend -> Rocq_toplevel.StateID.t = fun backend ->
+  let rec first_sid sid rev_processed =
+    match rev_processed with
+    | [] -> sid
+    | p :: rev_processed -> first_sid p.sid_before rev_processed
+  in
+  let sid = Rocq_toplevel.StateID.current backend.top in
+  first_sid sid backend.rev_processed
+
 let load_file : t -> (unit, string * loc) result = fun d ->
-  let {file; args; _} = get_backend d in
-  match Rocq_split.split_file ~file ~args with
-  | Error(s, err) -> Error(s, err.Rocq_split.error_loc)
-  | Ok(data)      ->
-  let suffix = List.rev_map to_unprocessed data.Rocq_split.sentences in
+  with_backend d @@ fun backend ->
+  let sid = first_sid backend in
+  match In_channel.(with_open_text backend.file input_all) with
+  | exception Sys_error(s) -> Error(s, None)
+  | text ->
+  match Rocq_toplevel.split ~sid backend.top ~off:0 ~text with
+  | Error(err) -> Error(Rocq_toplevel.(err.error_text, err.error_loc))
+  | Ok(data)   ->
+  let suffix = List.rev_map to_unprocessed data.Rocq_toplevel.items in
   d.suffix <- List.rev_append suffix d.suffix;
   Ok(())
 
@@ -411,7 +433,7 @@ let sentence_to_unprocessed_item : sentence -> unprocessed_item = fun s ->
 
 let split_sentences : t -> text:string ->
     sentence list * (unit, string * string) result = fun d ~text ->
-  let {file; args; _} = get_backend d in
+  with_backend d @@ fun backend ->
   match text with "" -> ([], Ok(())) | _ ->
   let _ =
     let open Rocq_blanks in
@@ -423,16 +445,17 @@ let split_sentences : t -> text:string ->
     | _                               ->
         invalid_arg "unclosed initial comment"
   in
-  let full_text = contents ~include_suffix:false d ^ text in
-  let res = Rocq_split.split_string ~file ~args full_text in
+  let full = contents ~include_suffix:false d ^ text in
+  let sid = first_sid backend in
+  let res = Rocq_toplevel.split ~sid backend.top ~off:0 ~text:full in
   let sentences =
     match res with
-    | Ok(data)       -> data.Rocq_split.sentences
-    | Error(_, data) -> data.Rocq_split.parsed_sentences
+    | Ok(data)    -> data.Rocq_toplevel.items
+    | Error(data) -> data.Rocq_toplevel.parsed_items
   in
   let cursor_off = d.cursor_off in
   let rec to_sentences len rev_acc sentences =
-    let open Rocq_split in
+    let open Rocq_toplevel in
     match sentences with
     | []                                     ->
         (len, List.rev rev_acc)
@@ -461,7 +484,9 @@ let split_sentences : t -> text:string ->
   let res =
     match res with
     | Ok(_)       -> Ok(())
-    | Error(s, _) -> Error(s, String.sub text len (String.length text - len))
+    | Error(data) ->
+        let s = String.sub text len (String.length text - len) in
+        Error(data.Rocq_toplevel.error_text, s)
   in
   (sentences, res)
 
