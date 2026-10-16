@@ -9,3 +9,5 @@ mkdir test-dir
 unset XDG_CACHE_HOME
 export HOME=$PWD/user
 cd test-dir
+
+unset ROCQED_SESSION_ID

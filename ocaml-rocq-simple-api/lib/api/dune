@@ -21,8 +21,7 @@
  (deps
   ; Hack to depend on alias @vendored/rocq/install in a workspace build.
   (include rocq_dep)
-  ; Ensure that the private binaries are ready.
-  %{workspace_root}/_build/install/%{context_name}/bin/rocq-simple-api.private.splitter
+  ; Ensure that the private binary is ready.
   %{workspace_root}/_build/install/%{context_name}/bin/rocq-simple-api.private.toplevel)
  (action
   (write-file %{target} "(* Dummy file. *)")))

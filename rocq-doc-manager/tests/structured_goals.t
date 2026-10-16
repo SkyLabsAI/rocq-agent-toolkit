@@ -38,6 +38,7 @@
         "attrs": { "ids": [ "demo" ], "kind": "Theorem" }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -59,6 +60,7 @@
       },
       "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -80,6 +82,7 @@
       },
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -103,6 +106,7 @@
       },
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,

@@ -120,9 +120,54 @@ type run_error = {
 val run : toplevel -> off:int -> text:string
   -> (run_data, string * run_error) result
 
-(** [structured_goals t] returns the focused goals at the cursor, or [None] if
-    [t] is not in proof mode. It does not change the state. *)
+(** {2 Querying Rocq} *)
+
+(** [structured_goals t] gives the currently focused goals in the toplevel. If
+    the [t] is not currently in proof more, then [None] is returned. The state
+    of [t] is not changed by calling this function. *)
 val structured_goals : toplevel -> structured_goal list option
+
+(** {2 Sentence-splitting} *)
+
+(** AST of a Rocq vernacular command. *)
+type command = Rocq_vernac_entry.command
+
+(** Rocq item (vernacular command, or sequence of blank caracters). *)
+type item = {
+  kind : [`Command of command | `Blanks];
+  (** Sentence kind: an actual command or a sequence of blank characters. *)
+  text : string;
+  (** Full text of the item. *)
+  bp : int;
+  (** Byte offset of the first character of the item in the file. *)
+  ep : int;
+  (** Byte offset of the first character after the item in the file. *)
+}
+
+(** Data returned by the sentence-splitter. *)
+type split_data = {
+  items : item list;
+  (** List of parsed items. *)
+}
+
+(** Data returned in case of sentence-splitting error. *)
+type split_error = {
+  parsed_items : item list;
+  (** Successfully parsed items before the error. *)
+  leftover : string;
+  (** Text that could not be processed after the parsed items. *)
+  error_text : string;
+  (** Error message for the error. *)
+  error_loc : Loc.t option;
+  (** Location for the error, if any. *)
+}
+
+(** [split ?sid t ~off ~text] attempts to parse [text] into a list of items at
+    the current toplevel state, or state [sid] if it is given. Parameter [off]
+    indicates the assumed byte offset for [text] in the Rocq source file. Note
+    that the toplevel state is not mutated by the function. *)
+val split : ?sid:StateID.t -> toplevel -> off:int -> text:string
+  -> (split_data, split_error) result
 
 (** {2 JSON serialization for data returned by [run]} *)
 
@@ -139,3 +184,9 @@ val proof_state_to_yojson : proof_state -> Yojson.Safe.t
 val run_data_to_yojson : run_data -> Yojson.Safe.t
 
 val run_error_to_yojson : run_error -> Yojson.Safe.t
+
+val item_to_yojson : item -> Yojson.Safe.t
+
+val split_data_to_yojson : split_data -> Yojson.Safe.t
+
+val split_error_to_yojson : split_error -> Yojson.Safe.t

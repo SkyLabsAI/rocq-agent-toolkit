@@ -33,6 +33,9 @@ exception Stopped
     [clone], in order to free the underlying resources. *)
 val stop : t -> unit
 
+(** [restart d] restarts the top-level used by [d]. *)
+val restart : t -> unit
+
 (** [is_stopped d] indicates whether the document [d] is already stopped. This
     operation can be used concurrently, without restriction. *)
 val is_stopped : t -> bool

@@ -57,6 +57,7 @@
     "result": {
       "synterp_ast": { "kind": "Require", "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -82,6 +83,7 @@
         "attrs": { "id": "inserted", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -104,6 +106,7 @@
       ],
       "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -126,6 +129,7 @@
         "attrs": { "id": "junk", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 4,
@@ -145,6 +149,7 @@
       ],
       "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -266,6 +271,7 @@
         "attrs": { "ids": [ "test" ], "kind": "Theorem" }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -289,6 +295,7 @@
       },
       "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -310,6 +317,7 @@
       },
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -327,6 +335,7 @@
       "proof_state": { "given_up_goals": 0, "shelved_goals": 0 },
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -348,6 +357,7 @@
         "attrs": { "kind": "Qed" }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,

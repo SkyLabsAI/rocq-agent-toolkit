@@ -20,21 +20,17 @@ Split a test-file that imports the stale vo file.
 
   $ rocq-split test.v -- -Q . test.dir
   {
-    "error": "Error when parsing .vo (from file $TESTCASE_ROOT/stale.vo) for library test.dir.stale: File $TESTCASE_ROOT/stale.vo\nhas bad version number 500000 (expected 90299). It is corrupted or was\ncompiled with another version of Rocq.",
-    "loc": null,
-    "Items": [
+    "items": [
       {
         "kind": { "controls": [], "tag": "Print", "pure": true },
         "text": "About nat.",
         "bp": 0,
         "ep": 10
       },
-      {
-        "kind": "blanks",
-        "text": "\nRequire Import test.dir.stale.\n",
-        "bp": 10,
-        "ep": 42
-      }
-    ]
+      { "kind": "blanks", "text": "\n", "bp": 10, "ep": 11 }
+    ],
+    "leftover": "Require Import test.dir.stale.\n",
+    "error": "Error when parsing .vo (from file $TESTCASE_ROOT/stale.vo) for library test.dir.stale: File $TESTCASE_ROOT/stale.vo\nhas bad version number 500000 (expected 90299). It is corrupted or was\ncompiled with another version of Rocq.",
+    "loc": null
   }
   [1]

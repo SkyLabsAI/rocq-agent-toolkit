@@ -1,42 +1,3 @@
-open Rocq_split
-
-let kind_to_yojson k =
-  match k with
-  | `Blanks     -> `String("blanks")
-  | `Command(c) -> Rocq_vernac_entry.command_to_yojson c
-
-let sentence_to_json {kind; text; bp; ep} =
-  `Assoc([
-    ("kind", kind_to_yojson kind);
-    ("text", `String(text)      );
-    ("bp"  , `Int(bp)           );
-    ("ep"  , `Int(ep)           );
-  ])
-
-let output_error error {parsed_sentences = sentences; error_loc = loc} =
-  let loc = match loc with Some(loc) -> Rocq_loc.to_yojson loc | _ -> `Null in
-  let sentences = List.map sentence_to_json sentences in
-  let json =
-    `Assoc([
-      ("error", `String(error)  );
-      ("loc"  , loc             );
-      ("Items", `List(sentences));
-    ])
-  in
-  Format.printf "%a\n%!" (Yojson.Safe.pretty_print ~std:true) json
-
-let output_result file {dirpath; sentences} =
-  let dirpath = Names.DirPath.to_string dirpath in
-  let sentences = List.map sentence_to_json sentences in
-  let json =
-    `Assoc([
-      ("file"   , `String(file)   );
-      ("dirpath", `String(dirpath));
-      ("items"  , `List(sentences));
-    ])
-  in
-  Format.printf "%a\n%!" (Yojson.Safe.pretty_print ~std:true) json
-
 let _ =
   let usage i =
     let prog = Sys.argv.(0) in
@@ -61,6 +22,27 @@ let _ =
     | [file] -> (file, args)
     | _      -> usage 1
   in
-  match Rocq_split.split_file ~file ~args with
-  | Ok(data)       -> output_result file data
-  | Error(s, data) -> output_error s data; exit 1
+  let error s =
+    let json = `Assoc([("error", `String(s)); ("loc", `Null)]) in
+    Format.printf "%a\n%!" (Yojson.Safe.pretty_print ~std:true) json;
+    exit 1
+  in
+  let toplevel =
+    let args = "-topfile" :: file :: args in
+    try Rocq_toplevel.init ~args with Failure(s) ->
+    error (Printf.sprintf "Failed to initialized the toplevel (%s)" s)
+  in
+  let text =
+    try In_channel.(with_open_text file input_all) with Sys_error(s) ->
+    error (Printf.sprintf "System error (%s)" s)
+  in
+  let res = Rocq_toplevel.split toplevel ~text ~off:0 in
+  Rocq_toplevel.stop toplevel;
+  match res with
+  | Ok(data) ->
+      let json = Rocq_toplevel.split_data_to_yojson data in
+      Format.printf "%a\n%!" (Yojson.Safe.pretty_print ~std:true) json
+  | Error(e) ->
+      let json = Rocq_toplevel.split_error_to_yojson e in
+      Format.printf "%a\n%!" (Yojson.Safe.pretty_print ~std:true) json;
+      exit 1
