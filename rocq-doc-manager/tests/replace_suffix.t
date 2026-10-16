@@ -71,6 +71,7 @@
         "attrs": { "id": "test4", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -130,6 +131,7 @@
         "attrs": { "id": "my_test", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -193,6 +195,7 @@
         "attrs": { "id": "foo", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,

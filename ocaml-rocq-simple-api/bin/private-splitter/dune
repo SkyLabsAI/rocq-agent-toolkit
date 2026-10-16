@@ -1,5 +1,0 @@
-(executable
- (public_name rocq-simple-api.private.splitter)
- (package rocq-simple-api)
- (name main)
- (libraries rocq-runtime.toplevel rocq_simple_api_internal))
