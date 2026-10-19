@@ -433,7 +433,7 @@ let sentence_to_unprocessed_item : sentence -> unprocessed_item = fun s ->
 
 let split_sentences : t -> text:string ->
     sentence list * (unit, string * string) result = fun d ~text ->
-  with_backend d @@ fun backend ->
+  let _ = get_backend d in
   match text with "" -> ([], Ok(())) | _ ->
   let _ =
     let open Rocq_blanks in
@@ -445,9 +445,22 @@ let split_sentences : t -> text:string ->
     | _                               ->
         invalid_arg "unclosed initial comment"
   in
-  let full = contents ~include_suffix:false d ^ text in
-  let sid = first_sid backend in
-  let res = Rocq_toplevel.split ~sid backend.top ~off:0 ~text:full in
+  with_synced_backend d @@ fun backend ->
+  (* We re-parse one prefix item to rule out bad interference. *)
+  let (sid, off, prefix) =
+    let rec split_prefix sid rev_processed =
+      match rev_processed with
+      | [] ->
+          (sid, d.cursor_off, "")
+      | {processed = {kind = `Ghost(_); _}; sid_before} :: rev_processed ->
+          split_prefix sid_before rev_processed
+      | {processed; sid_before} :: _ ->
+          (sid_before, processed.off, processed.text)
+    in
+    let sid = Rocq_toplevel.StateID.current backend.top in
+    split_prefix sid backend.rev_processed
+  in
+  let res = Rocq_toplevel.split ~sid backend.top ~off ~text:(prefix ^ text) in
   let sentences =
     match res with
     | Ok(data)    -> data.Rocq_toplevel.items
