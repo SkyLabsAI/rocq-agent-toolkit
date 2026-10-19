@@ -6,7 +6,8 @@ let version = "dev"
 let exits = [
   Cmd.Exit.info 0 ~doc:"on success.";
   Cmd.Exit.info 1 ~doc:"on command/request failures.";
-  Cmd.Exit.info 123 ~doc:"on protocol errors (e.g., busy / stopped server).";
+  Cmd.Exit.info 75 ~doc:"on temporary failures (e.g., busy server).";
+  Cmd.Exit.info 123 ~doc:"on protocol errors (e.g., stopped server).";
   Cmd.Exit.info 124 ~doc:"on command-line parsing error.";
   Cmd.Exit.info 125 ~doc:"on unexpected internal errors (bugs).";
 ]
