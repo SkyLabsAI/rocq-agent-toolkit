@@ -310,7 +310,7 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     | () -> fd
     | exception Unix.Unix_error((EACCES | EAGAIN), _, _) ->
         Unix.close fd;
-        panic ~code:123 "Error: a request is already in progress."
+        panic ~code:75 "Error: a request is already in progress."
     | exception e -> Unix.close fd; raise e
   in
   Fun.protect ~finally:(fun () -> Unix.close client_lock_fd) @@ fun () ->
