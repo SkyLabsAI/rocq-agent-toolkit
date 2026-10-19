@@ -83,10 +83,48 @@ type run_error = {
 }
 [@@deriving to_yojson]
 
+type command = Rocq_vernac_entry.command
+
+type item_kind = [`Command of command | `Blanks]
+
+let item_kind_to_yojson k =
+  match k with
+  | `Command(c) -> Rocq_vernac_entry.command_to_yojson c
+  | `Blanks -> `String("blanks")
+
+type item = {
+  kind : item_kind;
+  text : string;
+  bp : int;
+  ep : int;
+}
+[@@deriving to_yojson]
+
+type split_data = {
+  items : item list;
+}
+[@@deriving to_yojson]
+
+type split_error = {
+  parsed_items : item list [@key "items"];
+  leftover : string;
+  error_text : string [@key "error"];
+  error_loc : Rocq_loc.t option [@key "loc"];
+}
+[@@deriving to_yojson]
+
+type raw_split_data = {
+  commands : command list;
+  feedback : Feedback.feedback list;
+  result : (unit, string * Rocq_loc.t option) result;
+}
+
 type empty = |
 
-type (_, _) command =
-  | Run : {off : int; text : string} -> (run_data, string * run_error) command
-  | BackTo : {sid : int} -> (unit, string) command
-  | Fork : {pipe_in : string; pipe_out : string} -> (int, string) command
-  | StructuredGoals : (structured_goal list option, empty) command
+type (_, _) cmd =
+  | Run : {off : int; text : string} -> (run_data, string * run_error) cmd
+  | BackTo : {sid : int} -> (unit, string) cmd
+  | Fork : {pipe_in : string; pipe_out : string} -> (int, string) cmd
+  | StructuredGoals : (structured_goal list option, empty) cmd
+  | Split : {off : int; text : string; sid : int option} ->
+      (raw_split_data, empty) cmd

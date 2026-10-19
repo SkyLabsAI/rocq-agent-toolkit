@@ -137,9 +137,9 @@ let structured_goals state =
     let Proof.{goals; sigma; _} = Proof.data proof in
     List.map (structured_goal_of_evar sigma) goals
   in
-  (state, Ok(Option.map get_goals state.Vernac.State.proof))
+  Option.map get_goals state.Vernac.State.proof
 
-let run state off text =
+let run source state off text =
   Feed.reset ();
   let error ?loc e =
     let (e, info) = Exninfo.capture e in
@@ -150,7 +150,8 @@ let run state off text =
   in
   let run () =
     let stream = Gramlib.Stream.of_string ~offset:off text in
-    let input = Procq.Parsable.make stream in
+    let loc = Loc.initial source in
+    let input = Procq.Parsable.make ~loc stream in
     let entry = Pvernac.main_entry in
     let open Vernac.State in
     let vernac =
@@ -238,21 +239,118 @@ let fork : state -> pipe_in:string -> pipe_out:string ->
   with Unix.Unix_error(e,_,_) ->
     (state, Error(Unix.error_message e))
 
-let run_command : type r e. state -> (r, e) command -> state * (r, e) result =
-    fun state c ->
+(* Splitting the given text without attempting to restore the state. *)
+let destructive_split source state sid off text =
+  Feed.reset ();
+  let rev_commands = ref [] in
+  let synterp_state () =
+    let err s = CErrors.user_err (Pp.str s) in
+    let state =
+      match sid with None -> state | Some(sid) ->
+      let (state, res) = back_to state sid in
+      match res with Ok(()) -> state | Error(_) ->
+      err "The given Rocq state could not be reached."
+    in
+    let get () = Stm.state_of_id ~doc:state.Vernac.State.doc state.sid in
+    match get () with
+    | Stm.Valid(Some(vs)) -> vs.Vernacstate.synterp
+    | Stm.Expired         -> err "The current Rocq state has expired."
+    | Stm.Error(e)        -> raise e
+    | Stm.Valid(None)     ->
+    Stm.observe ~doc:state.doc state.sid;
+    match get () with
+    | Stm.Valid(Some(vs)) -> vs.Vernacstate.synterp
+    | Stm.Valid(None)     -> err "The current Rocq state is not available."
+    | Stm.Expired         -> err "The current Rocq state has expired."
+    | Stm.Error(e)        -> raise e
+  in
+  let result =
+    try
+      Vernacstate.Synterp.unfreeze (synterp_state ());
+      let stream = Gramlib.Stream.of_string ~offset:off text in
+      let input = Procq.Parsable.make ~loc:(Loc.initial source) stream in
+      let rec loop () =
+        let mode = Some(Synterp.get_default_proof_mode ()) in
+        match Procq.Entry.parse (Pvernac.main_entry mode) input with
+        | None    -> Ok(())
+        | Some(c) ->
+        let c = Synterp.synterp_control ~intern:Vernacinterp.fs_intern c in
+        let c = Rocq_vernac_entry.of_vernac_control_entry c in
+        rev_commands := c :: !rev_commands;
+        loop ()
+      in
+      loop ()
+    with e ->
+      let (e, info) = Exninfo.capture e in
+      let msg = Pp.string_of_ppcmds (CErrors.iprint (e, info)) in
+      Error(msg, Loc.get_loc info)
+  in
+  let commands = List.rev !rev_commands in
+  let feedback = Feed.collect (fun fb -> Some(fb)) in
+  {commands; feedback; result}
+
+(* Forks to protect the main toplevel state from bad interference. *)
+let split source state sid off text =
+  let failure msg =
+    let msg = "Could not run the sentence-splitter: " ^ msg in
+    {commands = []; feedback = []; result = Error(msg, None)}
+  in
+  match Unix.pipe () with
+  | exception Unix.Unix_error(e,_,_) -> failure (Unix.error_message e)
+  | (read_fd, write_fd) ->
+  let run_child () =
+    (* Exit on all exceptions. *)
+    (fun f -> try f () with _ -> Unix._exit 2) @@ fun () ->
+    (* Disconnect stdout/stderr to not mess with the toplevel protocol. *)
+    let null = Unix.openfile "/dev/null" [Unix.O_WRONLY] 0 in
+    Unix.dup2 null (Unix.descr_of_out_channel stdout);
+    Unix.dup2 null (Unix.descr_of_out_channel stderr);
+    Unix.close null;
+    (* Do the splitting. *)
+    let result = destructive_split source state sid off text in
+    (* Write the result to the pipe. *)
+    let oc = Unix.close read_fd; Unix.out_channel_of_descr write_fd in
+    Marshal.to_channel oc result []; Out_channel.flush oc;
+    Out_channel.close_noerr oc; Unix._exit 0
+  in
+  let run_parent pid =
+    match Unix.close write_fd; Unix.in_channel_of_descr read_fd with
+    | exception Unix.Unix_error(e,_,_) -> failure (Unix.error_message e)
+    | ic ->
+    let res = try Some(Marshal.from_channel ic) with _ -> None in
+    In_channel.close_noerr ic;
+    match snd (Unix.waitpid [] pid) with
+    | exception Unix.Unix_error(e,_,_) -> failure (Unix.error_message e)
+    | Unix.WEXITED(0) -> assert (res <> None); Option.get res
+    | Unix.WEXITED(n) ->
+        failure (Printf.sprintf "child process exited with code %i" n)
+    | Unix.WSIGNALED(n) ->
+        failure (Printf.sprintf "child process was killed by signal %i" n)
+    | Unix.WSTOPPED(n) ->
+        failure (Printf.sprintf "child process was stopped by signal %i" n)
+  in
+  match Unix.fork () with
+  | exception Unix.Unix_error(e,_,_) ->
+      Unix.close read_fd; Unix.close write_fd; failure (Unix.error_message e)
+  | 0 -> run_child ()
+  | pid -> run_parent pid
+
+let run_cmd : type r e. Loc.source -> state -> (r, e) cmd ->
+    state * (r, e) result = fun source state c ->
   match c with
-  | Run({off; text})          -> run state off text
+  | Run({off; text})          -> run source state off text
   | BackTo({sid})             -> back_to state sid
   | Fork({pipe_in; pipe_out}) -> fork state ~pipe_in ~pipe_out
-  | StructuredGoals           -> structured_goals state
+  | StructuredGoals           -> (state, Ok(structured_goals state))
+  | Split({off; text; sid})   -> (state, Ok(split source state sid off text))
 
-let interact : state -> unit = fun state ->
+let interact : Loc.source -> state -> unit = fun source state ->
   let pid = Unix.getpid () in
   Marshal.to_channel stdout (pid, Stateid.to_int state.Vernac.State.sid) [];
   Out_channel.flush stdout;
   let rec loop state =
     let c = Marshal.from_channel stdin in
-    let (state, r) = run_command state c in
+    let (state, r) = run_cmd source state c in
     Marshal.to_channel stdout (state.Vernac.State.sid, r) [];
     Out_channel.flush stdout;
     loop state
@@ -261,9 +359,14 @@ let interact : state -> unit = fun state ->
   | End_of_file  -> ()
   | Sys_error(s) -> Printf.eprintf "Error: %s.\n%!" s; exit 1
 
-let run _ ~opts:_ state =
+let run _ ~opts state =
+  let source =
+    match opts.Coqargs.config.logic.toplevel_name with
+    | Coqargs.TopLogical(_) -> Loc.ToplevelInput
+    | Coqargs.TopPhysical(file) -> Loc.InFile({dirpath = None; file})
+  in
   Feed.with_feeder @@ fun _ ->
-  Flags.without_option Flags.in_ml_toplevel interact state
+  Flags.without_option Flags.in_ml_toplevel (interact source) state
 
 let init_document opts injections =
   let (doc, sid) =

@@ -42,6 +42,7 @@
         "attrs": { "id": "x1", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -84,6 +85,7 @@
         "attrs": { "id": "inserted", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,

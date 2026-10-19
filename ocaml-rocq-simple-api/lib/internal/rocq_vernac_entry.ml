@@ -73,8 +73,10 @@ let of_vernac_control : Vernacexpr.vernac_control -> command =
     | VernacRequire(_,_,_) -> EVernacRequire
     | VernacImport(_,_) -> EVernacImport
     | VernacDeclareModule(_,lid,_,_) -> EVernacDeclareModule(lid)
-    | VernacDefineModule(_,lid,_,_,expr) -> EVernacDefineModule{id=lid;has_body=expr<>[]}
-    | VernacDeclareModuleType(lid,_,_,expr) -> EVernacDeclareModuleType{id=lid;has_body=expr<>[]}
+    | VernacDefineModule(_,lid,_,_,expr) ->
+        EVernacDefineModule{id=lid;has_body=expr<>[]}
+    | VernacDeclareModuleType(lid,_,_,expr) ->
+        EVernacDeclareModuleType{id=lid;has_body=expr<>[]}
     | VernacInclude(_) -> EVernacInclude
     | VernacDeclareMLModule(_)
     | VernacChdir(_)
@@ -107,8 +109,10 @@ let of_vernac_control_entry : Synterp.vernac_control_entry -> command =
     | Synterp.EVernacImport(_) -> EVernacImport
     | Synterp.EVernacDeclareMLModule(_) -> EVernacDeclareMLModule
     | Synterp.EVernacDeclareModule(_,i,_,_) -> EVernacDeclareModule(i)
-    | Synterp.EVernacDefineModule(_,i,_,_,_,expr) -> EVernacDefineModule{id=i;has_body=expr<>[]}
-    | Synterp.EVernacDeclareModuleType(i,_,_,_,expr) -> EVernacDeclareModuleType{id=i;has_body=expr<>[]}
+    | Synterp.EVernacDefineModule(_,i,_,_,_,expr) ->
+        EVernacDefineModule{id=i;has_body=expr<>[]}
+    | Synterp.EVernacDeclareModuleType(i,_,_,_,expr) ->
+        EVernacDeclareModuleType{id=i;has_body=expr<>[]}
     | Synterp.EVernacInclude(_) -> EVernacInclude
     | Synterp.EVernacSetOption(_) -> EVernacSetOption
     | Synterp.EVernacLoad(_) -> EVernacLoad

@@ -33,6 +33,14 @@ exception Stopped
     [clone], in order to free the underlying resources. *)
 val stop : t -> unit
 
+(** [restart d] restarts the top-level used by [d] (and potentially also other
+    documents). The [Failure] exception is raised if the operation fails. When
+    such a failure occurs, the previous state of the top-level is kept. If the
+    top-level is successfully restarted, it is not immediately brought back in
+    sync with any of the documents using it. The syncing only happens upon the
+    next top-level interaction. *)
+val restart : t -> unit
+
 (** [is_stopped d] indicates whether the document [d] is already stopped. This
     operation can be used concurrently, without restriction. *)
 val is_stopped : t -> bool

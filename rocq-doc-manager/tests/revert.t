@@ -68,6 +68,7 @@
         "attrs": { "id": "test", "kind": "Definition", "proof": false }
       },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -90,6 +91,7 @@
       ],
       "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,
@@ -169,6 +171,7 @@
       ],
       "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} },
       "loc": {
+        "fname": { "file": "test.v" },
         "line_nb": 1,
         "bol_pos": 0,
         "line_nb_last": 1,

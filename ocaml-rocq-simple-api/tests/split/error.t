@@ -8,17 +8,7 @@
 
   $ rocq-split test.v -- -Q . test.dir
   {
-    "error": "Syntax error: [reduce] expected after ':=' (in [def_body]).",
-    "loc": {
-      "fname": [ "InFile", { "dirpath": null, "file": "test.v" } ],
-      "line_nb": 6,
-      "bol_pos": 97,
-      "line_nb_last": 6,
-      "bol_pos_last": 97,
-      "bp": 97,
-      "ep": 98
-    },
-    "Items": [
+    "items": [
       {
         "kind": "blanks",
         "text": "(* This is an ill-formed file. *)\n",
@@ -37,6 +27,17 @@
         "bp": 44,
         "ep": 72
       }
-    ]
+    ],
+    "leftover": "Definition incomplete :=\n",
+    "error": "Syntax error: [reduce] expected after ':=' (in [def_body]).",
+    "loc": {
+      "fname": [ "InFile", { "dirpath": null, "file": "test.v" } ],
+      "line_nb": 6,
+      "bol_pos": 97,
+      "line_nb_last": 6,
+      "bol_pos_last": 97,
+      "bp": 97,
+      "ep": 98
+    }
   }
   [1]

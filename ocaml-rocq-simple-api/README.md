@@ -1,19 +1,15 @@
-Collection of Simple (Process-Isolated) Rocq APIs
-=================================================
+Simple (Process-Isolated) Rocq Toplevel API
+===========================================
 
-The APIs are accessed via the `rocq-simple-api.api` ocamlfind package.
-
-Simple Rocq Toplevel API
-------------------------
-
-This OCaml library (module `Rocq_toplevel`) allows interactively running (and
-reverting) Rocq commands, as is typically done in a toplevel like `rocq top`.
-The interface of the library is found in `lib/api/rocq_toplevel.mli`.
+The API is accessed via the `rocq-simple-api.api` ocamlfind package. The main
+interface is declared in file `lib/api/rocq_toplevel.mli`. It allows running /
+reverting Rocq commands, as is typically done in a toplevel like `rocq top`,
+as well as other operations described below.
 
 ### Implementation / Architecture
 
 The source code is split into the following four components:
-- a shared data interface in `lib/data/` (not part of the API)
+- a shared data interface in `lib/internal/` (not part of the API)
 - a (private) executable in `bin/private-toplevel/`,
 - the actual (public) API in `lib/api/rocq_toplevel.ml`.
 - a debug toplevel executable (`rocq-simple-api.toplevel`) in `bin/toplevel/`.
@@ -28,36 +24,23 @@ that all rely on Rocq.
 to be more efficient, our library has simplicity on its side, which helps make
 it very reliable.
 
-Sentence-Splitter
------------------
+### Toplevel Forking
 
-This OCaml library (module `Rocq_split`) allows splitting Rocq sources into a
-list of sentences, either blank characters (including comments) or a command.
-The interface of the library is found in `lib/api/rocq_split.mli`.
+The API allow forking the top-level, which can be used to attempt different
+interactions at the same time, without risking them interfering.
 
-Note that a sentence-splitting tool called `rocq-split` is also provided. It
-can be used as follows.
+### Sentence-Splitting
 
+The top-level API also allows splitting Rocq sources into a list of sentences,
+either blank characters (including comments) or a command.
+
+A sentence-splitting tool called `rocq-split` is also provided. It can be used
+as follows.
 ```sh
 $ rocq-split dir/test.v -- -Q dir test.dir
 {
-  "file": "test.v",
-  "dirpath": "test.dir.test",
   "items": [
     ...
   ]
 }
 ```
-
-### Implementation / Architecture
-
-The source code is split into the following four components:
-- a shared data interface in `lib/data/` (not part of the API)
-- a (private) executable in `bin/private-splitter/`,
-- the actual (public) API in `lib/api/rocq_split.ml`.
-- a splitter executable (`rocq-split`) in `bin/splitter/`.
-
-The current implementation confines interactions with Rocq's internal state to
-separate processes (one per sentence-splitter call). Thanks to this approach,
-we do not need to think too hard about the Rocq state, especially when linking
-together tools that all rely on Rocq.
