@@ -679,6 +679,17 @@ let main_man = [
       $(b,ROCQED_SESSION_ID=ID) assignment in a separate shell, or pass the \
       identifier with $(b,--session-id=ID).";
 
+  `S "SANDBOXING";
+  `P "The server of a session and $(b,rocq-ed) invocations communicate over \
+      a Unix-domain socket, created in the session's data directory (under \
+      $(b,\\$XDG_CACHE_HOME/rocq-ed), or $(b,\\$HOME/.cache/rocq-ed) by \
+      default). Sandboxes that forbid Unix-domain sockets, which is typically \
+      the case when network access is disabled, prevent $(b,rocq-ed) from \
+      working: $(b,rocq-ed init) fails to bind the socket, and other \
+      commands fail to connect to it. In such environments, the sandbox must \
+      be configured to allow Unix-domain sockets (e.g., by enabling network \
+      access), and the data directory must be writable.";
+
   `S "DOCUMENT MODEL";
   `P "The session-managed $(i,document) is the editable, in-memory \
       representation of a Rocq source file. It is structured as a sequence \
