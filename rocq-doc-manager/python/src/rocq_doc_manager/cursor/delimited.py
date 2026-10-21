@@ -33,6 +33,7 @@ class DelimitedRocqCursor(DelegateRocqCursor):
         start: int | None = None,
         end: int | None = None,
         count: int | None = None,
+        clone: bool = True,
         materialize: bool = False,
     ) -> DelimitedRocqCursor | rdm_api.Err[rdm_api.CommandError | None]:
         """
@@ -48,10 +49,13 @@ class DelimitedRocqCursor(DelegateRocqCursor):
             to the final index of the document, incompatible with `count`)
         @param count: number of items to include in the region (incompatible
             with `end`, has no effect if not set)
+        @param clone: does not clone the cursor if set to `False`
         @param materialize: materializes the cloned cursor if set to `True`
         @returns: the delimited cursor or a command error
         @raises ValueError: if the `start` and `end` values are not suitable
         """
+        if materialize and not clone:
+            raise ValueError('Argument "materialize" only usable when "clone" is set')
         prefix_len = await cursor.cursor_index()
         suffix_len = len(await cursor.doc_suffix())
         total_len = prefix_len + suffix_len
@@ -73,12 +77,15 @@ class DelimitedRocqCursor(DelegateRocqCursor):
             raise ValueError(
                 f'Argument "start" ({start_index}) should be smaller "end" ({end_index})'
             )
-        # Clone the cursor, move to the start of the region, dispose on error
-        cursor = await cursor.clone(materialize=materialize)
+        # Clone the cursor if requested.
+        if clone:
+            cursor = await cursor.clone(materialize=materialize)
+        # Move to the start of the region.
         if start is not None:
             res = await cursor.go_to(start_index)
             if isinstance(res, rdm_api.Err):
-                await cursor.dispose()
+                if clone:
+                    await cursor.dispose()
                 return res
         # Create the delimited cursor
         return cls(cursor, start_index, total_len - end_index)
