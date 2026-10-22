@@ -139,7 +139,7 @@ let structured_goals state =
   in
   Option.map get_goals state.Vernac.State.proof
 
-let run source state off text =
+let run state input_loc text =
   Feed.reset ();
   let error ?loc e =
     let (e, info) = Exninfo.capture e in
@@ -149,9 +149,8 @@ let run source state off text =
     (state, Error(msg, {error_loc; feedback_messages; loc}))
   in
   let run () =
-    let stream = Gramlib.Stream.of_string ~offset:off text in
-    let loc = Loc.initial source in
-    let input = Procq.Parsable.make ~loc stream in
+    let stream = Gramlib.Stream.of_string ~offset:input_loc.Loc.bp text in
+    let input = Procq.Parsable.make ~loc:input_loc stream in
     let entry = Pvernac.main_entry in
     let open Vernac.State in
     let vernac =
@@ -162,7 +161,7 @@ let run source state off text =
     in
     match vernac.CAst.loc with None -> assert false | Some(loc) ->
     (* Check for leading text. *)
-    let len_leading = loc.Loc.bp - off in
+    let len_leading = loc.Loc.bp - input_loc.Loc.bp in
     if len_leading <> 0 then begin
       let s = String.sub text 0 len_leading in
       let msg = Printf.sprintf "Leading text before command: %S." s in
@@ -218,6 +217,31 @@ let run source state off text =
     (new_state, Ok(data))
   with e -> error ?loc e
 
+let loc_after_blanks loc text =
+  let module State = CLexer.Lexer.State in
+  let saved_state = State.get () in
+  State.set (State.init ());
+  Fun.protect ~finally:(fun () -> State.set saved_state) @@ fun () ->
+  try
+    let chars = Gramlib.Stream.of_string ~offset:loc.Loc.bp text in
+    let tokens = CLexer.Lexer.tok_func ~loc chars in
+    let keywords = Procq.get_keyword_state () in
+    match Gramlib.LStream.next keywords tokens with
+    | Some(Tok.EOI) ->
+        let loc = Gramlib.LStream.current_loc tokens in
+        Ok(Loc.create loc.fname loc.line_nb loc.bol_pos loc.bp loc.bp)
+    | Some(tok) ->
+        let tok = Tok.extract_string false tok in
+        let msg =
+          Printf.sprintf "Expected only blank characters and comments, but \
+            found token %S." tok
+        in
+        Error(msg)
+    | None -> assert false
+  with e ->
+    let pp = CErrors.iprint (Exninfo.capture e) in
+    Error(Pp.string_of_ppcmds pp)
+
 let fork : state -> pipe_in:string -> pipe_out:string ->
     state * (int, string) result = fun state ~pipe_in ~pipe_out ->
   let setup () =
@@ -240,7 +264,7 @@ let fork : state -> pipe_in:string -> pipe_out:string ->
     (state, Error(Unix.error_message e))
 
 (* Splitting the given text without attempting to restore the state. *)
-let destructive_split source state sid off text =
+let destructive_split state sid loc text =
   Feed.reset ();
   let rev_commands = ref [] in
   let synterp_state () =
@@ -267,8 +291,8 @@ let destructive_split source state sid off text =
   let result =
     try
       Vernacstate.Synterp.unfreeze (synterp_state ());
-      let stream = Gramlib.Stream.of_string ~offset:off text in
-      let input = Procq.Parsable.make ~loc:(Loc.initial source) stream in
+      let stream = Gramlib.Stream.of_string ~offset:loc.Loc.bp text in
+      let input = Procq.Parsable.make ~loc stream in
       let rec loop () =
         let mode = Some(Synterp.get_default_proof_mode ()) in
         match Procq.Entry.parse (Pvernac.main_entry mode) input with
@@ -290,7 +314,7 @@ let destructive_split source state sid off text =
   {commands; feedback; result}
 
 (* Forks to protect the main toplevel state from bad interference. *)
-let split source state sid off text =
+let split state sid loc text =
   let failure msg =
     let msg = "Could not run the sentence-splitter: " ^ msg in
     {commands = []; feedback = []; result = Error(msg, None)}
@@ -307,7 +331,7 @@ let split source state sid off text =
     Unix.dup2 null (Unix.descr_of_out_channel stderr);
     Unix.close null;
     (* Do the splitting. *)
-    let result = destructive_split source state sid off text in
+    let result = destructive_split state sid loc text in
     (* Write the result to the pipe. *)
     let oc = Unix.close read_fd; Unix.out_channel_of_descr write_fd in
     Marshal.to_channel oc result []; Out_channel.flush oc;
@@ -335,22 +359,23 @@ let split source state sid off text =
   | 0 -> run_child ()
   | pid -> run_parent pid
 
-let run_cmd : type r e. Loc.source -> state -> (r, e) cmd ->
-    state * (r, e) result = fun source state c ->
+let run_cmd : type r e. state -> (r, e) cmd ->
+    state * (r, e) result = fun state c ->
   match c with
-  | Run({off; text})          -> run source state off text
-  | BackTo({sid})             -> back_to state sid
-  | Fork({pipe_in; pipe_out}) -> fork state ~pipe_in ~pipe_out
-  | StructuredGoals           -> (state, Ok(structured_goals state))
-  | Split({off; text; sid})   -> (state, Ok(split source state sid off text))
+  | Run({loc; text})            -> run state loc text
+  | BackTo({sid})               -> back_to state sid
+  | Fork({pipe_in; pipe_out})   -> fork state ~pipe_in ~pipe_out
+  | StructuredGoals             -> (state, Ok(structured_goals state))
+  | LocAfterBlanks({loc; text}) -> (state, loc_after_blanks loc text)
+  | Split({loc; text; sid})     -> (state, Ok(split state sid loc text))
 
-let interact : Loc.source -> state -> unit = fun source state ->
+let interact : state -> unit = fun state ->
   let pid = Unix.getpid () in
   Marshal.to_channel stdout (pid, Stateid.to_int state.Vernac.State.sid) [];
   Out_channel.flush stdout;
   let rec loop state =
     let c = Marshal.from_channel stdin in
-    let (state, r) = run_cmd source state c in
+    let (state, r) = run_cmd state c in
     Marshal.to_channel stdout (state.Vernac.State.sid, r) [];
     Out_channel.flush stdout;
     loop state
@@ -359,14 +384,9 @@ let interact : Loc.source -> state -> unit = fun source state ->
   | End_of_file  -> ()
   | Sys_error(s) -> Printf.eprintf "Error: %s.\n%!" s; exit 1
 
-let run _ ~opts state =
-  let source =
-    match opts.Coqargs.config.logic.toplevel_name with
-    | Coqargs.TopLogical(_) -> Loc.ToplevelInput
-    | Coqargs.TopPhysical(file) -> Loc.InFile({dirpath = None; file})
-  in
+let run _ ~opts:_ state =
   Feed.with_feeder @@ fun _ ->
-  Flags.without_option Flags.in_ml_toplevel (interact source) state
+  Flags.without_option Flags.in_ml_toplevel interact state
 
 let init_document opts injections =
   let (doc, sid) =

@@ -132,10 +132,10 @@
       },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 2,
+        "bol_pos": 23,
+        "line_nb_last": 2,
+        "bol_pos_last": 23,
         "bp": 23,
         "ep": 55
       }

@@ -111,14 +111,23 @@ type run_error = {
   loc : Loc.t option;
 }
 
-(** [run t ~off ~text] runs the vernacular command from [text] in the toplevel
-    [t], assuming its first character is at byte offset [off] in the processed
-    "file". Upon success, a new toplevel state is reached, and a value of type
-    [run_data] is returned. In case of failure, an error message together with
-    a value of type [run_error] is returned, and the state is not updated. The
-    [Stopped] exception is raised if [stop] was previously called on [t]. *)
-val run : toplevel -> off:int -> text:string
+(** [run t ~loc ~text] runs the vernacular command from [text] in the toplevel
+    [t], assuming its first character is at the start of source location [loc]
+    (the end of [loc] is ignored). In case of success, a new toplevel state is
+    reached, and a value of type [run_data] is returned. In case of failure, a
+    value of type [run_error] is returned along with an error message, and the
+    state of the toplevel is not updated. The [Stopped] exception is raised if
+    [stop] was previously called on [t]. *)
+val run : toplevel -> loc:Loc.t -> text:string
   -> (run_data, string * run_error) result
+
+(** [loc_after_blanks t ~loc ~text] returns the source location pointing right
+    after the end of [text], assuming that [loc] is a location pointing to the
+    start of [text]. The given [text] is expected to consist entirely of blank
+    characters and Rocq comments, and an error is returned otherwise. Toplevel
+    [t] is used for the operation, but its state is not mutated. *)
+val loc_after_blanks : toplevel -> loc:Loc.t -> text:string
+  -> (Loc.t, string) result
 
 (** {2 Querying Rocq} *)
 
@@ -162,11 +171,11 @@ type split_error = {
   (** Location for the error, if any. *)
 }
 
-(** [split ?sid t ~off ~text] attempts to parse [text] into a list of items at
-    the current toplevel state, or state [sid] if it is given. Parameter [off]
-    indicates the assumed byte offset for [text] in the Rocq source file. Note
-    that the toplevel state is not mutated by the function. *)
-val split : ?sid:StateID.t -> toplevel -> off:int -> text:string
+(** [split ?sid t ~loc ~text] attempts to parse [text] into a list of items at
+    the current toplevel state, or the state [sid] when provided. The location
+    [loc] is assumed to start at the first character of [text], and its end is
+    ignored. The toplevel state is not mutated by the function. *)
+val split : ?sid:StateID.t -> toplevel -> loc:Loc.t -> text:string
   -> (split_data, split_error) result
 
 (** {2 JSON serialization for data returned by [run]} *)

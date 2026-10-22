@@ -122,9 +122,10 @@ type raw_split_data = {
 type empty = |
 
 type (_, _) cmd =
-  | Run : {off : int; text : string} -> (run_data, string * run_error) cmd
+  | Run : {loc : Loc.t; text : string} -> (run_data, string * run_error) cmd
   | BackTo : {sid : int} -> (unit, string) cmd
   | Fork : {pipe_in : string; pipe_out : string} -> (int, string) cmd
   | StructuredGoals : (structured_goal list option, empty) cmd
-  | Split : {off : int; text : string; sid : int option} ->
+  | LocAfterBlanks : {loc : Loc.t; text : string} -> (Rocq_loc.t, string) cmd
+  | Split : {loc : Loc.t; text : string; sid : int option} ->
       (raw_split_data, empty) cmd

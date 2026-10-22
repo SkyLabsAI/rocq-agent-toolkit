@@ -69,10 +69,10 @@
       },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 2,
+        "bol_pos": 25,
+        "line_nb_last": 2,
+        "bol_pos_last": 25,
         "bp": 25,
         "ep": 49
       }
@@ -94,10 +94,10 @@
       },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 3,
+        "bol_pos": 50,
+        "line_nb_last": 3,
+        "bol_pos_last": 50,
         "bp": 50,
         "ep": 74
       }

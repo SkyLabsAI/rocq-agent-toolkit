@@ -228,8 +228,8 @@ type processed_item = {
   (** Index in the document, as passed to, e.g., [advance_to]. *)
   kind : item_kind;
   (** Item kind. *)
-  off : int;
-  (** Byte offset of the item in the document. *)
+  loc : Loc.t;
+  (** Document location of the start of the item. *)
   text : string;
   (** Text of the item. *)
 }

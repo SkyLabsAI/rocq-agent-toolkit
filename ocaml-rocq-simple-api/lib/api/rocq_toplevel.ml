@@ -79,9 +79,16 @@ let back_to : toplevel -> sid:StateID.t -> (unit, string) result =
     fun s ~sid ->
   request s (BackTo({sid = StateID.to_int s sid}))
 
-let run : toplevel -> off:int -> text:string ->
-    (run_data, string * run_error) result = fun s ~off ~text ->
-  request s (Run({off; text}))
+let start_loc loc =
+  Loc.create loc.Loc.fname loc.line_nb loc.bol_pos loc.bp loc.bp
+
+let run : toplevel -> loc:Loc.t -> text:string ->
+    (run_data, string * run_error) result = fun s ~loc ~text ->
+  request s (Run({loc = start_loc loc; text}))
+
+let loc_after_blanks : toplevel -> loc:Loc.t -> text:string ->
+    (Loc.t, string) result = fun s ~loc ~text ->
+  request s (LocAfterBlanks({loc = start_loc loc; text}))
 
 let structured_goals : toplevel -> structured_goal list option = fun s ->
   match request s StructuredGoals with Ok(goals) -> goals
@@ -115,7 +122,8 @@ let fork : toplevel -> (toplevel, string) result = fun s ->
       In_channel.close_noerr ic;
       Error(s)
 
-let get_items ~off ~text ~complete commands =
+let get_items ~loc ~text ~complete commands =
+  let off = loc.Loc.bp in
   let len = String.length text in
   let end_off = off + len in
   let cur_off = ref off in
@@ -146,17 +154,18 @@ let get_items ~off ~text ~complete commands =
   end;
   (List.rev !rev_items, !cur_off - off)
 
-let split : ?sid:StateID.t -> toplevel -> off:int -> text:string ->
-    (split_data, split_error) result = fun ?sid s ~off ~text ->
+let split : ?sid:StateID.t -> toplevel -> loc:Loc.t -> text:string ->
+    (split_data, split_error) result = fun ?sid s ~loc ~text ->
   let sid = Option.map (StateID.to_int s) sid in
-  let raw = match request s (Split({sid; off; text})) with Ok(raw) -> raw in
+  let loc = start_loc loc in
+  let raw = match request s (Split({sid; loc; text})) with Ok(raw) -> raw in
   match raw.result with
   | Ok(()) ->
-      let (items, _) = get_items ~off ~text ~complete:true raw.commands in
+      let (items, _) = get_items ~loc ~text ~complete:true raw.commands in
       Ok({items})
   | Error(error_text, error_loc) ->
       let (parsed_items, parsed_len) =
-        get_items ~off ~text ~complete:false raw.commands
+        get_items ~loc ~text ~complete:false raw.commands
       in
       let leftover_len = String.length text - parsed_len in
       let leftover = String.sub text parsed_len leftover_len in
