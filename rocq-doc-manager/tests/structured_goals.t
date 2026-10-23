@@ -61,10 +61,10 @@
       "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 2,
+        "bol_pos": 28,
+        "line_nb_last": 2,
+        "bol_pos_last": 28,
         "bp": 28,
         "ep": 34
       }
@@ -83,10 +83,10 @@
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 3,
+        "bol_pos": 35,
+        "line_nb_last": 3,
+        "bol_pos_last": 35,
         "bp": 37,
         "ep": 45
       }
@@ -107,10 +107,10 @@
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 4,
+        "bol_pos": 46,
+        "line_nb_last": 4,
+        "bol_pos_last": 46,
         "bp": 48,
         "ep": 61
       }

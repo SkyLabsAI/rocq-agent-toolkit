@@ -84,10 +84,10 @@
       },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 5,
+        "bol_pos": 62,
+        "line_nb_last": 5,
+        "bol_pos_last": 62,
         "bp": 62,
         "ep": 89
       }
@@ -107,10 +107,10 @@
       "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 6,
+        "bol_pos": 90,
+        "line_nb_last": 6,
+        "bol_pos_last": 90,
         "bp": 90,
         "ep": 100
       }
@@ -130,9 +130,9 @@
       },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 4,
+        "line_nb": 7,
+        "bol_pos": 101,
+        "line_nb_last": 10,
         "bol_pos_last": 126,
         "bp": 105,
         "ep": 130
@@ -150,10 +150,10 @@
       "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 11,
+        "bol_pos": 131,
+        "line_nb_last": 11,
+        "bol_pos_last": 131,
         "bp": 131,
         "ep": 152
       }
@@ -272,10 +272,10 @@
       },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 14,
+        "bol_pos": 155,
+        "line_nb_last": 14,
+        "bol_pos_last": 155,
         "bp": 155,
         "ep": 192
       }
@@ -296,10 +296,10 @@
       "synterp_ast": { "kind": "Proof", "pure": true, "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 15,
+        "bol_pos": 193,
+        "line_nb_last": 15,
+        "bol_pos_last": 193,
         "bp": 193,
         "ep": 199
       }
@@ -318,10 +318,10 @@
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 16,
+        "bol_pos": 200,
+        "line_nb_last": 16,
+        "bol_pos_last": 200,
         "bp": 202,
         "ep": 210
       }
@@ -336,10 +336,10 @@
       "synterp_ast": { "kind": "Extend", "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 17,
+        "bol_pos": 211,
+        "line_nb_last": 17,
+        "bol_pos_last": 211,
         "bp": 213,
         "ep": 225
       }
@@ -358,10 +358,10 @@
       },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 18,
+        "bol_pos": 226,
+        "line_nb_last": 18,
+        "bol_pos_last": 226,
         "bp": 226,
         "ep": 230
       }

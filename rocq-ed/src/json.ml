@@ -24,12 +24,10 @@ let item_kind_to_yojson = function
   | `Command(d) -> ("command", Some(vernac_data_to_yojson d))
   | `Ghost(d)   -> ("ghost", Some(vernac_data_to_yojson d))
 
-let prefix_item_to_yojson
-    (Document.{kind; off; text; _} : Document.processed_item) =
+let prefix_item_to_yojson (Document.{kind; text; _} :
+    Document.processed_item) =
   let (kind, data) = item_kind_to_yojson kind in
-  let fields =
-    [("kind", `String(kind)); ("offset", `Int(off)); ("text", `String(text))]
-  in
+  let fields = [("kind", `String(kind)); ("text", `String(text))] in
   let fields =
     match data with None -> fields | Some(d) -> fields @ [("data", d)]
   in

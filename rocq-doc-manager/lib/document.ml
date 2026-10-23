@@ -14,7 +14,7 @@ let is_ghost : item_kind -> bool = fun kind ->
 type processed_item = {
   index : int;
   kind : item_kind;
-  off : int;
+  loc : (Loc.t [@to_yojson Rocq_loc.to_yojson]);
   text : string;
 }
 [@@deriving to_yojson]
@@ -30,6 +30,9 @@ type in_toplevel = {
   sid_before : sid;
 }
 
+let after_loc loc =
+  Loc.create loc.Loc.fname loc.line_nb_last loc.bol_pos_last loc.ep loc.ep
+
 type backend = {
   args : string list;
   file : string;
@@ -43,7 +46,7 @@ type backend = {
 and t = {
   mutable backend : backend option;
   mutable rev_prefix : processed_item list;
-  mutable cursor_off : int;
+  mutable cursor_loc : Loc.t;
   mutable suffix : unprocessed_item list;
 }
 
@@ -59,7 +62,9 @@ let init : args:string list -> file:string -> t = fun ~args ~file ->
     let mutex = Mutex.create () in
     {args; file; top; mutex; top_refs = 1; rev_processed = []; synced = []}
   in
-  let d = {backend = Some(b); rev_prefix = []; cursor_off = 0; suffix = []} in
+  let source = Loc.InFile({dirpath = None; file}) in
+  let cursor_loc = Loc.initial source in
+  let d = {backend = Some(b); rev_prefix = []; cursor_loc; suffix = []} in
   b.synced <- [d]; d
 
 exception Stopped
@@ -125,22 +130,26 @@ let with_synced_backend : t -> (backend -> 'a) -> 'a = fun d f ->
   with_backend d @@ fun backend ->
   match synced backend d with true -> f backend | false ->
   backend.synced <- [d]; (* NOTE: we could avoid this in some cases. *)
-  let rec common_prefix rev_processed rev_prefix processed prefix =
+  let loc_after p = match p with p :: _ -> p.loc | [] -> d.cursor_loc in
+  let rec common_prefix rev_processed loc
+      (processed : in_toplevel list) (prefix : processed_item list) =
     match (processed, prefix) with
     (* Matching processed item, recursing. *)
     | (pr :: processed, p :: prefix) when pr.processed = p ->
-        common_prefix (pr :: rev_processed) (p :: rev_prefix) processed prefix
+        assert (p.loc = loc);
+        let loc = loc_after prefix in
+        common_prefix (pr :: rev_processed) loc processed prefix
     (* Different processed item (or no more expected items), rollback. *)
-    | (pr :: _        , _          )                       ->
-        (Some(pr.sid_before), rev_processed, prefix)
+    | (pr :: _        , _          ) ->
+        (Some(pr.sid_before), rev_processed, loc, prefix)
     (* In sync already. *)
-    | ([]             , _          )                       ->
-        (None, rev_processed, prefix)
+    | ([]             , _          ) ->
+        (None, rev_processed, loc, prefix)
   in
-  let (rollback_sid, rev_processed, prefix) =
+  let (rollback_sid, rev_processed, loc, prefix) =
     let processed = List.rev backend.rev_processed in
     let prefix = List.rev d.rev_prefix in
-    common_prefix [] [] processed prefix
+    common_prefix [] (Loc.initial d.cursor_loc.fname) processed prefix
   in
   (* Bringing the top-level to a common state. *)
   backend.rev_processed <- rev_processed;
@@ -153,19 +162,35 @@ let with_synced_backend : t -> (backend -> 'a) -> 'a = fun d f ->
     | Ok(_)    -> sid
   in
   (* Replaying the remaining prefix commands. *)
-  let replay sid_before processed =
-    backend.rev_processed <- {processed; sid_before} :: backend.rev_processed;
-    let run off text =
-      match Rocq_toplevel.run backend.top ~off ~text with
-      | Ok(_)      -> Rocq_toplevel.StateID.current backend.top
-      | Error(_,_) -> assert false
-    in
-    match processed.kind with
-    | `Blanks     -> sid_before
-    | `Command(_) -> run processed.off processed.text
-    | `Ghost(_)   -> run 0 processed.text
+  let run loc text =
+    match Rocq_toplevel.run backend.top ~loc ~text with
+    | Ok(data) ->
+        assert (data.loc <> None);
+        let sid = Rocq_toplevel.StateID.current backend.top in
+        let loc = after_loc (Option.get data.loc) in
+        (sid, loc)
+    | Error(_,_) -> assert false
   in
-  ignore (List.fold_left replay sid prefix); f backend
+  let rec replay sid_before loc prefix =
+    match prefix with
+    | [] -> assert (loc = d.cursor_loc)
+    | processed :: prefix ->
+    let expected_loc = loc_after prefix in
+    assert (processed.loc = loc);
+    backend.rev_processed <- {processed; sid_before} :: backend.rev_processed;
+    let (sid_after, actual_loc) =
+      match processed.kind with
+      | `Blanks     -> (sid_before, expected_loc)
+      | `Command(_) -> run loc processed.text
+      | `Ghost(_)   ->
+          let ghost_loc = Loc.initial loc.fname in
+          (fst (run ghost_loc processed.text), loc)
+    in
+    assert (actual_loc = expected_loc);
+    replay sid_after expected_loc prefix
+  in
+  replay sid loc prefix;
+  f backend
 
 let sync : t -> unit = fun d ->
   with_synced_backend d ignore
@@ -176,9 +201,11 @@ let is_synced : t -> bool = fun d ->
 
 let copy_contents : from:t -> t -> unit = fun ~from d ->
   with_backend d (fun backend -> unsync backend d);
+  let fname = d.cursor_loc.Loc.fname in
+  let copy p = {p with loc = Loc.{p.loc with fname}} in
   d.suffix <- from.suffix;
-  d.cursor_off <- from.cursor_off;
-  d.rev_prefix <- from.rev_prefix
+  d.cursor_loc <- Loc.{from.cursor_loc with fname};
+  d.rev_prefix <- List.map copy from.rev_prefix
 
 let cursor_index : t -> int = fun d ->
   match d.rev_prefix with [] -> 0 | p :: _ -> p.index + 1
@@ -206,7 +233,8 @@ let load_file : t -> (unit, string * loc) result = fun d ->
   match In_channel.(with_open_text backend.file input_all) with
   | exception Sys_error(s) -> Error(s, None)
   | text ->
-  match Rocq_toplevel.split ~sid backend.top ~off:0 ~text with
+  let loc = Loc.initial d.cursor_loc.fname in
+  match Rocq_toplevel.split ~sid backend.top ~loc ~text with
   | Error(err) -> Error(Rocq_toplevel.(err.error_text, err.error_loc))
   | Ok(data)   ->
   let suffix = List.rev_map to_unprocessed data.Rocq_toplevel.items in
@@ -257,14 +285,17 @@ let insert_blanks : t -> text:string -> unit = fun d ~text ->
     if not blanks.leading_whitespaces && whitespace_required d.rev_prefix then
       invalid_arg "leading whitespace required at this point in the document"
   in
-  let processed =
-    let index = cursor_index d in
-    {index; kind = `Blanks; off = d.cursor_off; text}
-  in
-  d.rev_prefix <- processed :: d.rev_prefix;
-  d.cursor_off <- d.cursor_off + String.length text;
-  (* NOTE: only update the backend if we were in sync before inserting. *)
   Mutex.protect backend.mutex @@ fun () ->
+  let loc = d.cursor_loc in
+  let cursor_loc =
+    match Rocq_toplevel.loc_after_blanks backend.top ~loc ~text with
+    | Ok(loc)  -> loc
+    | Error(s) -> invalid_arg s
+  in
+  let processed = {index = cursor_index d; kind = `Blanks; loc; text} in
+  d.rev_prefix <- processed :: d.rev_prefix;
+  d.cursor_loc <- cursor_loc;
+  (* NOTE: only update the backend if we were in sync before inserting. *)
   if synced backend d then begin
     let sid_before = Rocq_toplevel.StateID.current backend.top in
     backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
@@ -278,14 +309,16 @@ let insert_command : ?ghost:bool -> t -> text:string ->
   if not ghost && whitespace_required d.rev_prefix then
     invalid_arg "whitespace required at this point in the document";
   with_synced_backend d @@ fun backend ->
-  let off = if ghost then 0 else d.cursor_off in
+  let loc_before = d.cursor_loc in
+  let loc = if ghost then Loc.initial d.cursor_loc.fname else loc_before in
   let sid_before = Rocq_toplevel.StateID.current backend.top in
-  let res = Rocq_toplevel.run backend.top ~off ~text in
-  match res with Error(_,_) -> res | Ok({synterp_ast=v; _}) ->
+  let res = Rocq_toplevel.run backend.top ~loc ~text in
+  match res with Error(_,_) -> res | Ok({synterp_ast=v; loc=cmd_loc; _}) ->
+  assert (cmd_loc <> None);
   let kind = if ghost then `Ghost(v) else `Command(v) in
-  let processed = {index = cursor_index d; kind; off; text} in
+  let processed = {index = cursor_index d; kind; loc = loc_before; text} in
   d.rev_prefix <- processed :: d.rev_prefix;
-  if not ghost then d.cursor_off <- d.cursor_off + String.length text;
+  if not ghost then d.cursor_loc <- after_loc (Option.get cmd_loc);
   backend.rev_processed <- {sid_before; processed} :: backend.rev_processed;
   backend.synced <- [d];
   res
@@ -298,7 +331,7 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
   match i = cur_index with true -> () | false ->
   let rec revert (rev_prefix : processed_item list) suffix =
     match rev_prefix with
-    | []              -> assert (i = 0); (rev_prefix, suffix, d.cursor_off)
+    | []              -> assert (i = 0); (rev_prefix, suffix, d.cursor_loc)
     | p :: rev_prefix ->
     let suffix =
       match erase with
@@ -306,24 +339,24 @@ let revert_before : ?erase:bool -> t -> index:int -> unit =
       | true  -> suffix
     in
     match p.index = i with
-    | true  -> (rev_prefix, suffix, p.off)
+    | true  -> (rev_prefix, suffix, p.loc)
     | false -> revert rev_prefix suffix
   in
-  let (rev_prefix, suffix, off) = revert d.rev_prefix d.suffix in
+  let (rev_prefix, suffix, cursor_loc) = revert d.rev_prefix d.suffix in
   (* NOTE: no need to re-focus, the toplevel just gets out of sync. *)
   d.rev_prefix <- rev_prefix;
-  d.cursor_off <- off;
+  d.cursor_loc <- cursor_loc;
   d.suffix <- suffix;
   Mutex.protect backend.mutex (fun () -> unsync backend d)
 
 let with_rollback : t -> (unit -> 'a) -> 'a = fun d f ->
   let _ = get_backend d in
   let rev_prefix = d.rev_prefix in
-  let cursor_off = d.cursor_off in
+  let cursor_loc = d.cursor_loc in
   let suffix = d.suffix in
   let v = f () in
   d.rev_prefix <- rev_prefix;
-  d.cursor_off <- cursor_off;
+  d.cursor_loc <- cursor_loc;
   d.suffix <- suffix;
   let backend = get_backend d in
   Mutex.protect backend.mutex (fun () -> unsync backend d);
@@ -447,26 +480,26 @@ let split_sentences : t -> text:string ->
   in
   with_synced_backend d @@ fun backend ->
   (* We re-parse one prefix item to rule out bad interference. *)
-  let (sid, off, prefix) =
+  let (sid, loc, prefix) =
     let rec split_prefix sid rev_processed =
       match rev_processed with
       | [] ->
-          (sid, d.cursor_off, "")
+          (sid, d.cursor_loc, "")
       | {processed = {kind = `Ghost(_); _}; sid_before} :: rev_processed ->
           split_prefix sid_before rev_processed
       | {processed; sid_before} :: _ ->
-          (sid_before, processed.off, processed.text)
+          (sid_before, processed.loc, processed.text)
     in
     let sid = Rocq_toplevel.StateID.current backend.top in
     split_prefix sid backend.rev_processed
   in
-  let res = Rocq_toplevel.split ~sid backend.top ~off ~text:(prefix ^ text) in
+  let res = Rocq_toplevel.split ~sid backend.top ~loc ~text:(prefix ^ text) in
   let sentences =
     match res with
     | Ok(data)    -> data.Rocq_toplevel.items
     | Error(data) -> data.Rocq_toplevel.parsed_items
   in
-  let cursor_off = d.cursor_off in
+  let cursor_off = d.cursor_loc.Loc.bp in
   let rec to_sentences len rev_acc sentences =
     let open Rocq_toplevel in
     match sentences with
@@ -631,13 +664,13 @@ let query_json_all : ?indices:int list -> t -> text:string ->
 type dump = {
   rev_processed : (int * processed_item) list option;
   rev_prefix : processed_item list;
-  cursor_off : int;
+  cursor_loc : (Loc.t [@to_yojson Rocq_loc.to_yojson]);
   suffix : unprocessed_item list;
 }
 [@@deriving to_yojson]
 
 let dump : t -> Yojson.Safe.t = fun d ->
-  let {backend; rev_prefix; cursor_off; suffix} = d in
+  let {backend; rev_prefix; cursor_loc; suffix} = d in
   let get_processed {mutex; top; rev_processed; _} =
     Mutex.protect mutex @@ fun () ->
     let explicit_sid {processed; sid_before} =
@@ -646,4 +679,4 @@ let dump : t -> Yojson.Safe.t = fun d ->
     List.map explicit_sid rev_processed
   in
   let rev_processed = Option.map get_processed backend in
-  dump_to_yojson {rev_processed; rev_prefix; cursor_off; suffix}
+  dump_to_yojson {rev_processed; rev_prefix; cursor_loc; suffix}

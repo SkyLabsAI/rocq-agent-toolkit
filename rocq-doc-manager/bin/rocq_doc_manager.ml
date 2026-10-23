@@ -584,9 +584,9 @@ let prefix_item =
     API.Fields.nil
   in
   let encode _ = assert false in
-  let decode ({index = _; kind; off; text} : Document.processed_item) =
+  let decode ({index = _; kind; loc; text} : Document.processed_item) =
     let (kind, data) = split_item_kind kind in
-    (kind, (off, (text, (data, ()))))
+    (kind, (loc.Loc.bp, (text, (data, ()))))
   in
   API.declare_object api ~name:"PrefixItem" ~descr:"document prefix item, \
     appearing before the cursor" ~encode ~decode fields

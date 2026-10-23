@@ -11,8 +11,12 @@ let notify fmt =
 let output_json oc json =
   Yojson.Safe.pretty_to_channel ~std:true oc json
 
+let input_loc off =
+  Loc.create Loc.ToplevelInput 1 0 off off
+
 let run toplevel off text =
-  match Rocq_toplevel.run toplevel ~off ~text with
+  let loc = input_loc off in
+  match Rocq_toplevel.run toplevel ~loc ~text with
   | Ok(data) ->
       let json = Rocq_toplevel.run_data_to_yojson data in
       notify "%a" output_json json
@@ -21,13 +25,20 @@ let run toplevel off text =
       notify "Error: while processing the command.\n%s\n%a" s output_json json
 
 let split toplevel off text =
-  match Rocq_toplevel.split toplevel ~off ~text with
+  let loc = input_loc off in
+  match Rocq_toplevel.split toplevel ~loc ~text with
   | Ok(data) ->
       let json = Rocq_toplevel.split_data_to_yojson data in
       notify "%a" output_json json
   | Error(data) ->
       let json = Rocq_toplevel.split_error_to_yojson data in
       notify "Error: while splitting the text.\n%a" output_json json
+
+let loc_after_blanks toplevel off text =
+  let loc = input_loc off in
+  match Rocq_toplevel.loc_after_blanks toplevel ~loc ~text with
+  | Ok(loc) -> notify "%a" output_json (Rocq_loc.to_yojson loc)
+  | Error(s) -> notify "Error: while advancing the location.\n%s" s
 
 let back_to toplevel sid =
   let sid = Rocq_toplevel.StateID.unsafe_of_int toplevel sid in
@@ -70,6 +81,9 @@ let handle_command state line =
       Scanf.sscanf line "run %i %S" (run state.cur_toplevel)
     else if String.starts_with ~prefix:"split " line then
       Scanf.sscanf line "split %i %S" (split state.cur_toplevel)
+    else if String.starts_with ~prefix:"loc_after_blanks " line then
+      Scanf.sscanf line "loc_after_blanks %i %S"
+        (loc_after_blanks state.cur_toplevel)
     else if String.starts_with ~prefix:"back_to " line then
       Scanf.sscanf line "back_to %i" (back_to state.cur_toplevel)
     else if String.starts_with ~prefix:"switch " line then

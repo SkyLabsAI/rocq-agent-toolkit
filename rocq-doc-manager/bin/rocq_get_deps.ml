@@ -98,7 +98,7 @@ let main : Document.t -> unit = fun state ->
     | Ok(Some(d)) ->
     let loc =
       match Document.rev_prefix state with
-      | p :: _ -> {off = p.off; len = String.length p.text}
+      | p :: _ -> {off = p.loc.Loc.bp; len = String.length p.text}
       | []     -> assert false
     in
     let open Rocq_toplevel in

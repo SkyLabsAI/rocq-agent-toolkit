@@ -92,10 +92,10 @@
       "synterp_ast": { "kind": "Print", "pure": true, "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 2,
+        "bol_pos": 24,
+        "line_nb_last": 2,
+        "bol_pos_last": 24,
         "bp": 24,
         "ep": 34
       }
@@ -172,10 +172,10 @@
       "synterp_ast": { "kind": "CheckMayEval", "pure": true, "attrs": {} },
       "loc": {
         "fname": { "file": "test.v" },
-        "line_nb": 1,
-        "bol_pos": 0,
-        "line_nb_last": 1,
-        "bol_pos_last": 0,
+        "line_nb": 3,
+        "bol_pos": 35,
+        "line_nb_last": 3,
+        "bol_pos_last": 35,
         "bp": 35,
         "ep": 46
       }

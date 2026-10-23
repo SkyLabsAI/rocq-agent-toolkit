@@ -70,7 +70,6 @@ Within a proof, goals are decomposed into hypotheses and conclusions.
     "prefix": [
       {
         "kind": "command",
-        "offset": 0,
         "text": "Theorem test : forall x : nat, x = x.",
         "data": {
           "kind": "StartTheoremProof",
@@ -78,20 +77,14 @@ Within a proof, goals are decomposed into hypotheses and conclusions.
           "attrs": { "ids": [ "test" ], "kind": "Theorem" }
         }
       },
-      { "kind": "blanks", "offset": 37, "text": "\n" },
+      { "kind": "blanks", "text": "\n" },
       {
         "kind": "command",
-        "offset": 38,
         "text": "Proof.",
         "data": { "kind": "Proof", "pure": true }
       },
-      { "kind": "blanks", "offset": 44, "text": "\n  " },
-      {
-        "kind": "command",
-        "offset": 47,
-        "text": "intro x.",
-        "data": { "kind": "Extend" }
-      }
+      { "kind": "blanks", "text": "\n  " },
+      { "kind": "command", "text": "intro x.", "data": { "kind": "Extend" } }
     ],
     "suffix": [
       { "kind": "blanks", "text": "\n  " },

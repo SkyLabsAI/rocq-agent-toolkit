@@ -36,7 +36,8 @@ let _ =
     try In_channel.(with_open_text file input_all) with Sys_error(s) ->
     error (Printf.sprintf "System error (%s)" s)
   in
-  let res = Rocq_toplevel.split toplevel ~text ~off:0 in
+  let source = Loc.InFile({dirpath = None; file}) in
+  let res = Rocq_toplevel.split toplevel ~text ~loc:(Loc.initial source) in
   Rocq_toplevel.stop toplevel;
   match res with
   | Ok(data) ->
