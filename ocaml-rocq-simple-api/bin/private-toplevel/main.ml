@@ -146,7 +146,7 @@ let run state input_loc text =
     let error_loc = Loc.get_loc info in
     let msg = Pp.string_of_ppcmds (CErrors.iprint (e, info)) in
     let feedback_messages = Feed.collect feedback_filter in
-    (state, Error(msg, {error_loc; feedback_messages; loc}))
+    Error(msg, {error_loc; feedback_messages; loc})
   in
   let run () =
     let stream = Gramlib.Stream.of_string ~offset:input_loc.Loc.bp text in
@@ -178,7 +178,7 @@ let run state input_loc text =
     Ok(vernac)
   in
   match run () with
-  | exception e   -> error e
+  | exception e   -> (state, error e)
   | Error(result) -> result
   | Ok(vernac)    ->
   let loc = vernac.CAst.loc in
@@ -215,7 +215,12 @@ let run state input_loc text =
       {globrefs_diff; feedback_messages; synterp_ast; proof_state; loc}
     in
     (new_state, Ok(data))
-  with e -> error ?loc e
+  with e ->
+    (* Data collection error treated as command failure (rollback state). *)
+    let res = error ?loc e in
+    let sid = Stateid.to_int state.Vernac.State.sid in
+    let state = fst (back_to state sid) in
+    (state, res)
 
 let loc_after_blanks loc text =
   let module State = CLexer.Lexer.State in
