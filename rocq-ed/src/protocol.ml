@@ -322,10 +322,19 @@ let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
       Unix.connect fd (ADDR_UNIX socket_file); fd
     with e -> Unix.close fd; raise e
   in
-  with_socket_channels socket_fd @@ fun ic oc ->
-  Marshal.to_channel oc req [];
-  Out_channel.flush oc;
-  Marshal.from_channel ic
+  try
+    with_socket_channels socket_fd @@ fun ic oc ->
+    Marshal.to_channel oc req [];
+    Out_channel.flush oc;
+    Marshal.from_channel ic
+  with
+  | Unix.Unix_error(e, f, args) ->
+      let msg = Unix.error_message e in
+      panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
+  | Sys_error(s) ->
+      panic ~code:125 "Error: system error (%s)." s
+  | End_of_file ->
+      panic ~code:125 "Error: end of file when getting server response."
 
 let client_request : type a b. session_id -> (unit, a, b) Request.t ->
     (a, string * b) Result.t = fun rocq_file req ->
