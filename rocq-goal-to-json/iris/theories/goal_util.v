@@ -102,14 +102,14 @@ Ltac2 goal_to_json (_ : unit) : JSON.t :=
       | [] => List.rev acc
       | concl :: concls =>
           lazy_match! concl with
-          | @bi_sep _ ?l ?r => get_concls acc (l :: r :: concls)
+          | @bi_sep _ _ ?l ?r => get_concls acc (l :: r :: concls)
           | _ => get_concls (JSON.String (to_string concl) :: acc) concls
           end
       end
     in
     lazy_match! goal with
-    | [ |- @environments.envs_entails _
-            (@environments.Envs _ ?ctx_p ?ctx_s _) ?concl ] =>
+    | [ |- @environments.envs_entails _ _
+            (@environments.Envs _ _ ?ctx_p ?ctx_s _) ?concl ] =>
         Some (get_env [] ctx_p, get_env [] ctx_s, get_concls [] [concl])
     | [ |- _ ] =>
         None

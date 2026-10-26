@@ -23,6 +23,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -30,6 +31,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -39,6 +41,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -48,6 +51,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -57,6 +61,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -66,6 +71,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -75,6 +81,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -84,6 +91,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -93,6 +101,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -102,6 +111,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -111,6 +121,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -120,6 +131,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
@@ -129,6 +141,7 @@
 }
 {
   "hyps": [
+    { "name": "sidx", "type": "stepindex.sidx" },
     { "name": "PROP", "type": "bi" },
     { "name": "P", "type": "(bi_car PROP)" }
   ],
