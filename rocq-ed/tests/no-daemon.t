@@ -55,3 +55,33 @@
   $TESTCASE_ROOT/user
   $TESTCASE_ROOT/user/.cache
   $TESTCASE_ROOT/user/.cache/rocq-ed
+
+With --no-build-deps, a dependency that changed since it was built is not
+rebuilt: the session sees the stale version. Build options are accepted
+together with it, and a held session terminates normally when stopped.
+
+  $ echo 'Definition value := 1.' > dep.v
+  $ echo 'From text Require Import dep.' > user.v
+  $ eval $(rocq-ed init user.v)
+  $ rocq-ed stop
+  $ echo 'Definition value := 2.' > dep.v
+
+  $ rocq-ed init --no-daemon --display=quiet --jobs=2 --no-build-deps user.v > held.log 2>&1 < /dev/null &
+  $ server_pid=$!
+  $ until grep ROCQED_SESSION_ID held.log > /dev/null 2>&1; do sleep 0.05; done
+  $ export $(grep '^ROCQED_SESSION_ID=' held.log)
+  $ rocq-ed move --item=+all
+  $ rocq-ed insert --keep=none --text 'Print value.'
+  value = 1
+       : nat
+  $ rocq-ed stop
+  $ wait ${server_pid}
+
+Without --no-build-deps, the dependency is rebuilt.
+
+  $ eval $(rocq-ed init user.v)
+  $ rocq-ed move --item=+all
+  $ rocq-ed insert --keep=none --text 'Print value.'
+  value = 2
+       : nat
+  $ rocq-ed stop
