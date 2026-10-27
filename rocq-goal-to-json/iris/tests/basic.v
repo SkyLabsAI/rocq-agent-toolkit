@@ -26,6 +26,7 @@ Proof.
 Abort.
 
 Section with_PROP.
+  Variable sidx : sidx.
   Variable PROP : bi.
   Variable P : PROP.
 
