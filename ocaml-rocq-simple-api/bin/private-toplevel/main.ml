@@ -389,10 +389,6 @@ let interact : state -> unit = fun state ->
   | End_of_file  -> ()
   | Sys_error(s) -> Printf.eprintf "Error: %s.\n%!" s; exit 1
 
-let run _ ~opts:_ state =
-  Feed.with_feeder @@ fun _ ->
-  Flags.without_option Flags.in_ml_toplevel interact state
-
 let init_document opts injections =
   let (doc, sid) =
     let toplevel_name = opts.Coqargs.config.logic.toplevel_name in
@@ -406,12 +402,15 @@ let init_toploop opts _ injections =
   let state = init_document opts injections in
   Load.load_init_vernaculars opts ~state
 
-let init_extra ((), async_opts) injections ~opts =
-  init_toploop opts async_opts injections
-
 let parse_extra opts extras =
   let (async_opts, extras) = Stmargs.parse_args opts extras in
   ((), async_opts), extras
+
+let run ((), async_opts) ~opts injections =
+  Feed.with_feeder @@ fun _ ->
+  let state = init_toploop opts async_opts injections in
+  Feed.reset ();
+  Flags.without_option Flags.in_ml_toplevel interact state
 
 let _ =
   let args = List.tl (Array.to_list Sys.argv) in
@@ -421,6 +420,7 @@ let _ =
   in
   let coqtop_toplevel =
     let initial_args = Coqargs.default in
+    let init_extra _ injections ~opts:_ = injections in
     Coqtop.{parse_extra; usage; init_extra; run; initial_args}
   in
   Coqtop.start_coq coqtop_toplevel args
