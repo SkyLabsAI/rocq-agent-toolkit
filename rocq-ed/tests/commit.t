@@ -40,3 +40,5 @@ We can also commit to the original file.
   $ rocq-ed commit --force
   $ cat test.v
   Definition x := 0.
+
+  $ rocq-ed stop

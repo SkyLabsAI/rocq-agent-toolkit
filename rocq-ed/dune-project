@@ -13,6 +13,7 @@
  (depends
   uuseg
   cmdliner
+  mtime
   stdlib-extra
   rocq-doc-manager
   yojson))

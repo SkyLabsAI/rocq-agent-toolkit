@@ -32,7 +32,7 @@ type move_error =
 type (_, _, _) t =
   | Stop : (unit, unit, empty) t
   | Status : {mode : [`JSON | `Text of print_after]}
-      -> (unit, string, empty) t
+      -> (unit, string, unit) t
   | Move : {target : move_target; print : print_after}
       -> (Document.commands_data * string, int, move_error) t
   | Insert : {text : string; keep : insert_keep; print : print_after}
@@ -41,7 +41,7 @@ type (_, _, _) t =
       -> (string, unit, unit) t
   | Commit : {file : string option; force : bool; include_suffix : bool}
       -> (unit, unit, unit) t
-  | Goals : (unit, string, empty) t
+  | Goals : (unit, string, unit) t
 
 val is_stop : ('a, 'b, 'c) t -> bool
 
