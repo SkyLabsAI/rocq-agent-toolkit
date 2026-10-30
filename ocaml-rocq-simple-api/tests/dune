@@ -1,3 +1,11 @@
+(test
+ (name interrupt_test)
+ (libraries rocq-simple-api.api threads))
+
+(test
+ (name transport_test)
+ (libraries rocq-simple-api.api rocq_simple_api_internal threads))
+
 (cram
  (applies_to :whole_subtree)
  (setup_scripts setup.sh)

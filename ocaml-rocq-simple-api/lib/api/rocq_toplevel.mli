@@ -10,52 +10,105 @@ type toplevel
     is an error while starting the toplevel, exception [Failure] is raised. *)
 val init : args:string list -> toplevel
 
-(** Exception raised when communicating with a stopped top-level. *)
-exception Stopped
+(** Reason why a top-level stopped. *)
+type stopped_reason =
+  | Normal
+  (** The top-level was stopped normally by [stop]. *)
+  | Killed
+  (** The top-level was forcibly terminated by [kill]. *)
+  | Failed of exn
+  (** A failure made the top-level unusable; the payload gives its cause. *)
 
-(** [stop t] stops the top-level [t]. The [Stopped] exception is raised when a
-    previous call to [stop] was made on [t]. *)
+(** Exception raised when communicating with a stopped top-level. Its argument
+    gives the reason why the top-level stopped. *)
+exception Stopped of stopped_reason
+
+(** Reason why a top-level operation was interrupted. *)
+type interrupted_reason =
+  | Interrupt
+  (** Cooperative interruption completed, and the top-level remains usable. *)
+  | Killed
+  (** [kill] terminated the top-level while the operation was active. *)
+  | Failed of exn
+  (** A failure made the top-level unusable; the payload gives its cause. *)
+
+(** Exception raised when a top-level operation is interrupted, indicating how
+    the interruption occurred. *)
+exception Interrupted of interrupted_reason
+
+(** The [Busy] exception is raised if an operation requires an idle top-level,
+    but another operation is active. A top-level may need to be idle to ensure
+    exclusive access or to let an operation observe a stable state. *)
+exception Busy
+
+(** [stop t] gracefully stops top-level [t]. The [Busy] exception is raised if
+    [t] is busy running an operation requiring exclusive top-level access. The
+    [Stopped] exception is raised if the top-level was stopped by an operation
+    that took effect prior to the current call. *)
 val stop : toplevel -> unit
 
+(** [interrupt t] requests cooperative interruption of the operation currently
+    running on [t], if any. The [back_to] operation ignores [interrupt] calls.
+    Exception [Stopped] is raised if the top-level was stopped by an operation
+    that took effect prior to the interruption. *)
+val interrupt : toplevel -> unit
+
+(** [kill t] forcibly stops top-level [t]. Any operation still active when the
+    termination takes effect is interrupted. The [Stopped] exception is raised
+    if the top-level was stopped by an operation that took effect prior to the
+    current call. *)
+val kill : toplevel -> unit
+
 (** [fork t] creates a new top-level, initially in the same state as [t]. Note
-    that the created top-level is completely independent from [t], and thus it
-    can be used concurrently. An error message is given in case of error while
-    creating the top-level. *)
+    that the created top-level has independent channels and can be used safely
+    concurrently. It retains the identity of [t], so all state identifiers for
+    their shared history remain valid on either top-level. Creation errors are
+    returned as error messages. The [Busy] exception is raised whenever [t] is
+    busy with an operation that requires exclusive top-level access. Exception
+    [Interrupted] is raised upon interruption. Finally, [Stopped] is raised if
+    [t] was already stopped. *)
 val fork : toplevel -> (toplevel, string) result
 
 (** [get_pid t] gives the process identifier of the Rocq top-level attached to
     [t], which should only be useful for debugging. The [Stopped] exception is
-    raised if [t] is stopped. *)
+    raised if [t] was already stopped. *)
 val get_pid : toplevel -> int
 
 (** {2 State identifier and backtracking} *)
 
-(** Exception raised if a state identifier is used with the wrong toplevel. *)
+(** Exception raised for a state identifier from another top-level lineage. *)
 exception Toplevel_mismatch
 
 (** State identifier used for backtracking. *)
 module StateID : sig
-  (** Type of a state identifier, linked to a particular toplevel. *)
+  (** Type of a state identifier, linked to a particular top-level lineage. *)
   type t
 
-  (** [current t] returns the current state identifier for [t]. *)
+  (** [current t] gives the current state identifier for top-level [t]. [Busy]
+      is raised if an operation requiring exclusive top-level access is active
+      on [t]. The [Stopped] exception is raised if [t] was already stopped. *)
   val current : toplevel -> t
 
   (** [to_int t sid] converts [sid] into an integer (e.g., for serialization).
-      It raises [Toplevel_mismatch] if [sid] is not linked to toplevel [t]. *)
+      It raises [Toplevel_mismatch] if [sid] has another top-level lineage. *)
   val to_int : toplevel -> t -> int
 
   (** [unsafe_of_int t i] converts integer [i] into a state identifier that is
-      linked to [t]. This operation is unsafe as the user must ensure that [i]
-      was obtained via a call to [to_int] using the same toplevel [t]. *)
+      linked to the lineage of [t]. This is unsafe, and the caller must ensure
+      that [i] was obtained by calling [to_int] with a top-level from the same
+      lineage. *)
   val unsafe_of_int : toplevel -> int -> t
 end
 
 (** [back_to t ~sid] backtracks the state of toplevel [t] to state [sid]. When
     this operation fails, an error message is provided. This can happen if the
-    given [sid] is not reachable anymore. Note that [Stopped] is raised if the
-    [stop] function was previously called on [t]. Also, if [sid] is not linked
-    to [t], exception [Toplevel_mismatch] is raised. *)
+    given [sid] is not reachable anymore. The [Toplevel_mismatch] exception is
+    raised if [sid] is not linked to top-level [t]. Exception [Busy] is raised
+    if [t] is busy with an operation that requires exclusive top-level access.
+    Calls to [interrupt t] have no effect while the operation is active, since
+    Rocq cannot reliably restore its state before the requested backtrack. The
+    [Interrupted] exception can also be raised when the top-level is killed or
+    fails. Finally, [Stopped] is raised if [t] was already stopped. *)
 val back_to : toplevel -> sid:StateID.t -> (unit, string) result
 
 (** {2 Running a Rocq command} *)
@@ -116,8 +169,8 @@ type run_error = {
     (the end of [loc] is ignored). In case of success, a new toplevel state is
     reached, and a value of type [run_data] is returned. In case of failure, a
     value of type [run_error] is returned along with an error message, and the
-    state of the toplevel is not updated. The [Stopped] exception is raised if
-    [stop] was previously called on [t]. *)
+    state of the toplevel is not updated. Exceptions [Stopped], [Interrupted],
+    and [Busy] are raised under the same conditions as for [fork]. *)
 val run : toplevel -> loc:Loc.t -> text:string
   -> (run_data, string * run_error) result
 
@@ -125,15 +178,17 @@ val run : toplevel -> loc:Loc.t -> text:string
     after the end of [text], assuming that [loc] is a location pointing to the
     start of [text]. The given [text] is expected to consist entirely of blank
     characters and Rocq comments, and an error is returned otherwise. Toplevel
-    [t] is used for the operation, but its state is not mutated. *)
+    [t] is used for the operation, but its state is not mutated. The exception
+    behaviour is the same as for [run] or [fork]. *)
 val loc_after_blanks : toplevel -> loc:Loc.t -> text:string
   -> (Loc.t, string) result
 
 (** {2 Querying Rocq} *)
 
 (** [structured_goals t] gives the currently focused goals in the toplevel. If
-    the [t] is not currently in proof more, then [None] is returned. The state
-    of [t] is not changed by calling this function. *)
+    the [t] is not currently in proof mode, then [None] is returned. The state
+    of [t] is not changed by calling this function. Exceptions are raised like
+    for [run] or [fork]. *)
 val structured_goals : toplevel -> structured_goal list option
 
 (** {2 Sentence-splitting} *)
@@ -141,7 +196,7 @@ val structured_goals : toplevel -> structured_goal list option
 (** AST of a Rocq vernacular command. *)
 type command = Rocq_vernac_entry.command
 
-(** Rocq item (vernacular command, or sequence of blank caracters). *)
+(** Rocq item (vernacular command, or sequence of blank characters). *)
 type item = {
   kind : [`Command of command | `Blanks];
   (** Sentence kind: an actual command or a sequence of blank characters. *)
@@ -174,7 +229,9 @@ type split_error = {
 (** [split ?sid t ~loc ~text] attempts to parse [text] into a list of items at
     the current toplevel state, or the state [sid] when provided. The location
     [loc] is assumed to start at the first character of [text], and its end is
-    ignored. The toplevel state is not mutated by the function. *)
+    ignored. The toplevel state is not mutated by the function. Exceptions are
+    raised as for [run] and [fork]. [Toplevel_mismatch] is raised if [sid] and
+    [t] have different top-level lineages. *)
 val split : ?sid:StateID.t -> toplevel -> loc:Loc.t -> text:string
   -> (split_data, split_error) result
 
