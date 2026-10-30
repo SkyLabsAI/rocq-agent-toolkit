@@ -1,3 +1,7 @@
+(test
+ (name document_interrupt_test)
+ (libraries rocq-doc-manager.lib threads))
+
 (cram
  (applies_to :whole_subtree)
  (setup_scripts setup.sh)
