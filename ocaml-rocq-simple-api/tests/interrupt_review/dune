@@ -1,0 +1,9 @@
+(executable
+ (name repro)
+ (modules repro)
+ (libraries rocq-simple-api.api rocq-simple-api.internal threads))
+
+(rule
+ (targets schedule.so)
+ (deps schedule.c)
+ (action (run cc -Wall -Wextra -shared -fPIC %{deps} -ldl -o %{targets})))
