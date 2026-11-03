@@ -163,11 +163,35 @@ let consume_byte fd =
   try ignore (Unix.read fd byte 0 1) with
   | Unix.Unix_error(_) -> ()
 
+let peer_disconnected fd =
+  match select_read [fd] 0. with
+  | [] -> false
+  | _ ->
+      let byte = Bytes.create 1 in
+      begin match Unix.recv fd byte 0 1 [Unix.MSG_PEEK] with
+      | 0 -> true
+      | _ -> false
+      | exception Unix.Unix_error((EAGAIN | EWOULDBLOCK | EINTR), _, _) ->
+          false
+      | exception Unix.Unix_error(_) -> true
+      end
+
 let start_request_watcher ~log client_fd state document =
   let (wake_in, wake_out) = Unix.pipe ~cloexec:true () in
   let escalated = Atomic.make false in
+  let ready_mutex = Mutex.create () in
+  let ready_condition = Condition.create () in
+  let ready = ref false in
+  let mark_ready () =
+    Mutex.protect ready_mutex @@ fun () ->
+    if not !ready then begin
+      ready := true;
+      Condition.broadcast ready_condition
+    end
+  in
   let watch () =
-    Fun.protect ~finally:(fun () -> close_noerr wake_in) @@ fun () ->
+    Fun.protect ~finally:(fun () -> mark_ready (); close_noerr wake_in) @@
+    fun () ->
     let byte = Bytes.create 1 in
     let rec wait_for_disconnect () =
       let readable = select_read [client_fd; wake_in] (-1.) in
@@ -226,7 +250,17 @@ let start_request_watcher ~log client_fd state document =
             (Printexc.to_string e));
           wait_then interrupt_poll_period request_hard_interrupt
     in
-    wait_for_disconnect ()
+    if peer_disconnected client_fd then begin
+      if Atomic.compare_and_set state Running Cancelled then begin
+        log "Client was disconnected before request execution.";
+        mark_ready ();
+        request_cooperative_interrupt (Mtime_clock.counter ())
+      end else
+        mark_ready ()
+    end else begin
+      mark_ready ();
+      wait_for_disconnect ()
+    end
   in
   let thread =
     try Thread.create (fun () ->
@@ -238,6 +272,8 @@ let start_request_watcher ~log client_fd state document =
       close_noerr wake_out;
       raise e
   in
+  Mutex.protect ready_mutex @@ fun () ->
+  while not !ready do Condition.wait ready_condition ready_mutex done;
   {thread; wake_fd = wake_out; escalated}
 
 let finish_request_watcher watcher =
@@ -557,6 +593,9 @@ let init : Dune_util.config -> bool -> Filepath.t -> unit =
       | response ->
           let publish = ref false in
           clear_active (fun () ->
+            if Atomic.get state = Running && peer_disconnected client_fd &&
+                Atomic.compare_and_set state Running Cancelled then
+              log "Client disconnected before result publication.";
             if Atomic.compare_and_set state Running Publishing then
               publish := true
             else begin
