@@ -313,69 +313,96 @@ let handle_interrupt active mode =
     in
     if requested then Interrupt_requested else No_active_operation
 
+let interrupt_mode_byte = function
+  | Cooperative -> 'C'
+  | Hard -> 'K'
+
+let interrupt_mode_of_byte = function
+  | 'C' -> Some(Cooperative)
+  | 'K' -> Some(Hard)
+  | _ -> None
+
+let interrupt_result_byte = function
+  | Interrupt_requested -> 'I'
+  | No_active_request -> 'R'
+  | No_active_operation -> 'O'
+
+let interrupt_result_of_byte = function
+  | 'I' -> Some(Interrupt_requested)
+  | 'R' -> Some(No_active_request)
+  | 'O' -> Some(No_active_operation)
+  | _ -> None
+
 let start_interrupt_server ~log socket_fd active =
   let (wake_in, wake_out) = Unix.pipe ~cloexec:true () in
-  let send_response oc response =
+  let send_response fd response =
+    let byte = Bytes.make 1 (interrupt_result_byte response) in
     try
-      Marshal.to_channel oc response [];
-      Out_channel.flush oc
-    with
-    | (Sys_error(_) | Unix.Unix_error(_)) as e ->
-        log (Printf.sprintf "Interrupt response failed [%s]."
-          (Printexc.to_string e))
+      if Unix.single_write fd byte 0 1 <> 1 then
+        log "Interrupt response was only partially written."
+    with Unix.Unix_error(error, fn, arg) ->
+      log (Printf.sprintf "Interrupt response failed [%s %s: %s]."
+        fn arg (Unix.error_message error))
   in
-  let handle_client client_fd =
-    with_socket_channels client_fd @@ fun _ ic oc ->
-    let mode =
-      try Some((Marshal.from_channel ic : interrupt_mode)) with
-      | End_of_file ->
-          log "Interrupt client disconnected while sending its request.";
-          None
-      | Failure(message) | Invalid_argument(message) ->
-          log (Printf.sprintf "Malformed interrupt request [%s]." message);
-          None
-      | (Sys_error(_) | Unix.Unix_error(_)) as e ->
-          log (Printf.sprintf "Interrupt request failed [%s]."
-            (Printexc.to_string e));
-          None
-    in
-    Option.iter (fun mode ->
-      let response = handle_interrupt active mode in
-      begin match (mode, response) with
-      | (Cooperative, Interrupt_requested) ->
-          log "Explicit cooperative interruption requested."
-      | (Hard, Interrupt_requested) ->
-          log "Explicit hard interruption requested."
-      | (_, No_active_request) ->
-          log "Explicit interruption found no active request."
-      | (_, No_active_operation) ->
-          log "Explicit interruption found no active Rocq operation."
-      end;
-      send_response oc response
-    ) mode
+  let handle_client fd =
+    let byte = Bytes.create 1 in
+    match Unix.read fd byte 0 1 with
+    | 0 ->
+        log "Interrupt client disconnected while sending its request."
+    | _ ->
+        begin match interrupt_mode_of_byte (Bytes.get byte 0) with
+        | None -> log "Malformed interrupt request."
+        | Some(mode) ->
+            let response = handle_interrupt active mode in
+            begin match (mode, response) with
+            | (Cooperative, Interrupt_requested) ->
+                log "Explicit cooperative interruption requested."
+            | (Hard, Interrupt_requested) ->
+                log "Explicit hard interruption requested."
+            | (_, No_active_request) ->
+                log "Explicit interruption found no active request."
+            | (_, No_active_operation) ->
+                log "Explicit interruption found no active operation."
+            end;
+            send_response fd response
+        end
+    | exception Unix.Unix_error(EINTR, _, _) -> raise Exit
+    | exception Unix.Unix_error(error, fn, arg) ->
+        log (Printf.sprintf "Interrupt request failed [%s %s: %s]."
+          fn arg (Unix.error_message error))
   in
-  let rec loop () =
-    let readable = select_read [socket_fd; wake_in] (-1.) in
-    if List.mem wake_in readable then
-      consume_byte wake_in
-    else if List.mem socket_fd readable then begin
-      begin match Unix.accept ~cloexec:true socket_fd with
-      | (client_fd, _) ->
-          begin try handle_client client_fd with e ->
-            log (Printf.sprintf "Interrupt handler failed [%s]."
-              (Printexc.to_string e))
+  let rec loop clients =
+    let readable = select_read (socket_fd :: wake_in :: clients) (-1.) in
+    if List.mem wake_in readable then begin
+      consume_byte wake_in;
+      List.iter close_noerr clients
+    end else begin
+      let clients =
+        List.filter (fun fd ->
+          if not (List.mem fd readable) then true else begin
+            begin try handle_client fd with Exit -> () end;
+            close_noerr fd;
+            false
           end
-      | exception Unix.Unix_error(EINTR, _, _) -> ()
-      | exception e -> raise e
-      end;
-      loop ()
-    end else
-      loop ()
+        ) clients
+      in
+      let clients =
+        if not (List.mem socket_fd readable) then clients else
+        match Unix.accept ~cloexec:true socket_fd with
+        | (client_fd, _) when List.length clients < 64 -> client_fd :: clients
+        | (client_fd, _) ->
+            log "Too many simultaneous interrupt clients.";
+            close_noerr client_fd;
+            clients
+        | exception Unix.Unix_error(EINTR, _, _) -> clients
+      in
+      loop clients
+    end
   in
   let thread =
     try Thread.create (fun () ->
       Fun.protect ~finally:(fun () -> close_noerr wake_in) @@ fun () ->
-      try loop () with e ->
+      try loop [] with e ->
         log (Printf.sprintf "Interrupt server failed [%s]."
           (Printexc.to_string e))
     ) () with e ->
@@ -761,19 +788,25 @@ let interrupt : session_id -> kill:bool -> interrupt_result = fun id ~kill ->
       Unix.connect fd (ADDR_UNIX interrupt_socket_file); fd
     with e -> Unix.close fd; raise e
   in
+  Fun.protect ~finally:(fun () -> close_noerr socket_fd) @@ fun () ->
   try
-    with_socket_channels socket_fd @@ fun _ ic oc ->
-    Marshal.to_channel oc (if kill then Hard else Cooperative) [];
-    Out_channel.flush oc;
-    (Marshal.from_channel ic : interrupt_result)
-  with
-  | Unix.Unix_error(e, f, args) ->
-      let msg = Unix.error_message e in
-      panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
-  | Sys_error(s) ->
-      panic ~code:125 "Error: system error (%s)." s
-  | End_of_file ->
-      panic ~code:125 "Error: end of file when getting interrupt response."
+    let request =
+      Bytes.make 1 (interrupt_mode_byte (if kill then Hard else Cooperative))
+    in
+    if Unix.single_write socket_fd request 0 1 <> 1 then
+      panic ~code:125 "Error: partial write when sending interrupt request.";
+    let response = Bytes.create 1 in
+    match Unix.read socket_fd response 0 1 with
+    | 0 -> panic ~code:125
+        "Error: end of file when getting interrupt response."
+    | _ ->
+        begin match interrupt_result_of_byte (Bytes.get response 0) with
+        | Some(result) -> result
+        | None -> panic ~code:125 "Error: malformed interrupt response."
+        end
+  with Unix.Unix_error(e, f, args) ->
+    let msg = Unix.error_message e in
+    panic ~code:125 "Error: failed to \"%s %s\" (%s)." f args msg
 
 let full_client_request : type a b c. session_id -> (a, b, c) Request.t ->
     a * (b, string * c) Result.t = fun id req ->

@@ -222,4 +222,29 @@ server or rolling back the published request.
   Not currently in a proof.
   $ kill -0 "$server_pid"
 
+A control client that connects without sending a request does not block later
+interruptions or final shutdown.
+
+  $ python3 - "$data_dir" <<'PY' &
+  > import os
+  > import pathlib
+  > import socket
+  > import sys
+  > data = pathlib.Path(sys.argv[1]).resolve()
+  > os.chdir(data)
+  > client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+  > client.connect("interrupt.socket")
+  > pathlib.Path("stalled-control-ready").touch()
+  > client.recv(1)
+  > PY
+  $ control_pid=$!
+  $ for _ in $(seq 1 500); do [ -e "$data_dir/stalled-control-ready" ] && break; sleep 0.01; done
+  $ test -e "$data_dir/stalled-control-ready"
+  $ rocq-ed interrupt
+  No request is currently active.
+  $ rm "$data_dir/stalled-control-ready"
   $ rocq-ed stop
+  $ wait "$control_pid"
+  $ for _ in $(seq 1 500); do kill -0 "$server_pid" 2> /dev/null || break; sleep 0.01; done
+  $ kill -0 "$server_pid" 2> /dev/null
+  [1]
