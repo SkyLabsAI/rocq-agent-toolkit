@@ -37,6 +37,11 @@ type toplevel = {
   supervisor : Out_channel.t option;
   state : state Atomic.t;
   closed : bool Atomic.t;
+  process_mutex : Mutex.t;
+  mutable process_released : bool;
+  termination_mutex : Mutex.t;
+  termination_condition : Condition.t;
+  mutable kill_requested : bool;
   next_request_id : int Atomic.t;
   mutable sid : int;
 }
@@ -99,9 +104,14 @@ let kill_process pid signal =
 let make_toplevel ~uid ~oc ~ic ~pid ~direct_child ~supervisor ~sid =
   let state = Atomic.make Idle in
   let closed = Atomic.make false in
+  let process_mutex = Mutex.create () in
+  let termination_mutex = Mutex.create () in
+  let termination_condition = Condition.create () in
   let next_request_id = Atomic.make 0 in
   {uid; oc; ic; pid; direct_child; supervisor; state; closed;
-    next_request_id; sid}
+    process_mutex; process_released = false; termination_mutex;
+    termination_condition;
+    kill_requested = false; next_request_id; sid}
 
 exception Stopped of stopped_reason
 exception Interrupted of interrupted_reason
@@ -110,24 +120,52 @@ exception Busy
 let send_supervisor_control_noerr oc control =
   try send_marshaled oc control with _ -> ()
 
+let signal_process t signal =
+  Mutex.protect t.process_mutex @@ fun () ->
+  if not t.process_released then kill_process t.pid signal
+
+let release_process t =
+  Mutex.protect t.process_mutex @@ fun () ->
+  t.process_released <- true
+
+let publish_terminated t reason =
+  Mutex.protect t.termination_mutex @@ fun () ->
+  Atomic.set t.state (Terminated {reason});
+  Condition.broadcast t.termination_condition
+
+let await_termination t =
+  Mutex.protect t.termination_mutex @@ fun () ->
+  let rec wait () =
+    match Atomic.get t.state with
+    | Terminated {reason} -> reason
+    | _ -> Condition.wait t.termination_condition t.termination_mutex; wait ()
+  in
+  wait ()
+
+let request_stop_escalation t =
+  let requested =
+    Mutex.protect t.termination_mutex @@ fun () ->
+    match Atomic.get t.state with
+    | Stopping -> t.kill_requested <- true; true
+    | _ -> false
+  in
+  if requested then signal_process t Sys.sigkill;
+  requested
+
 let cleanup ?(kill=false) (t : toplevel) =
+  if kill then signal_process t Sys.sigkill;
   if Atomic.compare_and_set t.closed false true then begin
-    begin match (kill, t.supervisor) with
-    | (true, None) -> kill_process t.pid Sys.sigkill
-    | (true, Some(oc)) ->
-        send_supervisor_control_noerr oc Supervisor_kill
-    | (false, _) -> ()
-    end;
     close_out_noerr t.oc;
     In_channel.close_noerr t.ic;
     begin match (kill, t.supervisor) with
-    | (false, Some(oc)) ->
-        send_supervisor_control_noerr oc Supervisor_stop
-    | _ -> ()
+    | (true, Some(oc)) -> send_supervisor_control_noerr oc Supervisor_kill
+    | (false, Some(oc)) -> send_supervisor_control_noerr oc Supervisor_stop
+    | (_, None) -> ()
     end;
     Option.iter close_out_noerr t.supervisor;
     if t.direct_child then
-      try ignore (waitpid t.pid) with Unix.Unix_error(_, _, _) -> ()
+      (try ignore (waitpid t.pid) with Unix.Unix_error(_, _, _) -> ());
+    release_process t
   end
 
 let pause () = Unix.sleepf 0.0001
@@ -147,7 +185,7 @@ let rec mark_failed t error =
       let failing = Failing {error} in
       if Atomic.compare_and_set t.state state failing then begin
         cleanup ~kill:true t;
-        Atomic.set t.state (Terminated {reason = Failed error})
+        publish_terminated t (Failed error)
       end else
         mark_failed t error
 
@@ -236,12 +274,25 @@ let init : args:string list -> toplevel = fun ~args ->
 let rec stop t =
   let state = Atomic.get t.state in
   match state with
-  | Stopping | Killing | Failing _ -> pause (); stop t
+  | Stopping | Killing | Failing _ ->
+      raise_stopped (await_termination t)
   | Terminated {reason} -> raise_stopped reason
   | Idle ->
       if Atomic.compare_and_set t.state state Stopping then begin
         cleanup t;
-        Atomic.set t.state (Terminated {reason = Normal})
+        let reason =
+          Mutex.protect t.termination_mutex @@ fun () ->
+          let reason : stopped_reason =
+            if t.kill_requested then Killed else Normal
+          in
+          Atomic.set t.state (Terminated {reason});
+          Condition.broadcast t.termination_condition;
+          reason
+        in
+        match reason with
+        | Normal -> ()
+        | Killed -> raise_stopped Killed
+        | Failed(_) -> assert false
       end else
         stop t
   | Reserving _ | Preparing _ | Running _ | Completing _ | Cancelling _
@@ -263,7 +314,7 @@ let publish_cancellation t state request_id =
     let failing = Failing {error} in
     if Atomic.compare_and_set t.state state failing then begin
       cleanup ~kill:true t;
-      Atomic.set t.state (Terminated {reason = Failed error});
+      publish_terminated t (Failed error);
       Error(error)
     end else
       failwith "invalid toplevel state after cancellation failure"
@@ -304,13 +355,21 @@ let rec interrupt t =
 let rec kill t =
   let state = Atomic.get t.state in
   match state with
-  | Cancelling _ | Stopping | Killing | Failing _ -> pause (); kill t
+  | Stopping ->
+      if request_stop_escalation t then begin
+        match await_termination t with
+        | Killed -> ()
+        | reason -> raise_stopped reason
+      end else
+        kill t
+  | Cancelling _ -> pause (); kill t
+  | Killing | Failing _ -> raise_stopped (await_termination t)
   | Terminated {reason} -> raise_stopped reason
   | Idle | Reserving _ | Preparing _ | Running _ | Completing _
   | Interrupting _ ->
       if Atomic.compare_and_set t.state state Killing then begin
         cleanup ~kill:true t;
-        Atomic.set t.state (Terminated {reason = Killed})
+        publish_terminated t Killed
       end else
         kill t
 

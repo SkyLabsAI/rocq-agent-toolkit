@@ -53,7 +53,8 @@ val stop : toplevel -> unit
     that took effect prior to the interruption. *)
 val interrupt : toplevel -> unit
 
-(** [kill t] forcibly stops top-level [t]. Any operation still active when the
+(** [kill t] forcibly terminates top-level [t]. It also escalates a concurrent
+    graceful [stop] that has not completed. An operation still active when the
     termination takes effect is interrupted. The [Stopped] exception is raised
     if the top-level was stopped by an operation that took effect prior to the
     current call. *)

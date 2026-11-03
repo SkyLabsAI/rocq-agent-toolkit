@@ -462,7 +462,7 @@ Active state
 
 Idle
   -> Stopping
-  -> Terminated {reason = Normal}
+  -> Terminated {reason = Normal or Killed}
 ```
 
 `interrupt` behavior by state:
@@ -609,10 +609,9 @@ being sent after the process has already been killed and reaped.
 
 Once `Killing` wins, `kill`:
 
-1. for an initial top-level, sends `SIGKILL` to the process group and PID; for
-   a forked top-level, sends `Supervisor_kill` to its supervisor;
+1. sends `SIGKILL` directly to the top-level process group and reserved PID;
 2. closes the command and response streams;
-3. closes the supervisor stream when present;
+3. sends `Supervisor_kill` and closes the supervisor stream when present;
 4. calls `waitpid` for an initial direct child;
 5. records `Terminated {reason = Killed}`; and
 6. returns.
@@ -637,11 +636,14 @@ keeps the PID reserved until owner-side cleanup is published.
 active, it raises `Rocq_toplevel.Busy`. Otherwise it enters `Stopping`, closes
 the command and response streams, and sends `Supervisor_stop` when applicable.
 The private command loop observes EOF on stdin and exits. The API reaps an
-initial direct child; a fork supervisor waits for and reaps its child. The API
-then records `Terminated {reason = Normal}`.
+initial direct child; a fork supervisor waits for and reaps its child. A
+concurrent `kill` may upgrade `Stopping` by directly sending `SIGKILL`; the
+thread that owns cleanup still performs the single reap and records
+`Terminated {reason = Killed}`. Without escalation, it records
+`Terminated {reason = Normal}`.
 
-Later operations and repeated calls to `stop` raise
-`Rocq_toplevel.Stopped Rocq_toplevel.Normal`.
+Later operations and repeated calls to `stop` raise `Rocq_toplevel.Stopped`
+with the published reason.
 
 Unexpected EOF, malformed messages, mismatched IDs, or other transport
 failures make the handle unusable. The API enters `Failing {error}`, kills the

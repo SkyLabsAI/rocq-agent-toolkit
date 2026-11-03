@@ -364,7 +364,10 @@ let run_fork_supervisor state ~pipe_in ~pipe_out ~pipe_supervisor pid_fd =
 (* Double-fork so the long-lived supervisor is independent from the source
    top-level and is reaped by the operating system's child reaper. *)
 let launch_supervised_child state ~pipe_in ~pipe_out ~pipe_supervisor =
-  let (pid_in, pid_out) = Unix.pipe ~cloexec:true () in
+  match Unix.pipe ~cloexec:true () with
+  | exception Unix.Unix_error(error, _, _) ->
+      Error(Unix.error_message error)
+  | (pid_in, pid_out) ->
   match Unix.fork () with
   | exception Unix.Unix_error(e,_,_) ->
       Unix.close pid_in;
