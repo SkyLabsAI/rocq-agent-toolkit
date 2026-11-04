@@ -245,6 +245,13 @@ interruptions or final shutdown.
   $ rm "$data_dir/stalled-control-ready"
   $ rocq-ed stop
   $ wait "$control_pid"
-  $ for _ in $(seq 1 500); do kill -0 "$server_pid" 2> /dev/null || break; sleep 0.01; done
-  $ kill -0 "$server_pid" 2> /dev/null
-  [1]
+
+A detached server that has exited may remain as a zombie until PID 1 reaps it,
+so inspect its process state instead of relying on kill -0 alone.
+
+  $ server_running() {
+  >   state=$(ps -o stat= -p "$server_pid" 2> /dev/null) || return 1
+  >   case "$state" in ""|Z*) return 1;; *) return 0;; esac
+  > }
+  $ for _ in $(seq 1 500); do server_running || break; sleep 0.01; done
+  $ ! server_running
