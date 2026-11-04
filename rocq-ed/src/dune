@@ -7,6 +7,8 @@
  (libraries
   cmdliner
   stdlib-extra
+  threads
+  mtime.clock.os
   rocq-doc-manager.lib
   uuseg.string
   yojson))

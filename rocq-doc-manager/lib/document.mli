@@ -13,7 +13,9 @@
 
 (** Imperative state for a Rocq document. Multiple domains must not operate on
     a document concurrently, as unsynchronized accesses can lead to an invalid
-    state. Concurrent operations on distinct documents are unrestricted. *)
+    state. Calls to [interrupt], [kill], and [is_stopped] may run concurrently
+    with any other operation on that document; operations on distinct document
+    instances remain unrestricted. *)
 type t
 
 (** [init ~args ~file] initialises a Rocq document for the given [file], using
@@ -26,6 +28,10 @@ val init : args:string list -> file:string -> t
 (** Exception raised when running any of the following operation on a document
     that is already stopped. *)
 exception Stopped
+
+(** Exception raised after an active top-level operation has been interrupted.
+    The document remains valid; killed or failed backends need a restart. *)
+exception Interrupted of Rocq_toplevel.interrupted_reason
 
 (** [stop d] marks document [d] as stopped, and stops the underlying top-level
     if it is not still shared with other documents (see [clone]). Note that it
@@ -44,6 +50,14 @@ val restart : t -> unit
 (** [is_stopped d] indicates whether the document [d] is already stopped. This
     operation can be used concurrently, without restriction. *)
 val is_stopped : t -> bool
+
+(** [interrupt d] interrupts the active top-level operation, if one exists. It
+    reports whether an active operation was observed. *)
+val interrupt : t -> bool
+
+(** [kill d] forcibly terminates an active top-level operation, if any, and it
+    reports whether an active operation was observed. *)
+val kill : t -> bool
 
 (** [clone d] creates an independent clone of the document [d], that starts in
     the same state as [d]. While document [d] and the produced clone both have
@@ -169,10 +183,8 @@ val cursor_index : t -> int
     to the suffix of unprocessed commands. *)
 val revert_before : ?erase:bool -> t -> index:int -> unit
 
-(** [with_rollback d f] runs [f ()], and then rolls back the document state so
-    that the effects of the call to [f] are reverted. Note that [f] should not
-    raise exceptions, nor call [stop d]. If [f] calls [materialize d], the new
-    backend remains in place after the function returns. *)
+(** [with_rollback d f] runs [f ()], always rolling back all document changes,
+    even on exceptions. [stop d] is invalid; materialized backends remain. *)
 val with_rollback : t -> (unit -> 'a) -> 'a
 
 (** [clear_suffix ?count d] removes unprocessed items from the document suffix
@@ -198,8 +210,11 @@ val run_step : t -> (command_data option, command_error) result
     and [eo] holds error data if the error resulted from a command error. Note
     that successfully processed items are kept even in case of failure. If the
     insertion of an item would interferes with a previous (non-ghost) command,
-    [Error(s, (n, None))] is given, with [s] an appropriate error message. *)
-val run_steps : t -> count:int
+    [Error(s, (n, None))] is then returned with an appropriate message in [s].
+    With [interrupt_as_error] set to [true], all cooperative interruptions and
+    hard kills become command errors rather than raising [Interrupted]. A hard
+    kill still leaves the shared backend unusable until [restart]. *)
+val run_steps : ?interrupt_as_error:bool -> t -> count:int
   -> commands_data * (unit, string * (int * command_error option)) result
 
 (** [advance_to d ~index] advances the cursor of document [d] to place it just
@@ -208,8 +223,9 @@ val run_steps : t -> count:int
     last item), or that it points to an already processed item, then exception
     [Invalid_argument] is raised. In case of error while processing a command,
     the cursor is left at the reached position, and [Error] is given similarly
-    to [run_steps]. *)
-val advance_to : t -> index:int
+    to [run_steps]. The [interrupt_as_error] flag has the same meaning here as
+    it does for [run_steps]. *)
+val advance_to : ?interrupt_as_error:bool -> t -> index:int
   -> commands_data * (unit, string * command_error option) result
 
 (** [go_to d ~index] is the same as [advance_to d ~index], but it additionally

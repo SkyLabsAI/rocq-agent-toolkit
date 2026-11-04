@@ -32,7 +32,7 @@ type move_error =
 type (_, _, _) t =
   | Stop : (unit, unit, empty) t
   | Status : {mode : [`JSON | `Text of print_after]}
-      -> (unit, string, empty) t
+      -> (unit, string, unit) t
   | Move : {target : move_target; print : print_after}
       -> (Document.commands_data * string, int, move_error) t
   | Insert : {text : string; keep : insert_keep; print : print_after}
@@ -41,7 +41,7 @@ type (_, _, _) t =
       -> (string, unit, unit) t
   | Commit : {file : string option; force : bool; include_suffix : bool}
       -> (unit, unit, unit) t
-  | Goals : (unit, string, empty) t
+  | Goals : (unit, string, unit) t
 
 let is_stop : type a b c. (a, b, c) t -> bool = fun r ->
   match r with Stop -> true | _ -> false
@@ -106,6 +106,11 @@ let pp : type a b c. (a, b, c) t Format.pp = fun ff r ->
   | Goals ->
       Format.fprintf ff "Goals"
 
+let interruption_message = function
+  | Rocq_toplevel.Interrupt -> "User interrupt."
+  | Rocq_toplevel.Killed -> "User interrupt (hard kill)."
+  | Rocq_toplevel.Failed(error) -> raise error
+
 let lines : string -> string array = fun s ->
   let lines = Dynarray.create () in
   let line_start = ref 0 in
@@ -131,11 +136,11 @@ let newline_terminated : string -> bool =
 
 let document_parts d =
   let prefix =
-    let prefix = List.rev (Document.rev_prefix d) in
-    let filter (Document.{kind; text; _} : Document.processed_item) =
-      match kind with `Ghost(_) -> None | _ -> Some(text)
+    let add acc (Document.{kind; text; _} : Document.processed_item) =
+      match kind with `Ghost(_) -> acc | _ -> text :: acc
     in
-    String.concat "" (List.filter_map filter prefix)
+    let prefix = List.fold_left add [] (Document.rev_prefix d) in
+    String.concat "" prefix
   in
   let suffix =
     let suffix = Document.suffix d in
@@ -222,7 +227,8 @@ let run_goals d =
   let b = Buffer.create 73 in
   let add_focused i goal =
     Buffer.add_string b (Printf.sprintf "Goal %i:\n" (i+1));
-    let goal_line s = Buffer.add_string b ("  " ^ s ^ "\n") in
+    let goal_line s = Buffer.add_string b ("  " ^ s ^ "\n")
+    in
     List.iter goal_line (String.split_on_char '\n' (String.trim goal));
     Buffer.add_string b "\n"
   in
@@ -243,15 +249,20 @@ let run_goals d =
   | _ -> goals
 
 let render_print_after d {context; goals} =
-  let context =
-    match context with
-    | No_context -> None
-    | All_context -> Some(run_status d ~context:None)
-    | Context_lines lines -> Some(run_status d ~context:(Some(lines)))
-  in
-  let context = Stdlib.Option.to_list context in
-  let goals = if goals then [run_goals d] else [] in
-  String.concat "\n" (context @ goals)
+  try
+    let context =
+      match context with
+      | No_context -> None
+      | All_context -> Some(run_status d ~context:None)
+      | Context_lines lines -> Some(run_status d ~context:(Some(lines)))
+    in
+    let context = Stdlib.Option.to_list context in
+    let goals = if goals then [run_goals d] else [] in
+    Ok(String.concat "\n" (context @ goals))
+  with
+  | Document.Interrupted(
+      (Rocq_toplevel.Interrupt | Rocq_toplevel.Killed) as reason) ->
+      Error(interruption_message reason)
 
 let sentence_text (sentences : Document.sentence list) =
   let get_text (s : Document.sentence) = s.Document.text in
@@ -259,15 +270,30 @@ let sentence_text (sentences : Document.sentence list) =
 
 let insert_error ?(unchanged=false) remaining = {remaining; unchanged}
 
+let finish_insert d ~print data res =
+  match render_print_after d print with
+  | Ok(output) -> ((data, output), res)
+  | Error(message) ->
+      let error =
+        match res with
+        | Ok(()) -> insert_error ""
+        | Error(_, error) -> error
+      in
+      ((data, ""), Error(message, error))
+
 let run_insert_keep_all d ~text ~print =
   match Document.replace_suffix ~count:0 d ~text with
+  | exception Document.Interrupted(
+      (Rocq_toplevel.Interrupt | Rocq_toplevel.Killed) as reason) ->
+      let message = interruption_message reason in
+      (([], ""), Error(message, insert_error ~unchanged:true text))
   | exception Invalid_argument(s) ->
       (([], ""), Error(s, insert_error ~unchanged:true text))
   | (_, Error(s, remaining)) ->
       (([], ""), Error(s, insert_error ~unchanged:true remaining))
   | (sentences, Ok(())) ->
   let count = List.length sentences in
-  let (data, res) = Document.run_steps d ~count in
+  let (data, res) = Document.run_steps ~interrupt_as_error:true d ~count in
   let res =
     match res with
     | Ok(()) -> Ok(())
@@ -278,17 +304,21 @@ let run_insert_keep_all d ~text ~print =
         let remaining = sentence_text (List.drop nb_processed sentences) in
         Error(s, insert_error remaining)
   in
-  ((data, render_print_after d print), res)
+  finish_insert d ~print data res
 
 let run_insert_keep_succeeding d ~text ~print =
   match Document.replace_suffix ~count:0 d ~text with
+  | exception Document.Interrupted(
+      (Rocq_toplevel.Interrupt | Rocq_toplevel.Killed) as reason) ->
+      let message = interruption_message reason in
+      (([], ""), Error(message, insert_error ~unchanged:true text))
   | exception Invalid_argument(s) ->
       (([], ""), Error(s, insert_error ~unchanged:true text))
   | (_, Error(s, remaining)) ->
       (([], ""), Error(s, insert_error ~unchanged:true remaining))
   | (sentences, Ok(())) ->
   let count = List.length sentences in
-  let (data, res) = Document.run_steps d ~count in
+  let (data, res) = Document.run_steps ~interrupt_as_error:true d ~count in
   let res =
     match res with
     | Ok(()) -> Ok(())
@@ -299,7 +329,7 @@ let run_insert_keep_succeeding d ~text ~print =
     let s = match os with Some(s, _) -> s | None -> s in
     Error(s, insert_error ~unchanged remaining)
   in
-  ((data, render_print_after d print), res)
+  finish_insert d ~print data res
 
 let run_insert_keep_atomic d ~text ~print =
   let backup = Document.clone d in
@@ -308,8 +338,8 @@ let run_insert_keep_atomic d ~text ~print =
       Document.stop backup;
       res
   | ((data, status), Error(s, e)) ->
+      Fun.protect ~finally:(fun () -> Document.stop backup) @@ fun () ->
       Document.copy_contents ~from:backup d;
-      Document.stop backup;
       let header =
         if status = "" then "" else
         let tail =
@@ -322,9 +352,12 @@ let run_insert_keep_atomic d ~text ~print =
         | (true , true ) -> "Context and open goals" ^ tail
       in
       ((data, header ^ status), Error(s, {e with unchanged = true}))
-  | exception e ->
-      Document.copy_contents ~from:backup d;
+  | exception (Document.Interrupted(_) as e) ->
       Document.stop backup;
+      raise e
+  | exception e ->
+      Fun.protect ~finally:(fun () -> Document.stop backup) @@ fun () ->
+      Document.copy_contents ~from:backup d;
       raise e
 
 let run_insert_keep_none d ~text ~print =
@@ -359,7 +392,9 @@ let run_insert d ~text ~keep ~print =
 let run_delete d ~count ~print =
   try
     Document.clear_suffix ?count d;
-    (render_print_after d print, Ok())
+    match render_print_after d print with
+    | Ok(output) -> (output, Ok())
+    | Error(message) -> ("", Error(message, ()))
   with Invalid_argument(s) ->
     ("", Error(s, ()))
 
@@ -413,7 +448,10 @@ let index_at_position d ~line ~col =
   (* Finding the byte offset of the start of the line, and the line length. *)
   let line_start_off =
     let off = ref 0 in
-    for i = 0 to line - 2 do off := !off + String.length lines.(i) done; !off
+    for i = 0 to line - 2 do
+      off := !off + String.length lines.(i)
+    done;
+    !off
   in
   let line_len = String.length lines.(line - 1) in
   let line_end_off = line_start_off + line_len - 1 in
@@ -490,9 +528,8 @@ let run_move d ~target ~print =
     let (data, res) =
       match index < initial_index with
       | true  -> Document.revert_before d ~index; ([], Ok(()))
-      | false -> Document.advance_to d ~index
+      | false -> Document.advance_to ~interrupt_as_error:true d ~index
     in
-    let output = render_print_after d print in
     let actual_count = abs (Document.cursor_index d - initial_index) in
     let res =
       match res with
@@ -506,6 +543,17 @@ let run_move d ~target ~print =
                 Target_failure(Some(cursor_position d))
           in
           Error(msg, error)
+    in
+    let (output, res) =
+      match render_print_after d print with
+      | Ok(output) -> (output, res)
+      | Error(message) ->
+          let error =
+            match target with
+            | Relative(_) -> Relative_failure(actual_count)
+            | Absolute(_) | Position(_) -> Target_failure(None)
+          in
+          ("", Error(message, error))
     in
     ((data, output), res)
   with Invalid_argument(s) ->
@@ -527,11 +575,23 @@ let run : type a b c. Document.t -> (a, b, c) t ->
     a * (b, string * c) Result.t = fun d r ->
   match r with
   | Stop -> ((), Ok(()))
-  | Status({mode = `JSON}) -> ((), run_json_status d)
-  | Status({mode = `Text(print)}) -> ((), Ok(render_print_after d print))
+  | Status({mode = `JSON}) ->
+      begin try ((), run_json_status d) with
+      | Document.Interrupted(
+          (Rocq_toplevel.Interrupt | Rocq_toplevel.Killed) as reason) ->
+          ((), Error(interruption_message reason, ()))
+      end
+  | Status({mode = `Text(print)}) ->
+      let result = render_print_after d print in
+      ((), Result.map_error (fun message -> (message, ())) result)
   | Move({target; print}) -> run_move d ~target ~print
   | Insert({text; keep; print}) -> run_insert d ~text ~keep ~print
   | Delete({count; print}) -> run_delete d ~count ~print
   | Commit({file; force; include_suffix}) ->
       ((), run_commit d ~file ~force ~include_suffix)
-  | Goals -> ((), Ok(run_goals d))
+  | Goals ->
+      begin try ((), Ok(run_goals d)) with
+      | Document.Interrupted(
+          (Rocq_toplevel.Interrupt | Rocq_toplevel.Killed) as reason) ->
+          ((), Error(interruption_message reason, ()))
+      end

@@ -127,6 +127,38 @@ let stop_cmd =
   let term = Term.(const Protocol.stop $ session_id) in
   Cmd.(make (info "stop" ~version ~exits ~doc) term)
 
+let interrupt_kill =
+  let doc =
+    "Forcefully kill the active Rocq top-level operation instead of first \
+     requesting cooperative interruption. The session backend is restarted \
+     before it accepts another request."
+  in
+  Arg.(value & flag & info ["kill"] ~doc)
+
+let interrupt_cmd =
+  let doc =
+    "Interrupt the Rocq operation currently running for another client. By \
+     default interruption is cooperative and preserves the Rocq backend. \
+     With $(b,--kill), the active top-level is killed and the session \
+     backend is restarted. If no request or Rocq operation is active, this \
+     is a harmless no-op."
+  in
+  let run kill id =
+    match Protocol.interrupt id ~kill with
+    | Protocol.Interrupt_requested ->
+        if kill then
+          Printf.printf "Hard interruption requested.\n%!"
+        else
+          Printf.printf "Interruption requested.\n%!"
+    | Protocol.No_active_request ->
+        Printf.printf "No request is currently active.\n%!"
+    | Protocol.No_active_operation ->
+        Printf.printf
+          "The active request has no Rocq operation to interrupt.\n%!"
+  in
+  let term = Term.(const run $ interrupt_kill $ session_id) in
+  Cmd.(make (info "interrupt" ~version ~exits ~doc) term)
+
 let non_negative_int_or_all =
   let parse s =
     match s with "all" -> Ok(None) | _ ->
@@ -340,8 +372,9 @@ let status_cmd =
      with the current structured goals, as JSON instead."
   in
   let run mode id =
-    let Ok(doc) = Protocol.client_request id (Request.Status({mode})) in
-    Printf.printf "%s%!" doc
+    match Protocol.client_request id (Request.Status({mode})) with
+    | Ok(doc) -> Printf.printf "%s%!" doc
+    | Error(s, ()) -> panic "Error: %s" s
   in
   let term = Term.(const run $ status_mode $ session_id) in
   Cmd.(make (info "status" ~version ~exits ~doc) term)
@@ -654,8 +687,9 @@ let goals_cmd =
      goals."
   in
   let run id =
-    let Ok(s) = Protocol.client_request id Request.Goals in
-    Printf.printf "%s%!" s
+    match Protocol.client_request id Request.Goals with
+    | Ok(s) -> Printf.printf "%s%!" s
+    | Error(s, ()) -> panic "Error: %s" s
   in
   let term = Term.(const run $ session_id) in
   Cmd.(make (info "goals" ~version ~exits ~doc) term)
@@ -742,6 +776,16 @@ let main_man = [
       does not print $(b,info)-level feedback by default. The user can use \
       $(b,--feedback=+info) for queries that need it.";
 
+  `S "INTERRUPTING REQUESTS";
+  `P "The $(b,interrupt) command can be run while another client is waiting \
+      for a Rocq operation. It cooperatively interrupts that operation by \
+      default. The waiting command reports a normal request failure and \
+      retains document progress according to its keep policy. The session \
+      remains available. Use $(b,interrupt --kill) when cooperative \
+      interruption does not suffice; this kills and restarts the Rocq \
+      backend. Calling either \
+      form with no active Rocq operation is a harmless no-op.";
+
   `S "COMMAND FAILURES";
   `P "A command/request failure reported with exit status 1 by a command \
       operating on an existing session does not terminate that session. It \
@@ -753,8 +797,8 @@ let main_man = [
 
 let _ =
   let cmds =
-    [ init_cmd; stop_cmd; status_cmd; move_cmd; insert_cmd; delete_cmd;
-      commit_cmd; goals_cmd ]
+    [ init_cmd; stop_cmd; interrupt_cmd; status_cmd; move_cmd; insert_cmd;
+      delete_cmd; commit_cmd; goals_cmd ]
   in
   let default = Term.(ret (const (`Help(`Pager, None)))) in
   let default_info =

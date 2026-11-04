@@ -124,8 +124,39 @@ type empty = |
 type (_, _) cmd =
   | Run : {loc : Loc.t; text : string} -> (run_data, string * run_error) cmd
   | BackTo : {sid : int} -> (unit, string) cmd
-  | Fork : {pipe_in : string; pipe_out : string} -> (int, string) cmd
+  | Fork : {pipe_in : string; pipe_out : string; pipe_supervisor : string} ->
+      (int, string) cmd
   | StructuredGoals : (structured_goal list option, empty) cmd
   | LocAfterBlanks : {loc : Loc.t; text : string} -> (Rocq_loc.t, string) cmd
   | Split : {loc : Loc.t; text : string; sid : int option} ->
       (raw_split_data, empty) cmd
+
+let command_is_interruptible : type r e. (r, e) cmd -> bool = function
+  | BackTo(_) -> false
+  | Run(_) -> true
+  | Fork(_) -> true
+  | StructuredGoals -> true
+  | LocAfterBlanks(_) -> true
+  | Split(_) -> true
+
+type ('r, 'e) request = {request_id : int; command : ('r, 'e) cmd}
+
+type ('r, 'e) response =
+  | Completed of {request_id : int; sid : int; result : ('r, 'e) Result.t}
+  | Interrupted of {request_id : int; sid : int}
+
+type ('r, 'e) message =
+  | Started of int
+  | Finished of ('r, 'e) response
+
+type control =
+  | Continue of int
+  | Cancel of int
+  | Cancel_signal_sent of int
+
+type control_ack =
+  | Cancel_ack of {request_id : int; sid : int}
+
+type supervisor_control =
+  | Supervisor_stop
+  | Supervisor_kill
