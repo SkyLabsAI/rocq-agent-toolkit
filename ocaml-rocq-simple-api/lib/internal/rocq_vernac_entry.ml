@@ -21,6 +21,7 @@ type control =
   | ControlProfile
   | ControlRedirect
   | ControlTimeout
+  | ControlAllocLimit
   | ControlFail
   | ControlSucceed
 
@@ -53,13 +54,14 @@ Synterp.vernac_control_entry
 let of_vernac_control : Vernacexpr.vernac_control -> command =
   let translate_control (c : Vernacexpr.control_flag) : control =
     match c.CAst.v with
-    | Vernacexpr.ControlTime         -> ControlTime
-    | Vernacexpr.ControlInstructions -> ControlInstructions
-    | Vernacexpr.ControlProfile(_)   -> ControlProfile
-    | Vernacexpr.ControlRedirect(_)  -> ControlRedirect
-    | Vernacexpr.ControlTimeout(_)   -> ControlTimeout
-    | Vernacexpr.ControlFail         -> ControlFail
-    | Vernacexpr.ControlSucceed      -> ControlSucceed
+    | Vernacexpr.ControlTime          -> ControlTime
+    | Vernacexpr.ControlInstructions  -> ControlInstructions
+    | Vernacexpr.ControlProfile(_)    -> ControlProfile
+    | Vernacexpr.ControlRedirect(_)   -> ControlRedirect
+    | Vernacexpr.ControlTimeout(_)    -> ControlTimeout
+    | Vernacexpr.ControlAllocLimit(_) -> ControlAllocLimit
+    | Vernacexpr.ControlFail          -> ControlFail
+    | Vernacexpr.ControlSucceed       -> ControlSucceed
   in
   let translate_entry e =
     let open Vernacexpr in
@@ -96,8 +98,9 @@ let of_vernac_control_entry : Synterp.vernac_control_entry -> command =
     | 2 -> ControlProfile
     | 3 -> ControlRedirect
     | 4 -> ControlTimeout
-    | 5 -> ControlFail
-    | n -> assert (n == 6); ControlSucceed
+    | 5 -> ControlAllocLimit
+    | 6 -> ControlFail
+    | n -> assert (n == 7); ControlSucceed
   in
   let translate_entry e =
     match e with
@@ -234,6 +237,7 @@ let control_descr c =
   | ControlProfile -> "Profile"
   | ControlRedirect -> "Redirect"
   | ControlTimeout -> "Timeout"
+  | ControlAllocLimit -> "AllocLimit"
   | ControlFail -> "Fail"
   | ControlSucceed -> "Succeed"
 
@@ -267,7 +271,8 @@ let command_tags = [|
 |]
 
 let control_tags = [|
-  "Time"; "Instructions"; "Profile"; "Redirect"; "Timeout"; "Fail"; "Succeed";
+  "Time"; "Instructions"; "Profile"; "Redirect"; "Timeout"; "AllocLimit";
+  "Fail"; "Succeed";
 |]
 
 let command_is_pure c =

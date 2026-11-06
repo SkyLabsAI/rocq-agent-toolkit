@@ -105,10 +105,10 @@ let globrefs_diff : Environ.env -> Environ.env -> globrefs_diff =
     | (Some(_), Some(_)) -> cs (* May occur on, e.g., section closing. *)
   in
   let (removed_constants, added_constants) =
-    Names.Cmap_env.symmetric_diff_fold f c1 c2 ([], [])
+    Names.Cmap.symmetric_diff_fold f c1 c2 ([], [])
   in
   let (removed_inductives, added_inductives) =
-    Names.Mindmap_env.symmetric_diff_fold f i1 i2 ([], [])
+    Names.Mindmap.symmetric_diff_fold f i1 i2 ([], [])
   in
   {added_constants; removed_constants; added_inductives; removed_inductives}
 
@@ -236,7 +236,7 @@ let run state input_loc text =
         in
         let focused_goals =
           let make i _ =
-            let p = Printer.pr_nth_open_subgoal ~proof (i + 1) in
+            let p = Vernacgoal.pr_nth_open_subgoal ~proof (i + 1) in
             Pp.string_of_ppcmds (fixup_subgoal p)
           in
           List.mapi make goals

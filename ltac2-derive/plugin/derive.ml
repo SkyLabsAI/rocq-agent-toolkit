@@ -3,18 +3,20 @@ open Tac2expr
 
 type deriver = type_constant list -> strexpr list
 
-let derivers : deriver Names.Id.Map.t ref =
+let derivers : deriver Names.Id.Map.t Summary.Ref.t =
   Summary.ref ~name:"derivers" Names.Id.Map.empty
 
 let register_deriver : string -> deriver -> unit = fun id d ->
   let id = Names.Id.of_string id in
-  if Names.Id.Map.mem id !derivers then
+  if Names.Id.Map.mem id Summary.Ref.(!derivers) then
     CErrors.user_err Pp.(str "a deriver is already defined with key" ++
       spc () ++ Names.Id.print id ++ str ".");
-  derivers := Names.Id.Map.add id d !derivers
+  Summary.Ref.(derivers := Names.Id.Map.add id d !derivers)
 
 let list_derivers : unit -> unit = fun _ ->
-  let ds = Names.Id.Map.fold (fun id _ acc -> id :: acc) !derivers [] in
+  let ds =
+    Names.Id.Map.fold (fun id _ acc -> id :: acc) Summary.Ref.(!derivers) []
+  in
   let pp =
     if ds = [] then Pp.str "No available derivers." else
     Pp.(str "Available derivers: " ++ pr_enum Names.Id.print ds ++ str ".")
@@ -41,7 +43,7 @@ let derive : Attributes.vernac_flags -> Names.Id.t list ->
     let get_deriver id =
       if Names.Id.Set.mem id !processed then error id "already specified";
       processed := Names.Id.Set.add id !processed;
-      match Names.Id.Map.find_opt id !derivers with
+      match Names.Id.Map.find_opt id Summary.Ref.(!derivers) with
       | Some(d) -> (id, d)
       | None    -> error id "does not exist"
     in

@@ -21,6 +21,7 @@ type control = Rocq_simple_api_internal.Rocq_vernac_entry.control =
   | ControlProfile
   | ControlRedirect
   | ControlTimeout
+  | ControlAllocLimit
   | ControlFail
   | ControlSucceed
 
