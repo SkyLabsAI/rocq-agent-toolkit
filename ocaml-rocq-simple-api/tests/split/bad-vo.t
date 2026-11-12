@@ -6,7 +6,7 @@ Build an Rocq source file to produce a vo.
 Change the version number to 50.0.0 so that it looks stale.
 
   $ od -Ax -tx1z stale.vo | grep "^000000"
-  000000 43 6f 71 21 00 01 60 bb 00 00 00 00 00 00 01 64  >Coq!..`........d<
+  000000 43 6f 71 21 00 01 61 1f 00 00 00 00 00 00 01 64  >Coq!..a........d<
   $ printf '\x00\x07\xa1\x20' | dd of=stale.vo bs=1 seek=4 conv=notrunc status=none
   $ od -Ax -tx1z stale.vo | grep "^000000"
   000000 43 6f 71 21 00 07 a1 20 00 00 00 00 00 00 01 64  >Coq!... .......d<
@@ -30,7 +30,7 @@ Split a test-file that imports the stale vo file.
       { "kind": "blanks", "text": "\n", "bp": 10, "ep": 11 }
     ],
     "leftover": "Require Import test.dir.stale.\n",
-    "error": "Error when parsing .vo (from file $TESTCASE_ROOT/stale.vo) for library test.dir.stale: File $TESTCASE_ROOT/stale.vo\nhas bad version number 500000 (expected 90299). It is corrupted or was\ncompiled with another version of Rocq.",
+    "error": "Error when parsing .vo (from file $TESTCASE_ROOT/stale.vo) for library test.dir.stale: File $TESTCASE_ROOT/stale.vo\nhas bad version number 500000 (expected 90399). It is corrupted or was\ncompiled with another version of Rocq.",
     "loc": null
   }
   [1]

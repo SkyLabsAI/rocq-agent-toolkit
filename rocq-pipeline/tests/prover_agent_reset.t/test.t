@@ -14,25 +14,11 @@ Copy dune project from source tree to separate folder:
 
 
   $ cat test.v
-  Require Import ssreflect.
-  
   Set Default Goal Selector "!".
-  Set SsrIdents.
   Goal True.
   Proof. Admitted.
   
   Set Default Goal Selector "1".
-  Set SsrIdents.
-  Goal True.
-  Proof. Admitted.
-  
-  Set Default Goal Selector "1".
-  Unset SsrIdents.
-  Goal True.
-  Proof. Admitted.
-  
-  Set Default Goal Selector "!".
-  Unset SsrIdents.
   Goal True.
   Proof. Admitted.
 
@@ -44,61 +30,30 @@ Run `auto-prover` via `uv`;
   $ uv run auto-prover test.v
   Gathering Rocq configuration...
   Loading file...
-  Running the proving agent on 4 admitted proofs; partial proofs will be retained.
+  Running the proving agent on 2 admitted proofs; partial proofs will be retained.
   
-  Found admit at line 7, column 7 (offset=91).
+  Found admit at line 4, column 7 (offset=49).
   Goal 0:
     ============================
     True
   Agent succeeded.
   
-  Found admit at line 15, column 7 (offset=233).
-  Goal 0:
-    ============================
-    True
-  Agent succeeded.
-  
-  Found admit at line 22, column 7 (offset=337).
-  Goal 0:
-    ============================
-    True
-  Agent succeeded.
-  
-  Found admit at line 28, column 7 (offset=415).
+  Found admit at line 10, column 7 (offset=150).
   Goal 0:
     ============================
     True
   Agent succeeded.
 
   $ cat test.v
-  Require Import ssreflect.
-  
   Set Default Goal Selector "!".
-  Set SsrIdents.
-  Goal True.
-  Proof. #[local] Unset SsrIdents.
-  #[local] Set Default Goal Selector "1".
-  auto.
-  Qed.
-  
-  Set Default Goal Selector "1".
-  Set SsrIdents.
-  Goal True.
-  Proof. #[local] Unset SsrIdents.
-  auto.
-  Qed.
-  
-  Set Default Goal Selector "1".
-  Unset SsrIdents.
-  Goal True.
-  Proof. auto.
-  Qed.
-  
-  Set Default Goal Selector "!".
-  Unset SsrIdents.
   Goal True.
   Proof. #[local] Set Default Goal Selector "1".
   auto.
+  Qed.
+  
+  Set Default Goal Selector "1".
+  Goal True.
+  Proof. auto.
   Qed.
 
 Build with dune

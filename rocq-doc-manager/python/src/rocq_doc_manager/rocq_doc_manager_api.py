@@ -89,7 +89,7 @@ class VernacData(BaseModel):
         default=False,
         description="indicates if the command is definitely pure for the syntax interpretation phase",
     )
-    controls: list[Literal["Time", "Instructions", "Profile", "Redirect", "Timeout", "Fail", "Succeed"]] = Field(
+    controls: list[Literal["Time", "Instructions", "Profile", "Redirect", "Timeout", "AllocLimit", "Fail", "Succeed"]] = Field(
         kw_only=True,
         default_factory=list,
         description="control instructions",
