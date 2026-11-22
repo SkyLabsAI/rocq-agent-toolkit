@@ -16,14 +16,15 @@
   $ cp subdir/test.v subdir/subsubdir/test.v
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
+  > (lang dune 3.26)
+  > (using rocq 0.15)
   > EOF
 
   $ cat > dune <<EOF
   > (include_subdirs qualified)
   > (rocq.theory
-  >  (name text))
+  >  (name text)
+  >  (theories rocq-core))
   > EOF
 
   $ eval $(rocq-ed init subdir/test.v)

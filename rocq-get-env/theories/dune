@@ -1,5 +1,6 @@
 (rocq.theory
  (name skylabs_ai.tools.get_env)
+ (public_name rocq-get-env)
  (package rocq-get-env)
  (generate_project_file)
  (plugins rocq-get-env.plugin))

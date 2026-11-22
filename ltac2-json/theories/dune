@@ -1,6 +1,7 @@
 (rocq.theory
  (name skylabs_ai.ltac2_json)
+ (public_name ltac2-json)
  (package ltac2-json)
  (generate_project_file)
  (plugins ltac2-json.plugin)
- (theories Ltac2 skylabs_ai.ltac2_derive))
+ (theories rocq-core.ltac2 ltac2-derive))

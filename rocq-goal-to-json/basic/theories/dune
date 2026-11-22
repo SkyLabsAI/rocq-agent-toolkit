@@ -1,5 +1,6 @@
 (rocq.theory
  (name skylabs_ai.extractors.goal_to_json.basic)
+ (public_name rocq-goal-to-json)
  (package rocq-goal-to-json)
  (generate_project_file)
  (flags
@@ -8,6 +9,6 @@
    -w -notation-overridden
    -w -ambiguous-paths))
  (theories
-  Stdlib Ltac2
-  skylabs_ai.ltac2_derive
-  skylabs_ai.ltac2_json))
+  rocq-stdlib rocq-core.ltac2
+  ltac2-derive
+  ltac2-json))

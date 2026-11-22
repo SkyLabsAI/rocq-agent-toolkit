@@ -2,4 +2,4 @@
 (rocq.theory
  (name skylabs.demo_agent.test)
  (generate_project_file)
- (theories Stdlib Ltac2))
+ (theories rocq-stdlib rocq-core.ltac2))

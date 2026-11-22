@@ -25,8 +25,9 @@ class DuneError(Exception):
 def _run_dune(
     args: list[str], cwd: str | Path | None, *, env: dict[str, str] | None = None
 ) -> str:
+    dune = os.environ.get("DUNE", "dune")
     res = subprocess.run(
-        ["dune"] + args,
+        [dune] + args,
         capture_output=True,
         cwd=str(cwd) if cwd is not None else None,
         env=env,
@@ -34,7 +35,7 @@ def _run_dune(
     stdout = res.stdout.decode(encoding="utf-8")
     if res.returncode != 0:
         stderr = res.stderr.decode(encoding="utf-8")
-        message = f'Dune command "{shlex.join(["dune"] + args)}" failed'
+        message = f'Dune command "{shlex.join([dune] + args)}" failed'
         raise DuneError(message, stdout=stdout, stderr=stderr, cwd=cwd)
     return stdout
 

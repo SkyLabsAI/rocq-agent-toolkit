@@ -25,7 +25,7 @@
   > 
   > EOF
 
-  $ rocq-split test.v -- -Q . test.dir
+  $ rocq-split test.v -- -package rocq-stdlib -Q . test.dir
   {
     "items": [
       {

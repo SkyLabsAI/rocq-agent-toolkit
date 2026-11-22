@@ -1,5 +1,6 @@
 (rocq.theory
  (name skylabs_ai.extractors.goal_to_json.iris)
+ (public_name rocq-goal-to-json_iris)
  (package rocq-goal-to-json_iris)
  (generate_project_file)
  (flags
@@ -8,7 +9,7 @@
    -w -notation-overridden
    -w -ambiguous-paths))
  (theories
-  Stdlib Ltac2
-  stdpp iris
-  skylabs_ai.ltac2_derive
-  skylabs_ai.ltac2_json))
+  rocq-stdlib rocq-core.ltac2
+  rocq-stdpp rocq-iris
+  ltac2-derive
+  ltac2-json))

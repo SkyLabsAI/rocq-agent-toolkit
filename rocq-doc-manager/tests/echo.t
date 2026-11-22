@@ -26,7 +26,7 @@
 
   $ cat calls.txt | jsonrpc-tp.build_requests | jsonrpc-tp.tp_wrap > commands.txt
 
-  $ cat commands.txt | rocq-doc-manager test.v -- -Q . test.dir | jsonrpc-tp.tp_unwrap
+  $ cat commands.txt | rocq-doc-manager test.v -- -package rocq-stdlib -Q . test.dir | jsonrpc-tp.tp_unwrap
   { "method": "ready_seq", "jsonrpc": "2.0" }
   { "id": 1, "jsonrpc": "2.0", "result": null }
   { "id": 2, "jsonrpc": "2.0", "result": null }

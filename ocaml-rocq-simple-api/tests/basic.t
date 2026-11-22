@@ -15,7 +15,7 @@
   > run 37 "Time Succeed Timeout 30 About nat."
   > EOF
 
-  $ cat commands.txt | rocq-simple-api.toplevel
+  $ cat commands.txt | rocq-simple-api.toplevel -package rocq-stdlib
   [0] 1 > run 0 "Inductive n := Zero : n | Succ : n -> n."
   {
     "globrefs_diff": {

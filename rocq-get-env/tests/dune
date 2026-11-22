@@ -3,4 +3,4 @@
  (name get_env.tests)
  (generate_project_file)
  (flags (:standard -test-mode))
- (theories skylabs_ai.tools.get_env))
+ (theories rocq-get-env))

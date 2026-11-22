@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
@@ -28,7 +29,7 @@ def _rdm_command(
         if dune_disable_global_lock:
             env = dune_env_hack()
         command = [
-            "dune",
+            os.environ.get("DUNE", "dune"),
             "exec",
             "--no-build",
             "--no-print-directory",
