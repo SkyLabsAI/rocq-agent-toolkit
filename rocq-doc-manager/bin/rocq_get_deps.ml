@@ -126,5 +126,6 @@ let parse_args : argv:string array -> string list * string = fun ~argv ->
 
 let _ =
   let (args, file) = parse_args ~argv:Sys.argv in
+  let args = "-package" :: "rocq-term-deps" :: args in
   try main (Document.init ~args ~file) with
   | Sys_error(s) | Failure(s) -> panic "Error: %s." s

@@ -8,7 +8,4 @@
    -w -notation-incompatible-prefix
    -w -notation-overridden
    -w -ambiguous-paths))
- (theories
-  rocq-stdlib rocq-core.ltac2
-  ltac2-derive
-  ltac2-json))
+ (theories ltac2-json))

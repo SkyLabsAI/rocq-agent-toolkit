@@ -3,7 +3,4 @@
  (name goal_to_json_basic.tests)
  (generate_project_file)
  (flags (:standard -test-mode -w -level-tolerance -w -deprecated-focus))
- (theories
-  rocq-stdlib rocq-core.ltac2
-  ltac2-derive ltac2-json
-  rocq-goal-to-json))
+ (theories rocq-goal-to-json))

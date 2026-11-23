@@ -9,7 +9,5 @@
    -w -notation-overridden
    -w -ambiguous-paths))
  (theories
-  rocq-stdlib rocq-core.ltac2
-  rocq-stdpp rocq-iris
-  ltac2-derive
+  rocq-iris
   ltac2-json))

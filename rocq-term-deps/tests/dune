@@ -3,4 +3,4 @@
  (name term_deps.tests)
  (generate_project_file)
  (flags (:standard -test-mode))
- (theories rocq-stdlib rocq-term-deps))
+ (theories rocq-term-deps))

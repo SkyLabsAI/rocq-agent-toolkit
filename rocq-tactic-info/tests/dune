@@ -3,4 +3,4 @@
  (name tactic_info.tests)
  (generate_project_file)
  (flags (:standard -test-mode))
- (theories rocq-core.ltac2 rocq-tactic-info))
+ (theories rocq-tactic-info))

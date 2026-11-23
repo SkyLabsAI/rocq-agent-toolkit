@@ -4,4 +4,4 @@
  (package rocq-tactic-info)
  (generate_project_file)
  (plugins rocq-tactic-info.plugin)
- (theories rocq-core.ltac2))
+)
