@@ -11,12 +11,15 @@ let dune =
   | Some(dune) when dune <> "" -> dune
   | _ -> "dune"
 
+let dune_command args = "env", "-u" :: "DUNE_SOURCEROOT" :: dune :: args
+
 let get_dune_root : unit -> (Filepath.t, string) Result.t = fun () ->
   let args =
     ["exec"; "--no-print-directory"; "--"; "printenv"; "DUNE_SOURCEROOT"]
   in
   let temp = Filename.temp_file "temp" ".cli" in
-  match Cmdutil.(run ~cmd:dune ~stderr:Null ~stdout:(File(temp)) args) with
+  let cmd, args = dune_command args in
+  match Cmdutil.(run ~cmd ~stderr:Null ~stdout:(File(temp)) args) with
   | Error(_,s) ->
       Fileutil.remove_file temp;
       let msg =
@@ -60,7 +63,8 @@ let get_args : config -> Filepath.t -> (string list, string) Result.t =
     args @ jobs @ no_build @ [rocq_file]
   in
   let temp = Filename.temp_file "temp" ".cli" in
-  match Cmdutil.(run ~cmd:dune ~stderr:Shell ~stdout:(File(temp)) args) with
+  let cmd, args = dune_command args in
+  match Cmdutil.(run ~cmd ~stderr:Shell ~stdout:(File(temp)) args) with
   | Error(_,s) ->
       Sys.chdir cwd;
       Fileutil.remove_file temp;
