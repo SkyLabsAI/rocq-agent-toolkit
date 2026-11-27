@@ -5,8 +5,8 @@
   > EOF
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
+  > (lang dune 3.26)
+  > (using rocq 0.15)
   > EOF
 
   $ cat > dune <<EOF

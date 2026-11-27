@@ -3,6 +3,7 @@
  (setup_scripts setup.sh)
  (shell bash)
  (deps
+  %{bin:rocq}
   (package rocq-core)
   (package rocq-stdlib)
   (package rocq-fake-repl)))
